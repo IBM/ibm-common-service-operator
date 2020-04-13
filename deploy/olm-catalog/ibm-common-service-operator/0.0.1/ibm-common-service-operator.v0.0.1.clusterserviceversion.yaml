@@ -1,0 +1,99 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: |-
+      [
+        {
+          "apiVersion": "operator.ibm.com/v1alpha1",
+          "kind": "CommonService",
+          "metadata": {
+            "name": "example-commonservice"
+          },
+          "spec": {
+            "size": 3
+          }
+        }
+      ]
+    capabilities: Basic Install
+  name: ibm-common-service-operator.v0.0.1
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: CommonService is the Schema for the commonservices API
+      displayName: CommonService
+      kind: CommonService
+      name: commonservices.operator.ibm.com
+      version: v1alpha1
+  description: Placeholder description
+  displayName: IBM Common Service Operator
+  install:
+    spec:
+      deployments:
+      - name: ibm-common-service-operator
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              name: ibm-common-service-operator
+          strategy: {}
+          template:
+            metadata:
+              labels:
+                name: ibm-common-service-operator
+            spec:
+              containers:
+              - command:
+                - ibm-common-service-operator
+                env:
+                - name: WATCH_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.annotations['olm.targetNamespaces']
+                - name: POD_NAME
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.name
+                - name: OPERATOR_NAME
+                  value: ibm-common-service-operator
+                image: quay.io/ibmcloud/common-service-operator:latest
+                imagePullPolicy: Always
+                name: ibm-common-service-operator
+                resources: {}
+              serviceAccountName: ibm-common-service-operator
+      clusterPermissions:
+      - rules:
+        - apiGroups:
+          - '*'
+          resources:
+          - '*'
+          verbs:
+          - '*'
+        - nonResourceURLs:
+          - '*'
+          verbs:
+          - '*'
+        serviceAccountName: ibm-common-service-operator
+    strategy: deployment
+  installModes:
+  - supported: true
+    type: OwnNamespace
+  - supported: true
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: false
+    type: AllNamespaces
+  keywords:
+  - "IBM"
+  - "Common Service"
+  maintainers:
+  - name: zhiwei
+    email: zhiwei@cn.ibm.com
+  maturity: alpha
+  provider:
+    name: zhiwei
+  replaces: ibm-common-service-operator.v0.0.0
+  version: 0.0.1
