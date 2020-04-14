@@ -40,14 +40,14 @@ build-push-image: build-image push-image
 
 build-image: build
 	@echo "Building the $(IMAGE_NAME) docker image for $(LOCAL_ARCH)..."
-	@docker build -t $(IMAGE_REPO)/$(IMAGE_NAME)-$(LOCAL_ARCH):$(VERSION) -f build/Dockerfile .
+	@docker build -t $(QUAY_REPO)/$(IMAGE_NAME)-$(LOCAL_ARCH):$(VERSION) -f build/Dockerfile .
 
 push-image: $(CONFIG_DOCKER_TARGET) build-image
 	@echo "Pushing the $(IMAGE_NAME) docker image for $(LOCAL_ARCH)..."
-	@docker push $(IMAGE_REPO)/$(IMAGE_NAME)-$(LOCAL_ARCH):$(VERSION)
+	@docker push $(QUAY_REPO)/$(IMAGE_NAME)-$(LOCAL_ARCH):$(VERSION)
 
 push-image:
-	docker push $(IMAGE_REPO)/$(IMAGE_NAME)-$(LOCAL_ARCH):$(VERSION)
+	docker push $(QUAY_REPO)/$(IMAGE_NAME)-$(LOCAL_ARCH):$(VERSION)
 
 generate-csv:
 	operator-sdk generate csv --csv-version $(CSV_VERSION) --update-crds
