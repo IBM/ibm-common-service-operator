@@ -19,6 +19,7 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/ghodss/yaml"
@@ -131,8 +132,8 @@ func createOrUpdateFromYaml(yamlContent []byte, client client.Client, reader cli
 		return err
 	}
 
-	version := obj.GetAnnotations()["version"]
-	versionInCluster := objInCluster.GetAnnotations()["version"]
+	version, _ := strconv.Atoi(obj.GetAnnotations()["version"])
+	versionInCluster, _ := strconv.Atoi(objInCluster.GetAnnotations()["version"])
 
 	// TODO: deep merge and update
 	if version > versionInCluster {

@@ -15,7 +15,7 @@ spec:
       serviceAccountName: ibm-common-service-operator
       containers:
         - name: ibm-common-service-operator
-          image: quay.io/ibmcloud/common-service-operator:latest
+          image: quay.io/opencloudio/common-service-operator:latest
           command:
           - ibm-common-service-operator
           imagePullPolicy: Always
