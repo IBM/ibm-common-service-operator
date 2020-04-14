@@ -22,6 +22,10 @@ else
     $(error "This system's ARCH $(ARCH) isn't recognized/supported")
 endif
 
+ifeq ($(BUILD_LOCALLY),0)
+    export CONFIG_DOCKER_TARGET = config-docker
+endif
+
 include common/Makefile.common.mk
 
 code-dev:
@@ -46,18 +50,11 @@ push-image: $(CONFIG_DOCKER_TARGET) build-image
 	@echo "Pushing the $(IMAGE_NAME) docker image for $(LOCAL_ARCH)..."
 	@docker push $(QUAY_REPO)/$(IMAGE_NAME)-$(LOCAL_ARCH):$(VERSION)
 
-push-image:
-	docker push $(QUAY_REPO)/$(IMAGE_NAME)-$(LOCAL_ARCH):$(VERSION)
-
 generate-csv:
 	operator-sdk generate csv --csv-version $(CSV_VERSION) --update-crds
 
 push-csv:
 	QUAY_REPO=$(QUAY_REPO) OPERATOR_NAME=$(OPERATOR_NAME) VERSION=$(CSV_VERSION) common/scripts/push-csv.sh
-
-ifeq ($(BUILD_LOCALLY),0)
-    export CONFIG_DOCKER_TARGET = config-docker
-endif
 
 multiarch-image: $(CONFIG_DOCKER_TARGET)
 	@MAX_PULLING_RETRY=20 RETRY_INTERVAL=30 common/scripts/multiarch_image.sh $(QUAY_REPO) $(IMAGE_NAME) $(VERSION)
