@@ -10,6 +10,18 @@ QUAY_PASSWORD ?=
 
 BUILD_LOCALLY ?= 1
 
+ARCH := $(shell uname -m)
+LOCAL_ARCH := "amd64"
+ifeq ($(ARCH),x86_64)
+    LOCAL_ARCH="amd64"
+else ifeq ($(ARCH),ppc64le)
+    LOCAL_ARCH="ppc64le"
+else ifeq ($(ARCH),s390x)
+    LOCAL_ARCH="s390x"
+else
+    $(error "This system's ARCH $(ARCH) isn't recognized/supported")
+endif
+
 include common/Makefile.common.mk
 
 code-dev:
@@ -24,11 +36,18 @@ build: check
 	CGO_ENABLED=0 go build -o build/_output/bin/$(OPERATOR_NAME) cmd/manager/main.go
 	@strip build/_output/bin/$(OPERATOR_NAME) || true
 
-image: build
-	docker build -t $(QUAY_REPO)/$(IMAGE_NAME):$(VERSION) -f build/Dockerfile .
+build-push-image: build-image push-image
+
+build-image: build
+	@echo "Building the $(IMAGE_NAME) docker image for $(LOCAL_ARCH)..."
+	@docker build -t $(IMAGE_REPO)/$(IMAGE_NAME)-$(LOCAL_ARCH):$(VERSION) -f build/Dockerfile .
+
+push-image: $(CONFIG_DOCKER_TARGET) build-image
+	@echo "Pushing the $(IMAGE_NAME) docker image for $(LOCAL_ARCH)..."
+	@docker push $(IMAGE_REPO)/$(IMAGE_NAME)-$(LOCAL_ARCH):$(VERSION)
 
 push-image:
-	docker push $(QUAY_REPO)/$(IMAGE_NAME):$(VERSION)
+	docker push $(IMAGE_REPO)/$(IMAGE_NAME)-$(LOCAL_ARCH):$(VERSION)
 
 generate-csv:
 	operator-sdk generate csv --csv-version $(CSV_VERSION) --update-crds
