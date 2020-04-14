@@ -16,7 +16,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
-  name: ibm-common-service-operator.v0.0.1
+  name: ibm-common-service-operator.v1.2.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -58,7 +58,7 @@ spec:
                       fieldPath: metadata.name
                 - name: OPERATOR_NAME
                   value: ibm-common-service-operator
-                image: quay.io/ibmcloud/common-service-operator:latest
+                image: quay.io/opencloudio/common-service-operator:latest
                 imagePullPolicy: Always
                 name: ibm-common-service-operator
                 resources: {}
@@ -96,4 +96,4 @@ spec:
   provider:
     name: zhiwei
   replaces: ibm-common-service-operator.v0.0.0
-  version: 0.0.1
+  version: 1.2.0

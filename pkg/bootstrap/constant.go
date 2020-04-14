@@ -30,7 +30,7 @@ metadata:
   name: operand-deployment-lifecycle-manager-app
   namespace: openshift-operators
   annotations:
-    version: 1.2.0
+    version: "1"
 spec:
   channel: dev
   installPlanApproval: Automatic
@@ -46,7 +46,7 @@ metadata:
   name: common-service
   namespace: ibm-common-services
   annotations:
-    version: 1.2.0
+    version: "1"
 spec:
   operators:
   - name: ibm-metering-operator
@@ -186,7 +186,7 @@ metadata:
   name: common-service
   namespace: ibm-common-services
   annotations:
-    version: 1.2.0
+    version: "1"
 spec:
   services:
   - name: ibm-metering-operator
