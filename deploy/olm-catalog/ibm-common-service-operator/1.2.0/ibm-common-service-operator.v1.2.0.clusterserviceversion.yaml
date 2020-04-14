@@ -87,13 +87,13 @@ spec:
   - supported: false
     type: AllNamespaces
   keywords:
-  - "IBM"
-  - "Common Service"
+  - IBM
+  - Cloud
   maintainers:
-  - name: zhiwei
-    email: zhiwei@cn.ibm.com
+  - name: IBM Support
+    email: supports@ibm.com
   maturity: alpha
   provider:
-    name: zhiwei
+    name: IBM
   replaces: ibm-common-service-operator.v0.0.0
   version: 1.2.0
