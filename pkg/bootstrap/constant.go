@@ -221,7 +221,6 @@ spec:
     spec:
       commonWebUI: {}
       legacyHeader: {}
-      navconfiguration: {}
   - name: ibm-management-ingress-operator
     spec:
       managementIngress: {}
