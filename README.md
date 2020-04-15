@@ -1,6 +1,6 @@
 # IBM Common Service Operator
 
-This operator is a bridge to connect CloudPaks and ODLM/Common Services.
+This operator is a bridge to connect CloudPaks and ODLM/Common Services, and it can be also installed in standalone mode.
 
 
 ## Introduction
@@ -14,5 +14,5 @@ When you install this operator:
 
 ## Install Common Services
 
-1. Install `ibm-common-service-operator` in any namespace
-1. Navigate to `ibm-common-services` namespce and create OperandRequest to trigger common services installation
+* [Install Common Services only](docs/install.md)
+* [Install Common Services with CloudPaks](docs/cloudpak-integration.md)
