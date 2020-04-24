@@ -58,7 +58,7 @@ spec:
     description: The service used to meter workloads in a kubernetes cluster
   - name: ibm-licensing-operator
     namespace: ibm-common-services
-    channel: stable-v1
+    channel: dev
     packageName: ibm-licensing-operator-app
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
@@ -79,14 +79,14 @@ spec:
     description: Operator for managing deployment of cert-manager service.
   - name: ibm-iam-operator
     namespace: ibm-common-services
-    channel: stable-v1
+    channel: dev
     packageName: ibm-iam-operator
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
     description: Operator for managing deployment of iam service.
   - name: ibm-healthcheck-operator
     namespace: ibm-common-services
-    channel: stable-v1
+    channel: dev
     packageName: ibm-healthcheck-operator-app
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
@@ -100,7 +100,7 @@ spec:
     description: The service that services the login page, common header, LDAP, and Team resources pages
   - name: ibm-management-ingress-operator
     namespace: ibm-common-services
-    channel: stable-v1
+    channel: dev
     packageName: ibm-management-ingress-operator-app
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
@@ -114,7 +114,7 @@ spec:
     description: Operator for managing deployment of ingress nginx service.
   - name: ibm-auditlogging-operator
     namespace: ibm-common-services
-    channel: stable-v1
+    channel: dev
     packageName: ibm-auditlogging-operator-app
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
@@ -149,19 +149,19 @@ spec:
     description: Operator for managing deployment of Helm repository service.
   - name: ibm-monitoring-exporters-operator
     namespace: ibm-common-services
-    channel: stable-v1
+    channel: dev
     packageName: ibm-monitoring-exporters-operator-app
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
     description: Operator to provision node-exporter, kube-state-metrics and collectd exporter with tls enabled.
   - name: ibm-monitoring-prometheusext-operator
     namespace: ibm-common-services
-    channel: stable-v1
+    channel: dev
     packageName: ibm-monitoring-prometheusext-operator-app
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
     description: Operator to deploy Prometheus and Alertmanager instances with RBAC enabled. It will also enable Multicloud monitoring.
-  - channel: stable-v1
+  - channel: dev
     description: Operator to deploy Grafana instances with RBAC enabled.
     name: ibm-monitoring-grafana-operator
     namespace: ibm-common-services
@@ -169,7 +169,7 @@ spec:
     scope: private
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
-  - channel: stable-v1
+  - channel: dev
     description: Operator that installs and manages Elastic Stack logging service instances.
     name: ibm-elastic-stack-operator
     namespace: ibm-common-services
