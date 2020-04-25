@@ -5,6 +5,9 @@ CSV_VERSION ?= 1.2.0
 VERSION ?= $(shell git describe --exact-match 2> /dev/null || \
 				git describe --match=$(git rev-parse --short=8 HEAD) --always --dirty --abbrev=8)
 
+# The namespce that operator will be deployed in
+NAMESPACE=ibm-common-services
+
 QUAY_USERNAME ?=
 QUAY_PASSWORD ?=
 
@@ -27,6 +30,40 @@ ifeq ($(BUILD_LOCALLY),0)
 endif
 
 include common/Makefile.common.mk
+
+install: ## Install all resources (CR/CRD's, RBAC and Operator)
+	@echo ....... Set environment variables ......
+	- export WATCH_NAMESPACE=${NAMESPACE}
+	@echo ....... Creating namespace .......
+	- kubectl create namespace ${NAMESPACE}
+	@echo ....... Applying CRDs .......
+	- kubectl apply -f deploy/crds/operator.ibm.com_commonservices_crd.yaml
+	@echo ....... Applying RBAC .......
+	- kubectl apply -f deploy/service_account.yaml -n ${NAMESPACE}
+	- kubectl apply -f deploy/role.yaml -n ${NAMESPACE}
+	- kubectl apply -f deploy/role_binding.yaml -n ${NAMESPACE}
+	@echo ....... Applying Operator .......
+	- kubectl apply -f deploy/operator.yaml -n ${NAMESPACE}
+	@echo ....... Creating the Instances .......
+	- kubectl apply -f deploy/crds/operator.ibm.com_v1alpha1_commonservice_cr.yaml -n ${NAMESPACE}
+uninstall: ## Uninstall all that all performed in the $ make install
+	@echo ....... Uninstalling .......
+	@echo ....... Deleting the Instances .......
+	- kubectl delete -f deploy/crds/operator.ibm.com_v1alpha1_commonservice_cr.yaml -n ${NAMESPACE} --ignore-not-found
+	@echo ....... Deleting Operator .......
+	- kubectl delete -f deploy/operator.yaml -n ${NAMESPACE} --ignore-not-found
+	@echo ....... Deleting CRDs .......
+	- kubectl delete -f deploy/crds/operator.ibm.com_commonservices_crd.yaml --ignore-not-found
+	@echo ....... Deleting RBAC .......
+	- kubectl delete -f deploy/role_binding.yaml -n ${NAMESPACE} --ignore-not-found
+	- kubectl delete -f deploy/service_account.yaml -n ${NAMESPACE} --ignore-not-found
+	- kubectl delete -f deploy/role.yaml -n ${NAMESPACE} --ignore-not-found
+	@echo ....... Deleting namespace ${NAMESPACE}.......
+	- kubectl delete namespace ${NAMESPACE} --ignore-not-found
+
+run: ## Run against the configured Kubernetes cluster in ~/.kube/config
+	@echo ....... Start Operator locally with go run ......
+	WATCH_NAMESPACE=${NAMESPACE} go run ./cmd/manager/main.go
 
 code-dev:
 	go mod tidy
