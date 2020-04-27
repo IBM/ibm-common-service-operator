@@ -196,6 +196,8 @@ spec:
   - name: ibm-licensing-operator
     spec:
       IBMLicensing: {}
+      OperandBindInfo: {}
+      OperandRequest: {}
   - name: ibm-mongodb-operator
     spec:
       mongoDB: {}
