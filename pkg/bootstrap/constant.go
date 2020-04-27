@@ -65,7 +65,7 @@ spec:
     description: The service used to management the license in a kubernetes cluster
   - name: ibm-mongodb-operator
     namespace: ibm-common-services
-    channel: stable-v1
+    channel: dev
     packageName: ibm-mongodb-operator-app
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
@@ -93,7 +93,7 @@ spec:
     description: Operator for managing deployment of health check service.
   - name: ibm-commonui-operator
     namespace: ibm-common-services
-    channel: stable-v1
+    channel: dev
     packageName: ibm-commonui-operator-app
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
@@ -107,7 +107,7 @@ spec:
     description: Operator for managing deployment of management ingress service.
   - name: ibm-ingress-nginx-operator
     namespace: ibm-common-services
-    channel: stable-v1
+    channel: dev
     packageName: ibm-ingress-nginx-operator-app
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
@@ -121,28 +121,28 @@ spec:
     description: Operator for managing deployment of auditlogging service.
   - name: ibm-catalog-ui-operator
     namespace: ibm-common-services
-    channel: stable-v1
+    channel: dev
     packageName: ibm-catalog-ui-operator-app
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
     description: Operator for managing deployment of catalog UI service.
   - name: ibm-platform-api-operator
     namespace: ibm-common-services
-    channel: stable-v1
+    channel: dev
     packageName: ibm-platform-api-operator-app
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
     description: Operator for managing deployment of Platform API service.
   - name: ibm-helm-api-operator
     namespace: ibm-common-services
-    channel: stable-v1
+    channel: dev
     packageName: ibm-helm-api-operator-app
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
     description: Operator for managing deployment of Helm API service.
   - name: ibm-helm-repo-operator
     namespace: ibm-common-services
-    channel: stable-v1
+    channel: dev
     packageName: ibm-helm-repo-operator-app
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
