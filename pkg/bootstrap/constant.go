@@ -51,7 +51,7 @@ spec:
   operators:
   - name: ibm-metering-operator
     namespace: ibm-common-services
-    channel: stable-v1
+    channel: dev
     packageName: ibm-metering-operator-app
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
@@ -72,7 +72,7 @@ spec:
     description: The service used to create mongodb in a kubernetes cluster
   - name: ibm-cert-manager-operator
     namespace: ibm-common-services
-    channel: stable-v1
+    channel: dev
     packageName: ibm-cert-manager-operator
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
