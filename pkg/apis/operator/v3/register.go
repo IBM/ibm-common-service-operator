@@ -1,3 +1,4 @@
+// NOTE: Boilerplate only.  Ignore this file.
 //
 // Copyright 2020 IBM Corporation
 //
@@ -14,13 +15,20 @@
 // limitations under the License.
 //
 
-package apis
+// Package v3 contains API Schema definitions for the operator v3 API group
+// +k8s:deepcopy-gen=package,register
+// +groupName=operator.ibm.com
+package v3
 
 import (
-	"github.com/IBM/ibm-common-service-operator/pkg/apis/operator/v1alpha1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/controller-runtime/pkg/scheme"
 )
 
-func init() {
-	// Register the types with the Scheme so the components can map objects to GroupVersionKinds and back
-	AddToSchemes = append(AddToSchemes, v1alpha1.SchemeBuilder.AddToScheme)
-}
+var (
+	// SchemeGroupVersion is group version used to register these objects
+	SchemeGroupVersion = schema.GroupVersion{Group: "operator.ibm.com", Version: "v3"}
+
+	// SchemeBuilder is used to add go types to the GroupVersionKind scheme
+	SchemeBuilder = &scheme.Builder{GroupVersion: SchemeGroupVersion}
+)

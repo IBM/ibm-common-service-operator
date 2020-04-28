@@ -58,7 +58,7 @@ spec:
       displayName: CommonService
       kind: CommonService
       name: commonservices.operator.ibm.com
-      version: v1alpha1
+      version: v3
 ```
 
 The logics inside IBM Common Service Operator is during the start the operator, it will:

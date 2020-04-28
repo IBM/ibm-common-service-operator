@@ -35,8 +35,8 @@ spec:
           description: CommonServiceStatus defines the observed state of CommonService
           type: object
       type: object
-  version: v1alpha1
+  version: v3
   versions:
-  - name: v1alpha1
+  - name: v3
     served: true
     storage: true

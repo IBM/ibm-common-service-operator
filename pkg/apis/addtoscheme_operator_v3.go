@@ -14,8 +14,13 @@
 // limitations under the License.
 //
 
-package version
+package apis
 
-var (
-	Version = "3.4.0"
+import (
+	v3 "github.com/IBM/ibm-common-service-operator/pkg/apis/operator/v3"
 )
+
+func init() {
+	// Register the types with the Scheme so the components can map objects to GroupVersionKinds and back
+	AddToSchemes = append(AddToSchemes, v3.SchemeBuilder.AddToScheme)
+}
