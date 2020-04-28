@@ -27,7 +27,50 @@ spec:
       kind: CommonService
       name: commonservices.operator.ibm.com
       version: v1alpha1
-  description: Placeholder description
+  description: |-
+    This operator is a bridge to connect CloudPaks and ODLM/Common Services, and it can be also installed in standalone mode.
+
+    Following resource will be created when this operator installed
+
+    * ODLM will be installed in all namespaces mode
+    * `ibm-common-services` namespace will be created
+    * `OperandRegistry` and `OperandConfig` of Common Services will be created under `ibm-common-services` namespace
+
+    # Install Individual Common Services
+
+    Install individual common services by creating an `OperandRequest`.
+
+    ```yaml
+    apiVersion: operator.ibm.com/v1alpha1
+    kind: OperandRequest
+    metadata:
+      name: common-service
+      namespace: ibm-common-services
+    spec:
+      requests:
+        - operands:
+            - name: ibm-cert-manager-operator
+            - name: ibm-mongodb-operator
+            - name: ibm-iam-operator
+            - name: ibm-monitoring-exporters-operator
+            - name: ibm-monitoring-prometheusext-operator
+            - name: ibm-monitoring-grafana-operator
+            - name: ibm-healthcheck-operator
+            - name: ibm-management-ingress-operator
+            - name: ibm-licensing-operator
+            - name: ibm-metering-operator
+            - name: ibm-commonui-operator
+            - name: ibm-elastic-stack-operator
+            - name: ibm-ingress-nginx-operator
+            - name: ibm-auditlogging-operator
+            - name: ibm-platform-api-operator
+            - name: ibm-helm-api-operator
+            - name: ibm-helm-repo-operator
+            - name: ibm-catalog-ui-operator
+          registry: common-service
+    ```
+
+    Open the OpenShift Web Console, click the plus button in top right corner, then copy the above `OperandRequest` into the editor and create.
   displayName: IBM Common Service Operator
   install:
     spec:
@@ -90,8 +133,8 @@ spec:
   - IBM
   - Cloud
   maintainers:
-  - name: IBM Support
-    email: supports@ibm.com
+  - email: supports@ibm.com
+    name: IBM Support
   maturity: alpha
   provider:
     name: IBM
