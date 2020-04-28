@@ -53,6 +53,7 @@ spec:
     namespace: ibm-common-services
     channel: dev
     packageName: ibm-metering-operator-app
+    scope: public
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
     description: The service used to meter workloads in a kubernetes cluster
@@ -60,6 +61,7 @@ spec:
     namespace: ibm-common-services
     channel: dev
     packageName: ibm-licensing-operator-app
+    scope: public
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
     description: The service used to management the license in a kubernetes cluster
@@ -81,6 +83,7 @@ spec:
     namespace: ibm-common-services
     channel: dev
     packageName: ibm-iam-operator
+    scope: public
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
     description: Operator for managing deployment of iam service.
@@ -88,6 +91,7 @@ spec:
     namespace: ibm-common-services
     channel: dev
     packageName: ibm-healthcheck-operator-app
+    scope: public
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
     description: Operator for managing deployment of health check service.
@@ -95,6 +99,7 @@ spec:
     namespace: ibm-common-services
     channel: dev
     packageName: ibm-commonui-operator-app
+    scope: public
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
     description: The service that services the login page, common header, LDAP, and Team resources pages
@@ -102,6 +107,7 @@ spec:
     namespace: ibm-common-services
     channel: dev
     packageName: ibm-management-ingress-operator-app
+    scope: public
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
     description: Operator for managing deployment of management ingress service.
@@ -109,6 +115,7 @@ spec:
     namespace: ibm-common-services
     channel: dev
     packageName: ibm-ingress-nginx-operator-app
+    scope: public
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
     description: Operator for managing deployment of ingress nginx service.
@@ -116,6 +123,7 @@ spec:
     namespace: ibm-common-services
     channel: dev
     packageName: ibm-auditlogging-operator-app
+    scope: public
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
     description: Operator for managing deployment of auditlogging service.
@@ -123,6 +131,7 @@ spec:
     namespace: ibm-common-services
     channel: dev
     packageName: ibm-catalog-ui-operator-app
+    scope: public
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
     description: Operator for managing deployment of catalog UI service.
@@ -130,6 +139,7 @@ spec:
     namespace: ibm-common-services
     channel: dev
     packageName: ibm-platform-api-operator-app
+    scope: public
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
     description: Operator for managing deployment of Platform API service.
@@ -137,6 +147,7 @@ spec:
     namespace: ibm-common-services
     channel: dev
     packageName: ibm-helm-api-operator-app
+    scope: public
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
     description: Operator for managing deployment of Helm API service.
@@ -144,6 +155,7 @@ spec:
     namespace: ibm-common-services
     channel: dev
     packageName: ibm-helm-repo-operator-app
+    scope: public
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
     description: Operator for managing deployment of Helm repository service.
@@ -151,6 +163,7 @@ spec:
     namespace: ibm-common-services
     channel: dev
     packageName: ibm-monitoring-exporters-operator-app
+    scope: public
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
     description: Operator to provision node-exporter, kube-state-metrics and collectd exporter with tls enabled.
@@ -158,6 +171,7 @@ spec:
     namespace: ibm-common-services
     channel: dev
     packageName: ibm-monitoring-prometheusext-operator-app
+    scope: public
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
     description: Operator to deploy Prometheus and Alertmanager instances with RBAC enabled. It will also enable Multicloud monitoring.
@@ -166,7 +180,7 @@ spec:
     name: ibm-monitoring-grafana-operator
     namespace: ibm-common-services
     packageName: ibm-monitoring-grafana-operator-app
-    scope: private
+    scope: public
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
   - channel: dev
@@ -174,7 +188,7 @@ spec:
     name: ibm-elastic-stack-operator
     namespace: ibm-common-services
     packageName: ibm-elastic-stack-operator-app
-    scope: private
+    scope: public
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
 `
@@ -193,14 +207,17 @@ spec:
     spec:
       metering: {}
       meteringUI: {}
+      operandBindInfo: {}
+      operandRequest: {}
   - name: ibm-licensing-operator
     spec:
       IBMLicensing: {}
-      OperandBindInfo: {}
-      OperandRequest: {}
+      operandBindInfo: {}
+      operandRequest: {}
   - name: ibm-mongodb-operator
     spec:
       mongoDB: {}
+      operandRequest: {}
   - name: ibm-cert-manager-operator
     spec:
       certManager: {}
@@ -216,43 +233,54 @@ spec:
       policydecision: {}
       secretwatcher: {}
       securityonboarding: {}
+      operandRequest: {}
   - name: ibm-healthcheck-operator
     spec:
       healthService: {}
   - name: ibm-commonui-operator
     spec:
       commonWebUI: {}
-      legacyHeader: {}
+      operandRequest: {}
   - name: ibm-management-ingress-operator
     spec:
       managementIngress: {}
+      operandRequest: {}
   - name: ibm-ingress-nginx-operator
     spec:
       nginxIngress: {}
+      operandRequest: {}
   - name: ibm-auditlogging-operator
     spec:
       auditLogging: {}
+      operandRequest: {}
   - name: ibm-catalog-ui-operator
     spec:
       catalogUI: {}
+      operandRequest: {}
   - name: ibm-platform-api-operator
     spec:
       platformApi: {}
+      operandRequest: {}
   - name: ibm-helm-api-operator
     spec:
       helmApi: {}
+      operandRequest: {}
   - name: ibm-helm-repo-operator
     spec:
       helmRepo: {}
+      operandRequest: {}
   - name: ibm-monitoring-exporters-operator
     spec:
       exporter: {}
+      operandRequest: {}
   - name: ibm-monitoring-prometheusext-operator
     spec:
       prometheusExt: {}
+      operandRequest: {}
   - name: ibm-monitoring-grafana-operator
     spec:
       grafana: {}
+      operandRequest: {}
   - name: ibm-elastic-stack-operator
     spec:
       elasticStack: {}
