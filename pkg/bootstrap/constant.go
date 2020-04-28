@@ -207,17 +207,17 @@ spec:
     spec:
       metering: {}
       meteringUI: {}
-      OperandBindInfo: {}
-      OperandRequest: {}
+      operandBindInfo: {}
+      operandRequest: {}
   - name: ibm-licensing-operator
     spec:
       IBMLicensing: {}
-      OperandBindInfo: {}
-      OperandRequest: {}
+      operandBindInfo: {}
+      operandRequest: {}
   - name: ibm-mongodb-operator
     spec:
       mongoDB: {}
-      OperandRequest: {}
+      operandRequest: {}
   - name: ibm-cert-manager-operator
     spec:
       certManager: {}
@@ -233,54 +233,54 @@ spec:
       policydecision: {}
       secretwatcher: {}
       securityonboarding: {}
-      OperandRequest: {}
+      operandRequest: {}
   - name: ibm-healthcheck-operator
     spec:
       healthService: {}
   - name: ibm-commonui-operator
     spec:
       commonWebUI: {}
-      OperandRequest: {}
+      operandRequest: {}
   - name: ibm-management-ingress-operator
     spec:
       managementIngress: {}
-      OperandRequest: {}
+      operandRequest: {}
   - name: ibm-ingress-nginx-operator
     spec:
       nginxIngress: {}
-      OperandRequest: {}
+      operandRequest: {}
   - name: ibm-auditlogging-operator
     spec:
       auditLogging: {}
-      OperandRequest: {}
+      operandRequest: {}
   - name: ibm-catalog-ui-operator
     spec:
       catalogUI: {}
-      OperandRequest: {}
+      operandRequest: {}
   - name: ibm-platform-api-operator
     spec:
       platformApi: {}
-      OperandRequest: {}
+      operandRequest: {}
   - name: ibm-helm-api-operator
     spec:
       helmApi: {}
-      OperandRequest: {}
+      operandRequest: {}
   - name: ibm-helm-repo-operator
     spec:
       helmRepo: {}
-      OperandRequest: {}
+      operandRequest: {}
   - name: ibm-monitoring-exporters-operator
     spec:
       exporter: {}
-      OperandRequest: {}
+      operandRequest: {}
   - name: ibm-monitoring-prometheusext-operator
     spec:
       prometheusExt: {}
-      OperandRequest: {}
+      operandRequest: {}
   - name: ibm-monitoring-grafana-operator
     spec:
       grafana: {}
-      OperandRequest: {}
+      operandRequest: {}
   - name: ibm-elastic-stack-operator
     spec:
       elasticStack: {}
