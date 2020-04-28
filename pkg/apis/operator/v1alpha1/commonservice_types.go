@@ -42,6 +42,7 @@ type CommonServiceStatus struct {
 // CommonService is the Schema for the commonservices API
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=commonservices,scope=Namespaced
+// +operator-sdk:gen-csv:customresourcedefinitions.displayName="CommonService"
 type CommonService struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
