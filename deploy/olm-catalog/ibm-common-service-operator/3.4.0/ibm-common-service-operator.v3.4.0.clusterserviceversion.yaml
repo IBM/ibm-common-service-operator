@@ -5,7 +5,7 @@ metadata:
     alm-examples: |-
       [
         {
-          "apiVersion": "operator.ibm.com/v1alpha1",
+          "apiVersion": "operator.ibm.com/v3",
           "kind": "CommonService",
           "metadata": {
             "name": "example-commonservice"
@@ -16,7 +16,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
-  name: ibm-common-service-operator.v1.2.0
+  name: ibm-common-service-operator.v3.4.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -26,7 +26,7 @@ spec:
       displayName: CommonService
       kind: CommonService
       name: commonservices.operator.ibm.com
-      version: v1alpha1
+      version: v3
   description: |-
     This operator is a bridge to connect CloudPaks and ODLM/Common Services, and it can be also installed in standalone mode.
 
@@ -74,6 +74,19 @@ spec:
   displayName: IBM Common Service Operator
   install:
     spec:
+      clusterPermissions:
+      - rules:
+        - apiGroups:
+          - '*'
+          resources:
+          - '*'
+          verbs:
+          - '*'
+        - nonResourceURLs:
+          - '*'
+          verbs:
+          - '*'
+        serviceAccountName: ibm-common-service-operator
       deployments:
       - name: ibm-common-service-operator
         spec:
@@ -106,19 +119,6 @@ spec:
                 name: ibm-common-service-operator
                 resources: {}
               serviceAccountName: ibm-common-service-operator
-      clusterPermissions:
-      - rules:
-        - apiGroups:
-          - '*'
-          resources:
-          - '*'
-          verbs:
-          - '*'
-        - nonResourceURLs:
-          - '*'
-          verbs:
-          - '*'
-        serviceAccountName: ibm-common-service-operator
     strategy: deployment
   installModes:
   - supported: true
@@ -138,4 +138,4 @@ spec:
   maturity: alpha
   provider:
     name: IBM
-  version: 1.2.0
+  version: 3.4.0

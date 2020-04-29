@@ -1,4 +1,4 @@
-apiVersion: operator.ibm.com/v1alpha1
+apiVersion: operator.ibm.com/v3
 kind: CommonService
 metadata:
   name: example-commonservice

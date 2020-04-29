@@ -1,5 +1,5 @@
 channels:
 - currentCSV: ibm-common-service-operator.v1.2.0
-  name: alpha
-defaultChannel: alpha
+  name: dev
+defaultChannel: dev
 packageName: ibm-common-service-operator
