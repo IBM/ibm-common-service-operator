@@ -19,6 +19,8 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"strconv"
 	"time"
 
@@ -36,9 +38,16 @@ func InitResources(mgr manager.Manager) error {
 	client := mgr.GetClient()
 	reader := mgr.GetAPIReader()
 
+	resourcesDir := os.Getenv("RESOURCES_DIR")
+
 	// create namespace
 	klog.Info("create ibm-common-services namespace")
-	ns, err := yamlToObject([]byte(namespace))
+	namespace, err := ioutil.ReadFile(resourcesDir + "/namespace.yaml")
+	if err != nil {
+		return err
+	}
+
+	ns, err := yamlToObject(namespace)
 	if err != nil {
 		return err
 	}
@@ -48,7 +57,23 @@ func InitResources(mgr manager.Manager) error {
 
 	// install operator
 	klog.Info("install ODLM operator")
-	if err := createOrUpdateFromYaml([]byte(subscription), client, reader); err != nil {
+	subscription, err := ioutil.ReadFile(resourcesDir + "/odlm-subscription.yaml")
+	if err != nil {
+		return err
+	}
+
+	if err := createOrUpdateFromYaml(subscription, client, reader); err != nil {
+		return err
+	}
+
+	// create operandConfig and operandRegistry
+	klog.Info("create OperandConfig and OperandRegistry")
+	operandConfig, err := ioutil.ReadFile(resourcesDir + "/cs-operandconfig.yaml")
+	if err != nil {
+		return err
+	}
+	operandRegistry, err := ioutil.ReadFile(resourcesDir + "/cs-operandregistry.yaml")
+	if err != nil {
 		return err
 	}
 
@@ -61,13 +86,13 @@ func InitResources(mgr manager.Manager) error {
 			return fmt.Errorf("timeout to create the ODLM resource")
 		case <-ticker.C:
 			// create OperandConfig
-			errConfig := createOrUpdateFromYaml([]byte(operandConfig), client, reader)
+			errConfig := createOrUpdateFromYaml(operandConfig, client, reader)
 			if errConfig != nil {
 				klog.Error("create OperandConfig error with: ", errConfig)
 			}
 
 			// create OperandRegistry
-			errRegistry := createOrUpdateFromYaml([]byte(operandRegistry), client, reader)
+			errRegistry := createOrUpdateFromYaml(operandRegistry, client, reader)
 			if errRegistry != nil {
 				klog.Error("create OperandRegistry error with: ", errRegistry)
 			}
