@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -42,7 +43,7 @@ func InitResources(mgr manager.Manager) error {
 
 	// create namespace
 	klog.Info("create ibm-common-services namespace")
-	namespace, err := ioutil.ReadFile(resourcesDir + "/namespace.yaml")
+	namespace, err := ioutil.ReadFile(filepath.Join(resourcesDir, "namespace.yaml"))
 	if err != nil {
 		return err
 	}
@@ -57,7 +58,7 @@ func InitResources(mgr manager.Manager) error {
 
 	// install operator
 	klog.Info("install ODLM operator")
-	subscription, err := ioutil.ReadFile(resourcesDir + "/odlm-subscription.yaml")
+	subscription, err := ioutil.ReadFile(filepath.Join(resourcesDir, "odlm-subscription.yaml"))
 	if err != nil {
 		return err
 	}
@@ -66,13 +67,19 @@ func InitResources(mgr manager.Manager) error {
 		return err
 	}
 
+	// create extra yamls
+	klog.Info("create extra yaml resources")
+	if err := createOrUpdateResourcesFromDir(filepath.Join(resourcesDir, "extra"), client, reader); err != nil {
+		return err
+	}
+
 	// create operandConfig and operandRegistry
 	klog.Info("create OperandConfig and OperandRegistry")
-	operandConfig, err := ioutil.ReadFile(resourcesDir + "/cs-operandconfig.yaml")
+	operandConfig, err := ioutil.ReadFile(filepath.Join(resourcesDir, "cs-operandconfig.yaml"))
 	if err != nil {
 		return err
 	}
-	operandRegistry, err := ioutil.ReadFile(resourcesDir + "/cs-operandregistry.yaml")
+	operandRegistry, err := ioutil.ReadFile(filepath.Join(resourcesDir, "cs-operandregistry.yaml"))
 	if err != nil {
 		return err
 	}
@@ -150,19 +157,59 @@ func createOrUpdateFromYaml(yamlContent []byte, client client.Client, reader cli
 		return err
 	}
 
+	gvk := obj.GetObjectKind().GroupVersionKind()
+
 	objInCluster, err := getObject(obj, reader)
 	if errors.IsNotFound(err) {
+		klog.Infof("create resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
 		return createObject(obj, client)
 	} else if err != nil {
 		return err
 	}
 
-	version, _ := strconv.Atoi(obj.GetAnnotations()["version"])
-	versionInCluster, _ := strconv.Atoi(objInCluster.GetAnnotations()["version"])
+	annoVersion := obj.GetAnnotations()["version"]
+	if annoVersion == "" {
+		annoVersion = "0"
+	}
+	annoVersionInCluster := objInCluster.GetAnnotations()["version"]
+	if annoVersionInCluster == "" {
+		annoVersionInCluster = "0"
+	}
+
+	version, _ := strconv.Atoi(annoVersion)
+	versionInCluster, _ := strconv.Atoi(annoVersionInCluster)
 
 	// TODO: deep merge and update
 	if version > versionInCluster {
+		klog.Infof("update resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
 		return updateObject(obj, client)
+	}
+
+	return nil
+}
+
+func createOrUpdateResourcesFromDir(dir string, client client.Client, reader client.Reader) error {
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+
+	var yamlFiles []string
+
+	for _, file := range files {
+		if filepath.Ext(file.Name()) == ".yaml" {
+			yamlFiles = append(yamlFiles, file.Name())
+		}
+	}
+
+	for _, file := range yamlFiles {
+		yamlContent, err := ioutil.ReadFile(filepath.Join(dir, file))
+		if err != nil {
+			return err
+		}
+		if err := createOrUpdateFromYaml(yamlContent, client, reader); err != nil {
+			return err
+		}
 	}
 
 	return nil
