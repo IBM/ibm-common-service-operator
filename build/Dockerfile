@@ -1,7 +1,7 @@
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 
 ENV OPERATOR=/usr/local/bin/ibm-common-service-operator \
-    RESOURCES_DIR=/resources
+    RESOURCES_DIR=/resources \
     USER_UID=1001 \
     USER_NAME=ibm-common-service-operator
 
