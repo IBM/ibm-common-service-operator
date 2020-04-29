@@ -182,6 +182,8 @@ func createOrUpdateFromYaml(yamlContent []byte, client client.Client, reader cli
 	// TODO: deep merge and update
 	if version > versionInCluster {
 		klog.Infof("update resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
+		resourceVersion := objInCluster.GetResourceVersion()
+		obj.SetResourceVersion(resourceVersion)
 		return updateObject(obj, client)
 	}
 
