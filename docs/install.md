@@ -95,7 +95,7 @@ So far, the IBM Common Service Operator and ODLM operator installation is comple
 Install individual common services by creating an OperandRequest.
 
 ```yaml
-apiVersion: operator.ibm.com/v1alpha1
+apiVersion: operator.ibm.com/v1
 kind: OperandRequest
 metadata:
   name: common-service
