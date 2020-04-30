@@ -12,7 +12,12 @@ When you install this operator:
 1. OperandRegistry and OperandConfig of Common Services will be created under `ibm-common-services` namespace
 
 
+## Design
+
+* [IBM Common Service Operator Design](docs/design.md)
+
+
 ## Install Common Services
 
-* [Install Common Services only](docs/install.md)
+* [Install Common Services standalone](docs/install.md)
 * [Install Common Services with CloudPaks](docs/cloudpak-integration.md)
