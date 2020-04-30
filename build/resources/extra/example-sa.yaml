@@ -1,6 +1,0 @@
-# TODO: remove this file
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: example-sa
-  namespace: ibm-common-services
