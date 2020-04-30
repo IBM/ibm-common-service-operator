@@ -17,17 +17,22 @@
 package bootstrap
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"time"
 
-	"github.com/ghodss/yaml"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/serializer/json"
+	"k8s.io/apimachinery/pkg/runtime/serializer/streaming"
+	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -48,11 +53,11 @@ func InitResources(mgr manager.Manager) error {
 		return err
 	}
 
-	ns, err := yamlToObject(namespace)
+	objects, err := yamlToObjects(namespace)
 	if err != nil {
 		return err
 	}
-	if err := createObject(ns, client); err != nil {
+	if err := createObject(objects[0], client); err != nil {
 		return err
 	}
 
@@ -111,20 +116,6 @@ func InitResources(mgr manager.Manager) error {
 	}
 }
 
-func yamlToObject(yamlContent []byte) (*unstructured.Unstructured, error) {
-	obj := &unstructured.Unstructured{}
-	jsonSpec, err := yaml.YAMLToJSON(yamlContent)
-	if err != nil {
-		return nil, fmt.Errorf("could not convert yaml to json: %v", err)
-	}
-
-	if err := obj.UnmarshalJSON(jsonSpec); err != nil {
-		return nil, fmt.Errorf("could not unmarshal resource: %v", err)
-	}
-
-	return obj, nil
-}
-
 func getObject(obj *unstructured.Unstructured, reader client.Reader) (*unstructured.Unstructured, error) {
 	found := &unstructured.Unstructured{}
 	found.SetGroupVersionKind(obj.GetObjectKind().GroupVersionKind())
@@ -152,42 +143,79 @@ func updateObject(obj *unstructured.Unstructured, client client.Client) error {
 }
 
 func createOrUpdateFromYaml(yamlContent []byte, client client.Client, reader client.Reader) error {
-	obj, err := yamlToObject(yamlContent)
+	objects, err := yamlToObjects(yamlContent)
 	if err != nil {
 		return err
 	}
 
-	gvk := obj.GetObjectKind().GroupVersionKind()
+	var errMsg error
 
-	objInCluster, err := getObject(obj, reader)
-	if errors.IsNotFound(err) {
-		klog.Infof("create resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
-		return createObject(obj, client)
-	} else if err != nil {
-		return err
+	for _, obj := range objects {
+		gvk := obj.GetObjectKind().GroupVersionKind()
+
+		objInCluster, err := getObject(obj, reader)
+		if errors.IsNotFound(err) {
+			klog.Infof("create resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
+			if err := createObject(obj, client); err != nil {
+				errMsg = err
+			}
+			continue
+		} else if err != nil {
+			errMsg = err
+			continue
+		}
+
+		annoVersion := obj.GetAnnotations()["version"]
+		if annoVersion == "" {
+			annoVersion = "0"
+		}
+		annoVersionInCluster := objInCluster.GetAnnotations()["version"]
+		if annoVersionInCluster == "" {
+			annoVersionInCluster = "0"
+		}
+
+		version, _ := strconv.Atoi(annoVersion)
+		versionInCluster, _ := strconv.Atoi(annoVersionInCluster)
+
+		// TODO: deep merge and update
+		if version > versionInCluster {
+			klog.Infof("update resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
+			resourceVersion := objInCluster.GetResourceVersion()
+			obj.SetResourceVersion(resourceVersion)
+			if err := updateObject(obj, client); err != nil {
+				errMsg = err
+			}
+		}
 	}
 
-	annoVersion := obj.GetAnnotations()["version"]
-	if annoVersion == "" {
-		annoVersion = "0"
-	}
-	annoVersionInCluster := objInCluster.GetAnnotations()["version"]
-	if annoVersionInCluster == "" {
-		annoVersionInCluster = "0"
+	return errMsg
+}
+
+func yamlToObjects(yamlContent []byte) ([]*unstructured.Unstructured, error) {
+	yamlDecoder := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
+
+	var objects []*unstructured.Unstructured
+	reader := json.YAMLFramer.NewFrameReader(ioutil.NopCloser(bytes.NewReader(yamlContent)))
+	decoder := streaming.NewDecoder(reader, yamlDecoder)
+	for {
+		obj, _, err := decoder.Decode(nil, nil)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			klog.Infof("error convert object: %v", err)
+			continue
+		}
+
+		switch t := obj.(type) {
+		case *unstructured.Unstructured:
+			objects = append(objects, t)
+		default:
+			return nil, fmt.Errorf("failed to convert object %s", reflect.TypeOf(obj))
+		}
 	}
 
-	version, _ := strconv.Atoi(annoVersion)
-	versionInCluster, _ := strconv.Atoi(annoVersionInCluster)
-
-	// TODO: deep merge and update
-	if version > versionInCluster {
-		klog.Infof("update resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
-		resourceVersion := objInCluster.GetResourceVersion()
-		obj.SetResourceVersion(resourceVersion)
-		return updateObject(obj, client)
-	}
-
-	return nil
+	return objects, nil
 }
 
 func createOrUpdateResourcesFromDir(dir string, client client.Client, reader client.Reader) error {
