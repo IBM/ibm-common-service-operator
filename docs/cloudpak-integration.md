@@ -73,7 +73,7 @@ The logics inside IBM Common Service Operator is during the start the operator, 
 Install individual common services by creating an OperandRequest.
 
 ```yaml
-apiVersion: operator.ibm.com/v1
+apiVersion: operator.ibm.com/v1alpha1
 kind: OperandRequest
 metadata:
   name: cloudpak-required-common-service
