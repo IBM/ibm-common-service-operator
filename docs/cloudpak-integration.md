@@ -45,7 +45,7 @@ In CloudPak Operator CSV file, add following content.
 
 This can ensure when users install CloudPak Operator, the IBM Common Service Operator will be also installed by OLM.
 
-```
+```yaml
 apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
 metadata:
@@ -81,12 +81,20 @@ metadata:
 spec:
   requests:
     - operands:
-        - name: ibm-cert-manager-operator
-        - name: ibm-metering-operator
         - name: ibm-licensing-operator
-      registry: common-service
+      registry: common-service-dev
       registryNamespace: ibm-common-services
 ```
+
+For development and testing purposes, ibm common service operator will develop two pairs of the `OperandRegistry` and `OperandConfig`.
+
+If users want to install the common services from the stable channel, they can set `registry: common-service` in the `OperandRequest`.
+
+If users want to install the common services from the dev channel, they should set `registry: common-service-dev` in the `OperandRequest`.
+
+**Note:** If `OperandRegistry` `common-service` is used, uses need to add the required services and all their dependencies into `OperandRequest`.
+
+**Note:** If If `OperandRegistry` `common-service-dev` is used, users just need to request the required services and ODLM and common service operators will manage the service dependency. `ibm-certmanager-operator` and  `ibm-mongodb-operator` are private operators in the dev channel. They can't be requested directly by users from other namespace from `ibm-common-service`. ODLM will generate them if other operators depend on them.
 
 CloudPaks can create this `OperandRequest` during [the CloudPak Operator start](https://github.com/IBM/ibm-common-service-operator/blob/master/cmd/manager/main.go#L121-L126), or have their own method to create this `OperandRequest`.
 
