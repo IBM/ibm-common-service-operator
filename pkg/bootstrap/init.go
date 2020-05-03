@@ -28,6 +28,7 @@ import (
 	"strconv"
 	"time"
 
+	utilyaml "github.com/ghodss/yaml"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
@@ -192,9 +193,20 @@ func createOrUpdateFromYaml(yamlContent []byte, client client.Client, reader cli
 }
 
 func yamlToObjects(yamlContent []byte) ([]*unstructured.Unstructured, error) {
+	var objects []*unstructured.Unstructured
+
+	// This step is for converting large yaml file, we can remove it after using "apimachinery" v0.19.0
+	if len(yamlContent) > 1024*64 {
+		object, err := yamlToObject(yamlContent)
+		if err != nil {
+			return nil, err
+		}
+		objects = append(objects, object)
+		return objects, nil
+	}
+
 	yamlDecoder := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
 
-	var objects []*unstructured.Unstructured
 	reader := json.YAMLFramer.NewFrameReader(ioutil.NopCloser(bytes.NewReader(yamlContent)))
 	decoder := streaming.NewDecoder(reader, yamlDecoder)
 	for {
@@ -216,6 +228,21 @@ func yamlToObjects(yamlContent []byte) ([]*unstructured.Unstructured, error) {
 	}
 
 	return objects, nil
+}
+
+// This function is for converting large yaml file, we can remove it after using "apimachinery" v0.19.0
+func yamlToObject(yamlContent []byte) (*unstructured.Unstructured, error) {
+	obj := &unstructured.Unstructured{}
+	jsonSpec, err := utilyaml.YAMLToJSON(yamlContent)
+	if err != nil {
+		return nil, fmt.Errorf("could not convert yaml to json: %v", err)
+	}
+
+	if err := obj.UnmarshalJSON(jsonSpec); err != nil {
+		return nil, fmt.Errorf("could not unmarshal resource: %v", err)
+	}
+
+	return obj, nil
 }
 
 func createOrUpdateResourcesFromDir(dir string, client client.Client, reader client.Reader) error {
