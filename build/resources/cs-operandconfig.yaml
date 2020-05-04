@@ -53,7 +53,6 @@ spec:
   - name: ibm-ingress-nginx-operator
     spec:
       nginxIngress: {}
-      operandRequest: {}
   - name: ibm-auditlogging-operator
     spec:
       auditLogging: {}
