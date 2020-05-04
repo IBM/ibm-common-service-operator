@@ -1,0 +1,210 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ibm-common-service-webhook
+  namespace: ibm-common-services
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ibm-common-service-webhook
+  namespace: ibm-common-services
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - services
+  - services/finalizers
+  - endpoints
+  - persistentvolumeclaims
+  - events
+  - configmaps
+  - secrets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - daemonsets
+  - replicasets
+  - statefulsets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - monitoring.coreos.com
+  resources:
+  - servicemonitors
+  verbs:
+  - get
+  - create
+- apiGroups:
+  - apps
+  resourceNames:
+  - ibm-common-service-webhook
+  resources:
+  - deployments/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+- apiGroups:
+  - apps
+  resources:
+  - replicasets
+  - deployments
+  verbs:
+  - get
+- apiGroups:
+  - operator.ibm.com
+  resources:
+  - '*'
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: ibm-common-service-webhook
+  namespace: ibm-common-services
+subjects:
+- kind: ServiceAccount
+  name: ibm-common-service-webhook
+roleRef:
+  kind: Role
+  name: ibm-common-service-webhook
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ibm-common-service-webhook
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - list
+      - get
+      - create
+  - apiGroups:
+      - operator.ibm.com
+    resources:
+      - '*'
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - admissionregistration.k8s.io
+    resources:
+      - mutatingwebhookconfigurations
+    verbs:
+      - "*"
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: ibm-common-service-webhook
+subjects:
+  - kind: ServiceAccount
+    name: ibm-common-service-webhook
+    namespace: ibm-common-services
+roleRef:
+  kind: ClusterRole
+  name: ibm-common-service-webhook
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ibm-common-service-webhook-cert
+  namespace: ibm-common-services
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ibm-common-service-webhook
+  namespace: ibm-common-services
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: ibm-common-service-webhook
+  template:
+    metadata:
+      labels:
+        name: ibm-common-service-webhook
+    spec:
+      serviceAccountName: ibm-common-service-webhook
+      containers:
+        - name: ibm-common-service-webhook
+          image: quay.io/opencloudio/ibm-cs-webhook:latest
+          command:
+          - ibm-common-service-webhook
+          imagePullPolicy: Always
+          env:
+            - name: WATCH_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_NAME
+              value: "ibm-common-service-webhook"
+          ports:
+            - containerPort: 8443
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 200m
+              memory: 256Mi
+          volumeMounts:
+            - mountPath: /tmp/cert
+              name: cert
+              readOnly: true
+      volumes:
+        - name: cert
+          secret:
+            defaultMode: 420
+            secretName: ibm-common-service-webhook-cert
+---
+apiVersion: operator.ibm.com/v1alpha1
+kind: PodPreset
+metadata:
+  name: ibm-common-service-webhook
+  namespace: ibm-common-services
+spec: {}
