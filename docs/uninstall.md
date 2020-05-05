@@ -49,3 +49,7 @@ Then Click `OperandRegistry` and delete all the `OperandRegistry` instances.
     Click Operators > Installed Operators and swith to namespace that CloudPaks deployed `IBM Common Service Operator`.
 
     Click the overflow menu icon and click Uninstall Operator.
+
+- Remove `ibm-common-services` namespace.
+
+    Click Projects and delete project `ibm-common-services`.
