@@ -1,7 +1,7 @@
 QUAY_REPO ?= quay.io/opencloudio
 IMAGE_NAME ?= common-service-operator
 OPERATOR_NAME ?= ibm-common-service-operator
-CSV_VERSION ?= 3.4.0
+CSV_VERSION ?= 3.3.0
 VERSION ?= $(shell git describe --exact-match 2> /dev/null || \
 				git describe --match=$(git rev-parse --short=8 HEAD) --always --dirty --abbrev=8)
 
@@ -45,11 +45,11 @@ install: ## Install all resources (CR/CRD's, RBAC and Operator)
 	@echo ....... Applying Operator .......
 	- kubectl apply -f deploy/operator.yaml -n ${NAMESPACE}
 	@echo ....... Creating the Instances .......
-	- kubectl apply -f deploy/crds/operator.ibm.com_v3_commonservice_cr.yaml -n ${NAMESPACE}
+	- kubectl apply -f deploy/crds/operator.ibm.com_v1_commonservice_cr.yaml -n ${NAMESPACE}
 uninstall: ## Uninstall all that all performed in the $ make install
 	@echo ....... Uninstalling .......
 	@echo ....... Deleting the Instances .......
-	- kubectl delete -f deploy/crds/operator.ibm.com_v3_commonservice_cr.yaml -n ${NAMESPACE} --ignore-not-found
+	- kubectl delete -f deploy/crds/operator.ibm.com_v1_commonservice_cr.yaml -n ${NAMESPACE} --ignore-not-found
 	@echo ....... Deleting Operator .......
 	- kubectl delete -f deploy/operator.yaml -n ${NAMESPACE} --ignore-not-found
 	@echo ....... Deleting CRDs .......

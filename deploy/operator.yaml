@@ -15,13 +15,13 @@ spec:
       annotations:
         productName: "IBM Cloud Platform Common Services"
         productID: "068a62892a1e4db39641342e592daa25"
-        productVersion: "3.4.0"
+        productVersion: "3.3.0"
         productMetric: "FREE"
     spec:
       serviceAccountName: ibm-common-service-operator
       containers:
         - name: ibm-common-service-operator
-          image: quay.io/opencloudio/common-service-operator:latest
+          image: quay.io/opencloudio/common-service-operator:3.3.0
           command:
           - ibm-common-service-operator
           imagePullPolicy: Always

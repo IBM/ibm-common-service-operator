@@ -81,20 +81,31 @@ metadata:
 spec:
   requests:
     - operands:
-        - name: ibm-licensing-operator
-      registry: common-service-dev
+      - name: ibm-cert-manager-operator
+      - name: ibm-mongodb-operator
+      - name: ibm-iam-operator
+      - name: ibm-monitoring-exporters-operator
+      - name: ibm-monitoring-prometheusext-operator
+      - name: ibm-monitoring-grafana-operator
+      - name: ibm-healthcheck-operator
+      - name: ibm-management-ingress-operator
+      - name: ibm-licensing-operator
+      - name: ibm-metering-operator
+      - name: ibm-commonui-operator
+      - name: ibm-elastic-stack-operator
+      - name: ibm-ingress-nginx-operator
+      - name: ibm-auditlogging-operator
+      - name: ibm-platform-api-operator
+      - name: ibm-helm-api-operator
+      - name: ibm-helm-repo-operator
+      - name: ibm-catalog-ui-operator
+      registry: common-service
       registryNamespace: ibm-common-services
 ```
 
 For development and testing purposes, ibm common service operator will deploy two pairs of the `OperandRegistry` and `OperandConfig`.
 
-If you want to install the common services from the stable channel, you should set `registry: common-service` in the `OperandRequest`.
-
-If you want to install the common services from the dev channel, you should set `registry: common-service-dev` in the `OperandRequest`.
-
-**Note:** If `OperandRegistry` `common-service` is used, uses need to add the required services and all their dependencies into `OperandRequest`.
-
-**Note:** If If `OperandRegistry` `common-service-dev` is used, you just need to request the required services and ODLM and common service operators will manage the service dependency. `ibm-cert-manager-operator` and  `ibm-mongodb-operator` are private operators in the dev channel. They can't be requested directly from other namespaces except `ibm-common-service`. ODLM will generate them if other operators depend on them.
+**Note:** Uses need to add the required services and all their dependencies into `OperandRequest`.
 
 CloudPaks can create this `OperandRequest` during [the CloudPak Operator start](https://github.com/IBM/ibm-common-service-operator/blob/master/cmd/manager/main.go#L121-L126), or have their own method to create this `OperandRequest`.
 

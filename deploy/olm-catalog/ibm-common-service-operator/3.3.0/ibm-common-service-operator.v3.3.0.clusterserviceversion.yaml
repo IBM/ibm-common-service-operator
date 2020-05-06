@@ -16,12 +16,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    containerImage: quay.io/opencloudio/common-service-operator:latest
-    createdAt: "2020-04-06T11:28:16Z"
-    description: The IBM Common Service Operator is used to deploy IBM Common Services
-    repository: https://github.com/IBM/ibm-common-service-operator
-    support: IBM
-  name: ibm-common-service-operator.v3.4.0
+  name: ibm-common-service-operator.v3.3.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -76,7 +71,7 @@ spec:
     ```
 
     Open the OpenShift Web Console, click the plus button in top right corner, then copy the above `OperandRequest` into the editor and create.
-  displayName: IBM Common Service Operator
+  displayName: Ibm Common Service Operator
   install:
     spec:
       clusterPermissions:
@@ -102,14 +97,14 @@ spec:
           strategy: {}
           template:
             metadata:
-              labels:
-                name: ibm-common-service-operator
-                app.kubernetes.io/instance: ibm-common-service-operator
               annotations:
-                productName: "IBM Cloud Platform Common Services"
-                productID: "068a62892a1e4db39641342e592daa25"
-                productVersion: "3.4.0"
-                productMetric: "FREE"
+                productID: 068a62892a1e4db39641342e592daa25
+                productMetric: FREE
+                productName: IBM Cloud Platform Common Services
+                productVersion: 3.3.0
+              labels:
+                app.kubernetes.io/instance: ibm-common-service-operator
+                name: ibm-common-service-operator
             spec:
               containers:
               - command:
@@ -125,7 +120,7 @@ spec:
                       fieldPath: metadata.name
                 - name: OPERATOR_NAME
                   value: ibm-common-service-operator
-                image: quay.io/opencloudio/common-service-operator:latest
+                image: quay.io/opencloudio/common-service-operator:3.3.0
                 imagePullPolicy: Always
                 name: ibm-common-service-operator
                 resources: {}
@@ -138,7 +133,7 @@ spec:
     type: SingleNamespace
   - supported: false
     type: MultiNamespace
-  - supported: false
+  - supported: true
     type: AllNamespaces
   keywords:
   - IBM
@@ -149,4 +144,4 @@ spec:
   maturity: alpha
   provider:
     name: IBM
-  version: 3.4.0
+  version: 3.3.0

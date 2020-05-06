@@ -1,5 +1,5 @@
 channels:
-- currentCSV: ibm-common-service-operator.v3.4.0
-  name: dev
-defaultChannel: dev
+- currentCSV: ibm-common-service-operator.v3.3.0
+  name: stable-v1
+defaultChannel: stable-v1
 packageName: ibm-common-service-operator
