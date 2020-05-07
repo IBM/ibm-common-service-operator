@@ -26,7 +26,7 @@ spec:
       displayName: CommonService
       kind: CommonService
       name: commonservices.operator.ibm.com
-      version: v1
+      version: v3
   description: |-
     This operator is a bridge to connect CloudPaks and ODLM/Common Services, and it can be also installed in standalone mode.
 
