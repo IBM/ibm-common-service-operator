@@ -51,6 +51,7 @@ spec:
   - name: ibm-management-ingress-operator
     spec:
       managementIngress: {}
+      operandBindInfo: {}
       operandRequest: {}
   - name: ibm-ingress-nginx-operator
     spec:
