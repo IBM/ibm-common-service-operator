@@ -80,12 +80,14 @@ spec:
     namespace: ibm-common-services
     channel: dev
     packageName: ibm-catalog-ui-operator-app
+    scope: public
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
   - name: ibm-platform-api-operator
     namespace: ibm-common-services
     channel: dev
     packageName: ibm-platform-api-operator-app
+    scope: public
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
   - name: ibm-helm-api-operator
