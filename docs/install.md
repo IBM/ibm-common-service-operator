@@ -106,7 +106,6 @@ spec:
   requests:
     - operands:
         - name: ibm-cert-manager-operator
-        - name: ibm-mongodb-operator
         - name: ibm-iam-operator
         - name: ibm-monitoring-exporters-operator
         - name: ibm-monitoring-prometheusext-operator
@@ -120,8 +119,6 @@ spec:
         - name: ibm-ingress-nginx-operator
         - name: ibm-auditlogging-operator
         - name: ibm-platform-api-operator
-        - name: ibm-helm-api-operator
-        - name: ibm-helm-repo-operator
         - name: ibm-catalog-ui-operator
       registry: common-service
 ```
