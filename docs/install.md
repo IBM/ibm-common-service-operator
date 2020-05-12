@@ -10,7 +10,7 @@
 
 # Install IBM Common Services
 
-Install IBM Common Services on OpenShift 4.2+.
+Install IBM Common Services on OpenShift 4.3+.
 
 Usually IBM Common Services is packaged into the CloudPaks, if you install CloudPaks you will get IBM Common Services installed automatically.
 
