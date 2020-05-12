@@ -122,7 +122,7 @@ The list of operators you can add:
 
 **Note:** `ibm-cert-manager`, `ibm-helm-api-operator` and `ibm-helm-repo-operator` are private operator for common services and only be requested within `ibm-common-services` namespace.
 
-After the `OperandRequest` created, we can check if our common services install successfully by command.
+After the `OperandRequest` created, we can check if common services are installed successfully.
 
 ```bash
 oc -n ibm-common-services get csv
