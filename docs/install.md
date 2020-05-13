@@ -10,7 +10,7 @@
 
 # Install IBM Common Services
 
-Install IBM Common Services on OpenShift 4.2+.
+Install IBM Common Services on OpenShift 4.3+.
 
 Usually IBM Common Services is packaged into the CloudPaks, if you install CloudPaks you will get IBM Common Services installed automatically.
 
@@ -94,7 +94,7 @@ So far, the IBM Common Service Operator and ODLM operator installation is comple
 
 ## 4.Install Individual Common Services
 
-Install individual common services by creating an OperandRequest.
+Install individual common services by creating an OperandRequest. All these common services will be deployed into the namespace `ibm-common-services`, which cannot be changed.
 
 ```yaml
 apiVersion: operator.ibm.com/v1alpha1
