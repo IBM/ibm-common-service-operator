@@ -21,3 +21,7 @@ When you install this operator:
 
 * [Install Common Services standalone](docs/install.md)
 * [Install Common Services with CloudPaks](docs/cloudpak-integration.md)
+
+## SecurityContextConstraints Requirements
+
+The IBM Common Service Operator supports running under the OpenShift Container Platform default restricted security context constraints.
