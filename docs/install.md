@@ -94,7 +94,7 @@ So far, the IBM Common Service Operator and ODLM operator installation is comple
 
 ## 4.Install Individual Common Services
 
-Install individual common services by creating an OperandRequest. All these common services will be deployed into namespace `ibm-common-services`, it cannot change.
+Install individual common services by creating an OperandRequest. All these common services will be deployed into the namespace `ibm-common-services`, which cannot be changed.
 
 ```yaml
 apiVersion: operator.ibm.com/v1alpha1
