@@ -38,7 +38,7 @@ spec:
                 - s390x
       containers:
         - name: ibm-common-service-operator
-          image: quay.io/opencloudio/common-service-operator:latest
+          image: quay.io/opencloudio/common-service-operator@sha256:8a104c57c3c8f370c3a31feb752aa1d1f2387d430c8543d55e16cbb5afac80db
           command:
           - ibm-common-service-operator
           imagePullPolicy: Always
