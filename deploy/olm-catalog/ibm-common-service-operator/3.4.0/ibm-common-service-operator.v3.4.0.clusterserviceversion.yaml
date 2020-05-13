@@ -37,50 +37,39 @@ spec:
       kind: CommonService
       name: commonservices.operator.ibm.com
       version: v3
-  description: |-
-    This operator is a bridge to connect CloudPaks and ODLM/Common Services, and it can be also installed in standalone mode.
+  description: The `ibm-common-service-operator` is a bridge to connect IBM Cloud Paks and Operand Deployment Lifecycle Manager (ODLM) with IBM Cloud Platform Common Services. You can also install the `ibm-common-service-operator` in stand-alone mode.
 
-    Following resource will be created when this operator installed
+    When you install this operator, the operator completes the following tasks:
 
-    * ODLM will be installed in all namespaces mode
-    * `ibm-common-services` namespace will be created
-    * `OperandRegistry` and `OperandConfig` of Common Services will be created under `ibm-common-services` namespace
+    - Installs ODLM in all namespaces mode
+    - Creates the `ibm-common-services` namespace
+    - Creates the Common Services `OperandRegistry` and `OperandConfig` in the `ibm-common-services` namespace
 
-    # Install Individual Common Services
+    For more information about installing this operator and other Common Services operators, see [Installer documentation](http://ibm.biz/cpcs_opinstall). If you are using this operator as part of an IBM Cloud Pak, see the documentation for that IBM Cloud Pak to learn more about how to install and use the operator service. For more information about IBM Cloud Paks, see [IBM Cloud Paks that use Common Services](http://ibm.biz/cpcs_cloudpaks).
 
-    Install individual common services by creating an `OperandRequest`.
+    For more information about the available IBM Cloud Platform Common Services, see the [IBM Knowledge Center](http://ibm.biz/cpcsdocs).
 
-    ```yaml
-    apiVersion: operator.ibm.com/v1alpha1
-    kind: OperandRequest
-    metadata:
-      name: common-service
-      namespace: ibm-common-services
-    spec:
-      requests:
-        - operands:
-            - name: ibm-cert-manager-operator
-            - name: ibm-mongodb-operator
-            - name: ibm-iam-operator
-            - name: ibm-monitoring-exporters-operator
-            - name: ibm-monitoring-prometheusext-operator
-            - name: ibm-monitoring-grafana-operator
-            - name: ibm-healthcheck-operator
-            - name: ibm-management-ingress-operator
-            - name: ibm-licensing-operator
-            - name: ibm-metering-operator
-            - name: ibm-commonui-operator
-            - name: ibm-elastic-stack-operator
-            - name: ibm-ingress-nginx-operator
-            - name: ibm-auditlogging-operator
-            - name: ibm-platform-api-operator
-            - name: ibm-helm-api-operator
-            - name: ibm-helm-repo-operator
-            - name: ibm-catalog-ui-operator
-          registry: common-service
-    ```
+    ## Supported platforms
 
-    Open the OpenShift Web Console, click the plus button in top right corner, then copy the above `OperandRequest` into the editor and create.
+    Red Hat OpenShift Container Platform 4.3 or newer installed on one of the following platforms:
+
+       - Linux x86_64
+       - Linux on Power (ppc64le)
+
+    ## Operator versions
+
+     - 3.4.0
+
+    ## Prerequisites
+
+    Before you install this operator, you need to first install the operator prerequisites:
+
+    - For the list of prerequisites for installing the operator, see the IBM Knowledge Center [Preparing to install services documentation](http://ibm.biz/cpcs_opinstprereq).
+
+    ## Documentation
+
+    - If you are using the operator as part of an IBM Cloud Pak, see the documentation for that IBM Cloud Pak. For a list of IBM Cloud Paks, see [IBM Cloud Paks that use Common Services](http://ibm.biz/cpcs_cloudpaks).
+    - If you are using the operator in stand-alone mode or with an IBM Containerized Software, see the IBM Cloud Platform Common Services Knowledge Center [Installer documentation](http://ibm.biz/cpcs_opinstall).  
   displayName: IBM Common Service Operator
   install:
     spec:
