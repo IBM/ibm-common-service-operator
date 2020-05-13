@@ -8,6 +8,11 @@ metadata:
           "apiVersion": "operator.ibm.com/v3",
           "kind": "CommonService",
           "metadata": {
+            "labels": {
+              "app.kubernetes.io/instance": "ibm-common-service-operator",
+              "app.kubernetes.io/managed-by": "ibm-common-service-operator",
+              "app.kubernetes.io/name": "ibm-common-service-operator"
+            },
             "name": "example-commonservice"
           },
           "spec": {
@@ -109,8 +114,21 @@ spec:
                 productVersion: 3.4.0
               labels:
                 app.kubernetes.io/instance: ibm-common-service-operator
+                app.kubernetes.io/managed-by: ibm-common-service-operator
+                app.kubernetes.io/name: ibm-common-service-operator
                 name: ibm-common-service-operator
             spec:
+              affinity:
+                nodeAffinity:
+                  requiredDuringSchedulingIgnoredDuringExecution:
+                    nodeSelectorTerms:
+                    - matchExpressions:
+                      - key: beta.kubernetes.io/arch
+                        operator: In
+                        values:
+                        - amd64
+                        - ppc64le
+                        - s390x
               containers:
               - command:
                 - ibm-common-service-operator
