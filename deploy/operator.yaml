@@ -1,6 +1,10 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  labels:
+    app.kubernetes.io/instance: "ibm-common-service-operator"
+    app.kubernetes.io/managed-by: "ibm-common-service-operator"
+    app.kubernetes.io/name: "ibm-common-service-operator"
   name: ibm-common-service-operator
 spec:
   replicas: 1
@@ -36,3 +40,18 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: "ibm-common-service-operator"
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 200Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
