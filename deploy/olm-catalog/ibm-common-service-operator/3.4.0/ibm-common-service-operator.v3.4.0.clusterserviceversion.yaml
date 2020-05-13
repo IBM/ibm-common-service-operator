@@ -37,39 +37,41 @@ spec:
       kind: CommonService
       name: commonservices.operator.ibm.com
       version: v3
-  description: The `ibm-common-service-operator` is a bridge to connect IBM Cloud Paks and Operand Deployment Lifecycle Manager (ODLM) with IBM Cloud Platform Common Services. You can also install the `ibm-common-service-operator` in stand-alone mode.
+  description: |-
+      The `ibm-common-service-operator` is a bridge to connect IBM Cloud Paks and Operand Deployment Lifecycle Manager (ODLM) with IBM Cloud Platform Common Services. You can also install the `ibm-common-service-operator` in stand-alone mode.
 
-    When you install this operator, the operator completes the following tasks:
+      When you install this operator, the operator completes the following tasks:
 
-    - Installs ODLM in all namespaces mode
-    - Creates the `ibm-common-services` namespace
-    - Creates the Common Services `OperandRegistry` and `OperandConfig` in the `ibm-common-services` namespace
+        - Installs ODLM in all namespaces mode
+        - Creates the `ibm-common-services` namespace
+        - Creates the Common Services `OperandRegistry` and `OperandConfig` in the `ibm-common-services` namespace
 
-    For more information about installing this operator and other Common Services operators, see [Installer documentation](http://ibm.biz/cpcs_opinstall). If you are using this operator as part of an IBM Cloud Pak, see the documentation for that IBM Cloud Pak to learn more about how to install and use the operator service. For more information about IBM Cloud Paks, see [IBM Cloud Paks that use Common Services](http://ibm.biz/cpcs_cloudpaks).
+      For more information about installing this operator and other Common Services operators, see [Installer documentation](http://ibm.biz/cpcs_opinstall). If you are using this operator as part of an IBM Cloud Pak, see the documentation for that IBM Cloud Pak to learn more about how to install and use the operator service. For more information about IBM Cloud Paks, see [IBM Cloud Paks that use Common Services](http://ibm.biz/cpcs_cloudpaks).
 
-    For more information about the available IBM Cloud Platform Common Services, see the [IBM Knowledge Center](http://ibm.biz/cpcsdocs).
+      For more information about the available IBM Cloud Platform Common Services, see the [IBM Knowledge Center](http://ibm.biz/cpcsdocs).
 
-    ## Supported platforms
+      ## Supported platforms
 
-    Red Hat OpenShift Container Platform 4.3 or newer installed on one of the following platforms:
+      Red Hat OpenShift Container Platform 4.3 or newer installed on one of the following platforms:
 
        - Linux x86_64
        - Linux on Power (ppc64le)
+       - Linux on IBM Z and LinuxONE
 
-    ## Operator versions
+      ## Operator versions
 
-     - 3.4.0
+       - 3.4.0
 
-    ## Prerequisites
+      ## Prerequisites
 
-    Before you install this operator, you need to first install the operator prerequisites:
+      Before you install this operator, you need to first install the operator prerequisites:
 
-    - For the list of prerequisites for installing the operator, see the IBM Knowledge Center [Preparing to install services documentation](http://ibm.biz/cpcs_opinstprereq).
+      - For the list of prerequisites for installing the operator, see the IBM Knowledge Center [Preparing to install services documentation](http://ibm.biz/cpcs_opinstprereq).
 
-    ## Documentation
+      ## Documentation
 
-    - If you are using the operator as part of an IBM Cloud Pak, see the documentation for that IBM Cloud Pak. For a list of IBM Cloud Paks, see [IBM Cloud Paks that use Common Services](http://ibm.biz/cpcs_cloudpaks).
-    - If you are using the operator in stand-alone mode or with an IBM Containerized Software, see the IBM Cloud Platform Common Services Knowledge Center [Installer documentation](http://ibm.biz/cpcs_opinstall).  
+      - If you are using the operator as part of an IBM Cloud Pak, see the documentation for that IBM Cloud Pak. For a list of IBM Cloud Paks, see [IBM Cloud Paks that use Common Services](http://ibm.biz/cpcs_cloudpaks).
+      - If you are using the operator in stand-alone mode or with an IBM Containerized Software, see the IBM Cloud Platform Common Services Knowledge Center [Installer documentation](http://ibm.biz/cpcs_opinstall).  
   displayName: IBM Common Service Operator
   install:
     spec:
