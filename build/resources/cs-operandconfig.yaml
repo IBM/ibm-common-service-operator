@@ -46,7 +46,6 @@ spec:
   - name: ibm-commonui-operator
     spec:
       commonWebUI: {}
-      operandBindInfo: {}
       operandRequest: {}
   - name: ibm-management-ingress-operator
     spec:
