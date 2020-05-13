@@ -102,14 +102,14 @@ spec:
           strategy: {}
           template:
             metadata:
-              labels:
-                name: ibm-common-service-operator
-                app.kubernetes.io/instance: ibm-common-service-operator
               annotations:
-                productName: "IBM Cloud Platform Common Services"
-                productID: "068a62892a1e4db39641342e592daa25"
-                productVersion: "3.4.0"
-                productMetric: "FREE"
+                productID: 068a62892a1e4db39641342e592daa25
+                productMetric: FREE
+                productName: IBM Cloud Platform Common Services
+                productVersion: 3.4.0
+              labels:
+                app.kubernetes.io/instance: ibm-common-service-operator
+                name: ibm-common-service-operator
             spec:
               containers:
               - command:
@@ -128,7 +128,21 @@ spec:
                 image: quay.io/opencloudio/common-service-operator:latest
                 imagePullPolicy: Always
                 name: ibm-common-service-operator
-                resources: {}
+                resources:
+                  limits:
+                    cpu: 500m
+                    memory: 512Mi
+                  requests:
+                    cpu: 100m
+                    memory: 200Mi
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                    - ALL
+                  privileged: false
+                  readOnlyRootFilesystem: true
+                  runAsNonRoot: true
               serviceAccountName: ibm-common-service-operator
     strategy: deployment
   installModes:
