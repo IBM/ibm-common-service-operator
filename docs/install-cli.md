@@ -33,7 +33,7 @@ spec:
   type: appregistry
 ```
 
-## 2. Create Operator NS, Group, Subscription
+## 2. Create Operator Namespace, Group, Subscription
 
 **Note:** For CloudPak users, you need to replace the namespace `common-service` to the namespace of the CloudPak.
 **Note:** The `dev` channel in the subscription is for testing purposes. For the product, we need to use the `stable` channel.
@@ -61,7 +61,24 @@ metadata:
   name: ibm-common-service-operator
   namespace: common-service
 spec:
-  channel: dev
+  channel: dev # dev channel is for development purpose only
+  installPlanApproval: Automatic
+  name: ibm-common-service-operator
+  source: opencloud-operators
+  sourceNamespace: openshift-marketplace
+```
+
+The ibm common service operator supports the all namespaces mode. If the CloudPak is deployed in the namespace `openshift-operators` in the all namespaces mode, then the ibm common service operator can be installed in the namespace `openshift-operators`.
+
+```yaml
+
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: ibm-common-service-operator
+  namespace: openshift-operators
+spec:
+  channel: dev # dev channel is for development purpose only
   installPlanApproval: Automatic
   name: ibm-common-service-operator
   source: opencloud-operators
