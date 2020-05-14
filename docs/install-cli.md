@@ -68,7 +68,7 @@ spec:
   sourceNamespace: openshift-marketplace
 ```
 
-The ibm common service operator supports the all namespaces mode. If the CloudPak is deployed in the namespace `openshift-operators` in the all namespaces mode, then the ibm common service operator can be installed in the namespace `openshift-operators`.
+The ibm common service operator supports the all namespaces mode. If the CloudPak is deployed in the namespace `openshift-operators` in the all namespaces mode, then the ibm common service operator need to be installed in the namespace `openshift-operators` as well.
 
 ```yaml
 
