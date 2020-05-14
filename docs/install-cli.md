@@ -33,7 +33,7 @@ spec:
   type: appregistry
 ```
 
-## 2. Create Operator Namespace, Group, Subscription
+## 2. Create Namespace, OperatorGroup and Subscription
 
 **Note:** For CloudPak users, you need to replace the namespace `common-service` to the namespace of the CloudPak.
 **Note:** The `dev` channel in the subscription is for testing purposes. For the product, we need to use the `stable` channel.
