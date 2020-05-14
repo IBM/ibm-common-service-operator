@@ -1,6 +1,10 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  labels:
+    app.kubernetes.io/instance: "ibm-common-service-operator"
+    app.kubernetes.io/managed-by: "ibm-common-service-operator"
+    app.kubernetes.io/name: "ibm-common-service-operator"
   name: ibm-common-service-operator
 spec:
   replicas: 1
@@ -12,6 +16,8 @@ spec:
       labels:
         name: ibm-common-service-operator
         app.kubernetes.io/instance: ibm-common-service-operator
+        app.kubernetes.io/managed-by: "ibm-common-service-operator"
+        app.kubernetes.io/name: "ibm-common-service-operator"
       annotations:
         productName: "IBM Cloud Platform Common Services"
         productID: "068a62892a1e4db39641342e592daa25"
@@ -19,6 +25,17 @@ spec:
         productMetric: "FREE"
     spec:
       serviceAccountName: ibm-common-service-operator
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+                - ppc64le
+                - s390x
       containers:
         - name: ibm-common-service-operator
           image: quay.io/opencloudio/common-service-operator:latest
@@ -36,3 +53,18 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: "ibm-common-service-operator"
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 200Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
