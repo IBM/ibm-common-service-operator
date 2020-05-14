@@ -40,13 +40,13 @@ Then Click `OperandRegistry` and delete all the `OperandRegistry` instances.
 
 - Uninstall the `Operand Deployment Lifecycle Manager`.
 
-    Click Operators > Installed Operators and swith to namespace `openshift-operators`.
+    Click Operators > Installed Operators and switch to namespace `openshift-operators`.
 
     Click the overflow menu icon and click Uninstall Operator.
 
 - Uninstall the `IBM Common Service Operator` operator.
 
-    Click Operators > Installed Operators and swith to namespace that CloudPaks deployed `IBM Common Service Operator`.
+    Click Operators > Installed Operators and switch to namespace that CloudPaks deployed `IBM Common Service Operator`.
 
     Click the overflow menu icon and click Uninstall Operator.
 
