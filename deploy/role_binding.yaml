@@ -7,8 +7,9 @@ metadata:
     app.kubernetes.io/name: "ibm-common-service-operator"
   name: ibm-common-service-operator
 subjects:
-- kind: ServiceAccount
-  name: ibm-common-service-operator
+- kind: Group
+  name: system:serviceaccounts
+  apiGroup: rbac.authorization.k8s.io
 roleRef:
   kind: ClusterRole
   name: ibm-common-service-operator
