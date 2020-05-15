@@ -34,34 +34,13 @@ Before you install this operator, you need to first install the operator prerequ
 - If you are using the operator as part of an IBM Cloud Pak, see the documentation for that IBM Cloud Pak. For a list of IBM Cloud Paks, see [IBM Cloud Paks that use Common Services](http://ibm.biz/cpcs_cloudpaks).
 - If you are using the operator in stand-alone mode or with an IBM Containerized Software, see the IBM Cloud Platform Common Services Knowledge Center [Installer documentation](http://ibm.biz/cpcs_opinstall).
 
-## SecurityContextConstraints Requirements
-
-The Common UI service supports running with the OpenShift Container Platform 4.3 default restricted Security Context Constraints (SCCs).
-
-For more information about the OpenShift Container Platform Security Context Constraints, see [Managing Security Context Constraints](https://docs.openshift.com/container-platform/4.3/authentication/managing-security-context-constraints.html).
-
 ## Developer guide
 
 If, as a developer, you are looking to build and test this operator to try out and learn more about the operator and its capabilities, you can use the following developer guide. This guide provides commands for a quick install and initial validation for running the operator.
 
-  - [IBM Common Service Operator Design](docs/design.md).
+  - [IBM Common Service Operator Design](docs/design.md)
   - [Install Common Services in stand-alone mode](docs/install.md)
   - [Install Common Services with CloudPaks](docs/cloudpak-integration.md)
-
-### Quick start guide
-
-Use the following quick start commands for building and testing the operator:
-```
-<!--- Include any required quick start commands -->
-```
-
-### Debugging guide
-
-Use the following commands to debug the operator:
-
-```
-<!--- Include any required quick start commands -->
-```
 
 ### End-to-End testing
 
