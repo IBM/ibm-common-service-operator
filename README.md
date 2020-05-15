@@ -34,7 +34,7 @@ Before you install this operator, you need to first install the operator prerequ
 - If you are using the operator as part of an IBM Cloud Pak, see the documentation for that IBM Cloud Pak. For a list of IBM Cloud Paks, see [IBM Cloud Paks that use Common Services](http://ibm.biz/cpcs_cloudpaks).
 - If you are using the operator in stand-alone mode or with an IBM Containerized Software, see the IBM Cloud Platform Common Services Knowledge Center [Installer documentation](http://ibm.biz/cpcs_opinstall).
 
-## SecurityContextConstraints requirements
+## SecurityContextConstraints Requirements
 
 The IBM Common Service Operator supports running with the OpenShift Container Platform 4.3 default restricted Security Context Constraints (SCCs).
 
