@@ -3,8 +3,6 @@ kind: OperandRegistry
 metadata:
   name: common-service
   namespace: ibm-common-services
-  annotations:
-    version: "1"
 spec:
   operators:
   - name: ibm-metering-operator
