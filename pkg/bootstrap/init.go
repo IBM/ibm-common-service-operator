@@ -31,6 +31,7 @@ import (
 	utilyaml "github.com/ghodss/yaml"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/runtime/serializer/streaming"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
@@ -59,6 +60,12 @@ func InitResources(mgr manager.Manager) error {
 		return err
 	}
 	if err := createObject(objects[0], client); err != nil {
+		return err
+	}
+
+	// Check and generate operatorGroup
+	err = createOperatorGroup(resourcesDir, client, reader)
+	if err != nil {
 		return err
 	}
 
@@ -269,5 +276,35 @@ func createOrUpdateResourcesFromDir(dir string, client client.Client, reader cli
 		}
 	}
 
+	return nil
+}
+
+func createOperatorGroup(dir string, mgtclient client.Client, reader client.Reader) error {
+	ogList := &unstructured.UnstructuredList{}
+
+	ogList.SetGroupVersionKind(schema.GroupVersionKind{Group: "operators.coreos.com", Kind: "OperatorGroup", Version: "v1"})
+
+	opts := []client.ListOption{
+		client.InNamespace("ibm-common-services"),
+	}
+
+	err := reader.List(context.TODO(), ogList, opts...)
+
+	if err != nil {
+		return err
+	}
+
+	if len(ogList.Items) == 0 {
+		// create operatorgroup
+		klog.Info("install ibm-common-service operatorgroup")
+		operatorGroup, err := ioutil.ReadFile(filepath.Join(dir, "operatorgroup.yaml"))
+		if err != nil {
+			return err
+		}
+
+		if err := createOrUpdateFromYaml(operatorGroup, mgtclient, reader); err != nil {
+			return err
+		}
+	}
 	return nil
 }
