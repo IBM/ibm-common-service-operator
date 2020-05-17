@@ -138,7 +138,7 @@ spec:
                       fieldPath: metadata.name
                 - name: OPERATOR_NAME
                   value: ibm-common-service-operator
-                image: quay.io/opencloudio/common-service-operator@sha256:7e9d81be6d4bb9fc8072846ba0dff762a499a166ee4b8ce0b9ab4330f03afdc1
+                image: quay.io/opencloudio/common-service-operator@sha256:b34830ec11dbb9460c072a7d948ef57da0c9ecc68836c417d43108de38888d95
                 imagePullPolicy: Always
                 name: ibm-common-service-operator
                 resources:
