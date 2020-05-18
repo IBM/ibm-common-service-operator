@@ -26,3 +26,33 @@ roleRef:
   kind: Role
   name: ibmcloud-cluster-info
   apiGroup: rbac.authorization.k8s.io
+
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: ibmcloud-cluster-ca-cert
+  namespace: kube-public
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["ibmcloud-cluster-ca-cert"]
+    verbs: ["get"]
+
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: ibmcloud-cluster-ca-cert
+  namespace: kube-public
+subjects:
+  - kind: Group
+    apiGroup: rbac.authorization.k8s.io
+    name: "system:authenticated"
+  - kind: Group
+    apiGroup: rbac.authorization.k8s.io
+    name: "system:unauthenticated"
+roleRef:
+  kind: Role
+  name: ibmcloud-cluster-ca-cert
+  apiGroup: rbac.authorization.k8s.io

@@ -54,10 +54,10 @@ Then Click `OperandRegistry` and delete all the `OperandRegistry` instances.
 
     Click Projects and delete project `ibm-common-services`.
 
-- Remove the RBAC for `ibmcloud-cluster-info`
+- Remove RBAC created in kube-public namespace.
 
     Click `User Management` > `Role Bindings` and switch to `kube-public` namespace.
-    Search and delete all the `Role Bindings` with the name `ibmcloud-cluster-info`.
+    Search and delete all the `Role Bindings` with the name `ibmcloud-cluster-info` and `ibmcloud-cluster-ca-cert`.
 
     Click `User Management` > `Roles` and switch to `kube-public` namespace.
-    Search and delete the `Roles` with the name `ibmcloud-cluster-info`.
+    Search and delete the `Roles` with the name `ibmcloud-cluster-info` and `ibmcloud-cluster-ca-cert`.
