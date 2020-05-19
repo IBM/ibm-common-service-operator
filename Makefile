@@ -1,7 +1,7 @@
 QUAY_REPO ?= quay.io/opencloudio
 IMAGE_NAME ?= common-service-operator
 OPERATOR_NAME ?= ibm-common-service-operator
-CSV_VERSION ?= 3.4.0
+CSV_VERSION ?= 3.4.1
 VERSION ?= $(shell git describe --exact-match 2> /dev/null || \
 				git describe --match=$(git rev-parse --short=8 HEAD) --always --dirty --abbrev=8)
 
