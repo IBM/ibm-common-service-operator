@@ -22,13 +22,13 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
-	"path/filepath"
 	"reflect"
 	"strconv"
-	"time"
+	"strings"
 
 	utilyaml "github.com/ghodss/yaml"
+	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -41,86 +41,36 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
+var (
+	CsResources = []string{"csNamespace", "odlmSubscription", "extraResources", "csOperandRegistry", "csOperandConfig"}
+)
+
 // InitResources initialize resources at the bootstrap of operator
 func InitResources(mgr manager.Manager) error {
 	client := mgr.GetClient()
 	reader := mgr.GetAPIReader()
+	if err := createOrUpdateResourcesFromAnnotation(client, reader); err != nil {
+		return err
+	}
 
-	resourcesDir := os.Getenv("RESOURCES_DIR")
+	return nil
+}
 
-	// create namespace
-	klog.Info("create ibm-common-services namespace")
-	namespace, err := ioutil.ReadFile(filepath.Join(resourcesDir, "namespace.yaml"))
+func getDeployment(reader client.Reader) (*appsv1.Deployment, error) {
+	deploy := &appsv1.Deployment{}
+	deployName, err := k8sutil.GetOperatorName()
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("could not find the operator name: %v", err)
 	}
-
-	objects, err := yamlToObjects(namespace)
+	deployNs, err := k8sutil.GetOperatorNamespace()
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("could not find the operator namespace: %v", err)
 	}
-	if err := createObject(objects[0], client); err != nil {
-		return err
-	}
-
-	klog.Info("check existing ODLM operator")
-	err = deleteExistingODLM(client)
+	err = reader.Get(context.TODO(), types.NamespacedName{Name: deployName, Namespace: deployNs}, deploy)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	// install operator
-	klog.Info("install ODLM operator")
-	subscription, err := ioutil.ReadFile(filepath.Join(resourcesDir, "odlm-subscription.yaml"))
-	if err != nil {
-		return err
-	}
-
-	if err := createOrUpdateFromYaml(subscription, client, reader); err != nil {
-		return err
-	}
-
-	// create extra yamls
-	klog.Info("create extra yaml resources")
-	if err := createOrUpdateResourcesFromDir(filepath.Join(resourcesDir, "extra"), client, reader); err != nil {
-		return err
-	}
-
-	// create operandConfig and operandRegistry
-	klog.Info("create OperandConfig and OperandRegistry")
-	operandConfig, err := ioutil.ReadFile(filepath.Join(resourcesDir, "cs-operandconfig.yaml"))
-	if err != nil {
-		return err
-	}
-	operandRegistry, err := ioutil.ReadFile(filepath.Join(resourcesDir, "cs-operandregistry.yaml"))
-	if err != nil {
-		return err
-	}
-
-	timeout := time.After(300 * time.Second)
-	ticker := time.NewTicker(30 * time.Second)
-	for {
-		klog.Info("try to create IBM Common Services OperandConfig and OperandRegistry")
-		select {
-		case <-timeout:
-			return fmt.Errorf("timeout to create the ODLM resource")
-		case <-ticker.C:
-			// create OperandConfig
-			errConfig := createOrUpdateFromYaml(operandConfig, client, reader)
-			if errConfig != nil {
-				klog.Error("create OperandConfig error with: ", errConfig)
-			}
-
-			// create OperandRegistry
-			errRegistry := createOrUpdateFromYaml(operandRegistry, client, reader)
-			if errRegistry != nil {
-				klog.Error("create OperandRegistry error with: ", errRegistry)
-			}
-
-			if errConfig == nil && errRegistry == nil {
-				return nil
-			}
-		}
-	}
+	return deploy, nil
 }
 
 func getObject(obj *unstructured.Unstructured, reader client.Reader) (*unstructured.Unstructured, error) {
@@ -251,27 +201,32 @@ func yamlToObject(yamlContent []byte) (*unstructured.Unstructured, error) {
 	return obj, nil
 }
 
-func createOrUpdateResourcesFromDir(dir string, client client.Client, reader client.Reader) error {
-	files, err := ioutil.ReadDir(dir)
+func createOrUpdateResourcesFromAnnotation(client client.Client, reader client.Reader) error {
+	deploy, err := getDeployment(reader)
 	if err != nil {
 		return err
 	}
-
-	var yamlFiles []string
-
-	for _, file := range files {
-		if filepath.Ext(file.Name()) == ".yaml" {
-			yamlFiles = append(yamlFiles, file.Name())
-		}
-	}
-
-	for _, file := range yamlFiles {
-		yamlContent, err := ioutil.ReadFile(filepath.Join(dir, file))
-		if err != nil {
-			return err
-		}
-		if err := createOrUpdateFromYaml(yamlContent, client, reader); err != nil {
-			return err
+	annotations := deploy.Spec.Template.GetAnnotations()
+	for _, res := range CsResources {
+		if res == "extraResources" {
+			klog.Info("create extra resource")
+			extResources := strings.Split(annotations[res], ",")
+			for _, extRes := range extResources {
+				extRes = strings.TrimSpace(extRes)
+				if er, ok := annotations[extRes]; ok {
+					klog.Infof("create extra resource: %s", extRes)
+					if err := createOrUpdateFromYaml([]byte(er), client, reader); err != nil {
+						return err
+					}
+				}
+			}
+		} else {
+			if r, ok := annotations[res]; ok {
+				klog.Infof("create resource: %s", res)
+				if err := createOrUpdateFromYaml([]byte(r), client, reader); err != nil {
+					return err
+				}
+			}
 		}
 	}
 
