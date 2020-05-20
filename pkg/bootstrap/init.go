@@ -25,17 +25,20 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 
 	utilyaml "github.com/ghodss/yaml"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/runtime/serializer/streaming"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/apimachinery/pkg/types"
+	utilwait "k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/rest"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -47,12 +50,54 @@ var (
 
 // InitResources initialize resources at the bootstrap of operator
 func InitResources(mgr manager.Manager) error {
-	client := mgr.GetClient()
-	reader := mgr.GetAPIReader()
-	if err := createOrUpdateResourcesFromAnnotation(client, reader); err != nil {
+
+	if err := createOrUpdateResourcesFromAnnotation(mgr); err != nil {
 		return err
 	}
 
+	return nil
+}
+
+func createOrUpdateResourcesFromAnnotation(mgr manager.Manager) error {
+	client := mgr.GetClient()
+	reader := mgr.GetAPIReader()
+	config := mgr.GetConfig()
+	deploy, err := getDeployment(reader)
+	if err != nil {
+		return err
+	}
+	annotations := deploy.Spec.Template.GetAnnotations()
+	for _, res := range CsResources {
+		if res == "extraResources" {
+			klog.Info("create extra resource")
+			extResources := strings.Split(annotations[res], ",")
+			for _, extRes := range extResources {
+				extRes = strings.TrimSpace(extRes)
+				if er, ok := annotations[extRes]; ok {
+					klog.Infof("create extra resource: %s", extRes)
+					if err := createOrUpdateFromYaml([]byte(er), client, reader); err != nil {
+						return err
+					}
+				}
+			}
+		} else {
+			if r, ok := annotations[res]; ok {
+				klog.Infof("create resource: %s", res)
+				if res == "csOperandRegistry" {
+					if err := waitResourceReady(config, "operator.ibm.com/v1alpha1", "OperandRegistry"); err != nil {
+						return err
+					}
+				} else if res == "csOperandConfig" {
+					if err := waitResourceReady(config, "operator.ibm.com/v1alpha1", "OperandConfig"); err != nil {
+						return err
+					}
+				}
+				if err := createOrUpdateFromYaml([]byte(r), client, reader); err != nil {
+					return err
+				}
+			}
+		}
+	}
 	return nil
 }
 
@@ -71,6 +116,23 @@ func getDeployment(reader client.Reader) (*appsv1.Deployment, error) {
 		return nil, err
 	}
 	return deploy, nil
+}
+
+func waitResourceReady(config *rest.Config, apiGroupVersion, kind string) error {
+	dc := discovery.NewDiscoveryClientForConfigOrDie(config)
+	if err := utilwait.PollImmediate(time.Second*10, time.Minute*5, func() (done bool, err error) {
+		exist, err := k8sutil.ResourceExists(dc, apiGroupVersion, kind)
+		if err != nil {
+			return exist, err
+		}
+		if !exist {
+			klog.Infof("waiting for resource ready with kind: %s, apiGroupVersion: %s", kind, apiGroupVersion)
+		}
+		return exist, nil
+	}); err != nil {
+		return err
+	}
+	return nil
 }
 
 func getObject(obj *unstructured.Unstructured, reader client.Reader) (*unstructured.Unstructured, error) {
@@ -199,69 +261,4 @@ func yamlToObject(yamlContent []byte) (*unstructured.Unstructured, error) {
 	}
 
 	return obj, nil
-}
-
-func createOrUpdateResourcesFromAnnotation(client client.Client, reader client.Reader) error {
-	deploy, err := getDeployment(reader)
-	if err != nil {
-		return err
-	}
-	annotations := deploy.Spec.Template.GetAnnotations()
-	for _, res := range CsResources {
-		if res == "extraResources" {
-			klog.Info("create extra resource")
-			extResources := strings.Split(annotations[res], ",")
-			for _, extRes := range extResources {
-				extRes = strings.TrimSpace(extRes)
-				if er, ok := annotations[extRes]; ok {
-					klog.Infof("create extra resource: %s", extRes)
-					if err := createOrUpdateFromYaml([]byte(er), client, reader); err != nil {
-						return err
-					}
-				}
-			}
-		} else {
-			if r, ok := annotations[res]; ok {
-				klog.Infof("create resource: %s", res)
-				if err := createOrUpdateFromYaml([]byte(r), client, reader); err != nil {
-					return err
-				}
-			}
-		}
-	}
-
-	return nil
-}
-
-func deleteExistingODLM(client client.Client) error {
-	// delete subscription
-	objSub := &unstructured.Unstructured{}
-	objSub.SetGroupVersionKind(schema.GroupVersionKind{Group: "operators.coreos.com", Kind: "Subscription", Version: "v1alpha1"})
-	objSub.SetName("operand-deployment-lifecycle-manager-app")
-	objSub.SetNamespace("ibm-common-services")
-	err := client.Delete(context.TODO(), objSub)
-	if err != nil && !errors.IsNotFound(err) {
-		klog.Error("Failed to delete ODLM subscription in the ibm-common-services namespace")
-		return err
-	}
-
-	// delete csv v1.1.0
-	objCSV := &unstructured.Unstructured{}
-	objCSV.SetGroupVersionKind(schema.GroupVersionKind{Group: "operators.coreos.com", Kind: "ClusterServiceVersion", Version: "v1alpha1"})
-	objCSV.SetNamespace("ibm-common-services")
-	objCSV.SetName("operand-deployment-lifecycle-manager.v1.1.0")
-	err = client.Delete(context.TODO(), objCSV)
-	if err != nil && !errors.IsNotFound(err) {
-		klog.Error("Failed to delete ODLM Cluster Service Version v1.1.0 in the ibm-common-services namespace")
-		return err
-	}
-
-	// delete csv v1.2.0
-	objCSV.SetName("operand-deployment-lifecycle-manager.v1.2.0")
-	err = client.Delete(context.TODO(), objCSV)
-	if err != nil && !errors.IsNotFound(err) {
-		klog.Error("Failed to delete ODLM Cluster Service Version v1.2.0 in the ibm-common-services namespace")
-		return err
-	}
-	return nil
 }
