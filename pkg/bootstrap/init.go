@@ -106,6 +106,8 @@ func createOrUpdateResources(annotations map[string]string, resNames []string, c
 			if err := createOrUpdateFromYaml([]byte(r), client, reader); err != nil {
 				return err
 			}
+		} else {
+			klog.Warningf("no resource %s found in annotations", res)
 		}
 	}
 	return nil

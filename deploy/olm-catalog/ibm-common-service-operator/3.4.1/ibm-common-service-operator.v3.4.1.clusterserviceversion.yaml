@@ -21,7 +21,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    containerImage: quay.io/opencloudio/common-service-operator@sha256:7e9d81be6d4bb9fc8072846ba0dff762a499a166ee4b8ce0b9ab4330f03afdc1
+    containerImage: quay.io/opencloudio/common-service-operator:latest
     createdAt: "2020-04-06T11:28:16Z"
     csNamespace: |-
       apiVersion: v1
@@ -2152,7 +2152,7 @@ spec:
 
     ## Operator versions
 
-     - 3.4.0
+     - 3.4.1
 
     ## Prerequisites
 
