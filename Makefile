@@ -72,6 +72,7 @@ code-dev:
 	go mod tidy
 
 check: code-dev lint-all
+	CSV_VERSION=$(CSV_VERSION) ./common/scripts/lint-csv.sh
 
 test:
 	echo good
