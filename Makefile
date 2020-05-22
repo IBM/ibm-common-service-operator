@@ -5,6 +5,9 @@ CSV_VERSION ?= 3.4.1
 VERSION ?= $(shell git describe --exact-match 2> /dev/null || \
 				git describe --match=$(git rev-parse --short=8 HEAD) --always --dirty --abbrev=8)
 
+VCS_URL ?= https://github.com/IBM/ibm-common-service-operator
+VCS_REF ?= $(shell git rev-parse HEAD)
+
 # The namespce that operator will be deployed in
 NAMESPACE=ibm-common-services
 
@@ -81,7 +84,7 @@ build-push-image: build-image push-image
 
 build-image: build
 	@echo "Building the $(IMAGE_NAME) docker image for $(LOCAL_ARCH)..."
-	@docker build -t $(QUAY_REPO)/$(IMAGE_NAME)-$(LOCAL_ARCH):$(VERSION) -f build/Dockerfile .
+	@docker build -t $(QUAY_REPO)/$(IMAGE_NAME)-$(LOCAL_ARCH):$(VERSION) --build-arg VCS_REF=$(VCS_REF) --build-arg VCS_URL=$(VCS_URL) -f build/Dockerfile .
 
 push-image: $(CONFIG_DOCKER_TARGET) build-image
 	@echo "Pushing the $(IMAGE_NAME) docker image for $(LOCAL_ARCH)..."
