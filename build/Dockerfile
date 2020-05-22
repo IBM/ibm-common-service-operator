@@ -29,14 +29,11 @@ LABEL org.label-schema.vendor="IBM" \
     summary="Deploy ODLM and related instances"
 
 ENV OPERATOR=/usr/local/bin/ibm-common-service-operator \
-    RESOURCES_DIR=/resources \
     USER_UID=1001 \
     USER_NAME=ibm-common-service-operator
 
 # install operator binary
 COPY build/_output/bin/ibm-common-service-operator ${OPERATOR}
-
-COPY build/resources ${RESOURCES_DIR}
 
 COPY build/bin /usr/local/bin
 RUN  /usr/local/bin/user_setup
