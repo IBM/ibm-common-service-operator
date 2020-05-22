@@ -22,13 +22,14 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
-	"path/filepath"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	utilyaml "github.com/ghodss/yaml"
+	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -36,91 +37,124 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer/streaming"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/apimachinery/pkg/types"
+	utilwait "k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/rest"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+)
+
+var (
+	CsNsResources    = []string{"csNamespace"}
+	CsExtResource    = "extraResources"
+	OdlmSubResources = []string{"odlmSubscription"}
+	OdlmCrResources  = []string{"csOperandRegistry", "csOperandConfig"}
 )
 
 // InitResources initialize resources at the bootstrap of operator
 func InitResources(mgr manager.Manager) error {
 	client := mgr.GetClient()
 	reader := mgr.GetAPIReader()
-
-	resourcesDir := os.Getenv("RESOURCES_DIR")
-
-	// create namespace
-	klog.Info("create ibm-common-services namespace")
-	namespace, err := ioutil.ReadFile(filepath.Join(resourcesDir, "namespace.yaml"))
+	config := mgr.GetConfig()
+	deploy, err := getDeployment(reader)
 	if err != nil {
 		return err
 	}
 
-	objects, err := yamlToObjects(namespace)
-	if err != nil {
-		return err
-	}
-	if err := createObject(objects[0], client); err != nil {
+	// Get all the resources from the deployment annotations
+	annotations := deploy.Spec.Template.GetAnnotations()
+
+	klog.Info("create namespace for common services")
+	if err := createOrUpdateResources(annotations, CsNsResources, client, reader); err != nil {
 		return err
 	}
 
 	klog.Info("check existing ODLM operator")
-	err = deleteExistingODLM(client)
-	if err != nil {
-		return err
-	}
-	// install operator
-	klog.Info("install ODLM operator")
-	subscription, err := ioutil.ReadFile(filepath.Join(resourcesDir, "odlm-subscription.yaml"))
-	if err != nil {
+	if err = deleteExistingODLM(client); err != nil {
 		return err
 	}
 
-	if err := createOrUpdateFromYaml(subscription, client, reader); err != nil {
+	klog.Info("create ODLM operator")
+	if err := createOrUpdateResources(annotations, OdlmSubResources, client, reader); err != nil {
 		return err
 	}
 
-	// create extra yamls
-	klog.Info("create extra yaml resources")
-	if err := createOrUpdateResourcesFromDir(filepath.Join(resourcesDir, "extra"), client, reader); err != nil {
+	klog.Info("create extra resources for common services")
+	if err := createOrUpdateResources(annotations, strings.Split(annotations[CsExtResource], ","), client, reader); err != nil {
 		return err
 	}
 
-	// create operandConfig and operandRegistry
-	klog.Info("create OperandConfig and OperandRegistry")
-	operandConfig, err := ioutil.ReadFile(filepath.Join(resourcesDir, "cs-operandconfig.yaml"))
-	if err != nil {
+	klog.Info("create ODLM  OperandRegistry and OperandConfig CR resources")
+	if err := waitResourceReady(config, "operator.ibm.com/v1alpha1", "OperandRegistry"); err != nil {
 		return err
 	}
-	operandRegistry, err := ioutil.ReadFile(filepath.Join(resourcesDir, "cs-operandregistry.yaml"))
-	if err != nil {
+	if err := waitResourceReady(config, "operator.ibm.com/v1alpha1", "OperandConfig"); err != nil {
+		return err
+	}
+	if err := createOrUpdateResources(annotations, OdlmCrResources, client, reader); err != nil {
 		return err
 	}
 
-	timeout := time.After(300 * time.Second)
-	ticker := time.NewTicker(30 * time.Second)
-	for {
-		klog.Info("try to create IBM Common Services OperandConfig and OperandRegistry")
-		select {
-		case <-timeout:
-			return fmt.Errorf("timeout to create the ODLM resource")
-		case <-ticker.C:
-			// create OperandConfig
-			errConfig := createOrUpdateFromYaml(operandConfig, client, reader)
-			if errConfig != nil {
-				klog.Error("create OperandConfig error with: ", errConfig)
+	return nil
+}
+
+func createOrUpdateResources(annotations map[string]string, resNames []string, client client.Client, reader client.Reader) error {
+	for _, res := range resNames {
+		if r, ok := annotations[res]; ok {
+			klog.Infof("create resource: %s", res)
+			if err := createOrUpdateFromYaml([]byte(r), client, reader); err != nil {
+				return err
 			}
-
-			// create OperandRegistry
-			errRegistry := createOrUpdateFromYaml(operandRegistry, client, reader)
-			if errRegistry != nil {
-				klog.Error("create OperandRegistry error with: ", errRegistry)
-			}
-
-			if errConfig == nil && errRegistry == nil {
-				return nil
-			}
+		} else {
+			klog.Warningf("no resource %s found in annotations", res)
 		}
 	}
+	return nil
+}
+
+func getDeployment(reader client.Reader) (*appsv1.Deployment, error) {
+	deploy := &appsv1.Deployment{}
+	deployName, err := k8sutil.GetOperatorName()
+	if err != nil {
+		return nil, fmt.Errorf("could not find the operator name: %v", err)
+	}
+	deployNs, err := k8sutil.GetOperatorNamespace()
+	if err != nil {
+		return nil, fmt.Errorf("could not find the operator namespace: %v", err)
+	}
+
+	// Retrieve operator deployment, retry 3 times
+	if err := utilwait.PollImmediate(time.Minute, time.Minute*3, func() (done bool, err error) {
+		err = reader.Get(context.TODO(), types.NamespacedName{Name: deployName, Namespace: deployNs}, deploy)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		return true, nil
+	}); err != nil {
+		return nil, err
+	}
+	return deploy, nil
+}
+
+func waitResourceReady(config *rest.Config, apiGroupVersion, kind string) error {
+	dc := discovery.NewDiscoveryClientForConfigOrDie(config)
+	if err := utilwait.PollImmediate(time.Second*10, time.Minute*5, func() (done bool, err error) {
+		exist, err := k8sutil.ResourceExists(dc, apiGroupVersion, kind)
+		if err != nil {
+			return exist, err
+		}
+		if !exist {
+			klog.Infof("waiting for resource ready with kind: %s, apiGroupVersion: %s", kind, apiGroupVersion)
+		}
+		return exist, nil
+	}); err != nil {
+		return err
+	}
+	return nil
 }
 
 func getObject(obj *unstructured.Unstructured, reader client.Reader) (*unstructured.Unstructured, error) {
@@ -249,33 +283,6 @@ func yamlToObject(yamlContent []byte) (*unstructured.Unstructured, error) {
 	}
 
 	return obj, nil
-}
-
-func createOrUpdateResourcesFromDir(dir string, client client.Client, reader client.Reader) error {
-	files, err := ioutil.ReadDir(dir)
-	if err != nil {
-		return err
-	}
-
-	var yamlFiles []string
-
-	for _, file := range files {
-		if filepath.Ext(file.Name()) == ".yaml" {
-			yamlFiles = append(yamlFiles, file.Name())
-		}
-	}
-
-	for _, file := range yamlFiles {
-		yamlContent, err := ioutil.ReadFile(filepath.Join(dir, file))
-		if err != nil {
-			return err
-		}
-		if err := createOrUpdateFromYaml(yamlContent, client, reader); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func deleteExistingODLM(client client.Client) error {
