@@ -123,8 +123,18 @@ func getDeployment(reader client.Reader) (*appsv1.Deployment, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not find the operator namespace: %v", err)
 	}
-	err = reader.Get(context.TODO(), types.NamespacedName{Name: deployName, Namespace: deployNs}, deploy)
-	if err != nil {
+
+	// Retrieve operator deployment, retry 3 times
+	if err := utilwait.PollImmediate(time.Minute, time.Minute*3, func() (done bool, err error) {
+		err = reader.Get(context.TODO(), types.NamespacedName{Name: deployName, Namespace: deployNs}, deploy)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		return true, nil
+	}); err != nil {
 		return nil, err
 	}
 	return deploy, nil
