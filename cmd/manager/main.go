@@ -120,14 +120,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	klog.Info("checking old common services if installed.")
+	klog.Info("check Helm based IBM Common Services installation")
 	exist, err := check.CheckOriginalCs(mgr)
 	if err != nil {
 		klog.Error(err)
 		os.Exit(1)
 	}
 	if exist {
-		klog.Error("old common services has been installed, uninstall the old common services before install the new")
+		klog.Error("The Helm based IBM Common Services must be uninstalled before performing operator based installation")
 		os.Exit(1)
 	}
 
