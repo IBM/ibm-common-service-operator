@@ -333,6 +333,230 @@ metadata:
         name: ibmcloud-cluster-ca-cert
         apiGroup: rbac.authorization.k8s.io
     repository: https://github.com/IBM/ibm-common-service-operator
+    commonServicesStatus: |-
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        name: common-service-status
+        namespace: ibm-common-services
+      ---
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: Role
+      metadata:
+        name: common-service-status-role
+        namespace: ibm-common-services
+      rules:
+      - apiGroups:
+        - extensions
+        resources:
+        - ingresses
+        verbs:
+        - create
+        - delete
+        - get
+        - list
+        - patch
+        - update
+        - watch
+      - apiGroups:
+        - ""
+        resources:
+        - pods
+        - services
+        - services/finalizers
+        - endpoints
+        - persistentvolumeclaims
+        - events
+        - configmaps
+        - secrets
+        verbs:
+        - create
+        - delete
+        - get
+        - list
+        - patch
+        - update
+        - watch
+      - apiGroups:
+        - apps
+        resources:
+        - deployments
+        - daemonsets
+        - replicasets
+        - statefulsets
+        verbs:
+        - create
+        - delete
+        - get
+        - list
+        - patch
+        - update
+        - watch
+      - apiGroups:
+        - monitoring.coreos.com
+        resources:
+        - servicemonitors
+        verbs:
+        - get
+        - create
+      - apiGroups:
+        - apps
+        resourceNames:
+        - ibm-healthcheck-operator
+        resources:
+        - deployments/finalizers
+        verbs:
+        - update
+      - apiGroups:
+        - ""
+        resources:
+        - pods
+        verbs:
+        - get
+      - apiGroups:
+        - apps
+        resources:
+        - replicasets
+        - deployments
+        verbs:
+        - get
+      ---
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: Role
+      metadata:
+        name: common-service-status-role
+        namespace: kube-public
+      rules:
+      - apiGroups:
+        - extensions
+        resources:
+        - ingresses
+        verbs:
+        - create
+        - delete
+        - get
+        - list
+        - patch
+        - update
+        - watch
+      - apiGroups:
+        - ""
+        resources:
+        - pods
+        - services
+        - services/finalizers
+        - endpoints
+        - persistentvolumeclaims
+        - events
+        - configmaps
+        - secrets
+        verbs:
+        - create
+        - delete
+        - get
+        - list
+        - patch
+        - update
+        - watch
+      - apiGroups:
+        - apps
+        resources:
+        - deployments
+        - daemonsets
+        - replicasets
+        - statefulsets
+        verbs:
+        - create
+        - delete
+        - get
+        - list
+        - patch
+        - update
+        - watch
+      - apiGroups:
+        - monitoring.coreos.com
+        resources:
+        - servicemonitors
+        verbs:
+        - get
+        - create
+      - apiGroups:
+        - apps
+        resourceNames:
+        - ibm-healthcheck-operator
+        resources:
+        - deployments/finalizers
+        verbs:
+        - update
+      - apiGroups:
+        - ""
+        resources:
+        - pods
+        verbs:
+        - get
+      - apiGroups:
+        - apps
+        resources:
+        - replicasets
+        - deployments
+        verbs:
+        - get
+      ---
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: RoleBinding
+      metadata:
+        name: common-service-status-rolebinding
+        namespace: ibm-common-services
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: Role
+        name: common-service-status-role
+      subjects:
+      - kind: ServiceAccount
+        name: common-service-status
+        namespace: ibm-common-services
+      ---  
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: RoleBinding
+      metadata:
+        name: common-service-status-rolebinding
+        namespace: kube-public
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: Role
+        name: common-service-status-role
+      subjects:
+      - kind: ServiceAccount
+        name: common-service-status
+        namespace: ibm-common-services
+      ---  
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: common-services-status
+        namespace: ibm-common-services
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            name: common-services-status
+        template:
+          metadata:
+            labels:
+              name: common-services-status
+          spec:
+            containers:
+            - name: status-container
+              image: quay.io/opencloudio/ibm-common-services-status:v0.1
+              imagePullPolicy: Always
+              command:
+              - "bash"
+              - "-c"
+              - "/scripts/cs-status.sh"
+              env:
+              - name: STATUSINTERVAL
+                value: "120s"
+            serviceAccountName: common-service-status
     secretShareOperator: |-
       apiVersion: apiextensions.k8s.io/v1beta1
       kind: CustomResourceDefinition
@@ -484,7 +708,7 @@ metadata:
                 - /tmp/ansible-operator/runner
                 - stdout
                 # Replace this with the built image name
-                image: "quay.io/opencloudio/ibm-secretshare-operator:v1.0"
+                image: "quay.io/opencloudio/ibm-secretshare-operator:v1.1"
                 imagePullPolicy: "Always"
                 volumeMounts:
                 - mountPath: /tmp/ansible-operator/runner
@@ -492,7 +716,7 @@ metadata:
                   readOnly: true
               - name: operator
                 # Replace this with the built image name
-                image: "quay.io/opencloudio/ibm-secretshare-operator:v1.0"
+                image: "quay.io/opencloudio/ibm-secretshare-operator:v1.1"
                 imagePullPolicy: "Always"
                 volumeMounts:
                 - mountPath: /tmp/ansible-operator/runner
@@ -531,8 +755,26 @@ metadata:
         - secretname: ibmcloud-cluster-ca-cert
           sharewith:
           - namespace: kube-public
+        - secretname: icp-serviceid-apikey-secret
+          sharewith:
+          - namespace: kube-system
+        - secretname: platform-oidc-credentials
+          sharewith:
+          - namespace: kube-system
+        - secretname: icp-mongodb-admin
+          sharewith:
+          - namespace: kube-system
+        - secretname: icp-mongodb-client-cert
+          sharewith:
+          - namespace: kube-system
+        - secretname: cs-ca-certificate-secret
+          sharewith:
+          - namespace: kube-system
         # ConfigMaps to share for adopter compatibility to Common Services 3.2.4
         configmapshares:
+        - configmapname: platform-auth-idp
+          sharewith:
+          - namespace: kube-system
         - configmapname: oauth-client-map
           sharewith:
           - namespace: services
