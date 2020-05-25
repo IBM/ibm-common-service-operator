@@ -26,8 +26,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
-// CheckOriginalCs check the old version common services if installed
-func CheckOriginalCs(mgr manager.Manager) (exist bool, err error) {
+// OriginalCs check Helm based IBM Common Services installation
+func OriginalCs(mgr manager.Manager) (exist bool, err error) {
 	reader := mgr.GetAPIReader()
 	secret, err := getSecret(reader)
 	if err != nil {

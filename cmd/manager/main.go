@@ -121,7 +121,7 @@ func main() {
 	}
 
 	klog.Info("check Helm based IBM Common Services installation")
-	exist, err := check.CheckOriginalCs(mgr)
+	exist, err := check.OriginalCs(mgr)
 	if err != nil {
 		klog.Error(err)
 		os.Exit(1)
