@@ -23,6 +23,8 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/IBM/ibm-common-service-operator/pkg/check"
+
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
@@ -115,6 +117,17 @@ func main() {
 	// Setup Scheme for all resources
 	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
 		klog.Error(err)
+		os.Exit(1)
+	}
+
+	klog.Info("checking old common services if installed.")
+	exist, err := check.CheckOriginalCs(mgr)
+	if err != nil {
+		klog.Error(err)
+		os.Exit(1)
+	}
+	if exist {
+		klog.Error("old common services has been installed, uninstall the old common services before install the new")
 		os.Exit(1)
 	}
 
