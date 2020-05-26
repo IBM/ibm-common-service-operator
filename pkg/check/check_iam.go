@@ -21,6 +21,7 @@ import (
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -31,6 +32,7 @@ import (
 
 var (
 	DeployNames = []string{"ibm-iam-operator", "auth-idp", "auth-pap", "auth-pdp", "configmap-watcher", "iam-policy-controller", "oidcclient-watcher", "secret-watcher"}
+	JobNames    = []string{"iam-onboarding", "security-onboarding", "oidc-client-registration"}
 )
 
 func IamStatus(mgr manager.Manager) {
@@ -47,13 +49,34 @@ func IamStatus(mgr manager.Manager) {
 }
 
 func overallIamStatus(reader client.Reader) string {
-	for _, po := range DeployNames {
-		status := getDeploymentStatus(reader, po)
+	for _, deploy := range DeployNames {
+		status := getDeploymentStatus(reader, deploy)
+		if status == "NotReady" {
+			return status
+		}
+	}
+	for _, job := range JobNames {
+		status := getJobStatus(reader, job)
 		if status == "NotReady" {
 			return status
 		}
 	}
 	return "Ready"
+}
+
+func getJobStatus(client client.Reader, name string) string {
+	job := &batchv1.Job{}
+	jobName := name
+	jobNs := "ibm-common-services"
+	err := client.Get(context.TODO(), types.NamespacedName{Name: jobName, Namespace: jobNs}, job)
+	if err != nil {
+		return "NotReady"
+	}
+
+	if job.Status.Succeeded >= *job.Spec.Completions {
+		return "Ready"
+	}
+	return "NotReady"
 }
 
 func getDeploymentStatus(reader client.Reader, name string) string {
