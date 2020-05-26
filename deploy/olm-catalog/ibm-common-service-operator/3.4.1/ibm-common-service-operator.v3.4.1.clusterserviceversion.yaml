@@ -531,8 +531,26 @@ metadata:
         - secretname: ibmcloud-cluster-ca-cert
           sharewith:
           - namespace: kube-public
+        - secretname: icp-serviceid-apikey-secret
+          sharewith:
+          - namespace: kube-system
+        - secretname: platform-oidc-credentials
+          sharewith:
+          - namespace: kube-system
+        - secretname: icp-mongodb-admin
+          sharewith:
+          - namespace: kube-system
+        - secretname: icp-mongodb-client-cert
+          sharewith:
+          - namespace: kube-system
+        - secretname: cs-ca-certificate-secret
+          sharewith:
+          - namespace: kube-system
         # ConfigMaps to share for adopter compatibility to Common Services 3.2.4
         configmapshares:
+        - configmapname: platform-auth-idp
+          sharewith:
+          - namespace: kube-system
         - configmapname: oauth-client-map
           sharewith:
           - namespace: services
