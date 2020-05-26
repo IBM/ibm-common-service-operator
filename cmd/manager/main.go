@@ -23,13 +23,13 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/IBM/ibm-common-service-operator/pkg/bootstrap"
 	"github.com/IBM/ibm-common-service-operator/pkg/check"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"github.com/IBM/ibm-common-service-operator/pkg/apis"
-	"github.com/IBM/ibm-common-service-operator/pkg/bootstrap"
 	"github.com/IBM/ibm-common-service-operator/pkg/controller"
 	"github.com/IBM/ibm-common-service-operator/version"
 
@@ -137,6 +137,9 @@ func main() {
 		os.Exit(1)
 	}
 	klog.Info("finish installing ODLM operator and initialize IBM Common Services")
+
+	klog.Info("check IAM pods status")
+	check.IamStatus(mgr)
 
 	// Setup all Controllers
 	if err := controller.AddToManager(mgr); err != nil {
