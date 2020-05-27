@@ -490,6 +490,13 @@ metadata:
                 - mountPath: /tmp/ansible-operator/runner
                   name: runner
                   readOnly: true
+                resources:
+                  limits:
+                    cpu: 500m
+                    memory: 512Mi
+                  requests:
+                    cpu: 200m
+                    memory: 200Mi
               - name: operator
                 # Replace this with the built image name
                 image: "quay.io/opencloudio/ibm-secretshare-operator:v1.0"
@@ -510,6 +517,13 @@ metadata:
                     value: "secretshare"
                   - name: ANSIBLE_GATHERING
                     value: explicit
+                resources:
+                  limits:
+                    cpu: 500m
+                    memory: 512Mi
+                  requests:
+                    cpu: 200m
+                    memory: 200Mi
             volumes:
               - name: runner
                 emptyDir: {}
