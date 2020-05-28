@@ -519,8 +519,8 @@ metadata:
                     value: explicit
                 resources:
                   limits:
-                    cpu: 500m
-                    memory: 512Mi
+                    cpu: 800m
+                    memory: 1024Mi
                   requests:
                     cpu: 200m
                     memory: 200Mi
