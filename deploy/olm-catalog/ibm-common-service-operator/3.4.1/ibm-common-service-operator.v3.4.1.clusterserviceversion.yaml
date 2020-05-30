@@ -2292,7 +2292,7 @@ spec:
   - IBM
   - Cloud
   maintainers:
-  - email: supports@ibm.com
+  - email: support@ibm.com
     name: IBM Support
   maturity: alpha
   provider:
