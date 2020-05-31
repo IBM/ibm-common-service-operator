@@ -272,7 +272,7 @@ metadata:
         name: operand-deployment-lifecycle-manager-app
         source: opencloud-operators
         sourceNamespace: openshift-marketplace
-    olm.skipRange: '>=3.3.0 <3.4.0'
+    olm.skipRange: '>=3.3.0 <3.4.1'
     rbac: |-
       apiVersion: rbac.authorization.k8s.io/v1
       kind: Role
