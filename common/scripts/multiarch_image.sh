@@ -53,8 +53,8 @@ ${CONTAINER_CLI} manifest create "${IMAGE_REPO}"/"${IMAGE_NAME}":"${VERSION}" \
     "${IMAGE_REPO}"/"${IMAGE_NAME}"-amd64:"${VERSION}" \
     "${IMAGE_REPO}"/"${IMAGE_NAME}"-ppc64le:"${VERSION}" \
     "${IMAGE_REPO}"/"${IMAGE_NAME}"-s390x:"${VERSION}"
-echo "Creating the multi-arch image manifest for ${IMAGE_REPO}/${IMAGE_NAME}:latest..."
-${CONTAINER_CLI} manifest create "${IMAGE_REPO}"/"${IMAGE_NAME}":latest \
+echo "Creating the multi-arch image manifest for ${IMAGE_REPO}/${IMAGE_NAME}:3.4..."
+${CONTAINER_CLI} manifest create "${IMAGE_REPO}"/"${IMAGE_NAME}":3.4 \
     "${IMAGE_REPO}"/"${IMAGE_NAME}"-amd64:"${VERSION}" \
     "${IMAGE_REPO}"/"${IMAGE_NAME}"-ppc64le:"${VERSION}" \
     "${IMAGE_REPO}"/"${IMAGE_NAME}"-s390x:"${VERSION}"
@@ -62,5 +62,5 @@ ${CONTAINER_CLI} manifest create "${IMAGE_REPO}"/"${IMAGE_NAME}":latest \
 # push multi-arch manifest
 echo "Pushing the multi-arch image manifest for ${IMAGE_REPO}/${IMAGE_NAME}:${VERSION}..."
 ${CONTAINER_CLI} manifest push "${IMAGE_REPO}"/"${IMAGE_NAME}":"${VERSION}"
-echo "Pushing the multi-arch image manifest for ${IMAGE_REPO}/${IMAGE_NAME}:latest..."
-${CONTAINER_CLI} manifest push "${IMAGE_REPO}"/"${IMAGE_NAME}":latest
+echo "Pushing the multi-arch image manifest for ${IMAGE_REPO}/${IMAGE_NAME}:3.4..."
+${CONTAINER_CLI} manifest push "${IMAGE_REPO}"/"${IMAGE_NAME}":3.4

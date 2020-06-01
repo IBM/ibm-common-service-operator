@@ -1,5 +1,7 @@
 # ibm-common-service-operator
 
+NOTE: The release branch of this repo only hosts the image change, CSV will be hosted in master branch.
+
 The `ibm-common-service-operator` is a bridge to connect IBM Cloud Paks and Operand Deployment Lifecycle Manager (ODLM) with IBM Cloud Platform Common Services. You can also install the `ibm-common-service-operator` in stand-alone mode.
 
 When you install this operator, the operator completes the following tasks:
