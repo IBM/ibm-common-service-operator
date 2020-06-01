@@ -21,7 +21,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    containerImage: quay.io/opencloudio/common-service-operator:latest
+    containerImage: quay.io/opencloudio/common-service-operator:3.4
     createdAt: "2020-04-06T11:28:16Z"
     csNamespace: |-
       apiVersion: v1
@@ -2291,7 +2291,7 @@ spec:
                       fieldPath: metadata.name
                 - name: OPERATOR_NAME
                   value: ibm-common-service-operator
-                image: quay.io/opencloudio/common-service-operator@sha256:50826858364c41a308fa0259baa87b70431249ae8b2bad1664edd0b2d26ca0f9
+                image: quay.io/opencloudio/common-service-operator@sha256:7e4d08a3d0cd26bae1184d72420d80cd2de157ef1dc69037006ffcf08e9c9a0b
                 imagePullPolicy: Always
                 name: ibm-common-service-operator
                 resources:
