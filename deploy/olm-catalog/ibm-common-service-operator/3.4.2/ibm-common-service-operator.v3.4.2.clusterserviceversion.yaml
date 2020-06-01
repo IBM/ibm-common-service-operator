@@ -151,6 +151,7 @@ metadata:
           namespace: ibm-common-services
           channel: dev
           packageName: ibm-mongodb-operator-app
+          scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-cert-manager-operator
