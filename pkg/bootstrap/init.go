@@ -315,5 +315,29 @@ func deleteExistingODLM(client client.Client) error {
 		klog.Error("Failed to delete ODLM Cluster Service Version v1.2.0 in the ibm-common-services namespace")
 		return err
 	}
+
+	// delete csv v1.2.1
+	objCSV.SetName("operand-deployment-lifecycle-manager.v1.2.1")
+	err = client.Delete(context.TODO(), objCSV)
+	if err != nil && !errors.IsNotFound(err) {
+		klog.Error("Failed to delete ODLM Cluster Service Version v1.2.1 in the ibm-common-services namespace")
+		return err
+	}
+
+	// delete csv v1.2.2
+	objCSV.SetName("operand-deployment-lifecycle-manager.v1.2.2")
+	err = client.Delete(context.TODO(), objCSV)
+	if err != nil && !errors.IsNotFound(err) {
+		klog.Error("Failed to delete ODLM Cluster Service Version v1.2.2 in the ibm-common-services namespace")
+		return err
+	}
+
+	// delete csv v1.2.3
+	objCSV.SetName("operand-deployment-lifecycle-manager.v1.2.3")
+	err = client.Delete(context.TODO(), objCSV)
+	if err != nil && !errors.IsNotFound(err) {
+		klog.Error("Failed to delete ODLM Cluster Service Version v1.2.3 in the ibm-common-services namespace")
+		return err
+	}
 	return nil
 }
