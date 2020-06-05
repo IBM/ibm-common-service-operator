@@ -1,0 +1,15 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cs324-init
+  namespace: kube-system
+spec:
+  template:
+    spec:
+      containers:
+      - name: create-backupdata-pvc
+        image: quay.io/opencloudio/ibm-cs-upgrade-to3.4:v0.8
+        command: ["bash", "-c", "cd /scripts ; ./makebackupvol.sh"]
+        imagePullPolicy: Always
+      restartPolicy: Never

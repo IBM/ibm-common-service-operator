@@ -1,0 +1,15 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cs324-uninstall
+  namespace: kube-system
+spec:
+  template:
+    spec:
+      containers:
+      - name: cs-uninstall
+        image: quay.io/opencloudio/ibm-cs-upgrade-to3.4:v0.8
+        imagePullPolicy: Always
+        command: ["bash", "-c", "cd /scripts/uninstall ;  ./uninstall.sh"]
+      restartPolicy: Never

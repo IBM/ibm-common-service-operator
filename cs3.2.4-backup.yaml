@@ -1,0 +1,26 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cs324-backup
+  namespace: kube-system
+spec:
+  template:
+    spec:
+      containers:
+      - name: icp-mongodb-restore
+        image: quay.io/opencloudio/ibm-cs-upgrade-to3.4:v0.8
+        imagePullPolicy: Always
+        command: ["bash", "-c", "cd /scripts/pre-install ;  ./backup.3.2.4.sh"]
+        volumeMounts:
+        - mountPath: "/scripts/backupdata"
+          name: backupdata
+      volumes:
+      - name: backupdata
+        persistentVolumeClaim:
+          claimName: cs-backupdata
+      restartPolicy: Never
+      securityContext:
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
