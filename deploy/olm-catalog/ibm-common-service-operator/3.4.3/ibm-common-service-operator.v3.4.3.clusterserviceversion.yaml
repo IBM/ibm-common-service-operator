@@ -21,8 +21,8 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    containerImage: quay.io/opencloudio/common-service-operator:3.4
-    createdAt: "2020-04-06T11:28:16Z"
+    containerImage: quay.io/opencloudio/common-service-operator:latest
+    createdAt: "2020-06-05T17:08:59Z"
     csNamespace: |-
       apiVersion: v1
       kind: Namespace
@@ -135,121 +135,121 @@ metadata:
         operators:
         - name: ibm-metering-operator
           namespace: ibm-common-services
-          channel: stable-v1
+          channel: dev
           packageName: ibm-metering-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-licensing-operator
           namespace: ibm-common-services
-          channel: stable-v1
+          channel: dev
           packageName: ibm-licensing-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-mongodb-operator
           namespace: ibm-common-services
-          channel: stable-v1
+          channel: dev
           packageName: ibm-mongodb-operator-app
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-cert-manager-operator
           namespace: ibm-common-services
-          channel: stable-v1
+          channel: dev
           packageName: ibm-cert-manager-operator
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-iam-operator
           namespace: ibm-common-services
-          channel: stable-v1
+          channel: dev
           packageName: ibm-iam-operator
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-healthcheck-operator
           namespace: ibm-common-services
-          channel: stable-v1
+          channel: dev
           packageName: ibm-healthcheck-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-commonui-operator
           namespace: ibm-common-services
-          channel: stable-v1
+          channel: dev
           packageName: ibm-commonui-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-management-ingress-operator
           namespace: ibm-common-services
-          channel: stable-v1
+          channel: dev
           packageName: ibm-management-ingress-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-ingress-nginx-operator
           namespace: ibm-common-services
-          channel: stable-v1
+          channel: dev
           packageName: ibm-ingress-nginx-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-auditlogging-operator
           namespace: ibm-common-services
-          channel: stable-v1
+          channel: dev
           packageName: ibm-auditlogging-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-catalog-ui-operator
           namespace: ibm-common-services
-          channel: stable-v1
+          channel: dev
           packageName: ibm-catalog-ui-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-platform-api-operator
           namespace: ibm-common-services
-          channel: stable-v1
+          channel: dev
           packageName: ibm-platform-api-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-helm-api-operator
           namespace: ibm-common-services
-          channel: stable-v1
+          channel: dev
           packageName: ibm-helm-api-operator-app
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-helm-repo-operator
           namespace: ibm-common-services
-          channel: stable-v1
+          channel: dev
           packageName: ibm-helm-repo-operator-app
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-monitoring-exporters-operator
           namespace: ibm-common-services
-          channel: stable-v1
+          channel: dev
           packageName: ibm-monitoring-exporters-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-monitoring-prometheusext-operator
           namespace: ibm-common-services
-          channel: stable-v1
+          channel: dev
           packageName: ibm-monitoring-prometheusext-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
-        - channel: stable-v1
+        - channel: dev
           name: ibm-monitoring-grafana-operator
           namespace: ibm-common-services
           packageName: ibm-monitoring-grafana-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
-        - channel: stable-v1
+        - channel: dev
           name: ibm-elastic-stack-operator
           namespace: ibm-common-services
           packageName: ibm-elastic-stack-operator-app
@@ -267,12 +267,12 @@ metadata:
         annotations:
           version: "1"
       spec:
-        channel: stable-v1
+        channel: dev
         installPlanApproval: Automatic
         name: operand-deployment-lifecycle-manager-app
         source: opencloud-operators
         sourceNamespace: openshift-marketplace
-    olm.skipRange: '>=3.3.0 <3.4.1'
+    olm.skipRange: '>=3.3.0 <3.4.3'
     rbac: |-
       apiVersion: rbac.authorization.k8s.io/v1
       kind: Role
@@ -484,7 +484,7 @@ metadata:
                 - /tmp/ansible-operator/runner
                 - stdout
                 # Replace this with the built image name
-                image: "quay.io/opencloudio/ibm-secretshare-operator@sha256:e6587d27db30e269428e85c2a7a33892051248ffa18a73c7c750f6577a8fc484"
+                image: "quay.io/opencloudio/ibm-secretshare-operator:v1.0"
                 imagePullPolicy: "Always"
                 volumeMounts:
                 - mountPath: /tmp/ansible-operator/runner
@@ -499,7 +499,7 @@ metadata:
                     memory: 200Mi
               - name: operator
                 # Replace this with the built image name
-                image: "quay.io/opencloudio/ibm-secretshare-operator@sha256:e6587d27db30e269428e85c2a7a33892051248ffa18a73c7c750f6577a8fc484"
+                image: "quay.io/opencloudio/ibm-secretshare-operator:v1.0"
                 imagePullPolicy: "Always"
                 volumeMounts:
                 - mountPath: /tmp/ansible-operator/runner
@@ -2139,7 +2139,7 @@ metadata:
             serviceAccountName: ibm-common-service-webhook
             containers:
               - name: ibm-common-service-webhook
-                image: quay.io/opencloudio/ibm-cs-webhook@sha256:3e03c060166bb5df5afa206e7d32b664243d16931dea0545b01d06909bb60e96
+                image: quay.io/opencloudio/ibm-cs-webhook:1.0.0
                 command:
                 - ibm-common-service-webhook
                 imagePullPolicy: Always
@@ -2180,7 +2180,7 @@ metadata:
         name: ibm-common-service-webhook
         namespace: ibm-common-services
       spec: {}
-  name: ibm-common-service-operator.v3.4.1
+  name: ibm-common-service-operator.v3.4.3
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -2214,7 +2214,7 @@ spec:
 
     ## Operator versions
 
-     - 3.4.1
+     - 3.4.3
 
     ## Prerequisites
 
@@ -2291,7 +2291,7 @@ spec:
                       fieldPath: metadata.name
                 - name: OPERATOR_NAME
                   value: ibm-common-service-operator
-                image: quay.io/opencloudio/common-service-operator@sha256:7e4d08a3d0cd26bae1184d72420d80cd2de157ef1dc69037006ffcf08e9c9a0b
+                image: quay.io/opencloudio/common-service-operator:latest
                 imagePullPolicy: Always
                 name: ibm-common-service-operator
                 resources:
@@ -2329,5 +2329,5 @@ spec:
   maturity: alpha
   provider:
     name: IBM
-  replaces: ibm-common-service-operator.v3.4.0
-  version: 3.4.1
+  replaces: ibm-common-service-operator.v3.4.2
+  version: 3.4.3
