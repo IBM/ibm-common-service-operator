@@ -1,5 +1,5 @@
 - [Install IBM Common Services](#install-ibm-common-services)
-  * [1.Create OperatorSource](#1create-operatorsource)
+  * [1.Create CatalogSource](#1create-catalogsource)
   * [2.Create a Namespace](#2create-a-namespace)
   * [3.Install IBM Common Service Operator](#3install-ibm-common-service-operator)
     + [Search IBM Common Service Operator in the OperatorHub](#search-ibm-common-service-operator-in-the-operatorhub)
@@ -16,50 +16,50 @@ Usually IBM Common Services is packaged into the CloudPaks, if you install Cloud
 
 If you want to install IBM Common Services only, you can follow the steps to install one or more individual common services.
 
+**NOTE: This doc is only for developers and early adopters, please reference IBM Knowledge Center if you are a customer: https://www.ibm.com/support/knowledgecenter/SSHKN6/kc_welcome_cs.html**
 
-## 1.Create OperatorSource
 
-The OperatorSource is used to define the external data store used to store Operator bundles.
+## 1.Create CatalogSource
 
-By default, OpenShift has build-in three OperatorSources and all the released IBM Common Services operators are published to one of the build-in OperatorSources, so if you want to install a released version of IBM Common Services, you don't need to create the OperatorSource.
+The CatalogSource is used to host IBM Common Services operators.
 
-But if you want to install a development version of IBM Common Services, then you need to create following OperatorSource.
 
 ```yaml
-apiVersion: operators.coreos.com/v1
-kind: OperatorSource
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
 metadata:
   name: opencloud-operators
   namespace: openshift-marketplace
 spec:
-  authorizationToken: {}
   displayName: IBMCS Operators
-  endpoint: https://quay.io/cnr
   publisher: IBM
-  registryNamespace: opencloudio
-  type: appregistry
+  sourceType: grpc
+  image: quay.io/opencloudio/ibm-common-service-catalog:latest
+  updateStrategy:
+    registryPoll:
+      interval: 60m
 ```
 
-Open the OpenShift Web Console, click the plus button in top right corner, and then copy the above operator source into the editor.
+Open the OpenShift Web Console, click the plus button in top right corner, and then copy the above catalog source into the editor.
 
 ![Create OperatorSource](./images/create-operator-source.png)
 
-Check if operator packages are loaded, run command:
+Check if the CatalogSource pod is running or not:
 
 ```bash
-oc -n openshift-marketplace get operatorsource opencloud-operators -o jsonpath="{.status.packages}"
+oc -n openshift-marketplace get pod | grep opencloud-operators
 ```
 
-The output is a list of operators
+The output is a running pod:
 
 ```yaml
-ibm-monitoring-prometheusext-operator-app,ibm-cert-manager-operator-app,ibm-commonui-operator-app,operand-deployment-lifecycle-manager-app...
+opencloud-operators-6k6q8               1/1     Running   0          36m
 ```
 
-**Note:** During development, if you need to update the csv package frequently, but the operator source needs a long time to sync the new package, you can delete the catalog source to trigger a reload. Then the new packages will be updated immediately.
+**Note:** Removing the CatalogSource pod will trigger an immediate reload of CatalogSource. And if you are using OpenShift v4.3 cluster, you also need to manually remove the CatalogSource pod to trigger a reload, then the new operators will be updated automatically.
 
 ```bash
-oc -n openshift-marketplace delete catalogsource opencloud-operators
+oc -n openshift-marketplace delete pod -l olm.catalogSource=opencloud-operators
 ```
 
 
