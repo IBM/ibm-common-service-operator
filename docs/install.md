@@ -34,10 +34,10 @@ spec:
   displayName: IBMCS Operators
   publisher: IBM
   sourceType: grpc
-  image: quay.io/opencloudio/ibm-common-service-catalog:latest
+  image: docker.io/ibmcom/ibm-common-service-catalog:latest
   updateStrategy:
     registryPoll:
-      interval: 60m
+      interval: 45m
 ```
 
 Open the OpenShift Web Console, click the plus button in top right corner, and then copy the above catalog source into the editor.
