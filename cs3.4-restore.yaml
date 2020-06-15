@@ -17,11 +17,15 @@ spec:
           name: backupdata
         env:
         - name: SUBSCRIPTION_CHANNEL
-          value: beta
+          value: stable-v1
         - name: NOLOGRESTORE
           value: ""
         - name: MQ_NAMESPACE
           value: ""
+        - name: CS_NAMESPACE
+          value: ibm-common-services
+        - name: CATALOG_IMAGE
+          value: docker.io/ibmcom/ibm-common-service-catalog:latest
       volumes:
       - name: backupdata
         persistentVolumeClaim:
