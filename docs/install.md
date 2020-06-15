@@ -23,6 +23,7 @@ If you want to install IBM Common Services only, you can follow the steps to ins
 
 The CatalogSource is used to host IBM Common Services operators.
 
+You need to create the CatalogSource as a prerequisite for the IBM common services installation.
 
 ```yaml
 apiVersion: operators.coreos.com/v1alpha1
@@ -34,15 +35,15 @@ spec:
   displayName: IBMCS Operators
   publisher: IBM
   sourceType: grpc
-  image: quay.io/opencloudio/ibm-common-service-catalog:latest
+  image: docker.io/ibmcom/ibm-common-service-catalog:latest
   updateStrategy:
     registryPoll:
-      interval: 60m
+      interval: 45m
 ```
 
-Open the OpenShift Web Console, click the plus button in top right corner, and then copy the above catalog source into the editor.
+Open the OpenShift Web Console, click the plus button in top right corner, and then copy the above CatalogSource into the editor.
 
-![Create OperatorSource](./images/create-operator-source.png)
+![Create CatalogSource](./images/create-catalog-source.png)
 
 Check if the CatalogSource pod is running or not:
 

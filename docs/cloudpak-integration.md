@@ -1,8 +1,13 @@
-- [CloudPak Integration](#cloudpak-integration)
-  * [1.Create OperatorSource](#1create-operatorsource)
-  * [2.Make CloudPak depends on IBM Common Service Operator](#2make-cloudpak-depends-on-ibm-common-service-operator)
-  * [3.Install Individual Common Services](#3install-individual-common-services)
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
+- [CloudPak Integration](#cloudpak-integration)
+  - [1.Create CatalogSource](#1create-catalogsource)
+  - [2.Make CloudPak depends on IBM Common Service Operator](#2make-cloudpak-depends-on-ibm-common-service-operator)
+  - [3.Install Individual Common Services](#3install-individual-common-services)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 # CloudPak Integration
 
@@ -11,32 +16,31 @@ Install IBM Common Services along with CloudPaks.
 IBM Common Services is invisible to CloudPak users, when CloudPak users install the CloudPak, IBM Common Services will be seamlessly installed.
 
 
-## 1.Create OperatorSource
+## 1.Create CatalogSource
 
-The OperatorSource is used to define the external data store used to store Operator bundles.
+The OLM uses CatalogSources, which use the Operator Registry API, to query for available Operators as well as upgrades for installed Operators.
 
-By default, OpenShift has build-in three OperatorSources and all the released IBM Common Services operators are published to one of the build-in OperatorSources, so if you want to install a released version of IBM Common Services, you don't need to create the OperatorSource.
-
-But if you want to install a development version of IBM Common Services, then you need to create following OperatorSource.
+You need to create the CatalogSource as a prerequisite for the IBM common services installation.
 
 ```yaml
-apiVersion: operators.coreos.com/v1
-kind: OperatorSource
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
 metadata:
   name: opencloud-operators
   namespace: openshift-marketplace
 spec:
-  authorizationToken: {}
   displayName: IBMCS Operators
-  endpoint: https://quay.io/cnr
   publisher: IBM
-  registryNamespace: opencloudio
-  type: appregistry
+  sourceType: grpc
+  image: docker.io/ibmcom/ibm-common-service-catalog:latest
+  updateStrategy:
+    registryPoll:
+      interval: 45m
 ```
 
-Open the OpenShift Web Console, click the plus button in top right corner, and then copy the above operator source into the editor.
+Open the OpenShift Web Console, click the plus button in top right corner, and then copy the above CatalogSource into the editor.
 
-![Create OperatorSource](./images/create-operator-source.png)
+![Create CatalogSource](./images/create-catalog-source.png)
 
 
 ## 2.Make CloudPak depends on IBM Common Service Operator
