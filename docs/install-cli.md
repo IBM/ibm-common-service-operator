@@ -19,18 +19,19 @@ The OperatorSource is used to define the external data store used to store Opera
 But if you want to install a development version of IBM Common Services, then you need to create following OperatorSource.
 
 ```yaml
-apiVersion: operators.coreos.com/v1
-kind: OperatorSource
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
 metadata:
   name: opencloud-operators
   namespace: openshift-marketplace
 spec:
-  authorizationToken: {}
   displayName: IBMCS Operators
-  endpoint: https://quay.io/cnr
   publisher: IBM
-  registryNamespace: opencloudio
-  type: appregistry
+  sourceType: grpc
+  image: quay.io/opencloudio/ibm-common-service-catalog:dev-latest
+  updateStrategy:
+    registryPoll:
+      interval: 45m
 ```
 
 ## 2. Create Namespace, OperatorGroup and Subscription
