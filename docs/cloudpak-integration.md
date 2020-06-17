@@ -20,18 +20,19 @@ By default, OpenShift has build-in three OperatorSources and all the released IB
 But if you want to install a development version of IBM Common Services, then you need to create following OperatorSource.
 
 ```yaml
-apiVersion: operators.coreos.com/v1
-kind: OperatorSource
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
 metadata:
   name: opencloud-operators
   namespace: openshift-marketplace
 spec:
-  authorizationToken: {}
   displayName: IBMCS Operators
-  endpoint: https://quay.io/cnr
   publisher: IBM
-  registryNamespace: opencloudio
-  type: appregistry
+  sourceType: grpc
+  image: quay.io/opencloudio/ibm-common-service-catalog:dev-latest
+  updateStrategy:
+    registryPoll:
+      interval: 45m
 ```
 
 Open the OpenShift Web Console, click the plus button in top right corner, and then copy the above operator source into the editor.
@@ -304,7 +305,7 @@ spec:
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
   - channel: stable-v1
-    description: Operator that installs and manages Elastic Stack logging service instances. 
+    description: Operator that installs and manages Elastic Stack logging service instances.
     name: ibm-elastic-stack-operator
     namespace: ibm-common-services
     packageName: ibm-elastic-stack-operator-app

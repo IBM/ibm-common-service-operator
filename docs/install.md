@@ -34,10 +34,10 @@ spec:
   displayName: IBMCS Operators
   publisher: IBM
   sourceType: grpc
-  image: quay.io/opencloudio/ibm-common-service-catalog:latest
+  image: quay.io/opencloudio/ibm-common-service-catalog:dev-latest
   updateStrategy:
     registryPoll:
-      interval: 60m
+      interval: 45m
 ```
 
 Open the OpenShift Web Console, click the plus button in top right corner, and then copy the above catalog source into the editor.
@@ -116,7 +116,6 @@ spec:
         - name: ibm-licensing-operator
         - name: ibm-metering-operator
         - name: ibm-commonui-operator
-        - name: ibm-elastic-stack-operator
         - name: ibm-ingress-nginx-operator
         - name: ibm-auditlogging-operator
         - name: ibm-platform-api-operator
