@@ -15,26 +15,26 @@
 # limitations under the License.
 
 function msg() {
-    printf '%b\n' "$1"
+  printf '%b\n' "$1"
 }
 
 function success() {
-    msg "\33[32m[✔] ${1}\33[0m"
+  msg "\33[32m[✔] ${1}\33[0m"
 }
 
 function warning() {
-    msg "\33[33m[✗] ${1}\33[0m"
+  msg "\33[33m[✗] ${1}\33[0m"
 }
 
 function error() {
-    msg "\33[31m[✘] ${1}\33[0m"
+  msg "\33[31m[✘] ${1}\33[0m"
 }
 
 function title() {
-    msg "\33[34m# ${1}\33[0m"
+  msg "\33[34m# ${1}\33[0m"
 }
 
-function wait_for_deleted(){
+function wait_for_deleted() {
   kinds=$1
   ns=${2:---all-namespaces}
   index=0
@@ -49,13 +49,13 @@ function wait_for_deleted(){
     done
 
     if [[ "${rc}" != "0" ]]; then
-      [[ $(( $index % 5 )) -eq 0 ]] && msg "Resources are deleting, waiting for complete..."
+      [[ $(($index % 5)) -eq 0 ]] && msg "Resources are deleting, waiting for complete..."
       if [[ ${index} -eq ${retries} ]]; then
         error "Timeout for wait all resource deleted"
         return 1
       fi
       sleep 60
-      index=$(( index + 1 ))
+      index=$((index + 1))
     else
       success "All resources have been deleted"
       break
@@ -68,7 +68,7 @@ function delete_sub_csv() {
   ns=$2
   for sub in ${subs}; do
     csv=$(oc get sub ${sub} -n ${ns} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
-    [[ "X${csv}" != "X" ]] && oc delete csv ${csv}  -n ${ns} --ignore-not-found
+    [[ "X${csv}" != "X" ]] && oc delete csv ${csv} -n ${ns} --ignore-not-found
     oc delete sub ${sub} -n ${ns} --ignore-not-found
   done
 }
@@ -97,7 +97,6 @@ function delete_operand_finalizer() {
   done
 }
 
-
 function delete_apiservice() {
   rc=0
   apis=$(oc get apiservice | grep False | awk '{print $1}')
@@ -108,7 +107,7 @@ function delete_apiservice() {
       oc delete apiservice ${api}
       if [[ "$?" != "0" ]]; then
         error "Delete apiservcie ${api} failed"
-        rc=$(( rc + 1 ))
+        rc=$((rc + 1))
         continue
       fi
     done
@@ -139,6 +138,10 @@ oc delete RoleBinding ibmcloud-cluster-info -n kube-public --ignore-not-found
 oc delete Role ibmcloud-cluster-info -n kube-public --ignore-not-found
 oc delete RoleBinding ibmcloud-cluster-ca-cert -n kube-public --ignore-not-found
 oc delete Role ibmcloud-cluster-ca-cert -n kube-public --ignore-not-found
+
+oc delete ClusterRole nginx-ingress-clusterrole --ignore-not-found
+oc delete ClusterRoleBinding $(oc get ClusterRoleBinding | grep nginx-ingress-clusterrole | awk '{print $1}') --ignore-not-found
+oc delete scc nginx-ingress-scc --ignore-not-found
 
 title "Force deleting operand resources"
 crds=$(oc get crd | grep ibm.com | awk '{print $1}')
