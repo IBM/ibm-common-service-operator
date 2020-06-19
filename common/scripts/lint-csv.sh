@@ -18,31 +18,38 @@
 STATUS=0
 ARCH=$(uname -m)
 VERSION=${CSV_VERSION:-3.4.1}
+[[ "${ARCH}" != "x86_64" ]] && exit 0
 
-if [[ $ARCH == "x86_64" ]]; then
+JQ=$(command -v jq)
+YQ=$(command -v yq)
+
+if [[ "X${JQ}" == "X" ]]; then
     curl -L -o /tmp/jq https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
+    chmod +x /tmp/jq
+    JQ=/tmp/jq
+fi
+if [[ "X${YQ}" == "X" ]]; then
     curl -L -o /tmp/yq https://github.com/mikefarah/yq/releases/download/3.3.0/yq_linux_amd64
-    chmod +x /tmp/jq /tmp/yq
-else
-    exit 0
+    chmod +x /tmp/yq
+    YQ=/tmp/yq
 fi
 
 CSV_PATH=deploy/olm-catalog/ibm-common-service-operator/${VERSION}/ibm-common-service-operator.v${VERSION}.clusterserviceversion.yaml
 
 # Lint alm-examples
 echo "Lint alm-examples"
-/tmp/yq r $CSV_PATH metadata.annotations.alm-examples | /tmp/jq . >/dev/null || STATUS=1
+$YQ r $CSV_PATH metadata.annotations.alm-examples | $JQ . >/dev/null || STATUS=1
 
 # Lint yamls, only CS Operator needs this part
 for section in csNamespace csOperandConfig csOperandRegistry odlmSubscription; do
     echo "Lint $section"
-    /tmp/yq r $CSV_PATH metadata.annotations.$section | /tmp/yq r - >/dev/null || STATUS=1
+    $YQ r $CSV_PATH metadata.annotations.$section | $YQ r - >/dev/null || STATUS=1
 done
 
-sections=$(/tmp/yq r $CSV_PATH metadata.annotations.extraResources)
+sections=$($YQ r $CSV_PATH metadata.annotations.extraResources)
 for section in ${sections//,/ }; do
     echo "Lint $section"
-    /tmp/yq r $CSV_PATH metadata.annotations.$section | /tmp/yq r - >/dev/null || STATUS=1
+    $YQ r $CSV_PATH metadata.annotations.$section | $YQ r - >/dev/null || STATUS=1
 done
 
 exit $STATUS
