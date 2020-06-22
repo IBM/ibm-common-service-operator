@@ -25,6 +25,8 @@ The CatalogSource is used to host IBM Common Services operators.
 
 You need to create the CatalogSource as a prerequisite for the IBM common services installation.
 
+### For OpenShift 4.4 or later clusters
+
 ```yaml
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
@@ -35,7 +37,7 @@ spec:
   displayName: IBMCS Operators
   publisher: IBM
   sourceType: grpc
-  image: docker.io/ibmcom/ibm-common-service-catalog:latest
+  image: quay.io/opencloudio/ibm-common-service-catalog:dev-latest
   updateStrategy:
     registryPoll:
       interval: 45m
@@ -57,10 +59,30 @@ The output is a running pod:
 opencloud-operators-6k6q8               1/1     Running   0          36m
 ```
 
-**Note:** Removing the CatalogSource pod will trigger an immediate reload of CatalogSource. And if you are using OpenShift v4.3 cluster, you also need to manually remove the CatalogSource pod to trigger a reload, then the new operators will be updated automatically.
+### For OpenShift 4.3 cluster
+
+Run following command to create the CatalogSource:
+
+```
+oc apply -f https://github.com/IBM/ibm-common-service-catalog/releases/download/v0.4.3/catalog.yaml
+```
+
+Check if the CatalogSource pod is running or not:
 
 ```bash
-oc -n openshift-marketplace delete pod -l olm.catalogSource=opencloud-operators
+oc -n kube-system get pod | grep opencloud-operators
+```
+
+The output is a running pod:
+
+```yaml
+opencloud-operators-6k6q8               1/1     Running   0          36m
+```
+
+**Note:** Removing the CatalogSource pod will trigger an immediate reload of CatalogSource. And if you are using OpenShift v4.3 cluster, you need to manually remove the CatalogSource pod to trigger a reload, then the new operators will be updated automatically.
+
+```bash
+oc -n kube-system delete pod -l olm.catalogSource=opencloud-operators
 ```
 
 
@@ -117,7 +139,6 @@ spec:
         - name: ibm-licensing-operator
         - name: ibm-metering-operator
         - name: ibm-commonui-operator
-        - name: ibm-elastic-stack-operator
         - name: ibm-ingress-nginx-operator
         - name: ibm-auditlogging-operator
         - name: ibm-platform-api-operator

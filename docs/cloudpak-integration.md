@@ -32,7 +32,7 @@ spec:
   displayName: IBMCS Operators
   publisher: IBM
   sourceType: grpc
-  image: docker.io/ibmcom/ibm-common-service-catalog:latest
+  image: quay.io/opencloudio/ibm-common-service-catalog:dev-latest
   updateStrategy:
     registryPoll:
       interval: 45m
@@ -308,7 +308,7 @@ spec:
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
   - channel: stable-v1
-    description: Operator that installs and manages Elastic Stack logging service instances. 
+    description: Operator that installs and manages Elastic Stack logging service instances.
     name: ibm-elastic-stack-operator
     namespace: ibm-common-services
     packageName: ibm-elastic-stack-operator-app
