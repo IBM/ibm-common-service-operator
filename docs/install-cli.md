@@ -3,8 +3,8 @@
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
 - [Install IBM Common Services with CLI](#install-ibm-common-services-with-cli)
-  - [1. Create OperatorSource](#1-create-operatorsource)
-  - [2. Create Operator NS, Group, Subscription](#2-create-operator-ns-group-subscription)
+  - [1. Create CatalogSource](#1-create-catalogsource)
+  - [2. Create Namespace, OperatorGroup and Subscription](#2-create-namespace-operatorgroup-and-subscription)
   - [3. Waiting for Operator CSV is ready](#3-waiting-for-operator-csv-is-ready)
   - [4. Create OperandRequest instance](#4-create-operandrequest-instance)
 
@@ -12,11 +12,11 @@
 
 # Install IBM Common Services with CLI
 
-## 1. Create OperatorSource
+## 1. Create CatalogSource
 
-The OperatorSource is used to define the external data store used to store Operator bundles.
+The OLM uses CatalogSources, which use the Operator Registry API, to query for available Operators as well as upgrades for installed Operators.
 
-But if you want to install a development version of IBM Common Services, then you need to create following OperatorSource.
+You need to create the CatalogSource as a prerequisite for the IBM common services installation.
 
 ```yaml
 apiVersion: operators.coreos.com/v1alpha1
