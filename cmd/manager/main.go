@@ -138,8 +138,8 @@ func main() {
 	}
 	klog.Info("finish installing ODLM operator and initialize IBM Common Services")
 
-	klog.Info("check IAM pods status")
-	check.IamStatus(mgr)
+	// Check IAM pods status
+	go check.IamStatus(mgr)
 
 	// Setup all Controllers
 	if err := controller.AddToManager(mgr); err != nil {

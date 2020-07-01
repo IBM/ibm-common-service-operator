@@ -20,6 +20,7 @@ import (
 	"context"
 	"time"
 
+	olmv1alpha1 "github.com/operator-framework/operator-lifecycle-manager/pkg/api/apis/operators/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -40,12 +41,25 @@ func IamStatus(mgr manager.Manager) {
 	client := mgr.GetClient()
 
 	for {
+		if !getIamSubscription(client) {
+			time.Sleep(2 * time.Minute)
+			continue
+		}
 		iamStatus := overallIamStatus(reader)
 		if err := createUpdateConfigmap(reader, client, iamStatus); err != nil {
 			klog.Error("create or update configmap failed")
 		}
 		time.Sleep(2 * time.Minute)
 	}
+}
+
+// getIamSubscription return true if IAM subscription found, otherwise return false
+func getIamSubscription(client client.Client) bool {
+	subName := "ibm-iam-operator"
+	subNs := "ibm-common-services"
+	sub := &olmv1alpha1.Subscription{}
+	err := client.Get(context.TODO(), types.NamespacedName{Name: subName, Namespace: subNs}, sub)
+	return err == nil
 }
 
 func overallIamStatus(reader client.Reader) string {
