@@ -66,7 +66,7 @@ uninstall: ## Uninstall all that all performed in the $ make install
 
 run: ## Run against the configured Kubernetes cluster in ~/.kube/config
 	@echo ....... Start Operator locally with go run ......
-	WATCH_NAMESPACE=${NAMESPACE} go run ./cmd/manager/main.go
+	WATCH_NAMESPACE= go run ./cmd/manager/main.go -v=2 --zap-encoder=console
 
 code-dev:
 	go mod tidy

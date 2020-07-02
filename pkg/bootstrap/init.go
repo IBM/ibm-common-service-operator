@@ -28,11 +28,12 @@ import (
 	"time"
 
 	utilyaml "github.com/ghodss/yaml"
+	olmv1alpha1 "github.com/operator-framework/operator-lifecycle-manager/pkg/api/apis/operators/v1alpha1"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/runtime/serializer/streaming"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
@@ -71,7 +72,7 @@ func InitResources(mgr manager.Manager) error {
 	}
 
 	klog.Info("check existing ODLM operator")
-	if err = deleteExistingODLM(client); err != nil {
+	if err := deleteExistingODLM(reader, client); err != nil {
 		return err
 	}
 
@@ -285,58 +286,40 @@ func yamlToObject(yamlContent []byte) (*unstructured.Unstructured, error) {
 	return obj, nil
 }
 
-func deleteExistingODLM(client client.Client) error {
-	// delete subscription
-	objSub := &unstructured.Unstructured{}
-	objSub.SetGroupVersionKind(schema.GroupVersionKind{Group: "operators.coreos.com", Kind: "Subscription", Version: "v1alpha1"})
-	objSub.SetName("operand-deployment-lifecycle-manager-app")
-	objSub.SetNamespace("ibm-common-services")
-	err := client.Delete(context.TODO(), objSub)
-	if err != nil && !errors.IsNotFound(err) {
-		klog.Error("Failed to delete ODLM subscription in the ibm-common-services namespace")
-		return err
+func deleteExistingODLM(r client.Reader, c client.Client) error {
+	// Get existing ODLM subscription
+	subName := "operand-deployment-lifecycle-manager-app"
+	subNs := "ibm-common-services"
+	key := types.NamespacedName{Name: subName, Namespace: subNs}
+	sub := &olmv1alpha1.Subscription{}
+	if err := r.Get(context.TODO(), key, sub); err != nil {
+		if errors.IsNotFound(err) {
+			klog.V(3).Info("NotFound ODLM subscription in the ibm-common-services namespace")
+		} else {
+			klog.Error("Failed to get ODLM subscription in the ibm-common-services namespace")
+		}
+		return client.IgnoreNotFound(err)
 	}
 
-	// delete csv v1.1.0
-	objCSV := &unstructured.Unstructured{}
-	objCSV.SetGroupVersionKind(schema.GroupVersionKind{Group: "operators.coreos.com", Kind: "ClusterServiceVersion", Version: "v1alpha1"})
-	objCSV.SetNamespace("ibm-common-services")
-	objCSV.SetName("operand-deployment-lifecycle-manager.v1.1.0")
-	err = client.Delete(context.TODO(), objCSV)
-	if err != nil && !errors.IsNotFound(err) {
-		klog.Error("Failed to delete ODLM Cluster Service Version v1.1.0 in the ibm-common-services namespace")
-		return err
+	// Delete existing ODLM csv
+	csvName := sub.Status.InstalledCSV
+	csvNs := subNs
+	if csvName != "" {
+		csv := &olmv1alpha1.ClusterServiceVersion{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      csvName,
+				Namespace: csvNs,
+			},
+		}
+		if err := c.Delete(context.TODO(), csv); err != nil && !errors.IsNotFound(err) {
+			klog.Error("Failed to delete ODLM Cluster Service Versio in the ibm-common-services namespace")
+			return err
+		}
 	}
 
-	// delete csv v1.2.0
-	objCSV.SetName("operand-deployment-lifecycle-manager.v1.2.0")
-	err = client.Delete(context.TODO(), objCSV)
-	if err != nil && !errors.IsNotFound(err) {
-		klog.Error("Failed to delete ODLM Cluster Service Version v1.2.0 in the ibm-common-services namespace")
-		return err
-	}
-
-	// delete csv v1.2.1
-	objCSV.SetName("operand-deployment-lifecycle-manager.v1.2.1")
-	err = client.Delete(context.TODO(), objCSV)
-	if err != nil && !errors.IsNotFound(err) {
-		klog.Error("Failed to delete ODLM Cluster Service Version v1.2.1 in the ibm-common-services namespace")
-		return err
-	}
-
-	// delete csv v1.2.2
-	objCSV.SetName("operand-deployment-lifecycle-manager.v1.2.2")
-	err = client.Delete(context.TODO(), objCSV)
-	if err != nil && !errors.IsNotFound(err) {
-		klog.Error("Failed to delete ODLM Cluster Service Version v1.2.2 in the ibm-common-services namespace")
-		return err
-	}
-
-	// delete csv v1.2.3
-	objCSV.SetName("operand-deployment-lifecycle-manager.v1.2.3")
-	err = client.Delete(context.TODO(), objCSV)
-	if err != nil && !errors.IsNotFound(err) {
-		klog.Error("Failed to delete ODLM Cluster Service Version v1.2.3 in the ibm-common-services namespace")
+	// Delete existing ODLM subscription
+	if err := c.Delete(context.TODO(), sub); err != nil && !errors.IsNotFound(err) {
+		klog.Error("Failed to delete ODLM Cluster Service Versio in the ibm-common-services namespace")
 		return err
 	}
 	return nil
