@@ -312,14 +312,14 @@ func deleteExistingODLM(r client.Reader, c client.Client) error {
 			},
 		}
 		if err := c.Delete(context.TODO(), csv); err != nil && !errors.IsNotFound(err) {
-			klog.Error("Failed to delete ODLM Cluster Service Versio in the ibm-common-services namespace")
+			klog.Error("Failed to delete ODLM Cluster Service Version in the ibm-common-services namespace")
 			return err
 		}
 	}
 
 	// Delete existing ODLM subscription
 	if err := c.Delete(context.TODO(), sub); err != nil && !errors.IsNotFound(err) {
-		klog.Error("Failed to delete ODLM Cluster Service Versio in the ibm-common-services namespace")
+		klog.Error("Failed to delete ODLM Cluster Service Version in the ibm-common-services namespace")
 		return err
 	}
 	return nil
