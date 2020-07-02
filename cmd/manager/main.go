@@ -33,6 +33,7 @@ import (
 	"github.com/IBM/ibm-common-service-operator/pkg/controller"
 	"github.com/IBM/ibm-common-service-operator/version"
 
+	olmv1alpha1 "github.com/operator-framework/operator-lifecycle-manager/pkg/api/apis/operators/v1alpha1"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	"github.com/operator-framework/operator-sdk/pkg/leader"
 	"github.com/operator-framework/operator-sdk/pkg/log/zap"
@@ -115,7 +116,14 @@ func main() {
 	klog.Info("Registering Components.")
 
 	// Setup Scheme for all resources
-	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
+	mgrScheme := mgr.GetScheme()
+	// Add cs operator apis to mgr scheme
+	if err := apis.AddToScheme(mgrScheme); err != nil {
+		klog.Error(err)
+		os.Exit(1)
+	}
+	// Add olmv1alpha1 apis to mgr sheme
+	if err := olmv1alpha1.AddToScheme(mgrScheme); err != nil {
 		klog.Error(err)
 		os.Exit(1)
 	}
