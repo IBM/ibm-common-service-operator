@@ -36,6 +36,7 @@ var (
 	JobNames    = []string{"iam-onboarding", "security-onboarding", "oidc-client-registration"}
 )
 
+// IamStatus check IAM status if ready
 func IamStatus(mgr manager.Manager) {
 	reader := mgr.GetAPIReader()
 	client := mgr.GetClient()
@@ -126,6 +127,7 @@ func createUpdateConfigmap(reader client.Reader, client client.Client, status st
 			if err := client.Create(context.TODO(), cm); err != nil {
 				return err
 			}
+			return nil
 		}
 		return err
 	}
