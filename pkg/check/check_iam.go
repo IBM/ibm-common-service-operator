@@ -38,16 +38,16 @@ var (
 
 // IamStatus check IAM status if ready
 func IamStatus(mgr manager.Manager) {
-	reader := mgr.GetAPIReader()
-	client := mgr.GetClient()
+	r := mgr.GetAPIReader()
+	c := mgr.GetClient()
 
 	for {
-		if !getIamSubscription(client) {
+		if !getIamSubscription(r) {
 			time.Sleep(2 * time.Minute)
 			continue
 		}
-		iamStatus := overallIamStatus(reader)
-		if err := createUpdateConfigmap(reader, client, iamStatus); err != nil {
+		iamStatus := overallIamStatus(r)
+		if err := createUpdateConfigmap(r, c, iamStatus); err != nil {
 			klog.Error("create or update configmap failed")
 		}
 		time.Sleep(2 * time.Minute)
@@ -55,23 +55,23 @@ func IamStatus(mgr manager.Manager) {
 }
 
 // getIamSubscription return true if IAM subscription found, otherwise return false
-func getIamSubscription(client client.Client) bool {
+func getIamSubscription(r client.Reader) bool {
 	subName := "ibm-iam-operator"
 	subNs := "ibm-common-services"
 	sub := &olmv1alpha1.Subscription{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: subName, Namespace: subNs}, sub)
+	err := r.Get(context.TODO(), types.NamespacedName{Name: subName, Namespace: subNs}, sub)
 	return err == nil
 }
 
-func overallIamStatus(reader client.Reader) string {
+func overallIamStatus(r client.Reader) string {
 	for _, deploy := range DeployNames {
-		status := getDeploymentStatus(reader, deploy)
+		status := getDeploymentStatus(r, deploy)
 		if status == "NotReady" {
 			return status
 		}
 	}
 	for _, job := range JobNames {
-		status := getJobStatus(reader, job)
+		status := getJobStatus(r, job)
 		if status == "NotReady" {
 			return status
 		}
@@ -79,11 +79,11 @@ func overallIamStatus(reader client.Reader) string {
 	return "Ready"
 }
 
-func getJobStatus(client client.Reader, name string) string {
+func getJobStatus(r client.Reader, name string) string {
 	job := &batchv1.Job{}
 	jobName := name
 	jobNs := "ibm-common-services"
-	err := client.Get(context.TODO(), types.NamespacedName{Name: jobName, Namespace: jobNs}, job)
+	err := r.Get(context.TODO(), types.NamespacedName{Name: jobName, Namespace: jobNs}, job)
 	if err != nil {
 		return "NotReady"
 	}
@@ -94,12 +94,12 @@ func getJobStatus(client client.Reader, name string) string {
 	return "NotReady"
 }
 
-func getDeploymentStatus(reader client.Reader, name string) string {
+func getDeploymentStatus(r client.Reader, name string) string {
 	deploy := &appsv1.Deployment{}
 	deployName := name
 	deployNs := "ibm-common-services"
 
-	err := reader.Get(context.TODO(), types.NamespacedName{Name: deployName, Namespace: deployNs}, deploy)
+	err := r.Get(context.TODO(), types.NamespacedName{Name: deployName, Namespace: deployNs}, deploy)
 	if err != nil {
 		return "NotReady"
 	}
@@ -110,21 +110,21 @@ func getDeploymentStatus(reader client.Reader, name string) string {
 	return "Ready"
 }
 
-func createUpdateConfigmap(reader client.Reader, client client.Client, status string) error {
+func createUpdateConfigmap(r client.Reader, c client.Client, status string) error {
 	cm := &corev1.ConfigMap{}
 	cmName := "ibm-common-services-status"
 	cmNs := "kube-public"
 	if status == "NotReady" {
 		klog.Info("IAM status is NoReady, waiting some minutes...")
 	}
-	err := reader.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: cmNs}, cm)
+	err := r.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: cmNs}, cm)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			cm.Name = cmName
 			cm.Namespace = cmNs
 			cm.Data = make(map[string]string)
 			cm.Data["iamstatus"] = status
-			if err := client.Create(context.TODO(), cm); err != nil {
+			if err := c.Create(context.TODO(), cm); err != nil {
 				return err
 			}
 			return nil
@@ -134,7 +134,7 @@ func createUpdateConfigmap(reader client.Reader, client client.Client, status st
 	if cm.Data["iamstatus"] != status {
 		klog.Infof("IAM status is %s", status)
 		cm.Data["iamstatus"] = status
-		if err = client.Update(context.TODO(), cm); err != nil {
+		if err = c.Update(context.TODO(), cm); err != nil {
 			return err
 		}
 	}
