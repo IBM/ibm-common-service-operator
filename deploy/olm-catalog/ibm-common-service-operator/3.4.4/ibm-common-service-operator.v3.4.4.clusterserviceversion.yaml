@@ -89,6 +89,7 @@ metadata:
         - name: ibm-auditlogging-operator
           spec:
             auditLogging: {}
+            operandBindInfo: {}
             operandRequest: {}
         - name: ibm-catalog-ui-operator
           spec:
