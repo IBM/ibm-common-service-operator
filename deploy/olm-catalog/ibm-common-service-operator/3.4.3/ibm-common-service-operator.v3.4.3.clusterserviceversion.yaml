@@ -21,7 +21,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    containerImage: quay.io/opencloudio/common-service-operator@sha256:edc97cb4eeaab265c86c65721552b8f04522ff53e8f0a4528af0ac232c9fc857
+    containerImage: quay.io/opencloudio/common-service-operator@sha256:c117b84595e507381d7fc635cdcaab6146a299579990b9514a1ab7a099f5f8f8
     createdAt: "2020-06-05T17:08:59Z"
     csNamespace: |-
       apiVersion: v1
@@ -491,7 +491,7 @@ metadata:
                 - /tmp/ansible-operator/runner
                 - stdout
                 # Replace this with the built image name
-                image: "quay.io/opencloudio/ibm-secretshare-operator:v1.0"
+                image: "quay.io/opencloudio/ibm-secretshare-operator@sha256:9c49e926d5034f34935d54cecfc282a448c7ac6bf511742a3c0cc34dcc28190e"
                 imagePullPolicy: "Always"
                 volumeMounts:
                 - mountPath: /tmp/ansible-operator/runner
@@ -506,7 +506,7 @@ metadata:
                     memory: 200Mi
               - name: operator
                 # Replace this with the built image name
-                image: "quay.io/opencloudio/ibm-secretshare-operator:v1.0"
+                image: "quay.io/opencloudio/ibm-secretshare-operator@sha256:9c49e926d5034f34935d54cecfc282a448c7ac6bf511742a3c0cc34dcc28190e"
                 imagePullPolicy: "Always"
                 volumeMounts:
                 - mountPath: /tmp/ansible-operator/runner
@@ -2305,7 +2305,7 @@ spec:
                       fieldPath: metadata.name
                 - name: OPERATOR_NAME
                   value: ibm-common-service-operator
-                image: quay.io/opencloudio/common-service-operator@sha256:edc97cb4eeaab265c86c65721552b8f04522ff53e8f0a4528af0ac232c9fc857
+                image: quay.io/opencloudio/common-service-operator@sha256:c117b84595e507381d7fc635cdcaab6146a299579990b9514a1ab7a099f5f8f8
                 imagePullPolicy: Always
                 name: ibm-common-service-operator
                 resources:

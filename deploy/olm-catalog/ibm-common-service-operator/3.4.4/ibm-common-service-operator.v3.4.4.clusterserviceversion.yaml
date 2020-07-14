@@ -491,7 +491,7 @@ metadata:
                 - /tmp/ansible-operator/runner
                 - stdout
                 # Replace this with the built image name
-                image: "quay.io/opencloudio/ibm-secretshare-operator:v1.0"
+                image: "quay.io/opencloudio/ibm-secretshare-operator:v1.1"
                 imagePullPolicy: "Always"
                 volumeMounts:
                 - mountPath: /tmp/ansible-operator/runner
@@ -506,7 +506,7 @@ metadata:
                     memory: 200Mi
               - name: operator
                 # Replace this with the built image name
-                image: "quay.io/opencloudio/ibm-secretshare-operator:v1.0"
+                image: "quay.io/opencloudio/ibm-secretshare-operator:v1.1"
                 imagePullPolicy: "Always"
                 volumeMounts:
                 - mountPath: /tmp/ansible-operator/runner
