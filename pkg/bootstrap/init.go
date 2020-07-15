@@ -58,16 +58,15 @@ func InitResources(mgr manager.Manager) error {
 	client := mgr.GetClient()
 	reader := mgr.GetAPIReader()
 	config := mgr.GetConfig()
-	deploy, err := getDeployment(reader)
+
+	// Get all the resources from the deployment annotations
+	annotations, err := GetAnnotations(reader)
 	if err != nil {
 		return err
 	}
 
-	// Get all the resources from the deployment annotations
-	annotations := deploy.Spec.Template.GetAnnotations()
-
 	klog.Info("create namespace for common services")
-	if err := createOrUpdateResources(annotations, CsNsResources, client, reader); err != nil {
+	if err := CreateOrUpdateResources(annotations, CsNsResources, client, reader); err != nil {
 		return err
 	}
 
@@ -77,12 +76,12 @@ func InitResources(mgr manager.Manager) error {
 	}
 
 	klog.Info("create ODLM operator")
-	if err := createOrUpdateResources(annotations, OdlmSubResources, client, reader); err != nil {
+	if err := CreateOrUpdateResources(annotations, OdlmSubResources, client, reader); err != nil {
 		return err
 	}
 
 	klog.Info("create extra resources for common services")
-	if err := createOrUpdateResources(annotations, strings.Split(annotations[CsExtResource], ","), client, reader); err != nil {
+	if err := CreateOrUpdateResources(annotations, strings.Split(annotations[CsExtResource], ","), client, reader); err != nil {
 		return err
 	}
 
@@ -93,14 +92,14 @@ func InitResources(mgr manager.Manager) error {
 	if err := waitResourceReady(config, "operator.ibm.com/v1alpha1", "OperandConfig"); err != nil {
 		return err
 	}
-	if err := createOrUpdateResources(annotations, OdlmCrResources, client, reader); err != nil {
+	if err := CreateOrUpdateResources(annotations, OdlmCrResources, client, reader); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func createOrUpdateResources(annotations map[string]string, resNames []string, client client.Client, reader client.Reader) error {
+func CreateOrUpdateResources(annotations map[string]string, resNames []string, client client.Client, reader client.Reader) error {
 	for _, res := range resNames {
 		if r, ok := annotations[res]; ok {
 			klog.Infof("create resource: %s", res)
@@ -112,6 +111,16 @@ func createOrUpdateResources(annotations map[string]string, resNames []string, c
 		}
 	}
 	return nil
+}
+
+func GetAnnotations(reader client.Reader) (map[string]string, error) {
+	deploy, err := getDeployment(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get all the resources from the deployment annotations
+	return deploy.Spec.Template.GetAnnotations(), nil
 }
 
 func getDeployment(reader client.Reader) (*appsv1.Deployment, error) {

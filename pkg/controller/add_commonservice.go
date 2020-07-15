@@ -14,14 +14,13 @@
 // limitations under the License.
 //
 
-package apis
+package controller
 
 import (
-	v3 "github.com/IBM/ibm-common-service-operator/pkg/apis/operator/v3"
-	odlmv1alpha1 "github.com/IBM/operand-deployment-lifecycle-manager/pkg/apis/operator/v1alpha1"
+	"github.com/IBM/ibm-common-service-operator/pkg/controller/commonservice"
 )
 
 func init() {
-	// Register the types with the Scheme so the components can map objects to GroupVersionKinds and back
-	AddToSchemes = append(AddToSchemes, v3.SchemeBuilder.AddToScheme, odlmv1alpha1.SchemeBuilder.AddToScheme)
+	// AddToManagerFuncs is a list of functions to create controllers and add them to a manager.
+	AddToManagerFuncs = append(AddToManagerFuncs, commonservice.Add)
 }
