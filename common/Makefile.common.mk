@@ -76,4 +76,20 @@ code-gen:
 bundle:
 	@common/scripts/create_bundle.sh ${CSV_VERSION}
 
+build-history-index-image:
+	- BUNDLE_IMAGE_VERSION=3.3.0 BUNDLE_MANIFESTS_PATH=3.3.0 CHANNELS=stable-v1 make push-bundle-image
+	- BUNDLE_IMAGE_VERSION=3.4.0 BUNDLE_MANIFESTS_PATH=3.4.0 CHANNELS=stable-v1 make push-bundle-image
+	- BUNDLE_IMAGE_VERSION=3.4.1 BUNDLE_MANIFESTS_PATH=3.4.1 CHANNELS=stable-v1 make push-bundle-image
+	- BUNDLE_IMAGE_VERSION=3.4.2 BUNDLE_MANIFESTS_PATH=3.4.2 CHANNELS=stable-v1 make push-bundle-image
+	- BUNDLE_IMAGE_VERSION=3.4.3 BUNDLE_MANIFESTS_PATH=3.4.3 CHANNELS=stable-v1 make push-bundle-image
+	- BUNDLE_IMAGE_VERSION=3.4.4 BUNDLE_MANIFESTS_PATH=3.4.4 CHANNELS=stable-v1,beta make push-bundle-image
+	- opm index add --permissive -c docker --bundles \
+	$(IMAGE_REPO)/$(BUNDLE_IMAGE_NAME)-$(LOCAL_ARCH):3.3.0,\
+	$(IMAGE_REPO)/$(BUNDLE_IMAGE_NAME)-$(LOCAL_ARCH):3.4.0,\
+	$(IMAGE_REPO)/$(BUNDLE_IMAGE_NAME)-$(LOCAL_ARCH):3.4.1,\
+	$(IMAGE_REPO)/$(BUNDLE_IMAGE_NAME)-$(LOCAL_ARCH):3.4.2,\
+	$(IMAGE_REPO)/$(BUNDLE_IMAGE_NAME)-$(LOCAL_ARCH):3.4.3,\
+	$(IMAGE_REPO)/$(BUNDLE_IMAGE_NAME)-$(LOCAL_ARCH):3.4.4 \
+	--tag $(IMAGE_REPO)/$(INDEX_IMAGE_NAME)-$(LOCAL_ARCH):$(INDEX_IMAGE_VERSION_HIS)
+
 .PHONY: code-vet code-fmt code-tidy code-gen csv-gen lint-copyright-banner lint-go lint-all config-docker install-operator-sdk bundle

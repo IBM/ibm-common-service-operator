@@ -17,7 +17,11 @@
 
 STATUS=0
 ARCH=$(uname -m)
-VERSION=${CSV_VERSION:-3.4.1}
+VERSION=${CSV_VERSION:-}
+CSV_PATH=deploy/olm-catalog/ibm-common-service-operator/manifests/ibm-common-service-operator.clusterserviceversion.yaml
+if [[ "X${VERSION}" != "X" ]]; then
+    CSV_PATH=deploy/olm-catalog/ibm-common-service-operator/${VERSION}/ibm-common-service-operator.v${VERSION}.clusterserviceversion.yaml
+fi
 [[ "${ARCH}" != "x86_64" ]] && exit 0
 
 JQ=$(command -v jq)
@@ -33,8 +37,6 @@ if [[ "X${YQ}" == "X" ]]; then
     chmod +x /tmp/yq
     YQ=/tmp/yq
 fi
-
-CSV_PATH=deploy/olm-catalog/ibm-common-service-operator/${VERSION}/ibm-common-service-operator.v${VERSION}.clusterserviceversion.yaml
 
 # Lint alm-examples
 echo "Lint alm-examples"
