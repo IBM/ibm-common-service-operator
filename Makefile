@@ -1,7 +1,7 @@
 QUAY_REPO ?= quay.io/opencloudio
 IMAGE_NAME ?= common-service-operator
 OPERATOR_NAME ?= ibm-common-service-operator
-CSV_VERSION ?= 3.4.5
+OPERATOR_VERSION ?= 3.4.5
 VERSION ?= $(shell git describe --exact-match 2> /dev/null || \
 				git describe --match=$(git rev-parse --short=8 HEAD) --always --dirty --abbrev=8)
 
@@ -10,9 +10,6 @@ VCS_REF ?= $(shell git rev-parse HEAD)
 
 # The namespce that operator will be deployed in
 NAMESPACE=ibm-common-services
-
-QUAY_USERNAME ?=
-QUAY_PASSWORD ?=
 
 BUILD_LOCALLY ?= 1
 
@@ -34,68 +31,120 @@ endif
 
 include common/Makefile.common.mk
 
-install: ## Install all resources (CR/CRD's, RBAC and Operator)
-	@echo ....... Set environment variables ......
-	- export WATCH_NAMESPACE=${NAMESPACE}
-	@echo ....... Creating namespace .......
-	- kubectl create namespace ${NAMESPACE}
-	@echo ....... Applying CRDs .......
-	- kubectl apply -f deploy/crds/operator.ibm.com_commonservices_crd.yaml
-	@echo ....... Applying RBAC .......
-	- kubectl apply -f deploy/service_account.yaml -n ${NAMESPACE}
-	- kubectl apply -f deploy/role.yaml -n ${NAMESPACE}
-	- kubectl apply -f deploy/role_binding.yaml -n ${NAMESPACE}
-	@echo ....... Applying Operator .......
-	- kubectl apply -f deploy/operator.yaml -n ${NAMESPACE}
-	@echo ....... Creating the Instances .......
-	- kubectl apply -f deploy/crds/operator.ibm.com_v3_commonservice_cr.yaml -n ${NAMESPACE}
-uninstall: ## Uninstall all that all performed in the $ make install
-	@echo ....... Uninstalling .......
-	@echo ....... Deleting the Instances .......
-	- kubectl delete -f deploy/crds/operator.ibm.com_v3_commonservice_cr.yaml -n ${NAMESPACE} --ignore-not-found
-	@echo ....... Deleting Operator .......
-	- kubectl delete -f deploy/operator.yaml -n ${NAMESPACE} --ignore-not-found
-	@echo ....... Deleting CRDs .......
-	- kubectl delete -f deploy/crds/operator.ibm.com_commonservices_crd.yaml --ignore-not-found
-	@echo ....... Deleting RBAC .......
-	- kubectl delete -f deploy/role_binding.yaml -n ${NAMESPACE} --ignore-not-found
-	- kubectl delete -f deploy/service_account.yaml -n ${NAMESPACE} --ignore-not-found
-	- kubectl delete -f deploy/role.yaml -n ${NAMESPACE} --ignore-not-found
-	@echo ....... Deleting namespace ${NAMESPACE}.......
-	- kubectl delete namespace ${NAMESPACE} --ignore-not-found
+# Default bundle image tag
+BUNDLE_IMG ?= common-service-operator-bundle:$(OPERATOR_VERSION)
+# Options for 'bundle-build'
+ifneq ($(origin CHANNELS), undefined)
+BUNDLE_CHANNELS := --channels=$(CHANNELS)
+endif
+ifneq ($(origin DEFAULT_CHANNEL), undefined)
+BUNDLE_DEFAULT_CHANNEL := --default-channel=$(DEFAULT_CHANNEL)
+endif
+BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 
-run: ## Run against the configured Kubernetes cluster in ~/.kube/config
-	@echo ....... Start Operator locally with go run ......
-	WATCH_NAMESPACE= go run ./cmd/manager/main.go -v=2 --zap-encoder=console
+# Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
+CRD_OPTIONS ?= "crd:trivialVersions=true"
 
-code-dev:
-	go mod tidy
+# Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
+ifeq (,$(shell go env GOBIN))
+GOBIN=$(shell go env GOPATH)/bin
+else
+GOBIN=$(shell go env GOBIN)
+endif
 
-check: code-dev lint-all
-	CSV_VERSION=$(CSV_VERSION) ./common/scripts/lint-csv.sh
+all: manager
 
-test:
-	echo good
+# Run tests
+test: generate code-fmt code-vet manifests
+	go test ./... -coverprofile cover.out
+
+# Build manager binary
+manager: generate code-fmt code-vet
+	go build -o bin/manager main.go
+
+# Run against the configured Kubernetes cluster in ~/.kube/config
+run: generate code-fmt code-vet manifests
+	go run ./main.go
+
+# Install CRDs into a cluster
+install: manifests kustomize
+	$(KUSTOMIZE) build config/crd | kubectl apply -f -
+
+# Uninstall CRDs from a cluster
+uninstall: manifests kustomize
+	$(KUSTOMIZE) build config/crd | kubectl delete -f -
+
+# Deploy controller in the configured Kubernetes cluster in ~/.kube/config
+deploy: manifests kustomize
+	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMAGE_NAME}
+	$(KUSTOMIZE) build config/default | kubectl apply -f -
+
+# Generate manifests e.g. CRD, RBAC etc.
+manifests: controller-gen
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+
+# Generate code
+generate: controller-gen
+	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+
+# find or download controller-gen
+# download controller-gen if necessary
+controller-gen:
+ifeq (, $(shell which controller-gen))
+	@{ \
+	set -e ;\
+	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
+	cd $$CONTROLLER_GEN_TMP_DIR ;\
+	go mod init tmp ;\
+	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.3.0 ;\
+	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
+	}
+CONTROLLER_GEN=$(GOBIN)/controller-gen
+else
+CONTROLLER_GEN=$(shell which controller-gen)
+endif
+
+kustomize:
+ifeq (, $(shell which kustomize))
+	@{ \
+	set -e ;\
+	KUSTOMIZE_GEN_TMP_DIR=$$(mktemp -d) ;\
+	cd $$KUSTOMIZE_GEN_TMP_DIR ;\
+	go mod init tmp ;\
+	go get sigs.k8s.io/kustomize/kustomize/v3@v3.5.4 ;\
+	rm -rf $$KUSTOMIZE_GEN_TMP_DIR ;\
+	}
+KUSTOMIZE=$(GOBIN)/kustomize
+else
+KUSTOMIZE=$(shell which kustomize)
+endif
+
+check: code-tidy lint-all
+	CSV_VERSION=$(OPERATOR_VERSION) ./common/scripts/lint-csv.sh
 
 build: check
-	CGO_ENABLED=0 go build -o build/_output/bin/$(OPERATOR_NAME) cmd/manager/main.go
-	@strip build/_output/bin/$(OPERATOR_NAME) || true
+	CGO_ENABLED=0 GO111MODULE=on go build -a -o manager main.go
 
-build-push-image: build-image push-image
+build-push-image: push-image
 
-build-image: build
+build-image:
 	@echo "Building the $(IMAGE_NAME) docker image for $(LOCAL_ARCH)..."
-	@docker build -t $(QUAY_REPO)/$(IMAGE_NAME)-$(LOCAL_ARCH):$(VERSION) --build-arg VCS_REF=$(VCS_REF) --build-arg VCS_URL=$(VCS_URL) -f build/Dockerfile .
+	@docker build -t $(QUAY_REPO)/$(IMAGE_NAME)-$(LOCAL_ARCH):$(VERSION) --build-arg VCS_REF=$(VCS_REF) --build-arg VCS_URL=$(VCS_URL) .
 
 push-image: $(CONFIG_DOCKER_TARGET) build-image
 	@echo "Pushing the $(IMAGE_NAME) docker image for $(LOCAL_ARCH)..."
 	@docker push $(QUAY_REPO)/$(IMAGE_NAME)-$(LOCAL_ARCH):$(VERSION)
 
-generate-csv:
-	operator-sdk generate csv --csv-version $(CSV_VERSION) --update-crds
-
-push-csv:
-	QUAY_REPO=$(QUAY_REPO) OPERATOR_NAME=$(OPERATOR_NAME) VERSION=$(CSV_VERSION) common/scripts/push-csv.sh
-
 multiarch-image: $(CONFIG_DOCKER_TARGET)
 	@MAX_PULLING_RETRY=20 RETRY_INTERVAL=30 common/scripts/multiarch_image.sh $(QUAY_REPO) $(IMAGE_NAME) $(VERSION)
+
+
+# Generate bundle manifests and metadata, then validate generated files.
+bundle: manifests
+	operator-sdk generate kustomize manifests -q
+	kustomize build config/manifests | operator-sdk generate bundle -q --overwrite --version $(OPERATOR_VERSION) $(BUNDLE_METADATA_OPTS)
+	operator-sdk bundle validate ./bundle
+
+# Build the bundle image.
+bundle-build:
+	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
