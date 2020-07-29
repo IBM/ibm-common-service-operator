@@ -34,6 +34,27 @@ spec:
           type: object
         spec:
           description: CommonServiceSpec defines the desired state of CommonService
+          properties:
+            services:
+              items:
+                properties:
+                  name:
+                    type: string
+                  spec:
+                    additionalProperties:
+                      type: object
+                    type: object
+                required:
+                - name
+                - spec
+                type: object
+              type: array
+            size:
+              description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
+                Important: Run "operator-sdk generate k8s" to regenerate code after
+                modifying this file Add custom validation using kubebuilder tags:
+                https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html'
+              type: string
           type: object
         status:
           description: CommonServiceStatus defines the observed state of CommonService

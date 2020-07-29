@@ -18,6 +18,7 @@ package v3
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -28,6 +29,13 @@ type CommonServiceSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
+	Size     string          `json:"size,omitempty"`
+	Services []ServiceConfig `json:"services,omitempty"`
+}
+
+type ServiceConfig struct {
+	Name string                          `json:"name"`
+	Spec map[string]runtime.RawExtension `json:"spec"`
 }
 
 // CommonServiceStatus defines the observed state of CommonService
