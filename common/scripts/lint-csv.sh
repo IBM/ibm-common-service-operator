@@ -34,7 +34,7 @@ if [[ "X${YQ}" == "X" ]]; then
     YQ=/tmp/yq
 fi
 
-CSV_PATH=deploy/olm-catalog/ibm-common-service-operator/${VERSION}/ibm-common-service-operator.v${VERSION}.clusterserviceversion.yaml
+CSV_PATH=bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
 
 # Lint alm-examples
 echo "Lint alm-examples"
