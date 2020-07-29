@@ -1,0 +1,10 @@
+domain: ibm.com
+layout: go.kubebuilder.io/v2
+repo: github.com/IBM/ibm-common-service-operator
+resources:
+- group: operator
+  kind: CommonService
+  version: v3
+version: 3-alpha
+plugins:
+  go.operator-sdk.io/v2-alpha: {}
