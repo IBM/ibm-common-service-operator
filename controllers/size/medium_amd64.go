@@ -17,13 +17,12 @@
 package size
 
 const Medium = `
-services:
 - name: ibm-healthcheck-operator
   spec:
     healthService:
       spec:
         memcached:
-          replicas: 1
+          replicas: 2
           resources:
             requests:
               memory: "64Mi"
