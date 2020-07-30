@@ -74,6 +74,8 @@ metadata:
         - name: ibm-healthcheck-operator
           spec:
             healthService: {}
+            mustgatherService: {}
+            mustgatherConfig: {}
         - name: ibm-commonui-operator
           spec:
             commonWebUI: {}
