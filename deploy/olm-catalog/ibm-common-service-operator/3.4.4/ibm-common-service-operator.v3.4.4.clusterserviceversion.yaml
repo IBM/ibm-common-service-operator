@@ -2305,7 +2305,7 @@ spec:
                       fieldPath: metadata.name
                 - name: OPERATOR_NAME
                   value: ibm-common-service-operator
-                image: quay.io/opencloudio/common-service-operator:latest
+                image: quay.io/opencloudio/common-service-operator:3.4
                 imagePullPolicy: Always
                 name: ibm-common-service-operator
                 resources:
