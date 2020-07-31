@@ -74,6 +74,8 @@ metadata:
         - name: ibm-healthcheck-operator
           spec:
             healthService: {}
+            mustgatherService: {}
+            mustgatherConfig: {}
         - name: ibm-commonui-operator
           spec:
             commonWebUI: {}
@@ -89,6 +91,7 @@ metadata:
         - name: ibm-auditlogging-operator
           spec:
             auditLogging: {}
+            operandBindInfo: {}
             operandRequest: {}
         - name: ibm-catalog-ui-operator
           spec:
