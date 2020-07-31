@@ -17,13 +17,12 @@
 package size
 
 const Large = `
-services:
 - name: ibm-healthcheck-operator
   spec:
     healthService:
       spec:
         memcached:
-          replicas: 1
+          replicas: 3
           resources:
             requests:
               memory: "64Mi"
