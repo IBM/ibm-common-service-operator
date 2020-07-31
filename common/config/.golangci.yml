@@ -36,7 +36,7 @@ linters:
     - gosec
     - gosimple
     - govet
-    - ineffassign
+    # - ineffassign
     - interfacer
     - lll
     - misspell

@@ -17,7 +17,6 @@
 package size
 
 const Small = `
-services:
 - name: ibm-healthcheck-operator
   spec:
     healthService:
