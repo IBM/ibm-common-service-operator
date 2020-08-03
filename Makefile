@@ -30,7 +30,8 @@ ifeq ($(BUILD_LOCALLY),0)
 endif
 
 include common/Makefile.common.mk
-
+CHANNELS ?= dev
+DEFAULT_CHANNEL ?= dev
 # Default bundle image tag
 BUNDLE_IMG ?= common-service-operator-bundle:$(OPERATOR_VERSION)
 # Options for 'bundle-build'
@@ -148,4 +149,4 @@ bundle: manifests
 
 # Build the bundle image.
 bundle-build:
-	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
+	docker build -f bundle.Dockerfile -t $(QUAY_REPO)/$(BUNDLE_IMG) .
