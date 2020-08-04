@@ -150,3 +150,6 @@ bundle: manifests
 # Build the bundle image.
 bundle-build:
 	docker build -f bundle.Dockerfile -t $(QUAY_REPO)/$(BUNDLE_IMG) .
+
+push-csv:
+	QUAY_REPO=$(QUAY_REPO) OPERATOR_NAME=$(OPERATOR_NAME) VERSION=$(OPERATOR_VERSION) common/scripts/push-csv.sh
