@@ -472,7 +472,7 @@ metadata:
         name: secretshare
         namespace: ibm-common-services
         annotations:
-          version: "5"
+          version: "6"
       spec:
         replicas: 1
         selector:
@@ -484,61 +484,41 @@ metadata:
               productID: 068a62892a1e4db39641342e592daa25
               productMetric: FREE
               productName: IBM Cloud Platform Common Services
-              productVersion: 3.4.0
+              productVersion: 3.5.0
             labels:
               name: secretshare
           spec:
             serviceAccountName: secretshare
+            affinity:
+              nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                  - matchExpressions:
+                    - key: beta.kubernetes.io/arch
+                      operator: In
+                      values:
+                      - amd64
+                      - ppc64le
+                      - s390x
             containers:
-              - name: ansible
-                command:
-                - /usr/local/bin/ao-logs
-                - /tmp/ansible-operator/runner
-                - stdout
-                # Replace this with the built image name
-                image: "quay.io/opencloudio/ibm-secretshare-operator:v1.1"
-                imagePullPolicy: "Always"
-                volumeMounts:
-                - mountPath: /tmp/ansible-operator/runner
-                  name: runner
-                  readOnly: true
-                resources:
-                  limits:
-                    cpu: 500m
-                    memory: 512Mi
-                  requests:
-                    cpu: 200m
-                    memory: 200Mi
-              - name: operator
-                # Replace this with the built image name
-                image: "quay.io/opencloudio/ibm-secretshare-operator:v1.1"
-                imagePullPolicy: "Always"
-                volumeMounts:
-                - mountPath: /tmp/ansible-operator/runner
-                  name: runner
-                env:
-                  - name: WATCH_NAMESPACE
-                    valueFrom:
-                      fieldRef:
-                        fieldPath: metadata.namespace
-                  - name: POD_NAME
-                    valueFrom:
-                      fieldRef:
-                        fieldPath: metadata.name
-                  - name: OPERATOR_NAME
-                    value: "secretshare"
-                  - name: ANSIBLE_GATHERING
-                    value: explicit
-                resources:
-                  limits:
-                    cpu: 800m
-                    memory: 1024Mi
-                  requests:
-                    cpu: 200m
-                    memory: 200Mi
-            volumes:
-              - name: runner
-                emptyDir: {}
+            - command:
+              - /manager
+              args:
+              - --enable-leader-election
+              image: quay.io/opencloudio/ibm-secretshare-operator:1.2.0
+              imagePullPolicy: Always
+              name: ibm-common-service-operator
+              env:
+              - name: OPERATOR_NAME
+                value: "secretshare"
+              resources:
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+                requests:
+                  cpu: 200m
+                  memory: 200Mi
+            terminationGracePeriodSeconds: 10
       ---
       apiVersion: ibmcpcs.ibm.com/v1
       kind: SecretShare
@@ -2127,12 +2107,6 @@ metadata:
         name: ibm-common-service-webhook
         apiGroup: rbac.authorization.k8s.io
       ---
-      apiVersion: v1
-      kind: Secret
-      metadata:
-        name: ibm-common-service-webhook-cert
-        namespace: ibm-common-services
-      ---
       apiVersion: apps/v1
       kind: Deployment
       metadata:
@@ -2151,14 +2125,14 @@ metadata:
               productID: 068a62892a1e4db39641342e592daa25
               productMetric: FREE
               productName: IBM Cloud Platform Common Services
-              productVersion: 3.4.0
+              productVersion: 3.5.0
             labels:
               name: ibm-common-service-webhook
           spec:
             serviceAccountName: ibm-common-service-webhook
             containers:
               - name: ibm-common-service-webhook
-                image: quay.io/opencloudio/ibm-cs-webhook:1.0.0
+                image: quay.io/opencloudio/ibm-cs-webhook:1.1.0
                 command:
                 - ibm-common-service-webhook
                 imagePullPolicy: Always
@@ -2184,14 +2158,11 @@ metadata:
                     cpu: 200m
                     memory: 256Mi
                 volumeMounts:
-                  - mountPath: /tmp/cert
-                    name: cert
-                    readOnly: true
+                - name: webhook-certs
+                  mountPath: "/etc/ssl/certs/webhook"
             volumes:
-              - name: cert
-                secret:
-                  defaultMode: 420
-                  secretName: ibm-common-service-webhook-cert
+            - name: webhook-certs
+              emptyDir: {}
       ---
       apiVersion: operator.ibm.com/v1alpha1
       kind: PodPreset
