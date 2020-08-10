@@ -70,7 +70,7 @@ manager: generate code-fmt code-vet
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate code-fmt code-vet manifests
-	go run ./main.go
+	OPERATOR_NAME=ibm-common-service-operator go run ./main.go
 
 # Install CRDs into a cluster
 install: manifests kustomize
