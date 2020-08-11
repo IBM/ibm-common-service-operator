@@ -89,6 +89,10 @@ func (r *CommonServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 		} else {
 			newConfigs = deepMerge(instance.Object["spec"].(map[string]interface{})["services"].([]interface{}), size.Large)
 		}
+	default:
+		if instance.Object["spec"].(map[string]interface{})["services"] != nil {
+			newConfigs = instance.Object["spec"].(map[string]interface{})["services"].([]interface{})
+		}
 	}
 
 	err = r.updateOpcon(ctx, newConfigs)
