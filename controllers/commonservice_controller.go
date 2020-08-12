@@ -31,6 +31,8 @@ import (
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	"github.com/IBM/ibm-common-service-operator/controllers/size"
@@ -47,7 +49,6 @@ type CommonServiceReconciler struct {
 
 func (r *CommonServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
-	klog.Info("Reconciling CommonService")
 	// Fetch the CommonService instance
 	instance := &unstructured.Unstructured{}
 	instance.SetGroupVersionKind(schema.GroupVersionKind{Group: "operator.ibm.com", Kind: "CommonService", Version: "v3"})
@@ -64,6 +65,7 @@ func (r *CommonServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 		return ctrl.Result{}, err
 	}
 
+	klog.Info("Reconciling CommonService")
 	var newConfigs []interface{}
 
 	if instance.Object["spec"] == nil {
@@ -207,8 +209,44 @@ func checkKeyBeforeMerging(key string, defaultMap interface{}, changedMap interf
 	}
 }
 
+// Check if the request's NamespacedName is equal "ibm-common-services/common-service"
+func checkNamespace(key string) bool {
+	if key != "ibm-common-services/common-service" {
+		klog.Infof("Ignore reconcile when commonservices.operator.ibm.com is NamespacedName '%s', only reconcile for NamespacedName 'ibm-common-services/common-service'", key)
+		return false
+	}
+	return true
+}
+
+func filterNamespacePredicate() predicate.Predicate {
+	return predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			// Only reconcle when NamespacedName equal "ibm-common-services/common-service"
+			key := e.Meta.GetNamespace() + "/" + e.Meta.GetName()
+			return checkNamespace(key)
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			// Only reconcle when NamespacedName equal "ibm-common-services/common-service"
+			key := e.MetaNew.GetNamespace() + "/" + e.MetaNew.GetName()
+			return checkNamespace(key)
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			// Evaluates to false if the object has been confirmed deleted.
+			// Only reconcle when NamespacedName equal "ibm-common-services/common-service"
+			key := e.Meta.GetNamespace() + "/" + e.Meta.GetName()
+			return !e.DeleteStateUnknown && checkNamespace(key)
+		},
+		GenericFunc: func(e event.GenericEvent) bool {
+			// Only reconcle when NamespacedName equal "ibm-common-services/common-service"
+			key := e.Meta.GetNamespace() + "/" + e.Meta.GetName()
+			return checkNamespace(key)
+		},
+	}
+}
+
 func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&apiv3.CommonService{}).
+		WithEventFilter(filterNamespacePredicate()).
 		Complete(r)
 }
