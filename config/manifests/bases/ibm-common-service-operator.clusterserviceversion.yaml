@@ -467,7 +467,6 @@ metadata:
               productID: 068a62892a1e4db39641342e592daa25
               productMetric: FREE
               productName: IBM Cloud Platform Common Services
-              productVersion: 3.4.0
             labels:
               name: secretshare
           spec:
@@ -2134,7 +2133,6 @@ metadata:
               productID: 068a62892a1e4db39641342e592daa25
               productMetric: FREE
               productName: IBM Cloud Platform Common Services
-              productVersion: 3.4.0
             labels:
               name: ibm-common-service-webhook
           spec:
