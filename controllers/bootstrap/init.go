@@ -29,6 +29,7 @@ import (
 	"time"
 
 	utilyaml "github.com/ghodss/yaml"
+	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -65,41 +66,11 @@ func InitResources(mgr manager.Manager) error {
 	client := mgr.GetClient()
 	reader := mgr.GetAPIReader()
 	config := mgr.GetConfig()
-	deploy, err := getDeployment(reader)
-	if err != nil {
-		return err
-	}
 
 	// Get all the resources from the deployment annotations
-	annotations := deploy.Spec.Template.GetAnnotations()
-
-	klog.Info("create namespace for common services")
-	if err := createOrUpdateResources(annotations, CsNsResources, client, reader); err != nil {
-		return err
-	}
-
-	// Checking existing CommonService subscription
-	isCsSubExisting, err := isCommonServiceSubExisting(reader, "ibm-common-service-operator", "ibm-common-services")
+	annotations, err := getAnnotations(reader)
 	if err != nil {
 		return err
-	}
-
-	if isCsSubExisting {
-		return nil
-	}
-
-	klog.Info("create cs operator in namespace ibm-common-services")
-	if err := createOrUpdateResources(annotations, csSubResource, client, reader); err != nil {
-		return err
-	}
-
-	operatorNs, err := GetOperatorNamespace()
-	if err != nil {
-		return err
-	}
-
-	if operatorNs != "ibm-common-services" {
-		return nil
 	}
 
 	klog.Info("check existing ODLM operator")
@@ -131,16 +102,62 @@ func InitResources(mgr manager.Manager) error {
 	return nil
 }
 
-func isCommonServiceSubExisting(r client.Reader, name, namespace string) (bool, error) {
-	key := types.NamespacedName{Name: name, Namespace: namespace}
-	sub := &olmv1alpha1.Subscription{}
-	if err := r.Get(context.TODO(), key, sub); err != nil {
-		if errors.IsNotFound(err) {
-			return false, nil
-		}
-		return false, err
+func CreateNamespace(mgr manager.Manager) error {
+	r := mgr.GetAPIReader()
+	c := mgr.GetClient()
+	// Get all the resources from the deployment annotations
+	annotations, err := getAnnotations(r)
+	if err != nil {
+		return err
 	}
-	return true, nil
+
+	klog.Info("create namespace for common services")
+	if err := createOrUpdateResources(annotations, CsNsResources, c, r); err != nil {
+		return err
+	}
+	return nil
+}
+
+func CreateCsSubscription(mgr manager.Manager) error {
+	r := mgr.GetAPIReader()
+	c := mgr.GetClient()
+	// Get all the resources from the deployment annotations
+	annotations, err := getAnnotations(r)
+	if err != nil {
+		return err
+	}
+	klog.Info("create operator group in namespace ibm-common-services")
+	if err := createOperatorGroup(c, r); err != nil {
+		return err
+	}
+	klog.Info("create cs operator in namespace ibm-common-services")
+	if err := createOrUpdateResources(annotations, csSubResource, c, r); err != nil {
+		return err
+	}
+	return nil
+}
+
+func createOperatorGroup(c client.Client, r client.Reader) error {
+	existOG := &olmv1.OperatorGroupList{}
+	if err := r.List(context.TODO(), existOG, &client.ListOptions{Namespace: "ibm-common-services"}); err != nil {
+		return err
+	}
+	if len(existOG.Items) == 0 {
+		if err := createOrUpdateFromYaml([]byte(csog), c, r); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func getAnnotations(r client.Reader) (map[string]string, error) {
+	deploy, err := getDeployment(r)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get all the resources from the deployment annotations
+	return deploy.Spec.Template.GetAnnotations(), nil
 }
 
 func createOrUpdateResources(annotations map[string]string, resNames []string, client client.Client, reader client.Reader) error {
@@ -412,3 +429,14 @@ func ResourceExists(dc discovery.DiscoveryInterface, apiGroupVersion, kind strin
 	}
 	return false, nil
 }
+
+const csog = `
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: ibm-common-service-operator-operatorgroup
+  namespace: ibm-common-services
+spec:
+  targetNamespaces:
+  - ibm-common-services
+`

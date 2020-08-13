@@ -20,6 +20,7 @@ import (
 	"flag"
 	"os"
 
+	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -46,6 +47,7 @@ func init() {
 	// +kubebuilder:scaffold:scheme
 
 	utilruntime.Must(olmv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(olmv1.AddToScheme(scheme))
 }
 
 func main() {
@@ -82,25 +84,43 @@ func main() {
 		os.Exit(1)
 	}
 
-	klog.Info("start installing ODLM operator and initialize IBM Common Services")
-	if err = bootstrap.InitResources(mgr); err != nil {
-		klog.Error("InitResources failed: ", err)
+	operatorNs, err := bootstrap.GetOperatorNamespace()
+	if err != nil {
+		klog.Error("Get operator namespace failed: ", err)
 		os.Exit(1)
 	}
-	klog.Info("finish installing ODLM operator and initialize IBM Common Services")
+	if operatorNs == "ibm-common-services" || operatorNs == "openshift-operators" {
+		klog.Info("start installing ODLM operator and initialize IBM Common Services")
+		if err = bootstrap.InitResources(mgr); err != nil {
+			klog.Error("InitResources failed: ", err)
+			os.Exit(1)
+		}
+		klog.Info("finish installing ODLM operator and initialize IBM Common Services")
 
-	// Check IAM pods status
-	go check.IamStatus(mgr)
+		// Check IAM pods status
+		go check.IamStatus(mgr)
 
-	if err = (&controllers.CommonServiceReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("CommonService"),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		klog.Error(err, "unable to create controller", "controller", "CommonService")
-		os.Exit(1)
+		if err = (&controllers.CommonServiceReconciler{
+			Client: mgr.GetClient(),
+			Log:    ctrl.Log.WithName("controllers").WithName("CommonService"),
+			Scheme: mgr.GetScheme(),
+		}).SetupWithManager(mgr); err != nil {
+			klog.Error(err, "unable to create controller", "controller", "CommonService")
+			os.Exit(1)
+		}
+		// +kubebuilder:scaffold:builder
+	} else {
+		if err = bootstrap.CreateNamespace(mgr); err != nil {
+			klog.Error("Create ibm-common-services namespace failed: ", err)
+			os.Exit(1)
+		}
+		klog.Info("start create common service operator")
+		if err = bootstrap.CreateCsSubscription(mgr); err != nil {
+			klog.Error("Create common service operator subscription failed: ", err)
+			os.Exit(1)
+		}
+		klog.Info("Finish create common service operator")
 	}
-	// +kubebuilder:scaffold:builder
 
 	klog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {

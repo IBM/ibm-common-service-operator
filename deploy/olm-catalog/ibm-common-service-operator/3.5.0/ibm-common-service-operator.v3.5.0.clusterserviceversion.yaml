@@ -259,6 +259,20 @@ metadata:
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
+    csOperatorSubscription: |-
+      apiVersion: operators.coreos.com/v1alpha1
+      kind: Subscription
+      metadata:
+        name: ibm-common-service-operator
+        namespace: ibm-common-services
+        annotations:
+          version: "5"
+      spec:
+        channel: dev
+        installPlanApproval: Automatic
+        name: ibm-common-service-operator
+        source: opencloud-operators
+        sourceNamespace: openshift-marketplace
     description: The IBM Common Service Operator is used to deploy IBM Common Services
     extraResources: webhookCRD,webhookOperator,secretShareOperator,rbac
     odlmSubscription: |-
