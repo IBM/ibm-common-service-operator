@@ -466,14 +466,6 @@ metadata:
         - patch
         - update
         - watch
-      - apiGroups:
-        - operators.coreos.com
-        resources:
-        - subscriptions
-        verbs:
-        - get
-        - list
-        - watch
       ---
       kind: ClusterRoleBinding
       apiVersion: rbac.authorization.k8s.io/v1
@@ -2363,4 +2355,5 @@ spec:
   maturity: alpha
   provider:
     name: IBM
+  replaces: ibm-common-service-operator.v3.4.5
   version: 3.5.0

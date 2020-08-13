@@ -8,7 +8,7 @@ metadata:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: controller-manager
+  name: common-service-operator
   namespace: system
   labels:
     control-plane: controller-manager
@@ -34,7 +34,7 @@ spec:
         productID: "068a62892a1e4db39641342e592daa25"
         productMetric: "FREE"
     spec:
-      serviceAccountName: ibm-common-service-operator-manager-role
+      serviceAccountName: ibm-common-service-operator
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -56,7 +56,7 @@ spec:
         name: ibm-common-service-operator
         env:
         - name: OPERATOR_NAME
-          value: "ibm-common-service-operator-controller-manager"
+          value: "ibm-common-service-operator"
         resources:
           limits:
             cpu: 500m
@@ -64,4 +64,12 @@ spec:
           requests:
             cpu: 100m
             memory: 200Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          privileged: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
       terminationGracePeriodSeconds: 10
