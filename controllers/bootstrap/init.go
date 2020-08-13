@@ -49,6 +49,7 @@ import (
 var (
 	CsNsResources    = []string{"csNamespace"}
 	CsExtResource    = "extraResources"
+	csSubResource    = []string{"csOperatorSubscription"}
 	OdlmSubResources = []string{"odlmSubscription"}
 	OdlmCrResources  = []string{"csOperandRegistry", "csOperandConfig"}
 )
@@ -75,6 +76,30 @@ func InitResources(mgr manager.Manager) error {
 	klog.Info("create namespace for common services")
 	if err := createOrUpdateResources(annotations, CsNsResources, client, reader); err != nil {
 		return err
+	}
+
+	// Checking existing CommonService subscription
+	isCsSubExisting, err := isCommonServiceSubExisting(reader, "ibm-common-service-operator", "ibm-common-services")
+	if err != nil {
+		return err
+	}
+
+	if isCsSubExisting {
+		return nil
+	}
+
+	klog.Info("create cs operator in namespace ibm-common-services")
+	if err := createOrUpdateResources(annotations, csSubResource, client, reader); err != nil {
+		return err
+	}
+
+	operatorNs, err := GetOperatorNamespace()
+	if err != nil {
+		return err
+	}
+
+	if operatorNs != "ibm-common-services" {
+		return nil
 	}
 
 	klog.Info("check existing ODLM operator")
@@ -104,6 +129,18 @@ func InitResources(mgr manager.Manager) error {
 	}
 
 	return nil
+}
+
+func isCommonServiceSubExisting(r client.Reader, name, namespace string) (bool, error) {
+	key := types.NamespacedName{Name: name, Namespace: namespace}
+	sub := &olmv1alpha1.Subscription{}
+	if err := r.Get(context.TODO(), key, sub); err != nil {
+		if errors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 func createOrUpdateResources(annotations map[string]string, resNames []string, client client.Client, reader client.Reader) error {
