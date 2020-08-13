@@ -371,9 +371,8 @@ const Small = `
               cpu: "10m"
 - name: ibm-auditlogging-operator
   spec:
-    commonAudit:
+    auditLogging:
       spec:
-        replicas: 1
         fluentd:
           resources:
             requests:
