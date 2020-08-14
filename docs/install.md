@@ -1,11 +1,20 @@
 - [Install IBM Common Services](#install-ibm-common-services)
   * [1.Create CatalogSource](#1create-catalogsource)
+    + [For OpenShift 4.4 or later clusters](#for-openshift-44-or-later-clusters)
+    + [For OpenShift 4.3 cluster](#for-openshift-43-cluster)
   * [2.Create a Namespace](#2create-a-namespace)
   * [3.Install IBM Common Service Operator](#3install-ibm-common-service-operator)
     + [Search IBM Common Service Operator in the OperatorHub](#search-ibm-common-service-operator-in-the-operatorhub)
     + [Install IBM Common Service Operator](#install-ibm-common-service-operator)
-  * [4.Install Individual Common Services](#4install-individual-common-services)
-  * [5.Manage Individual Common Service Operators](#5manage-individual-common-service-operators)
+  * [4.Configure IBM Common Services](#4configure-ibm-common-services)
+    + [Configure Size](#configure-size)
+    + [Configure general parameters](#configure-general-parameters)
+  * [5.Install Individual Common Services](#5install-individual-common-services)
+  * [6.Manage Individual Common Service Operators](#6manage-individual-common-service-operators)
+
+<!--
+<small><i><a href='http://ecotrust-canada.github.io/markdown-toc/'>Table of contents generated with markdown-toc</a></i></small>
+-->
 
 
 # Install IBM Common Services
@@ -115,7 +124,45 @@ Waiting for few minutes the IBM Common Service Operator and ODLM will be install
 
 So far, the IBM Common Service Operator and ODLM operator installation is completed. Next, you can start to install individual common services.
 
-## 4.Install Individual Common Services
+## 4.Configure IBM Common Services
+
+### Configure Size
+
+Open the OpenShift Web Console, click the plus button in top right corner, then copy following CR into the editor and create.
+
+```
+apiVersion: operator.ibm.com/v3
+kind: CommonService
+metadata:
+  name: common-service
+  namespace: ibm-common-services
+spec:
+  size: small
+```
+
+The supported sizes are: `small`, `medium` and `large`.
+
+### Configure general parameters
+
+Take MongoDB as an example, following is configure MongoDB storage class:
+
+```
+apiVersion: operator.ibm.com/v3
+kind: CommonService
+metadata:
+  name: common-service
+  namespace: ibm-common-services
+spec:
+  size: small
+  services:
+  - name: ibm-mongodb-operator
+    spec:
+      mongoDB:
+        spec:
+          storageClass: cephfs
+```
+
+## 5.Install Individual Common Services
 
 Install individual common services by creating an OperandRequest. All these common services will be deployed into the namespace `ibm-common-services`, which cannot be changed.
 
@@ -151,7 +198,7 @@ spec:
 Open the OpenShift Web Console, click the plus button in top right corner, then copy the above OperandRequest into the editor and create.
 
 
-## 5.Manage Individual Common Service Operators
+## 6.Manage Individual Common Service Operators
 
 Navigate to `Installed Operators` page in OpenShift console, click `ODLM` operator and choose project `ibm-common-services`, then click `All Instances`.
 
