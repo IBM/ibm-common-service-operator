@@ -2241,9 +2241,9 @@ spec:
           - '*'
           verbs:
           - '*'
-        serviceAccountName: ibm-common-service-operator-manager-role
+        serviceAccountName: ibm-common-service-operator
       deployments:
-      - name: ibm-common-service-operator-controller-manager
+      - name: ibm-common-service-operator
         spec:
           replicas: 1
           selector:
@@ -2282,7 +2282,7 @@ spec:
                 - /manager
                 env:
                 - name: OPERATOR_NAME
-                  value: ibm-common-service-operator-controller-manager
+                  value: ibm-common-service-operator
                 image: quay.io/opencloudio/common-service-operator:latest
                 imagePullPolicy: Always
                 name: ibm-common-service-operator
@@ -2301,7 +2301,7 @@ spec:
                   privileged: false
                   readOnlyRootFilesystem: true
                   runAsNonRoot: true
-              serviceAccountName: ibm-common-service-operator-manager-role
+              serviceAccountName: ibm-common-service-operator
               terminationGracePeriodSeconds: 10
       permissions:
       - rules:
