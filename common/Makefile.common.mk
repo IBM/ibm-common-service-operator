@@ -31,10 +31,10 @@ get-cluster-credentials: activate-serviceaccount
 	gcloud container clusters get-credentials "$(CLUSTER)" --project="$(PROJECT)" --zone="$(ZONE)"
 
 config-docker: get-cluster-credentials
-	@common/scripts/config_docker.sh
+	@common/scripts/artifactory_config_docker.sh
 
-install-operator-sdk:
-	@operator-sdk version 2> /dev/null ; if [ $$? -ne 0 ]; then ./common/scripts/install-operator-sdk.sh; fi
+config-docker-quay: get-cluster-credentials
+	@common/scripts/quay_config_docker.sh
 
 FINDFILES=find . \( -path ./.git -o -path ./.github \) -prune -o -type f
 XARGS = xargs -0 ${XARGS_FLAGS}
@@ -64,13 +64,4 @@ code-tidy:
 	@echo go mod tidy
 	go mod tidy -v
 
-# Run the operator-sdk commands to generated code (k8s and openapi and csv)
-code-gen:
-	@echo Updating the deep copy files with the changes in the API
-	operator-sdk generate k8s
-	@echo Updating the CRD files with the OpenAPI validations
-	operator-sdk generate crds
-	@echo Updating/Generating a ClusterServiceVersion YAML manifest for the operator
-	operator-sdk generate csv --csv-version ${CSV_VERSION} --update-crds
-
-.PHONY: code-vet code-fmt code-tidy code-gen csv-gen lint-copyright-banner lint-go lint-all config-docker install-operator-sdk bundle
+.PHONY: code-vet code-fmt code-tidy code-gen lint-copyright-banner lint-go lint-all config-docker

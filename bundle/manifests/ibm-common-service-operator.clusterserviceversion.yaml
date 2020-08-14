@@ -518,7 +518,7 @@ metadata:
               - /manager
               args:
               - --enable-leader-election
-              image: quay.io/opencloudio/ibm-secretshare-operator:1.2.0
+              image: quay.io/opencloudio/ibm-secretshare-operator@sha256:0477fff0d4c973de4a7e72785bf6e3084c240b4ec00c73ab5f606db251cb51d4
               imagePullPolicy: Always
               name: ibm-common-service-operator
               env:
@@ -2144,7 +2144,7 @@ metadata:
             serviceAccountName: ibm-common-service-webhook
             containers:
               - name: ibm-common-service-webhook
-                image: quay.io/opencloudio/ibm-cs-webhook:1.1.0
+                image: quay.io/opencloudio/ibm-cs-webhook@sha256:7b3d8f9a81437b6e4f360219b6c6c1c8ea0422024001030c49c95b4503673564
                 command:
                 - ibm-common-service-webhook
                 imagePullPolicy: Always
@@ -2355,4 +2355,5 @@ spec:
   maturity: alpha
   provider:
     name: IBM
+  replaces: ibm-common-service-operator.v3.4.5
   version: 3.5.0
