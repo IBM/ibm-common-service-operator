@@ -80,15 +80,23 @@ func main() {
 		os.Exit(1)
 	}
 	if exist {
-		klog.Error("The Helm based IBM Common Services must be uninstalled before performing operator based installation")
+		klog.Error("the Helm based IBM Common Services must be uninstalled before performing operator based installation")
 		os.Exit(1)
 	}
 
 	operatorNs, err := bootstrap.GetOperatorNamespace()
 	if err != nil {
-		klog.Error("Get operator namespace failed: ", err)
+		klog.Error("get operator namespace failed: ", err)
 		os.Exit(1)
 	}
+	// Create ibm-common-services namespace
+	if operatorNs != "ibm-common-services" {
+		if err := bootstrap.CreateNamespace(mgr); err != nil {
+			klog.Error("create ibm-common-services namespace failed: ", err)
+			os.Exit(1)
+		}
+	}
+
 	if operatorNs == "ibm-common-services" || operatorNs == "openshift-operators" {
 		klog.Info("start installing ODLM operator and initialize IBM Common Services")
 		if err = bootstrap.InitResources(mgr); err != nil {
@@ -110,16 +118,12 @@ func main() {
 		}
 		// +kubebuilder:scaffold:builder
 	} else {
-		if err = bootstrap.CreateNamespace(mgr); err != nil {
-			klog.Error("Create ibm-common-services namespace failed: ", err)
-			os.Exit(1)
-		}
 		klog.Info("start create common service operator")
 		if err = bootstrap.CreateCsSubscription(mgr); err != nil {
-			klog.Error("Create common service operator subscription failed: ", err)
+			klog.Error("create common service operator subscription failed: ", err)
 			os.Exit(1)
 		}
-		klog.Info("Finish create common service operator")
+		klog.Info("finish create common service operator")
 	}
 
 	klog.Info("starting manager")
