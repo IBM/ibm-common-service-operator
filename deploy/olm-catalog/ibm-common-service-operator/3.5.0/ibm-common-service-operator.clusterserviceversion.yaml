@@ -466,6 +466,14 @@ metadata:
         - patch
         - update
         - watch
+      - apiGroups:
+        - operators.coreos.com
+        resources:
+        - subscriptions
+        verbs:
+        - get
+        - list
+        - watch
       ---
       kind: ClusterRoleBinding
       apiVersion: rbac.authorization.k8s.io/v1
