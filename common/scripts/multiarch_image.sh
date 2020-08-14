@@ -24,7 +24,7 @@ ALL_PLATFORMS="amd64 ppc64le s390x"
 IMAGE_REPO=${1}
 IMAGE_NAME=${2}
 VERSION=${3-"$(git describe --exact-match 2> /dev/null || git describe --match=$(git rev-parse --short=8 HEAD) --always --dirty --abbrev=8)"}
-
+RELEASE_VERSION=${4:-3.5.0}
 MAX_PULLING_RETRY=${MAX_PULLING_RETRY-10}
 RETRY_INTERVAL=${RETRY_INTERVAL-10}
 
@@ -34,11 +34,11 @@ for arch in ${ALL_PLATFORMS}
 do
     for i in $(seq 1 "${MAX_PULLING_RETRY}")
     do
-        echo "Trying to pull image '${IMAGE_REPO}'/'${IMAGE_NAME}'-'${arch}':'${VERSION}'..."
-        docker pull "${IMAGE_REPO}"/"${IMAGE_NAME}"-"${arch}":"${VERSION}" && break
+        echo "Checking image '${IMAGE_REPO}'/'${IMAGE_NAME}'-'${arch}':'${VERSION}'..."
+        ${CONTAINER_CLI} manifest inspect "${IMAGE_REPO}"/"${IMAGE_NAME}"-"${arch}":"${VERSION}" && break
         sleep "${RETRY_INTERVAL}"
         if [ "${i}" -eq "${MAX_PULLING_RETRY}" ]; then
-            echo "Failed to pull image '${IMAGE_REPO}'/'${IMAGE_NAME}'-'${arch}':'${VERSION}'!!!"
+            echo "Failed to found image '${IMAGE_REPO}'/'${IMAGE_NAME}'-'${arch}':'${VERSION}'!!!"
             exit 1
         fi
     done
@@ -48,8 +48,8 @@ done
 CONTAINER_CLI=${CONTAINER_CLI:-docker}
 
 # create multi-arch manifest
-echo "Creating the multi-arch image manifest for ${IMAGE_REPO}/${IMAGE_NAME}:${VERSION}..."
-${CONTAINER_CLI} manifest create "${IMAGE_REPO}"/"${IMAGE_NAME}":"${VERSION}" \
+echo "Creating the multi-arch image manifest for ${IMAGE_REPO}/${IMAGE_NAME}:${RELEASE_VERSION}..."
+${CONTAINER_CLI} manifest create "${IMAGE_REPO}"/"${IMAGE_NAME}":"${RELEASE_VERSION}" \
     "${IMAGE_REPO}"/"${IMAGE_NAME}"-amd64:"${VERSION}" \
     "${IMAGE_REPO}"/"${IMAGE_NAME}"-ppc64le:"${VERSION}" \
     "${IMAGE_REPO}"/"${IMAGE_NAME}"-s390x:"${VERSION}"
@@ -60,7 +60,7 @@ ${CONTAINER_CLI} manifest create "${IMAGE_REPO}"/"${IMAGE_NAME}":latest \
     "${IMAGE_REPO}"/"${IMAGE_NAME}"-s390x:"${VERSION}"
 
 # push multi-arch manifest
-echo "Pushing the multi-arch image manifest for ${IMAGE_REPO}/${IMAGE_NAME}:${VERSION}..."
-${CONTAINER_CLI} manifest push "${IMAGE_REPO}"/"${IMAGE_NAME}":"${VERSION}"
+echo "Pushing the multi-arch image manifest for ${IMAGE_REPO}/${IMAGE_NAME}:${RELEASE_VERSION}..."
+${CONTAINER_CLI} manifest push "${IMAGE_REPO}"/"${IMAGE_NAME}":"${RELEASE_VERSION}"
 echo "Pushing the multi-arch image manifest for ${IMAGE_REPO}/${IMAGE_NAME}:latest..."
 ${CONTAINER_CLI} manifest push "${IMAGE_REPO}"/"${IMAGE_NAME}":latest

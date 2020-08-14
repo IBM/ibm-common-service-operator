@@ -2,7 +2,9 @@ QUAY_REPO ?= quay.io/opencloudio
 IMAGE_NAME ?= common-service-operator
 OPERATOR_NAME ?= ibm-common-service-operator
 OPERATOR_VERSION ?= 3.5.0
-VERSION ?= $(shell cat ./version/version.go | grep "Version =" | awk '{ print $$3}' | tr -d '"')
+VERSION ?= $(shell git describe --exact-match 2> /dev/null || \
+                git describe --match=$(git rev-parse --short=8 HEAD) --always --dirty --abbrev=8)
+RELEASE_VERSION ?= $(shell cat ./version/version.go | grep "Version =" | awk '{ print $$3}' | tr -d '"')
 ifeq ($(BUILD_LOCALLY),0)
 REGISTRY ?= "hyc-cloud-private-integration-docker-local.artifactory.swg-devops.com/ibmcom"
 else
@@ -142,7 +144,7 @@ push-image: $(CONFIG_DOCKER_TARGET) build-image
 	@docker push $(REGISTRY)/$(IMAGE_NAME)-$(LOCAL_ARCH):$(VERSION)
 
 multiarch-image: $(CONFIG_DOCKER_TARGET)
-	@MAX_PULLING_RETRY=20 RETRY_INTERVAL=30 common/scripts/multiarch_image.sh $(REGISTRY) $(IMAGE_NAME) $(VERSION)
+	@MAX_PULLING_RETRY=20 RETRY_INTERVAL=30 common/scripts/multiarch_image.sh $(REGISTRY) $(IMAGE_NAME) $(VERSION) $(RELEASE_VERSION)
 
 
 # Generate bundle manifests and metadata, then validate generated files.
