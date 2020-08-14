@@ -27,6 +27,8 @@ VERSION=${3-"$(git describe --exact-match 2> /dev/null || git describe --match=$
 RELEASE_VERSION=${4:-3.5.0}
 MAX_PULLING_RETRY=${MAX_PULLING_RETRY-10}
 RETRY_INTERVAL=${RETRY_INTERVAL-10}
+# support other container tools, e.g. podman
+CONTAINER_CLI=${CONTAINER_CLI:-docker}
 
 # Loop until the image for each single platform is ready in the docker registry.
 # TODO: remove this if prow job support dependency.
@@ -43,9 +45,6 @@ do
         fi
     done
 done
-
-# support other container tools, e.g. podman
-CONTAINER_CLI=${CONTAINER_CLI:-docker}
 
 # create multi-arch manifest
 echo "Creating the multi-arch image manifest for ${IMAGE_REPO}/${IMAGE_NAME}:${RELEASE_VERSION}..."
