@@ -17,7 +17,6 @@
 
 STATUS=0
 ARCH=$(uname -m)
-VERSION=${CSV_VERSION:-3.4.1}
 [[ "${ARCH}" != "x86_64" ]] && exit 0
 
 JQ=$(command -v jq)
