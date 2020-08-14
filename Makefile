@@ -138,7 +138,8 @@ package-manifests:
 ifeq (, $(wildcard deploy/olm-catalog/ibm-common-service-operator/$(OPERATOR_VERSION)))
 	@mkdir deploy/olm-catalog/ibm-common-service-operator/$(OPERATOR_VERSION)
 endif
-	@cp -rf bundle/manifests/* deploy/olm-catalog/ibm-common-service-operator/$(OPERATOR_VERSION)/
+	@cp -rf bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml deploy/olm-catalog/ibm-common-service-operator/$(OPERATOR_VERSION)/ibm-common-service-operator.v$(OPERATOR_VERSION).clusterserviceversion.yaml
+	@cp -rf bundle/manifests/operator.ibm.com_commonservices.yaml deploy/olm-catalog/ibm-common-service-operator/$(OPERATOR_VERSION)/operator.ibm.com_commonservices_crd.yaml
 
 generate-all: generate manifests ## Generate bundle manifests, metadata and package manifests
 	$(OPERATOR_SDK) generate kustomize manifests -q
