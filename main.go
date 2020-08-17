@@ -105,6 +105,12 @@ func main() {
 		}
 		klog.Info("finish installing ODLM operator and initialize IBM Common Services")
 
+		klog.Info("create CommonService CR in ibm-common-services namespace")
+		if err = bootstrap.CreateCsCR(mgr); err != nil {
+			klog.Error("Create CommonService CR failed: ", err)
+			os.Exit(1)
+		}
+
 		// Check IAM pods status
 		go check.IamStatus(mgr)
 

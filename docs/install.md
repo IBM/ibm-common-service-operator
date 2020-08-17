@@ -158,8 +158,7 @@ spec:
   - name: ibm-mongodb-operator
     spec:
       mongoDB:
-        spec:
-          storageClass: cephfs
+        storageClass: cephfs
 ```
 
 ## 5.Install Individual Common Services

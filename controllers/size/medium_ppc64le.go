@@ -17,71 +17,7 @@
 package size
 
 const Medium = `
-- name: ibm-healthcheck-operator
+- name: ibm-cert-manager-operator
   spec:
-    healthService:
-      spec:
-        memcached:
-          replicas: 2
-          resources:
-            requests:
-              memory: "64Mi"
-              cpu: "50m"
-            limits:
-              memory: "512Mi"
-              cpu: "500m"
-        healthService:
-          replicas: 1
-          resources:
-            requests:
-              memory: "64Mi"
-              cpu: "50m"
-            limits:
-              memory: "512Mi"
-              cpu: "500m"
-- name: ibm-iam-operator
-  spec:
-    authentication:
-      spec:
-        replicas: 1
-        auditService:
-          resources:
-            limits:
-              cpu: 100m
-              memory: 128Mi
-            requests:
-              cpu: 10m
-              memory: 100Mi
-        authService:
-          resources:
-            limits:
-              cpu: 1000m
-              memory: 1Gi
-            requests:
-              cpu: 100m
-              memory: 350Mi
-        clientRegistration:
-          resources:
-            limits:
-              cpu: 1000m
-              memory: 1Gi
-            requests:
-              cpu: 100m
-              memory: 128Mi
-        identityManager:
-          resources:
-            limits:
-              cpu: 1000m
-              memory: 1Gi
-            requests:
-              cpu: 50m
-              memory: 150Mi
-        identityProvider:
-          resources:
-            limits:
-              cpu: 1000m
-              memory: 1Gi
-            requests:
-              cpu: 50m
-              memory: 150Mi
+    certManager: {}
 `
