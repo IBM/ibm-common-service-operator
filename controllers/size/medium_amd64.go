@@ -238,10 +238,6 @@ const Medium = `
             requests:
               cpu: 25m
               memory: 230Mi
-    meteringSender:
-      replicas: 1
-      sender:
-        resources: {}
     meteringReportServer:
       reportServer:
         resources:
