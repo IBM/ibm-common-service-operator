@@ -61,11 +61,11 @@ const Small = `
       auditService:
         resources:
           limits:
-            cpu: 1m
-            memory: 10Mi
+            cpu: 20m
+            memory: 20Mi
           requests:
-            cpu: 1m
-            memory: 10Mi
+            cpu: 20m
+            memory: 20Mi
       authService:
         resources:
           limits:
@@ -77,11 +77,11 @@ const Small = `
       clientRegistration:
         resources:
           limits:
-            cpu: 5m
-            memory: 5Mi
+            cpu: 20m
+            memory: 20Mi
           requests:
-            cpu: 5m
-            memory: 5Mi
+            cpu: 20m
+            memory: 20Mi
       identityManager:
         resources:
           limits:
@@ -102,27 +102,27 @@ const Small = `
       replicas: 1
       resources:
         limits:
-          cpu: 15m
-          memory: 25Mi
+          cpu: 30m
+          memory: 50Mi
         requests:
-          cpu: 10m
-          memory: 20Mi
+          cpu: 30m
+          memory: 50Mi
     pap:
       auditService:
         resources:
           limits:
-            cpu: 1m
-            memory: 10Mi
+            cpu: 20m
+            memory: 20Mi
           requests:
-            cpu: 1m
-            memory: 10Mi
+            cpu: 20m
+            memory: 20Mi
       papService:
         resources:
           limits:
-            cpu: 15m
+            cpu: 20m
             memory: 330Mi
           requests:
-            cpu: 5m
+            cpu: 20m
             memory: 160Mi
       replicas: 1
     policycontroller:
@@ -138,37 +138,37 @@ const Small = `
       auditService:
         resources:
           limits:
-            cpu: 1m
-            memory: 10Mi
+            cpu: 20m
+            memory: 20Mi
           requests:
-            cpu: 1m
-            memory: 10Mi
+            cpu: 20m
+            memory: 20Mi
       resources:
         limits:
           cpu: 30m
-          memory: 15Mi
+          memory: 30Mi
         requests:
           cpu: 20m
-          memory: 10Mi
+          memory: 30Mi
       replicas: 1
     secretWatcher:
       resources:
         limits:
-          cpu: 20m
+          cpu: 30m
           memory: 145Mi
         requests:
-          cpu: 10m
+          cpu: 30m
           memory: 120Mi
       replicas: 1
     securityonboarding:
       replicas: 1
       resources:
         limits:
-          cpu: 1m
-          memory: 1Mi
+          cpu: 20m
+          memory: 20Mi
         requests:
-          cpu: 1m
-          memory: 1Mi
+          cpu: 20m
+          memory: 20Mi
       iamOnboarding:
         resources:
           limits:
@@ -183,10 +183,10 @@ const Small = `
       replicas: 1
       resources:
         requests:
-          cpu: 25m
+          cpu: 50m
           memory: 100Mi
         limits:
-          cpu: 30m
+          cpu: 50m
           memory: 170Mi
 - name: ibm-ingress-nginx-operator
   spec:
@@ -195,28 +195,28 @@ const Small = `
         replicas: 1
         resources:
           requests:
-            cpu: 10m
+            cpu: 30m
             memory: 140Mi
           limits:
-            cpu: 10m
+            cpu: 30m
             memory: 225Mi
       defaultBackend:
         replicas: 1
         resources:
           requests:
-            cpu: 1m
-            memory: 10Mi
+            cpu: 20m
+            memory: 30Mi
           limits:
-            cpu: 1m
-            memory: 10Mi
+            cpu: 20m
+            memory: 30Mi
       kubectl:
         resources:
           requests:
-            memory: "1Mi"
-            cpu: "1m"
+            memory: "30Mi"
+            cpu: "30m"
           limits:
-            memory: "1Mi"
-            cpu: "1m"
+            memory: "30Mi"
+            cpu: "30m"
 - name: ibm-metering-operator
   spec:
     metering:
@@ -295,10 +295,10 @@ const Small = `
       resources:
         requests:
           memory: "105Mi"
-          limits: "20m"
+          cpu: "20m"
         limits:
           memory: "200Mi"
-          limits: "105m"
+          cpu: "105m"
 - name: ibm-platform-api-operator
   spec:
     platformApi:
@@ -338,20 +338,20 @@ const Small = `
         replicas: 1
         resources:
           requests:
-            memory: "10Mi"
-            cpu: "1m"
+            memory: "30Mi"
+            cpu: "20m"
           limits:
-            memory: "15Mi"
-            cpu: "1m"
+            memory: "30Mi"
+            cpu: "20m"
       healthService:
         replicas: 1
         resources:
           requests:
             memory: "35Mi"
-            cpu: "5m"
+            cpu: "20m"
           limits:
             memory: "40Mi"
-            cpu: "10m"
+            cpu: "30m"
 - name: ibm-auditlogging-operator
   spec:
     auditLogging:
@@ -369,11 +369,11 @@ const Small = `
       collectd:
         resources:
           requests:
-            cpu: 1m
-            memory: 15Mi
+            cpu: 30m
+            memory: 30Mi
           limits:
-            cpu: 1m
-            memory: 15Mi
+            cpu: 30m
+            memory: 30Mi
         routerResource:
           limits:
             cpu: 25m
@@ -387,7 +387,7 @@ const Small = `
             cpu: 5m
             memory: 20Mi
           limits:
-            cpu: 5m
+            cpu: 20m
             memory: 25Mi
         routerResource:
           requests:
@@ -453,19 +453,19 @@ const Small = `
       alertManagerConfig:
         resources:
           requests:
-            cpu: 5m
-            memory: 20Mi
+            cpu: 30m
+            memory: 50Mi
           limits:
-            cpu: 5m
-            memory: 25Mi
+            cpu: 30m
+            memory: 50Mi
       mcmMonitor:
         resources:
           requests:
-            cpu: 1m
-            memory: 15Mi
+            cpu: 30m
+            memory: 30Mi
           limits:
-            cpu: 1m
-            memory: 15Mi
+            cpu: 30m
+            memory: 30Mi
 - name: ibm-elastic-stack-operator
   spec:
     elasticStack:
