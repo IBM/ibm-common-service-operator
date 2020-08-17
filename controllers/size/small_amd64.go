@@ -238,10 +238,6 @@ const Small = `
             requests:
               cpu: 25m
               memory: 175Mi
-    meteringSender:
-      replicas: 1
-      sender:
-        resources: {}
     meteringReportServer:
       reportServer:
         resources:
