@@ -159,6 +159,7 @@ delete_sub_csv "${subs}" "${namespace}"
 
 title "Deleting webhook"
 oc delete ValidatingWebhookConfiguration -l 'app=ibm-cert-manager-webhook' --ignore-not-found
+oc delete MutatingWebhookConfiguration ibm-common-service-webhook-configuration --ignore-not-found
 
 title "Deleting unavailable apiservice"
 delete_apiservice
