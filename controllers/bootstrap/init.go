@@ -137,6 +137,15 @@ func CreateCsSubscription(mgr manager.Manager) error {
 	return nil
 }
 
+func CreateCsCR(mgr manager.Manager) error {
+	r := mgr.GetAPIReader()
+	c := mgr.GetClient()
+	if err := createOrUpdateFromYaml([]byte(csCR), c, r); err != nil {
+		return err
+	}
+	return nil
+}
+
 func createOperatorGroup(c client.Client, r client.Reader) error {
 	existOG := &olmv1.OperatorGroupList{}
 	if err := r.List(context.TODO(), existOG, &client.ListOptions{Namespace: "ibm-common-services"}); err != nil {
@@ -439,4 +448,16 @@ metadata:
 spec:
   targetNamespaces:
   - ibm-common-services
+`
+
+const csCR = `
+apiVersion: operator.ibm.com/v3
+kind: CommonService
+metadata:
+  annotations:
+    version: "-1"
+  name: common-service
+  namespace: ibm-common-services
+spec:
+  size: small
 `
