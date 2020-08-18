@@ -2197,6 +2197,7 @@ spec:
   customresourcedefinitions:
     owned:
     - description: CommonService is the Schema for the commonservices API
+      displayName: CommonService
       kind: CommonService
       name: commonservices.operator.ibm.com
       version: v3
@@ -2363,5 +2364,4 @@ spec:
   maturity: alpha
   provider:
     name: IBM
-  replaces: ibm-common-service-operator.v3.4.3
   version: 3.5.0

@@ -46,6 +46,7 @@ type CommonServiceStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +operator-sdk:gen-csv:customresourcedefinitions.displayName="CommonService"
 
 // CommonService is the Schema for the commonservices API
 type CommonService struct {
