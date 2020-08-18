@@ -85,10 +85,10 @@ const Small = `
       identityManager:
         resources:
           limits:
-            cpu: 35m
+            cpu: 100m
             memory: 160Mi
           requests:
-            cpu: 10m
+            cpu: 50m
             memory: 120Mi
       identityProvider:
         resources:
@@ -119,10 +119,10 @@ const Small = `
       papService:
         resources:
           limits:
-            cpu: 20m
+            cpu: 100m
             memory: 330Mi
           requests:
-            cpu: 20m
+            cpu: 50m
             memory: 160Mi
       replicas: 1
     policycontroller:
@@ -143,7 +143,7 @@ const Small = `
           requests:
             cpu: 20m
             memory: 50Mi
-      papService:
+      pdpService:
         resources:
           limits:
             cpu: 30m
