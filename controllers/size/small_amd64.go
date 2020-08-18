@@ -292,10 +292,10 @@ const Small = `
       replicas: 1
       resources:
         requests:
-          memory: 105Mi
+          memory: 256Mi
           cpu: 50m
         limits:
-          memory: 200Mi
+          memory: 256Mi
           cpu: 105m
 - name: ibm-platform-api-operator
   spec:
