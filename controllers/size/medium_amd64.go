@@ -292,11 +292,11 @@ const Medium = `
       replicas: 1
       resources:
         requests:
-          memory: "335Mi"
-          cpu: "30m"
+          memory: 335Mi
+          cpu: 30m
         limits:
-          memory: "430Mi"
-          cpu: "105m"
+          memory: 430Mi
+          cpu: 105m
 - name: ibm-platform-api-operator
   spec:
     platformApi:
