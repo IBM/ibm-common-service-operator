@@ -40,18 +40,18 @@ const Small = `
         resources:
           limits:
             cpu: 35m
-            memory: 40Mi
+            memory: 50Mi
           requests:
             cpu: 15m
-            memory: 30Mi
+            memory: 50Mi
       configMapWatcher:
         resources:
           limits:
             cpu: 10m
-            memory: 15Mi
+            memory: 50Mi
           requests:
             cpu: 10m
-            memory: 15Mi
+            memory: 50Mi
 - name: ibm-mongodb-operator
   spec: {}
 - name: ibm-iam-operator
@@ -62,10 +62,10 @@ const Small = `
         resources:
           limits:
             cpu: 20m
-            memory: 20Mi
+            memory: 50Mi
           requests:
             cpu: 20m
-            memory: 20Mi
+            memory: 50Mi
       authService:
         resources:
           limits:
@@ -78,10 +78,10 @@ const Small = `
         resources:
           limits:
             cpu: 20m
-            memory: 20Mi
+            memory: 50Mi
           requests:
             cpu: 20m
-            memory: 20Mi
+            memory: 50Mi
       identityManager:
         resources:
           limits:
@@ -112,10 +112,10 @@ const Small = `
         resources:
           limits:
             cpu: 20m
-            memory: 20Mi
+            memory: 50Mi
           requests:
             cpu: 20m
-            memory: 20Mi
+            memory: 50Mi
       papService:
         resources:
           limits:
@@ -130,27 +130,27 @@ const Small = `
       resources:
         limits:
           cpu: 20m
-          memory: 30Mi
+          memory: 50Mi
         requests:
           cpu: 20m
-          memory: 20Mi
+          memory: 50Mi
     policydecision:
       auditService:
         resources:
           limits:
             cpu: 20m
-            memory: 20Mi
+            memory: 50Mi
           requests:
             cpu: 20m
-            memory: 20Mi
+            memory: 50Mi
       papService:
         resources:
           limits:
             cpu: 30m
-            memory: 30Mi
+            memory: 50Mi
           requests:
             cpu: 20m
-            memory: 30Mi
+            memory: 50Mi
       replicas: 1
     secretWatcher:
       resources:
@@ -167,10 +167,10 @@ const Small = `
         resources:
           limits:
             cpu: 20m
-            memory: 20Mi
+            memory: 50Mi
           requests:
             cpu: 20m
-            memory: 20Mi
+            memory: 50Mi
       iamOnboarding:
         resources:
           limits:
@@ -207,17 +207,17 @@ const Small = `
         resources:
           requests:
             cpu: 20m
-            memory: 30Mi
+            memory: 50Mi
           limits:
             cpu: 20m
-            memory: 30Mi
+            memory: 50Mi
       kubectl:
         resources:
           requests:
-            memory: "30Mi"
+            memory: "150Mi"
             cpu: "30m"
           limits:
-            memory: "30Mi"
+            memory: "150Mi"
             cpu: "30m"
 - name: ibm-metering-operator
   spec:
@@ -292,11 +292,11 @@ const Small = `
       replicas: 1
       resources:
         requests:
-          memory: "105Mi"
-          cpu: "20m"
+          memory: 105Mi
+          cpu: 50m
         limits:
-          memory: "200Mi"
-          cpu: "105m"
+          memory: 200Mi
+          cpu: 105m
 - name: ibm-platform-api-operator
   spec:
     platformApi:
@@ -304,18 +304,18 @@ const Small = `
         resources:
           limits:
             cpu: 25m
-            memory: 15Mi
+            memory: 50Mi
           requests:
             cpu: 25m
-            memory: 10Mi
+            memory: 50Mi
       platformApi:
         resources:
           limits:
             cpu: 25m
-            memory: 25Mi
+            memory: 50Mi
           requests:
             cpu: 25m
-            memory: 25Mi
+            memory: 50Mi
       replicas: 1
 - name: ibm-catalog-ui-operator
   spec:
@@ -336,19 +336,19 @@ const Small = `
         replicas: 1
         resources:
           requests:
-            memory: "30Mi"
+            memory: "50Mi"
             cpu: "20m"
           limits:
-            memory: "30Mi"
+            memory: "50Mi"
             cpu: "20m"
       healthService:
         replicas: 1
         resources:
           requests:
-            memory: "35Mi"
+            memory: "50Mi"
             cpu: "20m"
           limits:
-            memory: "40Mi"
+            memory: "50Mi"
             cpu: "30m"
 - name: ibm-auditlogging-operator
   spec:
@@ -368,25 +368,25 @@ const Small = `
         resources:
           requests:
             cpu: 30m
-            memory: 30Mi
+            memory: 50Mi
           limits:
             cpu: 30m
-            memory: 30Mi
+            memory: 50Mi
         routerResource:
           limits:
             cpu: 25m
-            memory: 20Mi
+            memory: 50Mi
           requests:
             cpu: 10m
-            memory: 20Mi
+            memory: 50Mi
       nodeExporter:
         resources:
           requests:
             cpu: 5m
-            memory: 20Mi
+            memory: 50Mi
           limits:
             cpu: 20m
-            memory: 25Mi
+            memory: 50Mi
         routerResource:
           requests:
             cpu: 50m
@@ -405,10 +405,10 @@ const Small = `
         routerResource:
           limits:
             cpu: 25m
-            memory: 20Mi
+            memory: 50Mi
           requests:
             cpu: 10m
-            memory: 20Mi
+            memory: 50Mi
 - name: ibm-monitoring-grafana-operator
   spec:
     grafana:
@@ -425,7 +425,7 @@ const Small = `
           resources:
             requests:
               cpu: 5m
-              memory: 45Mi
+              memory: 50Mi
             limits:
               cpu: 10m
               memory: 60Mi
@@ -433,10 +433,10 @@ const Small = `
           resources:
             requests:
               cpu: 10m
-              memory: 20Mi
+              memory: 50Mi
             limits:
               cpu: 25m
-              memory: 25Mi
+              memory: 50Mi
 - name: ibm-monitoring-prometheusext-operator
   spec:
     prometheusExt:
@@ -460,10 +460,10 @@ const Small = `
         resources:
           requests:
             cpu: 30m
-            memory: 30Mi
+            memory: 50Mi
           limits:
             cpu: 30m
-            memory: 30Mi
+            memory: 50Mi
 - name: ibm-elastic-stack-operator
   spec:
     elasticStack:
@@ -484,7 +484,7 @@ const Small = `
           limits:
             memory: 80Mi
           requests:
-            memory: 45Mi
+            memory: 50Mi
       logstash:
         probe:
           resources:
