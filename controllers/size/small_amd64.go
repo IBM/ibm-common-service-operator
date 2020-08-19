@@ -197,10 +197,10 @@ const Small = `
         replicas: 1
         resources:
           requests:
-            cpu: 30m
+            cpu: 100m
             memory: 140Mi
           limits:
-            cpu: 30m
+            cpu: 100m
             memory: 225Mi
       defaultBackend:
         replicas: 1
