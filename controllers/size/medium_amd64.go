@@ -85,10 +85,10 @@ const Medium = `
       identityManager:
         resources:
           limits:
-            cpu: 35m
+            cpu: 250m
             memory: 185Mi
           requests:
-            cpu: 10m
+            cpu: 100m
             memory: 140Mi
       identityProvider:
         resources:
@@ -152,7 +152,7 @@ const Medium = `
             cpu: 20m
             memory: 30Mi
       replicas: 1
-    secretWatcher:
+    secretwatcher:
       resources:
         limits:
           cpu: 30m
