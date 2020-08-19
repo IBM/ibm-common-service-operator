@@ -2152,7 +2152,7 @@ metadata:
             serviceAccountName: ibm-common-service-webhook
             containers:
               - name: ibm-common-service-webhook
-                image: quay.io/opencloudio/ibm-cs-webhook@sha256:7b3d8f9a81437b6e4f360219b6c6c1c8ea0422024001030c49c95b4503673564
+                image: quay.io/opencloudio/ibm-cs-webhook@sha256:237434deb569dd639e4db9c98218584622765157eafc7aa8ba6ab0fa107197ea
                 command:
                 - ibm-common-service-webhook
                 imagePullPolicy: Always
