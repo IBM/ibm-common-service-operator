@@ -85,7 +85,7 @@ const Small = `
       identityManager:
         resources:
           limits:
-            cpu: 100m
+            cpu: 200m
             memory: 160Mi
           requests:
             cpu: 50m
@@ -93,7 +93,7 @@ const Small = `
       identityProvider:
         resources:
           limits:
-            cpu: 160m
+            cpu: 275m
             memory: 195Mi
           requests:
             cpu: 80m
@@ -152,7 +152,7 @@ const Small = `
             cpu: 20m
             memory: 50Mi
       replicas: 1
-    secretWatcher:
+    secretwatcher:
       resources:
         limits:
           cpu: 30m
