@@ -2197,6 +2197,7 @@ spec:
   customresourcedefinitions:
     owned:
     - description: CommonService is the Schema for the commonservices API
+      displayName: CommonService
       kind: CommonService
       name: commonservices.operator.ibm.com
       version: v3
