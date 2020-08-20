@@ -293,10 +293,10 @@ const Small = `
       resources:
         requests:
           memory: 256Mi
-          cpu: 50m
+          cpu: 150m
         limits:
           memory: 256Mi
-          cpu: 105m
+          cpu: 150m
 - name: ibm-platform-api-operator
   spec:
     platformApi:
