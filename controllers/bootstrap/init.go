@@ -17,34 +17,23 @@
 package bootstrap
 
 import (
-	"bytes"
 	"context"
-	"fmt"
-	"io"
-	"io/ioutil"
-	"os"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
 
-	utilyaml "github.com/ghodss/yaml"
 	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
-	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
-	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/serializer/json"
-	"k8s.io/apimachinery/pkg/runtime/serializer/streaming"
-	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
-	"k8s.io/apimachinery/pkg/types"
 	utilwait "k8s.io/apimachinery/pkg/util/wait"
 	discovery "k8s.io/client-go/discovery"
 	"k8s.io/client-go/rest"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+
+	util "github.com/IBM/ibm-common-service-operator/controllers/common"
+	"github.com/IBM/ibm-common-service-operator/controllers/constant"
+	"github.com/IBM/ibm-common-service-operator/controllers/deploy"
 )
 
 var (
@@ -55,125 +44,109 @@ var (
 	OdlmCrResources  = []string{"csOperandRegistry", "csOperandConfig"}
 )
 
-const (
-	// OperatorNameEnvVar is the constant for env variable OPERATOR_NAME
-	// which is the name of the current operator
-	OperatorNameEnvVar = "OPERATOR_NAME"
-)
+type Bootstrap struct {
+	client.Client
+	client.Reader
+	Config *rest.Config
+	*deploy.Manager
+}
+
+// NewBootstrap is the way to create a NewBootstrap struct
+func NewBootstrap(mgr manager.Manager) *Bootstrap {
+	return &Bootstrap{
+		Client:  mgr.GetClient(),
+		Reader:  mgr.GetAPIReader(),
+		Config:  mgr.GetConfig(),
+		Manager: deploy.NewDeployManager(mgr),
+	}
+}
 
 // InitResources initialize resources at the bootstrap of operator
-func InitResources(mgr manager.Manager) error {
-	client := mgr.GetClient()
-	reader := mgr.GetAPIReader()
-	config := mgr.GetConfig()
-
+func (b *Bootstrap) InitResources() error {
 	// Get all the resources from the deployment annotations
-	annotations, err := getAnnotations(reader)
+	annotations, err := b.GetAnnotations()
 	if err != nil {
 		return err
 	}
 
-	klog.Info("check existing ODLM operator")
-	if err := deleteExistingODLM(reader, client); err != nil {
+	// create or update ODLM operator
+	if err := b.createOrUpdateResources(annotations, OdlmSubResources); err != nil {
 		return err
 	}
 
-	klog.Info("create ODLM operator")
-	if err := createOrUpdateResources(annotations, OdlmSubResources, client, reader); err != nil {
+	// create or update extra resources for common services
+	if err := b.createOrUpdateResources(annotations, strings.Split(annotations[CsExtResource], ",")); err != nil {
 		return err
 	}
 
-	klog.Info("create extra resources for common services")
-	if err := createOrUpdateResources(annotations, strings.Split(annotations[CsExtResource], ","), client, reader); err != nil {
+	// create or ODLM  OperandRegistry and OperandConfig CR resources
+	if err := b.waitResourceReady("operator.ibm.com/v1alpha1", "OperandRegistry"); err != nil {
 		return err
 	}
-
-	klog.Info("create ODLM  OperandRegistry and OperandConfig CR resources")
-	if err := waitResourceReady(config, "operator.ibm.com/v1alpha1", "OperandRegistry"); err != nil {
+	if err := b.waitResourceReady("operator.ibm.com/v1alpha1", "OperandConfig"); err != nil {
 		return err
 	}
-	if err := waitResourceReady(config, "operator.ibm.com/v1alpha1", "OperandConfig"); err != nil {
-		return err
-	}
-	if err := createOrUpdateResources(annotations, OdlmCrResources, client, reader); err != nil {
+	if err := b.createOrUpdateResources(annotations, OdlmCrResources); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func CreateNamespace(mgr manager.Manager) error {
-	r := mgr.GetAPIReader()
-	c := mgr.GetClient()
+func (b *Bootstrap) CreateNamespace() error {
 	// Get all the resources from the deployment annotations
-	annotations, err := getAnnotations(r)
+	annotations, err := b.GetAnnotations()
 	if err != nil {
 		return err
 	}
 
-	klog.Info("create namespace for common services")
-	if err := createOrUpdateResources(annotations, CsNsResources, c, r); err != nil {
+	if err := b.createOrUpdateResources(annotations, CsNsResources); err != nil {
 		return err
 	}
 	return nil
 }
 
-func CreateCsSubscription(mgr manager.Manager) error {
-	r := mgr.GetAPIReader()
-	c := mgr.GetClient()
+func (b *Bootstrap) CreateCsSubscription() error {
 	// Get all the resources from the deployment annotations
-	annotations, err := getAnnotations(r)
+	annotations, err := b.GetAnnotations()
 	if err != nil {
 		return err
 	}
 	klog.Info("create operator group in namespace ibm-common-services")
-	if err := createOperatorGroup(c, r); err != nil {
+	if err := b.createOperatorGroup(); err != nil {
 		return err
 	}
 	klog.Info("create cs operator in namespace ibm-common-services")
-	if err := createOrUpdateResources(annotations, csSubResource, c, r); err != nil {
+	if err := b.createOrUpdateResources(annotations, csSubResource); err != nil {
 		return err
 	}
 	return nil
 }
 
-func CreateCsCR(mgr manager.Manager) error {
-	r := mgr.GetAPIReader()
-	c := mgr.GetClient()
-	if err := createOrUpdateFromYaml([]byte(csCR), c, r); err != nil {
+func (b *Bootstrap) CreateCsCR() error {
+	if err := b.createOrUpdateFromYaml([]byte(constant.CsCR)); err != nil {
 		return err
 	}
 	return nil
 }
 
-func createOperatorGroup(c client.Client, r client.Reader) error {
+func (b *Bootstrap) createOperatorGroup() error {
 	existOG := &olmv1.OperatorGroupList{}
-	if err := r.List(context.TODO(), existOG, &client.ListOptions{Namespace: "ibm-common-services"}); err != nil {
+	if err := b.Reader.List(context.TODO(), existOG, &client.ListOptions{Namespace: "ibm-common-services"}); err != nil {
 		return err
 	}
 	if len(existOG.Items) == 0 {
-		if err := createOrUpdateFromYaml([]byte(csog), c, r); err != nil {
+		if err := b.createOrUpdateFromYaml([]byte(constant.CsOg)); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func getAnnotations(r client.Reader) (map[string]string, error) {
-	deploy, err := getDeployment(r)
-	if err != nil {
-		return nil, err
-	}
-
-	// Get all the resources from the deployment annotations
-	return deploy.Spec.Template.GetAnnotations(), nil
-}
-
-func createOrUpdateResources(annotations map[string]string, resNames []string, client client.Client, reader client.Reader) error {
+func (b *Bootstrap) createOrUpdateResources(annotations map[string]string, resNames []string) error {
 	for _, res := range resNames {
 		if r, ok := annotations[res]; ok {
-			klog.Infof("create resource: %s", res)
-			if err := createOrUpdateFromYaml([]byte(r), client, reader); err != nil {
+			if err := b.createOrUpdateFromYaml([]byte(r)); err != nil {
 				return err
 			}
 		} else {
@@ -183,78 +156,8 @@ func createOrUpdateResources(annotations map[string]string, resNames []string, c
 	return nil
 }
 
-func getDeployment(reader client.Reader) (*appsv1.Deployment, error) {
-	deploy := &appsv1.Deployment{}
-	deployName, err := GetOperatorName()
-	if err != nil {
-		return nil, fmt.Errorf("could not find the operator name: %v", err)
-	}
-	deployNs, err := GetOperatorNamespace()
-	if err != nil {
-		return nil, fmt.Errorf("could not find the operator namespace: %v", err)
-	}
-
-	// Retrieve operator deployment, retry 3 times
-	if err := utilwait.PollImmediate(time.Minute, time.Minute*3, func() (done bool, err error) {
-		err = reader.Get(context.TODO(), types.NamespacedName{Name: deployName, Namespace: deployNs}, deploy)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				return false, nil
-			}
-			return false, err
-		}
-		return true, nil
-	}); err != nil {
-		return nil, err
-	}
-	return deploy, nil
-}
-
-func waitResourceReady(config *rest.Config, apiGroupVersion, kind string) error {
-	dc := discovery.NewDiscoveryClientForConfigOrDie(config)
-	if err := utilwait.PollImmediate(time.Second*10, time.Minute*5, func() (done bool, err error) {
-		exist, err := ResourceExists(dc, apiGroupVersion, kind)
-		if err != nil {
-			return exist, err
-		}
-		if !exist {
-			klog.Infof("waiting for resource ready with kind: %s, apiGroupVersion: %s", kind, apiGroupVersion)
-		}
-		return true, nil
-	}); err != nil {
-		return err
-	}
-	return nil
-}
-
-func getObject(obj *unstructured.Unstructured, reader client.Reader) (*unstructured.Unstructured, error) {
-	found := &unstructured.Unstructured{}
-	found.SetGroupVersionKind(obj.GetObjectKind().GroupVersionKind())
-
-	err := reader.Get(context.TODO(), types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}, found)
-
-	return found, err
-}
-
-func createObject(obj *unstructured.Unstructured, client client.Client) error {
-	err := client.Create(context.TODO(), obj)
-	if err != nil && !errors.IsAlreadyExists(err) {
-		return fmt.Errorf("could not Create resource: %v", err)
-	}
-
-	return nil
-}
-
-func updateObject(obj *unstructured.Unstructured, client client.Client) error {
-	if err := client.Update(context.TODO(), obj); err != nil {
-		return fmt.Errorf("could not update resource: %v", err)
-	}
-
-	return nil
-}
-
-func createOrUpdateFromYaml(yamlContent []byte, client client.Client, reader client.Reader) error {
-	objects, err := yamlToObjects(yamlContent)
+func (b *Bootstrap) createOrUpdateFromYaml(yamlContent []byte) error {
+	objects, err := util.YamlToObjects(yamlContent)
 	if err != nil {
 		return err
 	}
@@ -264,10 +167,10 @@ func createOrUpdateFromYaml(yamlContent []byte, client client.Client, reader cli
 	for _, obj := range objects {
 		gvk := obj.GetObjectKind().GroupVersionKind()
 
-		objInCluster, err := getObject(obj, reader)
+		objInCluster, err := b.GetObject(obj)
 		if errors.IsNotFound(err) {
 			klog.Infof("create resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
-			if err := createObject(obj, client); err != nil {
+			if err := b.CreateObject(obj); err != nil {
 				errMsg = err
 			}
 			continue
@@ -293,7 +196,7 @@ func createOrUpdateFromYaml(yamlContent []byte, client client.Client, reader cli
 			klog.Infof("update resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
 			resourceVersion := objInCluster.GetResourceVersion()
 			obj.SetResourceVersion(resourceVersion)
-			if err := updateObject(obj, client); err != nil {
+			if err := b.UpdateObject(obj); err != nil {
 				errMsg = err
 			}
 		}
@@ -302,127 +205,26 @@ func createOrUpdateFromYaml(yamlContent []byte, client client.Client, reader cli
 	return errMsg
 }
 
-func yamlToObjects(yamlContent []byte) ([]*unstructured.Unstructured, error) {
-	var objects []*unstructured.Unstructured
-
-	// This step is for converting large yaml file, we can remove it after using "apimachinery" v0.19.0
-	if len(yamlContent) > 1024*64 {
-		object, err := yamlToObject(yamlContent)
+func (b *Bootstrap) waitResourceReady(apiGroupVersion, kind string) error {
+	dc := discovery.NewDiscoveryClientForConfigOrDie(b.Config)
+	if err := utilwait.PollImmediate(time.Second*10, time.Minute*5, func() (done bool, err error) {
+		exist, err := resourceExists(dc, apiGroupVersion, kind)
 		if err != nil {
-			return nil, err
+			return exist, err
 		}
-		objects = append(objects, object)
-		return objects, nil
-	}
-
-	yamlDecoder := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
-
-	reader := json.YAMLFramer.NewFrameReader(ioutil.NopCloser(bytes.NewReader(yamlContent)))
-	decoder := streaming.NewDecoder(reader, yamlDecoder)
-	for {
-		obj, _, err := decoder.Decode(nil, nil)
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			klog.Infof("error convert object: %v", err)
-			continue
+		if !exist {
+			klog.Infof("waiting for resource ready with kind: %s, apiGroupVersion: %s", kind, apiGroupVersion)
 		}
-
-		switch t := obj.(type) {
-		case *unstructured.Unstructured:
-			objects = append(objects, t)
-		default:
-			return nil, fmt.Errorf("failed to convert object %s", reflect.TypeOf(obj))
-		}
-	}
-
-	return objects, nil
-}
-
-// This function is for converting large yaml file, we can remove it after using "apimachinery" v0.19.0
-func yamlToObject(yamlContent []byte) (*unstructured.Unstructured, error) {
-	obj := &unstructured.Unstructured{}
-	jsonSpec, err := utilyaml.YAMLToJSON(yamlContent)
-	if err != nil {
-		return nil, fmt.Errorf("could not convert yaml to json: %v", err)
-	}
-
-	if err := obj.UnmarshalJSON(jsonSpec); err != nil {
-		return nil, fmt.Errorf("could not unmarshal resource: %v", err)
-	}
-
-	return obj, nil
-}
-
-func deleteExistingODLM(r client.Reader, c client.Client) error {
-	// Get existing ODLM subscription
-	subName := "operand-deployment-lifecycle-manager-app"
-	subNs := "ibm-common-services"
-	key := types.NamespacedName{Name: subName, Namespace: subNs}
-	sub := &olmv1alpha1.Subscription{}
-	if err := r.Get(context.TODO(), key, sub); err != nil {
-		if errors.IsNotFound(err) {
-			klog.V(3).Info("NotFound ODLM subscription in the ibm-common-services namespace")
-		} else {
-			klog.Error("Failed to get ODLM subscription in the ibm-common-services namespace")
-		}
-		return client.IgnoreNotFound(err)
-	}
-
-	// Delete existing ODLM csv
-	csvName := sub.Status.InstalledCSV
-	csvNs := subNs
-	if csvName != "" {
-		csv := &olmv1alpha1.ClusterServiceVersion{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      csvName,
-				Namespace: csvNs,
-			},
-		}
-		if err := c.Delete(context.TODO(), csv); err != nil && !errors.IsNotFound(err) {
-			klog.Error("Failed to delete ODLM Cluster Service Version in the ibm-common-services namespace")
-			return err
-		}
-	}
-
-	// Delete existing ODLM subscription
-	if err := c.Delete(context.TODO(), sub); err != nil && !errors.IsNotFound(err) {
-		klog.Error("Failed to delete ODLM Cluster Service Version in the ibm-common-services namespace")
+		return true, nil
+	}); err != nil {
 		return err
 	}
 	return nil
 }
 
-// GetOperatorName return the operator name
-func GetOperatorName() (string, error) {
-	operatorName, found := os.LookupEnv(OperatorNameEnvVar)
-	if !found {
-		return "", fmt.Errorf("%s must be set", OperatorNameEnvVar)
-	}
-	if len(operatorName) == 0 {
-		return "", fmt.Errorf("%s must not be empty", OperatorNameEnvVar)
-	}
-	return operatorName, nil
-}
-
-// GetOperatorNamespace returns the namespace the operator should be running in.
-func GetOperatorNamespace() (string, error) {
-	nsBytes, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
-	if err != nil {
-		if os.IsNotExist(err) {
-			return "", fmt.Errorf("namespace not found for current environment")
-		}
-		return "", err
-	}
-	ns := strings.TrimSpace(string(nsBytes))
-	klog.V(1).Info("Found namespace", "Namespace", ns)
-	return ns, nil
-}
-
-// ResourceExists returns true if the given resource kind exists
+// resourceExists returns true if the given resource kind exists
 // in the given api groupversion
-func ResourceExists(dc discovery.DiscoveryInterface, apiGroupVersion, kind string) (bool, error) {
+func resourceExists(dc discovery.DiscoveryInterface, apiGroupVersion, kind string) (bool, error) {
 	_, apiLists, err := dc.ServerGroupsAndResources()
 	if err != nil {
 		return false, err
@@ -438,26 +240,3 @@ func ResourceExists(dc discovery.DiscoveryInterface, apiGroupVersion, kind strin
 	}
 	return false, nil
 }
-
-const csog = `
-apiVersion: operators.coreos.com/v1
-kind: OperatorGroup
-metadata:
-  name: ibm-common-service-operator-operatorgroup
-  namespace: ibm-common-services
-spec:
-  targetNamespaces:
-  - ibm-common-services
-`
-
-const csCR = `
-apiVersion: operator.ibm.com/v3
-kind: CommonService
-metadata:
-  annotations:
-    version: "-1"
-  name: common-service
-  namespace: ibm-common-services
-spec:
-  size: small
-`

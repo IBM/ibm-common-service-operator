@@ -23,10 +23,7 @@ import (
 
 	utilyaml "github.com/ghodss/yaml"
 	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -35,84 +32,95 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
+	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
+	util "github.com/IBM/ibm-common-service-operator/controllers/common"
+	"github.com/IBM/ibm-common-service-operator/controllers/deploy"
 	"github.com/IBM/ibm-common-service-operator/controllers/size"
 )
 
 // CommonServiceReconciler reconciles a CommonService object
 type CommonServiceReconciler struct {
 	client.Client
+	client.Reader
+	*deploy.Manager
+	*bootstrap.Bootstrap
 	Log    logr.Logger
 	Scheme *runtime.Scheme
 }
 
+var ctx = context.Background()
+
 // +kubebuilder:rbac:groups=*,resources=*,verbs=*
 
 func (r *CommonServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	ctx := context.Background()
+
 	// Fetch the CommonService instance
-	instance := &unstructured.Unstructured{}
-	instance.SetGroupVersionKind(schema.GroupVersionKind{Group: "operator.ibm.com", Kind: "CommonService", Version: "v3"})
+	instance := &apiv3.CommonService{}
 
-	err := r.Get(ctx, req.NamespacedName, instance)
+	if err := r.Client.Get(ctx, req.NamespacedName, instance); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	klog.Infof("Reconciling CommonService: %s", req.NamespacedName)
+	// Init common servcie bootstrap resource
+	if err := r.Bootstrap.InitResources(); err != nil {
+		klog.Error("InitResources failed: ", err)
+	}
+
+	newConfigs, err := r.getNewConfigs(req)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
-			return ctrl.Result{}, nil
-		}
-		// Error reading the object - requeue the request.
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	if err = r.updateOpcon(newConfigs); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	klog.Info("Reconciling CommonService")
-	var newConfigs []interface{}
-
-	if instance.Object["spec"] == nil {
-		return ctrl.Result{}, nil
-	}
-
-	switch instance.Object["spec"].(map[string]interface{})["size"] {
-	case "small":
-		if instance.Object["spec"].(map[string]interface{})["services"] == nil {
-			newConfigs = deepMerge(newConfigs, size.Small)
-		} else {
-			newConfigs = deepMerge(instance.Object["spec"].(map[string]interface{})["services"].([]interface{}), size.Small)
-		}
-	case "medium":
-		if instance.Object["spec"].(map[string]interface{})["services"] == nil {
-			newConfigs = deepMerge(newConfigs, size.Medium)
-		} else {
-			newConfigs = deepMerge(instance.Object["spec"].(map[string]interface{})["services"].([]interface{}), size.Medium)
-		}
-	case "large":
-		if instance.Object["spec"].(map[string]interface{})["services"] == nil {
-			newConfigs = deepMerge(newConfigs, size.Large)
-		} else {
-			newConfigs = deepMerge(instance.Object["spec"].(map[string]interface{})["services"].([]interface{}), size.Large)
-		}
-	default:
-		if instance.Object["spec"].(map[string]interface{})["services"] != nil {
-			newConfigs = instance.Object["spec"].(map[string]interface{})["services"].([]interface{})
-		}
-	}
-
-	err = r.updateOpcon(ctx, newConfigs)
-
-	if err != nil {
-		return ctrl.Result{}, err
-	}
+	klog.Infof("Finished reconciling CommonService: %s", req.NamespacedName)
 	return ctrl.Result{}, nil
 }
 
-func (r *CommonServiceReconciler) updateOpcon(ctx context.Context, newConfigs []interface{}) error {
-	opcon := &unstructured.Unstructured{}
-	opcon.SetGroupVersionKind(schema.GroupVersionKind{Group: "operator.ibm.com", Kind: "OperandConfig", Version: "v1alpha1"})
-	err := r.Client.Get(ctx, types.NamespacedName{
+func (r *CommonServiceReconciler) getNewConfigs(req ctrl.Request) ([]interface{}, error) {
+	cs := util.NewUnstructured("operator.ibm.com", "CommonService", "v3")
+	if err := r.Client.Get(ctx, req.NamespacedName, cs); err != nil {
+		return nil, err
+	}
+	var newConfigs []interface{}
+	switch cs.Object["spec"].(map[string]interface{})["size"] {
+	case "small":
+		if cs.Object["spec"].(map[string]interface{})["services"] == nil {
+			newConfigs = deepMerge(newConfigs, size.Small)
+		} else {
+			newConfigs = deepMerge(cs.Object["spec"].(map[string]interface{})["services"].([]interface{}), size.Small)
+		}
+	case "medium":
+		if cs.Object["spec"].(map[string]interface{})["services"] == nil {
+			newConfigs = deepMerge(newConfigs, size.Medium)
+		} else {
+			newConfigs = deepMerge(cs.Object["spec"].(map[string]interface{})["services"].([]interface{}), size.Medium)
+		}
+	case "large":
+		if cs.Object["spec"].(map[string]interface{})["services"] == nil {
+			newConfigs = deepMerge(newConfigs, size.Large)
+		} else {
+			newConfigs = deepMerge(cs.Object["spec"].(map[string]interface{})["services"].([]interface{}), size.Large)
+		}
+	default:
+		if cs.Object["spec"].(map[string]interface{})["services"] != nil {
+			newConfigs = cs.Object["spec"].(map[string]interface{})["services"].([]interface{})
+		}
+	}
+
+	return newConfigs, nil
+}
+
+func (r *CommonServiceReconciler) updateOpcon(newConfigs []interface{}) error {
+	opcon := util.NewUnstructured("operator.ibm.com", "OperandConfig", "v1alpha1")
+	opconKey := types.NamespacedName{
 		Name:      "common-service",
 		Namespace: "ibm-common-services",
-	}, opcon)
-	if err != nil {
+	}
+	if err := r.Reader.Get(ctx, opconKey, opcon); err != nil {
 		klog.Error(err)
 		return err
 	}
@@ -132,8 +140,7 @@ func (r *CommonServiceReconciler) updateOpcon(ctx context.Context, newConfigs []
 
 	opcon.Object["spec"].(map[string]interface{})["services"] = services
 
-	err = r.Client.Update(ctx, opcon)
-	if err != nil {
+	if err := r.Update(ctx, opcon); err != nil {
 		klog.Error(err)
 		return err
 	}

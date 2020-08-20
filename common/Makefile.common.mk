@@ -49,6 +49,21 @@ lint-go:
 
 lint-all: lint-copyright-banner lint-go
 
+# find or download controller-gen
+# download controller-gen if necessary
+controller-gen:
+ifeq (, $(CONTROLLER_GEN))
+	@{ \
+	set -e ;\
+	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
+	cd $$CONTROLLER_GEN_TMP_DIR ;\
+	go mod init tmp ;\
+	GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.3.0 ;\
+	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
+	}
+CONTROLLER_GEN=$(GOBIN)/controller-gen
+endif
+
 # Run go vet for this project. More info: https://golang.org/cmd/vet/
 code-vet:
 	@echo go vet
