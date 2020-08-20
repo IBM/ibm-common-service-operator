@@ -264,10 +264,10 @@ const Small = `
     IBMLicensing:
       resources:
         requests:
-          cpu: 10m
+          cpu: 100m
           memory: 220Mi
         limits:
-          cpu: 35m
+          cpu: 200m
           memory: 250Mi
     IBMLicenseServiceReporter:
       databaseContainer:
