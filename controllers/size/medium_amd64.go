@@ -264,10 +264,10 @@ const Medium = `
     IBMLicensing:
       resources:
         requests:
-          cpu: 35m
+          cpu: 200m
           memory: 230Mi
         limits:
-          cpu: 110m
+          cpu: 300m
           memory: 250Mi
     IBMLicenseServiceReporter:
       databaseContainer:
