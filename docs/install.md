@@ -128,9 +128,9 @@ So far, the IBM Common Service Operator and ODLM operator installation is comple
 
 ### Configure Size
 
-Open the OpenShift Web Console, click the plus button in top right corner, then copy following CR into the editor and create.
+The IBM Common Service Operator will create the following CR in the `ibm-common-services` namespace. The initialized size is `small`.
 
-```
+```yaml
 apiVersion: operator.ibm.com/v3
 kind: CommonService
 metadata:
@@ -144,9 +144,9 @@ The supported sizes are: `small`, `medium` and `large`.
 
 ### Configure general parameters
 
-Take MongoDB as an example, following is configure MongoDB storage class:
+Take MongoDB as an example, the following is configure MongoDB storage class:
 
-```
+```yaml
 apiVersion: operator.ibm.com/v3
 kind: CommonService
 metadata:
