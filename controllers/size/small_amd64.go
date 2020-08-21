@@ -339,8 +339,8 @@ const Small = `
             memory: "50Mi"
             cpu: "20m"
           limits:
-            memory: "50Mi"
-            cpu: "20m"
+            memory: "100Mi"
+            cpu: "200m"
       healthService:
         replicas: 1
         resources:
@@ -348,8 +348,8 @@ const Small = `
             memory: "50Mi"
             cpu: "20m"
           limits:
-            memory: "50Mi"
-            cpu: "30m"
+            memory: "100Mi"
+            cpu: "200m"
 - name: ibm-auditlogging-operator
   spec:
     auditLogging:

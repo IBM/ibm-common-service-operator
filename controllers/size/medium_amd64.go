@@ -336,11 +336,11 @@ const Medium = `
         replicas: 1
         resources:
           requests:
-            memory: "30Mi"
+            memory: "50Mi"
             cpu: "20m"
           limits:
-            memory: "30Mi"
-            cpu: "20m"
+            memory: "100Mi"
+            cpu: "200m"
       healthService:
         replicas: 1
         resources:
@@ -348,8 +348,8 @@ const Medium = `
             memory: "125Mi"
             cpu: "20m"
           limits:
-            memory: "150Mi"
-            cpu: "30m"
+            memory: "250Mi"
+            cpu: "200m"
 - name: ibm-auditlogging-operator
   spec:
     auditLogging:
