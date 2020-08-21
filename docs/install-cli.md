@@ -6,7 +6,10 @@
   - [1. Create CatalogSource](#1-create-catalogsource)
   - [2. Create Namespace, OperatorGroup and Subscription](#2-create-namespace-operatorgroup-and-subscription)
   - [3. Waiting for Operator CSV is ready](#3-waiting-for-operator-csv-is-ready)
-  - [4. Create OperandRequest instance](#4-create-operandrequest-instance)
+  - [4.Configure IBM Common Services](#4configure-ibm-common-services)
+    - [Configure Size](#configure-size)
+    - [Configure general parameters](#configure-general-parameters)
+  - [5. Create OperandRequest instance](#5-create-operandrequest-instance)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -103,7 +106,44 @@ Check if the CRDs are created
 oc get crd operandrequest
 ```
 
-## 4. Create OperandRequest instance
+## 4.Configure IBM Common Services
+
+### Configure Size
+
+The IBM Common Service Operator will bootstrap a `commonservice` CR in the `ibm-common-services` namespace. The initialized size is `small`.
+
+```yaml
+apiVersion: operator.ibm.com/v3
+kind: CommonService
+metadata:
+  name: common-service
+  namespace: ibm-common-services
+spec:
+  size: small
+```
+
+The supported sizes are: `small`, `medium` and `large`.
+
+### Configure general parameters
+
+Take MongoDB as an example, following is configure MongoDB storage class:
+
+```yaml
+apiVersion: operator.ibm.com/v3
+kind: CommonService
+metadata:
+  name: common-service
+  namespace: ibm-common-services
+spec:
+  size: small
+  services:
+  - name: ibm-mongodb-operator
+    spec:
+      mongoDB:
+        storageClass: cephfs
+```
+
+## 5. Create OperandRequest instance
 
 Add the required services into `operands:` and create the `OperandRequest` in the namespace you create.
 
