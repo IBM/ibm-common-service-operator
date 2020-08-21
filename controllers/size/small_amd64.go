@@ -223,11 +223,11 @@ const Small = `
       kubectl:
         resources:
           requests:
-            memory: "150Mi"
-            cpu: "30m"
+            memory: 150Mi
+            cpu: 30m
           limits:
-            memory: "150Mi"
-            cpu: "30m"
+            memory: 150Mi
+            cpu: 30m
 - name: ibm-metering-operator
   spec:
     metering:
@@ -345,20 +345,20 @@ const Small = `
         replicas: 1
         resources:
           requests:
-            memory: "50Mi"
-            cpu: "20m"
+            memory: 50Mi
+            cpu: 20m
           limits:
-            memory: "100Mi"
-            cpu: "200m"
+            memory: 100Mi
+            cpu: 200m
       healthService:
         replicas: 1
         resources:
           requests:
-            memory: "50Mi"
-            cpu: "20m"
+            memory: 50Mi
+            cpu: 20m
           limits:
-            memory: "100Mi"
-            cpu: "200m"
+            memory: 100Mi
+            cpu: 200m
 - name: ibm-auditlogging-operator
   spec:
     auditLogging:
