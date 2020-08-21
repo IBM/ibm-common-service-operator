@@ -53,7 +53,16 @@ const Medium = `
             cpu: 10m
             memory: 20Mi
 - name: ibm-mongodb-operator
-  spec: {}
+  spec:
+    mongoDB:
+      replicas: 3
+      resources:
+        limits:
+          cpu: 1200m
+          memory: 2Gi
+        requests:
+          cpu: 1200m
+          memory: 2Gi
 - name: ibm-iam-operator
   spec:
     authentication:

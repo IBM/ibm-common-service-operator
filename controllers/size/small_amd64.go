@@ -53,7 +53,16 @@ const Small = `
             cpu: 10m
             memory: 50Mi
 - name: ibm-mongodb-operator
-  spec: {}
+  spec:
+    mongoDB:
+      replicas: 3
+      resources:
+        limits:
+          cpu: 105m
+          memory: 1Gi
+        requests:
+          cpu: 105m
+          memory: 1Gi
 - name: ibm-iam-operator
   spec:
     authentication:
