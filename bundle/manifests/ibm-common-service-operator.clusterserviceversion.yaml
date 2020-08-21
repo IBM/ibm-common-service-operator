@@ -2257,7 +2257,6 @@ spec:
           replicas: 1
           selector:
             matchLabels:
-              control-plane: controller-manager
               name: ibm-common-service-operator
           strategy: {}
           template:
@@ -2270,7 +2269,6 @@ spec:
                 app.kubernetes.io/instance: ibm-common-service-operator
                 app.kubernetes.io/managed-by: ibm-common-service-operator
                 app.kubernetes.io/name: ibm-common-service-operator
-                control-plane: controller-manager
                 name: ibm-common-service-operator
             spec:
               affinity:
