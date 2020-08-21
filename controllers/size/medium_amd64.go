@@ -31,19 +31,19 @@ const Medium = `
       certManagerController:
         resources:
           limits:
-            cpu: 30m
+            cpu: 80m
             memory: 230Mi
           requests:
-            cpu: 10m
+            cpu: 70m
             memory: 205Mi
       certManagerWebhook:
         resources:
           limits:
-            cpu: 35m
-            memory: 40Mi
+            cpu: 60m
+            memory: 100Mi
           requests:
-            cpu: 15m
-            memory: 30Mi
+            cpu: 50m
+            memory: 90Mi
       configMapWatcher:
         resources:
           limits:

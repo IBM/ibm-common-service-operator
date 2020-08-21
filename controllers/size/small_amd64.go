@@ -31,19 +31,19 @@ const Small = `
       certManagerController:
         resources:
           limits:
-            cpu: 30m
+            cpu: 60m
             memory: 230Mi
           requests:
-            cpu: 10m
+            cpu: 50m
             memory: 175Mi
       certManagerWebhook:
         resources:
           limits:
             cpu: 35m
-            memory: 50Mi
+            memory: 80Mi
           requests:
-            cpu: 15m
-            memory: 50Mi
+            cpu: 30m
+            memory: 70Mi
       configMapWatcher:
         resources:
           limits:
