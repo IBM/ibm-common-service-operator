@@ -427,7 +427,7 @@ const Medium = `
             requests:
               cpu: 25m
               memory: 65Mi
-            limitis:
+            limits:
               cpu: 70m
               memory: 80Mi
         dashboardConfig:

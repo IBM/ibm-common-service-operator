@@ -427,7 +427,7 @@ const Small = `
             requests:
               cpu: 20m
               memory: 65Mi
-            limitis:
+            limits:
               cpu: 70m
               memory: 75Mi
         dashboardConfig:
