@@ -471,33 +471,4 @@ const Small = `
           limits:
             cpu: 30m
             memory: 50Mi
-- name: ibm-elastic-stack-operator
-  spec:
-    elasticStack:
-      curator:
-        resources:
-          limits:
-            memory: 915Mi
-          requests:
-            memory: 2320Mi
-        routerImage:
-          resources:
-            limits:
-              memory: 256Mi
-            requests:
-              memory: 64Mi
-      filebeat:
-        resources:
-          limits:
-            memory: 80Mi
-          requests:
-            memory: 50Mi
-      logstash:
-        probe:
-          resources:
-            limits:
-              memory: 1290Mi
-            requests:
-              memory: 810Mi
-        replicas: 1
 `

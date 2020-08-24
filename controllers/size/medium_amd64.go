@@ -471,33 +471,4 @@ const Medium = `
           limits:
             cpu: 30m
             memory: 30Mi
-- name: ibm-elastic-stack-operator
-  spec:
-    elasticStack:
-      curator:
-        resources:
-          limits:
-            memory: 915Mi
-          requests:
-            memory: 2320Mi
-        routerImage:
-          resources:
-            limits:
-              memory: 256Mi
-            requests:
-              memory: 64Mi
-      filebeat:
-        resources:
-          limits:
-            memory: 125Mi
-          requests:
-            memory: 100Mi
-      logstash:
-        probe:
-          resources:
-            limits:
-              memory: 1740Mi
-            requests:
-              memory: 1500Mi
-        replicas: 1
 `
