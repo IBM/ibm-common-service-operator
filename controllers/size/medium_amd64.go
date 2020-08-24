@@ -152,14 +152,13 @@ const Medium = `
           requests:
             cpu: 20m
             memory: 20Mi
-      pdpService:
-        resources:
-          limits:
-            cpu: 30m
-            memory: 30Mi
-          requests:
-            cpu: 20m
-            memory: 30Mi
+      resources:
+        limits:
+          cpu: 30m
+          memory: 30Mi
+        requests:
+          cpu: 20m
+          memory: 30Mi
       replicas: 1
     secretwatcher:
       resources:
@@ -172,14 +171,13 @@ const Medium = `
       replicas: 1
     securityonboarding:
       replicas: 1
-      securityOnboardingJob:
-        resources:
-          limits:
-            cpu: 20m
-            memory: 20Mi
-          requests:
-            cpu: 20m
-            memory: 20Mi
+      resources:
+        limits:
+          cpu: 20m
+          memory: 20Mi
+        requests:
+          cpu: 20m
+          memory: 20Mi
       iamOnboarding:
         resources:
           limits:

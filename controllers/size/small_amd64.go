@@ -152,14 +152,13 @@ const Small = `
           requests:
             cpu: 20m
             memory: 50Mi
-      pdpService:
-        resources:
-          limits:
-            cpu: 30m
-            memory: 50Mi
-          requests:
-            cpu: 20m
-            memory: 50Mi
+      resources:
+        limits:
+          cpu: 30m
+          memory: 50Mi
+        requests:
+          cpu: 20m
+          memory: 50Mi
       replicas: 1
     secretwatcher:
       resources:
@@ -172,14 +171,13 @@ const Small = `
       replicas: 1
     securityonboarding:
       replicas: 1
-      securityOnboardingJob:
-        resources:
-          limits:
-            cpu: 20m
-            memory: 50Mi
-          requests:
-            cpu: 20m
-            memory: 50Mi
+      resources:
+        limits:
+          cpu: 20m
+          memory: 50Mi
+        requests:
+          cpu: 20m
+          memory: 50Mi
       iamOnboarding:
         resources:
           limits:
