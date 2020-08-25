@@ -372,7 +372,7 @@ const Medium = `
   spec:
     exporter:
       collectd:
-        resources:
+        resource:
           requests:
             cpu: 30m
             memory: 30Mi
@@ -387,7 +387,7 @@ const Medium = `
             cpu: 20m
             memory: 20Mi
       nodeExporter:
-        resources:
+        resource:
           requests:
             cpu: 5m
             memory: 30Mi
@@ -402,7 +402,7 @@ const Medium = `
             cpu: 25m
             memory: 20Mi
       kubeStateMetrics:
-        resources:
+        resource:
           requests:
             cpu: 500m
             memory: 155Mi
@@ -419,36 +419,35 @@ const Medium = `
 - name: ibm-monitoring-grafana-operator
   spec:
     grafana:
-      resources:
-        grafanaConfig:
-          resources:
-            requests:
-              cpu: 25m
-              memory: 65Mi
-            limits:
-              cpu: 70m
-              memory: 80Mi
-        dashboardConfig:
-          resources:
-            requests:
-              cpu: 25m
-              memory: 65Mi
-            limits:
-              cpu: 70m
-              memory: 80Mi
-        routerConfig:
-          resources:
-            requests:
-              cpu: 25m
-              memory: 65Mi
-            limits:
-              cpu: 70m
-              memory: 80Mi
+      grafanaConfig:
+        resources:
+          requests:
+            cpu: 25m
+            memory: 65Mi
+          limits:
+            cpu: 70m
+            memory: 80Mi
+      dashboardConfig:
+        resources:
+          requests:
+            cpu: 25m
+            memory: 65Mi
+          limits:
+            cpu: 70m
+            memory: 80Mi
+      routerConfig:
+        resources:
+          requests:
+            cpu: 25m
+            memory: 65Mi
+          limits:
+            cpu: 70m
+            memory: 80Mi
 - name: ibm-monitoring-prometheusext-operator
   spec:
     prometheusExt:
       prometheusConfig:
-        resources:
+        resource:
           requests:
             cpu: 150m
             memory: 6190Mi
@@ -456,7 +455,7 @@ const Medium = `
             cpu: 230m
             memory: 7885Mi
       alertManagerConfig:
-        resources:
+        resource:
           requests:
             cpu: 30m
             memory: 50Mi
@@ -464,7 +463,7 @@ const Medium = `
             cpu: 30m
             memory: 50Mi
       mcmMonitor:
-        resources:
+        resource:
           requests:
             cpu: 30m
             memory: 30Mi

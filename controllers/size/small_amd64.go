@@ -372,7 +372,7 @@ const Small = `
   spec:
     exporter:
       collectd:
-        resources:
+        resource:
           requests:
             cpu: 30m
             memory: 50Mi
@@ -387,7 +387,7 @@ const Small = `
             cpu: 10m
             memory: 50Mi
       nodeExporter:
-        resources:
+        resource:
           requests:
             cpu: 5m
             memory: 50Mi
@@ -402,7 +402,7 @@ const Small = `
             cpu: 100m
             memory: 256Mi
       kubeStateMetrics:
-        resources:
+        resource:
           requests:
             cpu: 500m
             memory: 110Mi
@@ -419,36 +419,35 @@ const Small = `
 - name: ibm-monitoring-grafana-operator
   spec:
     grafana:
-      resources:
-        grafanaConfig:
-          resources:
-            requests:
-              cpu: 20m
-              memory: 65Mi
-            limits:
-              cpu: 70m
-              memory: 75Mi
-        dashboardConfig:
-          resources:
-            requests:
-              cpu: 5m
-              memory: 50Mi
-            limits:
-              cpu: 10m
-              memory: 60Mi
-        routerConfig:
-          resources:
-            requests:
-              cpu: 10m
-              memory: 50Mi
-            limits:
-              cpu: 25m
-              memory: 50Mi
+      grafanaConfig:
+        resources:
+          requests:
+            cpu: 20m
+            memory: 65Mi
+          limits:
+            cpu: 70m
+            memory: 75Mi
+      dashboardConfig:
+        resources:
+          requests:
+            cpu: 5m
+            memory: 50Mi
+          limits:
+            cpu: 10m
+            memory: 60Mi
+      routerConfig:
+        resources:
+          requests:
+            cpu: 10m
+            memory: 50Mi
+          limits:
+            cpu: 25m
+            memory: 50Mi
 - name: ibm-monitoring-prometheusext-operator
   spec:
     prometheusExt:
       prometheusConfig:
-        resources:
+        resource:
           requests:
             cpu: 65m
             memory: 1920Mi
@@ -456,7 +455,7 @@ const Small = `
             cpu: 130m
             memory: 2570Mi
       alertManagerConfig:
-        resources:
+        resource:
           requests:
             cpu: 30m
             memory: 50Mi
@@ -464,7 +463,7 @@ const Small = `
             cpu: 30m
             memory: 50Mi
       mcmMonitor:
-        resources:
+        resource:
           requests:
             cpu: 30m
             memory: 50Mi
