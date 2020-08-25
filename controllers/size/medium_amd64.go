@@ -32,7 +32,7 @@ const Medium = `
         resources:
           limits:
             cpu: 80m
-            memory: 230Mi
+            memory: 400Mi
           requests:
             cpu: 70m
             memory: 205Mi
@@ -78,7 +78,7 @@ const Medium = `
       authService:
         resources:
           limits:
-            cpu: 650m
+            cpu: 700m
             memory: 745Mi
           requests:
             cpu: 230m
@@ -95,7 +95,7 @@ const Medium = `
         resources:
           limits:
             cpu: 250m
-            memory: 185Mi
+            memory: 525Mi
           requests:
             cpu: 100m
             memory: 140Mi
@@ -103,7 +103,7 @@ const Medium = `
         resources:
           limits:
             cpu: 485m
-            memory: 305Mi
+            memory: 350Mi
           requests:
             cpu: 320m
             memory: 250Mi
@@ -128,8 +128,8 @@ const Medium = `
       papService:
         resources:
           limits:
-            cpu: 45m
-            memory: 355Mi
+            cpu: 100m
+            memory: 600Mi
           requests:
             cpu: 20m
             memory: 195Mi
@@ -275,7 +275,7 @@ const Medium = `
           memory: 230Mi
         limits:
           cpu: 300m
-          memory: 250Mi
+          memory: 350Mi
     IBMLicenseServiceReporter:
       databaseContainer:
         resources:
@@ -425,8 +425,8 @@ const Medium = `
             cpu: 25m
             memory: 65Mi
           limits:
-            cpu: 70m
-            memory: 80Mi
+            cpu: 120m
+            memory: 130Mi
       dashboardConfig:
         resources:
           requests:
@@ -447,6 +447,13 @@ const Medium = `
   spec:
     prometheusExt:
       prometheusConfig:
+        routerResource:
+          requests:
+            cpu: 10m
+            memory: 50Mi
+          limits:
+            cpu: 25m
+            memory: 50Mi
         resource:
           requests:
             cpu: 150m
