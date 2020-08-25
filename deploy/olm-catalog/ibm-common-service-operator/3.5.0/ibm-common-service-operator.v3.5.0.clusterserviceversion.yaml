@@ -528,7 +528,7 @@ metadata:
               - --enable-leader-election
               image: quay.io/opencloudio/ibm-secretshare-operator@sha256:2a2bf3f8f998eb265edc9371ad4e22cd34a69c6f835cdce7169b25206858bc83
               imagePullPolicy: Always
-              name: ibm-common-service-operator
+              name: ibm-secretshare-operator
               env:
               - name: OPERATOR_NAME
                 value: "secretshare"
