@@ -32,7 +32,7 @@ const Small = `
         resources:
           limits:
             cpu: 60m
-            memory: 230Mi
+            memory: 400Mi
           requests:
             cpu: 50m
             memory: 175Mi
@@ -78,8 +78,8 @@ const Small = `
       authService:
         resources:
           limits:
-            cpu: 650m
-            memory: 555Mi
+            cpu: 700m
+            memory: 625Mi
           requests:
             cpu: 140m
             memory: 525Mi
@@ -95,7 +95,7 @@ const Small = `
         resources:
           limits:
             cpu: 200m
-            memory: 160Mi
+            memory: 525Mi
           requests:
             cpu: 50m
             memory: 120Mi
@@ -103,7 +103,7 @@ const Small = `
         resources:
           limits:
             cpu: 275m
-            memory: 195Mi
+            memory: 350Mi
           requests:
             cpu: 80m
             memory: 130Mi
@@ -129,7 +129,7 @@ const Small = `
         resources:
           limits:
             cpu: 100m
-            memory: 330Mi
+            memory: 600Mi
           requests:
             cpu: 50m
             memory: 160Mi
@@ -242,8 +242,8 @@ const Small = `
         rdr:
           resources:
             limits:
-              cpu: 30m
-              memory: 200Mi
+              cpu: 50m
+              memory: 250Mi
             requests:
               cpu: 25m
               memory: 175Mi
@@ -274,8 +274,8 @@ const Small = `
           cpu: 100m
           memory: 220Mi
         limits:
-          cpu: 200m
-          memory: 250Mi
+          cpu: 220m
+          memory: 350Mi
     IBMLicenseServiceReporter:
       databaseContainer:
         resources:
@@ -302,7 +302,7 @@ const Small = `
           memory: 256Mi
           cpu: 150m
         limits:
-          memory: 256Mi
+          memory: 420Mi
           cpu: 150m
 - name: ibm-platform-api-operator
   spec:
@@ -425,8 +425,8 @@ const Small = `
             cpu: 20m
             memory: 65Mi
           limits:
-            cpu: 70m
-            memory: 75Mi
+            cpu: 120m
+            memory: 130Mi
       dashboardConfig:
         resources:
           requests:
@@ -442,11 +442,18 @@ const Small = `
             memory: 50Mi
           limits:
             cpu: 25m
-            memory: 50Mi
+            memory: 75Mi
 - name: ibm-monitoring-prometheusext-operator
   spec:
     prometheusExt:
       prometheusConfig:
+        routerResource:
+          requests:
+            cpu: 10m
+            memory: 50Mi
+          limits:
+            cpu: 25m
+            memory: 50Mi
         resource:
           requests:
             cpu: 65m
