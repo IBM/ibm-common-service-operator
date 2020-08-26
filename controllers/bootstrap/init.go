@@ -124,10 +124,30 @@ func (b *Bootstrap) CreateCsSubscription() error {
 }
 
 func (b *Bootstrap) CreateCsCR() error {
-	if err := b.createOrUpdateFromYaml([]byte(constant.CsCR)); err != nil {
+	odlm := util.NewUnstructured("operators.coreos.com", "Subscription", "v1alpha1")
+	odlm.SetName("operand-deployment-lifecycle-manager-app")
+	odlm.SetNamespace("openshift-operators")
+	_, err := b.GetObject(odlm)
+	if errors.IsNotFound(err) {
+		// Fresh Intall: No ODLM
+		return b.createOrUpdateFromYaml([]byte(constant.CsCR))
+	} else if err != nil {
 		return err
 	}
-	return nil
+
+	cs := util.NewUnstructured("operator.ibm.com", "CommonService", "v3")
+	cs.SetName("common-service")
+	cs.SetNamespace("ibm-common-services")
+	_, err = b.GetObject(cs)
+	if errors.IsNotFound(err) {
+		// Upgrade: Have ODLM and NO CR
+		return b.createOrUpdateFromYaml([]byte(constant.CsNoSizeCR))
+	} else if err != nil {
+		return err
+	}
+
+	// Restart: Have ODLM and CR
+	return b.createOrUpdateFromYaml([]byte(constant.CsCR))
 }
 
 func (b *Bootstrap) createOperatorGroup() error {
