@@ -33,6 +33,8 @@ import (
 	"github.com/IBM/ibm-common-service-operator/controllers"
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 	"github.com/IBM/ibm-common-service-operator/controllers/check"
+	util "github.com/IBM/ibm-common-service-operator/controllers/common"
+	"github.com/IBM/ibm-common-service-operator/controllers/deploy"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -84,29 +86,22 @@ func main() {
 		os.Exit(1)
 	}
 
-	operatorNs, err := bootstrap.GetOperatorNamespace()
+	// New bootstrap Object
+	bs := bootstrap.NewBootstrap(mgr)
+	operatorNs, err := util.GetOperatorNamespace()
 	if err != nil {
 		klog.Error("get operator namespace failed: ", err)
 		os.Exit(1)
 	}
 	// Create ibm-common-services namespace
-	if operatorNs != "ibm-common-services" {
-		if err := bootstrap.CreateNamespace(mgr); err != nil {
-			klog.Error("create ibm-common-services namespace failed: ", err)
-			os.Exit(1)
-		}
+	if err := bs.CreateNamespace(); err != nil {
+		klog.Error("create ibm-common-services namespace failed: ", err)
+		os.Exit(1)
 	}
 
 	if operatorNs == "ibm-common-services" || operatorNs == "openshift-operators" {
-		klog.Info("start installing ODLM operator and initialize IBM Common Services")
-		if err = bootstrap.InitResources(mgr); err != nil {
-			klog.Error("InitResources failed: ", err)
-			os.Exit(1)
-		}
-		klog.Info("finish installing ODLM operator and initialize IBM Common Services")
-
 		klog.Info("create CommonService CR in ibm-common-services namespace")
-		if err = bootstrap.CreateCsCR(mgr); err != nil {
+		if err = bs.CreateCsCR(); err != nil {
 			klog.Error("Create CommonService CR failed: ", err)
 			os.Exit(1)
 		}
@@ -115,9 +110,12 @@ func main() {
 		go check.IamStatus(mgr)
 
 		if err = (&controllers.CommonServiceReconciler{
-			Client: mgr.GetClient(),
-			Log:    ctrl.Log.WithName("controllers").WithName("CommonService"),
-			Scheme: mgr.GetScheme(),
+			Client:    mgr.GetClient(),
+			Reader:    mgr.GetAPIReader(),
+			Manager:   deploy.NewDeployManager(mgr),
+			Bootstrap: bootstrap.NewBootstrap(mgr),
+			Log:       ctrl.Log.WithName("controllers").WithName("CommonService"),
+			Scheme:    mgr.GetScheme(),
 		}).SetupWithManager(mgr); err != nil {
 			klog.Error(err, "unable to create controller", "controller", "CommonService")
 			os.Exit(1)
@@ -125,7 +123,7 @@ func main() {
 		// +kubebuilder:scaffold:builder
 	} else {
 		klog.Info("start create common service operator")
-		if err = bootstrap.CreateCsSubscription(mgr); err != nil {
+		if err = bs.CreateCsSubscription(); err != nil {
 			klog.Error("create common service operator subscription failed: ", err)
 			os.Exit(1)
 		}

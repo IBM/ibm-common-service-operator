@@ -151,6 +151,13 @@ generate-all: generate manifests ## Generate bundle manifests, metadata and pack
 test: ## Run unit test on prow
 	@echo good
 
+e2e-test: ## Run e2e test
+	@echo "Running e2e tests for the controllers."
+	@USE_EXISTING_CLUSTER=true \
+	OPERATOR_NAME=ibm-common-service-operator \
+	OPERATOR_NAMESPACE=ibm-common-services \
+	go test ./controllers/... -coverprofile cover.out
+
 coverage: ## Run code coverage test
 	@common/scripts/codecov.sh ${BUILD_LOCALLY} "controllers"
 
