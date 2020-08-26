@@ -55,7 +55,7 @@ const Small = `
 - name: ibm-mongodb-operator
   spec:
     mongoDB:
-      replicas: 3
+      replicas: 1
       resources:
         limits:
           cpu: 105m
@@ -441,7 +441,7 @@ const Small = `
             cpu: 10m
             memory: 50Mi
           limits:
-            cpu: 25m
+            cpu: 50m
             memory: 75Mi
 - name: ibm-monitoring-prometheusext-operator
   spec:
@@ -452,7 +452,7 @@ const Small = `
             cpu: 10m
             memory: 50Mi
           limits:
-            cpu: 25m
+            cpu: 75m
             memory: 50Mi
         resource:
           requests:
