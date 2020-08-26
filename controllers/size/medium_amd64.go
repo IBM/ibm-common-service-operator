@@ -58,10 +58,10 @@ const Medium = `
       replicas: 3
       resources:
         limits:
-          cpu: 1200m
+          cpu: 2000m
           memory: 2Gi
         requests:
-          cpu: 1200m
+          cpu: 2000m
           memory: 2Gi
 - name: ibm-iam-operator
   spec:
