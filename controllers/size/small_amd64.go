@@ -24,14 +24,14 @@ const Small = `
         resources:
           limits:
             cpu: 35m
-            memory: 290Mi
+            memory: 350Mi
           requests:
             cpu: 30m
             memory: 230Mi
       certManagerController:
         resources:
           limits:
-            cpu: 60m
+            cpu: 80m
             memory: 400Mi
           requests:
             cpu: 50m
@@ -58,10 +58,10 @@ const Small = `
       replicas: 1
       resources:
         limits:
-          cpu: 105m
+          cpu: 1500m
           memory: 1Gi
         requests:
-          cpu: 105m
+          cpu: 1500m
           memory: 1Gi
 - name: ibm-iam-operator
   spec:
@@ -425,7 +425,7 @@ const Small = `
             cpu: 20m
             memory: 65Mi
           limits:
-            cpu: 120m
+            cpu: 150m
             memory: 130Mi
       dashboardConfig:
         resources:
@@ -433,7 +433,7 @@ const Small = `
             cpu: 5m
             memory: 50Mi
           limits:
-            cpu: 10m
+            cpu: 20m
             memory: 60Mi
       routerConfig:
         resources:
