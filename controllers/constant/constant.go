@@ -52,3 +52,16 @@ metadata:
 spec:
   size: small
 `
+
+// CsNoSizeCR is the default common service operator CR for upgrade
+const CsNoSizeCR = `
+apiVersion: operator.ibm.com/v3
+kind: CommonService
+metadata:
+  annotations:
+    version: "-1"
+  name: common-service
+  namespace: ibm-common-services
+spec:
+  size: as-is
+`
