@@ -24,7 +24,7 @@ const Medium = `
         resources:
           limits:
             cpu: 35m
-            memory: 290Mi
+            memory: 350Mi
           requests:
             cpu: 30m
             memory: 230Mi
@@ -242,7 +242,7 @@ const Medium = `
         rdr:
           resources:
             limits:
-              cpu: 30m
+              cpu: 50m
               memory: 290Mi
             requests:
               cpu: 25m
@@ -425,7 +425,7 @@ const Medium = `
             cpu: 25m
             memory: 65Mi
           limits:
-            cpu: 120m
+            cpu: 150m
             memory: 130Mi
       dashboardConfig:
         resources:
