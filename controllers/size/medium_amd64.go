@@ -48,10 +48,10 @@ const Medium = `
         resources:
           limits:
             cpu: 10m
-            memory: 25Mi
+            memory: 60Mi
           requests:
             cpu: 10m
-            memory: 20Mi
+            memory: 60Mi
 - name: ibm-mongodb-operator
   spec:
     mongoDB:
@@ -475,6 +475,6 @@ const Medium = `
             cpu: 30m
             memory: 30Mi
           limits:
-            cpu: 30m
-            memory: 30Mi
+            cpu: 50m
+            memory: 50Mi
 `
