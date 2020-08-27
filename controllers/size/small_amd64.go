@@ -112,7 +112,7 @@ const Small = `
       resources:
         limits:
           cpu: 30m
-          memory: 50Mi
+          memory: 175Mi
         requests:
           cpu: 30m
           memory: 50Mi

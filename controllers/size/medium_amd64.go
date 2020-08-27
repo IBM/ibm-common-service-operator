@@ -112,7 +112,7 @@ const Medium = `
       resources:
         limits:
           cpu: 30m
-          memory: 50Mi
+          memory: 256Mi
         requests:
           cpu: 30m
           memory: 50Mi
