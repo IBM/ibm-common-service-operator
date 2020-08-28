@@ -50,7 +50,7 @@ metadata:
   name: common-service
   namespace: ibm-common-services
 spec:
-  size: small
+  size: medium
 `
 
 // CsNoSizeCR is the default common service operator CR for upgrade
