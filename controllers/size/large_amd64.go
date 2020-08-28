@@ -71,10 +71,10 @@ const Large = `
         resources:
           limits:
             cpu: 20m
-            memory: 20Mi
+            memory: 50Mi
           requests:
             cpu: 20m
-            memory: 20Mi
+            memory: 50Mi
       authService:
         resources:
           limits:
@@ -87,10 +87,10 @@ const Large = `
         resources:
           limits:
             cpu: 20m
-            memory: 20Mi
+            memory: 50Mi
           requests:
             cpu: 20m
-            memory: 20Mi
+            memory: 50Mi
       identityManager:
         resources:
           limits:
@@ -121,17 +121,17 @@ const Large = `
         resources:
           limits:
             cpu: 20m
-            memory: 20Mi
+            memory: 50Mi
           requests:
             cpu: 20m
-            memory: 20Mi
+            memory: 50Mi
       papService:
         resources:
           limits:
             cpu: 100m
             memory: 600Mi
           requests:
-            cpu: 20m
+            cpu: 50m
             memory: 195Mi
       replicas: 1
     policycontroller:
@@ -148,10 +148,10 @@ const Large = `
         resources:
           limits:
             cpu: 20m
-            memory: 20Mi
+            memory: 50Mi
           requests:
             cpu: 20m
-            memory: 20Mi
+            memory: 50Mi
       resources:
         limits:
           cpu: 325m
@@ -174,10 +174,10 @@ const Large = `
       resources:
         limits:
           cpu: 20m
-          memory: 20Mi
+          memory: 50Mi
         requests:
           cpu: 20m
-          memory: 20Mi
+          memory: 50Mi
       iamOnboarding:
         resources:
           limits:
@@ -214,10 +214,10 @@ const Large = `
         resources:
           requests:
             cpu: 20m
-            memory: 30Mi
+            memory: 50Mi
           limits:
             cpu: 20m
-            memory: 30Mi
+            memory: 50Mi
       kubectl:
         resources:
           requests:
@@ -311,18 +311,18 @@ const Large = `
         resources:
           limits:
             cpu: 25m
-            memory: 30Mi
+            memory: 50Mi
           requests:
             cpu: 25m
-            memory: 30Mi
+            memory: 50Mi
       platformApi:
         resources:
           limits:
             cpu: 25m
-            memory: 40Mi
+            memory: 50Mi
           requests:
             cpu: 25m
-            memory: 30Mi
+            memory: 50Mi
       replicas: 1
 - name: ibm-catalog-ui-operator
   spec:
@@ -375,32 +375,32 @@ const Large = `
         resource:
           requests:
             cpu: 30m
-            memory: 30Mi
+            memory: 50Mi
           limits:
             cpu: 30m
-            memory: 30Mi
+            memory: 50Mi
         routerResource:
           limits:
             cpu: 30m
-            memory: 20Mi
+            memory: 50Mi
           requests:
             cpu: 20m
-            memory: 20Mi
+            memory: 50Mi
       nodeExporter:
         resource:
           requests:
             cpu: 5m
-            memory: 30Mi
+            memory: 50Mi
           limits:
             cpu: 20m
-            memory: 35Mi
+            memory: 50Mi
         routerResource:
           requests:
-            cpu: 20m
-            memory: 20Mi
+            cpu: 50m
+            memory: 128Mi
           limits:
-            cpu: 25m
-            memory: 20Mi
+            cpu: 100m
+            memory: 256Mi
       kubeStateMetrics:
         resource:
           requests:
@@ -412,10 +412,10 @@ const Large = `
         routerResource:
           limits:
             cpu: 25m
-            memory: 20Mi
+            memory: 50Mi
           requests:
             cpu: 20m
-            memory: 20Mi
+            memory: 50Mi
 - name: ibm-monitoring-grafana-operator
   spec:
     grafana:
@@ -473,7 +473,7 @@ const Large = `
         resource:
           requests:
             cpu: 30m
-            memory: 30Mi
+            memory: 50Mi
           limits:
             cpu: 50m
             memory: 50Mi
