@@ -1,7 +1,7 @@
 channels:
-- currentCSV: ibm-common-service-operator.v3.5.0
+- currentCSV: ibm-common-service-operator.v3.5.1
   name: beta
-- currentCSV: ibm-common-service-operator.v3.5.0
+- currentCSV: ibm-common-service-operator.v3.5.1
   name: dev
 - currentCSV: ibm-common-service-operator.v3.4.3
   name: stable-v1
