@@ -126,9 +126,13 @@ So far, the IBM Common Service Operator and ODLM operator installation is comple
 
 ## 4.Configure IBM Common Services
 
+1. Navigate to `Installed Operators` and choose namespace `ibm-common-services`
+2. In the `IBM Common Service Operator` row, click the Provided APIs `CommonService`
+3. Select `common-service` and edit
+
 ### Configure Size
 
-The IBM Common Service Operator will create the following CR in the `ibm-common-services` namespace. The initialized size is `small`.
+The IBM Common Service Operator will create the following CR in the `ibm-common-services` namespace. The initialized size is `medium`.
 
 ```yaml
 apiVersion: operator.ibm.com/v3
@@ -137,7 +141,7 @@ metadata:
   name: common-service
   namespace: ibm-common-services
 spec:
-  size: small
+  size: medium
 ```
 
 The supported sizes are: `small`, `medium` and `large`.
@@ -153,7 +157,7 @@ metadata:
   name: common-service
   namespace: ibm-common-services
 spec:
-  size: small
+  size: medium
   services:
   - name: ibm-mongodb-operator
     spec:
