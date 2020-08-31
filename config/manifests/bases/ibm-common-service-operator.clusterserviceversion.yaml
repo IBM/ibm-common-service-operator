@@ -273,7 +273,7 @@ metadata:
         name: operand-deployment-lifecycle-manager-app
         source: opencloud-operators
         sourceNamespace: openshift-marketplace
-    olm.skipRange: '>=3.3.0 <3.5.0'
+    olm.skipRange: '>=3.3.0 <3.5.1'
     operators.operatorframework.io/builder: operator-sdk-v0.19.2
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
     rbac: |-
@@ -2208,7 +2208,7 @@ spec:
 
     ## Operator versions
 
-     - 3.4.4
+     - 3.5.1
 
     ## Prerequisites
 
