@@ -19,21 +19,28 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"reflect"
 
 	utilyaml "github.com/ghodss/yaml"
 	"github.com/go-logr/logr"
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
+	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/controllers/deploy"
 	"github.com/IBM/ibm-common-service-operator/controllers/size"
 )
@@ -62,6 +69,29 @@ func (r *CommonServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 	}
 
 	klog.Infof("Reconciling CommonService: %s", req.NamespacedName)
+	// Check if the CommonService instance is marked to be deleted, which is
+	// indicated by the deletion timestamp being set.
+	if instance.GetDeletionTimestamp() != nil {
+		if util.Contains(instance.GetFinalizers(), constant.CommonserviceFinalizer) {
+			if err := r.createUninstallJob(); err != nil {
+				return ctrl.Result{}, err
+			}
+			controllerutil.RemoveFinalizer(instance, constant.CommonserviceFinalizer)
+			err := r.Update(ctx, instance)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+		return ctrl.Result{}, nil
+	}
+
+	// Add finalizer for this CR
+	if !util.Contains(instance.GetFinalizers(), constant.CommonserviceFinalizer) {
+		if err := r.addFinalizer(instance); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
 	// Init common servcie bootstrap resource
 	if err := r.Bootstrap.InitResources(); err != nil {
 		klog.Error("InitResources failed: ", err)
@@ -214,6 +244,79 @@ func checkKeyBeforeMerging(key string, defaultMap interface{}, changedMap interf
 			}
 		}
 	}
+}
+
+func (r *CommonServiceReconciler) addFinalizer(cr *apiv3.CommonService) error {
+	klog.Info("Adding Finalizer for the CommonService")
+	controllerutil.AddFinalizer(cr, constant.CommonserviceFinalizer)
+	if err := r.Update(ctx, cr); err != nil {
+		klog.Errorf("Failed to update CommonService with finalizer: %s", err)
+		return err
+	}
+	return nil
+}
+
+func (r *CommonServiceReconciler) createUninstallJob() error {
+	klog.Info("Create job for uninstall common services")
+	name := "uninstall-common-services"
+	namespace := "ibm-common-services"
+	job := &batchv1.Job{}
+	jobKey := types.NamespacedName{Name: name, Namespace: namespace}
+	jobImage, err := r.getOperatorImageName()
+	if err != nil {
+		klog.Errorf("Failed to get common service operator image: %s", err)
+		return err
+	}
+	if err := r.Reader.Get(context.TODO(), jobKey, job); err != nil && errors.IsNotFound(err) {
+		if err := r.Client.Create(context.TODO(), newJobObj(name, namespace, jobImage)); err != nil {
+			klog.Errorf("Failed to create uninstall job: %s", err)
+			return err
+		}
+		// Job created successfully
+		klog.Infof("Job create successfully: %s", name)
+		return nil
+	}
+	return nil
+}
+
+func newJobObj(name, namespace, jobImage string) *batchv1.Job {
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: batchv1.JobSpec{
+			TTLSecondsAfterFinished: func() *int32 { var s int32 = 100; return &s }(),
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					ServiceAccountName: "ibm-common-service-operator",
+					RestartPolicy:      "Never",
+					Containers: []corev1.Container{
+						{
+							Name:            name,
+							Image:           jobImage,
+							ImagePullPolicy: "Always",
+							Command:         []string{"/uninstall.sh"},
+						},
+					},
+				},
+			},
+		},
+	}
+	return job
+}
+
+func (r *CommonServiceReconciler) getOperatorImageName() (string, error) {
+	deploy, err := r.Manager.GetDeployment()
+	if err != nil {
+		return "", err
+	}
+	for _, c := range deploy.Spec.Template.Spec.Containers {
+		if c.Name == "ibm-common-service-operator" {
+			return c.Image, nil
+		}
+	}
+	return "", fmt.Errorf("notfound ibm-common-service-operator image in deployment %s", deploy.GetName())
 }
 
 // Check if the request's NamespacedName is equal "ibm-common-services/common-service"

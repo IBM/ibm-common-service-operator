@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"time"
 
 	"k8s.io/klog"
 
@@ -54,18 +55,22 @@ var _ = Describe("CommonService controller", func() {
 			Expect(createNamespace(CloudPakNamespace)).Should(Succeed())
 			Expect(createOperatorGroup(CloudpakOgYamlObj)).Should(Succeed())
 			Expect(createSubscription(CloudpakCsSubYamlObj)).Should(Succeed())
-
-			By("Checking common service operator deployment status")
-			Eventually(waitForDeploymentReady(CommonServiceOperatorName, CommonServiceOperatorNamespace), timeout, interval).Should(BeTrue())
-
 			By("Checking ODLM status")
-			Eventually(waitForDeploymentReady(OdlmOperatorName, "openshift-operators"),
-				timeout, interval).Should(BeTrue())
-			By("Checking secretshare status")
-			Eventually(waitForDeploymentReady("secretshare", CommonServiceOperatorNamespace), timeout, interval).Should(BeTrue())
-
-			By("Checking common service webhook status")
-			Eventually(waitForDeploymentReady("ibm-common-service-webhook", CommonServiceOperatorNamespace), timeout, interval).Should(BeTrue())
+			Eventually(func() bool {
+				klog.Infof("Waiting for deployment openshift-operators/%s ready ...", OdlmOperatorName)
+				deployKey := types.NamespacedName{Name: OdlmOperatorName, Namespace: "openshift-operators"}
+				deploy := &appsv1.Deployment{}
+				if err := k8sReader.Get(ctx, deployKey, deploy); err != nil {
+					if !errors.IsNotFound(err) {
+						klog.Error("Get deployment failed: ", err)
+					}
+					return false
+				}
+				if deploy.Status.ReadyReplicas != deploy.Status.Replicas {
+					return false
+				}
+				return true
+			}, timeout, interval).Should(BeTrue())
 		})
 	})
 
@@ -79,11 +84,15 @@ var _ = Describe("CommonService controller", func() {
 				if err := k8sReader.Get(ctx, opreqKey, opreq); err != nil {
 					return false
 				}
-				if opreq.Object["status"].(map[string]interface{})["phase"].(string) != "Running" {
-					return false
+				opreqStatus := opreq.Object["status"]
+				if opreqStatus != nil {
+					if opreqStatus.(map[string]interface{})["phase"].(string) == "Running" {
+						return true
+					}
+					klog.Infof("OperandRequest phase: %s", opreqStatus.(map[string]interface{})["phase"].(string))
 				}
-				return true
-			}, timeout, interval).Should(BeTrue())
+				return false
+			}, time.Second*1500, interval).Should(BeTrue())
 		})
 	})
 
@@ -105,7 +114,6 @@ var _ = Describe("CommonService controller", func() {
 
 	Context("Uninstall Common Services and Cleanup environment", func() {
 		It("Should be cleanup", func() {
-
 			By("Delete CommonService instance")
 			csKey := types.NamespacedName{Name: CommonServiceOperandName, Namespace: CommonServiceOperatorNamespace}
 			cs := &apiv3.CommonService{}
@@ -117,29 +125,23 @@ var _ = Describe("CommonService controller", func() {
 				return errors.IsNotFound(err)
 			}, timeout, interval).Should(BeTrue())
 
+			By("Checking namespace ibm-common-service if deleted")
+			Eventually(func() bool {
+				ns := &corev1.Namespace{}
+				nsKey := types.NamespacedName{Name: CommonServiceOperatorNamespace}
+				if err := k8sReader.Get(ctx, nsKey, ns); err != nil {
+					if errors.IsNotFound(err) {
+						return true
+					}
+					klog.Error("get namespace failed: ", err)
+				}
+				return false
+			}, time.Second*1500, interval).Should(BeTrue())
 			By("Delete cloudpak-ns namespace")
 			Expect(deleteNamespace(CloudPakNamespace)).Should(Succeed())
 		})
 	})
 })
-
-func waitForDeploymentReady(name, namespace string) bool {
-	klog.Infof("Waiting for deployment %s/%s ready.", namespace, name)
-	deployKey := types.NamespacedName{Name: name, Namespace: namespace}
-	deploy := &appsv1.Deployment{}
-	if err := k8sReader.Get(ctx, deployKey, deploy); err != nil {
-		if !errors.IsNotFound(err) {
-			klog.Error("Get deployment failed: ", err)
-		} else {
-			klog.Error("Cannot found deployment failed: ", err)
-		}
-		return false
-	}
-	if deploy.Status.ReadyReplicas != deploy.Status.Replicas {
-		return false
-	}
-	return true
-}
 
 // Create namespace resource obj
 func createNamespace(name string) error {

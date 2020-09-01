@@ -25,6 +25,7 @@ FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 
 ARG VCS_REF
 ARG VCS_URL
+ARG ARCH
 
 LABEL org.label-schema.vendor="IBM" \
   org.label-schema.name="ibm common service operator" \
@@ -40,7 +41,12 @@ LABEL org.label-schema.vendor="IBM" \
 
 WORKDIR /
 COPY --from=builder /workspace/manager .
-
+COPY common/scripts/uninstall.sh .
+# install kubectl command
+RUN rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm \
+  && microdnf install which jq \
+  && curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/${ARCH}/kubectl" \
+  && chmod +x kubectl && mv kubectl /usr/local/bin/
 # copy licenses
 RUN mkdir /licenses
 COPY LICENSE /licenses

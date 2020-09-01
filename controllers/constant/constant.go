@@ -17,6 +17,7 @@
 package constant
 
 const (
+	CommonserviceFinalizer = "finalizer.commonservice.ibm.com"
 	// OperatorNameEnvVar is the constant for env variable OPERATOR_NAME
 	// which is the name of the current operator
 	OperatorNameEnvVar = "OPERATOR_NAME"

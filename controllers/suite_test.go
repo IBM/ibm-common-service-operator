@@ -35,7 +35,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
-	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/controllers/deploy"
 	// +kubebuilder:scaffold:imports
@@ -97,22 +96,22 @@ var _ = BeforeSuite(func(done Done) {
 
 	deployMgr = deploy.NewDeployManager(k8sManager)
 
-	// Setup Manager with CommonService Controller
-	err = (&CommonServiceReconciler{
-		Client:    k8sManager.GetClient(),
-		Reader:    k8sManager.GetAPIReader(),
-		Manager:   deployMgr,
-		Bootstrap: bootstrap.NewBootstrap(k8sManager),
-		Scheme:    k8sManager.GetScheme(),
-	}).SetupWithManager(k8sManager)
-	Expect(err).ToNot(HaveOccurred())
+	// // Setup Manager with CommonService Controller
+	// err = (&CommonServiceReconciler{
+	// 	Client:    k8sManager.GetClient(),
+	// 	Reader:    k8sManager.GetAPIReader(),
+	// 	Manager:   deployMgr,
+	// 	Bootstrap: bootstrap.NewBootstrap(k8sManager),
+	// 	Scheme:    k8sManager.GetScheme(),
+	// }).SetupWithManager(k8sManager)
+	// Expect(err).ToNot(HaveOccurred())
 
-	// Start common service operator conntroller
-	go func() {
-		err = k8sManager.Start(ctrl.SetupSignalHandler())
-		Expect(err).ToNot(HaveOccurred())
-	}()
-	// End your controllers test logic
+	// // Start common service operator conntroller
+	// go func() {
+	// 	err = k8sManager.Start(ctrl.SetupSignalHandler())
+	// 	Expect(err).ToNot(HaveOccurred())
+	// }()
+	// // End your controllers test logic
 
 	close(done)
 }, 60)
