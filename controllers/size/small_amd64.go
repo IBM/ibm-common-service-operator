@@ -95,7 +95,7 @@ const Small = `
         resources:
           limits:
             cpu: 200m
-            memory: 200Mi
+            memory: 220Mi
           requests:
             cpu: 50m
             memory: 120Mi
@@ -103,7 +103,7 @@ const Small = `
         resources:
           limits:
             cpu: 275m
-            memory: 195Mi
+            memory: 230Mi
           requests:
             cpu: 80m
             memory: 130Mi
@@ -208,7 +208,7 @@ const Small = `
             memory: 140Mi
           limits:
             cpu: 100m
-            memory: 225Mi
+            memory: 300Mi
       defaultBackend:
         replicas: 1
         resources:
@@ -275,7 +275,7 @@ const Small = `
           memory: 220Mi
         limits:
           cpu: 200m
-          memory: 250Mi
+          memory: 320Mi
     IBMLicenseServiceReporter:
       databaseContainer:
         resources:
@@ -302,7 +302,7 @@ const Small = `
           memory: 256Mi
           cpu: 150m
         limits:
-          memory: 256Mi
+          memory: 310Mi
           cpu: 150m
 - name: ibm-platform-api-operator
   spec:

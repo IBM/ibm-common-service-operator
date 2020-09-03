@@ -208,7 +208,7 @@ const Medium = `
             memory: 140Mi
           limits:
             cpu: 100m
-            memory: 225Mi
+            memory: 300Mi
       defaultBackend:
         replicas: 1
         resources:
