@@ -396,10 +396,10 @@ const Medium = `
             memory: 50Mi
         routerResource:
           requests:
-            cpu: 20m
+            cpu: 50m
             memory: 128Mi
           limits:
-            cpu: 25m
+            cpu: 100m
             memory: 256Mi
       kubeStateMetrics:
         resource:
