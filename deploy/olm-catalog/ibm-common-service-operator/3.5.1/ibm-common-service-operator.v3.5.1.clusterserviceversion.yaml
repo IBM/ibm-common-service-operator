@@ -35,7 +35,7 @@ metadata:
         name: common-service
         namespace: ibm-common-services
         annotations:
-          version: "6"
+          version: "7"
       spec:
         services:
         - name: ibm-metering-operator
@@ -47,9 +47,9 @@ metadata:
             operandRequest: {}
         - name: ibm-licensing-operator
           spec:
-            IBMLicensing: {}
+            IBMLicensing:
+              datasource: datacollector
             operandBindInfo: {}
-            operandRequest: {}
         - name: ibm-mongodb-operator
           spec:
             mongoDB: {}
