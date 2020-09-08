@@ -40,7 +40,7 @@ spec:
 ## 2. Create Namespace, OperatorGroup and Subscription
 
 **Note:** For CloudPak users, you need to replace the namespace `common-service` to the namespace of the CloudPak.
-**Note:** The `dev` channel in the subscription is for testing purposes. For the product, we need to use the `stable` channel.
+**Note:** You can use the `stable-v1` channel for installing the common service in the last release or use the `beta` channel to install the latest beta release.
 
 ```yaml
 apiVersion: v1
@@ -65,7 +65,7 @@ metadata:
   name: ibm-common-service-operator
   namespace: common-service
 spec:
-  channel: dev # dev channel is for development purpose only
+  channel: beta
   installPlanApproval: Automatic
   name: ibm-common-service-operator
   source: opencloud-operators
@@ -82,7 +82,7 @@ metadata:
   name: ibm-common-service-operator
   namespace: openshift-operators
 spec:
-  channel: dev # dev channel is for development purpose only
+  channel: beta
   installPlanApproval: Automatic
   name: ibm-common-service-operator
   source: opencloud-operators

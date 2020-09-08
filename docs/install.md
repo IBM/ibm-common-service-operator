@@ -1,20 +1,23 @@
-- [Install IBM Common Services](#install-ibm-common-services)
-  * [1.Create CatalogSource](#1create-catalogsource)
-    + [For OpenShift 4.4 or later clusters](#for-openshift-44-or-later-clusters)
-    + [For OpenShift 4.3 cluster](#for-openshift-43-cluster)
-  * [2.Create a Namespace](#2create-a-namespace)
-  * [3.Install IBM Common Service Operator](#3install-ibm-common-service-operator)
-    + [Search IBM Common Service Operator in the OperatorHub](#search-ibm-common-service-operator-in-the-operatorhub)
-    + [Install IBM Common Service Operator](#install-ibm-common-service-operator)
-  * [4.Configure IBM Common Services](#4configure-ibm-common-services)
-    + [Configure Size](#configure-size)
-    + [Configure general parameters](#configure-general-parameters)
-  * [5.Install Individual Common Services](#5install-individual-common-services)
-  * [6.Manage Individual Common Service Operators](#6manage-individual-common-service-operators)
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
-<!--
-<small><i><a href='http://ecotrust-canada.github.io/markdown-toc/'>Table of contents generated with markdown-toc</a></i></small>
--->
+- [Install IBM Common Services](#install-ibm-common-services)
+  - [1.Create CatalogSource](#1create-catalogsource)
+    - [For OpenShift 4.4 or later clusters](#for-openshift-44-or-later-clusters)
+    - [For OpenShift 4.3 cluster](#for-openshift-43-cluster)
+  - [2.Create a Namespace](#2create-a-namespace)
+  - [3.Install IBM Common Service Operator](#3install-ibm-common-service-operator)
+    - [Search IBM Common Service Operator in the OperatorHub](#search-ibm-common-service-operator-in-the-operatorhub)
+    - [Install IBM Common Service Operator](#install-ibm-common-service-operator)
+  - [4.Configure IBM Common Services](#4configure-ibm-common-services)
+    - [Configure Size](#configure-size)
+    - [Configure general parameters](#configure-general-parameters)
+  - [5.Install Individual Common Services](#5install-individual-common-services)
+  - [6.Manage Individual Common Service Operators](#6manage-individual-common-service-operators)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 
 
 # Install IBM Common Services
@@ -116,7 +119,7 @@ Click and install IBM Common Service Operator into `common-service` namespace.
 
 ![Install Preview](./images/install-operator.png)
 
-You can choose the `stable-v1` channel for installing the common service in the last release or choose the `dev` channel to install the latest version.
+You can choose the `stable-v1` channel for installing the common service in the last release or choose the `beta` channel to install the latest beta release.
 
 Waiting for few minutes the IBM Common Service Operator and ODLM will be installed.
 
