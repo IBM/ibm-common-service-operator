@@ -70,10 +70,10 @@ const Large = `
       auditService:
         resources:
           limits:
-            cpu: 20m
+            cpu: 50m
             memory: 50Mi
           requests:
-            cpu: 20m
+            cpu: 50m
             memory: 50Mi
       authService:
         resources:
@@ -120,10 +120,10 @@ const Large = `
       auditService:
         resources:
           limits:
-            cpu: 20m
+            cpu: 50m
             memory: 50Mi
           requests:
-            cpu: 20m
+            cpu: 50m
             memory: 50Mi
       papService:
         resources:
@@ -189,25 +189,25 @@ const Large = `
 - name: ibm-management-ingress-operator
   spec:
     managementIngress:
-      replicas: 1
+      replicas: 3
       resources:
         requests:
-          cpu: 1800m
-          memory: 195Mi
+          cpu: 190m
+          memory: 200Mi
         limits:
-          cpu: 200m
+          cpu: 1000m
           memory: 240Mi
 - name: ibm-ingress-nginx-operator
   spec:
     nginxIngress:
       ingress:
-        replicas: 1
+        replicas: 3
         resources:
           requests:
             cpu: 100m
             memory: 140Mi
           limits:
-            cpu: 100m
+            cpu: 1000m
             memory: 300Mi
       defaultBackend:
         replicas: 1
@@ -299,11 +299,11 @@ const Large = `
       replicas: 1
       resources:
         requests:
-          memory: 335Mi
-          cpu: 300m
+          memory: 470Mi
+          cpu: 450m
         limits:
-          memory: 430Mi
-          cpu: 300m
+          memory: 660Mi
+          cpu: 1000m
 - name: ibm-platform-api-operator
   spec:
     platformApi:
@@ -423,7 +423,7 @@ const Large = `
         resources:
           requests:
             cpu: 30m
-            memory: 195Mi
+            memory: 200Mi
           limits:
             cpu: 150m
             memory: 230Mi
@@ -434,7 +434,7 @@ const Large = `
             memory: 145Mi
           limits:
             cpu: 70m
-            memory: 145Mi
+            memory: 170Mi
       routerConfig:
         resources:
           requests:

@@ -189,7 +189,7 @@ const Medium = `
 - name: ibm-management-ingress-operator
   spec:
     managementIngress:
-      replicas: 1
+      replicas: 2
       resources:
         requests:
           cpu: 50m
@@ -201,7 +201,7 @@ const Medium = `
   spec:
     nginxIngress:
       ingress:
-        replicas: 1
+        replicas: 2
         resources:
           requests:
             cpu: 100m

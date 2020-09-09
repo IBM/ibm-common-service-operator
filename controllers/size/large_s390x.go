@@ -189,7 +189,7 @@ const Large = `
 - name: ibm-management-ingress-operator
   spec:
     managementIngress:
-      replicas: 1
+      replicas: 3
       resources:
         requests:
           cpu: 1800m
@@ -201,7 +201,7 @@ const Large = `
   spec:
     nginxIngress:
       ingress:
-        replicas: 1
+        replicas: 3
         resources:
           requests:
             cpu: 100m
