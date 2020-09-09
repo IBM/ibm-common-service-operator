@@ -32,10 +32,10 @@ const Medium = `
         resources:
           limits:
             cpu: 80m
-            memory: 400Mi
+            memory: 530Mi
           requests:
             cpu: 70m
-            memory: 205Mi
+            memory: 390Mi
       certManagerWebhook:
         resources:
           limits:
@@ -189,25 +189,25 @@ const Medium = `
 - name: ibm-management-ingress-operator
   spec:
     managementIngress:
-      replicas: 1
+      replicas: 2
       resources:
         requests:
-          cpu: 50m
-          memory: 125Mi
+          cpu: 190m
+          memory: 200Mi
         limits:
-          cpu: 50m
-          memory: 170Mi
+          cpu: 1000m
+          memory: 210Mi
 - name: ibm-ingress-nginx-operator
   spec:
     nginxIngress:
       ingress:
-        replicas: 1
+        replicas: 2
         resources:
           requests:
             cpu: 100m
             memory: 140Mi
           limits:
-            cpu: 100m
+            cpu: 1000m
             memory: 300Mi
       defaultBackend:
         replicas: 1
@@ -245,7 +245,7 @@ const Medium = `
               cpu: 50m
               memory: 290Mi
             requests:
-              cpu: 25m
+              cpu: 30m
               memory: 230Mi
     meteringReportServer:
       reportServer:
@@ -299,11 +299,11 @@ const Medium = `
       replicas: 1
       resources:
         requests:
-          memory: 335Mi
-          cpu: 300m
+          memory: 470Mi
+          cpu: 450m
         limits:
-          memory: 430Mi
-          cpu: 300m
+          memory: 660Mi
+          cpu: 1000m
 - name: ibm-platform-api-operator
   spec:
     platformApi:
@@ -405,10 +405,10 @@ const Medium = `
         resource:
           requests:
             cpu: 500m
-            memory: 155Mi
+            memory: 180Mi
           limits:
             cpu: 540m
-            memory: 185Mi
+            memory: 220Mi
         routerResource:
           limits:
             cpu: 25m
@@ -423,18 +423,18 @@ const Medium = `
         resources:
           requests:
             cpu: 25m
-            memory: 65Mi
+            memory: 200Mi
           limits:
             cpu: 150m
-            memory: 130Mi
+            memory: 230Mi
       dashboardConfig:
         resources:
           requests:
             cpu: 25m
-            memory: 65Mi
+            memory: 140Mi
           limits:
             cpu: 70m
-            memory: 80Mi
+            memory: 170Mi
       routerConfig:
         resources:
           requests:
@@ -457,10 +457,10 @@ const Medium = `
         resource:
           requests:
             cpu: 150m
-            memory: 6190Mi
+            memory: 10200Mi
           limits:
             cpu: 230m
-            memory: 7885Mi
+            memory: 13500Mi
       alertManagerConfig:
         resource:
           requests:

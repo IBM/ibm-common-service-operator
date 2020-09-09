@@ -195,7 +195,7 @@ const Small = `
           cpu: 50m
           memory: 100Mi
         limits:
-          cpu: 50m
+          cpu: 1000m
           memory: 170Mi
 - name: ibm-ingress-nginx-operator
   spec:
@@ -207,7 +207,7 @@ const Small = `
             cpu: 100m
             memory: 140Mi
           limits:
-            cpu: 100m
+            cpu: 1000m
             memory: 300Mi
       defaultBackend:
         replicas: 1
@@ -303,7 +303,7 @@ const Small = `
           cpu: 150m
         limits:
           memory: 310Mi
-          cpu: 150m
+          cpu: 1000m
 - name: ibm-platform-api-operator
   spec:
     platformApi:
