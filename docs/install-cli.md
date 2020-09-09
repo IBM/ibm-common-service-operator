@@ -31,7 +31,7 @@ spec:
   displayName: IBMCS Operators
   publisher: IBM
   sourceType: grpc
-  image: quay.io/opencloudio/ibm-common-service-catalog:dev-latest
+  image: quay.io/opencloudio/ibm-common-service-catalog:latest
   updateStrategy:
     registryPoll:
       interval: 45m
