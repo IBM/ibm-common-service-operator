@@ -196,7 +196,7 @@ const Medium = `
           memory: 200Mi
         limits:
           cpu: 1000m
-          memory: 210Mi
+          memory: 310Mi
 - name: ibm-ingress-nginx-operator
   spec:
     nginxIngress:
@@ -208,7 +208,7 @@ const Medium = `
             memory: 140Mi
           limits:
             cpu: 1000m
-            memory: 300Mi
+            memory: 310Mi
       defaultBackend:
         replicas: 1
         resources:
