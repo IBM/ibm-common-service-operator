@@ -386,6 +386,8 @@ metadata:
       apiVersion: rbac.authorization.k8s.io/v1
       kind: ClusterRole
       metadata:
+        annotations:
+          version: "1"
         creationTimestamp: null
         name: secretshare
       rules:
