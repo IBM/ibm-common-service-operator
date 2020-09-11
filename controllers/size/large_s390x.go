@@ -192,10 +192,10 @@ const Large = `
       replicas: 3
       resources:
         requests:
-          cpu: 1800m
+          cpu: 190m
           memory: 195Mi
         limits:
-          cpu: 200m
+          cpu: 1000m
           memory: 240Mi
 - name: ibm-ingress-nginx-operator
   spec:

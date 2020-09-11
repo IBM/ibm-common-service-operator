@@ -251,7 +251,7 @@ const Medium = `
       reportServer:
         resources:
           limits:
-            cpu: 50m
+            cpu: 100m
             memory: 50Mi
           requests:
             cpu: 50m

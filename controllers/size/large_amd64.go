@@ -251,7 +251,7 @@ const Large = `
       reportServer:
         resources:
           limits:
-            cpu: 50m
+            cpu: 100m
             memory: 90Mi
           requests:
             cpu: 50m
