@@ -66,7 +66,7 @@ const Large = `
 - name: ibm-iam-operator
   spec:
     authentication:
-      replicas: 1
+      replicas: 3
       auditService:
         resources:
           limits:
@@ -133,7 +133,7 @@ const Large = `
           requests:
             cpu: 50m
             memory: 195Mi
-      replicas: 1
+      replicas: 3
     policycontroller:
       replicas: 1
       resources:
@@ -159,7 +159,7 @@ const Large = `
         requests:
           cpu: 195m
           memory: 270Mi
-      replicas: 1
+      replicas: 3
     secretwatcher:
       resources:
         limits:
