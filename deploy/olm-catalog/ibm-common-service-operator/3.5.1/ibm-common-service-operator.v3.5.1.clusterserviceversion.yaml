@@ -529,7 +529,7 @@ metadata:
               - /manager
               args:
               - --enable-leader-election
-              image: quay.io/opencloudio/ibm-secretshare-operator@sha256:666658cb3cc7931c5b6480e6e83ea57b7c27f8fe2c22d537f64ea2e0034c5a43
+              image: quay.io/opencloudio/ibm-secretshare-operator@sha256:2ff3a116739714d50a6d81efff6126623de99b60320c03e1041abb2537c7aa72
               imagePullPolicy: Always
               name: ibm-secretshare-operator
               env:
@@ -2155,7 +2155,7 @@ metadata:
             serviceAccountName: ibm-common-service-webhook
             containers:
               - name: ibm-common-service-webhook
-                image: quay.io/opencloudio/ibm-cs-webhook@sha256:40dc45f0e64e507d3174ebaf04bda47e096fe9a1528d502e937097f38a7e2b4a
+                image: quay.io/opencloudio/ibm-cs-webhook@sha256:ebd39b44948b8d7eaf77dbed9b00d7258c0184eccdf5bbb250854f057c6ebe94
                 command:
                 - ibm-common-service-webhook
                 imagePullPolicy: Always
