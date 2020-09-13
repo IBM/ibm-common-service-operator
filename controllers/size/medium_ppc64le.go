@@ -23,24 +23,24 @@ const Medium = `
       certManagerCAInjector:
         resources:
           limits:
-            cpu: 100m
-            memory: 350Mi
+            cpu: 150m
+            memory: 550Mi
           requests:
             cpu: 30m
             memory: 230Mi
       certManagerController:
         resources:
           limits:
-            cpu: 250m
-            memory: 400Mi
+            cpu: 450m
+            memory: 500Mi
           requests:
             cpu: 70m
             memory: 205Mi
       certManagerWebhook:
         resources:
           limits:
-            cpu: 60m
-            memory: 150Mi
+            cpu: 100m
+            memory: 350Mi
           requests:
             cpu: 50m
             memory: 90Mi
@@ -48,7 +48,7 @@ const Medium = `
         resources:
           limits:
             cpu: 10m
-            memory: 120Mi
+            memory: 350Mi
           requests:
             cpu: 10m
             memory: 60Mi
@@ -71,14 +71,14 @@ const Medium = `
         resources:
           limits:
             cpu: 50m
-            memory: 100Mi
+            memory: 300Mi
           requests:
             cpu: 50m
             memory: 50Mi
       authService:
         resources:
           limits:
-            cpu: 1000m
+            cpu: 1200m
             memory: 950Mi
           requests:
             cpu: 230m
@@ -86,15 +86,15 @@ const Medium = `
       clientRegistration:
         resources:
           limits:
-            cpu: 20m
-            memory: 50Mi
+            cpu: 100m
+            memory: 300Mi
           requests:
             cpu: 20m
             memory: 50Mi
       identityManager:
         resources:
           limits:
-            cpu: 250m
+            cpu: 450m
             memory: 525Mi
           requests:
             cpu: 100m
@@ -111,7 +111,7 @@ const Medium = `
       replicas: 1
       resources:
         limits:
-          cpu: 30m
+          cpu: 50m
           memory: 256Mi
         requests:
           cpu: 30m
@@ -121,14 +121,14 @@ const Medium = `
         resources:
           limits:
             cpu: 50m
-            memory: 50Mi
+            memory: 70Mi
           requests:
             cpu: 50m
             memory: 50Mi
       papService:
         resources:
           limits:
-            cpu: 150m
+            cpu: 300m
             memory: 650Mi
           requests:
             cpu: 50m
@@ -138,8 +138,8 @@ const Medium = `
       replicas: 1
       resources:
         limits:
-          cpu: 20m
-          memory: 150Mi
+          cpu: 100m
+          memory: 300Mi
         requests:
           cpu: 20m
           memory: 50Mi
@@ -148,13 +148,13 @@ const Medium = `
         resources:
           limits:
             cpu: 20m
-            memory: 50Mi
+            memory: 70Mi
           requests:
             cpu: 20m
             memory: 50Mi
       resources:
         limits:
-          cpu: 150m
+          cpu: 250m
           memory: 100Mi
         requests:
           cpu: 20m
@@ -163,8 +163,8 @@ const Medium = `
     secretwatcher:
       resources:
         limits:
-          cpu: 30m
-          memory: 220Mi
+          cpu: 50m
+          memory: 270Mi
         requests:
           cpu: 30m
           memory: 220Mi
@@ -195,8 +195,8 @@ const Medium = `
           cpu: 50m
           memory: 125Mi
         limits:
-          cpu: 50m
-          memory: 300Mi
+          cpu: 150m
+          memory: 400Mi
 - name: ibm-ingress-nginx-operator
   spec:
     nginxIngress:
@@ -207,25 +207,25 @@ const Medium = `
             cpu: 100m
             memory: 140Mi
           limits:
-            cpu: 100m
+            cpu: 150m
             memory: 600Mi
       defaultBackend:
         replicas: 1
         resources:
           requests:
             cpu: 20m
-            memory: 50Mi
+            memory: 64Mi
           limits:
-            cpu: 20m
-            memory: 50Mi
+            cpu: 50m
+            memory: 128Mi
       kubectl:
         resources:
           requests:
             memory: 150Mi
-            cpu: 30m
+            cpu: 50m
           limits:
-            memory: 150Mi
-            cpu: 30m
+            memory: 350Mi
+            cpu: 100m
 - name: ibm-metering-operator
   spec:
     metering:
@@ -242,7 +242,7 @@ const Medium = `
         rdr:
           resources:
             limits:
-              cpu: 50m
+              cpu: 150m
               memory: 300Mi
             requests:
               cpu: 25m
@@ -251,8 +251,8 @@ const Medium = `
       reportServer:
         resources:
           limits:
-            cpu: 50m
-            memory: 50Mi
+            cpu: 100m
+            memory: 200Mi
           requests:
             cpu: 50m
             memory: 50Mi
@@ -275,7 +275,7 @@ const Medium = `
           memory: 230Mi
         limits:
           cpu: 300m
-          memory: 350Mi
+          memory: 500Mi
     IBMLicenseServiceReporter:
       databaseContainer:
         resources:
@@ -311,7 +311,7 @@ const Medium = `
         resources:
           limits:
             cpu: 25m
-            memory: 50Mi
+            memory: 300Mi
           requests:
             cpu: 25m
             memory: 50Mi
@@ -367,7 +367,7 @@ const Medium = `
             memory: 128Mi
           limits:
             cpu: 50m
-            memory: 200Mi
+            memory: 300Mi
 - name: ibm-monitoring-exporters-operator
   spec:
     exporter:
@@ -378,11 +378,11 @@ const Medium = `
             memory: 50Mi
           limits:
             cpu: 30m
-            memory: 50Mi
+            memory: 150Mi
         routerResource:
           limits:
             cpu: 25m
-            memory: 50Mi
+            memory: 250Mi
           requests:
             cpu: 20m
             memory: 50Mi
@@ -393,7 +393,7 @@ const Medium = `
             memory: 50Mi
           limits:
             cpu: 20m
-            memory: 100Mi
+            memory: 200Mi
         routerResource:
           requests:
             cpu: 50m
@@ -407,12 +407,12 @@ const Medium = `
             cpu: 500m
             memory: 155Mi
           limits:
-            cpu: 540m
+            cpu: 1000m
             memory: 250Mi
         routerResource:
           limits:
             cpu: 25m
-            memory: 50Mi
+            memory: 250Mi
           requests:
             cpu: 20m
             memory: 50Mi
@@ -426,15 +426,15 @@ const Medium = `
             memory: 65Mi
           limits:
             cpu: 250m
-            memory: 150Mi
+            memory: 300Mi
       dashboardConfig:
         resources:
           requests:
             cpu: 25m
             memory: 65Mi
           limits:
-            cpu: 70m
-            memory: 80Mi
+            cpu: 300m
+            memory: 250Mi
       routerConfig:
         resources:
           requests:
@@ -442,7 +442,7 @@ const Medium = `
             memory: 65Mi
           limits:
             cpu: 70m
-            memory: 80Mi
+            memory: 250Mi
 - name: ibm-monitoring-prometheusext-operator
   spec:
     prometheusExt:
@@ -453,13 +453,13 @@ const Medium = `
             memory: 50Mi
           limits:
             cpu: 75m
-            memory: 50Mi
+            memory: 250Mi
         resource:
           requests:
             cpu: 150m
             memory: 6190Mi
           limits:
-            cpu: 230m
+            cpu: 1000m
             memory: 7885Mi
       alertManagerConfig:
         resource:
@@ -475,6 +475,6 @@ const Medium = `
             cpu: 30m
             memory: 50Mi
           limits:
-            cpu: 50m
-            memory: 50Mi
+            cpu: 100m
+            memory: 100Mi
 `

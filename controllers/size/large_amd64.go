@@ -216,16 +216,16 @@ const Large = `
             cpu: 20m
             memory: 50Mi
           limits:
-            cpu: 20m
-            memory: 50Mi
+            cpu: 50m
+            memory: 128Mi
       kubectl:
         resources:
           requests:
             memory: 150Mi
             cpu: 30m
           limits:
-            memory: 150Mi
-            cpu: 30m
+            memory: 256Mi
+            cpu: 100m
 - name: ibm-metering-operator
   spec:
     metering:

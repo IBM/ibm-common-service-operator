@@ -214,18 +214,18 @@ const Medium = `
         resources:
           requests:
             cpu: 20m
-            memory: 50Mi
+            memory: 64Mi
           limits:
-            cpu: 20m
-            memory: 50Mi
+            cpu: 50m
+            memory: 128Mi
       kubectl:
         resources:
           requests:
             memory: 150Mi
-            cpu: 30m
+            cpu: 50m
           limits:
-            memory: 150Mi
-            cpu: 30m
+            memory: 350Mi
+            cpu: 100m
 - name: ibm-metering-operator
   spec:
     metering:
