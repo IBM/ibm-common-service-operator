@@ -225,7 +225,7 @@ const Small = `
             cpu: 30m
           limits:
             memory: 250Mi
-            cpu: 10m
+            cpu: 50m
 - name: ibm-metering-operator
   spec:
     metering:
