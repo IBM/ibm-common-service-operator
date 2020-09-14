@@ -296,7 +296,7 @@ const Medium = `
 - name: ibm-commonui-operator
   spec:
     commonWebUI:
-      replicas: 1
+      replicas: 2
       resources:
         requests:
           memory: 470Mi
