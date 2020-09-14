@@ -296,7 +296,7 @@ const Large = `
 - name: ibm-commonui-operator
   spec:
     commonWebUI:
-      replicas: 1
+      replicas: 3
       resources:
         requests:
           memory: 470Mi
