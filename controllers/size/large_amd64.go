@@ -94,7 +94,7 @@ const Large = `
       identityManager:
         resources:
           limits:
-            cpu: 410m
+            cpu: 450m
             memory: 525Mi
           requests:
             cpu: 340m
@@ -128,7 +128,7 @@ const Large = `
       papService:
         resources:
           limits:
-            cpu: 100m
+            cpu: 250m
             memory: 600Mi
           requests:
             cpu: 50m
