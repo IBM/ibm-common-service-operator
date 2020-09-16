@@ -94,7 +94,7 @@ const Large = `
       identityManager:
         resources:
           limits:
-            cpu: 410m
+            cpu: 450m
             memory: 525Mi
           requests:
             cpu: 340m
@@ -128,7 +128,7 @@ const Large = `
       papService:
         resources:
           limits:
-            cpu: 100m
+            cpu: 250m
             memory: 600Mi
           requests:
             cpu: 50m
@@ -192,11 +192,11 @@ const Large = `
       replicas: 3
       resources:
         requests:
-          cpu: 190m
-          memory: 200Mi
+          cpu: 200m
+          memory: 256Mi
         limits:
           cpu: 1000m
-          memory: 240Mi
+          memory: 1Gi
 - name: ibm-ingress-nginx-operator
   spec:
     nginxIngress:
@@ -204,11 +204,11 @@ const Large = `
         replicas: 3
         resources:
           requests:
-            cpu: 100m
-            memory: 140Mi
+            cpu: 200m
+            memory: 256Mi
           limits:
             cpu: 1000m
-            memory: 300Mi
+            memory: 1Gi
       defaultBackend:
         replicas: 1
         resources:

@@ -204,11 +204,11 @@ const Large = `
         replicas: 3
         resources:
           requests:
-            cpu: 100m
-            memory: 140Mi
-          limits:
             cpu: 200m
-            memory: 600Mi
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
       defaultBackend:
         replicas: 1
         resources:
