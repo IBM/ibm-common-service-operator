@@ -128,7 +128,7 @@ const Medium = `
       papService:
         resources:
           limits:
-            cpu: 100m
+            cpu: 200m
             memory: 600Mi
           requests:
             cpu: 50m
