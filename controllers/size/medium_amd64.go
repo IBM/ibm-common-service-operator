@@ -192,11 +192,11 @@ const Medium = `
       replicas: 2
       resources:
         requests:
-          cpu: 190m
-          memory: 200Mi
+          cpu: 200m
+          memory: 256Mi
         limits:
           cpu: 1000m
-          memory: 310Mi
+          memory: 760Mi
 - name: ibm-ingress-nginx-operator
   spec:
     nginxIngress:
@@ -204,11 +204,11 @@ const Medium = `
         replicas: 2
         resources:
           requests:
-            cpu: 100m
-            memory: 140Mi
+            cpu: 200m
+            memory: 256Mi
           limits:
             cpu: 1000m
-            memory: 310Mi
+            memory: 860Mi
       defaultBackend:
         replicas: 1
         resources:
@@ -216,8 +216,8 @@ const Medium = `
             cpu: 20m
             memory: 50Mi
           limits:
-            cpu: 20m
-            memory: 50Mi
+            cpu: 50m
+            memory: 100Mi
       kubectl:
         resources:
           requests:
@@ -225,7 +225,7 @@ const Medium = `
             cpu: 30m
           limits:
             memory: 150Mi
-            cpu: 30m
+            cpu: 50m
 - name: ibm-metering-operator
   spec:
     metering:

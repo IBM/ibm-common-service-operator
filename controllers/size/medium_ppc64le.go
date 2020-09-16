@@ -192,11 +192,11 @@ const Medium = `
       replicas: 2
       resources:
         requests:
-          cpu: 50m
-          memory: 125Mi
+          cpu: 200m
+          memory: 256Mi
         limits:
-          cpu: 150m
-          memory: 400Mi
+          cpu: 1000m
+          memory: 1Gi
 - name: ibm-ingress-nginx-operator
   spec:
     nginxIngress:
@@ -204,11 +204,11 @@ const Medium = `
         replicas: 2
         resources:
           requests:
-            cpu: 100m
-            memory: 140Mi
+            cpu: 200m
+            memory: 256Mi
           limits:
-            cpu: 150m
-            memory: 600Mi
+            cpu: 1000m
+            memory: 1Gi
       defaultBackend:
         replicas: 1
         resources:
