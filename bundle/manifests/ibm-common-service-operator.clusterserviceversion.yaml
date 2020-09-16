@@ -290,7 +290,7 @@ metadata:
         name: operand-deployment-lifecycle-manager-app
         source: opencloud-operators
         sourceNamespace: openshift-marketplace
-    olm.skipRange: '>=3.3.0 <3.5.1'
+    olm.skipRange: '>=3.3.0 <3.5.0'
     operators.operatorframework.io/builder: operator-sdk-v0.19.2
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
     rbac: |-
@@ -2198,7 +2198,7 @@ metadata:
     operatorframework.io/arch.ppc64le: supported
     operatorframework.io/arch.s390x: supported
     operatorframework.io/os.linux: supported
-  name: ibm-common-service-operator.v3.5.1
+  name: ibm-common-service-operator.v3.5.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -2232,7 +2232,7 @@ spec:
 
     ## Operator versions
 
-     - 3.5.1
+     - 3.5.0
 
     ## Prerequisites
 
@@ -2370,5 +2370,5 @@ spec:
   maturity: alpha
   provider:
     name: IBM
-  replaces: ibm-common-service-operator.v3.5.0
-  version: 3.5.1
+  replaces: ibm-common-service-operator.v3.4.3
+  version: 3.5.0
