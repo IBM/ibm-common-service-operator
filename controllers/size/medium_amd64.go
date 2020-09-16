@@ -94,7 +94,7 @@ const Medium = `
       identityManager:
         resources:
           limits:
-            cpu: 250m
+            cpu: 400m
             memory: 525Mi
           requests:
             cpu: 100m
