@@ -185,7 +185,7 @@ const Medium = `
             memory: 1024Mi
           requests:
             cpu: 20m
-            memory: 64M
+            memory: 64Mi
 - name: ibm-management-ingress-operator
   spec:
     managementIngress:
