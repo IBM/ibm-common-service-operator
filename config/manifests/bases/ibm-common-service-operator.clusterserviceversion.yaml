@@ -273,7 +273,7 @@ metadata:
         name: operand-deployment-lifecycle-manager-app
         source: opencloud-operators
         sourceNamespace: openshift-marketplace
-    olm.skipRange: '>=3.3.0 <3.5.1'
+    olm.skipRange: '>=3.3.0 <3.5.2'
     operators.operatorframework.io/builder: operator-sdk-v0.19.2
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
     rbac: |-
@@ -512,7 +512,7 @@ metadata:
               - /manager
               args:
               - --enable-leader-election
-              image: quay.io/opencloudio/ibm-secretshare-operator@sha256:2a2bf3f8f998eb265edc9371ad4e22cd34a69c6f835cdce7169b25206858bc83
+              image: quay.io/opencloudio/ibm-secretshare-operator@sha256:2ff3a116739714d50a6d81efff6126623de99b60320c03e1041abb2537c7aa72
               imagePullPolicy: Always
               name: ibm-secretshare-operator
               env:
@@ -2138,7 +2138,7 @@ metadata:
             serviceAccountName: ibm-common-service-webhook
             containers:
               - name: ibm-common-service-webhook
-                image: quay.io/opencloudio/ibm-cs-webhook@sha256:b3be72e6da081b3aacf24ae5bfa7d3bae1fb6fb6914d309f9a4c1bf40c5afbd4
+                image: quay.io/opencloudio/ibm-cs-webhook@sha256:ebd39b44948b8d7eaf77dbed9b00d7258c0184eccdf5bbb250854f057c6ebe94
                 command:
                 - ibm-common-service-webhook
                 imagePullPolicy: Always
@@ -2215,7 +2215,7 @@ spec:
 
     ## Operator versions
 
-     - 3.5.1
+     - 3.5.2
 
     ## Prerequisites
 
