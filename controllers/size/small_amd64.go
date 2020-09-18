@@ -81,7 +81,7 @@ const Small = `
             cpu: 650m
             memory: 555Mi
           requests:
-            cpu: 140m
+            cpu: 370m
             memory: 525Mi
       clientRegistration:
         resources:
@@ -94,19 +94,19 @@ const Small = `
       identityManager:
         resources:
           limits:
-            cpu: 200m
+            cpu: 240m
             memory: 220Mi
           requests:
-            cpu: 50m
-            memory: 120Mi
+            cpu: 210m
+            memory: 180Mi
       identityProvider:
         resources:
           limits:
-            cpu: 275m
+            cpu: 540m
             memory: 230Mi
           requests:
-            cpu: 80m
-            memory: 130Mi
+            cpu: 480m
+            memory: 180Mi
     oidcclientwatcher:
       replicas: 1
       resources:
@@ -154,10 +154,10 @@ const Small = `
             memory: 50Mi
       resources:
         limits:
-          cpu: 100m
+          cpu: 180m
           memory: 50Mi
         requests:
-          cpu: 20m
+          cpu: 110m
           memory: 50Mi
       replicas: 1
     secretwatcher:
@@ -192,8 +192,8 @@ const Small = `
       replicas: 1
       resources:
         requests:
-          cpu: 50m
-          memory: 100Mi
+          cpu: 60m
+          memory: 110Mi
         limits:
           cpu: 1000m
           memory: 170Mi
@@ -363,10 +363,10 @@ const Small = `
       fluentd:
         resources:
           requests:
-            cpu: 25m
+            cpu: 40m
             memory: 100Mi
           limits:
-            cpu: 35m
+            cpu: 50m
             memory: 150Mi
 - name: ibm-monitoring-exporters-operator
   spec:
@@ -389,7 +389,7 @@ const Small = `
       nodeExporter:
         resource:
           requests:
-            cpu: 5m
+            cpu: 8m
             memory: 50Mi
           limits:
             cpu: 20m
@@ -405,10 +405,10 @@ const Small = `
         resource:
           requests:
             cpu: 500m
-            memory: 110Mi
+            memory: 150Mi
           limits:
             cpu: 540m
-            memory: 160Mi
+            memory: 180Mi
         routerResource:
           limits:
             cpu: 25m
@@ -456,11 +456,11 @@ const Small = `
             memory: 50Mi
         resource:
           requests:
-            cpu: 65m
-            memory: 1920Mi
+            cpu: 110m
+            memory: 3650Mi
           limits:
             cpu: 130m
-            memory: 2570Mi
+            memory: 4990Mi
       alertManagerConfig:
         resource:
           requests:
