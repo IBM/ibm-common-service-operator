@@ -27,7 +27,7 @@ const Medium = `
             memory: 350Mi
           requests:
             cpu: 30m
-            memory: 230Mi
+            memory: 350Mi
       certManagerController:
         resources:
           limits:
@@ -81,7 +81,7 @@ const Medium = `
             cpu: 700m
             memory: 745Mi
           requests:
-            cpu: 230m
+            cpu: 370m
             memory: 695Mi
       clientRegistration:
         resources:
@@ -95,18 +95,18 @@ const Medium = `
         resources:
           limits:
             cpu: 400m
-            memory: 525Mi
+            memory: 1260Mi
           requests:
-            cpu: 100m
-            memory: 140Mi
+            cpu: 290m
+            memory: 940Mi
       identityProvider:
         resources:
           limits:
-            cpu: 485m
-            memory: 350Mi
+            cpu: 620m
+            memory: 920Mi
           requests:
-            cpu: 320m
-            memory: 250Mi
+            cpu: 590m
+            memory: 690Mi
     oidcclientwatcher:
       replicas: 1
       resources:
@@ -154,11 +154,11 @@ const Medium = `
             memory: 50Mi
       resources:
         limits:
-          cpu: 150m
-          memory: 50Mi
+          cpu: 180m
+          memory: 160Mi
         requests:
-          cpu: 20m
-          memory: 50Mi
+          cpu: 110m
+          memory: 160Mi
       replicas: 3
     secretwatcher:
       resources:
@@ -272,7 +272,7 @@ const Medium = `
       resources:
         requests:
           cpu: 200m
-          memory: 230Mi
+          memory: 270Mi
         limits:
           cpu: 300m
           memory: 350Mi
@@ -299,7 +299,7 @@ const Medium = `
       replicas: 2
       resources:
         requests:
-          memory: 470Mi
+          memory: 480Mi
           cpu: 450m
         limits:
           memory: 660Mi
@@ -389,7 +389,7 @@ const Medium = `
       nodeExporter:
         resource:
           requests:
-            cpu: 5m
+            cpu: 7m
             memory: 50Mi
           limits:
             cpu: 20m
@@ -456,7 +456,7 @@ const Medium = `
             memory: 50Mi
         resource:
           requests:
-            cpu: 150m
+            cpu: 160m
             memory: 10200Mi
           limits:
             cpu: 230m

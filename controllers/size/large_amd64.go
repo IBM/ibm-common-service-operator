@@ -24,10 +24,10 @@ const Large = `
         resources:
           limits:
             cpu: 35m
-            memory: 440Mi
+            memory: 470Mi
           requests:
             cpu: 30m
-            memory: 330Mi
+            memory: 350Mi
       certManagerController:
         resources:
           limits:
@@ -79,7 +79,7 @@ const Large = `
         resources:
           limits:
             cpu: 1210m
-            memory: 745Mi
+            memory: 750Mi
           requests:
             cpu: 725m
             memory: 695Mi
@@ -95,18 +95,18 @@ const Large = `
         resources:
           limits:
             cpu: 450m
-            memory: 525Mi
+            memory: 1270Mi
           requests:
             cpu: 340m
-            memory: 385Mi
+            memory: 950Mi
       identityProvider:
         resources:
           limits:
             cpu: 845m
-            memory: 480Mi
+            memory: 920Mi
           requests:
-            cpu: 410m
-            memory: 335Mi
+            cpu: 590m
+            memory: 690Mi
     oidcclientwatcher:
       replicas: 1
       resources:
@@ -272,7 +272,7 @@ const Large = `
       resources:
         requests:
           cpu: 200m
-          memory: 270Mi
+          memory: 310Mi
         limits:
           cpu: 300m
           memory: 350Mi
@@ -299,7 +299,7 @@ const Large = `
       replicas: 3
       resources:
         requests:
-          memory: 470Mi
+          memory: 490Mi
           cpu: 450m
         limits:
           memory: 660Mi
@@ -353,7 +353,7 @@ const Large = `
         resources:
           requests:
             memory: 125Mi
-            cpu: 20m
+            cpu: 30m
           limits:
             memory: 250Mi
             cpu: 200m
@@ -363,10 +363,10 @@ const Large = `
       fluentd:
         resources:
           requests:
-            cpu: 35m
+            cpu: 90m
             memory: 128Mi
           limits:
-            cpu: 50m
+            cpu: 100m
             memory: 200Mi
 - name: ibm-monitoring-exporters-operator
   spec:
@@ -389,7 +389,7 @@ const Large = `
       nodeExporter:
         resource:
           requests:
-            cpu: 5m
+            cpu: 20m
             memory: 50Mi
           limits:
             cpu: 20m
@@ -460,7 +460,7 @@ const Large = `
             memory: 13755Mi
           limits:
             cpu: 955m
-            memory: 18345Mi
+            memory: 18540Mi
       alertManagerConfig:
         resource:
           requests:
