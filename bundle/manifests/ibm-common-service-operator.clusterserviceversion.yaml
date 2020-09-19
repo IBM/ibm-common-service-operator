@@ -134,7 +134,7 @@ metadata:
         name: common-service
         namespace: ibm-common-services
         annotations:
-          version: "6"
+          version: "8"
       spec:
         operators:
         - name: ibm-metering-operator
@@ -267,7 +267,7 @@ metadata:
         name: ibm-common-service-operator
         namespace: ibm-common-services
         annotations:
-          version: "6"
+          version: "8"
       spec:
         channel: beta
         installPlanApproval: Automatic
@@ -283,14 +283,14 @@ metadata:
         name: operand-deployment-lifecycle-manager-app
         namespace: openshift-operators
         annotations:
-          version: "6"
+          version: "8"
       spec:
         channel: beta
         installPlanApproval: Automatic
         name: operand-deployment-lifecycle-manager-app
         source: opencloud-operators
         sourceNamespace: openshift-marketplace
-    olm.skipRange: '>=3.3.0 <3.5.2'
+    olm.skipRange: '>=3.3.0 <3.5.3'
     operators.operatorframework.io/builder: operator-sdk-v0.19.2
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
     rbac: |-
@@ -2198,7 +2198,7 @@ metadata:
     operatorframework.io/arch.ppc64le: supported
     operatorframework.io/arch.s390x: supported
     operatorframework.io/os.linux: supported
-  name: ibm-common-service-operator.v3.5.2
+  name: ibm-common-service-operator.v3.5.3
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -2232,7 +2232,7 @@ spec:
 
     ## Operator versions
 
-     - 3.5.2
+     - 3.5.3
 
     ## Prerequisites
 
@@ -2370,5 +2370,5 @@ spec:
   maturity: alpha
   provider:
     name: IBM
-  replaces: ibm-common-service-operator.v3.5.1
-  version: 3.5.2
+  replaces: ibm-common-service-operator.v3.5.2
+  version: 3.5.3
