@@ -457,10 +457,10 @@ const Medium = `
         resource:
           requests:
             cpu: 160m
-            memory: 10200Mi
+            memory: 4800Mi
           limits:
             cpu: 230m
-            memory: 13500Mi
+            memory: 7550Mi
       alertManagerConfig:
         resource:
           requests:

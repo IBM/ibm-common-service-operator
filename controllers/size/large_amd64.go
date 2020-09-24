@@ -457,10 +457,10 @@ const Large = `
         resource:
           requests:
             cpu: 660m
-            memory: 13755Mi
+            memory: 8800Mi
           limits:
             cpu: 955m
-            memory: 18540Mi
+            memory: 15470Mi
       alertManagerConfig:
         resource:
           requests:
