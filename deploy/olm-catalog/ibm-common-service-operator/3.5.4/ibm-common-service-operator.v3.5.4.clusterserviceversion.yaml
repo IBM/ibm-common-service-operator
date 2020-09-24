@@ -529,7 +529,7 @@ metadata:
               - /manager
               args:
               - --enable-leader-election
-              image: quay.io/opencloudio/ibm-secretshare-operator@sha256:2ff3a116739714d50a6d81efff6126623de99b60320c03e1041abb2537c7aa72
+              image: quay.io/opencloudio/ibm-secretshare-operator@sha256:60601796e149c79576694edabcf354027188f005daf17fd34f80158c8792aac9
               imagePullPolicy: Always
               name: ibm-secretshare-operator
               env:
