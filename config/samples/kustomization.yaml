@@ -1,3 +1,4 @@
 ## This file is auto-generated, do not modify ##
 resources:
 - operator_v3_commonservice.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples

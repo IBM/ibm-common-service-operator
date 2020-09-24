@@ -22,7 +22,7 @@ metadata:
       ]
     capabilities: Basic Install
     containerImage: quay.io/opencloudio/common-service-operator:latest
-    createdAt: "2020-7-29T15:08:59Z"
+    createdAt: "2020-10-12T10:05:34Z"
     csNamespace: |-
       apiVersion: v1
       kind: Namespace
@@ -134,7 +134,7 @@ metadata:
         name: common-service
         namespace: ibm-common-services
         annotations:
-          version: "8"
+          version: "10"
       spec:
         operators:
         - name: ibm-metering-operator
@@ -260,6 +260,13 @@ metadata:
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
+        - channel: beta
+          name: ibm-events-operator
+          namespace: ibm-common-services
+          packageName: ibm-events-operator
+          scope: public
+          sourceName: opencloud-operators
+          sourceNamespace: openshift-marketplace
     csOperatorSubscription: |-
       apiVersion: operators.coreos.com/v1alpha1
       kind: Subscription
@@ -267,7 +274,7 @@ metadata:
         name: ibm-common-service-operator
         namespace: ibm-common-services
         annotations:
-          version: "8"
+          version: "10"
       spec:
         channel: beta
         installPlanApproval: Automatic
@@ -283,7 +290,7 @@ metadata:
         name: operand-deployment-lifecycle-manager-app
         namespace: openshift-operators
         annotations:
-          version: "8"
+          version: "10"
       spec:
         channel: beta
         installPlanApproval: Automatic
@@ -291,7 +298,7 @@ metadata:
         source: opencloud-operators
         sourceNamespace: openshift-marketplace
     olm.skipRange: '>=3.3.0 <3.5.5'
-    operators.operatorframework.io/builder: operator-sdk-v0.19.2
+    operators.operatorframework.io/builder: operator-sdk-v1.0.1
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
     rbac: |-
       apiVersion: rbac.authorization.k8s.io/v1
@@ -2205,7 +2212,7 @@ spec:
   customresourcedefinitions:
     owned:
     - description: CommonService is the Schema for the commonservices API
-      displayName: CommonService
+      displayName: Common Service
       kind: CommonService
       name: commonservices.operator.ibm.com
       version: v3
@@ -2258,7 +2265,7 @@ spec:
           - '*'
           verbs:
           - '*'
-        serviceAccountName: ibm-common-service-operator
+        serviceAccountName: default
       deployments:
       - name: ibm-common-service-operator
         spec:
@@ -2316,7 +2323,6 @@ spec:
                   privileged: false
                   readOnlyRootFilesystem: true
                   runAsNonRoot: true
-              serviceAccountName: ibm-common-service-operator
               terminationGracePeriodSeconds: 10
       permissions:
       - rules:
@@ -2347,7 +2353,7 @@ spec:
           verbs:
           - create
           - patch
-        serviceAccountName: ibm-common-service-operator-leader-election-role
+        serviceAccountName: default
     strategy: deployment
   installModes:
   - supported: true
