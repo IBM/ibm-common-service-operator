@@ -66,11 +66,11 @@ const Medium = `
 - name: ibm-iam-operator
   spec:
     authentication:
-      replicas: 3
+      replicas: 2
       auditService:
         resources:
           limits:
-            cpu: 50m
+            cpu: 1000m
             memory: 50Mi
           requests:
             cpu: 50m
@@ -78,7 +78,7 @@ const Medium = `
       authService:
         resources:
           limits:
-            cpu: 700m
+            cpu: 1000m
             memory: 745Mi
           requests:
             cpu: 230m
@@ -86,7 +86,7 @@ const Medium = `
       clientRegistration:
         resources:
           limits:
-            cpu: 20m
+            cpu: 1000m
             memory: 50Mi
           requests:
             cpu: 20m
@@ -94,7 +94,7 @@ const Medium = `
       identityManager:
         resources:
           limits:
-            cpu: 250m
+            cpu: 1000m
             memory: 525Mi
           requests:
             cpu: 100m
@@ -102,7 +102,7 @@ const Medium = `
       identityProvider:
         resources:
           limits:
-            cpu: 485m
+            cpu: 1000m
             memory: 350Mi
           requests:
             cpu: 320m
@@ -111,7 +111,7 @@ const Medium = `
       replicas: 1
       resources:
         limits:
-          cpu: 30m
+          cpu: 1000m
           memory: 256Mi
         requests:
           cpu: 30m
@@ -120,7 +120,7 @@ const Medium = `
       auditService:
         resources:
           limits:
-            cpu: 50m
+            cpu: 1000m
             memory: 50Mi
           requests:
             cpu: 50m
@@ -128,17 +128,17 @@ const Medium = `
       papService:
         resources:
           limits:
-            cpu: 200m
+            cpu: 1000m
             memory: 600Mi
           requests:
             cpu: 50m
             memory: 195Mi
-      replicas: 3
+      replicas: 2
     policycontroller:
       replicas: 1
       resources:
         limits:
-          cpu: 20m
+          cpu: 1000m
           memory: 50Mi
         requests:
           cpu: 20m
@@ -147,23 +147,23 @@ const Medium = `
       auditService:
         resources:
           limits:
-            cpu: 20m
+            cpu: 1000m
             memory: 50Mi
           requests:
             cpu: 20m
             memory: 50Mi
       resources:
         limits:
-          cpu: 150m
+          cpu: 1000m
           memory: 50Mi
         requests:
           cpu: 20m
           memory: 50Mi
-      replicas: 3
+      replicas: 2
     secretwatcher:
       resources:
         limits:
-          cpu: 30m
+          cpu: 1000m
           memory: 220Mi
         requests:
           cpu: 30m
@@ -173,7 +173,7 @@ const Medium = `
       replicas: 1
       resources:
         limits:
-          cpu: 20m
+          cpu: 1000m
           memory: 50Mi
         requests:
           cpu: 20m
@@ -181,7 +181,7 @@ const Medium = `
       iamOnboarding:
         resources:
           limits:
-            cpu: 20m
+            cpu: 1000m
             memory: 1024Mi
           requests:
             cpu: 20m
