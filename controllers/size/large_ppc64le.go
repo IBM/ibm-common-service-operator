@@ -69,7 +69,7 @@ const Large = `
       auditService:
         resources:
           limits:
-            cpu: 80m
+            cpu: 1000m
             memory: 400Mi
           requests:
             cpu: 50m
@@ -77,7 +77,7 @@ const Large = `
       authService:
         resources:
           limits:
-            cpu: 1829m
+            cpu: 2000m
             memory: 1201Mi
           requests:
             cpu: 725m
@@ -85,7 +85,7 @@ const Large = `
       clientRegistration:
         resources:
           limits:
-            cpu: 100m
+            cpu: 1000m
             memory: 300Mi
           requests:
             cpu: 20m
@@ -93,7 +93,7 @@ const Large = `
       identityManager:
         resources:
           limits:
-            cpu: 700m
+            cpu: 1000m
             memory: 645Mi
           requests:
             cpu: 340m
@@ -101,7 +101,7 @@ const Large = `
       identityProvider:
         resources:
           limits:
-            cpu: 845m
+            cpu: 1000m
             memory: 480Mi
           requests:
             cpu: 410m
@@ -111,7 +111,7 @@ const Large = `
       replicas: 1
       resources:
         limits:
-          cpu: 50m
+          cpu: 1000m
           memory: 256Mi
         requests:
           cpu: 30m
@@ -120,7 +120,7 @@ const Large = `
       auditService:
         resources:
           limits:
-            cpu: 50m
+            cpu: 1000m
             memory: 70Mi
           requests:
             cpu: 20m
@@ -128,7 +128,7 @@ const Large = `
       papService:
         resources:
           limits:
-            cpu: 540m
+            cpu: 1000m
             memory: 943Mi
           requests:
             cpu: 50m
@@ -138,7 +138,7 @@ const Large = `
       replicas: 1
       resources:
         limits:
-          cpu: 100m
+          cpu: 1000m
           memory: 366Mi
         requests:
           cpu: 20m
@@ -147,7 +147,7 @@ const Large = `
       auditService:
         resources:
           limits:
-            cpu: 20m
+            cpu: 1000m
             memory: 70Mi
           requests:
             cpu: 20m
@@ -155,7 +155,7 @@ const Large = `
       replicas: 3
       resources:
         limits:
-          cpu: 362m
+          cpu: 1000m
           memory: 420Mi
         requests:
           cpu: 195m
@@ -164,7 +164,7 @@ const Large = `
       replicas: 1
       resources:
         limits:
-          cpu: 50m
+          cpu: 1000m
           memory: 336Mi
         requests:
           cpu: 30m
@@ -173,7 +173,7 @@ const Large = `
       iamOnboarding:
         resources:
           limits:
-            cpu: 20m
+            cpu: 1000m
             memory: 1024Mi
           requests:
             cpu: 20m
@@ -181,7 +181,7 @@ const Large = `
       replicas: 1
       resources:
         limits:
-          cpu: 20m
+          cpu: 1000m
           memory: 50Mi
         requests:
           cpu: 20m

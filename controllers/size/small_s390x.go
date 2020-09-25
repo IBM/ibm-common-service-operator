@@ -70,7 +70,7 @@ const Small = `
       auditService:
         resources:
           limits:
-            cpu: 20m
+            cpu: 1000m
             memory: 50Mi
           requests:
             cpu: 20m
@@ -78,7 +78,7 @@ const Small = `
       authService:
         resources:
           limits:
-            cpu: 650m
+            cpu: 1000m
             memory: 650Mi
           requests:
             cpu: 140m
@@ -86,7 +86,7 @@ const Small = `
       clientRegistration:
         resources:
           limits:
-            cpu: 20m
+            cpu: 1000m
             memory: 50Mi
           requests:
             cpu: 20m
@@ -94,7 +94,7 @@ const Small = `
       identityManager:
         resources:
           limits:
-            cpu: 200m
+            cpu: 1000m
             memory: 220Mi
           requests:
             cpu: 50m
@@ -102,7 +102,7 @@ const Small = `
       identityProvider:
         resources:
           limits:
-            cpu: 275m
+            cpu: 1000m
             memory: 230Mi
           requests:
             cpu: 80m
@@ -111,7 +111,7 @@ const Small = `
       replicas: 1
       resources:
         limits:
-          cpu: 30m
+          cpu: 1000m
           memory: 175Mi
         requests:
           cpu: 30m
@@ -120,7 +120,7 @@ const Small = `
       auditService:
         resources:
           limits:
-            cpu: 20m
+            cpu: 1000m
             memory: 50Mi
           requests:
             cpu: 20m
@@ -128,7 +128,7 @@ const Small = `
       papService:
         resources:
           limits:
-            cpu: 200m
+            cpu: 1000m
             memory: 330Mi
           requests:
             cpu: 50m
@@ -138,7 +138,7 @@ const Small = `
       replicas: 1
       resources:
         limits:
-          cpu: 20m
+          cpu: 1000m
           memory: 50Mi
         requests:
           cpu: 20m
@@ -147,14 +147,14 @@ const Small = `
       auditService:
         resources:
           limits:
-            cpu: 20m
+            cpu: 1000m
             memory: 50Mi
           requests:
             cpu: 20m
             memory: 50Mi
       resources:
         limits:
-          cpu: 100m
+          cpu: 1000m
           memory: 50Mi
         requests:
           cpu: 20m
@@ -163,7 +163,7 @@ const Small = `
     secretwatcher:
       resources:
         limits:
-          cpu: 30m
+          cpu: 1000m
           memory: 145Mi
         requests:
           cpu: 30m
@@ -173,7 +173,7 @@ const Small = `
       replicas: 1
       resources:
         limits:
-          cpu: 20m
+          cpu: 1000m
           memory: 50Mi
         requests:
           cpu: 20m
@@ -181,7 +181,7 @@ const Small = `
       iamOnboarding:
         resources:
           limits:
-            cpu: 20m
+            cpu: 1000m
             memory: 1024Mi
           requests:
             cpu: 20m
