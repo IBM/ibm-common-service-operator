@@ -6,7 +6,7 @@ metadata:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: common-service-operator
+  name: ibm-common-service-operator
   namespace: system
   labels:
     app.kubernetes.io/instance: "ibm-common-service-operator"
