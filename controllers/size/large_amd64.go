@@ -24,7 +24,7 @@ const Large = `
         resources:
           limits:
             cpu: 35m
-            memory: 470Mi
+            memory: 600Mi
           requests:
             cpu: 30m
             memory: 350Mi
