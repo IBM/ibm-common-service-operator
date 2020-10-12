@@ -260,13 +260,6 @@ metadata:
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
-        - channel: beta
-          name: ibm-events-operator
-          namespace: ibm-common-services
-          packageName: ibm-events-operator
-          scope: public
-          sourceName: opencloud-operators
-          sourceNamespace: openshift-marketplace
     csOperatorSubscription: |-
       apiVersion: operators.coreos.com/v1alpha1
       kind: Subscription
