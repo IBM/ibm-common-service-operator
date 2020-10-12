@@ -1,8 +1,8 @@
-# permissions to do leader election.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: leader-election-role
+  creationTimestamp: null
+  name: ibm-common-service-operator-leader-election-role
 rules:
 - apiGroups:
   - ""
