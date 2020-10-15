@@ -504,7 +504,7 @@ metadata:
         name: secretshare
         namespace: ibm-common-services
         annotations:
-          version: "7"
+          version: "8"
       spec:
         replicas: 1
         selector:
@@ -534,8 +534,6 @@ metadata:
             containers:
             - command:
               - /manager
-              args:
-              - --enable-leader-election
               image: quay.io/opencloudio/ibm-secretshare-operator@sha256:60601796e149c79576694edabcf354027188f005daf17fd34f80158c8792aac9
               imagePullPolicy: Always
               name: ibm-secretshare-operator
