@@ -3,7 +3,7 @@ channels:
   name: beta
 - currentCSV: ibm-common-service-operator.v3.5.5
   name: dev
-- currentCSV: ibm-common-service-operator.v3.5.4
+- currentCSV: ibm-common-service-operator.v3.5.5
   name: stable-v1
 defaultChannel: stable-v1
 packageName: ibm-common-service-operator
