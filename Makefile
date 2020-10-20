@@ -70,7 +70,7 @@ OPERATOR_IMAGE_NAME ?= common-service-operator
 # Current Operator bundle image name
 BUNDLE_IMAGE_NAME ?= common-service-operator-bundle
 # Current Operator version
-OPERATOR_VERSION ?= 3.5.5
+OPERATOR_VERSION ?= 3.6.0
 
 # Options for 'bundle-build'
 ifneq ($(origin CHANNELS), undefined)
@@ -124,7 +124,7 @@ deploy: manifests ## Deploy controller in the configured Kubernetes cluster in ~
 ##@ Generate code and manifests
 
 manifests: ## Generate manifests e.g. CRD, RBAC etc.
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=ibm-common-service-operator webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
 generate: ## Generate code e.g. API etc.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
