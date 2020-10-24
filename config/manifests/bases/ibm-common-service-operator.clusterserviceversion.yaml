@@ -5,7 +5,7 @@ metadata:
     alm-examples: '[]'
     capabilities: Seamless Upgrades
     containerImage: quay.io/opencloudio/common-service-operator:latest
-    createdAt: "2020-10-12T10:05:34Z"
+    createdAt: "2020-10-19T21:38:33Z"
     csNamespace: |-
       apiVersion: v1
       kind: Namespace
@@ -280,7 +280,7 @@ metadata:
         name: ibm-odlm
         source: opencloud-operators
         sourceNamespace: openshift-marketplace
-    olm.skipRange: '>=3.3.0 <3.5.5'
+    olm.skipRange: '>=3.3.0 <3.6.0'
     operators.operatorframework.io/builder: operator-sdk-v1.0.1
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
     rbac: |-
@@ -2220,7 +2220,7 @@ spec:
 
     ## Operator versions
 
-     - 3.5.5
+     - 3.6.0
 
     ## Prerequisites
 
