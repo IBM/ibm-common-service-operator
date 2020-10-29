@@ -163,7 +163,7 @@ func (d *Manager) GetDeployment() (*appsv1.Deployment, error) {
 	return deploy, nil
 }
 
-// DeleteOperator delete operator's csv and subscription from sepcific namespace
+// DeleteOperator delete operator's csv and subscription from specific namespace
 func (d *Manager) DeleteOperator(name, namespace string) error {
 	// Get existing operator's subscription
 	subName := name

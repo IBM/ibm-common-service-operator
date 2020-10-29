@@ -18,6 +18,7 @@ package bootstrap
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -37,11 +38,13 @@ import (
 )
 
 var (
-	CsNsResources    = []string{"csNamespace"}
-	CsExtResource    = "extraResources"
-	csSubResource    = []string{"csOperatorSubscription"}
-	OdlmSubResources = []string{"odlmSubscription"}
-	OdlmCrResources  = []string{"csOperandRegistry", "csOperandConfig"}
+	CsNsResources           = []string{"csNamespace"}
+	CsExtResource           = "extraResources"
+	CsSubResource           = []string{"csOperatorSubscription"}
+	OdlmNsSubResources      = []string{"odlmNsSubscription"}
+	OdlmClusterSubResources = []string{"odlmClusterSubscription"}
+	OdlmCrResources         = []string{"csOperandRegistry", "csOperandConfig"}
+	OdlmClusterPermission   = []string{"odlmClusterRole", "odlmClusterRoleBinding"}
 )
 
 type Bootstrap struct {
@@ -69,9 +72,33 @@ func (b *Bootstrap) InitResources() error {
 		return err
 	}
 
-	// create or update ODLM operator
-	if err := b.createOrUpdateResources(annotations, OdlmSubResources); err != nil {
+	operatorNs, err := util.GetOperatorNamespace()
+	if err != nil {
+		klog.Error("get operator namespace failed: ", err)
 		return err
+	}
+
+	// create or update ODLM operator
+	if operatorNs == "ibm-common-services" {
+		klog.Info("create odlm in namespace ibm-common-services")
+		if err := b.createOrUpdateResources(annotations, OdlmNsSubResources); err != nil {
+			return err
+		}
+	} else if operatorNs == "openshift-operators" {
+		klog.Info("create operator group in namespace ibm-common-services")
+		if err := b.createOperatorGroup(); err != nil {
+			return err
+		}
+		klog.Info("create odlm in namespace ibm-common-services")
+		if err := b.createOrUpdateResources(annotations, OdlmClusterSubResources); err != nil {
+			return err
+		}
+		klog.Info("create odlm cluster permission for ODLM")
+		if err := b.createOrUpdateResources(annotations, OdlmClusterPermission); err != nil {
+			return err
+		}
+	} else {
+		return fmt.Errorf("unsupported namespace")
 	}
 
 	// create or update extra resources for common services
@@ -117,7 +144,7 @@ func (b *Bootstrap) CreateCsSubscription() error {
 		return err
 	}
 	klog.Info("create cs operator in namespace ibm-common-services")
-	if err := b.createOrUpdateResources(annotations, csSubResource); err != nil {
+	if err := b.createOrUpdateResources(annotations, CsSubResource); err != nil {
 		return err
 	}
 	return nil

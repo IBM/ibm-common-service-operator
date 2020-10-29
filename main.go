@@ -75,17 +75,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	klog.Info("check Helm based IBM Common Services installation")
-	exist, err := check.OriginalCs(mgr)
-	if err != nil {
-		klog.Error(err)
-		os.Exit(1)
-	}
-	if exist {
-		klog.Error("the Helm based IBM Common Services must be uninstalled before performing operator based installation")
-		os.Exit(1)
-	}
-
 	// New bootstrap Object
 	bs := bootstrap.NewBootstrap(mgr)
 	operatorNs, err := util.GetOperatorNamespace()

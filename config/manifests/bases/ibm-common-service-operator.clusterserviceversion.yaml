@@ -266,12 +266,41 @@ metadata:
         sourceNamespace: openshift-marketplace
     description: The IBM Common Service Operator is used to deploy IBM Common Services
     extraResources: webhookCRD,webhookOperator,secretShareOperator,rbac
-    odlmSubscription: |-
+    odlmClusterRole: |-
+      kind: ClusterRole
+      apiVersion: rbac.authorization.k8s.io/v1
+      metadata:
+        name: operand-deployment-lifecycle-manager-cluster-role
+        annotations:
+          version: "1"
+      rules:
+      - verbs:
+        - '*'
+        apiGroups:
+        - '*'
+        resources:
+        - '*'
+    odlmClusterRoleBinding: |-
+      kind: ClusterRoleBinding
+      apiVersion: rbac.authorization.k8s.io/v1
+      metadata:
+        name: operand-deployment-lifecycle-manager-cluster-role-binding
+        annotations:
+          version: "1"
+      subjects:
+        - kind: ServiceAccount
+          name: operand-deployment-lifecycle-manager
+          namespace: ibm-common-services
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: operand-deployment-lifecycle-manager-cluster-role
+    odlmClusterSubscription: |-
       apiVersion: operators.coreos.com/v1alpha1
       kind: Subscription
       metadata:
         name: operand-deployment-lifecycle-manager-app
-        namespace: openshift-operators
+        namespace: ibm-common-services
         annotations:
           version: "11"
       spec:
@@ -280,7 +309,25 @@ metadata:
         name: ibm-odlm
         source: opencloud-operators
         sourceNamespace: openshift-marketplace
-    olm.skipRange: '>=3.3.0 <3.6.0'
+    odlmNsSubscription: |-
+      apiVersion: operators.coreos.com/v1alpha1
+      kind: Subscription
+      metadata:
+        name: operand-deployment-lifecycle-manager-app
+        namespace: ibm-common-services
+        annotations:
+          version: "11"
+      spec:
+        channel: beta
+        installPlanApproval: Automatic
+        name: ibm-odlm
+        source: opencloud-operators
+        sourceNamespace: openshift-marketplace
+        config:
+          env:
+          - name: INSTALL_SCOPE
+            value: namespaced
+    olm.skipRange: '>=3.4.3 <3.6.0'
     operators.operatorframework.io/builder: operator-sdk-v1.0.1
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
     rbac: |-
@@ -434,7 +481,7 @@ metadata:
         - get
         - list
         - watch
-        - apiGroups:
+      - apiGroups:
         - ibmcpcs.ibm.com
         resources:
         - '*'
