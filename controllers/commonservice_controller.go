@@ -50,8 +50,6 @@ type CommonServiceReconciler struct {
 
 var ctx = context.Background()
 
-// +kubebuilder:rbac:groups=*,resources=*,verbs=*
-
 func (r *CommonServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	// Fetch the CommonService instance
