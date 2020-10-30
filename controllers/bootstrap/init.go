@@ -18,9 +18,7 @@ package bootstrap
 
 import (
 	"context"
-	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
@@ -40,13 +38,22 @@ import (
 )
 
 var (
-	CsExtResource           = "extraResources"
-	CsSubResource           = []string{"csOperatorSubscription"}
-	OdlmNsSubResources      = []string{"odlmNsSubscription"}
-	OdlmClusterSubResources = []string{"odlmClusterSubscription"}
-	OdlmCrResources         = []string{"csOperandRegistry", "csOperandConfig"}
-	OdlmClusterPermission   = []string{"odlmClusterRole", "odlmClusterRoleBinding"}
+	CsSubResource   = "csOperatorSubscription"
+	OdlmSubResource = "odlmSubscription"
+	OdlmCrResources = []string{"csOperandRegistry", "csOperandConfig"}
 )
+
+var csOperators = []struct {
+	Name       string
+	CRD        string
+	RBAC       string
+	CR         string
+	Deployment string
+}{
+	{"NamespaceScope Operator", constant.NamespaceScopeCRD, constant.NamespaceScopeRBAC, constant.NamespaceScopeCR, "csNamespaceScopeOperator"},
+	{"Webhook Operator", constant.WebhookCRD, constant.WebhookRBAC, constant.WebhookCR, "csWebhookOperator"},
+	{"Secretshare Operator", constant.SecretshareCRD, constant.SecretshareRBAC, constant.SecretshareCR, "csSecretshareOperator"},
+}
 
 var ctx = context.Background()
 
@@ -84,13 +91,31 @@ func (b *Bootstrap) InitResources() error {
 	// Grant cluster-admin to namespace scope operator
 	if operatorNs == constant.ClusterOperatorNamespace {
 		klog.Info("Creating cluster-admin permission RBAC")
-		clusterRBAC := fmt.Sprintf(constant.ClusterAdminRBAC, constant.MasterNamespace)
-		if err := b.createOrUpdateFromYaml([]byte(clusterRBAC)); err != nil {
+		if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.ClusterAdminRBAC))); err != nil {
 			return err
 		}
 	}
 
-	// Install Namespace Scope Operator
+	// Install CS Operators
+	for _, operator := range csOperators {
+		klog.Infof("Installing %s", operator.Name)
+		// Create Operator CRD
+		if err := b.createOrUpdateFromYaml([]byte(operator.CRD)); err != nil {
+			return err
+		}
+		// Create Operator RBAC
+		if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(operator.RBAC))); err != nil {
+			return err
+		}
+		// Create Operator Deployment
+		if err := b.createOrUpdateResource(annotations, operator.Deployment); err != nil {
+			return err
+		}
+		// Create Operator CR
+		if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(operator.CR))); err != nil {
+			return err
+		}
+	}
 
 	// Create extra RBAC for ibmcloud-cluster-ca-cert and ibmcloud-cluster-info in kube-public
 	klog.Info("Creating RBAC for ibmcloud-cluster-info & ibmcloud-cluster-ca-cert in kube-public")
@@ -98,31 +123,9 @@ func (b *Bootstrap) InitResources() error {
 		return err
 	}
 
-	// create or update ODLM operator
-	if operatorNs == constant.MasterNamespace {
-		klog.Info("create odlm in namespace ibm-common-services")
-		if err := b.createOrUpdateResources(annotations, OdlmNsSubResources); err != nil {
-			return err
-		}
-	} else if operatorNs == constant.ClusterOperatorNamespace {
-		klog.Info("create operator group in namespace ibm-common-services")
-		if err := b.createOperatorGroup(); err != nil {
-			return err
-		}
-		klog.Info("create odlm in namespace ibm-common-services")
-		if err := b.createOrUpdateResources(annotations, OdlmClusterSubResources); err != nil {
-			return err
-		}
-		klog.Info("create odlm cluster permission for ODLM")
-		if err := b.createOrUpdateResources(annotations, OdlmClusterPermission); err != nil {
-			return err
-		}
-	} else {
-		return fmt.Errorf("unsupported namespace")
-	}
-
-	// create or update extra resources for common services
-	if err := b.createOrUpdateResources(annotations, strings.Split(annotations[CsExtResource], ",")); err != nil {
+	// Install ODLM Operator
+	klog.Info("Installing ODLM Operator")
+	if err := b.createOrUpdateResource(annotations, OdlmSubResource); err != nil {
 		return err
 	}
 
@@ -169,7 +172,7 @@ func (b *Bootstrap) CreateCsSubscription() error {
 		return err
 	}
 	klog.Info("create cs operator in namespace ibm-common-services")
-	if err := b.createOrUpdateResources(annotations, CsSubResource); err != nil {
+	if err := b.createOrUpdateResource(annotations, util.Namespacelize(CsSubResource)); err != nil {
 		return err
 	}
 	return nil
@@ -182,7 +185,7 @@ func (b *Bootstrap) CreateCsCR() error {
 	_, err := b.GetObject(odlm)
 	if errors.IsNotFound(err) {
 		// Fresh Intall: No ODLM
-		return b.createOrUpdateFromYaml([]byte(constant.CsCR))
+		return b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsCR)))
 	} else if err != nil {
 		return err
 	}
@@ -193,13 +196,13 @@ func (b *Bootstrap) CreateCsCR() error {
 	_, err = b.GetObject(cs)
 	if errors.IsNotFound(err) {
 		// Upgrade: Have ODLM and NO CR
-		return b.createOrUpdateFromYaml([]byte(constant.CsNoSizeCR))
+		return b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsNoSizeCR)))
 	} else if err != nil {
 		return err
 	}
 
 	// Restart: Have ODLM and CR
-	return b.createOrUpdateFromYaml([]byte(constant.CsCR))
+	return b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsCR)))
 }
 
 func (b *Bootstrap) createOperatorGroup() error {
@@ -208,9 +211,20 @@ func (b *Bootstrap) createOperatorGroup() error {
 		return err
 	}
 	if len(existOG.Items) == 0 {
-		if err := b.createOrUpdateFromYaml([]byte(constant.CsOg)); err != nil {
+		if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsOg))); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func (b *Bootstrap) createOrUpdateResource(annotations map[string]string, resName string) error {
+	if r, ok := annotations[resName]; ok {
+		if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(r))); err != nil {
+			return err
+		}
+	} else {
+		klog.Warningf("No resource %s found in annotations", resName)
 	}
 	return nil
 }
@@ -218,7 +232,7 @@ func (b *Bootstrap) createOperatorGroup() error {
 func (b *Bootstrap) createOrUpdateResources(annotations map[string]string, resNames []string) error {
 	for _, res := range resNames {
 		if r, ok := annotations[res]; ok {
-			if err := b.createOrUpdateFromYaml([]byte(r)); err != nil {
+			if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(r))); err != nil {
 				return err
 			}
 		} else {

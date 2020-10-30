@@ -1,0 +1,83 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ibm-common-service-operator
+rules:
+# create ibm-common-services namespace permission
+- apiGroups:
+  - ''
+  resources:
+  - namespaces
+    # resourceNames:
+    # - ibm-common-services
+  verbs:
+  - create
+# create subscriptions & operatorgroup permission in ibm-common-services
+- apiGroups:
+  - operators.coreos.com
+  resources:
+  - subscriptions
+  - operatorgroups
+  verbs:
+  - list
+  - get
+  - create
+  - update
+# cluster watch CommonService
+- apiGroups:
+  - operator.ibm.com
+  resources:
+  - commonservices
+  verbs:
+  - get
+  - list
+  - watch
+# create CRD permission
+- apiGroups:
+  - apiextensions.k8s.io
+  resources:
+  - customresourcedefinitions
+  verbs:
+  - create
+  - get
+  - update
+# create rbac
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - clusterroles
+  - clusterrolebindings
+  - roles
+  - rolebindings
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - update
+  - watch
+# create IAM status configmap in kube-public
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - update
+  - watch
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ibm-common-service-operator
+rules:
+- apiGroups:
+  - "*"
+  resources:
+  - "*"
+  verbs:
+  - "*"

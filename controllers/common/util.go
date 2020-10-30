@@ -158,3 +158,7 @@ func Reverse(original []string) []string {
 	}
 	return reversed
 }
+
+func Namespacelize(resource string) string {
+	return strings.ReplaceAll(resource, "placeholder", constant.MasterNamespace)
+}
