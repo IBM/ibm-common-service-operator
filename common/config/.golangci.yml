@@ -39,7 +39,7 @@ linters:
     # - ineffassign
     - interfacer
     - lll
-    - misspell
+    # - misspell
     - staticcheck
     - structcheck
     - typecheck
