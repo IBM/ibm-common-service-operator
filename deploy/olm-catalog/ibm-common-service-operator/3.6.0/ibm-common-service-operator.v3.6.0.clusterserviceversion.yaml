@@ -2146,6 +2146,15 @@ metadata:
         - apiGroups:
             - ""
           resources:
+            - namespaces
+          verbs:
+            - list
+            - get
+            - update
+            - watch
+        - apiGroups:
+            - ""
+          resources:
             - pods
           verbs:
             - list
@@ -2377,11 +2386,14 @@ spec:
           - update
           - watch
         - apiGroups:
-          - admissionregistration.k8s.io
+          - ""
           resources:
-          - mutatingwebhookconfigurations
+          - namespaces
           verbs:
-          - '*'
+          - list
+          - get
+          - update
+          - watch
         - apiGroups:
           - ""
           resources:
@@ -2393,7 +2405,7 @@ spec:
         - apiGroups:
           - operator.ibm.com
           resources:
-          - podpresets
+          - '*'
           verbs:
           - create
           - delete
@@ -2402,6 +2414,12 @@ spec:
           - patch
           - update
           - watch
+        - apiGroups:
+          - admissionregistration.k8s.io
+          resources:
+          - mutatingwebhookconfigurations
+          verbs:
+          - '*'
         - apiGroups:
           - ""
           resources:

@@ -80,11 +80,14 @@ rules:
     - operandregistries
 # From ibm-common-service-webhook
 - apiGroups:
-    - admissionregistration.k8s.io
+    - ""
   resources:
-    - mutatingwebhookconfigurations
+    - namespaces
   verbs:
-    - "*"
+    - list
+    - get
+    - update
+    - watch
 - apiGroups:
     - ""
   resources:
@@ -93,7 +96,11 @@ rules:
     - list
     - get
     - create
-- verbs:
+- apiGroups:
+    - operator.ibm.com
+  resources:
+    - '*'
+  verbs:
     - create
     - delete
     - get
@@ -101,10 +108,12 @@ rules:
     - patch
     - update
     - watch
-  apiGroups:
-    - operator.ibm.com
+- apiGroups:
+    - admissionregistration.k8s.io
   resources:
-    - podpresets
+    - mutatingwebhookconfigurations
+  verbs:
+    - "*"
 # From SecretShare
 - apiGroups:
   - ""
