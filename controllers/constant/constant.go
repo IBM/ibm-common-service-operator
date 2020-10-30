@@ -26,6 +26,10 @@ const (
 	// UseExistingCluster is the constant for env variable USE_EXISTING_CLUSTER
 	// it used to control unit test run into existing cluster or kubebuilder
 	UseExistingCluster = "USE_EXISTING_CLUSTER"
+	// CS main namespace
+	MasterNamespace = "ibm-common-services"
+	// Cluster Operator namespace
+	ClusterOperatorNamespace = "openshift-operators"
 )
 
 // CsOg is OperatorGroup constent for the common service operator
@@ -64,4 +68,33 @@ metadata:
   namespace: ibm-common-services
 spec:
   size: as-is
+`
+
+// Cluster Admin RBAC
+const ClusterAdminRBAC = `
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ibm-common-services-cluster-admin
+rules:
+- apiGroups:
+  - "*"
+  resources:
+  - "*"
+  verbs:
+  - "*"
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ibm-common-services-cluster-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ibm-common-services-cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: ibm-namespace-scope-operator
+  namespace: %s
 `

@@ -31,6 +31,7 @@ import (
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
+	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 )
 
 // +kubebuilder:docs-gen:collapse=Imports
@@ -59,7 +60,7 @@ var _ = Describe("CommonService controller", func() {
 			Eventually(waitForDeploymentReady(CommonServiceOperatorName, CommonServiceOperatorNamespace), timeout, interval).Should(BeTrue())
 
 			By("Checking ODLM status")
-			Eventually(waitForDeploymentReady(OdlmOperatorName, "openshift-operators"),
+			Eventually(waitForDeploymentReady(OdlmOperatorName, constant.ClusterOperatorNamespace),
 				timeout, interval).Should(BeTrue())
 			By("Checking secretshare status")
 			Eventually(waitForDeploymentReady("secretshare", CommonServiceOperatorNamespace), timeout, interval).Should(BeTrue())

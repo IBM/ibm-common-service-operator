@@ -23,11 +23,6 @@ metadata:
     capabilities: Seamless Upgrades
     containerImage: quay.io/opencloudio/common-service-operator:latest
     createdAt: "2020-10-19T21:38:33Z"
-    csNamespace: |-
-      apiVersion: v1
-      kind: Namespace
-      metadata:
-        name: ibm-common-services
     csOperandConfig: |-
       apiVersion: operator.ibm.com/v1alpha1
       kind: OperandConfig
@@ -282,7 +277,7 @@ metadata:
         source: opencloud-operators
         sourceNamespace: openshift-marketplace
     description: The IBM Common Service Operator is used to deploy IBM Common Services
-    extraResources: webhookCRD,webhookOperator,secretShareOperator,rbac
+    extraResources: webhookCRD,webhookOperator,secretShareOperator
     odlmClusterRole: |-
       kind: ClusterRole
       apiVersion: rbac.authorization.k8s.io/v1
@@ -347,65 +342,6 @@ metadata:
     olm.skipRange: '>=3.4.3 <3.6.0'
     operators.operatorframework.io/builder: operator-sdk-v1.0.1
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
-    rbac: |-
-      apiVersion: rbac.authorization.k8s.io/v1
-      kind: Role
-      metadata:
-        name: ibmcloud-cluster-info
-        namespace: kube-public
-      rules:
-        - apiGroups: [""]
-          resources: ["configmaps"]
-          resourceNames: ["ibmcloud-cluster-info"]
-          verbs: ["get"]
-
-      ---
-      apiVersion: rbac.authorization.k8s.io/v1
-      kind: RoleBinding
-      metadata:
-        name: ibmcloud-cluster-info
-        namespace: kube-public
-      subjects:
-        - kind: Group
-          apiGroup: rbac.authorization.k8s.io
-          name: "system:authenticated"
-        - kind: Group
-          apiGroup: rbac.authorization.k8s.io
-          name: "system:unauthenticated"
-      roleRef:
-        kind: Role
-        name: ibmcloud-cluster-info
-        apiGroup: rbac.authorization.k8s.io
-
-      ---
-      kind: Role
-      apiVersion: rbac.authorization.k8s.io/v1
-      metadata:
-        name: ibmcloud-cluster-ca-cert
-        namespace: kube-public
-      rules:
-        - apiGroups: [""]
-          resources: ["secrets"]
-          resourceNames: ["ibmcloud-cluster-ca-cert"]
-          verbs: ["get"]
-
-      ---
-      kind: RoleBinding
-      apiVersion: rbac.authorization.k8s.io/v1
-      metadata:
-        name: ibmcloud-cluster-ca-cert
-        namespace: kube-public
-      subjects:
-        - kind: Group
-          apiGroup: rbac.authorization.k8s.io
-          name: "system:authenticated"
-        - kind: Group
-          apiGroup: rbac.authorization.k8s.io
-          name: "system:unauthenticated"
-      roleRef:
-        kind: Role
-        name: ibmcloud-cluster-ca-cert
-        apiGroup: rbac.authorization.k8s.io
     repository: https://github.com/IBM/ibm-common-service-operator
     secretShareOperator: |-
       apiVersion: apiextensions.k8s.io/v1beta1
@@ -2313,18 +2249,14 @@ spec:
     spec:
       clusterPermissions:
       - rules:
+        # create ibm-common-services namespace permission
         - apiGroups:
-          - ""
-          resourceNames:
-          - ibm-common-services
+          - ''
           resources:
           - namespaces
           verbs:
-          - list
-          - get
-          - watch
           - create
-          - update
+        # create subscriptions & operatorgroup permission in ibm-common-services
         - apiGroups:
           - operators.coreos.com
           resources:
@@ -2333,20 +2265,18 @@ spec:
           verbs:
           - list
           - get
-          - watch
           - create
           - update
+        # watch CommonService in all namespaces
         - apiGroups:
-          - ""
+          - operator.ibm.com
           resources:
-          - configmaps
+          - commonservices
           verbs:
-          - create
           - get
           - list
-          - patch
-          - update
           - watch
+        # create CRD permission
         - apiGroups:
           - apiextensions.k8s.io
           resources:
@@ -2354,8 +2284,8 @@ spec:
           verbs:
           - create
           - get
-          - patch
           - update
+        # create rbac
         - apiGroups:
           - rbac.authorization.k8s.io
           resources:
@@ -2368,143 +2298,19 @@ spec:
           - delete
           - get
           - list
-          - patch
           - update
           - watch
-        - apiGroups:
-          - operator.ibm.com
-          resources:
-          - commonservices
-          - operandconfigs
-          - operandregistries
-          verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
+        # create IAM status configmap in kube-public
         - apiGroups:
           - ""
           resources:
-          - namespaces
-          verbs:
-          - list
-          - get
-          - update
-          - watch
-        - apiGroups:
-          - ""
-          resources:
-          - pods
-          verbs:
-          - list
-          - get
-          - create
-        - apiGroups:
-          - operator.ibm.com
-          resources:
-          - '*'
-          verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
-        - apiGroups:
-          - admissionregistration.k8s.io
-          resources:
-          - mutatingwebhookconfigurations
-          verbs:
-          - '*'
-        - apiGroups:
-          - ""
-          resources:
-          - pods
-          - namespaces
-          - services
-          - services/finalizers
-          - endpoints
-          - persistentvolumeclaims
-          - events
           - configmaps
-          - secrets
           verbs:
           - create
-          - delete
           - get
           - list
           - patch
           - update
-          - watch
-        - apiGroups:
-          - apps
-          resources:
-          - deployments
-          - daemonsets
-          - replicasets
-          - statefulsets
-          verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
-        - apiGroups:
-          - monitoring.coreos.com
-          resources:
-          - servicemonitors
-          verbs:
-          - get
-          - create
-        - apiGroups:
-          - apps
-          resourceNames:
-          - secretshare
-          resources:
-          - deployments/finalizers
-          verbs:
-          - update
-          - get
-          - list
-          - watch
-        - apiGroups:
-          - ibmcpcs.ibm.com
-          resources:
-          - '*'
-          verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
-        - apiGroups:
-          - ibmcpcs.ibm.com
-          resources:
-          - secretshares
-          - secretshares/status
-          verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
-        - apiGroups:
-          - operators.coreos.com
-          resources:
-          - subscriptions
-          verbs:
-          - get
-          - list
           - watch
         serviceAccountName: ibm-common-service-operator
       deployments:

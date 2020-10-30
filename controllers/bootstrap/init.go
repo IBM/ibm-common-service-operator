@@ -24,7 +24,9 @@ import (
 	"time"
 
 	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilwait "k8s.io/apimachinery/pkg/util/wait"
 	discovery "k8s.io/client-go/discovery"
 	"k8s.io/client-go/rest"
@@ -38,7 +40,6 @@ import (
 )
 
 var (
-	CsNsResources           = []string{"csNamespace"}
 	CsExtResource           = "extraResources"
 	CsSubResource           = []string{"csOperatorSubscription"}
 	OdlmNsSubResources      = []string{"odlmNsSubscription"}
@@ -46,6 +47,8 @@ var (
 	OdlmCrResources         = []string{"csOperandRegistry", "csOperandConfig"}
 	OdlmClusterPermission   = []string{"odlmClusterRole", "odlmClusterRoleBinding"}
 )
+
+var ctx = context.Background()
 
 type Bootstrap struct {
 	client.Client
@@ -78,13 +81,30 @@ func (b *Bootstrap) InitResources() error {
 		return err
 	}
 
+	// Grant cluster-admin to namespace scope operator
+	if operatorNs == constant.ClusterOperatorNamespace {
+		klog.Info("Creating cluster-admin permission RBAC")
+		clusterRBAC := fmt.Sprintf(constant.ClusterAdminRBAC, constant.MasterNamespace)
+		if err := b.createOrUpdateFromYaml([]byte(clusterRBAC)); err != nil {
+			return err
+		}
+	}
+
+	// Install Namespace Scope Operator
+
+	// Create extra RBAC for ibmcloud-cluster-ca-cert and ibmcloud-cluster-info in kube-public
+	klog.Info("Creating RBAC for ibmcloud-cluster-info & ibmcloud-cluster-ca-cert in kube-public")
+	if err := b.createOrUpdateFromYaml([]byte(constant.ExtraRBAC)); err != nil {
+		return err
+	}
+
 	// create or update ODLM operator
-	if operatorNs == "ibm-common-services" {
+	if operatorNs == constant.MasterNamespace {
 		klog.Info("create odlm in namespace ibm-common-services")
 		if err := b.createOrUpdateResources(annotations, OdlmNsSubResources); err != nil {
 			return err
 		}
-	} else if operatorNs == "openshift-operators" {
+	} else if operatorNs == constant.ClusterOperatorNamespace {
 		klog.Info("create operator group in namespace ibm-common-services")
 		if err := b.createOperatorGroup(); err != nil {
 			return err
@@ -121,15 +141,20 @@ func (b *Bootstrap) InitResources() error {
 }
 
 func (b *Bootstrap) CreateNamespace() error {
-	// Get all the resources from the deployment annotations
-	annotations, err := b.GetAnnotations()
-	if err != nil {
+	nsObj := &corev1.Namespace{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Namespace",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: constant.MasterNamespace,
+		},
+	}
+
+	if err := b.Client.Create(ctx, nsObj); err != nil && !errors.IsAlreadyExists(err) {
 		return err
 	}
 
-	if err := b.createOrUpdateResources(annotations, CsNsResources); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -153,7 +178,7 @@ func (b *Bootstrap) CreateCsSubscription() error {
 func (b *Bootstrap) CreateCsCR() error {
 	odlm := util.NewUnstructured("operators.coreos.com", "Subscription", "v1alpha1")
 	odlm.SetName("operand-deployment-lifecycle-manager-app")
-	odlm.SetNamespace("openshift-operators")
+	odlm.SetNamespace(constant.ClusterOperatorNamespace)
 	_, err := b.GetObject(odlm)
 	if errors.IsNotFound(err) {
 		// Fresh Intall: No ODLM
