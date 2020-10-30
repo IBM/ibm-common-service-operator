@@ -34,6 +34,7 @@ import (
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 	"github.com/IBM/ibm-common-service-operator/controllers/check"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
+	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/controllers/deploy"
 	// +kubebuilder:scaffold:imports
 )
@@ -82,14 +83,17 @@ func main() {
 		klog.Error("get operator namespace failed: ", err)
 		os.Exit(1)
 	}
-	// Create ibm-common-services namespace
-	if err := bs.CreateNamespace(); err != nil {
-		klog.Error("create ibm-common-services namespace failed: ", err)
-		os.Exit(1)
+
+	// Create master namespace
+	if operatorNs != constant.MasterNamespace {
+		if err := bs.CreateNamespace(); err != nil {
+			klog.Error("Failed to create master namespace: ", err)
+			os.Exit(1)
+		}
 	}
 
-	if operatorNs == "ibm-common-services" || operatorNs == "openshift-operators" {
-		klog.Info("create CommonService CR in ibm-common-services namespace")
+	if operatorNs == constant.MasterNamespace || operatorNs == constant.ClusterOperatorNamespace {
+		klog.Info("create CommonService CR in master namespace")
 		if err = bs.CreateCsCR(); err != nil {
 			klog.Error("Create CommonService CR failed: ", err)
 			os.Exit(1)
