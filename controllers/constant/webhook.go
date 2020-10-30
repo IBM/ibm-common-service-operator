@@ -133,41 +133,54 @@ kind: ClusterRole
 metadata:
   name: ibm-common-service-webhook
 rules:
-  - apiGroups:
-      - ""
-    resources:
-      - namespaces
-    verbs:
-      - list
-      - get
-      - update
-      - watch
-  - apiGroups:
-      - ""
-    resources:
-      - pods
-    verbs:
-      - list
-      - get
-      - create
-  - apiGroups:
-      - operator.ibm.com
-    resources:
-      - '*'
-    verbs:
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
-  - apiGroups:
-      - admissionregistration.k8s.io
-    resources:
-      - mutatingwebhookconfigurations
-    verbs:
-      - "*"
+- apiGroups:
+    - ""
+  resources:
+    - namespaces
+  verbs:
+    - list
+    - get
+    - update
+    - watch
+# get and update pod 
+- apiGroups:
+    - ""
+  resources:
+    - pods
+  verbs:
+    - list
+    - get
+    - create
+    - watch
+    - update
+    - patch
+# manage its own CR
+- apiGroups:
+    - operator.ibm.com
+  resources:
+    - podpresets
+    - podpresets/status
+  verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+# manage mutation webhook configuration
+- apiGroups:
+    - admissionregistration.k8s.io
+  resources:
+    - mutatingwebhookconfigurations
+  verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1

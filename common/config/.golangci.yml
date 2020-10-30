@@ -33,13 +33,13 @@ linters:
     - gofmt
     - goimports
     - golint
-    - gosec
+    # - gosec
     - gosimple
     - govet
     # - ineffassign
     - interfacer
     - lll
-    - misspell
+    # - misspell
     - staticcheck
     - structcheck
     - typecheck

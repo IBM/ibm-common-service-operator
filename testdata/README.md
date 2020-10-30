@@ -26,7 +26,7 @@ oc -n common-service apply -f deploy.yaml
 Destroy:
 
 ```
-oc delete ns common-service ibm-common-servcies
+oc delete ns common-service ibm-common-services
 ```
 
 ## 2.Simulate in ibm-common-services namespace
@@ -58,7 +58,7 @@ oc -n ibm-common-services apply -f deploy.yaml
 Destroy:
 
 ```
-oc delete ns ibm-common-servcies
+oc delete ns ibm-common-services
 ```
 
 ## 3.Simulate in openshift-operators namespace
@@ -92,5 +92,5 @@ oc -n openshift-operators delete -f sa.yaml
 oc -n openshift-operators delete -f cluster_rbac.yaml
 oc -n openshift-operators delete -f deploy.yaml
 
-oc delete ns ibm-common-servcies
+oc delete ns ibm-common-services
 ```
