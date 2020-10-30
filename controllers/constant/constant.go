@@ -38,10 +38,10 @@ apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
 metadata:
   name: ibm-common-service-operator-operatorgroup
-  namespace: ibm-common-services
+  namespace: placeholder
 spec:
   targetNamespaces:
-  - ibm-common-services
+  - placeholder
 `
 
 // CsCR is the default common service operator CR
@@ -52,7 +52,7 @@ metadata:
   annotations:
     version: "-1"
   name: common-service
-  namespace: ibm-common-services
+  namespace: placeholder
 spec:
   size: medium
 `
@@ -65,7 +65,7 @@ metadata:
   annotations:
     version: "-1"
   name: common-service
-  namespace: ibm-common-services
+  namespace: placeholder
 spec:
   size: as-is
 `
@@ -96,5 +96,8 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: ibm-namespace-scope-operator
-  namespace: %s
+  namespace: placeholder
+- kind: ServiceAccount
+  name: operand-deployment-lifecycle-manager
+  namespace: placeholder
 `
