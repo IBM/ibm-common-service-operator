@@ -2129,6 +2129,15 @@ metadata:
         - apiGroups:
             - ""
           resources:
+            - namespaces
+          verbs:
+            - list
+            - get
+            - update
+            - watch
+        - apiGroups:
+            - ""
+          resources:
             - pods
           verbs:
             - list
