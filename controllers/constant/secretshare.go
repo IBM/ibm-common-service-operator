@@ -75,96 +75,59 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   annotations:
-    version: "1"
+    version: "2"
   creationTimestamp: null
   name: secretshare
 rules:
-- apiGroups:
-  - ""
+# create namespace it it doesn't exist
+- verbs:
+    - create
+    - get
+    - list
+    - watch
+  apiGroups:
+    - ''
   resources:
-  - pods
-  - namespaces
-  - services
-  - services/finalizers
-  - endpoints
-  - persistentvolumeclaims
-  - events
-  - configmaps
-  - secrets
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - apps
+    - namespaces
+# copy secret and configmap to other namespaces
+- verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+  apiGroups:
+    - ''
   resources:
-  - deployments
-  - daemonsets
-  - replicasets
-  - statefulsets
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - monitoring.coreos.com
+    - events
+    - configmaps
+    - secrets
+    - pods
+# manage its own CR
+- verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+  apiGroups:
+    - ibmcpcs.ibm.com
   resources:
-  - servicemonitors
-  verbs:
-  - get
-  - create
-- apiGroups:
-  - apps
-  resourceNames:
-  - secretshare
+    - secretshares
+    - secretshares/status
+# check if subscription is created
+- verbs:
+    - get
+    - list
+    - watch
+  apiGroups:
+    - operators.coreos.com
   resources:
-  - deployments/finalizers
-  verbs:
-  - update
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ibmcpcs.ibm.com
-  resources:
-  - '*'
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - ibmcpcs.ibm.com
-  resources:
-  - secretshares
-  - secretshares/status
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - operators.coreos.com
-  resources:
-  - subscriptions
-  verbs:
-  - get
-  - list
-  - watch
+    - subscriptions
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
