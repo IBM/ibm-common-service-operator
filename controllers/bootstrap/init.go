@@ -38,9 +38,10 @@ import (
 )
 
 var (
-	CsSubResource   = "csOperatorSubscription"
-	OdlmSubResource = "odlmSubscription"
-	OdlmCrResources = []string{"csOperandRegistry", "csOperandConfig"}
+	CsSubResource             = "csOperatorSubscription"
+	OdlmNamespacedSubResource = "odlmNamespacedSubscription"
+	OdlmClusterSubResource    = "odlmClusterSubscription"
+	OdlmCrResources           = []string{"csOperandRegistry", "csOperandConfig"}
 )
 
 var csOperators = []struct {
@@ -125,8 +126,14 @@ func (b *Bootstrap) InitResources() error {
 
 	// Install ODLM Operator
 	klog.Info("Installing ODLM Operator")
-	if err := b.createOrUpdateResource(annotations, OdlmSubResource); err != nil {
-		return err
+	if operatorNs == constant.ClusterOperatorNamespace {
+		if err := b.createOrUpdateResource(annotations, OdlmClusterSubResource); err != nil {
+			return err
+		}
+	} else {
+		if err := b.createOrUpdateResource(annotations, OdlmNamespacedSubResource); err != nil {
+			return err
+		}
 	}
 
 	// create or ODLM  OperandRegistry and OperandConfig CR resources
