@@ -14,7 +14,21 @@ spec:
       labels:
         name: ibm-common-service-operator
       annotations:
-        odlmSubscription: |-
+        odlmClusterSubscription: |-
+          apiVersion: operators.coreos.com/v1alpha1
+          kind: Subscription
+          metadata:
+            name: operand-deployment-lifecycle-manager-app
+            namespace: placeholder
+            annotations:
+              version: "11"
+          spec:
+            channel: beta
+            installPlanApproval: Automatic
+            name: ibm-odlm
+            source: opencloud-operators
+            sourceNamespace: openshift-marketplace
+        odlmNamespacedSubscription: |-
           apiVersion: operators.coreos.com/v1alpha1
           kind: Subscription
           metadata:
