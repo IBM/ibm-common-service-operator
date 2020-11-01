@@ -17,7 +17,8 @@ spec:
     plural: commonservices
     singular: commonservice
   scope: Namespaced
-  subresources: {}
+  subresources:
+    status: {}
   validation:
     openAPIV3Schema:
       description: CommonService is the Schema for the commonservices API
