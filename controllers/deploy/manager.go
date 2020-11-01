@@ -174,7 +174,7 @@ func (d *Manager) DeleteOperator(name, namespace string) error {
 		if errors.IsNotFound(err) {
 			klog.V(3).Infof("NotFound Subscription %s from the namespace %s", subName, subNs)
 		} else {
-			klog.Errorf("Failed to get Subscription %s from the namespace %s", subName, subNs)
+			klog.Errorf("failed to get Subscription %s from the namespace %s: %v", subName, subNs, err)
 		}
 		return client.IgnoreNotFound(err)
 	}
@@ -190,14 +190,14 @@ func (d *Manager) DeleteOperator(name, namespace string) error {
 			},
 		}
 		if err := d.Client.Delete(context.TODO(), csv); err != nil && !errors.IsNotFound(err) {
-			klog.Errorf("Failed to delete Cluster Service Version %s from the namespace %s", csvName, csvNs)
+			klog.Errorf("failed to delete Cluster Service Version %s from the namespace %s: %v", csvName, csvNs, err)
 			return err
 		}
 	}
 
 	// Delete existing operator's subscription
 	if err := d.Client.Delete(context.TODO(), sub); err != nil && !errors.IsNotFound(err) {
-		klog.Errorf("Failed to delete Subscription %s from namespace %s ", subName, subNs)
+		klog.Errorf("failed to delete Subscription %s from namespace %s: %v", subName, subNs, err)
 		return err
 	}
 	return nil

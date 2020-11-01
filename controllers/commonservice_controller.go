@@ -62,7 +62,7 @@ func (r *CommonServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 	klog.Infof("Reconciling CommonService: %s", req.NamespacedName)
 	// Init common servcie bootstrap resource
 	if err := r.Bootstrap.InitResources(); err != nil {
-		klog.Error("InitResources failed: ", err)
+		klog.Errorf("failed to initialize resources: %v", err)
 	}
 
 	newConfigs, err := r.getNewConfigs(req)
@@ -119,7 +119,7 @@ func (r *CommonServiceReconciler) updateOpcon(newConfigs []interface{}) error {
 		Namespace: "ibm-common-services",
 	}
 	if err := r.Reader.Get(ctx, opconKey, opcon); err != nil {
-		klog.Error(err)
+		klog.Errorf("failed to get OperandConfig %s: %v", opconKey.String(), err)
 		return err
 	}
 	services := opcon.Object["spec"].(map[string]interface{})["services"].([]interface{})
@@ -139,7 +139,7 @@ func (r *CommonServiceReconciler) updateOpcon(newConfigs []interface{}) error {
 	opcon.Object["spec"].(map[string]interface{})["services"] = services
 
 	if err := r.Update(ctx, opcon); err != nil {
-		klog.Error(err)
+		klog.Errorf("failed to update OperandConfig %s: %v", opconKey.String(), err)
 		return err
 	}
 
@@ -151,7 +151,7 @@ func deepMerge(src []interface{}, dest string) []interface{} {
 	jsonSpec, err := utilyaml.YAMLToJSON([]byte(dest))
 
 	if err != nil {
-		klog.Error(err)
+		klog.Errorf("failed to convert yaml to json: %v", err)
 	}
 
 	// Create a slice for sizes
@@ -161,7 +161,7 @@ func deepMerge(src []interface{}, dest string) []interface{} {
 	err = json.Unmarshal(jsonSpec, &sizes)
 
 	if err != nil {
-		klog.Error(err)
+		klog.Errorf("failed to convert string to slice: %v", err)
 	}
 
 	for _, configSize := range sizes {
