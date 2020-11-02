@@ -127,6 +127,10 @@ func (b *Bootstrap) InitResources() error {
 	// Install ODLM Operator
 	klog.Info("Installing ODLM Operator")
 	if operatorNs == constant.ClusterOperatorNamespace {
+		// Create OperatorGroup when common service operator is in the openshift-operators namespace
+		if err := b.createOperatorGroup(); err != nil {
+			return err
+		}
 		if err := b.createOrUpdateResource(annotations, OdlmClusterSubResource); err != nil {
 			return err
 		}
