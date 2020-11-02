@@ -72,7 +72,7 @@ func main() {
 		LeaderElectionID:   "be598e12.ibm.com",
 	})
 	if err != nil {
-		klog.Error(err, "unable to start manager")
+		klog.Errorf("unable to start manager: %v", err)
 		os.Exit(1)
 	}
 
@@ -80,14 +80,14 @@ func main() {
 	bs := bootstrap.NewBootstrap(mgr)
 	operatorNs, err := util.GetOperatorNamespace()
 	if err != nil {
-		klog.Error("get operator namespace failed: ", err)
+		klog.Errorf("get operator namespace failed: %v", err)
 		os.Exit(1)
 	}
 
 	// Create master namespace
 	if operatorNs != constant.MasterNamespace {
 		if err := bs.CreateNamespace(); err != nil {
-			klog.Error("Failed to create master namespace: ", err)
+			klog.Errorf("failed to create master namespace: %v", err)
 			os.Exit(1)
 		}
 	}
@@ -95,7 +95,7 @@ func main() {
 	if operatorNs == constant.MasterNamespace || operatorNs == constant.ClusterOperatorNamespace {
 		klog.Info("create CommonService CR in master namespace")
 		if err = bs.CreateCsCR(); err != nil {
-			klog.Error("Create CommonService CR failed: ", err)
+			klog.Errorf("create CommonService CR failed: %v", err)
 			os.Exit(1)
 		}
 
@@ -110,14 +110,14 @@ func main() {
 			Log:       ctrl.Log.WithName("controllers").WithName("CommonService"),
 			Scheme:    mgr.GetScheme(),
 		}).SetupWithManager(mgr); err != nil {
-			klog.Error(err, "unable to create controller", "controller", "CommonService")
+			klog.Errorf("unable to create controller CommonService: %v", err)
 			os.Exit(1)
 		}
 		// +kubebuilder:scaffold:builder
 	} else {
 		klog.Info("start create common service operator")
 		if err = bs.CreateCsSubscription(); err != nil {
-			klog.Error("create common service operator subscription failed: ", err)
+			klog.Errorf("create common service operator subscription failed: %v", err)
 			os.Exit(1)
 		}
 		klog.Info("finish create common service operator")
@@ -125,7 +125,7 @@ func main() {
 
 	klog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		klog.Error(err, "problem running manager")
+		klog.Errorf("problem running manager: %v", err)
 		os.Exit(1)
 	}
 }

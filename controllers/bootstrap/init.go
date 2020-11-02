@@ -85,7 +85,7 @@ func (b *Bootstrap) InitResources() error {
 
 	operatorNs, err := util.GetOperatorNamespace()
 	if err != nil {
-		klog.Error("get operator namespace failed: ", err)
+		klog.Errorf("get operator namespace failed: %v", err)
 		return err
 	}
 

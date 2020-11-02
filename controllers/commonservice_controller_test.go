@@ -130,9 +130,9 @@ func waitForDeploymentReady(name, namespace string) bool {
 	deploy := &appsv1.Deployment{}
 	if err := k8sReader.Get(ctx, deployKey, deploy); err != nil {
 		if !errors.IsNotFound(err) {
-			klog.Error("Get deployment failed: ", err)
+			klog.Errorf("get deployment failed: %v", err)
 		} else {
-			klog.Error("Cannot found deployment failed: ", err)
+			klog.Errorf("cannot found deployment failed: %v", err)
 		}
 		return false
 	}

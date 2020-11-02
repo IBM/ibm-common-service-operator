@@ -48,7 +48,7 @@ func IamStatus(mgr manager.Manager) {
 		}
 		iamStatus := overallIamStatus(r)
 		if err := createUpdateConfigmap(r, c, iamStatus); err != nil {
-			klog.Error("create or update configmap failed")
+			klog.Errorf("create or update configmap failed: %v", err)
 		}
 		time.Sleep(2 * time.Minute)
 	}
