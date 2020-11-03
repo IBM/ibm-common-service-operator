@@ -22,9 +22,11 @@ import (
 	"time"
 
 	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
+	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	utilwait "k8s.io/apimachinery/pkg/util/wait"
 	discovery "k8s.io/client-go/discovery"
 	"k8s.io/client-go/rest"
@@ -121,6 +123,12 @@ func (b *Bootstrap) InitResources() error {
 	// Create extra RBAC for ibmcloud-cluster-ca-cert and ibmcloud-cluster-info in kube-public
 	klog.Info("Creating RBAC for ibmcloud-cluster-info & ibmcloud-cluster-ca-cert in kube-public")
 	if err := b.createOrUpdateFromYaml([]byte(constant.ExtraRBAC)); err != nil {
+		return err
+	}
+
+	// Delete the previous version ODLM operator
+	klog.Info("check existing ODLM operator")
+	if err := b.deleteExistingODLM(); err != nil {
 		return err
 	}
 
@@ -314,6 +322,45 @@ func (b *Bootstrap) waitResourceReady(apiGroupVersion, kind string) error {
 		}
 		return true, nil
 	}); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (b *Bootstrap) deleteExistingODLM() error {
+	// Get existing ODLM subscription
+	subName := "operand-deployment-lifecycle-manager-app"
+	subNs := "openshift-operators"
+	key := types.NamespacedName{Name: subName, Namespace: subNs}
+	sub := &olmv1alpha1.Subscription{}
+	if err := b.Reader.Get(context.TODO(), key, sub); err != nil {
+		if errors.IsNotFound(err) {
+			klog.V(3).Info("NotFound ODLM subscription in the openshift-operators namespace")
+		} else {
+			klog.Error("Failed to get ODLM subscription in the openshift-operators namespace")
+		}
+		return client.IgnoreNotFound(err)
+	}
+
+	// Delete existing ODLM csv
+	csvName := sub.Status.InstalledCSV
+	csvNs := subNs
+	if csvName != "" {
+		csv := &olmv1alpha1.ClusterServiceVersion{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      csvName,
+				Namespace: csvNs,
+			},
+		}
+		if err := b.Client.Delete(context.TODO(), csv); err != nil && !errors.IsNotFound(err) {
+			klog.Error("Failed to delete ODLM Cluster Service Version in the openshift-operators namespace")
+			return err
+		}
+	}
+
+	// Delete existing ODLM subscription
+	if err := b.Client.Delete(context.TODO(), sub); err != nil && !errors.IsNotFound(err) {
+		klog.Error("Failed to delete ODLM Cluster Service Version in the openshift-operators namespace")
 		return err
 	}
 	return nil
