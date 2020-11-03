@@ -383,7 +383,7 @@ spec:
             name: secretshare
             namespace: placeholder
             annotations:
-              version: "8"
+              version: "9"
           spec:
             replicas: 1
             selector:
@@ -413,7 +413,7 @@ spec:
                 containers:
                 - command:
                   - /manager
-                  image: quay.io/opencloudio/ibm-secretshare-operator@sha256:60601796e149c79576694edabcf354027188f005daf17fd34f80158c8792aac9
+                  image: quay.io/opencloudio/ibm-secretshare-operator@sha256:3fdce21b1da5c5256c90c9605cbbd4b3c70d593754e6c1199df0b918ceebd082
                   imagePullPolicy: Always
                   name: ibm-secretshare-operator
                   env:
