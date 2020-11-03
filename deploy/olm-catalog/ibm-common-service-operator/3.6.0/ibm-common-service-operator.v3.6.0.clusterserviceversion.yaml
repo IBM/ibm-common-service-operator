@@ -553,6 +553,13 @@ spec:
           - create
           - update
         - apiGroups:
+          - operators.coreos.com
+          resources:
+          - subscriptions
+          - clusterserviceversions
+          verbs:
+          - delete
+        - apiGroups:
           - operator.ibm.com
           resources:
           - commonservices
