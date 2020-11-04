@@ -114,6 +114,7 @@ metadata:
             commonWebUI: {}
             switcheritem: {}
             operandRequest: {}
+            navconfiguration: {}
         - name: ibm-management-ingress-operator
           spec:
             managementIngress: {}
