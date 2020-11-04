@@ -116,7 +116,6 @@ metadata:
             authentication: {}
             oidcclientwatcher: {}
             pap: {}
-            policycontroller: {}
             policydecision: {}
             secretwatcher: {}
             securityonboarding: {}
