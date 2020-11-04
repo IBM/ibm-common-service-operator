@@ -83,6 +83,8 @@ spec:
     listKind: NamespaceScopeList
     plural: namespacescopes
     singular: namespacescope
+    shortNames:
+    - nss
   scope: Namespaced
   subresources:
     status: {}
