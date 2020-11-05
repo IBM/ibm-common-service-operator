@@ -32,7 +32,7 @@ import (
 )
 
 var (
-	DeployNames = []string{"ibm-iam-operator", "auth-idp", "auth-pap", "auth-pdp", "iam-policy-controller", "oidcclient-watcher", "secret-watcher"}
+	DeployNames = []string{"ibm-iam-operator", "auth-idp", "auth-pap", "auth-pdp", "oidcclient-watcher", "secret-watcher"}
 	JobNames    = []string{"iam-onboarding", "security-onboarding", "oidc-client-registration"}
 )
 
