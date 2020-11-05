@@ -21,6 +21,14 @@ rules:
   - get
   - create
   - update
+# delete existing subscriptions in openshift-operators/ibm-common-services
+- apiGroups:
+  - operators.coreos.com
+  resources:
+  - subscriptions
+  - clusterserviceversions
+  verbs:
+  - delete
 # cluster watch CommonService
 - apiGroups:
   - operator.ibm.com
@@ -127,7 +135,7 @@ rules:
     - get
     - update
     - watch
-# get and update pod 
+# get and update pod
 - apiGroups:
     - ""
   resources:
