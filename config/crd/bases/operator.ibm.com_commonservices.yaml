@@ -36,6 +36,8 @@ spec:
         spec:
           description: CommonServiceSpec defines the desired state of CommonService
           properties:
+            manualManagement:
+              type: boolean
             services:
               items:
                 properties:

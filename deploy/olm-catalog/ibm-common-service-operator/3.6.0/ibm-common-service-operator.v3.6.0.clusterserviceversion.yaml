@@ -23,62 +23,6 @@ metadata:
     capabilities: Seamless Upgrades
     containerImage: quay.io/opencloudio/common-service-operator:latest
     createdAt: "2020-10-19T21:38:33Z"
-    csNamespaceScopeOperator: |-
-      apiVersion: apps/v1
-      kind: Deployment
-      metadata:
-        name: ibm-namespace-scope-operator
-        namespace: placeholder
-      spec:
-        selector:
-          matchLabels:
-            app: ibm-namespace-scope-operator
-        replicas: 1
-        template:
-          metadata:
-            annotations:
-              productID: 068a62892a1e4db39641342e592daa25
-              productMetric: FREE
-              productName: IBM Cloud Platform Common Services
-            labels:
-              app: ibm-namespace-scope-operator
-          spec:
-            serviceAccountName: ibm-namespace-scope-operator
-            affinity:
-              nodeAffinity:
-                requiredDuringSchedulingIgnoredDuringExecution:
-                  nodeSelectorTerms:
-                  - matchExpressions:
-                    - key: beta.kubernetes.io/arch
-                      operator: In
-                      values:
-                      - amd64
-                      - ppc64le
-                      - s390x
-            containers:
-            - command:
-              - /namespace-scope-operator-manager
-              env:
-              - name: OPERATOR_NAME
-                value: ibm-namespace-scope-operator
-              - name: OPERATOR_NAMESPACE
-                valueFrom:
-                  fieldRef:
-                    apiVersion: v1
-                    fieldPath: metadata.namespace
-              args:
-              - --enable-leader-election=false
-              image: quay.io/opencloudio/ibm-namespace-scope-operator:latest
-              imagePullPolicy: Always
-              name: ibm-namespace-scope-operator
-              resources:
-                limits:
-                  cpu: 500m
-                  memory: 512Mi
-                requests:
-                  cpu: 200m
-                  memory: 200Mi
-            terminationGracePeriodSeconds: 10
     csOperandConfig: |-
       apiVersion: operator.ibm.com/v1alpha1
       kind: OperandConfig
@@ -440,6 +384,34 @@ metadata:
             - name: webhook-certs
               emptyDir: {}
     description: The IBM Common Service Operator is used to deploy IBM Common Services
+    nsRestrictedSubscription: |-
+      apiVersion: operators.coreos.com/v1alpha1
+      kind: Subscription
+      metadata:
+        name: ibm-namespace-scope-operator-restricted
+        namespace: placeholder
+        annotations:
+          version: "10"
+      spec:
+        channel: beta
+        installPlanApproval: Automatic
+        name: ibm-namespace-scope-operator-restricted
+        source: opencloud-operators
+        sourceNamespace: openshift-marketplace
+    nsSubscription: |-
+      apiVersion: operators.coreos.com/v1alpha1
+      kind: Subscription
+      metadata:
+        name: ibm-namespace-scope-operator
+        namespace: placeholder
+        annotations:
+          version: "10"
+      spec:
+        channel: beta
+        installPlanApproval: Automatic
+        name: ibm-namespace-scope-operator
+        source: opencloud-operators
+        sourceNamespace: openshift-marketplace
     odlmClusterSubscription: |-
       apiVersion: operators.coreos.com/v1alpha1
       kind: Subscription
@@ -779,5 +751,4 @@ spec:
   maturity: alpha
   provider:
     name: IBM
-  replaces: ibm-common-service-operator.v3.5.5
   version: 3.6.0

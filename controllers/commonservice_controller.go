@@ -52,6 +52,8 @@ var ctx = context.Background()
 
 func (r *CommonServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
+	klog.Infof("Reconciling CommonService: %s", req.NamespacedName)
+
 	// Fetch the CommonService instance
 	instance := &apiv3.CommonService{}
 
@@ -59,10 +61,10 @@ func (r *CommonServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	klog.Infof("Reconciling CommonService: %s", req.NamespacedName)
 	// Init common servcie bootstrap resource
-	if err := r.Bootstrap.InitResources(); err != nil {
-		klog.Errorf("failed to initialize resources: %v", err)
+	if err := r.Bootstrap.InitResources(instance.Spec.ManualManagement); err != nil {
+		klog.Errorf("Failed to initialize resources: %v", err)
+		return ctrl.Result{}, err
 	}
 
 	newConfigs, err := r.getNewConfigs(req)

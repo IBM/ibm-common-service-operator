@@ -53,7 +53,6 @@ var csOperators = []struct {
 	CR         string
 	Deployment string
 }{
-	{"NamespaceScope Operator", constant.NamespaceScopeCRD, constant.NamespaceScopeRBAC, constant.NamespaceScopeCR, "csNamespaceScopeOperator"},
 	{"Webhook Operator", constant.WebhookCRD, constant.WebhookRBAC, constant.WebhookCR, "csWebhookOperator"},
 	{"Secretshare Operator", constant.SecretshareCRD, constant.SecretshareRBAC, constant.SecretshareCR, "csSecretshareOperator"},
 }
@@ -78,7 +77,7 @@ func NewBootstrap(mgr manager.Manager) *Bootstrap {
 }
 
 // InitResources initialize resources at the bootstrap of operator
-func (b *Bootstrap) InitResources() error {
+func (b *Bootstrap) InitResources(manualManagement bool) error {
 	// Get all the resources from the deployment annotations
 	annotations, err := b.GetAnnotations()
 	if err != nil {
@@ -87,7 +86,7 @@ func (b *Bootstrap) InitResources() error {
 
 	operatorNs, err := util.GetOperatorNamespace()
 	if err != nil {
-		klog.Errorf("get operator namespace failed: %v", err)
+		klog.Errorf("Getting operator namespace failed: %v", err)
 		return err
 	}
 
@@ -97,6 +96,22 @@ func (b *Bootstrap) InitResources() error {
 		if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.ClusterAdminRBAC))); err != nil {
 			return err
 		}
+	}
+
+	// Install Namespace Scope Operator
+	klog.Info("Creating Namespace Scope Operator subscription")
+	if err := b.createNsSubscription(manualManagement, annotations); err != nil {
+		klog.Errorf("Failed to create Namespace Scope Operator subscription: %v", err)
+		return err
+	}
+
+	if err := b.waitResourceReady("operator.ibm.com/v1", "NamespaceScope"); err != nil {
+		return err
+	}
+
+	// Create NamespaceScope CR
+	if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.NamespaceScopeCR))); err != nil {
+		return err
 	}
 
 	// Install CS Operators
@@ -127,18 +142,15 @@ func (b *Bootstrap) InitResources() error {
 	}
 
 	// Delete the previous version ODLM operator
-	klog.Info("check existing ODLM operator")
-	if err := b.deleteExistingODLM(); err != nil {
+	klog.Info("Trying to delete ODLM operator in openshift-operators")
+	if err := b.deleteSubscription("operand-deployment-lifecycle-manager-app", "openshift-operators"); err != nil {
+		klog.Errorf("Failed to delete ODLM operator in openshift-operators: %v", err)
 		return err
 	}
 
 	// Install ODLM Operator
 	klog.Info("Installing ODLM Operator")
 	if operatorNs == constant.ClusterOperatorNamespace {
-		// Create OperatorGroup when common service operator is in the openshift-operators namespace
-		if err := b.createOperatorGroup(); err != nil {
-			return err
-		}
 		if err := b.createOrUpdateResource(annotations, OdlmClusterSubResource); err != nil {
 			return err
 		}
@@ -186,12 +198,8 @@ func (b *Bootstrap) CreateCsSubscription() error {
 	if err != nil {
 		return err
 	}
-	klog.Info("create operator group in namespace ibm-common-services")
-	if err := b.createOperatorGroup(); err != nil {
-		return err
-	}
-	klog.Info("create cs operator in namespace ibm-common-services")
-	if err := b.createOrUpdateResource(annotations, util.Namespacelize(CsSubResource)); err != nil {
+	klog.Info("Creating cs operator in master namespace")
+	if err := b.createOrUpdateResource(annotations, CsSubResource); err != nil {
 		return err
 	}
 	return nil
@@ -211,7 +219,7 @@ func (b *Bootstrap) CreateCsCR() error {
 
 	cs := util.NewUnstructured("operator.ibm.com", "CommonService", "v3")
 	cs.SetName("common-service")
-	cs.SetNamespace("ibm-common-services")
+	cs.SetNamespace(constant.MasterNamespace)
 	_, err = b.GetObject(cs)
 	if errors.IsNotFound(err) {
 		// Upgrade: Have ODLM and NO CR
@@ -224,13 +232,13 @@ func (b *Bootstrap) CreateCsCR() error {
 	return b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsCR)))
 }
 
-func (b *Bootstrap) createOperatorGroup() error {
+func (b *Bootstrap) CreateOperatorGroup() error {
 	existOG := &olmv1.OperatorGroupList{}
-	if err := b.Reader.List(context.TODO(), existOG, &client.ListOptions{Namespace: "ibm-common-services"}); err != nil {
+	if err := b.Reader.List(context.TODO(), existOG, &client.ListOptions{Namespace: constant.MasterNamespace}); err != nil {
 		return err
 	}
 	if len(existOG.Items) == 0 {
-		if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsOg))); err != nil {
+		if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsOperatorGroup))); err != nil {
 			return err
 		}
 	}
@@ -274,7 +282,7 @@ func (b *Bootstrap) createOrUpdateFromYaml(yamlContent []byte) error {
 
 		objInCluster, err := b.GetObject(obj)
 		if errors.IsNotFound(err) {
-			klog.Infof("create resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
+			klog.Infof("Creating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
 			if err := b.CreateObject(obj); err != nil {
 				errMsg = err
 			}
@@ -298,7 +306,7 @@ func (b *Bootstrap) createOrUpdateFromYaml(yamlContent []byte) error {
 
 		// TODO: deep merge and update
 		if version > versionInCluster {
-			klog.Infof("update resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
+			klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
 			resourceVersion := objInCluster.GetResourceVersion()
 			obj.SetResourceVersion(resourceVersion)
 			if err := b.UpdateObject(obj); err != nil {
@@ -327,45 +335,6 @@ func (b *Bootstrap) waitResourceReady(apiGroupVersion, kind string) error {
 	return nil
 }
 
-func (b *Bootstrap) deleteExistingODLM() error {
-	// Get existing ODLM subscription
-	subName := "operand-deployment-lifecycle-manager-app"
-	subNs := "openshift-operators"
-	key := types.NamespacedName{Name: subName, Namespace: subNs}
-	sub := &olmv1alpha1.Subscription{}
-	if err := b.Reader.Get(context.TODO(), key, sub); err != nil {
-		if errors.IsNotFound(err) {
-			klog.V(3).Info("NotFound ODLM subscription in the openshift-operators namespace")
-		} else {
-			klog.Error("Failed to get ODLM subscription in the openshift-operators namespace")
-		}
-		return client.IgnoreNotFound(err)
-	}
-
-	// Delete existing ODLM csv
-	csvName := sub.Status.InstalledCSV
-	csvNs := subNs
-	if csvName != "" {
-		csv := &olmv1alpha1.ClusterServiceVersion{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      csvName,
-				Namespace: csvNs,
-			},
-		}
-		if err := b.Client.Delete(context.TODO(), csv); err != nil && !errors.IsNotFound(err) {
-			klog.Error("Failed to delete ODLM Cluster Service Version in the openshift-operators namespace")
-			return err
-		}
-	}
-
-	// Delete existing ODLM subscription
-	if err := b.Client.Delete(context.TODO(), sub); err != nil && !errors.IsNotFound(err) {
-		klog.Error("Failed to delete ODLM Cluster Service Version in the openshift-operators namespace")
-		return err
-	}
-	return nil
-}
-
 // resourceExists returns true if the given resource kind exists
 // in the given api groupversion
 func resourceExists(dc discovery.DiscoveryInterface, apiGroupVersion, kind string) (bool, error) {
@@ -383,4 +352,61 @@ func resourceExists(dc discovery.DiscoveryInterface, apiGroupVersion, kind strin
 		}
 	}
 	return false, nil
+}
+
+func (b *Bootstrap) createNsSubscription(manualManagement bool, annotations map[string]string) error {
+	resourceName := constant.NsSubResourceName
+	subNameToRemove := constant.NsRestrictedSubName
+	if manualManagement {
+		resourceName = constant.NsRestrictedSubResourceName
+		subNameToRemove = constant.NsSubName
+	}
+
+	if err := b.deleteSubscription(subNameToRemove, constant.MasterNamespace); err != nil {
+		return err
+	}
+
+	if err := b.createOrUpdateResource(annotations, resourceName); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (b *Bootstrap) deleteSubscription(name, namespace string) error {
+	key := types.NamespacedName{Name: name, Namespace: namespace}
+	sub := &olmv1alpha1.Subscription{}
+	if err := b.Reader.Get(context.TODO(), key, sub); err != nil {
+		if errors.IsNotFound(err) {
+			klog.V(3).Infof("NotFound subscription %s/%s", namespace, name)
+		} else {
+			klog.Errorf("Failed to get subscription %s/%s", namespace, name)
+		}
+		return client.IgnoreNotFound(err)
+	}
+
+	klog.Infof("Deleting subscription %s/%s", namespace, name)
+
+	// Delete csv
+	csvName := sub.Status.InstalledCSV
+	if csvName != "" {
+		csv := &olmv1alpha1.ClusterServiceVersion{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      csvName,
+				Namespace: namespace,
+			},
+		}
+		if err := b.Client.Delete(context.TODO(), csv); err != nil && !errors.IsNotFound(err) {
+			klog.Errorf("Failed to delete Cluster Service Version: %v", err)
+			return err
+		}
+	}
+
+	// Delete subscription
+	if err := b.Client.Delete(context.TODO(), sub); err != nil && !errors.IsNotFound(err) {
+		klog.Errorf("Failed to delete subscription: %s", err)
+		return err
+	}
+
+	return nil
 }

@@ -21,7 +21,7 @@ rules:
   - get
   - create
   - update
-# delete existing ODLM subscriptions in openshift-operators
+# delete existing subscriptions in openshift-operators/ibm-common-services
 - apiGroups:
   - operators.coreos.com
   resources:
@@ -135,7 +135,7 @@ rules:
     - get
     - update
     - watch
-# get and update pod 
+# get and update pod
 - apiGroups:
     - ""
   resources:
