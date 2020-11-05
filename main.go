@@ -72,7 +72,7 @@ func main() {
 		LeaderElectionID:   "be598e12.ibm.com",
 	})
 	if err != nil {
-		klog.Errorf("unable to start manager: %v", err)
+		klog.Errorf("Unable to start manager: %v", err)
 		os.Exit(1)
 	}
 
@@ -80,22 +80,29 @@ func main() {
 	bs := bootstrap.NewBootstrap(mgr)
 	operatorNs, err := util.GetOperatorNamespace()
 	if err != nil {
-		klog.Errorf("get operator namespace failed: %v", err)
+		klog.Errorf("Getting operator namespace failed: %v", err)
 		os.Exit(1)
 	}
 
 	// Create master namespace
 	if operatorNs != constant.MasterNamespace {
+		klog.Infof("Creating IBM Common Services master namespace: %s", constant.MasterNamespace)
 		if err := bs.CreateNamespace(); err != nil {
-			klog.Errorf("failed to create master namespace: %v", err)
+			klog.Errorf("Failed to create master namespace: %v", err)
+			os.Exit(1)
+		}
+
+		klog.Info("Creating OperatorGroup for IBM Common Services")
+		if err := bs.CreateOperatorGroup(); err != nil {
+			klog.Errorf("Failed to create OperatorGroup for IBM Common Services: %v", err)
 			os.Exit(1)
 		}
 	}
 
 	if operatorNs == constant.MasterNamespace || operatorNs == constant.ClusterOperatorNamespace {
-		klog.Info("create CommonService CR in master namespace")
+		klog.Info("Creating CommonService CR in master namespace")
 		if err = bs.CreateCsCR(); err != nil {
-			klog.Errorf("create CommonService CR failed: %v", err)
+			klog.Errorf("Failed to create CommonService CR: %v", err)
 			os.Exit(1)
 		}
 
@@ -110,22 +117,21 @@ func main() {
 			Log:       ctrl.Log.WithName("controllers").WithName("CommonService"),
 			Scheme:    mgr.GetScheme(),
 		}).SetupWithManager(mgr); err != nil {
-			klog.Errorf("unable to create controller CommonService: %v", err)
+			klog.Errorf("Unable to create controller CommonService: %v", err)
 			os.Exit(1)
 		}
 		// +kubebuilder:scaffold:builder
 	} else {
-		klog.Info("start create common service operator")
+		klog.Info("Creating common service operator subscription in master namespace")
 		if err = bs.CreateCsSubscription(); err != nil {
-			klog.Errorf("create common service operator subscription failed: %v", err)
+			klog.Errorf("Failed to create common service operator subscription: %v", err)
 			os.Exit(1)
 		}
-		klog.Info("finish create common service operator")
 	}
 
-	klog.Info("starting manager")
+	klog.Info("Starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		klog.Errorf("problem running manager: %v", err)
+		klog.Errorf("Problem running manager: %v", err)
 		os.Exit(1)
 	}
 }

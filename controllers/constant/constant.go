@@ -30,14 +30,23 @@ const (
 	MasterNamespace = "ibm-common-services"
 	// Cluster Operator namespace
 	ClusterOperatorNamespace = "openshift-operators"
+
+	// Namespace Scope Operator resource name
+	NsSubResourceName = "nsSubscription"
+	// Namespace Scope Operator Restricted resource name
+	NsRestrictedSubResourceName = "nsRestrictedSubscription"
+	// Namespace Scope Operator sub name
+	NsSubName = "ibm-namespace-scope-operator"
+	// Namespace Scope Operator Restricted sub name
+	NsRestrictedSubName = "ibm-namespace-scope-operator-restricted"
 )
 
 // CsOg is OperatorGroup constent for the common service operator
-const CsOg = `
+const CsOperatorGroup = `
 apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
 metadata:
-  name: ibm-common-service-operator-operatorgroup
+  name: ibm-common-services-operators
   namespace: placeholder
 spec:
   targetNamespaces:

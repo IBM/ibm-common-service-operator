@@ -34,8 +34,9 @@ type CommonServiceSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	Size     string          `json:"size,omitempty"`
-	Services []ServiceConfig `json:"services,omitempty"`
+	ManualManagement bool            `json:"manualManagement,omitempty"`
+	Size             string          `json:"size,omitempty"`
+	Services         []ServiceConfig `json:"services,omitempty"`
 }
 
 // CommonServiceStatus defines the observed state of CommonService
