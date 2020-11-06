@@ -26,6 +26,13 @@ metadata:
 spec:
   namespaceMembers:
   - placeholder
-  restartLabels:
-    intent: projected
+---
+apiVersion: operator.ibm.com/v1
+kind: NamespaceScope
+metadata:
+  name: nss-managedby-odlm
+  namespace: placeholder
+spec:
+  namespaceMembers:
+  - placeholder
 `
