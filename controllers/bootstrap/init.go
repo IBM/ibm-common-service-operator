@@ -52,9 +52,11 @@ var csOperators = []struct {
 	RBAC       string
 	CR         string
 	Deployment string
+	Kind       string
+	APIVersion string
 }{
-	{"Webhook Operator", constant.WebhookCRD, constant.WebhookRBAC, constant.WebhookCR, "csWebhookOperator"},
-	{"Secretshare Operator", constant.SecretshareCRD, constant.SecretshareRBAC, constant.SecretshareCR, "csSecretshareOperator"},
+	{"Webhook Operator", constant.WebhookCRD, constant.WebhookRBAC, constant.WebhookCR, "csWebhookOperator", constant.WebhookKind, constant.WebhookAPIVersion},
+	{"Secretshare Operator", constant.SecretshareCRD, constant.SecretshareRBAC, constant.SecretshareCR, "csSecretshareOperator", constant.SecretshareKind, constant.SecretshareAPIVersion},
 }
 
 var ctx = context.Background()
@@ -127,6 +129,10 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 		}
 		// Create Operator Deployment
 		if err := b.createOrUpdateResource(annotations, operator.Deployment); err != nil {
+			return err
+		}
+		// Wait for CRD ready
+		if err := b.waitResourceReady(operator.APIVersion, operator.Kind); err != nil {
 			return err
 		}
 		// Create Operator CR

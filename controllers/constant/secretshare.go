@@ -16,6 +16,12 @@
 
 package constant
 
+// Kind
+const SecretshareKind = "SecretShare"
+
+// ApiVersion
+const SecretshareAPIVersion = "ibmcpcs.ibm.com/v1"
+
 // Secretshare Operator CR
 const SecretshareCR = `
 apiVersion: ibmcpcs.ibm.com/v1
