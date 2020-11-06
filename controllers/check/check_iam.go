@@ -29,6 +29,8 @@ import (
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+
+	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 )
 
 var (
@@ -48,7 +50,7 @@ func IamStatus(mgr manager.Manager) {
 		}
 		iamStatus := overallIamStatus(r)
 		if err := createUpdateConfigmap(r, c, iamStatus); err != nil {
-			klog.Errorf("create or update configmap failed: %v", err)
+			klog.Errorf("Create or update configmap failed: %v", err)
 		}
 		time.Sleep(2 * time.Minute)
 	}
@@ -57,7 +59,7 @@ func IamStatus(mgr manager.Manager) {
 // getIamSubscription return true if IAM subscription found, otherwise return false
 func getIamSubscription(r client.Reader) bool {
 	subName := "ibm-iam-operator"
-	subNs := "ibm-common-services"
+	subNs := constant.MasterNamespace
 	sub := &olmv1alpha1.Subscription{}
 	err := r.Get(context.TODO(), types.NamespacedName{Name: subName, Namespace: subNs}, sub)
 	return err == nil
@@ -82,9 +84,10 @@ func overallIamStatus(r client.Reader) string {
 func getJobStatus(r client.Reader, name string) string {
 	job := &batchv1.Job{}
 	jobName := name
-	jobNs := "ibm-common-services"
+	jobNs := constant.MasterNamespace
 	err := r.Get(context.TODO(), types.NamespacedName{Name: jobName, Namespace: jobNs}, job)
 	if err != nil {
+		klog.Errorf("Failed to get Job %s: %v", jobName, err)
 		return "NotReady"
 	}
 
@@ -97,10 +100,11 @@ func getJobStatus(r client.Reader, name string) string {
 func getDeploymentStatus(r client.Reader, name string) string {
 	deploy := &appsv1.Deployment{}
 	deployName := name
-	deployNs := "ibm-common-services"
+	deployNs := constant.MasterNamespace
 
 	err := r.Get(context.TODO(), types.NamespacedName{Name: deployName, Namespace: deployNs}, deploy)
 	if err != nil {
+		klog.Errorf("Failed to get Deployment %s: %v", deployName, err)
 		return "NotReady"
 	}
 
@@ -125,6 +129,7 @@ func createUpdateConfigmap(r client.Reader, c client.Client, status string) erro
 			cm.Data = make(map[string]string)
 			cm.Data["iamstatus"] = status
 			if err := c.Create(context.TODO(), cm); err != nil {
+				klog.Errorf("Failed to create ConfigMap %s: %v", cmName, err)
 				return err
 			}
 			return nil
@@ -135,6 +140,7 @@ func createUpdateConfigmap(r client.Reader, c client.Client, status string) erro
 		klog.Infof("IAM status is %s", status)
 		cm.Data["iamstatus"] = status
 		if err = c.Update(context.TODO(), cm); err != nil {
+			klog.Errorf("Failed to update ConfigMap %s: %v", cmName, err)
 			return err
 		}
 	}
