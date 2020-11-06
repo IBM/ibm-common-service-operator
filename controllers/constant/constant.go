@@ -104,9 +104,6 @@ roleRef:
   name: ibm-common-services-cluster-admin
 subjects:
 - kind: ServiceAccount
-  name: ibm-namespace-scope-operator
-  namespace: placeholder
-- kind: ServiceAccount
   name: operand-deployment-lifecycle-manager
   namespace: placeholder
 `

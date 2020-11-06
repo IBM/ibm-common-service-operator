@@ -16,6 +16,12 @@
 
 package constant
 
+// Kind
+const WebhookKind = "PodPreset"
+
+// ApiVersion
+const WebhookAPIVersion = "operator.ibm.com/v1alpha1"
+
 // Webhook Operator CR
 const WebhookCR = `
 apiVersion: operator.ibm.com/v1alpha1
@@ -142,7 +148,7 @@ rules:
     - get
     - update
     - watch
-# get and update pod 
+# get and update pod
 - apiGroups:
     - ""
   resources:
