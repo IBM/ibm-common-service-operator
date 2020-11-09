@@ -90,21 +90,9 @@ metadata:
             auditLogging: {}
             operandBindInfo: {}
             operandRequest: {}
-        - name: ibm-catalog-ui-operator
-          spec:
-            catalogUI: {}
-            operandRequest: {}
         - name: ibm-platform-api-operator
           spec:
             platformApi: {}
-            operandRequest: {}
-        - name: ibm-helm-api-operator
-          spec:
-            helmApi: {}
-            operandRequest: {}
-        - name: ibm-helm-repo-operator
-          spec:
-            helmRepo: {}
             operandRequest: {}
         - name: ibm-monitoring-exporters-operator
           spec:
@@ -202,30 +190,11 @@ metadata:
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
-        - name: ibm-catalog-ui-operator
-          namespace: ibm-common-services
-          channel: beta
-          packageName: ibm-catalog-ui-operator-app
-          scope: public
-          sourceName: opencloud-operators
-          sourceNamespace: openshift-marketplace
         - name: ibm-platform-api-operator
           namespace: ibm-common-services
           channel: beta
           packageName: ibm-platform-api-operator-app
           scope: public
-          sourceName: opencloud-operators
-          sourceNamespace: openshift-marketplace
-        - name: ibm-helm-api-operator
-          namespace: ibm-common-services
-          channel: beta
-          packageName: ibm-helm-api-operator-app
-          sourceName: opencloud-operators
-          sourceNamespace: openshift-marketplace
-        - name: ibm-helm-repo-operator
-          namespace: ibm-common-services
-          channel: beta
-          packageName: ibm-helm-repo-operator-app
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-monitoring-exporters-operator
