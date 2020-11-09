@@ -308,11 +308,11 @@ const Large = `
         dashboardData:
           resources:
             limits:
-              cpu: 300m
-              memory: 400Mi
+              cpu: 3000m
+              memory: 460Mi
             requests:
               cpu: 300m
-              memory: 400Mi
+              memory: 230Mi
 - name: ibm-platform-api-operator
   spec:
     platformApi:
