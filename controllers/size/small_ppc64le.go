@@ -27,23 +27,23 @@ const Small = `
             memory: 550Mi
           requests:
             cpu: 30m
-            memory: 230Mi
+            memory: 350Mi
       certManagerController:
         resources:
           limits:
             cpu: 450m
-            memory: 400Mi
+            memory: 530Mi
           requests:
-            cpu: 50m
-            memory: 175Mi
+            cpu: 70m
+            memory: 390Mi
       certManagerWebhook:
         resources:
           limits:
             cpu: 100m
             memory: 350Mi
           requests:
-            cpu: 30m
-            memory: 70Mi
+            cpu: 50m
+            memory: 90Mi
       configMapWatcher:
         resources:
           limits:
@@ -303,16 +303,16 @@ const Small = `
           cpu: 150m
         limits:
           memory: 800Mi
-          cpu: 300m
+          cpu: 1000m
       commonWebUIConfig:
         dashboardData:
           resources:
             limits:
-              cpu: 300m
-              memory: 400Mi
+              cpu: 3000m
+              memory: 460Mi
             requests:
               cpu: 300m
-              memory: 400Mi
+              memory: 230Mi
 - name: ibm-platform-api-operator
   spec:
     platformApi:

@@ -24,34 +24,34 @@ const Small = `
         resources:
           limits:
             cpu: 35m
-            memory: 350Mi
+            memory: 520Mi
           requests:
             cpu: 30m
-            memory: 230Mi
+            memory: 350Mi
       certManagerController:
         resources:
           limits:
             cpu: 110m
-            memory: 230Mi
+            memory: 530Mi
           requests:
-            cpu: 50m
-            memory: 175Mi
+            cpu: 70m
+            memory: 390Mi
       certManagerWebhook:
         resources:
           limits:
-            cpu: 35m
-            memory: 80Mi
+            cpu: 60m
+            memory: 100Mi
           requests:
-            cpu: 30m
-            memory: 70Mi
+            cpu: 50m
+            memory: 90Mi
       configMapWatcher:
         resources:
           limits:
             cpu: 10m
-            memory: 50Mi
+            memory: 60Mi
           requests:
             cpu: 10m
-            memory: 50Mi
+            memory: 60Mi
 - name: ibm-mongodb-operator
   spec:
     mongoDB:
@@ -303,16 +303,16 @@ const Small = `
           cpu: 150m
         limits:
           memory: 310Mi
-          cpu: 150m
+          cpu: 1000m
       commonWebUIConfig:
         dashboardData:
           resources:
             limits:
-              cpu: 300m
-              memory: 400Mi
+              cpu: 3000m
+              memory: 460Mi
             requests:
               cpu: 300m
-              memory: 400Mi
+              memory: 230Mi
 - name: ibm-platform-api-operator
   spec:
     platformApi:
