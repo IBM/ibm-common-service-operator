@@ -174,11 +174,10 @@ The list of operators you can add:
     - name: ibm-licensing-operator
     - name: ibm-commonui-operator
     - name: ibm-auditlogging-operator
-    - name: ibm-catalog-ui-operator
     - name: ibm-platform-api-operator
 ```
 
-**Note:** `ibm-cert-manager`, `ibm-helm-api-operator` and `ibm-helm-repo-operator` are private operator for common services and only be requested within `ibm-common-services` namespace.
+**Note:** `ibm-cert-manager` is a private operator for common services and can only be requested within `ibm-common-services` namespace.
 
 After the `OperandRequest` created, we can check if common services are installed successfully.
 
