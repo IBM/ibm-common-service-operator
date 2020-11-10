@@ -195,9 +195,6 @@ spec:
         - name: ibm-ingress-nginx-operator
         - name: ibm-auditlogging-operator
         - name: ibm-platform-api-operator
-        - name: ibm-helm-api-operator
-        - name: ibm-helm-repo-operator
-        - name: ibm-catalog-ui-operator
       registry: common-service
 ```
 
