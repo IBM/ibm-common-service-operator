@@ -151,18 +151,9 @@ spec:
   - name: ibm-auditlogging-operator
     spec:
       auditLogging: {}
-  - name: ibm-catalog-ui-operator
-    spec:
-      catalogUI: {}
   - name: ibm-platform-api-operator
     spec:
       platformApi: {}
-  - name: ibm-helm-api-operator
-    spec:
-      helmApi: {}
-  - name: ibm-helm-repo-operator
-    spec:
-      helmRepo: {}
   - name: ibm-monitoring-exporters-operator
     spec:
       exporter: {}
@@ -257,13 +248,6 @@ spec:
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
     description: Operator for managing deployment of auditlogging service.
-  - name: ibm-catalog-ui-operator
-    namespace: ibm-common-services
-    channel: stable-v1
-    packageName: ibm-catalog-ui-operator-app
-    sourceName: opencloud-operators
-    sourceNamespace: openshift-marketplace
-    description: Operator for managing deployment of catalog UI service.
   - name: ibm-platform-api-operator
     namespace: ibm-common-services
     channel: stable-v1
@@ -271,20 +255,6 @@ spec:
     sourceName: opencloud-operators
     sourceNamespace: openshift-marketplace
     description: Operator for managing deployment of Platform API service.
-  - name: ibm-helm-api-operator
-    namespace: ibm-common-services
-    channel: stable-v1
-    packageName: ibm-helm-api-operator-app
-    sourceName: opencloud-operators
-    sourceNamespace: openshift-marketplace
-    description: Operator for managing deployment of Helm API service.
-  - name: ibm-helm-repo-operator
-    namespace: ibm-common-services
-    channel: stable-v1
-    packageName: ibm-helm-repo-operator-app
-    sourceName: opencloud-operators
-    sourceNamespace: openshift-marketplace
-    description: Operator for managing deployment of Helm repository service.
   - name: ibm-monitoring-exporters-operator
     namespace: ibm-common-services
     channel: stable-v1
