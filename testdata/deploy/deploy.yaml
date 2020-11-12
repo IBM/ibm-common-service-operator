@@ -247,7 +247,7 @@ spec:
             name: secretshare
             namespace: placeholder
             annotations:
-              version: "9"
+              version: "10"
           spec:
             replicas: 1
             selector:
@@ -277,7 +277,7 @@ spec:
                 containers:
                 - command:
                   - /manager
-                  image: quay.io/opencloudio/ibm-secretshare-operator@sha256:3fdce21b1da5c5256c90c9605cbbd4b3c70d593754e6c1199df0b918ceebd082
+                  image: quay.io/opencloudio/ibm-secretshare-operator@sha256:10cbb2bebfaccfa856c5b5543e30d654f0b07755fa502f6b53e9b1f112beff62
                   imagePullPolicy: Always
                   name: ibm-secretshare-operator
                   env:
@@ -298,7 +298,7 @@ spec:
             name: ibm-common-service-webhook
             namespace: placeholder
             annotations:
-              version: "6"
+              version: "7"
           spec:
             replicas: 1
             selector:
@@ -316,7 +316,7 @@ spec:
                 serviceAccountName: ibm-common-service-webhook
                 containers:
                   - name: ibm-common-service-webhook
-                    image: quay.io/opencloudio/ibm-cs-webhook@sha256:dae5ef9bfcaf28e9659e8d395d0cc07a14da1df9646e0344aef04131dc169e29
+                    image: quay.io/opencloudio/ibm-cs-webhook@sha256:934a44d286d66bcf0de2bd1bedd460a4266016e05fdcf6c84b63eb957cb40ec9
                     command:
                     - ibm-common-service-webhook
                     imagePullPolicy: Always
