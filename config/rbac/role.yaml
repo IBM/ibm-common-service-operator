@@ -9,7 +9,11 @@ rules:
   resources:
   - namespaces
   verbs:
-  - create
+    - create
+    - get
+    - list
+    - watch
+    - update
 # create subscriptions & operatorgroup permission in ibm-common-services
 - apiGroups:
   - operators.coreos.com
@@ -21,6 +25,7 @@ rules:
   - get
   - create
   - update
+  - watch
 # delete existing subscriptions in openshift-operators/ibm-common-services
 - apiGroups:
   - operators.coreos.com
@@ -62,118 +67,63 @@ rules:
   - list
   - update
   - watch
-# create IAM status configmap in kube-public
-- apiGroups:
-  - ""
-  resources:
-  - configmaps
-  verbs:
+# copy secret and configmap to other namespaces
+- verbs:
   - create
+  - delete
   - get
   - list
   - patch
   - update
   - watch
-# cluster role from secretshare
-# create namespace it it doesn't exist
-- verbs:
-    - create
-    - get
-    - list
-    - watch
   apiGroups:
-    - ''
+  - ''
   resources:
-    - namespaces
-# copy secret and configmap to other namespaces
-- verbs:
-    - create
-    - delete
-    - get
-    - list
-    - patch
-    - update
-    - watch
-  apiGroups:
-    - ''
-  resources:
-    - events
-    - configmaps
-    - secrets
-    - pods
+  - events
+  - configmaps
+  - secrets
+  - pods
 # manage its own CR
 - verbs:
-    - create
-    - delete
-    - get
-    - list
-    - patch
-    - update
-    - watch
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
   apiGroups:
-    - ibmcpcs.ibm.com
+  - ibmcpcs.ibm.com
   resources:
-    - secretshares
-    - secretshares/status
-# check if subscription is created
-- verbs:
-    - get
-    - list
-    - watch
-  apiGroups:
-    - operators.coreos.com
-  resources:
-    - subscriptions
-# cluster role from ibm-common-service-webhook
-# patch labels to the namespace
-- apiGroups:
-    - ""
-  resources:
-    - namespaces
-  verbs:
-    - list
-    - get
-    - update
-    - watch
-# get and update pod
-- apiGroups:
-    - ""
-  resources:
-    - pods
-  verbs:
-    - list
-    - get
-    - create
-    - watch
-    - update
-    - patch
+  - secretshares
+  - secretshares/status
 # manage its own CR
 - apiGroups:
-    - operator.ibm.com
+  - operator.ibm.com
   resources:
-    - podpresets
-    - podpresets/status
+  - podpresets
+  - podpresets/status
   verbs:
-    - create
-    - delete
-    - get
-    - list
-    - patch
-    - update
-    - watch
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 # manage mutation webhook configuration
 - apiGroups:
-    - admissionregistration.k8s.io
+  - admissionregistration.k8s.io
   resources:
-    - mutatingwebhookconfigurations
+  - mutatingwebhookconfigurations
   verbs:
-    - create
-    - delete
-    - get
-    - list
-    - patch
-    - update
-    - watch
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role

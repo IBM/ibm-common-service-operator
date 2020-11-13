@@ -484,6 +484,10 @@ spec:
           - namespaces
           verbs:
           - create
+          - get
+          - list
+          - watch
+          - update
         - apiGroups:
           - operators.coreos.com
           resources:
@@ -494,6 +498,7 @@ spec:
           - get
           - create
           - update
+          - watch
         - apiGroups:
           - operators.coreos.com
           resources:
@@ -534,26 +539,6 @@ spec:
         - apiGroups:
           - ""
           resources:
-          - configmaps
-          verbs:
-          - create
-          - get
-          - list
-          - patch
-          - update
-          - watch
-        - apiGroups:
-          - ""
-          resources:
-          - namespaces
-          verbs:
-          - create
-          - get
-          - list
-          - watch
-        - apiGroups:
-          - ""
-          resources:
           - events
           - configmaps
           - secrets
@@ -579,34 +564,6 @@ spec:
           - patch
           - update
           - watch
-        - apiGroups:
-          - operators.coreos.com
-          resources:
-          - subscriptions
-          verbs:
-          - get
-          - list
-          - watch
-        - apiGroups:
-          - ""
-          resources:
-          - namespaces
-          verbs:
-          - list
-          - get
-          - update
-          - watch
-        - apiGroups:
-          - ""
-          resources:
-          - pods
-          verbs:
-          - list
-          - get
-          - create
-          - watch
-          - update
-          - patch
         - apiGroups:
           - operator.ibm.com
           resources:
