@@ -333,18 +333,6 @@ const Small = `
             cpu: 25m
             memory: 50Mi
       replicas: 1
-- name: ibm-catalog-ui-operator
-  spec:
-    catalogUI:
-      catalogui:
-        resources:
-          limits:
-            cpu: 500m
-            memory: 500Mi
-          requests:
-            cpu: 35m
-            memory: 105Mi
-      replicaCount: 1
 - name: ibm-healthcheck-operator
   spec:
     healthService:

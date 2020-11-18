@@ -208,7 +208,7 @@ const Small = `
             memory: 140Mi
           limits:
             cpu: 1000m
-            memory: 300Mi
+            memory: 350Mi
       defaultBackend:
         replicas: 1
         resources:
@@ -275,7 +275,7 @@ const Small = `
           memory: 220Mi
         limits:
           cpu: 200m
-          memory: 320Mi
+          memory: 350Mi
     IBMLicenseServiceReporter:
       databaseContainer:
         resources:
@@ -333,18 +333,6 @@ const Small = `
             cpu: 25m
             memory: 50Mi
       replicas: 1
-- name: ibm-catalog-ui-operator
-  spec:
-    catalogUI:
-      catalogui:
-        resources:
-          limits:
-            cpu: 190m
-            memory: 220Mi
-          requests:
-            cpu: 35m
-            memory: 105Mi
-      replicaCount: 1
 - name: ibm-healthcheck-operator
   spec:
     healthService:
