@@ -14,6 +14,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+function usage() {
+	local script="${0##*/}"
+
+	while read -r ; do echo "${REPLY}" ; done <<-EOF
+	Usage: ${script} [OPTION]...
+	Uninstall common services
+
+	Options:
+	Mandatory arguments to long options are mandatory for short options too.
+	  -h, --help                    display this help and exit
+	  -f                            force delete ibm-common-services namespace, skip normal uninstall steps
+	EOF
+}
+
 function msg() {
   printf '%b\n' "$1"
 }
@@ -31,139 +45,225 @@ function error() {
 }
 
 function title() {
-  msg "\33[34m# ${1}\33[0m"
+  msg "\33[1m# [$step] ${1}\33[0m"
+  step=$((step + 1))
+}
+
+# Sometime delete namespace stuck due to some reousces remaining, use this method to get these
+# remaining resources to force delete them.
+function get_remaining_resources_from_namespace() {
+  local namespace=$1
+  local remaining=
+  if ${KUBECTL} get namespace ${namespace} &>/dev/null; then
+    message=$(${KUBECTL} get namespace ${namespace} -o=jsonpath='{.status.conditions[?(@.type=="NamespaceContentRemaining")].message}' | awk -F': ' '{print $2}')
+    [[ "X$message" == "X" ]] && return 0
+    remaining=$(echo $message | awk '{len=split($0, a, ", ");for(i=1;i<=len;i++)print a[i]" "}' | while read res; do
+      [[ "$res" =~ "pod" ]] && continue
+      echo ${res} | awk '{print $1}'
+    done)
+  fi
+  echo $remaining
+}
+
+# Get remaining resource with kinds
+function update_remaining_resources() {
+  local remaining=$1
+  local ns="--all-namespaces"
+  local new_remaining=
+  [[ "X$2" != "X" ]] && ns="-n $2"
+  for kind in ${remaining}; do
+    if [[ "X$(${KUBECTL} get ${kind} --all-namespaces --ignore-not-found)" != "X" ]]; then
+      new_remaining="${new_remaining} ${kind}"
+    fi
+  done
+  echo $new_remaining
 }
 
 function wait_for_deleted() {
-  kinds=$1
-  ns=${2:---all-namespaces}
+  local remaining=${1}
+  retries=${2:-10}
+  interval=${3:-30}
   index=0
-  retries=${3:-10}
   while true; do
-    rc=0
-    for kind in ${kinds}; do
-      cr=$(oc get ${kind} ${ns} 2>/dev/null)
-      rc=$?
-      [[ "${rc}" != "0" ]] && break
-      [[ "X${cr}" != "X" ]] && rc=99 && break
-    done
-
-    if [[ "${rc}" != "0" ]]; then
-      [[ $(($index % 5)) -eq 0 ]] && msg "Resources are deleting, waiting for complete..."
+    remaining=$(update_remaining_resources "$remaining")
+    if [[ "X$remaining" != "X" ]]; then
       if [[ ${index} -eq ${retries} ]]; then
-        error "Timeout for wait all resource deleted"
+        error "Timeout delete resources: $remaining"
         return 1
       fi
-      sleep 60
+      sleep $interval
       index=$((index + 1))
+      [[ $(($index % 5)) -eq 0 ]] && msg "DELETE - Waiting: resource ${remaining} delete complete ($((($retries - $index) / 5)) retries left)"
     else
-      success "All resources have been deleted"
       break
     fi
   done
 }
 
-function delete_sub_csv() {
-  subs=$1
-  ns=$2
+function wait_for_namespace_deleted() {
+  local namespace=$1
+  retries=30
+  interval=5
+  index=0
+  while true; do
+    if ${KUBECTL} get namespace ${namespace} &>/dev/null; then
+      if [[ ${index} -eq ${retries} ]]; then
+        error "Timeout delete namespace: $namespace"
+        return 1
+      fi
+      sleep $interval
+      index=$((index + 1))
+      [[ $(($index % 5)) -eq 0 ]] && msg "DELETE - Waiting: namespace ${namespace} delete complete ($((($retries - $index) / 5)) retries left)"
+    else
+      break
+    fi
+  done
+  return 0
+}
+
+function delete_operator() {
+  local subs=$1
+  local namespace=$2
   for sub in ${subs}; do
-    csv=$(oc get sub ${sub} -n ${ns} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
-    [[ "X${csv}" != "X" ]] && oc delete csv ${csv} -n ${ns} --ignore-not-found
-    oc delete sub ${sub} -n ${ns} --ignore-not-found
+    csv=$(${KUBECTL} get sub ${sub} -n ${namespace} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
+    if [[ "X${csv}" != "X" ]]; then
+      msg "Delete operator ${sub} from namespace ${namespace}"
+      ${KUBECTL} delete csv ${csv} -n ${namespace} --ignore-not-found
+      ${KUBECTL} delete sub ${sub} -n ${namespace} --ignore-not-found
+    fi
   done
 }
 
 function delete_operand() {
-  crds=$1
-  ns=$2
+  local crds=$1
   for crd in ${crds}; do
-    crs=$(oc get ${crd} --no-headers -n ${ns} 2>/dev/null | awk '{print $1}')
-    if [[ "$?" == "0" && "X${crs}" != "X" ]]; then
-      msg "Deleting ${crd} kind resource from namespace ${ns}"
-      oc delete ${crd} --all -n ${ns} --ignore-not-found &
+    if ${KUBECTL} api-resources | grep $crd &>/dev/null; then
+      for ns in $(oc get $crd --no-headers --all-namespaces --ignore-not-found | awk '{print $1}' | sort -n | uniq); do
+        crs=$(${KUBECTL} get ${crd} --no-headers --ignore-not-found -n ${ns} 2>/dev/null | awk '{print $1}')
+        if [[ "X${crs}" != "X" ]]; then
+          msg "Deleting ${crd} from namespace ${ns}"
+          ${KUBECTL} delete ${crd} --all -n ${ns} --ignore-not-found &
+        fi
+      done
     fi
   done
 }
 
 function delete_operand_finalizer() {
-  crds=$1
-  ns=$2
+  local crds=$1
+  local ns=$2
   for crd in ${crds}; do
-    crs=$(oc get ${crd} --no-headers -n ${ns} 2>/dev/null | awk '{print $1}')
+    crs=$(${KUBECTL} get ${crd} --no-headers --ignore-not-found -n ${ns} 2>/dev/null | awk '{print $1}')
     for cr in ${crs}; do
-      msg "Removing the finalizers for resource: ${crd} $cr"
-      oc patch ${crd} $cr -n ${ns} --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]' 2>/dev/null
+      msg "Removing the finalizers for resource: ${crd}/${cr}"
+      ${KUBECTL} patch ${crd} ${cr} -n ${ns} --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]' 2>/dev/null
     done
   done
 }
 
-function delete_apiservice() {
+function delete_unavailable_apiservice() {
   rc=0
-  apis=$(oc get apiservice | grep False | awk '{print $1}')
+  apis=$(${KUBECTL} get apiservice | grep False | awk '{print $1}')
   if [ "X${apis}" != "X" ]; then
-    warning "Found some unavailable apiservices, delete them..."
+    warning "Found some unavailable apiservices, deleting ..."
     for api in ${apis}; do
-      msg "oc delete apiservice ${api}"
-      oc delete apiservice ${api}
+      msg "${KUBECTL} delete apiservice ${api}"
+      ${KUBECTL} delete apiservice ${api}
       if [[ "$?" != "0" ]]; then
         error "Delete apiservcie ${api} failed"
         rc=$((rc + 1))
         continue
       fi
     done
-  else
-    success "All the apiservices are available, skip delete"
-    return 0
   fi
   return $rc
 }
 
+function delete_rbac_resource() {
+  ${KUBECTL} delete ClusterRoleBinding ibm-common-service-webhook secretshare-ibm-common-services $(${KUBECTL} get ClusterRoleBinding | grep nginx-ingress-clusterrole | awk '{print $1}') --ignore-not-found
+  ${KUBECTL} delete ClusterRole ibm-common-service-webhook secretshare nginx-ingress-clusterrole --ignore-not-found
+  ${KUBECTL} delete RoleBinding ibmcloud-cluster-info ibmcloud-cluster-ca-cert -n kube-public --ignore-not-found
+  ${KUBECTL} delete Role ibmcloud-cluster-info ibmcloud-cluster-ca-cert -n kube-public --ignore-not-found
+  ${KUBECTL} delete scc nginx-ingress-scc --ignore-not-found
+}
+
+function force_delete() {
+  local namespace=$1
+  local remaining=$(get_remaining_resources_from_namespace "$namespace")
+  if [[ "X$remaining" != "X" ]]; then
+    warning "Some resources are remaining: $remaining"
+    msg "Deleting finalizer for these resources ..."
+    delete_operand_finalizer "${remaining}" "$namespace"
+    wait_for_deleted "${remaining}" 5 10
+  fi
+}
+
 #-------------------------------------- Clean UP --------------------------------------#
-namespace=ibm-common-services
-title "Deleting common-service OperandRequest from namespace ${namespace}..."
-oc delete OperandRequest common-service -n ${namespace} --ignore-not-found 2>/dev/null &
-wait_for_deleted OperandRequest "-n ${namespace}" 1
+COMMON_SERVICES_NS=${COMMON_SERVICES_NS:-ibm-common-services}
+KUBECTL=$(command -v kubectl 2>/dev/null)
+[[ "X$KUBECTL" == "X" ]] && error "kubectl: command not found" && exit 1
+step=0
+FORCE_DELETE=false
 
-title "Deleting other OperandRequest from all namespaces..."
-oc delete OperandRequest --all --ignore-not-found 2>/dev/null &
-wait_for_deleted OperandRequest "--all-namespaces" 1
+while [ "$#" -gt "0" ]
+do
+	case "$1" in
+	"-h"|"--help")
+		usage
+		exit 0
+		;;
+	"-f")
+		FORCE_DELETE=true
+		;;
+	*)
+		warning "invalid option -- \`$1\`"
+		usage
+    exit 1
+		;;
+	esac
+	shift
+done
 
-title "Deleting ODLM sub and csv"
-delete_sub_csv "operand-deployment-lifecycle-manager-app" "openshift-operators"
+if [[ "$FORCE_DELETE" == "false" ]]; then
+  # Before uninstall common services, we should delete some unavailable apiservice
+  delete_unavailable_apiservice
 
-title "Deleting RBAC resource"
-oc delete ClusterRole ibm-common-service-webhook --ignore-not-found
-oc delete ClusterRoleBinding ibm-common-service-webhook --ignore-not-found
-oc delete RoleBinding ibmcloud-cluster-info -n kube-public --ignore-not-found
-oc delete Role ibmcloud-cluster-info -n kube-public --ignore-not-found
-oc delete RoleBinding ibmcloud-cluster-ca-cert -n kube-public --ignore-not-found
-oc delete Role ibmcloud-cluster-ca-cert -n kube-public --ignore-not-found
+  title "Deleting ibm-common-service-operator"
+  for sub in $(${KUBECTL} get sub --all-namespaces --ignore-not-found | awk '{if ($3 =="ibm-common-service-operator") print $1"/"$2}'); do
+    namespace=$(echo $sub | awk -F'/' '{print $1}')
+    name=$(echo $sub | awk -F'/' '{print $2}')
+    delete_operator "$name" "$namespace"
+  done
 
-oc delete ClusterRole nginx-ingress-clusterrole --ignore-not-found
-oc delete ClusterRoleBinding $(oc get ClusterRoleBinding | grep nginx-ingress-clusterrole | awk '{print $1}') --ignore-not-found
-oc delete scc nginx-ingress-scc --ignore-not-found
+  title "Deleting common services operand from all namespaces"
+  delete_operand "OperandRequest" && wait_for_deleted "OperandRequest" 30 20
+  delete_operand "CommonService OperandRegistry OperandConfig"
+  delete_operand "NamespaceScope" && wait_for_deleted "NamespaceScope"
 
-title "Force deleting operand resources"
-crds=$(oc get crd | grep ibm.com | awk '{print $1}')
-msg "Delete operand resource..."
-delete_operand "${crds}" "${namespace}"
-wait_for_deleted "${crds}" "-n ${namespace}" 1
-if [[ "$?" != "0" ]]; then
-  msg "Delete operand resource finalizer..."
-  delete_operand_finalizer "${crds}" "${namespace}"
-  wait_for_deleted "${crds}" "-n ${namespace}" 1
+  # Delete the previous version ODLM operator
+  if ${KUBECTL} get sub operand-deployment-lifecycle-manager-app -n openshift-operators &>/dev/null; then
+    title "Deleting ODLM Operator"
+    delete_operator "operand-deployment-lifecycle-manager-app" "openshift-operators"
+  fi
+
+  title "Deleting RBAC resources"
+  delete_rbac_resource
+
+  title "Deleting webhooks"
+  ${KUBECTL} delete ValidatingWebhookConfiguration cert-manager-webhook --ignore-not-found
+  ${KUBECTL} delete MutatingWebhookConfiguration cert-manager-webhook ibm-common-service-webhook-configuration namespace-admission-config --ignore-not-found
 fi
 
-subs=$(oc get sub --no-headers -n ${namespace} 2>/dev/null | awk '{print $1}')
-delete_sub_csv "${subs}" "${namespace}"
+title "Deleting namespace ${COMMON_SERVICES_NS}"
+${KUBECTL} delete namespace ${COMMON_SERVICES_NS} --ignore-not-found &
+if wait_for_namespace_deleted ${COMMON_SERVICES_NS}; then
+  success "Common Services uninstall finished and successfull."
+  exit 0
+fi
 
-title "Deleting webhook"
-oc delete ValidatingWebhookConfiguration -l 'app=ibm-cert-manager-webhook' --ignore-not-found
-oc delete MutatingWebhookConfiguration ibm-common-service-webhook-configuration --ignore-not-found
-
-title "Deleting unavailable apiservice"
-delete_apiservice
-
-title "Deleting namespace ${namespace}"
-oc delete namespace ${namespace} --ignore-not-found
-[[ "$?" != "0" ]] && error "Something wrong, woooow...." && exit 1
+title "Force delete remaining resources"
+delete_unavailable_apiservice
+force_delete "$COMMON_SERVICES_NS" && success "Common Services uninstall finished and successfull." && exit 0
+error "Something wrong, woooow ......, check namespace detail:"
+${KUBECTL} get namespace ${COMMON_SERVICES_NS} -oyaml
+exit 1
