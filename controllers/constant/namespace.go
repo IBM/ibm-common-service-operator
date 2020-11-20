@@ -36,3 +36,14 @@ spec:
   namespaceMembers:
   - placeholder
 `
+
+// NamespaceScopeConfigMap is the init configmap
+const NamespaceScopeConfigMap = `
+apiVersion: v1
+data:
+  namespaces: placeholder
+kind: ConfigMap
+metadata:
+  name: namespace-scope
+  namespace: placeholder
+`
