@@ -110,7 +110,7 @@ build: ## Build manager binary
 	go build -o bin/manager main.go
 
 run: generate code-fmt code-vet manifests ## Run against the configured Kubernetes cluster in ~/.kube/config
-	OPERATOR_NAME=ibm-common-service-operator go run ./main.go -v=2
+	OPERATOR_NAMESPACE=ibm-common-services OPERATOR_NAME=ibm-common-service-operator go run ./main.go -v=2
 
 install: manifests ## Install CRDs into a cluster
 	$(KUSTOMIZE) build config/crd | kubectl apply -f -

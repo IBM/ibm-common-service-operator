@@ -101,6 +101,13 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 	}
 
 	// Install Namespace Scope Operator
+	klog.Info("Creating namespace-scope configmap")
+	// Backward compatible upgrade from version 3.4.x
+	if err := b.createNsScopeConfigmap(); err != nil {
+		klog.Errorf("Failed to create Namespace Scope ConfigMap: %v", err)
+		return err
+	}
+
 	klog.Info("Creating Namespace Scope Operator subscription")
 	if err := b.createNsSubscription(manualManagement, annotations); err != nil {
 		klog.Errorf("Failed to create Namespace Scope Operator subscription: %v", err)
@@ -376,6 +383,14 @@ func (b *Bootstrap) createNsSubscription(manualManagement bool, annotations map[
 		return err
 	}
 
+	return nil
+}
+
+func (b *Bootstrap) createNsScopeConfigmap() error {
+	cmRes := constant.NamespaceScopeConfigMap
+	if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(cmRes))); err != nil {
+		return err
+	}
 	return nil
 }
 
