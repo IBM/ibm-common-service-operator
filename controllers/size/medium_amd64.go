@@ -234,7 +234,7 @@ const Medium = `
           resources:
             limits:
               cpu: 450m
-              memory: 850Mi
+              memory: 1500Mi
             requests:
               cpu: 200m
               memory: 230Mi
