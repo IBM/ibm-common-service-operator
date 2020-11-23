@@ -163,6 +163,11 @@ TEE=$(command -v tee 2>/dev/null)
 [[ "X$TEE" == "X" ]] && error "tee: command not found"
 LOG_SIZE=100
 
+cluster_info=$(oc cluster-info)
+[[ $? -ne 0 ]] && error "Error: You do not seem to be logged into Openshift"
+output "Check cluster info: oc cluster-info"
+msg "$cluster_info"
+
 while [ "$#" -gt "0" ]
 do
 	case "$1" in
