@@ -78,71 +78,90 @@ function checking_pod_status() {
   done
 }
 
-
 function checking_operator_status() {
   local namespace=$1
   title "Checking common service operators status"
-  msg "Check the health status of all the subscriptions, installplans and csvs in namespace $namespace"
-  output "${OC} -n ${namespace} get sub,ip,csv"
-  ${OC} -n ${namespace} get sub,ip,csv | tee -a $logfile
-  pending_sub=$(${OC} -n ${namespace} get sub -o=jsonpath='{.items[?(@.status.state=="UpgradePending")].metadata.name}')
-  echo $pending_sub | while read sub
-  do
-    installPlan=$(${OC} -n ${namespace} get sub ${sub} -o=jsonpath='{.status.installPlanRef.name}')
-    currentCSV=$(${OC} -n ${namespace} get sub ${sub} -o=jsonpath='{.status.currentCSV}')
-    approval=$(${OC} -n ${namespace} get ip ${installPlan} -o=jsonpath='{.spec.approval}')
-    approved=$(${OC} -n ${namespace} get ip ${installPlan} -o=jsonpath='{.spec.approved}')
-    if [[ "$approval" == "Manual" &&  "$approved" == "false" ]]; then
-      warning "InstallPlan ${installPlan} need approval, it will block operator automatic upgrade, run following command to approve this installPlan:"
-      output "oc -n ${namespace} patch installplan ${installPlan} -p '{"spec":{"approved":true}}' --type merge"
-      break
-    fi
-    output "Check subscription: ${OC} -n ${namespace} get sub ${sub} -oyaml"
-    ${OC} -n ${namespace} get sub ${sub} -oyaml | tee -a $logfile
-
-    output "Check csv: ${OC} -n ${namespace} get csv ${currentCSV} -oyaml"
-    ${OC} -n ${namespace} get csv ${currentCSV} -oyaml | tee -a $logfile
-
-    output "Check installPlan: ${OC} -n ${namespace} get ip ${installPlan} -oyaml"
-    ${OC} -n ${namespace} get ip ${installPlan} -oyaml | tee -a $logfile
-  done
-  [[ "X$pending_sub" == "X" ]] && success "All the common service operators is ready."
+  RC=0
+  checking_sub_status "$namespace" || RC=$((RC + 1))
+  checking_ip_status "$namespace" || RC=$((RC + 1))
+  checking_csv_status "$namespace" || RC=$((RC + 1))
+  [[ $RC -eq 0 ]] && success "All the common service operators are ready"
+  return $RC
 }
 
-function checking_odlm_logs() {
+function checking_sub_status() {
   local namespace=$1
-  title "Checking ODLM status"
-  msg "Fetching ODLM logs from namespace $namespace ..."
-  templogfile=`mktemp -t odlm.XXXXXX`　
-  ${OC} -n ${namespace} logs deploy/operand-deployment-lifecycle-manager > $templogfile 
-  output "${OC} -n ${namespace} logs deploy/operand-deployment-lifecycle-manager"
-  cat $templogfile | tail -n $LOG_SIZE | tee -a $logfile
-  rm -f $templogfile
+  output "List Subscriptions: ${OC} -n ${namespace} get sub"
+  ${OC} -n ${namespace} get sub | tee -a $logfile
+  pending_sub=$(${OC} -n ${namespace} get sub -o=jsonpath='{.items[?(@.status.state != "AtLatestKnown")].metadata.name}')
+  if [[ "X$pending_sub" != "X" ]]; then
+    for sub in $(echo $pending_sub);
+    do
+      output "Check subscription: ${OC} -n ${namespace} get sub ${sub} -oyaml"
+      ${OC} -n ${namespace} get sub ${sub} -oyaml | tee -a $logfile
+    done
+    return 1
+  fi
+  return 0
 }
 
-function checking_catalog_operator_logs() {
+function checking_ip_status() {
   local namespace=$1
-  title "Checking catalog operator status"
-  msg "Fetching catalog operator logs from namespace $namespace ..."
-  templogfile=`mktemp -t catalog.XXXXXX`　
-  ${OC} -n ${namespace} logs deploy/catalog-operator> $templogfile 
-  output "${OC} -n ${namespace} logs deploy/catalog-operator"
-  cat $templogfile | tail -n $LOG_SIZE | tee -a $logfile
-  rm -f $templogfile
+  output "List InstallPlans: ${OC} -n ${namespace} get ip"
+  ${OC} -n ${namespace} get ip | tee -a $logfile
+  failed_ip=$(${OC} -n ${namespace} get ip -o=jsonpath='{.items[?(@.status.phase != "Complete")].metadata.name}')
+  if [[ "X$failed_ip" != "X" ]]; then
+    for ip in $(echo $failed_ip);
+    do
+      output "Check installplan: ${OC} -n ${namespace} get ip ${ip} -oyaml"
+      ${OC} -n ${namespace} get ip ${ip} -oyaml | tee -a $logfile
+    done
+    return 1
+  fi
+  return 0
+}
+
+function checking_csv_status() {
+  local namespace=$1
+  output "List CSVs: ${OC} -n ${namespace} get csv"
+  ${OC} -n ${namespace} get csv | tee -a $logfile
+  failed_csv=$(${OC} -n ${namespace} get csv -o=jsonpath='{.items[?(@.status.phase != "Succeeded")].metadata.name}')
+  if [[ "X$failed_csv" != "X" ]]; then
+    for csv in $(echo $failed_csv);
+    do
+      output "Check csv: ${OC} -n ${namespace} get csv ${csv} -oyaml"
+      ${OC} -n ${namespace} get csv ${csv} -oyaml | tee -a $logfile
+    done
+    return 1
+  fi
+  return 0
+}
+
+function checking_operator_logs() {
+  local namespace=$1
+  local name=$2
+  title "Checking ${name} status"
+  if ${OC} -n ${namespace} get deploy ${name} &>/dev/null; then
+    msg "Fetching ${name} logs from namespace ${namespace} ..."
+    templogfile=`mktemp -t operator.XXXXXX`　
+    ${OC} -n ${namespace} logs deploy/${name} > $templogfile
+    output "${OC} -n ${namespace} logs deploy/${name}"
+    cat $templogfile | tail -n $LOG_SIZE | tee -a $logfile
+    rm -f $templogfile
+  else
+    warning "Notfound operator deployment ${name} from namespace ${namespace}"
+  fi
 }
 
 #-------------------------------------- Main --------------------------------------#
 logfile=~/common-services-hc.log
 [[ ! -f $logfile ]] && touch $logfile
 # Check oc and tee command
-OC=$(which oc 2>/dev/null)
+OC=$(command -v oc 2>/dev/null)
 [[ "X$OC" == "X" ]] && error "oc: command not found"
-TEE=$(which tee 2>/dev/null)
+TEE=$(command -v tee 2>/dev/null)
 [[ "X$TEE" == "X" ]] && error "tee: command not found"
-
 LOG_SIZE=100
-CS_NS=ibm-common-services
-CATALOG_NS=openshift-operator-lifecycle-manager
 
 while [ "$#" -gt "0" ]
 do
@@ -167,9 +186,13 @@ do
 	shift
 done
 
-checking_operator_status ${CS_NS}
-checking_pod_status ${CS_NS}
-checking_odlm_logs ${CS_NS}
-checking_catalog_operator_logs ${CATALOG_NS}
-
+if ! checking_operator_status "ibm-common-services"; then
+  checking_operator_logs "openshift-operators" "ibm-common-service-operator"
+  checking_operator_logs "ibm-common-services" "ibm-common-service-operator"
+  checking_operator_logs "ibm-common-services" "operand-deployment-lifecycle-manager"
+  checking_operator_logs "ibm-common-services" "ibm-namespace-scope-operator"
+  checking_operator_logs "openshift-operator-lifecycle-manager" "catalog-operator"
+  checking_operator_logs "openshift-operator-lifecycle-manager" "olm-operator"
+fi
+checking_pod_status "ibm-common-services"
 output "Found detail check log in file: $logfile"
