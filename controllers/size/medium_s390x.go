@@ -292,7 +292,7 @@ const Medium = `
             memory: 256Mi
           limits:
             cpu: 300m
-            memory: 300Mi
+            memory: 384Mi
 - name: ibm-commonui-operator
   spec:
     commonWebUI:
