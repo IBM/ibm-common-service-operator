@@ -81,28 +81,29 @@ function checking_pod_status() {
 function checking_operator_status() {
   local namespace=$1
   title "Checking common service operators status"
-  RC=0
-  checking_sub_status "$namespace" || RC=$((RC + 1))
-  checking_ip_status "$namespace" || RC=$((RC + 1))
-  checking_csv_status "$namespace" || RC=$((RC + 1))
-  [[ $RC -eq 0 ]] && success "All the common service operators are ready"
-  return $RC
+  rc=0
+  checking_sub_status "$namespace" || ((rc++))
+  checking_ip_status "$namespace" || ((rc++))
+  checking_csv_status "$namespace" || ((rc++))
+  [[ $rc -eq 0 ]] && success "All the common service operators are ready"
+  return $rc
 }
 
 function checking_sub_status() {
   local namespace=$1
   output "List Subscriptions: ${OC} -n ${namespace} get sub"
   ${OC} -n ${namespace} get sub | tee -a $logfile
-  pending_sub=$(${OC} -n ${namespace} get sub -o=jsonpath='{.items[?(@.status.state != "AtLatestKnown")].metadata.name}')
-  if [[ "X$pending_sub" != "X" ]]; then
-    for sub in $(echo $pending_sub);
-    do
+  rc=0
+  ${OC} -n ${namespace} get sub -o=jsonpath='{range .items[*]}{.metadata.name}{" "}{.status.state}{"\n"}{end}' | while read -r line; do
+    sub=$(echo $line | awk '{print $1}')
+    state=$(echo $line | awk '{print $2}')
+    if [[ "$state" != "AtLatestKnown" ]]; then
       output "Check subscription: ${OC} -n ${namespace} get sub ${sub} -oyaml"
       ${OC} -n ${namespace} get sub ${sub} -oyaml | tee -a $logfile
-    done
-    return 1
-  fi
-  return 0
+      ((rc++))
+    fi
+  done
+  return $rc
 }
 
 function checking_ip_status() {
@@ -143,7 +144,7 @@ function checking_operator_logs() {
   title "Checking ${name} status"
   if ${OC} -n ${namespace} get deploy ${name} &>/dev/null; then
     msg "Fetching ${name} logs from namespace ${namespace} ..."
-    templogfile=`mktemp -t operator.XXXXXX`　
+    templogfile=`mktemp -t operator`
     ${OC} -n ${namespace} logs deploy/${name} > $templogfile
     output "${OC} -n ${namespace} logs deploy/${name}"
     cat $templogfile | tail -n $LOG_SIZE | tee -a $logfile
@@ -154,7 +155,7 @@ function checking_operator_logs() {
 }
 
 #-------------------------------------- Main --------------------------------------#
-logfile=~/common-services-hc.log
+logfile=~/common-services-hc-$(date +"%Y%m%d%H%M%S").log
 [[ ! -f $logfile ]] && touch $logfile
 # Check oc and tee command
 OC=$(command -v oc 2>/dev/null)
