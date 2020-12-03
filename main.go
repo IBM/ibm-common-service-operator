@@ -97,6 +97,12 @@ func main() {
 			klog.Errorf("Failed to create OperatorGroup for IBM Common Services: %v", err)
 			os.Exit(1)
 		}
+
+		klog.Info("Creating ConfigMap for operators")
+		if err := bs.CreateNsScopeConfigmap(); err != nil {
+			klog.Errorf("Failed to create Namespace Scope ConfigMap: %v", err)
+			os.Exit(1)
+		}
 	}
 
 	if operatorNs == constant.MasterNamespace || operatorNs == constant.ClusterOperatorNamespace {
