@@ -111,6 +111,21 @@ metadata:
             elasticStack: {}
             operandBindInfo: {}
             operandRequest: {}
+        - name: ibm-postgreservice-operator
+          spec:
+            Postgreservice: 
+              license:
+                accept: false
+              storageClassName: ""
+            cert:
+              caIssuerEnabled: false
+              caIssuer: ""
+              certSecret: ""
+            PostgresDB:
+              license:
+                accept: false
+            operandBindInfo: {}
+            operandRequest: {}
     csOperandRegistry: |-
       apiVersion: operator.ibm.com/v1alpha1
       kind: OperandRegistry
@@ -229,6 +244,13 @@ metadata:
           name: ibm-events-operator
           namespace: ibm-common-services
           packageName: ibm-events-operator
+          scope: public
+          sourceName: opencloud-operators
+          sourceNamespace: openshift-marketplace
+        - channel: beta
+          name: ibm-postgreservice-operator
+          namespace: ibm-common-services
+          packageName: ibm-postgreservice-operator
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
