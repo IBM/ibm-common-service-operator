@@ -101,7 +101,7 @@ metadata:
         name: common-service
         namespace: ibm-common-services
         annotations:
-          version: "11"
+          version: "12"
       spec:
         operators:
         - name: ibm-metering-operator
