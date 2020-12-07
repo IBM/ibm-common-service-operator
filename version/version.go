@@ -17,5 +17,5 @@
 package version
 
 var (
-	Version = "3.6.2"
+	Version = "4.0.0"
 )
