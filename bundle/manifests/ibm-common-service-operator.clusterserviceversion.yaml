@@ -117,10 +117,10 @@ metadata:
               license:
                 accept: false
               storageClassName: ""
-            cert:
-              caIssuerEnabled: false
-              caIssuer: ""
-              certSecret: ""
+              cert:
+                caIssuerEnabled: false
+                caIssuer: ""
+                certSecret: ""
             PostgresDB:
               license:
                 accept: false
