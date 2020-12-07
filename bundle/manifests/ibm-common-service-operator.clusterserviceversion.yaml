@@ -118,114 +118,114 @@ metadata:
         name: common-service
         namespace: ibm-common-services
         annotations:
-          version: "11"
+          version: "12"
       spec:
         operators:
         - name: ibm-metering-operator
           namespace: ibm-common-services
-          channel: stable-v1
+          channel: beta
           packageName: ibm-metering-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-licensing-operator
           namespace: ibm-common-services
-          channel: stable-v1
+          channel: beta
           packageName: ibm-licensing-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-mongodb-operator
           namespace: ibm-common-services
-          channel: stable-v1
+          channel: beta
           packageName: ibm-mongodb-operator-app
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-cert-manager-operator
           namespace: ibm-common-services
-          channel: stable-v1
+          channel: beta
           packageName: ibm-cert-manager-operator
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-iam-operator
           namespace: ibm-common-services
-          channel: stable-v1
+          channel: beta
           packageName: ibm-iam-operator
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-healthcheck-operator
           namespace: ibm-common-services
-          channel: stable-v1
+          channel: beta
           packageName: ibm-healthcheck-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-commonui-operator
           namespace: ibm-common-services
-          channel: stable-v1
+          channel: beta
           packageName: ibm-commonui-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-management-ingress-operator
           namespace: ibm-common-services
-          channel: stable-v1
+          channel: beta
           packageName: ibm-management-ingress-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-ingress-nginx-operator
           namespace: ibm-common-services
-          channel: stable-v1
+          channel: beta
           packageName: ibm-ingress-nginx-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-auditlogging-operator
           namespace: ibm-common-services
-          channel: stable-v1
+          channel: beta
           packageName: ibm-auditlogging-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-platform-api-operator
           namespace: ibm-common-services
-          channel: stable-v1
+          channel: beta
           packageName: ibm-platform-api-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-monitoring-exporters-operator
           namespace: ibm-common-services
-          channel: stable-v1
+          channel: beta
           packageName: ibm-monitoring-exporters-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-monitoring-prometheusext-operator
           namespace: ibm-common-services
-          channel: stable-v1
+          channel: beta
           packageName: ibm-monitoring-prometheusext-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
-        - channel: stable-v1
+        - channel: beta
           name: ibm-monitoring-grafana-operator
           namespace: ibm-common-services
           packageName: ibm-monitoring-grafana-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
-        - channel: stable-v1
+        - channel: beta
           name: ibm-elastic-stack-operator
           namespace: ibm-common-services
           packageName: ibm-elastic-stack-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
-        - channel: stable-v1
+        - channel: beta
           name: ibm-events-operator
           namespace: ibm-common-services
           packageName: ibm-events-operator
@@ -239,9 +239,9 @@ metadata:
         name: ibm-common-service-operator
         namespace: placeholder
         annotations:
-          version: "11"
+          version: "12"
       spec:
-        channel: stable-v1
+        channel: beta
         installPlanApproval: Automatic
         name: ibm-common-service-operator
         source: opencloud-operators
@@ -361,9 +361,9 @@ metadata:
         name: ibm-namespace-scope-operator-restricted
         namespace: placeholder
         annotations:
-          version: "11"
+          version: "12"
       spec:
-        channel: stable-v1
+        channel: beta
         installPlanApproval: Automatic
         name: ibm-namespace-scope-operator-restricted
         source: opencloud-operators
@@ -375,9 +375,9 @@ metadata:
         name: ibm-namespace-scope-operator
         namespace: placeholder
         annotations:
-          version: "11"
+          version: "12"
       spec:
-        channel: stable-v1
+        channel: beta
         installPlanApproval: Automatic
         name: ibm-namespace-scope-operator
         source: opencloud-operators
@@ -389,9 +389,9 @@ metadata:
         name: operand-deployment-lifecycle-manager-app
         namespace: placeholder
         annotations:
-          version: "12"
+          version: "13"
       spec:
-        channel: stable-v1
+        channel: beta
         installPlanApproval: Automatic
         name: ibm-odlm
         source: opencloud-operators
@@ -403,9 +403,9 @@ metadata:
         name: operand-deployment-lifecycle-manager-app
         namespace: placeholder
         annotations:
-          version: "12"
+          version: "13"
       spec:
-        channel: stable-v1
+        channel: beta
         installPlanApproval: Automatic
         name: ibm-odlm
         source: opencloud-operators
@@ -414,7 +414,7 @@ metadata:
           env:
           - name: INSTALL_SCOPE
             value: namespaced
-    olm.skipRange: '>=3.4.3 <3.6.2'
+    olm.skipRange: '>=3.4.3 <3.6.3'
     operators.operatorframework.io/builder: operator-sdk-v1.0.1
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
     repository: https://github.com/IBM/ibm-common-service-operator
@@ -424,7 +424,7 @@ metadata:
     operatorframework.io/arch.ppc64le: supported
     operatorframework.io/arch.s390x: supported
     operatorframework.io/os.linux: supported
-  name: ibm-common-service-operator.v3.6.2
+  name: ibm-common-service-operator.v3.6.3
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -458,7 +458,7 @@ spec:
 
     ## Operator versions
 
-     - 3.6.2
+     - 3.6.3
 
     ## Prerequisites
 
@@ -678,5 +678,5 @@ spec:
   maturity: alpha
   provider:
     name: IBM
-  replaces: ibm-common-service-operator.v3.6.1
-  version: 3.6.2
+  replaces: ibm-common-service-operator.v3.6.2
+  version: 3.6.3
