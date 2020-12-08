@@ -96,17 +96,7 @@ metadata:
             operandRequest: {}
         - name: ibm-postgreservice-operator
           spec:
-            Postgreservice: 
-              license:
-                accept: false
-              storageClassName: ""
-              cert:
-                caIssuerEnabled: false
-                caIssuer: ""
-                certSecret: ""
-            PostgresDB:
-              license:
-                accept: false
+            Postgreservice: {}
             operandBindInfo: {}
             operandRequest: {}
     csOperandRegistry: |-
