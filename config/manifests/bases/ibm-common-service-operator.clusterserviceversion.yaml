@@ -96,7 +96,6 @@ metadata:
             operandRequest: {}
         - name: ibm-postgreservice-operator
           spec:
-            Postgreservice: {}
             operandBindInfo: {}
             operandRequest: {}
     csOperandRegistry: |-
