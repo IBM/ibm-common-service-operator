@@ -101,7 +101,7 @@ metadata:
         name: common-service
         namespace: ibm-common-services
         annotations:
-          version: "12"
+          version: "10"
       spec:
         operators:
         - name: ibm-metering-operator
@@ -222,7 +222,7 @@ metadata:
         name: ibm-common-service-operator
         namespace: placeholder
         annotations:
-          version: "12"
+          version: "10"
       spec:
         channel: beta
         installPlanApproval: Automatic
@@ -344,7 +344,7 @@ metadata:
         name: ibm-namespace-scope-operator-restricted
         namespace: placeholder
         annotations:
-          version: "12"
+          version: "10"
       spec:
         channel: beta
         installPlanApproval: Automatic
@@ -358,7 +358,7 @@ metadata:
         name: ibm-namespace-scope-operator
         namespace: placeholder
         annotations:
-          version: "12"
+          version: "10"
       spec:
         channel: beta
         installPlanApproval: Automatic
@@ -372,7 +372,7 @@ metadata:
         name: operand-deployment-lifecycle-manager-app
         namespace: placeholder
         annotations:
-          version: "13"
+          version: "11"
       spec:
         channel: beta
         installPlanApproval: Automatic
@@ -386,7 +386,7 @@ metadata:
         name: operand-deployment-lifecycle-manager-app
         namespace: placeholder
         annotations:
-          version: "13"
+          version: "11"
       spec:
         channel: beta
         installPlanApproval: Automatic
