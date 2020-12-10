@@ -29,7 +29,11 @@ function usage() {
 }
 
 function msg() {
-  printf '%b\n' "$1"
+  printf '\n%b\n' "$1"
+}
+
+function wait_msg() {
+  printf '%s\r' "${1}"
 }
 
 function success() {
@@ -92,8 +96,8 @@ function wait_for_deleted() {
         return 1
       fi
       sleep $interval
-      index=$((index + 1))
-      [[ $(($index % 5)) -eq 0 ]] && msg "DELETE - Waiting: resource ${remaining} delete complete ($((($retries - $index) / 5)) retries left)"
+      ((index++))
+      wait_msg "DELETE - Waiting: resource ${remaining} delete complete [$(($retries - $index)) retries left]"
     else
       break
     fi
@@ -112,8 +116,8 @@ function wait_for_namespace_deleted() {
         return 1
       fi
       sleep $interval
-      index=$((index + 1))
-      [[ $(($index % 5)) -eq 0 ]] && msg "DELETE - Waiting: namespace ${namespace} delete complete ($((($retries - $index) / 5)) retries left)"
+      ((index++))
+      wait_msg "DELETE - Waiting: namespace ${namespace} delete complete [$(($retries - $index)) retries left]"
     else
       break
     fi
