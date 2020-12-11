@@ -111,6 +111,10 @@ metadata:
             elasticStack: {}
             operandBindInfo: {}
             operandRequest: {}
+        - name: ibm-vault-operator
+          spec:
+            operandBindInfo: {}
+            operandRequest: {}
     csOperandRegistry: |-
       apiVersion: operator.ibm.com/v1alpha1
       kind: OperandRegistry
@@ -229,6 +233,13 @@ metadata:
           name: ibm-events-operator
           namespace: ibm-common-services
           packageName: ibm-events-operator
+          scope: public
+          sourceName: opencloud-operators
+          sourceNamespace: openshift-marketplace
+        - channel: beta
+          name: ibm-vault-operator
+          namespace: ibm-common-services
+          packageName: ibm-vault-operator
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
