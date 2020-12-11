@@ -96,7 +96,7 @@ metadata:
             operandRequest: {}
         - name: ibm-vault-operator
           spec:
-            operandBindInfo: {}
+            vaultDeploy: {}
             operandRequest: {}
     csOperandRegistry: |-
       apiVersion: operator.ibm.com/v1alpha1
