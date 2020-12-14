@@ -50,6 +50,11 @@ type CommonServiceReconciler struct {
 	Scheme *runtime.Scheme
 }
 
+const (
+	CRSucceeded string = "Succeeded"
+	CRFailed    string = "Failed"
+)
+
 var ctx = context.Background()
 
 func (r *CommonServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
@@ -77,15 +82,28 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(req ctrl.Request) (ctrl.Resu
 	// Deploy OperandConfig and OperandRegistry
 	if err := r.Bootstrap.InitResources(instance.Spec.ManualManagement); err != nil {
 		klog.Errorf("Failed to initialize resources: %v", err)
+		if err := r.updatePhase(instance, CRFailed); err != nil {
+			klog.Error(err)
+		}
 		return ctrl.Result{}, err
 	}
 
 	newConfigs, err := r.getNewConfigs(req)
 	if err != nil {
+		if err := r.updatePhase(instance, CRFailed); err != nil {
+			klog.Error(err)
+		}
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	if err = r.updateOperandConfig(newConfigs); err != nil {
+	if err := r.updateOperandConfig(newConfigs); err != nil {
+		if err := r.updatePhase(instance, CRFailed); err != nil {
+			klog.Error(err)
+		}
+		return ctrl.Result{}, err
+	}
+
+	if err := r.updatePhase(instance, CRSucceeded); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -96,6 +114,13 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(req ctrl.Request) (ctrl.Resu
 // ReconcileGeneralCR is for setting the OperandConfig
 func (r *CommonServiceReconciler) ReconcileGeneralCR(req ctrl.Request) (ctrl.Result, error) {
 
+	// Fetch the CommonService instance
+	instance := &apiv3.CommonService{}
+
+	if err := r.Client.Get(ctx, req.NamespacedName, instance); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
 	opcon := util.NewUnstructured("operator.ibm.com", "OperandConfig", "v1alpha1")
 	opconKey := types.NamespacedName{
 		Name:      "common-service",
@@ -103,15 +128,28 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(req ctrl.Request) (ctrl.Res
 	}
 	if err := r.Reader.Get(ctx, opconKey, opcon); err != nil {
 		klog.Errorf("failed to get OperandConfig %s: %v", opconKey.String(), err)
+		if err := r.updatePhase(instance, CRFailed); err != nil {
+			klog.Error(err)
+		}
 		return ctrl.Result{}, err
 	}
 
 	newConfigs, err := r.getNewConfigs(req)
 	if err != nil {
-		return ctrl.Result{}, client.IgnoreNotFound(err)
+		if err := r.updatePhase(instance, CRFailed); err != nil {
+			klog.Error(err)
+		}
+		return ctrl.Result{}, err
 	}
 
 	if err = r.updateOperandConfig(newConfigs); err != nil {
+		if err := r.updatePhase(instance, CRFailed); err != nil {
+			klog.Error(err)
+		}
+		return ctrl.Result{}, err
+	}
+
+	if err := r.updatePhase(instance, CRSucceeded); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -355,6 +393,12 @@ func getSpecByName(slice []interface{}, name string) interface{} {
 func checkNamespace(key string) bool {
 	klog.Info(key)
 	return key == constant.MasterNamespace+"/common-service"
+}
+
+// updatePhase sets the current Phase status.
+func (r *CommonServiceReconciler) updatePhase(instance *apiv3.CommonService, status string) error {
+	instance.Status.Phase = status
+	return r.Client.Status().Update(ctx, instance)
 }
 
 func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
