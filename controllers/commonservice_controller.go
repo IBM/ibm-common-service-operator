@@ -29,7 +29,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
@@ -51,8 +53,10 @@ type CommonServiceReconciler struct {
 }
 
 const (
-	CRSucceeded string = "Succeeded"
-	CRFailed    string = "Failed"
+	CRInitializing string = "Initializing"
+	CRUpdating     string = "Updating"
+	CRSucceeded    string = "Succeeded"
+	CRFailed       string = "Failed"
 )
 
 var ctx = context.Background()
@@ -73,6 +77,16 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(req ctrl.Request) (ctrl.Resu
 
 	if err := r.Client.Get(ctx, req.NamespacedName, instance); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	if instance.Status.Phase == "" {
+		if err := r.updatePhase(instance, CRInitializing); err != nil {
+			return ctrl.Result{}, err
+		}
+	} else {
+		if err := r.updatePhase(instance, CRUpdating); err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	// Init common service bootstrap resource
@@ -119,6 +133,16 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(req ctrl.Request) (ctrl.Res
 
 	if err := r.Client.Get(ctx, req.NamespacedName, instance); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	if instance.Status.Phase == "" {
+		if err := r.updatePhase(instance, CRInitializing); err != nil {
+			return ctrl.Result{}, err
+		}
+	} else {
+		if err := r.updatePhase(instance, CRUpdating); err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	opcon := util.NewUnstructured("operator.ibm.com", "OperandConfig", "v1alpha1")
@@ -405,6 +429,6 @@ func (r *CommonServiceReconciler) updatePhase(instance *apiv3.CommonService, sta
 
 func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&apiv3.CommonService{}).
+		For(&apiv3.CommonService{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Complete(r)
 }
