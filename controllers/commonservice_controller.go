@@ -81,10 +81,12 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(req ctrl.Request) (ctrl.Resu
 
 	if instance.Status.Phase == "" {
 		if err := r.updatePhase(instance, CRInitializing); err != nil {
+			klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 			return ctrl.Result{}, err
 		}
 	} else {
 		if err := r.updatePhase(instance, CRUpdating); err != nil {
+			klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 			return ctrl.Result{}, err
 		}
 	}
@@ -99,6 +101,7 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(req ctrl.Request) (ctrl.Resu
 		if err := r.updatePhase(instance, CRFailed); err != nil {
 			klog.Error(err)
 		}
+		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 		return ctrl.Result{}, err
 	}
 
@@ -107,6 +110,7 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(req ctrl.Request) (ctrl.Resu
 		if err := r.updatePhase(instance, CRFailed); err != nil {
 			klog.Error(err)
 		}
+		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
@@ -114,10 +118,12 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(req ctrl.Request) (ctrl.Resu
 		if err := r.updatePhase(instance, CRFailed); err != nil {
 			klog.Error(err)
 		}
+		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 		return ctrl.Result{}, err
 	}
 
 	if err := r.updatePhase(instance, CRSucceeded); err != nil {
+		klog.Error(err)
 		return ctrl.Result{}, err
 	}
 
@@ -137,10 +143,12 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(req ctrl.Request) (ctrl.Res
 
 	if instance.Status.Phase == "" {
 		if err := r.updatePhase(instance, CRInitializing); err != nil {
+			klog.Error(err)
 			return ctrl.Result{}, err
 		}
 	} else {
 		if err := r.updatePhase(instance, CRUpdating); err != nil {
+			klog.Error(err)
 			return ctrl.Result{}, err
 		}
 	}
@@ -155,6 +163,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(req ctrl.Request) (ctrl.Res
 		if err := r.updatePhase(instance, CRFailed); err != nil {
 			klog.Error(err)
 		}
+		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 		return ctrl.Result{}, err
 	}
 
@@ -163,6 +172,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(req ctrl.Request) (ctrl.Res
 		if err := r.updatePhase(instance, CRFailed); err != nil {
 			klog.Error(err)
 		}
+		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 		return ctrl.Result{}, err
 	}
 
@@ -170,10 +180,12 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(req ctrl.Request) (ctrl.Res
 		if err := r.updatePhase(instance, CRFailed); err != nil {
 			klog.Error(err)
 		}
+		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 		return ctrl.Result{}, err
 	}
 
 	if err := r.updatePhase(instance, CRSucceeded); err != nil {
+		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 		return ctrl.Result{}, err
 	}
 
