@@ -232,6 +232,13 @@ metadata:
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
+        - channel: stable
+          name: redhat-marketplace-operator
+          namespace: openshift-redhat-marketplace
+          packageName: redhat-marketplace-operator
+          scope: public
+          sourceName: certified-operators
+          sourceNamespace: openshift-marketplace
     csOperatorSubscription: |-
       apiVersion: operators.coreos.com/v1alpha1
       kind: Subscription
