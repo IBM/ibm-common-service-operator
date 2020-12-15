@@ -29,7 +29,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
@@ -49,6 +51,13 @@ type CommonServiceReconciler struct {
 	Log    logr.Logger
 	Scheme *runtime.Scheme
 }
+
+const (
+	CRInitializing string = "Initializing"
+	CRUpdating     string = "Updating"
+	CRSucceeded    string = "Succeeded"
+	CRFailed       string = "Failed"
+)
 
 var ctx = context.Background()
 
@@ -70,6 +79,16 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	if instance.Status.Phase == "" {
+		if err := r.updatePhase(instance, CRInitializing); err != nil {
+			return ctrl.Result{}, err
+		}
+	} else {
+		if err := r.updatePhase(instance, CRUpdating); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
 	// Init common service bootstrap resource
 	// Including namespace-scope configmap, nss operator, nss CR
 	// Webhook Operator and Secretshare
@@ -77,15 +96,28 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(req ctrl.Request) (ctrl.Resu
 	// Deploy OperandConfig and OperandRegistry
 	if err := r.Bootstrap.InitResources(instance.Spec.ManualManagement); err != nil {
 		klog.Errorf("Failed to initialize resources: %v", err)
+		if err := r.updatePhase(instance, CRFailed); err != nil {
+			klog.Error(err)
+		}
 		return ctrl.Result{}, err
 	}
 
 	newConfigs, err := r.getNewConfigs(req)
 	if err != nil {
+		if err := r.updatePhase(instance, CRFailed); err != nil {
+			klog.Error(err)
+		}
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	if err = r.updateOperandConfig(newConfigs); err != nil {
+	if err := r.updateOperandConfig(newConfigs); err != nil {
+		if err := r.updatePhase(instance, CRFailed); err != nil {
+			klog.Error(err)
+		}
+		return ctrl.Result{}, err
+	}
+
+	if err := r.updatePhase(instance, CRSucceeded); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -96,6 +128,23 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(req ctrl.Request) (ctrl.Resu
 // ReconcileGeneralCR is for setting the OperandConfig
 func (r *CommonServiceReconciler) ReconcileGeneralCR(req ctrl.Request) (ctrl.Result, error) {
 
+	// Fetch the CommonService instance
+	instance := &apiv3.CommonService{}
+
+	if err := r.Client.Get(ctx, req.NamespacedName, instance); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	if instance.Status.Phase == "" {
+		if err := r.updatePhase(instance, CRInitializing); err != nil {
+			return ctrl.Result{}, err
+		}
+	} else {
+		if err := r.updatePhase(instance, CRUpdating); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
 	opcon := util.NewUnstructured("operator.ibm.com", "OperandConfig", "v1alpha1")
 	opconKey := types.NamespacedName{
 		Name:      "common-service",
@@ -103,15 +152,28 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(req ctrl.Request) (ctrl.Res
 	}
 	if err := r.Reader.Get(ctx, opconKey, opcon); err != nil {
 		klog.Errorf("failed to get OperandConfig %s: %v", opconKey.String(), err)
+		if err := r.updatePhase(instance, CRFailed); err != nil {
+			klog.Error(err)
+		}
 		return ctrl.Result{}, err
 	}
 
 	newConfigs, err := r.getNewConfigs(req)
 	if err != nil {
-		return ctrl.Result{}, client.IgnoreNotFound(err)
+		if err := r.updatePhase(instance, CRFailed); err != nil {
+			klog.Error(err)
+		}
+		return ctrl.Result{}, err
 	}
 
 	if err = r.updateOperandConfig(newConfigs); err != nil {
+		if err := r.updatePhase(instance, CRFailed); err != nil {
+			klog.Error(err)
+		}
+		return ctrl.Result{}, err
+	}
+
+	if err := r.updatePhase(instance, CRSucceeded); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -357,8 +419,14 @@ func checkNamespace(key string) bool {
 	return key == constant.MasterNamespace+"/common-service"
 }
 
+// updatePhase sets the current Phase status.
+func (r *CommonServiceReconciler) updatePhase(instance *apiv3.CommonService, status string) error {
+	instance.Status.Phase = status
+	return r.Client.Status().Update(ctx, instance)
+}
+
 func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&apiv3.CommonService{}).
+		For(&apiv3.CommonService{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Complete(r)
 }
