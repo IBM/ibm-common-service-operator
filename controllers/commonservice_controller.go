@@ -275,6 +275,8 @@ func mergeChangedMap(key string, defaultMap interface{}, changedMap interface{},
 			//Check if the value was set, otherwise set it
 			if changedMap == nil {
 				finalMap[key] = defaultMap
+			} else {
+				finalMap[key] = rules.ResourceComparison(defaultMap, changedMap)
 			}
 		}
 	}
