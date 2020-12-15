@@ -517,10 +517,12 @@ spec:
           - operator.ibm.com
           resources:
           - commonservices
+          - commonservices/status
           verbs:
           - get
           - list
           - watch
+          - update
         - apiGroups:
           - apiextensions.k8s.io
           resources:
