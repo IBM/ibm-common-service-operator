@@ -119,7 +119,7 @@ metadata:
         name: common-service
         namespace: ibm-common-services
         annotations:
-          version: "12"
+          version: "13"
       spec:
         operators:
         - name: ibm-metering-operator
@@ -239,6 +239,13 @@ metadata:
           packageName: redhat-marketplace-operator
           scope: public
           sourceName: certified-operators
+          sourceNamespace: openshift-marketplace
+        - channel: v1.0
+          name: ibm-cp-data-operator
+          namespace: ibm-common-services
+          packageName: ibm-cp-data-operator
+          scope: public
+          sourceName: ibm-cp-data-operator-catalog
           sourceNamespace: openshift-marketplace
     csOperatorSubscription: |-
       apiVersion: operators.coreos.com/v1alpha1
