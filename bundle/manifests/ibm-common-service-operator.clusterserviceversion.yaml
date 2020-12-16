@@ -443,6 +443,15 @@ spec:
       kind: CommonService
       name: commonservices.operator.ibm.com
       version: v3
+      specDescriptors:
+      - description: The size of deployment profile for IBM Cloud Platform Common Services
+        displayName: Size
+        type: string
+        path: size
+        x-descriptors:
+          - 'urn:alm:descriptor:com.tectonic.ui:select:small'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:medium'
+          - 'urn:alm:descriptor:com.tectonic.ui:select:large'
   description: |-
     The `ibm-common-service-operator` is a bridge to connect IBM Cloud Paks and Operand Deployment Lifecycle Manager (ODLM) with IBM Cloud Platform Common Services. You can also install the `ibm-common-service-operator` in stand-alone mode.
 
