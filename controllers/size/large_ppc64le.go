@@ -24,7 +24,7 @@ const Large = `
         resources:
           limits:
             cpu: 200m
-            memory: 700Mi
+            memory: 814Mi
           requests:
             cpu: 30m
             memory: 330Mi
@@ -32,7 +32,7 @@ const Large = `
         resources:
           limits:
             cpu: 550m
-            memory: 633Mi
+            memory: 782Mi
           requests:
             cpu: 70m
             memory: 400Mi
@@ -77,7 +77,7 @@ const Large = `
       authService:
         resources:
           limits:
-            cpu: 2000m
+            cpu: 3000m
             memory: 1201Mi
           requests:
             cpu: 725m
@@ -139,7 +139,7 @@ const Large = `
       resources:
         limits:
           cpu: 1000m
-          memory: 366Mi
+          memory: 450Mi
         requests:
           cpu: 20m
           memory: 50Mi
@@ -148,7 +148,7 @@ const Large = `
         resources:
           limits:
             cpu: 1000m
-            memory: 70Mi
+            memory: 84Mi
           requests:
             cpu: 20m
             memory: 50Mi
@@ -234,7 +234,7 @@ const Large = `
           resources:
             limits:
               cpu: 450m
-              memory: 850Mi
+              memory: 1707Mi
             requests:
               cpu: 200m
               memory: 230Mi
@@ -243,7 +243,7 @@ const Large = `
           resources:
             limits:
               cpu: 175m
-              memory: 431Mi
+              memory: 439Mi
             requests:
               cpu: 50m
               memory: 240Mi
@@ -289,13 +289,22 @@ const Large = `
       resources:
         limits:
           cpu: 400m
-          memory: 543Mi
+          memory: 634Mi
         requests:
           cpu: 200m
           memory: 270Mi
 - name: ibm-commonui-operator
   spec:
     commonWebUI:
+      commonWebUIConfig:
+        dashboardData:
+          resources:
+            limits:
+              cpu: 3000m
+              memory: 568Mi
+            requests:
+              cpu: 300m
+              memory: 230Mi
       replicas: 3
       resources:
         limits:
@@ -304,15 +313,6 @@ const Large = `
         requests:
           cpu: 300m
           memory: 335Mi
-      commonWebUIConfig:
-        dashboardData:
-          resources:
-            limits:
-              cpu: 3000m
-              memory: 460Mi
-            requests:
-              cpu: 300m
-              memory: 230Mi
 - name: ibm-platform-api-operator
   spec:
     platformApi:
@@ -328,7 +328,7 @@ const Large = `
         resources:
           limits:
             cpu: 25m
-            memory: 100Mi
+            memory: 117Mi
           requests:
             cpu: 25m
             memory: 50Mi
@@ -387,7 +387,7 @@ const Large = `
         resource:
           limits:
             cpu: 1000m
-            memory: 356Mi
+            memory: 362Mi
           requests:
             cpu: 500m
             memory: 230Mi
@@ -402,14 +402,14 @@ const Large = `
         resource:
           limits:
             cpu: 20m
-            memory: 200Mi
+            memory: 267Mi
           requests:
             cpu: 5m
             memory: 50Mi
         routerResource:
           limits:
             cpu: 100m
-            memory: 256Mi
+            memory: 472Mi
           requests:
             cpu: 50m
             memory: 128Mi

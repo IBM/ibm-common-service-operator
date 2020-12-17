@@ -24,18 +24,18 @@ const Medium = `
         resources:
           limits:
             cpu: 150m
-            memory: 550Mi
+            memory: 814Mi
           requests:
-            cpu: 30m
-            memory: 230Mi
+            cpu: 40m
+            memory: 581Mi
       certManagerController:
         resources:
           limits:
             cpu: 450m
-            memory: 627Mi
+            memory: 782Mi
           requests:
             cpu: 70m
-            memory: 205Mi
+            memory: 673Mi
       certManagerWebhook:
         resources:
           limits:
@@ -51,7 +51,7 @@ const Medium = `
             memory: 409Mi
           requests:
             cpu: 10m
-            memory: 60Mi
+            memory: 67Mi
 - name: ibm-mongodb-operator
   spec:
     mongoDB:
@@ -62,7 +62,7 @@ const Medium = `
           memory: 2048Mi
         requests:
           cpu: 2000m
-          memory: 2Gi
+          memory: 2048Mi
 - name: ibm-iam-operator
   spec:
     authentication:
@@ -115,7 +115,7 @@ const Medium = `
           memory: 325Mi
         requests:
           cpu: 30m
-          memory: 50Mi
+          memory: 67Mi
     pap:
       auditService:
         resources:
@@ -139,10 +139,10 @@ const Medium = `
       resources:
         limits:
           cpu: 1000m
-          memory: 300Mi
+          memory: 450Mi
         requests:
           cpu: 20m
-          memory: 50Mi
+          memory: 75Mi
     policydecision:
       auditService:
         resources:
@@ -207,7 +207,7 @@ const Medium = `
             cpu: 50m
             memory: 150Mi
           requests:
-            cpu: 20m
+            cpu: 30m
             memory: 64Mi
       ingress:
         replicas: 2
@@ -234,7 +234,7 @@ const Medium = `
           resources:
             limits:
               cpu: 450m
-              memory: 850Mi
+              memory: 1219Mi
             requests:
               cpu: 200m
               memory: 230Mi
@@ -254,8 +254,8 @@ const Medium = `
             cpu: 100m
             memory: 200Mi
           requests:
-            cpu: 50m
-            memory: 50Mi
+            cpu: 80m
+            memory: 60Mi
     meteringUI:
       replicas: 1
       ui:
@@ -264,7 +264,7 @@ const Medium = `
             cpu: 100m
             memory: 256Mi
           requests:
-            cpu: 50m
+            cpu: 80m
             memory: 100Mi
 - name: ibm-licensing-operator
   spec:
@@ -296,6 +296,15 @@ const Medium = `
 - name: ibm-commonui-operator
   spec:
     commonWebUI:
+      commonWebUIConfig:
+        dashboardData:
+          resources:
+            limits:
+              cpu: 3000m
+              memory: 568Mi
+            requests:
+              cpu: 362m
+              memory: 345Mi
       replicas: 2
       resources:
         limits:
@@ -303,16 +312,7 @@ const Medium = `
           memory: 1225Mi
         requests:
           cpu: 300m
-          memory: 335Mi
-      commonWebUIConfig:
-        dashboardData:
-          resources:
-            limits:
-              cpu: 3000m
-              memory: 460Mi
-            requests:
-              cpu: 300m
-              memory: 230Mi
+          memory: 376Mi
 - name: ibm-platform-api-operator
   spec:
     platformApi:
@@ -328,10 +328,10 @@ const Medium = `
         resources:
           limits:
             cpu: 25m
-            memory: 100Mi
+            memory: 117Mi
           requests:
             cpu: 25m
-            memory: 50Mi
+            memory: 67Mi
       replicas: 1
 - name: ibm-healthcheck-operator
   spec:
@@ -402,10 +402,10 @@ const Medium = `
         resource:
           limits:
             cpu: 20m
-            memory: 200Mi
+            memory: 267Mi
           requests:
             cpu: 5m
-            memory: 50Mi
+            memory: 67Mi
         routerResource:
           limits:
             cpu: 100m
@@ -423,7 +423,7 @@ const Medium = `
             memory: 412Mi
           requests:
             cpu: 25m
-            memory: 65Mi
+            memory: 93Mi
       grafanaConfig:
         resources:
           limits:
