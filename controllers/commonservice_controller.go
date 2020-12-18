@@ -266,7 +266,7 @@ func applySizeTemplate(cs *unstructured.Unstructured, sizeTemplate string) ([]in
 	}
 
 	for _, configSize := range sizes {
-		config := getSpecByName(src, configSize.(map[string]interface{})["name"].(string))
+		config := getItemByName(src, configSize.(map[string]interface{})["name"].(string))
 		if config == nil {
 			continue
 		}
@@ -281,15 +281,18 @@ func applySizeTemplate(cs *unstructured.Unstructured, sizeTemplate string) ([]in
 	return sizes, nil
 }
 
-// mergeCRsFromOperandConfig merges CRs by specific rules
-func mergeCRsFromOperandConfig(defaultMap map[string]interface{}, changedMap map[string]interface{}, rules map[string]interface{}) map[string]interface{} {
+// mergeCRsIntoOperandConfig merges CRs by specific rules
+func mergeCRsIntoOperandConfig(defaultMap map[string]interface{}, changedMap map[string]interface{}, rules map[string]interface{}) map[string]interface{} {
+	// TODO: Apply different rules
 	for key := range changedMap {
+		// Remove the items not from the rules
 		filterChangedMapWithRules(key, changedMap[key], rules[key], changedMap)
 	}
 	for key := range defaultMap {
 		if reflect.DeepEqual(defaultMap[key], changedMap[key]) {
 			continue
 		}
+		// CR overwrites the existing OperandConfig
 		mergeChangedMap(key, defaultMap[key], changedMap[key], changedMap)
 	}
 	return changedMap
@@ -297,6 +300,7 @@ func mergeCRsFromOperandConfig(defaultMap map[string]interface{}, changedMap map
 
 // shrinkSize merges CRs by picking the smaller size
 func shrinkSize(defaultMap map[string]interface{}, changedMap map[string]interface{}) map[string]interface{} {
+	//TODO: Only shrink the parameter with `Largest_value` rule
 	for key := range defaultMap {
 		if reflect.DeepEqual(defaultMap[key], changedMap[key]) {
 			continue
@@ -307,9 +311,10 @@ func shrinkSize(defaultMap map[string]interface{}, changedMap map[string]interfa
 }
 
 func mergeCSCRs(csSummary, csCR, ruleslice []interface{}) []interface{} {
+	//TODO: Only merge the parameter with `Largest_value` rule
 	for _, operator := range csCR {
-		summaryCR := getSpecByName(csSummary, operator.(map[string]interface{})["name"].(string))
-		rules := getSpecByName(ruleslice, operator.(map[string]interface{})["name"].(string))
+		summaryCR := getItemByName(csSummary, operator.(map[string]interface{})["name"].(string))
+		rules := getItemByName(ruleslice, operator.(map[string]interface{})["name"].(string))
 		if summaryCR == nil {
 			csSummary = append(csSummary, operator)
 			continue
@@ -326,15 +331,16 @@ func mergeCSCRs(csSummary, csCR, ruleslice []interface{}) []interface{} {
 			if rules != nil && rules.(map[string]interface{})["spec"] != nil && rules.(map[string]interface{})["spec"].(map[string]interface{})[cr] != nil {
 				ruleForCR := rules.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
 				sizeForCR := summaryCR.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
-				summaryCR.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsFromOperandConfig(spec.(map[string]interface{}), sizeForCR, ruleForCR)
+				summaryCR.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsIntoOperandConfig(spec.(map[string]interface{}), sizeForCR, ruleForCR)
 			}
 		}
 	}
 	return csSummary
 }
 
-// mergeCRsFromOperandConfig merges CRs by specific rules
-func mergeCRsFromOperandConfigWithDefaultRules(defaultMap map[string]interface{}, changedMap map[string]interface{}) map[string]interface{} {
+// mergeCRsIntoOperandConfig merges CRs by specific rules
+func mergeCRsIntoOperandConfigWithDefaultRules(defaultMap map[string]interface{}, changedMap map[string]interface{}) map[string]interface{} {
+	// TODO: Apply default rules
 	for key := range defaultMap {
 		if reflect.DeepEqual(defaultMap[key], changedMap[key]) {
 			continue
@@ -397,13 +403,11 @@ func mergeChangedMapWithSmallSize(key string, defaultMap interface{}, changedMap
 	if !reflect.DeepEqual(defaultMap, changedMap) {
 		switch changedMap.(type) {
 		case map[string]interface{}:
-			if defaultMap != nil {
-				if _, ok := defaultMap.(map[string]interface{}); ok {
-					defaultMapRef := defaultMap.(map[string]interface{})
-					changedMapRef := changedMap.(map[string]interface{})
-					for newKey := range changedMapRef {
-						mergeChangedMapWithSmallSize(newKey, changedMapRef[newKey], defaultMapRef[newKey], finalMap[key].(map[string]interface{}))
-					}
+			if _, ok := defaultMap.(map[string]interface{}); ok {
+				defaultMapRef := defaultMap.(map[string]interface{})
+				changedMapRef := changedMap.(map[string]interface{})
+				for newKey := range changedMapRef {
+					mergeChangedMapWithSmallSize(newKey, changedMapRef[newKey], defaultMapRef[newKey], finalMap[key].(map[string]interface{}))
 				}
 			}
 		default:
@@ -469,8 +473,8 @@ func (r *CommonServiceReconciler) updateOperandConfig(newConfigs []interface{}) 
 	}
 
 	for _, opService := range opconServices {
-		size := getSpecByName(newConfigs, opService.(map[string]interface{})["name"].(string))
-		rules := getSpecByName(ruleSlice, opService.(map[string]interface{})["name"].(string))
+		size := getItemByName(newConfigs, opService.(map[string]interface{})["name"].(string))
+		rules := getItemByName(ruleSlice, opService.(map[string]interface{})["name"].(string))
 		if size == nil {
 			continue
 		}
@@ -481,12 +485,14 @@ func (r *CommonServiceReconciler) updateOperandConfig(newConfigs []interface{}) 
 			sizeForCR := size.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
 			if rules != nil && rules.(map[string]interface{})["spec"] != nil && rules.(map[string]interface{})["spec"].(map[string]interface{})[cr] != nil {
 				ruleForCR := rules.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
-				opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsFromOperandConfig(spec.(map[string]interface{}), sizeForCR, ruleForCR)
+				opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsIntoOperandConfig(spec.(map[string]interface{}), sizeForCR, ruleForCR)
 			} else {
-				opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsFromOperandConfigWithDefaultRules(spec.(map[string]interface{}), sizeForCR)
+				opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsIntoOperandConfigWithDefaultRules(spec.(map[string]interface{}), sizeForCR)
 			}
 		}
 	}
+
+	// Checking all the common service CRs to get the minimal size
 	opconServices, err = r.getMinimalSizes(opconServices, ruleSlice)
 	if err != nil {
 		return err
@@ -521,7 +527,7 @@ func (r *CommonServiceReconciler) getMinimalSizes(opconServices, ruleSlice []int
 	}
 
 	for _, opService := range opconServices {
-		crSummary := getSpecByName(configSummary, opService.(map[string]interface{})["name"].(string))
+		crSummary := getItemByName(configSummary, opService.(map[string]interface{})["name"].(string))
 		for cr, spec := range opService.(map[string]interface{})["spec"].(map[string]interface{}) {
 			if crSummary == nil || crSummary.(map[string]interface{})["spec"] == nil || crSummary.(map[string]interface{})["spec"].(map[string]interface{})[cr] == nil {
 				continue
@@ -555,6 +561,9 @@ func (r *CommonServiceReconciler) handleDelete() error {
 	if err != nil {
 		return err
 	}
+
+	opcon.Object["spec"].(map[string]interface{})["services"] = opconServices
+
 	if err := r.Update(ctx, opcon); err != nil {
 		klog.Errorf("failed to update OperandConfig %s: %v", opconKey.String(), err)
 		return err
@@ -581,7 +590,7 @@ func convertStringToSlice(str string) ([]interface{}, error) {
 	return slice, nil
 }
 
-func getSpecByName(slice []interface{}, name string) interface{} {
+func getItemByName(slice []interface{}, name string) interface{} {
 	for _, item := range slice {
 		if item.(map[string]interface{})["name"].(string) == name {
 			return item
