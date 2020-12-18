@@ -29,7 +29,7 @@ var _ = Describe("Resource Comparison", func() {
 			B := "10m"
 			expectedResult := "1"
 
-			result, err := resourceStringComparison(A, B)
+			result, _, err := resourceStringComparison(A, B)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(result).Should(Equal(expectedResult))
@@ -39,7 +39,7 @@ var _ = Describe("Resource Comparison", func() {
 			B := "10m"
 			expectedResult := "100m"
 
-			result, err := resourceStringComparison(A, B)
+			result, _, err := resourceStringComparison(A, B)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(result).Should(Equal(expectedResult))
@@ -52,7 +52,7 @@ var _ = Describe("Resource Comparison", func() {
 			B := "10Mi"
 			expectedResult := "1Gi"
 
-			result, err := resourceStringComparison(A, B)
+			result, _, err := resourceStringComparison(A, B)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(result).Should(Equal(expectedResult))
@@ -62,7 +62,7 @@ var _ = Describe("Resource Comparison", func() {
 			B := "10Mi"
 			expectedResult := "100Mi"
 
-			result, err := resourceStringComparison(A, B)
+			result, _, err := resourceStringComparison(A, B)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(result).Should(Equal(expectedResult))
