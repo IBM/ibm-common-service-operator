@@ -61,7 +61,7 @@ const Medium = `
           cpu: 2000m
           memory: 2048Mi
         requests:
-          cpu: 2000m
+          cpu: 500m
           memory: 2048Mi
 - name: ibm-iam-operator
   spec:
