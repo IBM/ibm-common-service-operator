@@ -58,10 +58,10 @@ const Large = `
       replicas: 3
       resources:
         limits:
-          cpu: 3800m
+          cpu: 3000m
           memory: 3Gi
         requests:
-          cpu: 2800m
+          cpu: 500m
           memory: 3Gi
 - name: ibm-iam-operator
   spec:

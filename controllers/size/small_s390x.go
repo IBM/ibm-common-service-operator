@@ -61,7 +61,7 @@ const Small = `
           cpu: 1500m
           memory: 1Gi
         requests:
-          cpu: 1500m
+          cpu: 500m
           memory: 1Gi
 - name: ibm-iam-operator
   spec:
