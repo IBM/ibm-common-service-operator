@@ -23,40 +23,42 @@ import (
 	"k8s.io/klog"
 )
 
-func resourceStringComparison(resourceA, resourceB string) (string, error) {
+func resourceStringComparison(resourceA, resourceB string) (string, string, error) {
 	quantityA, err := resource.ParseQuantity(resourceA)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	quantityB, err := resource.ParseQuantity(resourceB)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	if quantityA.Cmp(quantityB) > 0 {
-		return resourceA, nil
+		return resourceA, resourceB, nil
 	}
-	return resourceB, nil
+	return resourceB, resourceA, nil
 }
 
-func ResourceComparison(resourceA, resourceB interface{}) interface{} {
+func ResourceComparison(resourceA, resourceB interface{}) (interface{}, interface{}) {
 
+	// result won't change if types don't match
 	if reflect.TypeOf(resourceA).Kind() != reflect.TypeOf(resourceB).Kind() {
-		return resourceA
+		return resourceA, resourceA
 	}
 
 	switch resourceA.(type) {
 	case string:
-		result, err := resourceStringComparison(resourceA.(string), resourceB.(string))
+		large, small, err := resourceStringComparison(resourceA.(string), resourceB.(string))
 		if err != nil {
 			klog.Error(err)
 		}
-		return result
+		return large, small
 	case int64:
 		if resourceA.(int64) > resourceB.(int64) {
-			return resourceA
+			return resourceA, resourceB
 		}
-		return resourceB
+		return resourceB, resourceA
 	default:
-		return resourceA
+		// result won't change for other types
+		return resourceA, resourceA
 	}
 }

@@ -106,7 +106,7 @@ func main() {
 	}
 
 	if operatorNs == constant.MasterNamespace || operatorNs == constant.ClusterOperatorNamespace {
-		klog.Info("Creating CommonService CR in master namespace")
+		klog.Info("Creating CommonService CR in the master namespace")
 		if err = bs.CreateCsCR(); err != nil {
 			klog.Errorf("Failed to create CommonService CR: %v", err)
 			os.Exit(1)
