@@ -120,7 +120,6 @@ func main() {
 			Reader:    mgr.GetAPIReader(),
 			Manager:   deploy.NewDeployManager(mgr),
 			Bootstrap: bootstrap.NewBootstrap(mgr),
-			Log:       ctrl.Log.WithName("controllers").WithName("CommonService"),
 			Scheme:    mgr.GetScheme(),
 		}).SetupWithManager(mgr); err != nil {
 			klog.Errorf("Unable to create controller CommonService: %v", err)
