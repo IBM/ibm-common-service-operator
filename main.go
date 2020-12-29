@@ -84,9 +84,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Get MasterNamespace from ConfigMap
+	MasterNamespace := util.GetMasterNs(mgr.GetAPIReader())
+
 	// Create master namespace
-	if operatorNs != constant.MasterNamespace {
-		klog.Infof("Creating IBM Common Services master namespace: %s", constant.MasterNamespace)
+	if operatorNs != MasterNamespace {
+		klog.Infof("Creating IBM Common Services master namespace: %s", MasterNamespace)
 		if err := bs.CreateNamespace(); err != nil {
 			klog.Errorf("Failed to create master namespace: %v", err)
 			os.Exit(1)
@@ -105,7 +108,7 @@ func main() {
 		}
 	}
 
-	if operatorNs == constant.MasterNamespace || operatorNs == constant.ClusterOperatorNamespace {
+	if operatorNs == MasterNamespace || operatorNs == constant.ClusterOperatorNamespace {
 		klog.Info("Creating CommonService CR in the master namespace")
 		if err = bs.CreateCsCR(); err != nil {
 			klog.Errorf("Failed to create CommonService CR: %v", err)

@@ -31,7 +31,6 @@ import (
 	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
-	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/controllers/deploy"
 )
 
@@ -86,7 +85,7 @@ func (r *CommonServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 		return ctrl.Result{}, nil
 	}
 
-	if checkNamespace(req.NamespacedName.String()) {
+	if r.checkNamespace(req.NamespacedName.String()) {
 		return r.ReconcileMasterCR(instance)
 	}
 	return r.ReconcileGeneralCR(instance)
@@ -170,7 +169,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(instance *apiv3.CommonServi
 	opcon := util.NewUnstructured("operator.ibm.com", "OperandConfig", "v1alpha1")
 	opconKey := types.NamespacedName{
 		Name:      "common-service",
-		Namespace: constant.MasterNamespace,
+		Namespace: r.Bootstrap.MasterNamespace,
 	}
 	if err := r.Reader.Get(ctx, opconKey, opcon); err != nil {
 		klog.Errorf("failed to get OperandConfig %s: %v", opconKey.String(), err)

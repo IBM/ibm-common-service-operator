@@ -30,18 +30,21 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	"github.com/IBM/ibm-common-service-operator/controllers/constant"
+	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 )
 
 var (
-	DeployNames = []string{"ibm-iam-operator", "auth-idp", "auth-pap", "auth-pdp", "oidcclient-watcher", "secret-watcher"}
-	JobNames    = []string{"iam-onboarding", "security-onboarding", "oidc-client-registration"}
+	DeployNames     = []string{"ibm-iam-operator", "auth-idp", "auth-pap", "auth-pdp", "oidcclient-watcher", "secret-watcher"}
+	JobNames        = []string{"iam-onboarding", "security-onboarding", "oidc-client-registration"}
+	MasterNamespace string
 )
 
 // IamStatus check IAM status if ready
 func IamStatus(mgr manager.Manager) {
 	r := mgr.GetAPIReader()
 	c := mgr.GetClient()
+
+	MasterNamespace = util.GetMasterNs(r)
 
 	for {
 		if !getIamSubscription(r) {
@@ -59,7 +62,7 @@ func IamStatus(mgr manager.Manager) {
 // getIamSubscription return true if IAM subscription found, otherwise return false
 func getIamSubscription(r client.Reader) bool {
 	subName := "ibm-iam-operator"
-	subNs := constant.MasterNamespace
+	subNs := MasterNamespace
 	sub := &olmv1alpha1.Subscription{}
 	err := r.Get(context.TODO(), types.NamespacedName{Name: subName, Namespace: subNs}, sub)
 	return err == nil
@@ -84,7 +87,7 @@ func overallIamStatus(r client.Reader) string {
 func getJobStatus(r client.Reader, name string) string {
 	job := &batchv1.Job{}
 	jobName := name
-	jobNs := constant.MasterNamespace
+	jobNs := MasterNamespace
 	err := r.Get(context.TODO(), types.NamespacedName{Name: jobName, Namespace: jobNs}, job)
 	if err != nil {
 		klog.Errorf("Failed to get Job %s: %v", jobName, err)
@@ -100,7 +103,7 @@ func getJobStatus(r client.Reader, name string) string {
 func getDeploymentStatus(r client.Reader, name string) string {
 	deploy := &appsv1.Deployment{}
 	deployName := name
-	deployNs := constant.MasterNamespace
+	deployNs := MasterNamespace
 
 	err := r.Get(context.TODO(), types.NamespacedName{Name: deployName, Namespace: deployNs}, deploy)
 	if err != nil {
