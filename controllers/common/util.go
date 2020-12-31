@@ -223,6 +223,10 @@ func GetMasterNs(r client.Reader) string {
 			masterNs = nsMapping.CsNs
 			break
 		}
+		if nsMapping.CsNs == operatorNs {
+			masterNs = operatorNs
+			break
+		}
 	}
 
 	return masterNs
