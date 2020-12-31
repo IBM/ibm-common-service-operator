@@ -214,12 +214,9 @@ func GetMasterNs(r client.Reader) string {
 		return ""
 	}
 
+	// default masternamepsace
 	var masterNs string
-	if cmData.DefaultCsNs == "" {
-		masterNs = constant.MasterNamespace
-	} else {
-		masterNs = cmData.DefaultCsNs
-	}
+	masterNs = constant.MasterNamespace
 
 	for _, nsMapping := range cmData.NsMappingList {
 		if nsMapping.RequestNS == operatorNs {
