@@ -28,7 +28,6 @@ import (
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
-	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/controllers/rules"
 )
 
@@ -207,7 +206,7 @@ func (r *CommonServiceReconciler) updateOperandConfig(newConfigs []interface{}) 
 	opcon := util.NewUnstructured("operator.ibm.com", "OperandConfig", "v1alpha1")
 	opconKey := types.NamespacedName{
 		Name:      "common-service",
-		Namespace: constant.MasterNamespace,
+		Namespace: r.Bootstrap.MasterNamespace,
 	}
 	if err := r.Reader.Get(ctx, opconKey, opcon); err != nil {
 		klog.Errorf("failed to get OperandConfig %s: %v", opconKey.String(), err)
@@ -316,7 +315,7 @@ func (r *CommonServiceReconciler) handleDelete() error {
 	opcon := util.NewUnstructured("operator.ibm.com", "OperandConfig", "v1alpha1")
 	opconKey := types.NamespacedName{
 		Name:      "common-service",
-		Namespace: constant.MasterNamespace,
+		Namespace: r.Bootstrap.MasterNamespace,
 	}
 	if err := r.Reader.Get(ctx, opconKey, opcon); err != nil {
 		klog.Errorf("failed to get OperandConfig %s: %v", opconKey.String(), err)
@@ -387,8 +386,8 @@ func setSpecByName(slice []interface{}, name string, spec interface{}) []interfa
 }
 
 // Check if the request's NamespacedName is the "master" CR
-func checkNamespace(key string) bool {
-	return key == constant.MasterNamespace+"/common-service"
+func (r *CommonServiceReconciler) checkNamespace(key string) bool {
+	return key == r.Bootstrap.MasterNamespace+"/common-service"
 }
 
 // updatePhase sets the current Phase status.

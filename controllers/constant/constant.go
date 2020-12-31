@@ -30,6 +30,8 @@ const (
 	MasterNamespace = "ibm-common-services"
 	// Cluster Operator namespace
 	ClusterOperatorNamespace = "openshift-operators"
+	// CS map configMap
+	CsMapConfigMap = "common-service-maps"
 
 	// Namespace Scope Operator resource name
 	NsSubResourceName = "nsSubscription"

@@ -66,15 +66,17 @@ type Bootstrap struct {
 	client.Reader
 	Config *rest.Config
 	*deploy.Manager
+	MasterNamespace string
 }
 
 // NewBootstrap is the way to create a NewBootstrap struct
 func NewBootstrap(mgr manager.Manager) *Bootstrap {
 	return &Bootstrap{
-		Client:  mgr.GetClient(),
-		Reader:  mgr.GetAPIReader(),
-		Config:  mgr.GetConfig(),
-		Manager: deploy.NewDeployManager(mgr),
+		Client:          mgr.GetClient(),
+		Reader:          mgr.GetAPIReader(),
+		Config:          mgr.GetConfig(),
+		Manager:         deploy.NewDeployManager(mgr),
+		MasterNamespace: util.GetMasterNs(mgr.GetAPIReader()),
 	}
 }
 
@@ -95,7 +97,7 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 	// Grant cluster-admin to namespace scope operator
 	if operatorNs == constant.ClusterOperatorNamespace {
 		klog.Info("Creating cluster-admin permission RBAC")
-		if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.ClusterAdminRBAC))); err != nil {
+		if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.ClusterAdminRBAC, b.MasterNamespace))); err != nil {
 			return err
 		}
 	}
@@ -119,7 +121,7 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 	}
 
 	// Create NamespaceScope CR
-	if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.NamespaceScopeCR))); err != nil {
+	if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.NamespaceScopeCR, b.MasterNamespace))); err != nil {
 		return err
 	}
 
@@ -131,7 +133,7 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 			return err
 		}
 		// Create Operator RBAC
-		if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(operator.RBAC))); err != nil {
+		if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(operator.RBAC, b.MasterNamespace))); err != nil {
 			return err
 		}
 		// Create Operator Deployment
@@ -143,7 +145,7 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 			return err
 		}
 		// Create Operator CR
-		if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(operator.CR))); err != nil {
+		if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(operator.CR, b.MasterNamespace))); err != nil {
 			return err
 		}
 	}
@@ -194,7 +196,7 @@ func (b *Bootstrap) CreateNamespace() error {
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: constant.MasterNamespace,
+			Name: b.MasterNamespace,
 		},
 	}
 
@@ -225,33 +227,33 @@ func (b *Bootstrap) CreateCsCR() error {
 	_, err := b.GetObject(odlm)
 	if errors.IsNotFound(err) {
 		// Fresh Intall: No ODLM
-		return b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsCR)))
+		return b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsCR, b.MasterNamespace)))
 	} else if err != nil {
 		return err
 	}
 
 	cs := util.NewUnstructured("operator.ibm.com", "CommonService", "v3")
 	cs.SetName("common-service")
-	cs.SetNamespace(constant.MasterNamespace)
+	cs.SetNamespace(b.MasterNamespace)
 	_, err = b.GetObject(cs)
 	if errors.IsNotFound(err) {
 		// Upgrade: Have ODLM and NO CR
-		return b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsNoSizeCR)))
+		return b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsNoSizeCR, b.MasterNamespace)))
 	} else if err != nil {
 		return err
 	}
 
 	// Restart: Have ODLM and CR
-	return b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsCR)))
+	return b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsCR, b.MasterNamespace)))
 }
 
 func (b *Bootstrap) CreateOperatorGroup() error {
 	existOG := &olmv1.OperatorGroupList{}
-	if err := b.Reader.List(context.TODO(), existOG, &client.ListOptions{Namespace: constant.MasterNamespace}); err != nil {
+	if err := b.Reader.List(context.TODO(), existOG, &client.ListOptions{Namespace: b.MasterNamespace}); err != nil {
 		return err
 	}
 	if len(existOG.Items) == 0 {
-		if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsOperatorGroup))); err != nil {
+		if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsOperatorGroup, b.MasterNamespace))); err != nil {
 			return err
 		}
 	}
@@ -260,7 +262,7 @@ func (b *Bootstrap) CreateOperatorGroup() error {
 
 func (b *Bootstrap) createOrUpdateResource(annotations map[string]string, resName string) error {
 	if r, ok := annotations[resName]; ok {
-		if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(r))); err != nil {
+		if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(r, b.MasterNamespace))); err != nil {
 			return err
 		}
 	} else {
@@ -272,7 +274,7 @@ func (b *Bootstrap) createOrUpdateResource(annotations map[string]string, resNam
 func (b *Bootstrap) createOrUpdateResources(annotations map[string]string, resNames []string) error {
 	for _, res := range resNames {
 		if r, ok := annotations[res]; ok {
-			if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(r))); err != nil {
+			if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(r, b.MasterNamespace))); err != nil {
 				return err
 			}
 		} else {
@@ -375,7 +377,7 @@ func (b *Bootstrap) createNsSubscription(manualManagement bool, annotations map[
 		subNameToRemove = constant.NsSubName
 	}
 
-	if err := b.deleteSubscription(subNameToRemove, constant.MasterNamespace); err != nil {
+	if err := b.deleteSubscription(subNameToRemove, b.MasterNamespace); err != nil {
 		return err
 	}
 
@@ -389,7 +391,7 @@ func (b *Bootstrap) createNsSubscription(manualManagement bool, annotations map[
 // CreateNsScopeConfigmap creates nss configmap for operators
 func (b *Bootstrap) CreateNsScopeConfigmap() error {
 	cmRes := constant.NamespaceScopeConfigMap
-	if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(cmRes))); err != nil {
+	if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(cmRes, b.MasterNamespace))); err != nil {
 		return err
 	}
 	return nil

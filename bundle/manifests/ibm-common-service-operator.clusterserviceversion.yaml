@@ -28,9 +28,9 @@ metadata:
       kind: OperandConfig
       metadata:
         name: common-service
-        namespace: ibm-common-services
+        namespace: placeholder
         annotations:
-          version: "7"
+          version: "8"
       spec:
         services:
         - name: ibm-metering-operator
@@ -117,96 +117,96 @@ metadata:
       kind: OperandRegistry
       metadata:
         name: common-service
-        namespace: ibm-common-services
+        namespace: placeholder
         annotations:
-          version: "13"
+          version: "14"
       spec:
         operators:
         - name: ibm-metering-operator
-          namespace: ibm-common-services
+          namespace: placeholder
           channel: beta
           packageName: ibm-metering-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-licensing-operator
-          namespace: ibm-common-services
+          namespace: placeholder
           channel: beta
           packageName: ibm-licensing-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-mongodb-operator
-          namespace: ibm-common-services
+          namespace: placeholder
           channel: beta
           packageName: ibm-mongodb-operator-app
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-cert-manager-operator
-          namespace: ibm-common-services
+          namespace: placeholder
           channel: beta
           packageName: ibm-cert-manager-operator
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-iam-operator
-          namespace: ibm-common-services
+          namespace: placeholder
           channel: beta
           packageName: ibm-iam-operator
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-healthcheck-operator
-          namespace: ibm-common-services
+          namespace: placeholder
           channel: beta
           packageName: ibm-healthcheck-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-commonui-operator
-          namespace: ibm-common-services
+          namespace: placeholder
           channel: beta
           packageName: ibm-commonui-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-management-ingress-operator
-          namespace: ibm-common-services
+          namespace: placeholder
           channel: beta
           packageName: ibm-management-ingress-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-ingress-nginx-operator
-          namespace: ibm-common-services
+          namespace: placeholder
           channel: beta
           packageName: ibm-ingress-nginx-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-auditlogging-operator
-          namespace: ibm-common-services
+          namespace: placeholder
           channel: beta
           packageName: ibm-auditlogging-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-platform-api-operator
-          namespace: ibm-common-services
+          namespace: placeholder
           channel: beta
           packageName: ibm-platform-api-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-monitoring-exporters-operator
-          namespace: ibm-common-services
+          namespace: placeholder
           channel: beta
           packageName: ibm-monitoring-exporters-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-monitoring-prometheusext-operator
-          namespace: ibm-common-services
+          namespace: placeholder
           channel: beta
           packageName: ibm-monitoring-prometheusext-operator-app
           scope: public
@@ -214,21 +214,21 @@ metadata:
           sourceNamespace: openshift-marketplace
         - channel: beta
           name: ibm-monitoring-grafana-operator
-          namespace: ibm-common-services
+          namespace: placeholder
           packageName: ibm-monitoring-grafana-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - channel: beta
           name: ibm-elastic-stack-operator
-          namespace: ibm-common-services
+          namespace: placeholder
           packageName: ibm-elastic-stack-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - channel: beta
           name: ibm-events-operator
-          namespace: ibm-common-services
+          namespace: placeholder
           packageName: ibm-events-operator
           scope: public
           sourceName: opencloud-operators
@@ -242,7 +242,7 @@ metadata:
           sourceNamespace: openshift-marketplace
         - channel: v1.0
           name: ibm-cp-data-operator
-          namespace: ibm-common-services
+          namespace: placeholder
           packageName: ibm-cp-data-operator
           scope: public
           sourceName: ibm-cp-data-operator-catalog

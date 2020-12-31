@@ -18,6 +18,7 @@ package common
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -26,15 +27,29 @@ import (
 	"strings"
 
 	utilyaml "github.com/ghodss/yaml"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/runtime/serializer/streaming"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 )
+
+type csMaps struct {
+	NsMappingList []nsMapping `json:"namespaceMapping"`
+	DefaultCsNs   string      `json:"defaultCsNs"`
+}
+
+type nsMapping struct {
+	RequestNS string `json:"requested-from-namespace"`
+	CsNs      string `json:"map-common-service-namespace"`
+}
 
 // YamlToObjects convert YAML content to unstructured objects
 func YamlToObjects(yamlContent []byte) ([]*unstructured.Unstructured, error) {
@@ -142,6 +157,7 @@ func GetOperatorNamespace() (string, error) {
 	return ns, nil
 }
 
+// Contains returns whether the sub-string is contained
 func Contains(list []string, s string) bool {
 	for _, v := range list {
 		if v == s {
@@ -151,6 +167,7 @@ func Contains(list []string, s string) bool {
 	return false
 }
 
+// Reverse resverses the string
 func Reverse(original []string) []string {
 	reversed := make([]string, 0, len(original))
 	for i := len(original) - 1; i >= 0; i-- {
@@ -159,6 +176,54 @@ func Reverse(original []string) []string {
 	return reversed
 }
 
-func Namespacelize(resource string) string {
-	return strings.ReplaceAll(resource, "placeholder", constant.MasterNamespace)
+// Namespacelize adds the namespace specified
+func Namespacelize(resource, ns string) string {
+	return strings.ReplaceAll(resource, "placeholder", ns)
+}
+
+// Get ConfigMap of Common Services Maps
+func getCmOfMapCs(r client.Reader) *corev1.ConfigMap {
+	cmName := constant.CsMapConfigMap
+	cmNs := "kube-public"
+	csConfigmap := &corev1.ConfigMap{}
+	err := r.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: cmNs}, csConfigmap)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			klog.Infof("common service configmap kube-public/common-service-maps is not found: %v", err)
+			return nil
+		}
+		klog.Errorf("failed to fetch configmap kube-public/common-service-maps: %v", err)
+		return nil
+	}
+	return csConfigmap
+}
+
+// GetMasterNs gets MasterNamespaces of deploying Common Services
+func GetMasterNs(r client.Reader) string {
+	operatorNs, err := GetOperatorNamespace()
+	if err != nil {
+		klog.Errorf("Getting operator namespace failed: %v", err)
+		return ""
+	}
+
+	csConfigmap := getCmOfMapCs(r)
+	commonServiceMaps := csConfigmap.Data["common-service-maps.yaml"]
+	var cmData csMaps
+	if err := utilyaml.Unmarshal([]byte(commonServiceMaps), &cmData); err != nil {
+		klog.Errorf("Failed to fetch data of configmap common-service-maps: %v", err)
+		return ""
+	}
+
+	// default masternamepsace
+	var masterNs string
+	masterNs = constant.MasterNamespace
+
+	for _, nsMapping := range cmData.NsMappingList {
+		if nsMapping.RequestNS == operatorNs {
+			masterNs = nsMapping.CsNs
+			break
+		}
+	}
+
+	return masterNs
 }
