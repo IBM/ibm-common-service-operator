@@ -191,7 +191,7 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: ibm-common-service-webhook
+  name: ibm-common-service-webhook-placeholder
 subjects:
   - kind: ServiceAccount
     name: ibm-common-service-webhook

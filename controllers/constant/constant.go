@@ -99,7 +99,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: ibm-common-services-cluster-admin
+  name: ibm-common-services-cluster-admin-placeholder
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

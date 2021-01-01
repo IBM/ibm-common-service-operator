@@ -138,7 +138,7 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: secretshare-ibm-common-services
+  name: secretshare-placeholder
 subjects:
 - kind: ServiceAccount
   name: secretshare
