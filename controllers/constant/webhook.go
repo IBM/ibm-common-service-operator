@@ -187,6 +187,13 @@ rules:
     - patch
     - update
     - watch
+# fetch configmap in kube-public ns for common-services mapping
+- apiGroups:
+    - ""
+  resources:
+    - configmaps
+  verbs:
+    - get
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
