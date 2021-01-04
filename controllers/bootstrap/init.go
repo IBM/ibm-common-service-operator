@@ -213,7 +213,6 @@ func (b *Bootstrap) CreateCsSubscription() error {
 	if err != nil {
 		return err
 	}
-	klog.Info("Creating cs operator in master namespace")
 	if err := b.createOrUpdateResource(annotations, CsSubResource); err != nil {
 		return err
 	}
