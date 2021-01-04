@@ -19,7 +19,7 @@ package controllers
 import (
 	"context"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
@@ -60,29 +60,12 @@ func (r *CommonServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 	instance := &apiv3.CommonService{}
 
 	if err := r.Client.Get(ctx, req.NamespacedName, instance); err != nil {
-		return ctrl.Result{}, client.IgnoreNotFound(err)
-	}
-
-	if err := r.addFinalizer(instance); err != nil {
-		klog.Errorf("failed to add finalizer for CommonService %s: %v", req.NamespacedName.String(), err)
-		return ctrl.Result{}, err
-	}
-
-	if !instance.ObjectMeta.DeletionTimestamp.IsZero() {
-		klog.Infof("Deleting CommonService: %s", req.NamespacedName)
-		if err := r.handleDelete(); err != nil {
-			return ctrl.Result{}, err
-		}
-		// Update finalizer to allow delete CR
-		removed := removeFinalizer(&instance.ObjectMeta, "finalizer.commonservice.ibm.com")
-		if removed {
-			err := r.Update(ctx, instance)
-			if err != nil {
-				klog.Errorf("failed to remove finalizer for CommonService %s: %v", req.NamespacedName.String(), err)
+		if errors.IsNotFound(err) {
+			if err := r.handleDelete(); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
-		return ctrl.Result{}, nil
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	if r.checkNamespace(req.NamespacedName.String()) {
@@ -210,48 +193,6 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(instance *apiv3.CommonServi
 
 	klog.Infof("Finished reconciling CommonService: %s/%s", instance.Namespace, instance.Name)
 	return ctrl.Result{}, nil
-}
-
-func (r *CommonServiceReconciler) addFinalizer(instance *apiv3.CommonService) error {
-	if instance.GetDeletionTimestamp() == nil {
-		added := ensureFinalizer(&instance.ObjectMeta, "finalizer.commonservice.ibm.com")
-		if added {
-			// Update CR
-			err := r.Update(context.TODO(), instance)
-			if err != nil {
-				klog.Errorf("failed to update the OperandRequest %s in the namespace %s: %v", instance.Name, instance.Namespace, err)
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-func ensureFinalizer(objectMeta *metav1.ObjectMeta, expectedFinalizer string) bool {
-	// First check if the finalizer is already included in the object.
-	for _, finalizer := range objectMeta.Finalizers {
-		if finalizer == expectedFinalizer {
-			return false
-		}
-	}
-	objectMeta.Finalizers = append(objectMeta.Finalizers, expectedFinalizer)
-	return true
-}
-
-// removeFinalizer removes the finalizer from the object's ObjectMeta.
-func removeFinalizer(objectMeta *metav1.ObjectMeta, deletingFinalizer string) bool {
-	outFinalizers := make([]string, 0)
-	var changed bool
-	for _, finalizer := range objectMeta.Finalizers {
-		if finalizer == deletingFinalizer {
-			changed = true
-			continue
-		}
-		outFinalizers = append(outFinalizers, finalizer)
-	}
-
-	objectMeta.Finalizers = outFinalizers
-	return changed
 }
 
 func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
