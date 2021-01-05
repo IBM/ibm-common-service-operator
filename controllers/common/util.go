@@ -28,7 +28,6 @@ import (
 
 	utilyaml "github.com/ghodss/yaml"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
@@ -182,40 +181,46 @@ func Namespacelize(resource, ns string) string {
 }
 
 // Get ConfigMap of Common Services Maps
-func getCmOfMapCs(r client.Reader) *corev1.ConfigMap {
+func getCmOfMapCs(r client.Reader) (*corev1.ConfigMap, error) {
 	cmName := constant.CsMapConfigMap
 	cmNs := "kube-public"
 	csConfigmap := &corev1.ConfigMap{}
 	err := r.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: cmNs}, csConfigmap)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			klog.Infof("common service configmap kube-public/common-service-maps is not found: %v", err)
-			return nil
-		}
-		klog.Errorf("failed to fetch configmap kube-public/common-service-maps: %v", err)
-		return nil
+		return nil, err
 	}
-	return csConfigmap
+	return csConfigmap, nil
 }
 
 // GetMasterNs gets MasterNamespaces of deploying Common Services
-func GetMasterNs(r client.Reader) string {
+func GetMasterNs(r client.Reader) (masterNs string) {
+
+	// default master namespace
+	masterNs = constant.MasterNamespace
+
 	operatorNs, err := GetOperatorNamespace()
 	if err != nil {
 		klog.Errorf("Getting operator namespace failed: %v", err)
-		return ""
+		return
 	}
 
-	csConfigmap := getCmOfMapCs(r)
-	commonServiceMaps := csConfigmap.Data["common-service-maps.yaml"]
+	csConfigmap, err := getCmOfMapCs(r)
+	if err != nil {
+		klog.Infof("Don't find configmap kube-public/common-service-maps: %v", err)
+		return
+	}
+
+	commonServiceMaps, ok := csConfigmap.Data["common-service-maps.yaml"]
+	if !ok {
+		klog.Infof("There is no common-service-maps.yaml in configmap kube-public/common-service-maps")
+		return
+	}
+
 	var cmData csMaps
 	if err := utilyaml.Unmarshal([]byte(commonServiceMaps), &cmData); err != nil {
 		klog.Errorf("Failed to fetch data of configmap common-service-maps: %v", err)
-		return ""
+		return
 	}
-
-	// default master namespace
-	masterNs := constant.MasterNamespace
 
 	for _, nsMapping := range cmData.NsMappingList {
 		if nsMapping.RequestNS == operatorNs {
@@ -228,5 +233,5 @@ func GetMasterNs(r client.Reader) string {
 		}
 	}
 
-	return masterNs
+	return
 }
