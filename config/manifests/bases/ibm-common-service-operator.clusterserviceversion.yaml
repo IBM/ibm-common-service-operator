@@ -281,7 +281,7 @@ metadata:
             containers:
             - command:
               - /manager
-              image: quay.io/opencloudio/ibm-secretshare-operator@sha256:54e2e44785a240ea9d633aef9c043c0d8793f557be499f05ed2909803d3bb6ba
+              image: quay.io/opencloudio/ibm-secretshare-operator@sha256:448a2dcf4b3a44b8984fa527c43de0c8a029802a60d59c553a9d345bc01824be
               imagePullPolicy: Always
               name: ibm-secretshare-operator
               env:
@@ -340,6 +340,64 @@ metadata:
                         fieldPath: metadata.name
                   - name: OPERATOR_NAME
                     value: "ibm-common-service-webhook"
+                ports:
+                  - containerPort: 8443
+                    protocol: TCP
+                resources:
+                  limits:
+                    cpu: 200m
+                    memory: 256Mi
+                  requests:
+                    cpu: 200m
+                    memory: 256Mi
+                volumeMounts:
+                - name: webhook-certs
+                  mountPath: "/etc/ssl/certs/webhook"
+            volumes:
+            - name: webhook-certs
+              emptyDir: {}
+    csWebhookOperatorEnableOpreqWebhook: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: ibm-common-service-webhook
+        namespace: placeholder
+        annotations:
+          version: "8"
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            name: ibm-common-service-webhook
+        template:
+          metadata:
+            annotations:
+              productID: 068a62892a1e4db39641342e592daa25
+              productMetric: FREE
+              productName: IBM Cloud Platform Common Services
+            labels:
+              name: ibm-common-service-webhook
+          spec:
+            serviceAccountName: ibm-common-service-webhook
+            containers:
+              - name: ibm-common-service-webhook
+                image: quay.io/opencloudio/ibm-cs-webhook@sha256:7b74eca54944f95134e4f751d977b40e9890315c9d0f794d4e55f3b8edffa4b7
+                command:
+                - ibm-common-service-webhook
+                imagePullPolicy: Always
+                env:
+                  - name: WATCH_NAMESPACE
+                    valueFrom:
+                      fieldRef:
+                        fieldPath: metadata.namespace
+                  - name: POD_NAME
+                    valueFrom:
+                      fieldRef:
+                        fieldPath: metadata.name
+                  - name: OPERATOR_NAME
+                    value: "ibm-common-service-webhook"
+                  - name: ENABLE_OPREQ_WEBHOOK
+                    value: "TRUE"
                 ports:
                   - containerPort: 8443
                     protocol: TCP
