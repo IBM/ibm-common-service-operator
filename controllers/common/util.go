@@ -180,8 +180,8 @@ func Namespacelize(resource, ns string) string {
 	return strings.ReplaceAll(resource, "placeholder", ns)
 }
 
-// Get ConfigMap of Common Services Maps
-func getCmOfMapCs(r client.Reader) (*corev1.ConfigMap, error) {
+// GetCmOfMapCs gets ConfigMap of Common Services Maps
+func GetCmOfMapCs(r client.Reader) (*corev1.ConfigMap, error) {
 	cmName := constant.CsMapConfigMap
 	cmNs := "kube-public"
 	csConfigmap := &corev1.ConfigMap{}
@@ -204,7 +204,7 @@ func GetMasterNs(r client.Reader) (masterNs string) {
 		return
 	}
 
-	csConfigmap, err := getCmOfMapCs(r)
+	csConfigmap, err := GetCmOfMapCs(r)
 	if err != nil {
 		klog.Infof("Don't find configmap kube-public/common-service-maps: %v", err)
 		return

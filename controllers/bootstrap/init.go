@@ -46,19 +46,6 @@ var (
 	OdlmCrResources           = []string{"csOperandRegistry", "csOperandConfig"}
 )
 
-var csOperators = []struct {
-	Name       string
-	CRD        string
-	RBAC       string
-	CR         string
-	Deployment string
-	Kind       string
-	APIVersion string
-}{
-	{"Webhook Operator", constant.WebhookCRD, constant.WebhookRBAC, constant.WebhookCR, "csWebhookOperator", constant.WebhookKind, constant.WebhookAPIVersion},
-	{"Secretshare Operator", constant.SecretshareCRD, constant.SecretshareRBAC, constant.SecretshareCR, "csSecretshareOperator", constant.SecretshareKind, constant.SecretshareAPIVersion},
-}
-
 var ctx = context.Background()
 
 type Bootstrap struct {
@@ -67,17 +54,45 @@ type Bootstrap struct {
 	Config *rest.Config
 	*deploy.Manager
 	MasterNamespace string
+	CsOperators     []struct {
+		Name       string
+		CRD        string
+		RBAC       string
+		CR         string
+		Deployment string
+		Kind       string
+		APIVersion string
+	}
 }
 
 // NewBootstrap is the way to create a NewBootstrap struct
-func NewBootstrap(mgr manager.Manager) *Bootstrap {
-	return &Bootstrap{
+func NewBootstrap(mgr manager.Manager) (bs *Bootstrap) {
+	csWebhookDeployment := "csWebhookOperator"
+	csSecretShareDeployment := "csSecretshareOperator"
+	if _, err := util.GetCmOfMapCs(mgr.GetAPIReader()); err == nil {
+		csWebhookDeployment = "csWebhookOperatorEnableOpreqWebhook"
+	}
+	var csOperators = []struct {
+		Name       string
+		CRD        string
+		RBAC       string
+		CR         string
+		Deployment string
+		Kind       string
+		APIVersion string
+	}{
+		{"Webhook Operator", constant.WebhookCRD, constant.WebhookRBAC, constant.WebhookCR, csWebhookDeployment, constant.WebhookKind, constant.WebhookAPIVersion},
+		{"Secretshare Operator", constant.SecretshareCRD, constant.SecretshareRBAC, constant.SecretshareCR, csSecretShareDeployment, constant.SecretshareKind, constant.SecretshareAPIVersion},
+	}
+	bs = &Bootstrap{
 		Client:          mgr.GetClient(),
 		Reader:          mgr.GetAPIReader(),
 		Config:          mgr.GetConfig(),
 		Manager:         deploy.NewDeployManager(mgr),
 		MasterNamespace: util.GetMasterNs(mgr.GetAPIReader()),
+		CsOperators:     csOperators,
 	}
+	return
 }
 
 // InitResources initialize resources at the bootstrap of operator
@@ -126,7 +141,7 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 	}
 
 	// Install CS Operators
-	for _, operator := range csOperators {
+	for _, operator := range b.CsOperators {
 		klog.Infof("Installing %s", operator.Name)
 		// Create Operator CRD
 		if err := b.createOrUpdateFromYaml([]byte(operator.CRD)); err != nil {
