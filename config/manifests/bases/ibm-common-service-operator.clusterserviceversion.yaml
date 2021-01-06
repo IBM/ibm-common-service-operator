@@ -230,6 +230,13 @@ metadata:
           scope: public
           sourceName: ibm-cp-data-operator-catalog
           sourceNamespace: openshift-marketplace
+        - channel: v1.2-eus
+          name: ibm-cloud-databases-redis
+          namespace: placeholder
+          packageName: ibm-cloud-databases-redis
+          scope: public
+          sourceName: ibm-operator-catalog
+          sourceNamespace: openshift-marketplace
     csOperatorSubscription: |-
       apiVersion: operators.coreos.com/v1alpha1
       kind: Subscription
