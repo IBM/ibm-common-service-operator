@@ -1,0 +1,10 @@
+apiVersion: operator.ibm.com/v3
+kind: CommonService
+metadata:
+  name: common-service
+spec:
+  services:
+  - name: ibm-mongodb-operator
+    spec:
+      mongoDB:
+        storageClass: rook-cephfs
