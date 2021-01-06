@@ -298,7 +298,7 @@ metadata:
             containers:
             - command:
               - /manager
-              image: quay.io/opencloudio/ibm-secretshare-operator@sha256:448a2dcf4b3a44b8984fa527c43de0c8a029802a60d59c553a9d345bc01824be
+              image: quay.io/opencloudio/ibm-secretshare-operator@sha256:2c4ba8a9117580ae823bc17000aee5a8db8f44702545c1920350728e2dede5fb
               imagePullPolicy: Always
               name: ibm-secretshare-operator
               env:
