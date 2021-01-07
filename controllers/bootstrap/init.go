@@ -235,30 +235,29 @@ func (b *Bootstrap) CreateCsSubscription() error {
 }
 
 func (b *Bootstrap) CreateCsCR() error {
-	odlm := util.NewUnstructured("operators.coreos.com", "Subscription", "v1alpha1")
-	odlm.SetName("operand-deployment-lifecycle-manager-app")
-	odlm.SetNamespace(constant.ClusterOperatorNamespace)
-	_, err := b.GetObject(odlm)
-	if errors.IsNotFound(err) {
-		// Fresh Intall: No ODLM
-		return b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsCR, b.MasterNamespace)))
-	} else if err != nil {
-		return err
-	}
-
 	cs := util.NewUnstructured("operator.ibm.com", "CommonService", "v3")
 	cs.SetName("common-service")
 	cs.SetNamespace(b.MasterNamespace)
-	_, err = b.GetObject(cs)
-	if errors.IsNotFound(err) {
-		// Upgrade: Have ODLM and NO CR
+	_, err := b.GetObject(cs)
+	if errors.IsNotFound(err) { // Only if it's a fresh install or upgrade from 3.4
+		odlm := util.NewUnstructured("operators.coreos.com", "Subscription", "v1alpha1")
+		odlm.SetName("operand-deployment-lifecycle-manager-app")
+		odlm.SetNamespace(constant.ClusterOperatorNamespace)
+		_, err := b.GetObject(odlm)
+		if errors.IsNotFound(err) {
+			// Fresh Intall: No ODLM and NO CR
+			return b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsCR, b.MasterNamespace)))
+		} else if err != nil {
+			return err
+		}
+		// Upgrade from 3.4.x: Have ODLM in openshift-operators and NO CR
 		return b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsNoSizeCR, b.MasterNamespace)))
 	} else if err != nil {
 		return err
 	}
 
-	// Restart: Have ODLM and CR
-	return b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsCR, b.MasterNamespace)))
+	// Restart && Upgrade from 3.5+: Found existing CR
+	return nil
 }
 
 func (b *Bootstrap) CreateOperatorGroup() error {
