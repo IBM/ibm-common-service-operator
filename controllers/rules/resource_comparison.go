@@ -17,7 +17,9 @@
 package rules
 
 import (
+	"fmt"
 	"reflect"
+	"strconv"
 
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/klog"
@@ -40,10 +42,8 @@ func resourceStringComparison(resourceA, resourceB string) (string, string, erro
 
 func ResourceComparison(resourceA, resourceB interface{}) (interface{}, interface{}) {
 
-	// result won't change if types don't match
-	if reflect.TypeOf(resourceA).Kind() != reflect.TypeOf(resourceB).Kind() {
-		return resourceA, resourceA
-	}
+	klog.V(2).Infof("Kind of A %s", reflect.TypeOf(resourceA).Kind())
+	klog.V(2).Infof("Kind of B %s", reflect.TypeOf(resourceB).Kind())
 
 	switch resourceA.(type) {
 	case string:
@@ -52,8 +52,13 @@ func ResourceComparison(resourceA, resourceB interface{}) (interface{}, interfac
 			klog.Error(err)
 		}
 		return large, small
-	case int64:
-		if resourceA.(int64) > resourceB.(int64) {
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
+		strA := fmt.Sprintf("%v", resourceA)
+		strB := fmt.Sprintf("%v", resourceB)
+
+		floatA, _ := strconv.ParseFloat(strA, 64)
+		floatB, _ := strconv.ParseFloat(strB, 64)
+		if floatA > floatB {
 			return resourceA, resourceB
 		}
 		return resourceB, resourceA
