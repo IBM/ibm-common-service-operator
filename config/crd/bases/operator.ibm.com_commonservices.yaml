@@ -54,6 +54,8 @@ spec:
               type: array
             size:
               type: string
+            storageClass:
+              type: string
           type: object
         status:
           description: CommonServiceStatus defines the observed state of CommonService

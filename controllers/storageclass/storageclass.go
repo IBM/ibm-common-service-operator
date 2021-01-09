@@ -14,8 +14,27 @@
 // limitations under the License.
 //
 
-package version
+package storageclass
 
-var (
-	Version = "3.6.4"
-)
+const Template = `
+- name: ibm-mongodb-operator
+  spec:
+    mongoDB:
+      storageClass: placeholder
+- name: ibm-healthcheck-operator
+  spec:
+    mustgatherService:
+      persistentVolumeClaim:
+        storageClassName: placeholder
+- name: ibm-monitoring-prometheusext-operator
+  spec:
+    prometheusExt:
+      storageClassName: placeholder
+- name: ibm-elastic-stack-operator
+  spec:
+    elasticStack:
+      elasticsearch:
+        data:
+          storage:
+            storageClass: placeholder
+`
