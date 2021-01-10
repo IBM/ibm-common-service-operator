@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"reflect"
+	"strings"
 
 	utilyaml "github.com/ghodss/yaml"
 	"github.com/go-logr/logr"
@@ -36,6 +37,7 @@ import (
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/controllers/deploy"
 	"github.com/IBM/ibm-common-service-operator/controllers/size"
+	"github.com/IBM/ibm-common-service-operator/controllers/storageclass"
 )
 
 // CommonServiceReconciler reconciles a CommonService object
@@ -61,7 +63,7 @@ func (r *CommonServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// Init common servcie bootstrap resource
+	// Init common service bootstrap resource
 	if err := r.Bootstrap.InitResources(instance.Spec.ManualManagement); err != nil {
 		klog.Errorf("Failed to initialize resources: %v", err)
 		return ctrl.Result{}, err
@@ -86,29 +88,22 @@ func (r *CommonServiceReconciler) getNewConfigs(req ctrl.Request) ([]interface{}
 		return nil, err
 	}
 	var newConfigs []interface{}
+
+	if cs.Object["spec"].(map[string]interface{})["services"] != nil {
+		newConfigs = cs.Object["spec"].(map[string]interface{})["services"].([]interface{})
+	}
+
+	if cs.Object["spec"].(map[string]interface{})["storageClass"] != nil {
+		newConfigs = deepMerge(newConfigs, strings.ReplaceAll(storageclass.Template, "placeholder", cs.Object["spec"].(map[string]interface{})["storageClass"].(string)))
+	}
+
 	switch cs.Object["spec"].(map[string]interface{})["size"] {
 	case "small":
-		if cs.Object["spec"].(map[string]interface{})["services"] == nil {
-			newConfigs = deepMerge(newConfigs, size.Small)
-		} else {
-			newConfigs = deepMerge(cs.Object["spec"].(map[string]interface{})["services"].([]interface{}), size.Small)
-		}
+		newConfigs = deepMerge(newConfigs, size.Small)
 	case "medium":
-		if cs.Object["spec"].(map[string]interface{})["services"] == nil {
-			newConfigs = deepMerge(newConfigs, size.Medium)
-		} else {
-			newConfigs = deepMerge(cs.Object["spec"].(map[string]interface{})["services"].([]interface{}), size.Medium)
-		}
+		newConfigs = deepMerge(newConfigs, size.Medium)
 	case "large":
-		if cs.Object["spec"].(map[string]interface{})["services"] == nil {
-			newConfigs = deepMerge(newConfigs, size.Large)
-		} else {
-			newConfigs = deepMerge(cs.Object["spec"].(map[string]interface{})["services"].([]interface{}), size.Large)
-		}
-	default:
-		if cs.Object["spec"].(map[string]interface{})["services"] != nil {
-			newConfigs = cs.Object["spec"].(map[string]interface{})["services"].([]interface{})
-		}
+		newConfigs = deepMerge(newConfigs, size.Large)
 	}
 
 	return newConfigs, nil

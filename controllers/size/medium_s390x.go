@@ -474,4 +474,7 @@ const Medium = `
           limits:
             cpu: 50m
             memory: 50Mi
+- name: ibm-elastic-stack-operator
+  spec:
+    elasticStack: {}
 `

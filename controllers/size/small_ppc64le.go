@@ -474,4 +474,7 @@ const Small = `
           limits:
             cpu: 100m
             memory: 100Mi
+- name: ibm-elastic-stack-operator
+  spec:
+    elasticStack: {}
 `
