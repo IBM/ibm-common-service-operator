@@ -33,13 +33,6 @@ metadata:
           version: "8"
       spec:
         services:
-        - name: ibm-metering-operator
-          spec:
-            metering: {}
-            meteringUI: {}
-            meteringReportServer: {}
-            operandBindInfo: {}
-            operandRequest: {}
         - name: ibm-licensing-operator
           spec:
             IBMLicensing:
@@ -107,11 +100,6 @@ metadata:
           spec:
             grafana: {}
             operandRequest: {}
-        - name: ibm-elastic-stack-operator
-          spec:
-            elasticStack: {}
-            operandBindInfo: {}
-            operandRequest: {}
     csOperandRegistry: |-
       apiVersion: operator.ibm.com/v1alpha1
       kind: OperandRegistry
@@ -122,13 +110,6 @@ metadata:
           version: "14"
       spec:
         operators:
-        - name: ibm-metering-operator
-          namespace: placeholder
-          channel: beta
-          packageName: ibm-metering-operator-app
-          scope: public
-          sourceName: opencloud-operators
-          sourceNamespace: openshift-marketplace
         - name: ibm-licensing-operator
           namespace: placeholder
           channel: beta
@@ -216,13 +197,6 @@ metadata:
           name: ibm-monitoring-grafana-operator
           namespace: placeholder
           packageName: ibm-monitoring-grafana-operator-app
-          scope: public
-          sourceName: opencloud-operators
-          sourceNamespace: openshift-marketplace
-        - channel: beta
-          name: ibm-elastic-stack-operator
-          namespace: placeholder
-          packageName: ibm-elastic-stack-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
