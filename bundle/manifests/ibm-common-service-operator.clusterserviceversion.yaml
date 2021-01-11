@@ -250,7 +250,7 @@ metadata:
         - channel: v1.2-eus
           name: ibm-cloud-databases-redis
           namespace: placeholder
-          packageName: ibm-cloud-databases-redis
+          packageName: ibm-cloud-databases-redis-operator
           scope: public
           sourceName: ibm-operator-catalog
           sourceNamespace: openshift-marketplace
