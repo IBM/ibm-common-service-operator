@@ -482,7 +482,7 @@ metadata:
           env:
           - name: INSTALL_SCOPE
             value: namespaced
-    olm.skipRange: '>=3.3.0 <4.0.0'
+    olm.skipRange: '>=3.3.0 <3.7.0'
     operators.operatorframework.io/builder: operator-sdk-v1.2.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
     repository: https://github.com/IBM/ibm-common-service-operator
@@ -535,7 +535,7 @@ spec:
 
     ## Operator versions
 
-     - 4.0.0
+     - 3.7.0
 
     ## Prerequisites
 
