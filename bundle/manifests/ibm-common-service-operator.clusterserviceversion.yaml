@@ -323,7 +323,7 @@ metadata:
             serviceAccountName: ibm-common-service-webhook
             containers:
               - name: ibm-common-service-webhook
-                image: quay.io/opencloudio/ibm-cs-webhook@sha256:7b74eca54944f95134e4f751d977b40e9890315c9d0f794d4e55f3b8edffa4b7
+                image: quay.io/opencloudio/ibm-cs-webhook@sha256:54550fe4cac227feb46123ae1752f688b61a8e783d0775ebddb9aa9bda1f1fb4
                 command:
                 - ibm-common-service-webhook
                 imagePullPolicy: Always
@@ -379,7 +379,7 @@ metadata:
             serviceAccountName: ibm-common-service-webhook
             containers:
               - name: ibm-common-service-webhook
-                image: quay.io/opencloudio/ibm-cs-webhook@sha256:7b74eca54944f95134e4f751d977b40e9890315c9d0f794d4e55f3b8edffa4b7
+                image: quay.io/opencloudio/ibm-cs-webhook@sha256:54550fe4cac227feb46123ae1752f688b61a8e783d0775ebddb9aa9bda1f1fb4
                 command:
                 - ibm-common-service-webhook
                 imagePullPolicy: Always

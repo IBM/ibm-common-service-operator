@@ -46,8 +46,8 @@ type csMaps struct {
 }
 
 type nsMapping struct {
-	RequestNS string `json:"requested-from-namespace"`
-	CsNs      string `json:"map-common-service-namespace"`
+	RequestNS []string `json:"requested-from-namespace"`
+	CsNs      string   `json:"map-common-service-namespace"`
 }
 
 // YamlToObjects convert YAML content to unstructured objects
@@ -223,7 +223,7 @@ func GetMasterNs(r client.Reader) (masterNs string) {
 	}
 
 	for _, nsMapping := range cmData.NsMappingList {
-		if nsMapping.RequestNS == operatorNs {
+		if findNamespace(nsMapping.RequestNS, operatorNs) {
 			masterNs = nsMapping.CsNs
 			break
 		}
@@ -233,5 +233,14 @@ func GetMasterNs(r client.Reader) (masterNs string) {
 		}
 	}
 
+	return
+}
+
+func findNamespace(nsList []string, nsName string) (exist bool) {
+	for _, ns := range nsList {
+		if ns == nsName {
+			return true
+		}
+	}
 	return
 }
