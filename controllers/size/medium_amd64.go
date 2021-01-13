@@ -226,46 +226,6 @@ const Medium = `
           limits:
             memory: 150Mi
             cpu: 50m
-- name: ibm-metering-operator
-  spec:
-    metering:
-      dataManager:
-        dm:
-          resources:
-            limits:
-              cpu: 450m
-              memory: 1500Mi
-            requests:
-              cpu: 200m
-              memory: 230Mi
-      reader:
-        rdr:
-          resources:
-            limits:
-              cpu: 50m
-              memory: 390Mi
-            requests:
-              cpu: 30m
-              memory: 230Mi
-    meteringReportServer:
-      reportServer:
-        resources:
-          limits:
-            cpu: 100m
-            memory: 90Mi
-          requests:
-            cpu: 50m
-            memory: 50Mi
-    meteringUI:
-      replicas: 1
-      ui:
-        resources:
-          limits:
-            cpu: 100m
-            memory: 256Mi
-          requests:
-            cpu: 50m
-            memory: 100Mi
 - name: ibm-licensing-operator
   spec:
     IBMLicensing:
@@ -397,7 +357,7 @@ const Medium = `
             memory: 20Mi
           limits:
             cpu: 100m
-            memory: 40Mi
+            memory: 256Mi
       kubeStateMetrics:
         resource:
           requests:

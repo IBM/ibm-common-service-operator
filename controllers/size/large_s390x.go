@@ -226,46 +226,6 @@ const Large = `
           requests:
             cpu: 50m
             memory: 150Mi
-- name: ibm-metering-operator
-  spec:
-    metering:
-      dataManager:
-        dm:
-          resources:
-            limits:
-              cpu: 450m
-              memory: 1707Mi
-            requests:
-              cpu: 200m
-              memory: 230Mi
-      reader:
-        rdr:
-          resources:
-            limits:
-              cpu: 60m
-              memory: 323Mi
-            requests:
-              cpu: 50m
-              memory: 240Mi
-    meteringReportServer:
-      reportServer:
-        resources:
-          limits:
-            cpu: 100m
-            memory: 99Mi
-          requests:
-            cpu: 50m
-            memory: 65Mi
-    meteringUI:
-      replicas: 1
-      ui:
-        resources:
-          limits:
-            cpu: 100m
-            memory: 375Mi
-          requests:
-            cpu: 50m
-            memory: 370Mi
 - name: ibm-licensing-operator
   spec:
     IBMLicenseServiceReporter:

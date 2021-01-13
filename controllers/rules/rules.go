@@ -227,46 +227,6 @@ const ConfigurationRules = `
           limits:
             memory: LARGEST_VALUE
             cpu: LARGEST_VALUE
-- name: ibm-metering-operator
-  spec:
-    metering:
-      dataManager:
-        dm:
-          resources:
-            limits:
-              cpu: LARGEST_VALUE
-              memory: LARGEST_VALUE
-            requests:
-              cpu: LARGEST_VALUE
-              memory: LARGEST_VALUE
-      reader:
-        rdr:
-          resources:
-            limits:
-              cpu: LARGEST_VALUE
-              memory: LARGEST_VALUE
-            requests:
-              cpu: LARGEST_VALUE
-              memory: LARGEST_VALUE
-    meteringReportServer:
-      reportServer:
-        resources:
-          limits:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-          requests:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-    meteringUI:
-      replicas: LARGEST_VALUE
-      ui:
-        resources:
-          limits:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-          requests:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
 - name: ibm-licensing-operator
   spec:
     IBMLicensing:
