@@ -3,4 +3,4 @@ kind: CommonService
 metadata:
   name: common-service
 spec:
-  size: small
+  size: medium
