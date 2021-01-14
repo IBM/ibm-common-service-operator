@@ -67,10 +67,10 @@ type Bootstrap struct {
 
 // NewBootstrap is the way to create a NewBootstrap struct
 func NewBootstrap(mgr manager.Manager) (bs *Bootstrap) {
-	csWebhookDeployment := "csWebhookOperator"
-	csSecretShareDeployment := "csSecretshareOperator"
+	csWebhookDeployment := constant.CsWebhookOperator
+	csSecretShareDeployment := constant.CsSecretshareOperator
 	if _, err := util.GetCmOfMapCs(mgr.GetAPIReader()); err == nil {
-		csWebhookDeployment = "csWebhookOperatorEnableOpreqWebhook"
+		csWebhookDeployment = constant.CsWebhookOperatorEnableOpreqWebhook
 	}
 	var csOperators = []struct {
 		Name       string
@@ -152,7 +152,7 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 			return err
 		}
 		// Create Operator Deployment
-		if err := b.createOrUpdateResource(annotations, operator.Deployment); err != nil {
+		if err := b.createOrUpdateFromYaml([]byte(util.ReplaceImages(util.Namespacelize(operator.Deployment, b.MasterNamespace)))); err != nil {
 			return err
 		}
 		// Wait for CRD ready
