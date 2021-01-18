@@ -748,5 +748,4 @@ spec:
   maturity: alpha
   provider:
     name: IBM
-  replaces: ibm-common-service-operator.v3.6.2
   version: 3.7.0
