@@ -50,6 +50,10 @@ type nsMapping struct {
 	CsNs      string   `json:"map-common-service-namespace"`
 }
 
+var (
+	ImageList = []string{"IBM_SECRETSHARE_OPERATOR_IMAGE", "IBM_CS_WEBHOOK_IMAGE"}
+)
+
 // YamlToObjects convert YAML content to unstructured objects
 func YamlToObjects(yamlContent []byte) ([]*unstructured.Unstructured, error) {
 	var objects []*unstructured.Unstructured
@@ -178,6 +182,19 @@ func Reverse(original []string) []string {
 // Namespacelize adds the namespace specified
 func Namespacelize(resource, ns string) string {
 	return strings.ReplaceAll(resource, "placeholder", ns)
+}
+
+func ReplaceImages(resource string) (result string) {
+	result = resource
+	for _, image := range ImageList {
+		result = strings.ReplaceAll(result, image, GetImage(image))
+	}
+	return
+}
+
+func GetImage(imageName string) string {
+	ns, _ := os.LookupEnv(imageName)
+	return ns
 }
 
 // GetCmOfMapCs gets ConfigMap of Common Services Maps
