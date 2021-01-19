@@ -19,6 +19,7 @@ KUBECTL ?= $(shell which kubectl)
 OPERATOR_SDK ?= $(shell which operator-sdk)
 CONTROLLER_GEN ?= $(shell which controller-gen)
 KUSTOMIZE ?= $(shell which kustomize)
+YQ_VERSION=v4.3.1
 
 # Specify whether this repo is build locally or not, default values is '1';
 # If set to 1, then you need to also set 'DOCKER_USERNAME' and 'DOCKER_PASSWORD'
@@ -94,6 +95,24 @@ include common/Makefile.common.mk
 
 ##@ Development
 
+yq: ## Install yq, a yaml processor
+ifeq (, $(shell which yq 2>/dev/null))
+	@{ \
+	if [ v$(shell bin/yq --version | cut -d ' ' -f3) != $(YQ_VERSION) ]; then\
+		set -e ;\
+		mkdir -p bin ;\
+		$(eval ARCH := $(shell uname -m|sed 's/x86_64/amd64/'))\
+		echo "Downloading yq ...";\
+		curl -LO https://github.com/mikefarah/yq/releases/download/$(YQ_VERSION)/yq_$(OS)_$(ARCH);\
+		mv yq_$(OS)_$(ARCH) ./bin/yq ;\
+		chmod +x ./bin/yq ;\
+	fi;\
+	}
+YQ=$(realpath ./bin/yq)
+else
+YQ=$(shell which yq)
+endif
+
 check: lint-all ## Check all files lint error
 	./common/scripts/lint-csv.sh
 
@@ -120,6 +139,16 @@ uninstall: manifests ## Uninstall CRDs from a cluster
 deploy: manifests ## Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 	cd config/manager && $(KUSTOMIZE) edit set image quay.io/opencloudio/common-service-operator=$(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME):$(OPERATOR_VERSION)
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
+
+build-dev-image:
+	@echo "Building the $(OPERATOR_IMAGE_NAME) docker dev image for $(LOCAL_ARCH)..."
+	@docker build -t $(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME):dev \
+	--build-arg VCS_REF=$(VCS_REF) --build-arg VCS_URL=$(VCS_URL) \
+	--build-arg GOARCH=$(LOCAL_ARCH) -f Dockerfile .
+	@docker push $(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME):dev
+
+test-profile: yq
+	./testdata/test_profile.sh $(YQ)
 
 ##@ Generate code and manifests
 

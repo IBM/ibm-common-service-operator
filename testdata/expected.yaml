@@ -1,0 +1,624 @@
+[
+  {
+    "name": "ibm-auditlogging-operator",
+    "spec": {
+      "auditLogging": {
+        "fluentd": {
+          "resources": {
+            "limits": {
+              "cpu": "100m",
+              "memory": "200Mi"
+            },
+            "requests": {
+              "cpu": "60m",
+              "memory": "100Mi"
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "ibm-cert-manager-operator",
+    "spec": {
+      "certManager": {
+        "certManagerCAInjector": {
+          "resources": {
+            "limits": {
+              "cpu": "35m",
+              "memory": "1000Mi"
+            },
+            "requests": {
+              "cpu": "30m",
+              "memory": "500Mi"
+            }
+          }
+        },
+        "certManagerController": {
+          "resources": {
+            "limits": {
+              "cpu": "80m",
+              "memory": "1010Mi"
+            },
+            "requests": {
+              "cpu": "20m",
+              "memory": "510Mi"
+            }
+          }
+        },
+        "certManagerWebhook": {
+          "resources": {
+            "limits": {
+              "cpu": "60m",
+              "memory": "100Mi"
+            },
+            "requests": {
+              "cpu": "30m",
+              "memory": "40Mi"
+            }
+          }
+        },
+        "configMapWatcher": {
+          "resources": {
+            "limits": {
+              "cpu": "20m",
+              "memory": "60Mi"
+            },
+            "requests": {
+              "cpu": "20m",
+              "memory": "30Mi"
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "ibm-commonui-operator",
+    "spec": {
+      "commonWebUI": {
+        "commonWebUIConfig": {
+          "dashboardData": {
+            "resources": {
+              "limits": {
+                "cpu": "3000m",
+                "memory": "600Mi"
+              },
+              "requests": {
+                "cpu": "390m",
+                "memory": "380Mi"
+              }
+            }
+          }
+        },
+        "replicas": 3,
+        "resources": {
+          "limits": {
+            "cpu": "1000m",
+            "memory": "660Mi"
+          },
+          "requests": {
+            "cpu": "450m",
+            "memory": "490Mi"
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "ibm-healthcheck-operator",
+    "spec": {
+      "healthService": {
+        "healthService": {
+          "replicas": 1,
+          "resources": {
+            "limits": {
+              "cpu": "200m",
+              "memory": "250Mi"
+            },
+            "requests": {
+              "cpu": "30m",
+              "memory": "125Mi"
+            }
+          }
+        },
+        "memcached": {
+          "replicas": 1,
+          "resources": {
+            "limits": {
+              "cpu": "200m",
+              "memory": "100Mi"
+            },
+            "requests": {
+              "cpu": "20m",
+              "memory": "50Mi"
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "ibm-iam-operator",
+    "spec": {
+      "authentication": {
+        "auditService": {
+          "resources": {
+            "limits": {
+              "cpu": "1000m",
+              "memory": "50Mi"
+            },
+            "requests": {
+              "cpu": "10m",
+              "memory": "40Mi"
+            }
+          }
+        },
+        "authService": {
+          "resources": {
+            "limits": {
+              "cpu": "2000m",
+              "memory": "1090Mi"
+            },
+            "requests": {
+              "cpu": "400m",
+              "memory": "540Mi"
+            }
+          }
+        },
+        "clientRegistration": {
+          "resources": {
+            "limits": {
+              "cpu": "1000m",
+              "memory": "50Mi"
+            },
+            "requests": {
+              "cpu": "20m",
+              "memory": "50Mi"
+            }
+          }
+        },
+        "identityManager": {
+          "resources": {
+            "limits": {
+              "cpu": "1000m",
+              "memory": "1270Mi"
+            },
+            "requests": {
+              "cpu": "260m",
+              "memory": "210Mi"
+            }
+          }
+        },
+        "identityProvider": {
+          "resources": {
+            "limits": {
+              "cpu": "1000m",
+              "memory": "920Mi"
+            },
+            "requests": {
+              "cpu": "570m",
+              "memory": "210Mi"
+            }
+          }
+        },
+        "replicas": 3
+      },
+      "oidcclientwatcher": {
+        "replicas": 1,
+        "resources": {
+          "limits": {
+            "cpu": "1000m",
+            "memory": "325Mi"
+          },
+          "requests": {
+            "cpu": "20m",
+            "memory": "30Mi"
+          }
+        }
+      },
+      "pap": {
+        "auditService": {
+          "resources": {
+            "limits": {
+              "cpu": "1000m",
+              "memory": "50Mi"
+            },
+            "requests": {
+              "cpu": "10m",
+              "memory": "20Mi"
+            }
+          }
+        },
+        "papService": {
+          "resources": {
+            "limits": {
+              "cpu": "1000m",
+              "memory": "600Mi"
+            },
+            "requests": {
+              "cpu": "30m",
+              "memory": "190Mi"
+            }
+          }
+        },
+        "replicas": 3
+      },
+      "policycontroller": {
+        "replicas": 1,
+        "resources": {
+          "limits": {
+            "cpu": "1000m",
+            "memory": "80Mi"
+          },
+          "requests": {
+            "cpu": "20m",
+            "memory": "40Mi"
+          }
+        }
+      },
+      "policydecision": {
+        "auditService": {
+          "resources": {
+            "limits": {
+              "cpu": "1000m",
+              "memory": "50Mi"
+            },
+            "requests": {
+              "cpu": "10m",
+              "memory": "20Mi"
+            }
+          }
+        },
+        "replicas": 3,
+        "resources": {
+          "limits": {
+            "cpu": "1000m",
+            "memory": "420Mi"
+          },
+          "requests": {
+            "cpu": "70m",
+            "memory": "30Mi"
+          }
+        }
+      },
+      "secretwatcher": {
+        "replicas": 1,
+        "resources": {
+          "limits": {
+            "cpu": "1000m",
+            "memory": "220Mi"
+          },
+          "requests": {
+            "cpu": "20m",
+            "memory": "50Mi"
+          }
+        }
+      },
+      "securityonboarding": {
+        "iamOnboarding": {
+          "resources": {
+            "limits": {
+              "cpu": "1000m",
+              "memory": "1024Mi"
+            },
+            "requests": {
+              "cpu": "20m",
+              "memory": "64Mi"
+            }
+          }
+        },
+        "replicas": 1,
+        "resources": {
+          "limits": {
+            "cpu": "1000m",
+            "memory": "50Mi"
+          },
+          "requests": {
+            "cpu": "20m",
+            "memory": "50Mi"
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "ibm-ingress-nginx-operator",
+    "spec": {
+      "nginxIngress": {
+        "defaultBackend": {
+          "replicas": 1,
+          "resources": {
+            "limits": {
+              "cpu": "50m",
+              "memory": "128Mi"
+            },
+            "requests": {
+              "cpu": "20m",
+              "memory": "20Mi"
+            }
+          }
+        },
+        "ingress": {
+          "replicas": 3,
+          "resources": {
+            "limits": {
+              "cpu": "1000m",
+              "memory": "1Gi"
+            },
+            "requests": {
+              "cpu": "100m",
+              "memory": "256Mi"
+            }
+          }
+        },
+        "kubectl": {
+          "resources": {
+            "limits": {
+              "cpu": "100m",
+              "memory": "256Mi"
+            },
+            "requests": {
+              "cpu": "30m",
+              "memory": "150Mi"
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "ibm-licensing-operator",
+    "spec": {
+      "IBMLicensing": {
+        "resources": {
+          "limits": {
+            "cpu": "300m",
+            "memory": "1020Mi"
+          },
+          "requests": {
+            "cpu": "200m",
+            "memory": "510Mi"
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "ibm-management-ingress-operator",
+    "spec": {
+      "managementIngress": {
+        "replicas": 3,
+        "resources": {
+          "limits": {
+            "cpu": "1000m",
+            "memory": "1Gi"
+          },
+          "requests": {
+            "cpu": "70m",
+            "memory": "256Mi"
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "ibm-mongodb-operator",
+    "spec": {
+      "mongoDB": {
+        "replicas": 3,
+        "resources": {
+          "limits": {
+            "cpu": "3000m",
+            "memory": "3Gi"
+          },
+          "requests": {
+            "cpu": "500m",
+            "memory": "3Gi"
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "ibm-monitoring-exporters-operator",
+    "spec": {
+      "exporter": {
+        "collectd": {
+          "resource": {
+            "limits": {
+              "cpu": "30m",
+              "memory": "50Mi"
+            },
+            "requests": {
+              "cpu": "20m",
+              "memory": "20Mi"
+            }
+          },
+          "routerResource": {
+            "limits": {
+              "cpu": "30m",
+              "memory": "50Mi"
+            },
+            "requests": {
+              "cpu": "10m",
+              "memory": "20Mi"
+            }
+          }
+        },
+        "kubeStateMetrics": {
+          "resource": {
+            "limits": {
+              "cpu": "540m",
+              "memory": "500Mi"
+            },
+            "requests": {
+              "cpu": "360m",
+              "memory": "250Mi"
+            }
+          },
+          "routerResource": {
+            "limits": {
+              "cpu": "25m",
+              "memory": "50Mi"
+            },
+            "requests": {
+              "cpu": "10m",
+              "memory": "20Mi"
+            }
+          }
+        },
+        "nodeExporter": {
+          "resource": {
+            "limits": {
+              "cpu": "20m",
+              "memory": "60Mi"
+            },
+            "requests": {
+              "cpu": "20m",
+              "memory": "30Mi"
+            }
+          },
+          "routerResource": {
+            "limits": {
+              "cpu": "100m",
+              "memory": "256Mi"
+            },
+            "requests": {
+              "cpu": "10m",
+              "memory": "20Mi"
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "ibm-monitoring-grafana-operator",
+    "spec": {
+      "grafana": {
+        "dashboardConfig": {
+          "resources": {
+            "limits": {
+              "cpu": "70m",
+              "memory": "170Mi"
+            },
+            "requests": {
+              "cpu": "25m",
+              "memory": "145Mi"
+            }
+          }
+        },
+        "grafanaConfig": {
+          "resources": {
+            "limits": {
+              "cpu": "150m",
+              "memory": "230Mi"
+            },
+            "requests": {
+              "cpu": "20m",
+              "memory": "200Mi"
+            }
+          }
+        },
+        "routerConfig": {
+          "resources": {
+            "limits": {
+              "cpu": "70m",
+              "memory": "80Mi"
+            },
+            "requests": {
+              "cpu": "20m",
+              "memory": "20Mi"
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "ibm-monitoring-prometheusext-operator",
+    "spec": {
+      "prometheusExt": {
+        "alertManagerConfig": {
+          "resource": {
+            "limits": {
+              "cpu": "30m",
+              "memory": "50Mi"
+            },
+            "requests": {
+              "cpu": "20m",
+              "memory": "30Mi"
+            }
+          }
+        },
+        "mcmMonitor": {
+          "resource": {
+            "limits": {
+              "cpu": "50m",
+              "memory": "120Mi"
+            },
+            "requests": {
+              "cpu": "10m",
+              "memory": "20Mi"
+            }
+          }
+        },
+        "prometheusConfig": {
+          "resource": {
+            "limits": {
+              "cpu": "955m",
+              "memory": "15470Mi"
+            },
+            "requests": {
+              "cpu": "660m",
+              "memory": "8800Mi"
+            }
+          },
+          "routerResource": {
+            "limits": {
+              "cpu": "75m",
+              "memory": "50Mi"
+            },
+            "requests": {
+              "cpu": "20m",
+              "memory": "20Mi"
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "ibm-platform-api-operator",
+    "spec": {
+      "platformApi": {
+        "auditService": {
+          "resources": {
+            "limits": {
+              "cpu": "25m",
+              "memory": "50Mi"
+            },
+            "requests": {
+              "cpu": "20m",
+              "memory": "30Mi"
+            }
+          }
+        },
+        "platformApi": {
+          "resources": {
+            "limits": {
+              "cpu": "25m",
+              "memory": "60Mi"
+            },
+            "requests": {
+              "cpu": "20m",
+              "memory": "30Mi"
+            }
+          }
+        },
+        "replicas": 1
+      }
+    }
+  }
+]
