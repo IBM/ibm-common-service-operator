@@ -55,7 +55,7 @@ const Small = `
 - name: ibm-mongodb-operator
   spec:
     mongoDB:
-      replicas: 1
+      replicas: 3
       resources:
         limits:
           cpu: 1500m

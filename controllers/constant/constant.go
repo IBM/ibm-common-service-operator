@@ -65,7 +65,7 @@ metadata:
   name: common-service
   namespace: placeholder
 spec:
-  size: medium
+  size: small
 `
 
 // CsNoSizeCR is the default common service operator CR for upgrade
