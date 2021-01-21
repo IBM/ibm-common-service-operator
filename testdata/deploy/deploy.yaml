@@ -24,13 +24,6 @@ spec:
               version: "7"
           spec:
             services:
-            - name: ibm-metering-operator
-              spec:
-                metering: {}
-                meteringUI: {}
-                meteringReportServer: {}
-                operandBindInfo: {}
-                operandRequest: {}
             - name: ibm-licensing-operator
               spec:
                 IBMLicensing:
@@ -115,13 +108,6 @@ spec:
               version: "10"
           spec:
             operators:
-            - name: ibm-metering-operator
-              namespace: placeholder
-              channel: beta
-              packageName: ibm-metering-operator-app
-              scope: public
-              sourceName: opencloud-operators
-              sourceNamespace: openshift-marketplace
             - name: ibm-licensing-operator
               namespace: placeholder
               channel: beta

@@ -170,7 +170,6 @@ The list of operators you can add:
     - name: ibm-healthcheck-operator
     - name: ibm-management-ingress-operator
     - name: ibm-ingress-nginx-operator
-    - name: ibm-metering-operator
     - name: ibm-licensing-operator
     - name: ibm-commonui-operator
     - name: ibm-auditlogging-operator
