@@ -147,6 +147,29 @@ build-dev-image:
 	--build-arg GOARCH=$(LOCAL_ARCH) -f Dockerfile .
 	@docker push $(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME):dev
 
+build-bundle-image:
+	@cp -f bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml /tmp/ibm-common-service-operator.clusterserviceversion.yaml
+	yq eval -i 'del(.spec.replaces)' bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
+	docker build -f bundle.Dockerfile -t $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(VERSION) .
+	docker push $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(VERSION)
+	@mv /tmp/ibm-common-service-operator.clusterserviceversion.yaml bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
+
+build-catalog-source:
+	opm -u docker index add --bundles $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(VERSION) --tag $(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME)-catalog:$(VERSION)
+	docker push $(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME)-catalog:$(VERSION)
+
+update-csv-image: # updates operator image in currently deployed Common Service Operator
+	oc patch csv ibm-common-service-operator.v$(OPERATOR_VERSION) --type json -p \
+		'[{"op": "replace", "path": "/spec/install/spec/deployments/0/spec/template/spec/containers/0/image", "value": "$(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME):dev"}]'
+
+build-catalog: build-bundle-image build-catalog-source
+
+deploy-catalog: build-catalog
+	./common/scripts/update_catalogsource.sh $(OPERATOR_IMAGE_NAME) $(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME)-catalog:$(VERSION)
+
+undeploy-catalog:
+	kubectl -n openshift-marketplace delete catalogsource $(OPERATOR_IMAGE_NAME)
+
 test-profile: yq
 	./testdata/test_profile.sh $(YQ)
 
