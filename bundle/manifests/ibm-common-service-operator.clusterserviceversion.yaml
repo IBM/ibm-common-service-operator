@@ -217,9 +217,9 @@ metadata:
         - channel: v1.0
           name: ibm-cp-data-operator
           namespace: placeholder
-          packageName: ibm-cp-data-operator
+          packageName: ibm-zen-operator
           scope: public
-          sourceName: ibm-cp-data-operator-catalog
+          sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - channel: v1.2-eus
           name: ibm-cloud-databases-redis

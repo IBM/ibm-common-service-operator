@@ -190,7 +190,6 @@ spec:
         - name: ibm-healthcheck-operator
         - name: ibm-management-ingress-operator
         - name: ibm-licensing-operator
-        - name: ibm-metering-operator
         - name: ibm-commonui-operator
         - name: ibm-ingress-nginx-operator
         - name: ibm-auditlogging-operator
