@@ -159,7 +159,7 @@ build-catalog-source:
 	docker push $(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME)-catalog:$(VERSION)
 
 update-csv-image: # updates operator image in currently deployed Common Service Operator
-	oc patch csv ibm-common-service-operator.v$(OPERATOR_VERSION) --type json -p \
+	oc patch csv -n ibm-common-services ibm-common-service-operator.v$(OPERATOR_VERSION) --type json -p \
 		'[{"op": "replace", "path": "/spec/install/spec/deployments/0/spec/template/spec/containers/0/image", "value": "$(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME):dev"}]'
 
 build-catalog: build-bundle-image build-catalog-source
