@@ -47,7 +47,7 @@ type csMaps struct {
 
 type nsMapping struct {
 	RequestNS []string `json:"requested-from-namespace"`
-	CsNs      string   `json:"map-common-service-namespace"`
+	CsNs      string   `json:"map-to-common-service-namespace"`
 }
 
 var (
