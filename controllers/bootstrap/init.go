@@ -140,6 +140,16 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 		return err
 	}
 
+	cm, err := util.GetCmOfMapCs(b.Reader)
+	if err == nil {
+		err := util.UpdateNSList(b.Reader, b.Client, cm, b.MasterNamespace)
+		if err != nil {
+			return err
+		}
+	} else if !errors.IsNotFound(err) {
+		return err
+	}
+
 	// Install CS Operators
 	for _, operator := range b.CsOperators {
 		klog.Infof("Installing %s", operator.Name)

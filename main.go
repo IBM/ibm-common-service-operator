@@ -36,6 +36,7 @@ import (
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/controllers/deploy"
+	nssv1 "github.com/IBM/ibm-namespace-scope-operator/api/v1"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -46,6 +47,7 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
+	utilruntime.Must(nssv1.AddToScheme(scheme))
 	utilruntime.Must(operatorv3.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 

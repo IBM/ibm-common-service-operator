@@ -37,10 +37,12 @@ import (
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	nssv1 "github.com/IBM/ibm-namespace-scope-operator/api/v1"
+
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 )
 
-type csMaps struct {
+type CsMaps struct {
 	NsMappingList []nsMapping `json:"namespaceMapping"`
 	DefaultCsNs   string      `json:"defaultCsNs"`
 }
@@ -223,7 +225,7 @@ func GetMasterNs(r client.Reader) (masterNs string) {
 
 	csConfigmap, err := GetCmOfMapCs(r)
 	if err != nil {
-		klog.Infof("Don't find configmap kube-public/common-service-maps: %v", err)
+		klog.V(2).Infof("Don't find configmap kube-public/common-service-maps: %v", err)
 		return
 	}
 
@@ -233,7 +235,7 @@ func GetMasterNs(r client.Reader) (masterNs string) {
 		return
 	}
 
-	var cmData csMaps
+	var cmData CsMaps
 	if err := utilyaml.Unmarshal([]byte(commonServiceMaps), &cmData); err != nil {
 		klog.Errorf("Failed to fetch data of configmap common-service-maps: %v", err)
 		return
@@ -251,6 +253,51 @@ func GetMasterNs(r client.Reader) (masterNs string) {
 	}
 
 	return
+}
+
+// UpdateNSList updates adopter namespaces of Common Services
+func UpdateNSList(r client.Reader, c client.Client, cm *corev1.ConfigMap, masterNs string) error {
+	nsScope := &nssv1.NamespaceScope{}
+	nsScopeKey := types.NamespacedName{Name: "common-service", Namespace: masterNs}
+	if err := r.Get(context.TODO(), nsScopeKey, nsScope); err != nil {
+		return err
+	}
+	var nsMems []string
+	nsSet := make(map[string]interface{})
+
+	for _, ns := range nsScope.Spec.NamespaceMembers {
+		nsSet[ns] = struct{}{}
+	}
+
+	commonServiceMaps, ok := cm.Data["common-service-maps.yaml"]
+	if !ok {
+		return fmt.Errorf("there is no common-service-maps.yaml in configmap kube-public/common-service-maps")
+	}
+
+	var cmData CsMaps
+	if err := utilyaml.Unmarshal([]byte(commonServiceMaps), &cmData); err != nil {
+		return fmt.Errorf("failed to fetch data of configmap common-service-maps: %v", err)
+	}
+
+	for _, nsMapping := range cmData.NsMappingList {
+		if masterNs == nsMapping.CsNs {
+			for _, ns := range nsMapping.RequestNS {
+				nsSet[ns] = struct{}{}
+			}
+		}
+	}
+
+	for ns := range nsSet {
+		nsMems = append(nsMems, ns)
+	}
+
+	nsScope.Spec.NamespaceMembers = nsMems
+
+	if err := c.Update(context.TODO(), nsScope); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func findNamespace(nsList []string, nsName string) (exist bool) {
