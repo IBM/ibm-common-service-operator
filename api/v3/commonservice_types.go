@@ -37,6 +37,7 @@ type CommonServiceSpec struct {
 	ManualManagement bool            `json:"manualManagement,omitempty"`
 	Size             string          `json:"size,omitempty"`
 	Services         []ServiceConfig `json:"services,omitempty"`
+	StorageClass     string          `json:"storageClass,omitempty"`
 }
 
 // CommonServiceStatus defines the observed state of CommonService
