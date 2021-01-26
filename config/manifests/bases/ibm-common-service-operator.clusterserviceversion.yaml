@@ -198,7 +198,7 @@ metadata:
           sourceName: certified-operators
           sourceNamespace: openshift-marketplace
         - channel: beta
-          name: ibm-cp-data-operator
+          name: ibm-zen-operator
           namespace: placeholder
           packageName: ibm-zen-operator
           scope: public
