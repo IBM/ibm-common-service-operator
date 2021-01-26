@@ -17,39 +17,54 @@
 package controllers
 
 import (
+	"strings"
+
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/klog"
 
 	"github.com/IBM/ibm-common-service-operator/controllers/size"
+	storageclass "github.com/IBM/ibm-common-service-operator/controllers/storageClass"
 )
 
 func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured) ([]interface{}, error) {
 	var newConfigs []interface{}
+	var err error
+
+	if cs.Object["spec"].(map[string]interface{})["storageClass"] != nil {
+		klog.Info("Applying storageClass configuration")
+		storageConfig, err := convertStringToSlice(strings.ReplaceAll(storageclass.Template, "placeholder", cs.Object["spec"].(map[string]interface{})["storageClass"].(string)))
+		if err != nil {
+			return nil, err
+		}
+		newConfigs = append(newConfigs, storageConfig...)
+	}
+
+	klog.Info("Applying size configuration")
+	var sizeConfigs []interface{}
 	switch cs.Object["spec"].(map[string]interface{})["size"] {
 	case "small":
-		newConfigs, err := applySizeTemplate(cs, size.Small)
+		sizeConfigs, err = applySizeTemplate(cs, size.Small)
 		if err != nil {
-			return newConfigs, err
+			return sizeConfigs, err
 		}
-		return newConfigs, nil
 	case "medium":
-		newConfigs, err := applySizeTemplate(cs, size.Medium)
+		sizeConfigs, err = applySizeTemplate(cs, size.Medium)
 		if err != nil {
-			return newConfigs, err
+			return sizeConfigs, err
 		}
-		return newConfigs, nil
 	case "large":
-		newConfigs, err := applySizeTemplate(cs, size.Large)
+		sizeConfigs, err = applySizeTemplate(cs, size.Large)
 		if err != nil {
-			return newConfigs, err
+			return sizeConfigs, err
 		}
-		return newConfigs, nil
 	default:
 		if cs.Object["spec"].(map[string]interface{})["services"] != nil {
-			newConfigs = cs.Object["spec"].(map[string]interface{})["services"].([]interface{})
+			sizeConfigs = cs.Object["spec"].(map[string]interface{})["services"].([]interface{})
 		}
-		return newConfigs, nil
 	}
+	newConfigs = append(newConfigs, sizeConfigs...)
+
+	return newConfigs, nil
 }
 
 func applySizeTemplate(cs *unstructured.Unstructured, sizeTemplate string) ([]interface{}, error) {
