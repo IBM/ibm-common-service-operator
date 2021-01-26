@@ -434,4 +434,7 @@ const Large = `
           requests:
             cpu: 10m
             memory: 50Mi
+- name: ibm-elastic-stack-operator
+  spec:
+    elasticStack: {}
 `
