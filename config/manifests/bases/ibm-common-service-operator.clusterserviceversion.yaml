@@ -211,6 +211,13 @@ metadata:
           scope: public
           sourceName: ibm-operator-catalog
           sourceNamespace: openshift-marketplace
+        - channel: v1.0
+          name: ibm-db2u-operator
+          namespace: placeholder
+          packageName: db2u-operator
+          scope: public
+          sourceName: ibm-operator-catalog
+          sourceNamespace: openshift-marketplace
     csOperatorSubscription: |-
       apiVersion: operators.coreos.com/v1alpha1
       kind: Subscription
