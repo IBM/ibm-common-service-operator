@@ -58,11 +58,11 @@ const Small = `
       replicas: 3
       resources:
         limits:
-          cpu: 1500m
-          memory: 1Gi
+          cpu: 1000m
+          memory: 640Mi
         requests:
           cpu: 500m
-          memory: 1Gi
+          memory: 640Mi
 - name: ibm-iam-operator
   spec:
     authentication:
