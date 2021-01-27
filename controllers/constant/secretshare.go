@@ -32,9 +32,6 @@ metadata:
 spec:
   # Secrets to share for adopter compatibility to Common Services 3.2.4
   secretshares:
-  - secretname: icp-metering-api-secret
-    sharewith:
-    - namespace: kube-system
   - secretname: oauth-client-secret
     sharewith:
     - namespace: services
