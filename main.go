@@ -123,6 +123,7 @@ func main() {
 			Manager:   deploy.NewDeployManager(mgr),
 			Bootstrap: bootstrap.NewBootstrap(mgr),
 			Scheme:    mgr.GetScheme(),
+			Recorder:  mgr.GetEventRecorderFor("commonservice-controller"),
 		}).SetupWithManager(mgr); err != nil {
 			klog.Errorf("Unable to create controller CommonService: %v", err)
 			os.Exit(1)
