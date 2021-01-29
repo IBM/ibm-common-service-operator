@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	utilyaml "github.com/ghodss/yaml"
+	"github.com/mohae/deepcopy"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 
@@ -142,13 +143,13 @@ func mergeChangedMap(key string, defaultMap interface{}, changedMap interface{},
 			if changedMap == nil {
 				finalMap[key] = defaultMap
 			} else {
-				comparableKeys := []string{"replicas", "cpu", "memory"}
-				for _, comparable := range comparableKeys {
-					if key == comparable {
-						finalMap[key], _ = rules.ResourceComparison(defaultMap, changedMap)
-					} else {
-						finalMap[key] = changedMap
-					}
+				var comparableKeys = map[string]bool{
+					"replicas": true,
+					"cpu":      true,
+					"memory":   true,
+				}
+				if _, ok := comparableKeys[key]; ok {
+					finalMap[key], _ = rules.ResourceComparison(defaultMap, changedMap)
 				}
 			}
 		}
@@ -209,7 +210,7 @@ func deepMergeTwoMaps(key string, defaultMap interface{}, changedMap interface{}
 	}
 }
 
-func (r *CommonServiceReconciler) updateOperandConfig(newConfigs []interface{}) error {
+func (r *CommonServiceReconciler) updateOperandConfig(newConfigs []interface{}) (bool, error) {
 	opcon := util.NewUnstructured("operator.ibm.com", "OperandConfig", "v1alpha1")
 	opconKey := types.NamespacedName{
 		Name:      "common-service",
@@ -217,15 +218,17 @@ func (r *CommonServiceReconciler) updateOperandConfig(newConfigs []interface{}) 
 	}
 	if err := r.Reader.Get(ctx, opconKey, opcon); err != nil {
 		klog.Errorf("failed to get OperandConfig %s: %v", opconKey.String(), err)
-		return err
+		return true, err
 	}
 
+	// Keep a version of exsiting config for comparasion later
 	opconServices := opcon.Object["spec"].(map[string]interface{})["services"].([]interface{})
+	existingOpconServices := deepcopy.Copy(opconServices)
 
 	// Convert rules string to slice
 	ruleSlice, err := convertStringToSlice(rules.ConfigurationRules)
 	if err != nil {
-		return err
+		return true, err
 	}
 
 	for _, opService := range opconServices {
@@ -260,17 +263,32 @@ func (r *CommonServiceReconciler) updateOperandConfig(newConfigs []interface{}) 
 	// Checking all the common service CRs to get the minimal size
 	opconServices, err = r.getMinimalSizes(opconServices, ruleSlice)
 	if err != nil {
-		return err
+		return true, err
+	}
+
+	// Compare to see whether new resource sizing is introduced into opconServices
+	isEqual := true
+	for _, opService := range opconServices {
+		existingOpService := getItemByName(existingOpconServices.([]interface{}), opService.(map[string]interface{})["name"].(string))
+		for cr, spec := range opService.(map[string]interface{})["spec"].(map[string]interface{}) {
+			existingCrSpec := existingOpService.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
+			if isEqual = rules.ResourceEqualComparison(existingCrSpec, spec); !isEqual {
+				break
+			}
+		}
+		if !isEqual {
+			break
+		}
 	}
 
 	opcon.Object["spec"].(map[string]interface{})["services"] = opconServices
 
 	if err := r.Update(ctx, opcon); err != nil {
 		klog.Errorf("failed to update OperandConfig %s: %v", opconKey.String(), err)
-		return err
+		return true, err
 	}
 
-	return nil
+	return isEqual, nil
 }
 
 func checkCRFromOperandConfig(serviceStatus map[string]interface{}, operatorName, crName string) bool {

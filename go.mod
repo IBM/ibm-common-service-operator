@@ -5,6 +5,7 @@ go 1.13
 require (
 	github.com/IBM/ibm-namespace-scope-operator v1.0.1
 	github.com/ghodss/yaml v1.0.0
+	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/onsi/ginkgo v1.12.1
 	github.com/onsi/gomega v1.10.1
 	github.com/operator-framework/api v0.3.10

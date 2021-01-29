@@ -18,10 +18,13 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -40,7 +43,8 @@ type CommonServiceReconciler struct {
 	client.Reader
 	*deploy.Manager
 	*bootstrap.Bootstrap
-	Scheme *runtime.Scheme
+	Scheme   *runtime.Scheme
+	Recorder record.EventRecorder
 }
 
 const (
@@ -64,6 +68,7 @@ func (r *CommonServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 			if err := r.handleDelete(); err != nil {
 				return ctrl.Result{}, err
 			}
+			klog.Info("Deleted reconciling CommonService CR successfully")
 		}
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
@@ -117,12 +122,18 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(instance *apiv3.CommonServic
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	if err := r.updateOperandConfig(newConfigs); err != nil {
+	isEqual, err := r.updateOperandConfig(newConfigs)
+	if err != nil {
 		if err := r.updatePhase(instance, CRFailed); err != nil {
 			klog.Error(err)
 		}
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 		return ctrl.Result{}, err
+	}
+
+	// Create Event if there is no update in OperandConfig after applying current CR
+	if isEqual {
+		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.MasterNamespace, "common-service", instance.Namespace, instance.Name))
 	}
 
 	if err := r.updatePhase(instance, CRSucceeded); err != nil {
@@ -178,12 +189,18 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(instance *apiv3.CommonServi
 		return ctrl.Result{}, err
 	}
 
-	if err = r.updateOperandConfig(newConfigs); err != nil {
+	isEqual, err := r.updateOperandConfig(newConfigs)
+	if err != nil {
 		if err := r.updatePhase(instance, CRFailed); err != nil {
 			klog.Error(err)
 		}
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 		return ctrl.Result{}, err
+	}
+
+	// Create Event if there is no update in OperandConfig after applying current CR
+	if isEqual {
+		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.MasterNamespace, "common-service", instance.Namespace, instance.Name))
 	}
 
 	if err := r.updatePhase(instance, CRSucceeded); err != nil {

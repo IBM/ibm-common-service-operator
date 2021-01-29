@@ -67,3 +67,46 @@ func ResourceComparison(resourceA, resourceB interface{}) (interface{}, interfac
 		return resourceA, resourceA
 	}
 }
+
+func ResourceEqualComparison(resourceA interface{}, resourceB interface{}) bool {
+
+	klog.V(2).Infof("Kind of A %s", reflect.TypeOf(resourceA).Kind())
+	klog.V(2).Infof("Kind of B %s", reflect.TypeOf(resourceB).Kind())
+
+	isEqual := true
+	switch resourceA := resourceA.(type) {
+	case map[string]interface{}:
+		if resourceB == nil {
+			isEqual = false
+		} else if _, ok := resourceB.(map[string]interface{}); ok { //Check that the changed map value is also a map[string]interface
+			resourceARef := resourceA
+			resourceBRef := resourceB.(map[string]interface{})
+			for newKey := range resourceARef {
+				isEqual = ResourceEqualComparison(resourceARef[newKey], resourceBRef[newKey])
+				if !isEqual {
+					break
+				}
+			}
+		}
+		return isEqual
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
+		strA := fmt.Sprintf("%v", resourceA)
+		strB := fmt.Sprintf("%v", resourceB)
+
+		floatA, _ := strconv.ParseFloat(strA, 64)
+		floatB, _ := strconv.ParseFloat(strB, 64)
+		if floatA == floatB {
+			isEqual = true
+		} else {
+			isEqual = false
+		}
+		return isEqual
+	default:
+		if resourceA == resourceB {
+			isEqual = true
+		} else {
+			isEqual = false
+		}
+		return isEqual
+	}
+}
