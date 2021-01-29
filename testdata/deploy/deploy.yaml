@@ -110,102 +110,95 @@ spec:
             operators:
             - name: ibm-licensing-operator
               namespace: placeholder
-              channel: beta
+              channel: v3
               packageName: ibm-licensing-operator-app
               scope: public
               sourceName: opencloud-operators
               sourceNamespace: openshift-marketplace
             - name: ibm-mongodb-operator
               namespace: placeholder
-              channel: beta
+              channel: v3
               packageName: ibm-mongodb-operator-app
               sourceName: opencloud-operators
               sourceNamespace: openshift-marketplace
             - name: ibm-cert-manager-operator
               namespace: placeholder
-              channel: beta
+              channel: v3
               packageName: ibm-cert-manager-operator
               scope: public
               sourceName: opencloud-operators
               sourceNamespace: openshift-marketplace
             - name: ibm-iam-operator
               namespace: placeholder
-              channel: beta
+              channel: v3
               packageName: ibm-iam-operator
               scope: public
               sourceName: opencloud-operators
               sourceNamespace: openshift-marketplace
             - name: ibm-healthcheck-operator
               namespace: placeholder
-              channel: beta
+              channel: v3
               packageName: ibm-healthcheck-operator-app
               scope: public
               sourceName: opencloud-operators
               sourceNamespace: openshift-marketplace
             - name: ibm-commonui-operator
               namespace: placeholder
-              channel: beta
+              channel: v3
               packageName: ibm-commonui-operator-app
               scope: public
               sourceName: opencloud-operators
               sourceNamespace: openshift-marketplace
             - name: ibm-management-ingress-operator
               namespace: placeholder
-              channel: beta
+              channel: v3
               packageName: ibm-management-ingress-operator-app
               scope: public
               sourceName: opencloud-operators
               sourceNamespace: openshift-marketplace
             - name: ibm-ingress-nginx-operator
               namespace: placeholder
-              channel: beta
+              channel: v3
               packageName: ibm-ingress-nginx-operator-app
               scope: public
               sourceName: opencloud-operators
               sourceNamespace: openshift-marketplace
             - name: ibm-auditlogging-operator
               namespace: placeholder
-              channel: beta
+              channel: v3
               packageName: ibm-auditlogging-operator-app
               scope: public
               sourceName: opencloud-operators
               sourceNamespace: openshift-marketplace
             - name: ibm-platform-api-operator
               namespace: placeholder
-              channel: beta
+              channel: v3
               packageName: ibm-platform-api-operator-app
               scope: public
               sourceName: opencloud-operators
               sourceNamespace: openshift-marketplace
             - name: ibm-monitoring-exporters-operator
               namespace: placeholder
-              channel: beta
+              channel: v3
               packageName: ibm-monitoring-exporters-operator-app
               scope: public
               sourceName: opencloud-operators
               sourceNamespace: openshift-marketplace
             - name: ibm-monitoring-prometheusext-operator
               namespace: placeholder
-              channel: beta
+              channel: v3
               packageName: ibm-monitoring-prometheusext-operator-app
               scope: public
               sourceName: opencloud-operators
               sourceNamespace: openshift-marketplace
-            - channel: beta
+            - channel: v3
               name: ibm-monitoring-grafana-operator
               namespace: placeholder
               packageName: ibm-monitoring-grafana-operator-app
               scope: public
               sourceName: opencloud-operators
               sourceNamespace: openshift-marketplace
-            - channel: beta
-              name: ibm-elastic-stack-operator
-              namespace: placeholder
-              packageName: ibm-elastic-stack-operator-app
-              scope: public
-              sourceName: opencloud-operators
-              sourceNamespace: openshift-marketplace
-            - channel: beta
+            - channel: v3
               name: ibm-events-operator
               namespace: placeholder
               packageName: ibm-events-operator
@@ -221,7 +214,7 @@ spec:
             annotations:
               version: "10"
           spec:
-            channel: beta
+            channel: v3
             installPlanApproval: Automatic
             name: ibm-common-service-operator
             source: opencloud-operators
@@ -236,7 +229,7 @@ spec:
             annotations:
               version: "10"
           spec:
-            channel: beta
+            channel: v3
             installPlanApproval: Automatic
             name: ibm-namespace-scope-operator-restricted
             source: opencloud-operators
@@ -250,7 +243,7 @@ spec:
             annotations:
               version: "10"
           spec:
-            channel: beta
+            channel: v3
             installPlanApproval: Automatic
             name: ibm-namespace-scope-operator
             source: opencloud-operators
@@ -264,7 +257,7 @@ spec:
             annotations:
               version: "11"
           spec:
-            channel: beta
+            channel: v3
             installPlanApproval: Automatic
             name: ibm-odlm
             source: opencloud-operators
@@ -278,7 +271,7 @@ spec:
             annotations:
               version: "11"
           spec:
-            channel: beta
+            channel: v3
             installPlanApproval: Automatic
             name: ibm-odlm
             source: opencloud-operators
