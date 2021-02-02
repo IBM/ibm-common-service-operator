@@ -138,6 +138,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: ibm-common-service-webhook
+  annotations:
+    version: "1"
 rules:
 - apiGroups:
     - ""

@@ -221,7 +221,7 @@ func (r *CommonServiceReconciler) updateOperandConfig(newConfigs []interface{}) 
 		return true, err
 	}
 
-	// Keep a version of exsiting config for comparasion later
+	// Keep a version of existing config for comparasion later
 	opconServices := opcon.Object["spec"].(map[string]interface{})["services"].([]interface{})
 	existingOpconServices := deepcopy.Copy(opconServices)
 
