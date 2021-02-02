@@ -19,6 +19,7 @@ package bootstrap
 import (
 	"context"
 	"strconv"
+	"strings"
 	"time"
 
 	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
@@ -418,6 +419,33 @@ func (b *Bootstrap) CreateNsScopeConfigmap() error {
 		return err
 	}
 	return nil
+}
+
+// CreateSecretshareCR creates a secretshare CR for sharing the entitlement key
+func (b *Bootstrap) CreateSecretshareCR(namespace, masterNamespace string) {
+	klog.Info("Creating secretshare CR for entitlement registry secret")
+	dc := discovery.NewDiscoveryClientForConfigOrDie(b.Config)
+	for {
+		exist, err := resourceExists(dc, "ibmcpcs.ibm.com/v1", "SecretShare")
+		if err != nil {
+			klog.Error(err)
+			time.Sleep(20 * time.Second)
+			continue
+		}
+		if !exist {
+			klog.Info("Waiting for SecretShare CRD deployed")
+			time.Sleep(20 * time.Second)
+			continue
+		}
+		entitlementCR := strings.ReplaceAll(constant.SecretshareEntitlementCR, "CR_NAMESPACE", namespace)
+		entitlementCR = strings.ReplaceAll(entitlementCR, "MASTER_NAMESPACE", masterNamespace)
+		if err := b.createOrUpdateFromYaml([]byte(entitlementCR)); err != nil {
+			klog.Error(err)
+			time.Sleep(20 * time.Second)
+			continue
+		}
+		break
+	}
 }
 
 func (b *Bootstrap) deleteSubscription(name, namespace string) error {
