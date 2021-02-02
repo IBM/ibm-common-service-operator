@@ -26,6 +26,7 @@ metadata:
 spec:
   namespaceMembers:
   - placeholder
+  - openshift-redhat-marketplace
 ---
 apiVersion: operator.ibm.com/v1
 kind: NamespaceScope
