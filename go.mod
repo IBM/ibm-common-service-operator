@@ -1,6 +1,6 @@
 module github.com/IBM/ibm-common-service-operator
 
-go 1.13
+go 1.15
 
 require (
 	github.com/IBM/ibm-namespace-scope-operator v1.0.1
