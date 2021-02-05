@@ -22,7 +22,6 @@ STEP=0
 BASE_DIR=$(dirname "$0")
 
 # ---------- Command functions ----------
-. ${BASE_DIR}/utils.sh
 
 function main() {
     title "Moving to CatalogSource ibm-operator-catalog"
@@ -31,6 +30,40 @@ function main() {
     switch_to_ibmcatalog
 }
 
+function remove_old_catalog() {
+    STEP=$((STEP + 1 ))
+    title "[${STEP}] Remove CatalogSource of previous EUS version ..."
+    msg "-----------------------------------------------------------------------"
+    oc -n openshift-marketplace delete catalogsource opencloud-operators --ignore-not-found
+}
+
+function create_ibm_catalog() {
+    STEP=$((STEP + 1 ))
+    title "[${STEP}] Creating ibm catalog source ..."
+    msg "-----------------------------------------------------------------------"
+
+    cat <<EOF | tee >(oc apply -f -) | cat
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: ibm-operator-catalog
+  namespace: openshift-marketplace
+spec:
+  displayName: ibm-operator-catalog 
+  publisher: IBM Content
+  sourceType: grpc
+  image: docker.io/ibmcom/ibm-operator-catalog
+  updateStrategy:
+    registryPoll:
+      interval: 45m
+EOF
+
+    if [[ $? -ne 0 ]]; then
+        error "Error creating IBM catalog source"
+    fi
+
+    wait_for_pod "openshift-marketplace" "ibm-operator-catalog"
+}
 
 function check_preqreqs() {
     title "[${STEP}] Checking prerequesites ..."
@@ -51,13 +84,11 @@ function check_preqreqs() {
         success "oc command logged in as ${user}"
     fi
 
-    # checking ibm catalogsource is existing
-    catalog=$(oc -n openshift-marketplace get pod | grep ibm-operator-catalog 2> /dev/null)
-    if [$? -ne 0]; then
-        error "You must deploy CatalofSource ${catalog} first"
-    else
-        success "CatalogSource ${catalog} is deployed"
-    fi
+    # remove old catalogsource
+    remove_old_catalog
+
+    # create new ibm catalogsource
+    create_ibm_catalog
 }
 
 function switch_to_ibmcatalog() {
@@ -87,6 +118,74 @@ function switch_to_ibmcatalog() {
     
     success "Update all ibm-common-service-operator subscriptions successfully"
 }
+
+function msg() {
+    printf '%b\n' "$1"
+}
+
+function success() {
+    msg "\33[32m[✔] ${1}\33[0m"
+}
+
+function error() {
+    msg "\33[31m[✘] ${1}\33[0m"
+    exit 1
+}
+
+function title() {
+    msg "\33[34m# ${1}\33[0m"
+}
+
+function info() {
+    msg "[INFO] ${1}"
+}
+
+function wait_for_pod() {
+    local namespace=$1
+    local name=$2
+    local condition="oc -n ${namespace} get po --no-headers --ignore-not-found | egrep 'Running|Completed|Succeeded' | grep ^${name}"
+    local retries=30
+    local sleep_time=10
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for pod ${name} in namespace ${namespace} to be running"
+    local success_message="Pod ${name} in namespace ${namespace} is running"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for pod ${name} in namespace ${namespace} to be running"
+ 
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
+function wait_for_condition() {
+    local condition=$1
+    local retries=$2
+    local sleep_time=$3
+    local wait_message=$4
+    local success_message=$5
+    local error_message=$6
+
+    info "${wait_message}"
+    while true; do
+        result=$(eval "${condition}")
+
+        if [[ ( ${retries} -eq 0 ) && ( -z "${result}" ) ]]; then
+            error "${error_message}"
+        fi
+ 
+        sleep ${sleep_time}
+        result=$(eval "${condition}")
+        
+        if [[ -z "${result}" ]]; then
+            info "RETRYING: ${wait_message} (${retries} left)"
+            retries=$(( retries - 1 ))
+        else
+            break
+        fi
+    done
+
+    if [[ ! -z "${success_message}" ]]; then
+        success "${success_message}"
+    fi
+}
+
 # --- Run ---
 
 main $*
