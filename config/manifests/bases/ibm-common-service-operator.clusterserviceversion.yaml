@@ -204,13 +204,6 @@ metadata:
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
-        - channel: v1.2-eus
-          name: ibm-cloud-databases-redis-operator
-          namespace: placeholder
-          packageName: ibm-cloud-databases-redis-operator
-          scope: public
-          sourceName: ibm-operator-catalog
-          sourceNamespace: openshift-marketplace
         - channel: v1.0
           name: ibm-db2u-operator
           namespace: placeholder
