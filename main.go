@@ -105,6 +105,8 @@ func main() {
 			klog.Errorf("Failed to create Namespace Scope ConfigMap: %v", err)
 			os.Exit(1)
 		}
+
+		go bs.CreateSecretshareCR(operatorNs, bs.MasterNamespace)
 	}
 
 	if operatorNs == bs.MasterNamespace || operatorNs == constant.ClusterOperatorNamespace {

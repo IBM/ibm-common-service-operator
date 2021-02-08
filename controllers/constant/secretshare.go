@@ -229,3 +229,17 @@ spec:
             memory: 200Mi
       terminationGracePeriodSeconds: 10
 `
+
+// Secretshare Operator CR for entitle registry
+const SecretshareEntitlementCR = `
+apiVersion: ibmcpcs.ibm.com/v1
+kind: SecretShare
+metadata:
+  name: ibm-entitlement-key
+  namespace: CR_NAMESPACE
+spec:
+  secretshares:
+    - secretname: ibm-entitlement-key
+      sharewith:
+        - namespace: MASTER_NAMESPACE
+`
