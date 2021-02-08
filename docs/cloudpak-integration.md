@@ -124,7 +124,6 @@ spec:
       certManager: {}
       issuer: {}
       certificate: {}
-      clusterIssuer: {}
   - name: ibm-iam-operator
     spec:
       authentication: {}
