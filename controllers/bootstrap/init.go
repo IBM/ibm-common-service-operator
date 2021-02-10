@@ -207,6 +207,11 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 	if err := b.waitResourceReady("operator.ibm.com/v1alpha1", "OperandConfig"); err != nil {
 		return err
 	}
+
+	if err := b.waitOperatorReady("operand-deployment-lifecycle-manager-app", b.MasterNamespace); err != nil {
+		return err
+	}
+
 	if err := b.createOrUpdateResources(annotations, OdlmCrResources); err != nil {
 		return err
 	}
@@ -455,5 +460,41 @@ func (b *Bootstrap) deleteSubscription(name, namespace string) error {
 		return err
 	}
 
+	return nil
+}
+
+func (b *Bootstrap) waitOperatorReady(name, namespace string) error {
+	if err := utilwait.PollImmediate(time.Second*10, time.Minute*10, func() (done bool, err error) {
+		klog.Info("Waiting for Operator is ready...")
+		key := types.NamespacedName{Name: name, Namespace: namespace}
+		sub := &olmv1alpha1.Subscription{}
+		if err := b.Reader.Get(context.TODO(), key, sub); err != nil {
+			if errors.IsNotFound(err) {
+				klog.V(3).Infof("NotFound subscription %s/%s", namespace, name)
+			} else {
+				klog.Errorf("Failed to get subscription %s/%s", namespace, name)
+			}
+			return false, client.IgnoreNotFound(err)
+		}
+
+		// check csv
+		csvName := sub.Status.InstalledCSV
+		if csvName != "" {
+			csv := &olmv1alpha1.ClusterServiceVersion{}
+			if err := b.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: csvName}, csv); errors.IsNotFound(err) {
+				klog.Errorf("Notfound Cluster Service Version: %v", err)
+				return false, nil
+			} else if err != nil {
+				klog.Errorf("Failed to get Cluster Service Version: %v", err)
+				return false, err
+			}
+			if csv.Status.Phase == olmv1alpha1.CSVPhaseSucceeded {
+				return true, nil
+			}
+		}
+		return false, nil
+	}); err != nil {
+		return err
+	}
 	return nil
 }
