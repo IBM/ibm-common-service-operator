@@ -403,6 +403,8 @@ spec:
           - clusterserviceversions
           verbs:
           - delete
+          - get
+          - list
         - apiGroups:
           - operator.ibm.com
           resources:

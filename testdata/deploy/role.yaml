@@ -29,6 +29,8 @@ rules:
   - clusterserviceversions
   verbs:
   - delete
+  - get
+  - list
 # cluster watch CommonService
 - apiGroups:
   - operator.ibm.com

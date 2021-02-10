@@ -481,7 +481,7 @@ func (b *Bootstrap) waitOperatorReady(name, namespace string) error {
 		csvName := sub.Status.InstalledCSV
 		if csvName != "" {
 			csv := &olmv1alpha1.ClusterServiceVersion{}
-			if err := b.Client.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: csvName}, csv); errors.IsNotFound(err) {
+			if err := b.Reader.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: csvName}, csv); errors.IsNotFound(err) {
 				klog.Errorf("Notfound Cluster Service Version: %v", err)
 				return false, nil
 			} else if err != nil {
