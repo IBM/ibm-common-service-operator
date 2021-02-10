@@ -321,7 +321,7 @@ const Large = `
         resources:
           limits:
             cpu: 75m
-            memory: 200Mi
+            memory: 300Mi
           requests:
             cpu: 59m
             memory: 231Mi
@@ -407,7 +407,7 @@ const Large = `
         resource:
           limits:
             cpu: 30m
-            memory: 50Mi
+            memory: 100Mi
           requests:
             cpu: 30m
             memory: 67Mi
