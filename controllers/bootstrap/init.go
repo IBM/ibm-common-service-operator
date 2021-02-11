@@ -464,6 +464,7 @@ func (b *Bootstrap) deleteSubscription(name, namespace string) error {
 }
 
 func (b *Bootstrap) waitOperatorReady(name, namespace string) error {
+	time.Sleep(time.Second * 5)
 	if err := utilwait.PollImmediate(time.Second*10, time.Minute*10, func() (done bool, err error) {
 		klog.Info("Waiting for Operator is ready...")
 		key := types.NamespacedName{Name: name, Namespace: namespace}
@@ -475,6 +476,14 @@ func (b *Bootstrap) waitOperatorReady(name, namespace string) error {
 				klog.Errorf("Failed to get subscription %s/%s", namespace, name)
 			}
 			return false, client.IgnoreNotFound(err)
+		}
+
+		if sub.Status.InstalledCSV != sub.Status.CurrentCSV {
+			return false, nil
+		}
+
+		if sub.Status.State != olmv1alpha1.SubscriptionStateAtLatest {
+			return false, nil
 		}
 
 		// check csv
