@@ -135,7 +135,7 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 			return err
 		}
 		// Create Operator Deployment
-		if err := b.createOrUpdateResource(annotations, operator.Deployment); err != nil {
+		if err := b.createOrUpdateFromYaml([]byte(util.ReplaceImages(util.Namespacelize(operator.Deployment)))); err != nil {
 			return err
 		}
 		// Wait for CRD ready

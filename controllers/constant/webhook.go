@@ -1601,3 +1601,61 @@ spec:
     served: true
     storage: true
 `
+
+const CsWebhookOperator = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ibm-common-service-webhook
+  namespace: placeholder
+  annotations:
+    version: "7"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: ibm-common-service-webhook
+  template:
+    metadata:
+      annotations:
+        productID: 068a62892a1e4db39641342e592daa25
+        productMetric: FREE
+        productName: IBM Cloud Platform Common Services
+      labels:
+        name: ibm-common-service-webhook
+    spec:
+      serviceAccountName: ibm-common-service-webhook
+      containers:
+        - name: ibm-common-service-webhook
+          image: IBM_CS_WEBHOOK_IMAGE
+          command:
+          - ibm-common-service-webhook
+          imagePullPolicy: Always
+          env:
+            - name: WATCH_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_NAME
+              value: "ibm-common-service-webhook"
+          ports:
+            - containerPort: 8443
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 200m
+              memory: 256Mi
+          volumeMounts:
+          - name: webhook-certs
+            mountPath: "/etc/ssl/certs/webhook"
+      volumes:
+      - name: webhook-certs
+        emptyDir: {}
+`

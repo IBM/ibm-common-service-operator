@@ -240,113 +240,6 @@ spec:
             name: ibm-common-service-operator
             source: opencloud-operators
             sourceNamespace: openshift-marketplace
-        csSecretshareOperator: |-
-          apiVersion: apps/v1
-          kind: Deployment
-          metadata:
-            name: secretshare
-            namespace: placeholder
-            annotations:
-              version: "10"
-          spec:
-            replicas: 1
-            selector:
-              matchLabels:
-                name: secretshare
-            template:
-              metadata:
-                annotations:
-                  productID: 068a62892a1e4db39641342e592daa25
-                  productMetric: FREE
-                  productName: IBM Cloud Platform Common Services
-                labels:
-                  name: secretshare
-              spec:
-                serviceAccountName: secretshare
-                affinity:
-                  nodeAffinity:
-                    requiredDuringSchedulingIgnoredDuringExecution:
-                      nodeSelectorTerms:
-                      - matchExpressions:
-                        - key: beta.kubernetes.io/arch
-                          operator: In
-                          values:
-                          - amd64
-                          - ppc64le
-                          - s390x
-                containers:
-                - command:
-                  - /manager
-                  image: quay.io/opencloudio/ibm-secretshare-operator@sha256:019bc9f96f802a33a61a88128647e6af9a232ea9cce640c5f5e4174960389703
-                  imagePullPolicy: Always
-                  name: ibm-secretshare-operator
-                  env:
-                  - name: OPERATOR_NAME
-                    value: "secretshare"
-                  resources:
-                    limits:
-                      cpu: 500m
-                      memory: 512Mi
-                    requests:
-                      cpu: 200m
-                      memory: 200Mi
-                terminationGracePeriodSeconds: 10
-        csWebhookOperator: |-
-          apiVersion: apps/v1
-          kind: Deployment
-          metadata:
-            name: ibm-common-service-webhook
-            namespace: placeholder
-            annotations:
-              version: "7"
-          spec:
-            replicas: 1
-            selector:
-              matchLabels:
-                name: ibm-common-service-webhook
-            template:
-              metadata:
-                annotations:
-                  productID: 068a62892a1e4db39641342e592daa25
-                  productMetric: FREE
-                  productName: IBM Cloud Platform Common Services
-                labels:
-                  name: ibm-common-service-webhook
-              spec:
-                serviceAccountName: ibm-common-service-webhook
-                containers:
-                  - name: ibm-common-service-webhook
-                    image: quay.io/opencloudio/ibm-cs-webhook@sha256:be2d19119cd44dc3f1e5146d429a884f41e95791cd43432f7bbff7b078551808
-                    command:
-                    - ibm-common-service-webhook
-                    imagePullPolicy: Always
-                    env:
-                      - name: WATCH_NAMESPACE
-                        valueFrom:
-                          fieldRef:
-                            fieldPath: metadata.namespace
-                      - name: POD_NAME
-                        valueFrom:
-                          fieldRef:
-                            fieldPath: metadata.name
-                      - name: OPERATOR_NAME
-                        value: "ibm-common-service-webhook"
-                    ports:
-                      - containerPort: 8443
-                        protocol: TCP
-                    resources:
-                      limits:
-                        cpu: 200m
-                        memory: 256Mi
-                      requests:
-                        cpu: 200m
-                        memory: 256Mi
-                    volumeMounts:
-                    - name: webhook-certs
-                      mountPath: "/etc/ssl/certs/webhook"
-                volumes:
-                - name: webhook-certs
-                  emptyDir: {}
         description: The IBM Common Service Operator is used to deploy IBM Common Services
         nsRestrictedSubscription: |-
           apiVersion: operators.coreos.com/v1alpha1
@@ -426,6 +319,10 @@ spec:
         env:
         - name: OPERATOR_NAME
           value: ibm-common-service-operator
+        - name: IBM_CS_WEBHOOK_IMAGE
+          value: quay.io/opencloudio/ibm-cs-webhook:1.2.1
+        - name: IBM_SECRETSHARE_OPERATOR_IMAGE
+          value: quay.io/opencloudio/ibm-secretshare-operator:1.3.1
         image: siji/operator:cs
         imagePullPolicy: Always
         name: ibm-common-service-operator
