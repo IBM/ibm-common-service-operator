@@ -174,3 +174,61 @@ spec:
     served: true
     storage: true
 `
+
+const CsSecretshareOperator = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: secretshare
+  namespace: placeholder
+  annotations:
+    version: "10"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: secretshare
+  template:
+    metadata:
+      annotations:
+        productID: 068a62892a1e4db39641342e592daa25
+        productMetric: FREE
+        productName: IBM Cloud Platform Common Services
+      labels:
+        name: secretshare
+    spec:
+      serviceAccountName: secretshare
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+                - ppc64le
+                - s390x
+      containers:
+      - command:
+        - /manager
+        image: IBM_SECRETSHARE_OPERATOR_IMAGE
+        imagePullPolicy: Always
+        name: ibm-secretshare-operator
+        env:
+        - name: OPERATOR_NAME
+          value: "secretshare"
+        - name: OPERATOR_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 200m
+            memory: 200Mi
+      terminationGracePeriodSeconds: 10
+`

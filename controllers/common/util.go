@@ -36,6 +36,10 @@ import (
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 )
 
+var (
+	ImageList = []string{"IBM_SECRETSHARE_OPERATOR_IMAGE", "IBM_CS_WEBHOOK_IMAGE"}
+)
+
 // YamlToObjects convert YAML content to unstructured objects
 func YamlToObjects(yamlContent []byte) ([]*unstructured.Unstructured, error) {
 	var objects []*unstructured.Unstructured
@@ -161,4 +165,17 @@ func Reverse(original []string) []string {
 
 func Namespacelize(resource string) string {
 	return strings.ReplaceAll(resource, "placeholder", constant.MasterNamespace)
+}
+
+func ReplaceImages(resource string) (result string) {
+	result = resource
+	for _, image := range ImageList {
+		result = strings.ReplaceAll(result, image, GetImage(image))
+	}
+	return
+}
+
+func GetImage(imageName string) string {
+	ns, _ := os.LookupEnv(imageName)
+	return ns
 }
