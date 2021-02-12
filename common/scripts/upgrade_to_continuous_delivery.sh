@@ -24,45 +24,18 @@ BASE_DIR=$(dirname "$0")
 # ---------- Command functions ----------
 
 function main() {
-    title "Moving to CatalogSource ibm-operator-catalog"
+    title "Upgrade to continous delivery version"
     msg ""
-    check_preqreqs
-    switch_to_ibmcatalog
-}
-
-function remove_old_catalog() {
-    STEP=$((STEP + 1 ))
-    title "[${STEP}] Remove CatalogSource of previous EUS version ..."
-    msg "-----------------------------------------------------------------------"
-    oc -n openshift-marketplace delete catalogsource opencloud-operators --ignore-not-found
-}
-
-function create_ibm_catalog() {
-    STEP=$((STEP + 1 ))
-    title "[${STEP}] Creating ibm catalog source ..."
-    msg "-----------------------------------------------------------------------"
-
-    cat <<EOF | tee >(oc apply -f -) | cat
-apiVersion: operators.coreos.com/v1alpha1
-kind: CatalogSource
-metadata:
-  name: ibm-operator-catalog
-  namespace: openshift-marketplace
-spec:
-  displayName: ibm-operator-catalog 
-  publisher: IBM Content
-  sourceType: grpc
-  image: docker.io/ibmcom/ibm-operator-catalog
-  updateStrategy:
-    registryPoll:
-      interval: 45m
-EOF
-
-    if [[ $? -ne 0 ]]; then
-        error "Error creating IBM catalog source"
+    
+    if [[ $# -eq 0 ]]; then
+        CS_NAMESPACES=""
+        msg "Upgrade Commmon Service Operator in all nammesapces"
+    else
+        CS_NAMESPACES=("$@")
     fi
 
-    wait_for_pod "openshift-marketplace" "ibm-operator-catalog"
+    check_preqreqs "${CS_NAMESPACES[@]}"
+    switch_to_continous_delivery "${CS_NAMESPACES[@]}"
 }
 
 function check_preqreqs() {
@@ -84,20 +57,35 @@ function check_preqreqs() {
         success "oc command logged in as ${user}"
     fi
 
-    # remove old catalogsource
-    remove_old_catalog
+    # checking namespace if it is specified
+    local namespaces=("$@")
 
-    # create new ibm catalogsource
-    create_ibm_catalog
+    if [[ "$namespaces" != "" ]]; then
+        for ns in "${namespaces[@]}"
+        do
+            if [[ -z "$(oc get namespace ${ns} --ignore-not-found)" ]]; then
+            error "Namespace ${ns} for Common Service Operator is not found"
+            fi
+        done
+    fi
+
+    wait_for_pod "openshift-marketplace" "opencloud-operators"
 }
 
-function switch_to_ibmcatalog() {
+function switch_to_continous_delivery() {
     STEP=$((STEP + 1 ))
 
-    title "[${STEP}] Switch to IBM Operator Catalog Source ..."
+    title "[${STEP}] Switch to Continous Delivery Version ..."
     msg "-----------------------------------------------------------------------"
 
+    local namespaces=("$@")
+    
+    msg ${get_sub}
     while read -r ns cssub; do
+        if [[ "$namespaces" != "" ]] && [[ ! " ${namespaces[@]} " =~ " ${ns} " ]]; then
+            continue
+        fi
+
         msg "Updating subscription ${cssub} in namespace ${ns} ..."
         msg ""
         
@@ -109,9 +97,6 @@ function switch_to_ibmcatalog() {
         msg "[${in_step}] Switch Channel from stable-v1 to v3 ..."
         oc patch sub ${cssub} -n ${ns} --type="json" -p '[{"op": "replace", "path":"/spec/channel", "value":"v3"}]' 2> /dev/null
 
-        in_step=$((in_step + 1))
-        msg "[${in_step}] Switch CatalogSource from opencloud-operators to ibm-operator-catalog ..."
-        oc patch sub ${cssub} -n ${ns} --type="json" -p '[{"op": "replace", "path":"/spec/source", "value":"ibm-operator-catalog"}]' 2> /dev/null
         msg "-----------------------------------------------------------------------"
         msg ""
     done < <(oc get sub --all-namespaces | grep ibm-common-service-operator | awk '{print $1" "$2}')
@@ -138,6 +123,11 @@ function title() {
 
 function info() {
     msg "[INFO] ${1}"
+}
+
+function error() {
+    msg "\33[31m[✘] ${1}\33[0m"
+    exit 1
 }
 
 function wait_for_pod() {
