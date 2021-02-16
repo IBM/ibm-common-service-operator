@@ -24,12 +24,12 @@ BASE_DIR=$(dirname "$0")
 # ---------- Command functions ----------
 
 function main() {
-    title "Upgrade to continous delivery version"
+    title "Upgrade Common Service Operator to continous delivery channel."
     msg ""
     
     if [[ $# -eq 0 ]]; then
         CS_NAMESPACES=""
-        msg "Upgrade Commmon Service Operator in all nammesapces"
+        msg "Upgrade Commmon Service Operator in all namespaces."
     else
         CS_NAMESPACES=("$@")
     fi
@@ -44,15 +44,15 @@ function check_preqreqs() {
 
     # checking oc command
     if [[ -z "$(command -v oc 2> /dev/null)" ]]; then
-        error "oc command not available"
+        error "OpenShift Command Line tool oc is not available"
     else
-        success "oc command available"
+        success "OpenShift Command Line tool oc is available."
     fi
 
     # checking oc command logged in
     user=$(oc whoami 2> /dev/null)
     if [ $? -ne 0 ]; then
-        error "You must be logged into the OpenShift Cluster from the oc command line"
+        error "You must be logged into the OpenShift Cluster from the oc command line."
     else
         success "oc command logged in as ${user}"
     fi
@@ -64,7 +64,7 @@ function check_preqreqs() {
         for ns in "${namespaces[@]}"
         do
             if [[ -z "$(oc get namespace ${ns} --ignore-not-found)" ]]; then
-            error "Namespace ${ns} for Common Service Operator is not found"
+            error "Namespace ${ns} for Common Service Operator is not found."
             fi
         done
     fi
@@ -75,7 +75,7 @@ function check_preqreqs() {
 function switch_to_continous_delivery() {
     STEP=$((STEP + 1 ))
 
-    title "[${STEP}] Switch to Continous Delivery Version ..."
+    title "[${STEP}] Switching to Continous Delivery Version (switching into v3 channel)..."
     msg "-----------------------------------------------------------------------"
 
     local namespaces=("$@")
@@ -94,14 +94,14 @@ function switch_to_continous_delivery() {
         oc patch sub ${cssub} -n ${ns} --type="json" -p '[{"op": "remove", "path":"/spec/startingCSV"}]' 2> /dev/null
 
         in_step=$((in_step + 1))
-        msg "[${in_step}] Switch Channel from stable-v1 to v3 ..."
+        msg "[${in_step}] Switching channel from stable-v1 to v3 ..."
         oc patch sub ${cssub} -n ${ns} --type="json" -p '[{"op": "replace", "path":"/spec/channel", "value":"v3"}]' 2> /dev/null
 
         msg "-----------------------------------------------------------------------"
         msg ""
     done < <(oc get sub --all-namespaces | grep ibm-common-service-operator | awk '{print $1" "$2}')
     
-    success "Update all ibm-common-service-operator subscriptions successfully"
+    success "Updated all ibm-common-service-operator subscriptions successfully."
 }
 
 function msg() {
@@ -137,9 +137,9 @@ function wait_for_pod() {
     local retries=30
     local sleep_time=10
     local total_time_mins=$(( sleep_time * retries / 60))
-    local wait_message="Waiting for pod ${name} in namespace ${namespace} to be running"
-    local success_message="Pod ${name} in namespace ${namespace} is running"
-    local error_message="Timeout after ${total_time_mins} minutes waiting for pod ${name} in namespace ${namespace} to be running"
+    local wait_message="Waiting for pod ${name} in namespace ${namespace} to be running ..."
+    local success_message="Pod ${name} in namespace ${namespace} is running."
+    local error_message="Timeout after ${total_time_mins} minutes waiting for pod ${name} in namespace ${namespace} to be running."
  
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
