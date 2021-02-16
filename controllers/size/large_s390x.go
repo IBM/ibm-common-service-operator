@@ -364,7 +364,7 @@ const Large = `
             memory: 128Mi
           limits:
             cpu: 50m
-            memory: 200Mi
+            memory: 300Mi
 - name: ibm-monitoring-exporters-operator
   spec:
     exporter:
@@ -450,7 +450,7 @@ const Large = `
             memory: 50Mi
           limits:
             cpu: 75m
-            memory: 50Mi
+            memory: 100Mi
         resource:
           requests:
             cpu: 660m
