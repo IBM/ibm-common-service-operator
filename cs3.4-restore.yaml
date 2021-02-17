@@ -25,7 +25,7 @@ spec:
         - name: CS_NAMESPACE
           value: ibm-common-services
         - name: CATALOG_IMAGE
-          value: docker.io/ibmcom/ibm-common-service-catalog:latest
+          value: docker.io/ibmcom/ibm-common-service-catalog:3.4
       volumes:
       - name: backupdata
         persistentVolumeClaim:
