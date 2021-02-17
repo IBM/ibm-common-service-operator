@@ -315,18 +315,18 @@ func (b *Bootstrap) createOrUpdateResource(annotations map[string]string, resNam
 	return nil
 }
 
-func (b *Bootstrap) createOrUpdateResources(annotations map[string]string, resNames []string) error {
-	for _, res := range resNames {
-		if r, ok := annotations[res]; ok {
-			if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(r, b.MasterNamespace))); err != nil {
-				return err
-			}
-		} else {
-			klog.Warningf("no resource %s found in annotations", res)
-		}
-	}
-	return nil
-}
+// func (b *Bootstrap) createOrUpdateResources(annotations map[string]string, resNames []string) error {
+// 	for _, res := range resNames {
+// 		if r, ok := annotations[res]; ok {
+// 			if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(r, b.MasterNamespace))); err != nil {
+// 				return err
+// 			}
+// 		} else {
+// 			klog.Warningf("no resource %s found in annotations", res)
+// 		}
+// 	}
+// 	return nil
+// }
 
 func (b *Bootstrap) createOrUpdateFromYaml(yamlContent []byte) error {
 	objects, err := util.YamlToObjects(yamlContent)
