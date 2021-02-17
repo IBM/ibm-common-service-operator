@@ -19,6 +19,8 @@ package bootstrap
 import (
 	"context"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
 
 	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
@@ -27,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilwait "k8s.io/apimachinery/pkg/util/wait"
 	discovery "k8s.io/client-go/discovery"
 	"k8s.io/client-go/rest"
@@ -43,7 +46,12 @@ var (
 	CsSubResource             = "csOperatorSubscription"
 	OdlmNamespacedSubResource = "odlmNamespacedSubscription"
 	OdlmClusterSubResource    = "odlmClusterSubscription"
-	OdlmCrResources           = []string{"csOperandRegistry", "csOperandConfig"}
+	RegistryCrResources       = "csOperandRegistry"
+	ConfigCrResources         = "csOperandConfig"
+	CSOperators               = map[string]string{
+		"operand-deployment-lifecycle-manager-app": "1.5.0",
+		"ibm-cert-manager-operator":                "3.9.0",
+	}
 )
 
 var ctx = context.Background()
@@ -212,7 +220,15 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 		return err
 	}
 
-	if err := b.createOrUpdateResources(annotations, OdlmCrResources); err != nil {
+	if err := b.createOrUpdateResource(annotations, RegistryCrResources); err != nil {
+		return err
+	}
+
+	if err := b.waitALLOperatorReady(b.MasterNamespace); err != nil {
+		return err
+	}
+
+	if err := b.createOrUpdateResource(annotations, ConfigCrResources); err != nil {
 		return err
 	}
 
@@ -466,7 +482,7 @@ func (b *Bootstrap) deleteSubscription(name, namespace string) error {
 func (b *Bootstrap) waitOperatorReady(name, namespace string) error {
 	time.Sleep(time.Second * 5)
 	if err := utilwait.PollImmediate(time.Second*10, time.Minute*10, func() (done bool, err error) {
-		klog.Info("Waiting for Operator is ready...")
+		klog.Infof("Waiting for Operator %s is ready...", name)
 		key := types.NamespacedName{Name: name, Namespace: namespace}
 		sub := &olmv1alpha1.Subscription{}
 		if err := b.Reader.Get(context.TODO(), key, sub); err != nil {
@@ -476,6 +492,24 @@ func (b *Bootstrap) waitOperatorReady(name, namespace string) error {
 				klog.Errorf("Failed to get subscription %s/%s", namespace, name)
 			}
 			return false, client.IgnoreNotFound(err)
+		}
+
+		if version, ok := CSOperators[sub.Name]; ok {
+			if sub.Spec.Channel != "v3" {
+				return false, nil
+			}
+			csvVersion := strings.Split(sub.Status.InstalledCSV, ".v")[1]
+			csvVersionSlice := strings.Split(csvVersion, ".")
+			VersionSlice := strings.Split(version, ".")
+			for index := range csvVersionSlice {
+				if csvVersionSlice[index] > VersionSlice[index] {
+					break
+				} else if csvVersionSlice[index] == VersionSlice[index] {
+					continue
+				} else {
+					return false, nil
+				}
+			}
 		}
 
 		if sub.Status.InstalledCSV != sub.Status.CurrentCSV {
@@ -497,13 +531,53 @@ func (b *Bootstrap) waitOperatorReady(name, namespace string) error {
 				klog.Errorf("Failed to get Cluster Service Version: %v", err)
 				return false, err
 			}
-			if csv.Status.Phase == olmv1alpha1.CSVPhaseSucceeded {
-				return true, nil
+			if csv.Status.Phase != olmv1alpha1.CSVPhaseSucceeded {
+				return false, nil
 			}
+			if csv.Status.Reason != olmv1alpha1.CSVReasonInstallSuccessful {
+				return false, nil
+			}
+			klog.Infof("Cluster Service Version %s/%s is ready", csv.Namespace, csv.Name)
+			return true, nil
 		}
 		return false, nil
 	}); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (b *Bootstrap) waitALLOperatorReady(namespace string) error {
+	subList := &olmv1alpha1.SubscriptionList{}
+
+	if err := b.Reader.List(context.TODO(), subList, &client.ListOptions{Namespace: namespace}); err != nil {
+		return err
+	}
+
+	var (
+		errs []error
+		mu   sync.Mutex
+		wg   sync.WaitGroup
+	)
+
+	for _, sub := range subList.Items {
+		var (
+			// Copy variables into iteration scope
+			name = sub.Name
+			ns   = sub.Namespace
+		)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := b.waitOperatorReady(name, ns); err != nil {
+				mu.Lock()
+				defer mu.Unlock()
+				errs = append(errs, err)
+			}
+		}()
+	}
+	wg.Wait()
+
+	return utilerrors.NewAggregate(errs)
+
 }
