@@ -559,7 +559,13 @@ spec:
           resources:
           - '*'
           verbs:
-          - '*'
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
         serviceAccountName: ibm-common-service-operator
     strategy: deployment
   installModes:
