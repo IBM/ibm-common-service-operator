@@ -302,7 +302,7 @@ metadata:
           env:
           - name: INSTALL_SCOPE
             value: namespaced
-    olm.skipRange: '>=3.3.0 <3.7.0'
+    olm.skipRange: '>=3.3.0 <3.7.1'
     operators.operatorframework.io/builder: operator-sdk-v1.2.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
     repository: https://github.com/IBM/ibm-common-service-operator
@@ -312,7 +312,7 @@ metadata:
     operatorframework.io/arch.ppc64le: supported
     operatorframework.io/arch.s390x: supported
     operatorframework.io/os.linux: supported
-  name: ibm-common-service-operator.v3.7.0
+  name: ibm-common-service-operator.v3.7.1
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -355,7 +355,7 @@ spec:
 
     ## Operator versions
 
-     - 3.7.0
+     - 3.7.1
 
     ## Prerequisites
 
@@ -589,4 +589,5 @@ spec:
   maturity: alpha
   provider:
     name: IBM
-  version: 3.7.0
+  replaces: ibm-common-service-operator.v3.7.0
+  version: 3.7.1
