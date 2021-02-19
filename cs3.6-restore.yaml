@@ -1,0 +1,38 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cs34-restore
+  namespace: kube-system
+spec:
+  template:
+    spec:
+      containers:
+      - name: cs34-restore
+        image: quay.io/opencloudio/ibm-cs-upgrade-to3.4:v0.8
+        imagePullPolicy: Always
+        command: ["bash", "-c", "cd /scripts/post-install ; ./restore.3.4.sh"]
+        volumeMounts:
+        - mountPath: "/scripts/backupdata"
+          name: backupdata
+        env:
+        - name: SUBSCRIPTION_CHANNEL
+          value: stable-v1
+        - name: NOLOGRESTORE
+          value: ""
+        - name: MQ_NAMESPACE
+          value: ""
+        - name: CS_NAMESPACE
+          value: ibm-common-services
+        - name: CATALOG_IMAGE
+          value: docker.io/ibmcom/ibm-common-service-catalog:3.6
+      volumes:
+      - name: backupdata
+        persistentVolumeClaim:
+          claimName: cs-backupdata
+      restartPolicy: Never
+      serviceAccountName: default
+      securityContext:
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
