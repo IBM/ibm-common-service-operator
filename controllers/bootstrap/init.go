@@ -220,6 +220,7 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 		return err
 	}
 
+	klog.Info("Installing/Updating OperandRegistry")
 	if err := b.createOrUpdateResource(annotations, RegistryCrResources); err != nil {
 		return err
 	}
@@ -228,6 +229,7 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 		return err
 	}
 
+	klog.Info("Installing/Updating OperandConfig")
 	if err := b.createOrUpdateResource(annotations, ConfigCrResources); err != nil {
 		return err
 	}
