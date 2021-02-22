@@ -500,7 +500,14 @@ func (b *Bootstrap) waitOperatorReady(name, namespace string) error {
 			if sub.Spec.Channel != "v3" {
 				return false, nil
 			}
-			csvVersion := strings.Split(sub.Status.InstalledCSV, ".v")[1]
+			if sub.Status.InstalledCSV == "" {
+				return false, nil
+			}
+			csvList := strings.Split(sub.Status.InstalledCSV, ".v")
+			if len(csvList) != 2 {
+				return false, nil
+			}
+			csvVersion := csvList[1]
 			csvVersionSlice := strings.Split(csvVersion, ".")
 			VersionSlice := strings.Split(version, ".")
 			for index := range csvVersionSlice {
