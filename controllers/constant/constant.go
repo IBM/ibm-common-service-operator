@@ -89,11 +89,23 @@ metadata:
   name: ibm-common-services-cluster-admin
 rules:
 - apiGroups:
-  - "*"
+- create
+- delete
+- get
+- list
+- patch
+- update
+- watch
   resources:
   - "*"
   verbs:
-  - "*"
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
