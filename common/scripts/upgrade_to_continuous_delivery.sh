@@ -172,14 +172,13 @@ function switch_to_continous_delivery() {
 
     local namespaces=("$@")
     
-    msg ${get_sub}
     while read -r ns cssub; do
         if [[ "$namespaces" != "" ]] && [[ ! " ${namespaces[@]} " =~ " ${ns} " ]]; then
             continue
         fi
 
         msg "Updating subscription ${cssub} in namespace ${ns} ..."
-        msg ""
+        msg "-----------------------------------------------------------------------"
         
         in_step=1
         msg "[${in_step}] Removing the startingCSV ..."
@@ -189,7 +188,6 @@ function switch_to_continous_delivery() {
         msg "[${in_step}] Switching channel from stable-v1 to v3 ..."
         oc patch sub ${cssub} -n ${ns} --type="json" -p '[{"op": "replace", "path":"/spec/channel", "value":"v3"}]' 2> /dev/null
 
-        msg "-----------------------------------------------------------------------"
         msg ""
     done < <(oc get sub --all-namespaces | grep ibm-common-service-operator | awk '{print $1" "$2}')
     
