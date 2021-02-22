@@ -25,7 +25,7 @@ BASE_DIR=$(dirname "$0")
 
 function main() {
     title "Upgrade Common Service Operator to continous delivery channel."
-    msg ""
+    msg "-----------------------------------------------------------------------"
     
     if [[ $# -eq 0 ]]; then
         CS_NAMESPACES=""
@@ -70,6 +70,98 @@ function check_preqreqs() {
     fi
 
     wait_for_pod "openshift-marketplace" "opencloud-operators"
+    wait_for_eus
+}
+
+function wait_for_eus() {
+    STEP=$((STEP + 1 ))
+
+    title "[${STEP}] Upgrading Common Service to latest EUS version..."
+    msg "-----------------------------------------------------------------------"
+    # declare -A csmaps=( ["operand-deployment-lifecycle-manager-app"]="1.4.2"
+    #                     ["ibm-common-service-operator.v3.7.1"]="3.6.3"
+    #                     ["ibm-cert-manager-operator"]="3.8.1"
+    #                     ["ibm-mongodb-operator"]="1.2.1"
+    #                     ["ibm-iam-operator"]="3.8.2"
+    #                     ["ibm-monitoring-exporters-operator"]="1.9.5"
+    #                     ["ibm-monitoring-prometheus-operator-ext"]="1.9.5"
+    #                     ["ibm-monitoring-grafana-operator"]="1.10.4"
+    #                     ["ibm-healthcheck-operator"]="3.8.1"
+    #                     ["ibm-management-ingress-operator"]="1.4.3"
+    #                     ["ibm-licensing-operator"]="1.3.1"
+    #                     ["ibm-metering-operator"]="3.8.1"
+    #                     ["ibm-commonui-operator"]="1.4.1"
+    #                     ["ibm-elastic-stack-operator"]="3.2.5"
+    #                     ["ibm-ingress-nginx-operator"]="1.4.1"
+    #                     ["ibm-auditlogging-operator"]="3.8.2"
+    #                     ["ibm-platform-api-operator"]="3.8.2"
+    #                     ["ibm-namespace-scope-operator"]="1.0.1"
+    #                     )
+    declare -A csmaps=( ["operand-deployment-lifecycle-manager"]="1.4.0"
+                        ["ibm-common-service-operator"]="3.6.0"
+                        ["ibm-cert-manager-operator"]="3.8.0"
+                        ["ibm-mongodb-operator"]="1.2.0"
+                        ["ibm-iam-operator"]="3.8.0"
+                        ["ibm-monitoring-exporters-operator"]="1.9.0"
+                        ["ibm-monitoring-prometheus-operator-ext"]="1.9.0"
+                        ["ibm-monitoring-grafana-operator"]="1.10.0"
+                        ["ibm-healthcheck-operator"]="3.8.0"
+                        ["ibm-management-ingress-operator"]="1.4.0"
+                        ["ibm-licensing-operator"]="1.3.0"
+                        ["ibm-metering-operator"]="3.8.0"
+                        ["ibm-commonui-operator"]="1.4.0"
+                        ["ibm-elastic-stack-operator"]="3.2.0"
+                        ["ibm-ingress-nginx-operator"]="1.4.0"
+                        ["ibm-auditlogging-operator"]="3.8.0"
+                        ["ibm-platform-api-operator"]="3.8.0"
+                        ["ibm-namespace-scope-operator"]="1.0.0"
+                        )
+
+    while true; do
+        succeed=true
+        while read -r csv version phase; do
+            if [[ ${csv} == "NAME" ]]; then
+                continue
+            fi
+            csv=${csv%.v*}
+
+            if [[ "${phase}" == "Succeeded" ]]; then
+                # compare version with EUS
+                if [[ -v csmaps["${csv}"] ]]; then
+                    IFS='.' read -ra cur_version <<< "${version}"
+                    IFS='.' read -ra eus_version <<< "${csmaps["${csv}"]}"
+                    for index in ${!cur_version[@]}; do
+                        if [[ ${cur_version[index]} > ${eus_version[index]} ]]; then
+                            break
+                        elif [[ ${cur_version[index]} == ${eus_version[index]} ]]; then
+                            continue
+                        else
+                            succeed=false
+                            break
+                        fi
+                    done
+                    # current operator has smaller version than eus version
+                    if [[ "$succeed" != "true" ]]; then
+                        msg "${csv} v${version} is not EUS version yet." 
+                        break
+                    fi
+                    msg "${csv} v${version} is ${phase}."
+                fi
+            else
+                # current operator did not install successfully
+                succeed=false
+                msg "${csv} v${version} is ${phase}."   
+                break
+            fi
+        done < <(oc get csv -n ibm-common-services -o=custom-columns=NAME:.metadata.name,Version:.spec.version,PHASE:.status.phase | awk '{print $1" "$2" "$3}')
+
+        if [[ "$succeed" == "true" ]]; then
+            break
+        fi
+        info "Waiting Common Service upgrading to latest EUS version..."
+        sleep 60
+    done
+    success "Common Service has successfully upgraded to latest EUS version."
 }
 
 function switch_to_continous_delivery() {
@@ -123,11 +215,6 @@ function title() {
 
 function info() {
     msg "[INFO] ${1}"
-}
-
-function error() {
-    msg "\33[31m[✘] ${1}\33[0m"
-    exit 1
 }
 
 function wait_for_pod() {
