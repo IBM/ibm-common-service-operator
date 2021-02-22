@@ -14,7 +14,7 @@ spec:
       labels:
         name: ibm-common-service-operator
       annotations:
-        csOperandConfig: |-
+        csV3OperandConfig: |-
           apiVersion: operator.ibm.com/v1alpha1
           kind: OperandConfig
           metadata:
@@ -97,7 +97,7 @@ spec:
                 elasticStack: {}
                 operandBindInfo: {}
                 operandRequest: {}
-        csOperandRegistry: |-
+        csV3OperandRegistry: |-
           apiVersion: operator.ibm.com/v1alpha1
           kind: OperandRegistry
           metadata:

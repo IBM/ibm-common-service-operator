@@ -46,8 +46,8 @@ var (
 	CsSubResource             = "csOperatorSubscription"
 	OdlmNamespacedSubResource = "odlmNamespacedSubscription"
 	OdlmClusterSubResource    = "odlmClusterSubscription"
-	RegistryCrResources       = "csOperandRegistry"
-	ConfigCrResources         = "csOperandConfig"
+	RegistryCrResources       = "csV3OperandRegistry"
+	ConfigCrResources         = "csV3OperandConfig"
 	CSOperators               = map[string]string{
 		"operand-deployment-lifecycle-manager-app": "1.5.0",
 		"ibm-cert-manager-operator":                "3.9.0",
