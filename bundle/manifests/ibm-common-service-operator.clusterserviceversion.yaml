@@ -23,7 +23,7 @@ metadata:
     capabilities: Seamless Upgrades
     containerImage: quay.io/opencloudio/common-service-operator:latest
     createdAt: "2020-10-19T21:38:33Z"
-    csOperandConfig: |-
+    csV3OperandConfig: |-
       apiVersion: operator.ibm.com/v1alpha1
       kind: OperandConfig
       metadata:
@@ -99,7 +99,7 @@ metadata:
           spec:
             grafana: {}
             operandRequest: {}
-    csOperandRegistry: |-
+    csV3OperandRegistry: |-
       apiVersion: operator.ibm.com/v1alpha1
       kind: OperandRegistry
       metadata:
