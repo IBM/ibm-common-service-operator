@@ -73,49 +73,35 @@ function check_preqreqs() {
     wait_for_eus
 }
 
+function hash_operator() {
+    case $1 in
+        "operand-deployment-lifecycle-manager") eval "$2='1.4.0'";;
+        "ibm-common-service-operator") eval "$2='3.6.0'";;
+        "ibm-cert-manager-operator") eval "$2='3.8.0'";;
+        "ibm-mongodb-operator") eval "$2='1.2.0'";;
+        "ibm-iam-operator") eval "$2='3.8.0'";;
+        "ibm-monitoring-exporters-operator") eval "$2='1.9.0'";;
+        "ibm-monitoring-prometheus-operator-ext") eval "$2='1.9.0'";;
+        "ibm-monitoring-grafana-operator") eval "$2='1.10.0'";;
+        "ibm-healthcheck-operator") eval "$2='3.8.0'";;
+        "ibm-management-ingress-operator") eval "$2='1.4.0'";;
+        "ibm-licensing-operator") eval "$2='1.3.0'";;
+        "ibm-metering-operator") eval "$2='3.8.0'";;
+        "ibm-commonui-operator") eval "$2='1.4.0'";;
+        "ibm-elastic-stack-operator") eval "$2='3.2.0'";;
+        "ibm-ingress-nginx-operator") eval "$2='1.4.0'";;
+        "ibm-auditlogging-operator") eval "$2='3.8.0'";;
+        "ibm-platform-api-operator") eval "$2='3.8.0'";;
+        "ibm-namespace-scope-operator") eval "$2='1.0.0'";;
+        *)  eval "$2='0.0.0'";;
+    esac
+}
+
 function wait_for_eus() {
     STEP=$((STEP + 1 ))
 
     title "[${STEP}] Upgrading Common Service to latest EUS version..."
     msg "-----------------------------------------------------------------------"
-    # declare -A csmaps=( ["operand-deployment-lifecycle-manager-app"]="1.4.2"
-    #                     ["ibm-common-service-operator.v3.7.1"]="3.6.3"
-    #                     ["ibm-cert-manager-operator"]="3.8.1"
-    #                     ["ibm-mongodb-operator"]="1.2.1"
-    #                     ["ibm-iam-operator"]="3.8.2"
-    #                     ["ibm-monitoring-exporters-operator"]="1.9.5"
-    #                     ["ibm-monitoring-prometheus-operator-ext"]="1.9.5"
-    #                     ["ibm-monitoring-grafana-operator"]="1.10.4"
-    #                     ["ibm-healthcheck-operator"]="3.8.1"
-    #                     ["ibm-management-ingress-operator"]="1.4.3"
-    #                     ["ibm-licensing-operator"]="1.3.1"
-    #                     ["ibm-metering-operator"]="3.8.1"
-    #                     ["ibm-commonui-operator"]="1.4.1"
-    #                     ["ibm-elastic-stack-operator"]="3.2.5"
-    #                     ["ibm-ingress-nginx-operator"]="1.4.1"
-    #                     ["ibm-auditlogging-operator"]="3.8.2"
-    #                     ["ibm-platform-api-operator"]="3.8.2"
-    #                     ["ibm-namespace-scope-operator"]="1.0.1"
-    #                     )
-    declare -A csmaps=( ["operand-deployment-lifecycle-manager"]="1.4.0"
-                        ["ibm-common-service-operator"]="3.6.0"
-                        ["ibm-cert-manager-operator"]="3.8.0"
-                        ["ibm-mongodb-operator"]="1.2.0"
-                        ["ibm-iam-operator"]="3.8.0"
-                        ["ibm-monitoring-exporters-operator"]="1.9.0"
-                        ["ibm-monitoring-prometheus-operator-ext"]="1.9.0"
-                        ["ibm-monitoring-grafana-operator"]="1.10.0"
-                        ["ibm-healthcheck-operator"]="3.8.0"
-                        ["ibm-management-ingress-operator"]="1.4.0"
-                        ["ibm-licensing-operator"]="1.3.0"
-                        ["ibm-metering-operator"]="3.8.0"
-                        ["ibm-commonui-operator"]="1.4.0"
-                        ["ibm-elastic-stack-operator"]="3.2.0"
-                        ["ibm-ingress-nginx-operator"]="1.4.0"
-                        ["ibm-auditlogging-operator"]="3.8.0"
-                        ["ibm-platform-api-operator"]="3.8.0"
-                        ["ibm-namespace-scope-operator"]="1.0.0"
-                        )
 
     while true; do
         succeed=true
@@ -127,9 +113,11 @@ function wait_for_eus() {
 
             if [[ "${phase}" == "Succeeded" ]]; then
                 # compare version with EUS
-                if [[ -v csmaps["${csv}"] ]]; then
+                hash_version=""
+                hash_operator ${csv} hash_version
+                if [[ ${hash_version} != "0.0.0" ]]; then
                     IFS='.' read -ra cur_version <<< "${version}"
-                    IFS='.' read -ra eus_version <<< "${csmaps["${csv}"]}"
+                    IFS='.' read -ra eus_version <<< "${hash_version}"
                     for index in ${!cur_version[@]}; do
                         if [[ ${cur_version[index]} > ${eus_version[index]} ]]; then
                             break
