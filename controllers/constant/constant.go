@@ -84,6 +84,8 @@ const ClusterAdminRBAC = `
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
+  annotations:
+    version: "1"
   name: ibm-common-services-cluster-admin
 rules:
 - apiGroups:
@@ -91,7 +93,13 @@ rules:
   resources:
   - "*"
   verbs:
-  - "*"
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
