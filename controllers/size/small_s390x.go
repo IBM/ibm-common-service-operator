@@ -383,7 +383,7 @@ const Small = `
             memory: 65Mi
           limits:
             cpu: 150m
-            memory: 75Mi
+            memory: 100Mi
       dashboardConfig:
         resources:
           requests:
@@ -391,7 +391,7 @@ const Small = `
             memory: 50Mi
           limits:
             cpu: 20m
-            memory: 60Mi
+            memory: 80Mi
       routerConfig:
         resources:
           requests:
