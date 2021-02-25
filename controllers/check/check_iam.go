@@ -48,7 +48,7 @@ func IamStatus(mgr manager.Manager) {
 
 	for {
 		if !getIamSubscription(r) {
-			if err := createUpdateConfigmap(r, c, "NotReady"); err != nil {
+			if err := updateConfigmap(r, c, "NotReady"); err != nil {
 				klog.Errorf("Create or update configmap failed: %v", err)
 			}
 			time.Sleep(2 * time.Minute)
@@ -140,6 +140,27 @@ func createUpdateConfigmap(r client.Reader, c client.Client, status string) erro
 			}
 			return nil
 		}
+		return err
+	}
+	if cm.Data["iamstatus"] != status {
+		klog.Infof("IAM status is %s", status)
+		cm.Data["iamstatus"] = status
+		if err = c.Update(context.TODO(), cm); err != nil {
+			klog.Errorf("Failed to update ConfigMap %s: %v", cmName, err)
+			return err
+		}
+	}
+	return nil
+}
+
+func updateConfigmap(r client.Reader, c client.Client, status string) error {
+	cm := &corev1.ConfigMap{}
+	cmName := "ibm-common-services-status"
+	cmNs := "kube-public"
+	err := r.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: cmNs}, cm)
+	if errors.IsNotFound(err) {
+		return nil
+	} else if err != nil {
 		return err
 	}
 	if cm.Data["iamstatus"] != status {
