@@ -131,7 +131,6 @@ func (r *CommonServiceReconciler) checkSaas() (enable bool, err error) {
 		return false, nil
 	}
 	if v != "true" {
-		klog.Info(v)
 		return false, nil
 	}
 	return true, nil
