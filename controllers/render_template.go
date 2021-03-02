@@ -17,11 +17,17 @@
 package controllers
 
 import (
+	"context"
 	"strings"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 
+	"github.com/IBM/ibm-common-service-operator/controllers/constant"
+	iam "github.com/IBM/ibm-common-service-operator/controllers/iam"
 	"github.com/IBM/ibm-common-service-operator/controllers/size"
 	storageclass "github.com/IBM/ibm-common-service-operator/controllers/storageClass"
 )
@@ -29,7 +35,20 @@ import (
 func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured) ([]interface{}, error) {
 	var newConfigs []interface{}
 	var err error
-
+	// Update IAM in OperandConfig
+	saasEnable, err := r.checkSaas()
+	if err != nil {
+		return nil, err
+	}
+	if saasEnable {
+		klog.Info("IAM Saas configuration")
+		iamConfig, err := convertStringToSlice(iam.Template)
+		if err != nil {
+			return nil, err
+		}
+		newConfigs = append(newConfigs, iamConfig...)
+	}
+	// Update storageclass in OperandConfig
 	if cs.Object["spec"].(map[string]interface{})["storageClass"] != nil {
 		klog.Info("Applying storageClass configuration")
 		storageConfig, err := convertStringToSlice(strings.ReplaceAll(storageclass.Template, "placeholder", cs.Object["spec"].(map[string]interface{})["storageClass"].(string)))
@@ -95,4 +114,25 @@ func applySizeTemplate(cs *unstructured.Unstructured, sizeTemplate string) ([]in
 		}
 	}
 	return sizes, nil
+}
+
+func (r *CommonServiceReconciler) checkSaas() (enable bool, err error) {
+	cmName := constant.SaasConfigMap
+	cmNs := "kube-public"
+	saasConfigmap := &corev1.ConfigMap{}
+	err = r.Reader.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: cmNs}, saasConfigmap)
+	if errors.IsNotFound(err) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+	v, ok := saasConfigmap.Data["ibm_cloud_saas"]
+	if !ok {
+		return false, nil
+	}
+	if v != "true" {
+		klog.Info(v)
+		return false, nil
+	}
+	return true, nil
 }

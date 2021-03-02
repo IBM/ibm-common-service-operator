@@ -32,7 +32,8 @@ const (
 	ClusterOperatorNamespace = "openshift-operators"
 	// CS map configMap
 	CsMapConfigMap = "common-service-maps"
-
+	// CS Saas configMap
+	SaasConfigMap = "saas-config"
 	// Namespace Scope Operator resource name
 	NsSubResourceName = "nsSubscription"
 	// Namespace Scope Operator Restricted resource name
