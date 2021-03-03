@@ -50,7 +50,7 @@ const Medium = `
             cpu: 20m
             memory: 60Mi
           requests:
-            cpu: 20m
+            cpu: 30m
             memory: 30Mi
 - name: ibm-mongodb-operator
   spec:
@@ -98,7 +98,7 @@ const Medium = `
             memory: 1260Mi
           requests:
             cpu: 260m
-            memory: 210Mi
+            memory: 240Mi
       identityProvider:
         resources:
           limits:
@@ -106,7 +106,7 @@ const Medium = `
             memory: 920Mi
           requests:
             cpu: 570m
-            memory: 210Mi
+            memory: 250Mi
     oidcclientwatcher:
       replicas: 1
       resources:
@@ -115,7 +115,7 @@ const Medium = `
           memory: 325Mi
         requests:
           cpu: 20m
-          memory: 30Mi
+          memory: 40Mi
     pap:
       auditService:
         resources:
@@ -193,7 +193,7 @@ const Medium = `
       resources:
         requests:
           cpu: 70m
-          memory: 60Mi
+          memory: 70Mi
         limits:
           cpu: 1000m
           memory: 760Mi
@@ -380,7 +380,7 @@ const Medium = `
         resources:
           requests:
             cpu: 20m
-            memory: 40Mi
+            memory: 60Mi
           limits:
             cpu: 150m
             memory: 230Mi
@@ -422,7 +422,7 @@ const Medium = `
         resource:
           requests:
             cpu: 20m
-            memory: 20Mi
+            memory: 30Mi
           limits:
             cpu: 30m
             memory: 50Mi

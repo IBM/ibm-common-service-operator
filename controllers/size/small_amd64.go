@@ -27,7 +27,7 @@ const Small = `
             memory: 520Mi
           requests:
             cpu: 20m
-            memory: 170Mi
+            memory: 410Mi
       certManagerController:
         resources:
           limits:
@@ -35,7 +35,7 @@ const Small = `
             memory: 530Mi
           requests:
             cpu: 20m
-            memory: 140Mi
+            memory: 230Mi
       certManagerWebhook:
         resources:
           limits:
@@ -50,8 +50,8 @@ const Small = `
             cpu: 20m
             memory: 60Mi
           requests:
-            cpu: 20m
-            memory: 20Mi
+            cpu: 30m
+            memory: 30Mi
 - name: ibm-mongodb-operator
   spec:
     mongoDB:
@@ -81,8 +81,8 @@ const Small = `
             cpu: 1000m
             memory: 1090Mi
           requests:
-            cpu: 400m
-            memory: 520Mi
+            cpu: 600m
+            memory: 650Mi
       clientRegistration:
         resources:
           limits:
@@ -98,7 +98,7 @@ const Small = `
             memory: 410Mi
           requests:
             cpu: 260m
-            memory: 210Mi
+            memory: 240Mi
       identityProvider:
         resources:
           limits:
@@ -106,7 +106,7 @@ const Small = `
             memory: 420Mi
           requests:
             cpu: 570m
-            memory: 210Mi
+            memory: 250Mi
     oidcclientwatcher:
       replicas: 1
       resources:
@@ -115,7 +115,7 @@ const Small = `
           memory: 256Mi
         requests:
           cpu: 20m
-          memory: 20Mi
+          memory: 34Mi
     pap:
       auditService:
         resources:
@@ -142,7 +142,7 @@ const Small = `
           memory: 60Mi
         requests:
           cpu: 20m
-          memory: 20Mi
+          memory: 30Mi
     policydecision:
       auditService:
         resources:
@@ -167,7 +167,7 @@ const Small = `
           memory: 145Mi
         requests:
           cpu: 20m
-          memory: 20Mi
+          memory: 40Mi
       replicas: 1
     securityonboarding:
       replicas: 1
@@ -193,7 +193,7 @@ const Small = `
       resources:
         requests:
           cpu: 70m
-          memory: 60Mi
+          memory: 70Mi
         limits:
           cpu: 1000m
           memory: 170Mi
@@ -291,7 +291,7 @@ const Small = `
             memory: 50Mi
           requests:
             cpu: 20m
-            memory: 20Mi
+            memory: 30Mi
       replicas: 1
 - name: ibm-healthcheck-operator
   spec:
@@ -309,7 +309,7 @@ const Small = `
         replicas: 1
         resources:
           requests:
-            memory: 50Mi
+            memory: 100Mi
             cpu: 20m
           limits:
             memory: 100Mi
@@ -347,7 +347,7 @@ const Small = `
         resource:
           requests:
             cpu: 20m
-            memory: 20Mi
+            memory: 30Mi
           limits:
             cpu: 20m
             memory: 40Mi
@@ -388,14 +388,14 @@ const Small = `
         resources:
           requests:
             cpu: 20m
-            memory: 20Mi
+            memory: 30Mi
           limits:
             cpu: 20m
             memory: 80Mi
       routerConfig:
         resources:
           requests:
-            cpu: 10m
+            cpu: 20m
             memory: 20Mi
           limits:
             cpu: 50m
@@ -422,7 +422,7 @@ const Small = `
         resource:
           requests:
             cpu: 20m
-            memory: 20Mi
+            memory: 30Mi
           limits:
             cpu: 30m
             memory: 50Mi
