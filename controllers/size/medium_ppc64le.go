@@ -391,7 +391,7 @@ const Medium = `
             memory: 419Mi
           requests:
             cpu: 25m
-            memory: 65Mi
+            memory: 87Mi
       routerConfig:
         resources:
           limits:

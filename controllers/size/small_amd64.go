@@ -47,7 +47,7 @@ const Small = `
       configMapWatcher:
         resources:
           limits:
-            cpu: 20m
+            cpu: 30m
             memory: 60Mi
           requests:
             cpu: 30m

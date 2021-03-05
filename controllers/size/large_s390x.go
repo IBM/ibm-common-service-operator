@@ -23,11 +23,11 @@ const Large = `
       certManagerCAInjector:
         resources:
           limits:
-            cpu: 35m
+            cpu: 100m
             memory: 770Mi
           requests:
-            cpu: 30m
-            memory: 330Mi
+            cpu: 40m
+            memory: 581Mi
       certManagerController:
         resources:
           limits:
@@ -35,7 +35,7 @@ const Large = `
             memory: 782Mi
           requests:
             cpu: 70m
-            memory: 400Mi
+            memory: 673Mi
       certManagerWebhook:
         resources:
           limits:
@@ -48,10 +48,10 @@ const Large = `
         resources:
           limits:
             cpu: 10m
-            memory: 60Mi
+            memory: 150Mi
           requests:
             cpu: 10m
-            memory: 60Mi
+            memory: 80Mi
 - name: ibm-mongodb-operator
   spec:
     mongoDB:
@@ -72,7 +72,7 @@ const Large = `
             cpu: 1000m
             memory: 50Mi
           requests:
-            cpu: 50m
+            cpu: 75m
             memory: 50Mi
       authService:
         resources:
@@ -115,7 +115,7 @@ const Large = `
           memory: 325Mi
         requests:
           cpu: 30m
-          memory: 50Mi
+          memory: 67Mi
     pap:
       auditService:
         resources:
@@ -123,7 +123,7 @@ const Large = `
             cpu: 1000m
             memory: 50Mi
           requests:
-            cpu: 50m
+            cpu: 75m
             memory: 50Mi
       papService:
         resources:
@@ -142,7 +142,7 @@ const Large = `
           memory: 75Mi
         requests:
           cpu: 20m
-          memory: 50Mi
+          memory: 75Mi
     policydecision:
       auditService:
         resources:
@@ -150,7 +150,7 @@ const Large = `
             cpu: 1000m
             memory: 60Mi
           requests:
-            cpu: 20m
+            cpu: 30m
             memory: 50Mi
       replicas: 3
       resources:
@@ -207,8 +207,8 @@ const Large = `
             cpu: 50m
             memory: 156Mi
           requests:
-            cpu: 20m
-            memory: 64Mi
+            cpu: 30m
+            memory: 116Mi
       ingress:
         replicas: 3
         resources:
@@ -263,8 +263,8 @@ const Large = `
               cpu: 3000m
               memory: 568Mi
             requests:
-              cpu: 300m
-              memory: 230Mi
+              cpu: 362m
+              memory: 345Mi
       replicas: 3
       resources:
         limits:
@@ -272,7 +272,7 @@ const Large = `
           memory: 430Mi
         requests:
           cpu: 300m
-          memory: 342Mi
+          memory: 384Mi
 - name: ibm-platform-api-operator
   spec:
     platformApi:
@@ -288,10 +288,10 @@ const Large = `
         resources:
           limits:
             cpu: 25m
-            memory: 59Mi
+            memory: 100Mi
           requests:
             cpu: 25m
-            memory: 50Mi
+            memory: 67Mi
       replicas: 1
 - name: ibm-healthcheck-operator
   spec:
@@ -304,7 +304,7 @@ const Large = `
             memory: 250Mi
           requests:
             cpu: 27m
-            memory: 125Mi
+            memory: 153Mi
       memcached:
         replicas: 1
         resources:
@@ -332,10 +332,10 @@ const Large = `
         resource:
           limits:
             cpu: 30m
-            memory: 50Mi
+            memory: 100Mi
           requests:
             cpu: 30m
-            memory: 50Mi
+            memory: 75Mi
         routerResource:
           limits:
             cpu: 30m
@@ -365,7 +365,7 @@ const Large = `
             memory: 67Mi
           requests:
             cpu: 5m
-            memory: 50Mi
+            memory: 67Mi
         routerResource:
           limits:
             cpu: 100m
