@@ -302,7 +302,7 @@ metadata:
           env:
           - name: INSTALL_SCOPE
             value: namespaced
-    olm.skipRange: ">=3.5.0 <3.7.1"
+    olm.skipRange: ">=3.3.0 <3.7.1"
     operators.operatorframework.io/builder: operator-sdk-v1.3.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
     repository: https://github.com/IBM/ibm-common-service-operator
@@ -319,7 +319,7 @@ spec:
   customresourcedefinitions:
     owned:
       - description: CommonService is the Schema for the commonservices API
-        displayName: Common Service
+        displayName: CommonService
         kind: CommonService
         name: commonservices.operator.ibm.com
         specDescriptors:

@@ -205,7 +205,7 @@ bundle-manifests:
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle \
 	-q --overwrite --version $(RELEASE_VERSION) $(BUNDLE_METADATA_OPTS)
 	$(OPERATOR_SDK) bundle validate ./bundle
-	yq eval -i '.metadata.annotations."olm.skipRange" = ">=3.5.0 <${RELEASE_VERSION}"' ${CSV_PATH}
+	yq eval -i '.metadata.annotations."olm.skipRange" = ">=3.3.0 <${RELEASE_VERSION}"' ${CSV_PATH}
 	yq eval -i '.spec.replaces = "ibm-common-service-operator.v$(PREVIOUS_VERSION)"' ${CSV_PATH}
 
 generate-all: generate manifests ## Generate bundle manifests, metadata and package manifests
