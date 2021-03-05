@@ -20,6 +20,7 @@ OPERATOR_SDK ?= $(shell which operator-sdk)
 CONTROLLER_GEN ?= $(shell which controller-gen)
 KUSTOMIZE ?= $(shell which kustomize)
 YQ_VERSION=v4.3.1
+KUSTOMIZE_VERSION=v3.8.7
 
 CSV_PATH=bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
 
@@ -99,6 +100,9 @@ include common/Makefile.common.mk
 
 ##@ Development
 
+OS    = $(shell uname -s | tr '[:upper:]' '[:lower:]')
+ARCH  = $(shell uname -m | sed 's/x86_64/amd64/')
+
 yq: ## Install yq, a yaml processor
 ifeq (, $(shell which yq 2>/dev/null))
 	@{ \
@@ -115,6 +119,19 @@ ifeq (, $(shell which yq 2>/dev/null))
 YQ=$(realpath ./bin/yq)
 else
 YQ=$(shell which yq)
+endif
+
+kustomize: ## Install kustomize
+ifeq (, $(shell which kustomize 2>/dev/null))
+	@{ \
+	set -e ;\
+	mkdir -p bin ;\
+	echo "Downloading kustomize ...";\
+	curl -sSLo - https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/$(KUSTOMIZE_VERSION)/kustomize_$(KUSTOMIZE_VERSION)_$(OS)_$(ARCH).tar.gz | tar xzf - -C bin/ ;\
+	}
+KUSTOMIZE=$(realpath ./bin/kustomize)
+else
+KUSTOMIZE=$(shell which kustomize)
 endif
 
 check: lint-all ## Check all files lint error
@@ -201,7 +218,7 @@ manifests: ## Generate manifests e.g. CRD, RBAC etc.
 generate: ## Generate code e.g. API etc.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
-bundle-manifests:
+bundle-manifests: kustomize
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle \
 	-q --overwrite --version $(RELEASE_VERSION) $(BUNDLE_METADATA_OPTS)
 	$(OPERATOR_SDK) bundle validate ./bundle
