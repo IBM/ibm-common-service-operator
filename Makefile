@@ -21,6 +21,8 @@ CONTROLLER_GEN ?= $(shell which controller-gen)
 KUSTOMIZE ?= $(shell which kustomize)
 YQ_VERSION=v4.3.1
 
+CSV_PATH=bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
+
 # Specify whether this repo is build locally or not, default values is '1';
 # If set to 1, then you need to also set 'DOCKER_USERNAME' and 'DOCKER_PASSWORD'
 # environment variables before build the repo.
@@ -31,6 +33,7 @@ VCS_REF ?= $(shell git rev-parse HEAD)
 VERSION ?= $(shell git describe --exact-match 2> /dev/null || \
                 git describe --match=$(git rev-parse --short=8 HEAD) --always --dirty --abbrev=8)
 RELEASE_VERSION ?= $(shell cat ./version/version.go | grep "Version =" | awk '{ print $$3}' | tr -d '"')
+PREVIOUS_VERSION := 3.7.0
 LATEST_VERSION ?= latest
 
 LOCAL_OS := $(shell uname)
@@ -71,8 +74,9 @@ endif
 OPERATOR_IMAGE_NAME ?= common-service-operator
 # Current Operator bundle image name
 BUNDLE_IMAGE_NAME ?= common-service-operator-bundle
-# Current Operator version
-OPERATOR_VERSION ?= 3.7.1
+
+CHANNELS := v3
+DEFAULT_CHANNEL := v3
 
 # Options for 'bundle-build'
 ifneq ($(origin CHANNELS), undefined)
@@ -137,7 +141,7 @@ uninstall: manifests ## Uninstall CRDs from a cluster
 	$(KUSTOMIZE) build config/crd | kubectl delete -f -
 
 deploy: manifests ## Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-	cd config/manager && $(KUSTOMIZE) edit set image quay.io/opencloudio/common-service-operator=$(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME):$(OPERATOR_VERSION)
+	cd config/manager && $(KUSTOMIZE) edit set image quay.io/opencloudio/common-service-operator=$(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME):$(RELEASE_VERSION)
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
 build-dev-image:
@@ -154,12 +158,28 @@ build-bundle-image:
 	docker push $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(VERSION)
 	@mv /tmp/ibm-common-service-operator.clusterserviceversion.yaml bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
 
+run-bundle:
+	$(OPERATOR_SDK) run bundle $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(VERSION)
+	sleep 15
+	$(KUBECTL) get sub ibm-namespace-scope-operator -o custom-columns=":status.installplan.name" --no-headers \
+		| xargs oc patch installplan --type merge --patch '{"spec":{"approved":true}}'
+	$(KUBECTL) get sub operand-deployment-lifecycle-manager-app -o custom-columns=":status.installplan.name" --no-headers \
+		| xargs oc patch installplan --type merge --patch '{"spec":{"approved":true}}'
+
+upgrade-bundle:
+	$(OPERATOR_SDK) run bundle-upgrade $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):dev
+
+cleanup-bundle:
+	$(OPERATOR_SDK) cleanup ibm-common-service-operator
+	oc get sub -o custom-columns=":metadata.name" --no-headers | xargs oc delete sub
+	oc get csv -o custom-columns=":metadata.name" --no-headers | xargs oc delete csv
+
 build-catalog-source:
 	opm -u docker index add --bundles $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(VERSION) --tag $(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME)-catalog:$(VERSION)
 	docker push $(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME)-catalog:$(VERSION)
 
 update-csv-image: # updates operator image in currently deployed Common Service Operator
-	oc patch csv -n ibm-common-services ibm-common-service-operator.v$(OPERATOR_VERSION) --type json -p \
+	oc patch csv -n ibm-common-services ibm-common-service-operator.v$(RELEASE_VERSION) --type json -p \
 		'[{"op": "replace", "path": "/spec/install/spec/deployments/0/spec/template/spec/containers/0/image", "value": "$(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME):dev"}]'
 
 build-catalog: build-bundle-image build-catalog-source
@@ -183,8 +203,10 @@ generate: ## Generate code e.g. API etc.
 
 bundle-manifests:
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle \
-	-q --overwrite --version $(OPERATOR_VERSION) $(BUNDLE_METADATA_OPTS)
+	-q --overwrite --version $(RELEASE_VERSION) $(BUNDLE_METADATA_OPTS)
 	$(OPERATOR_SDK) bundle validate ./bundle
+	yq eval -i '.metadata.annotations."olm.skipRange" = ">=3.5.0 <${RELEASE_VERSION}"' ${CSV_PATH}
+	yq eval -i '.spec.replaces = "ibm-common-service-operator.v$(PREVIOUS_VERSION)"' ${CSV_PATH}
 
 generate-all: generate manifests ## Generate bundle manifests, metadata and package manifests
 	$(OPERATOR_SDK) generate kustomize manifests -q
