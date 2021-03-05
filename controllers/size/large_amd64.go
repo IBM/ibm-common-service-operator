@@ -50,7 +50,7 @@ const Large = `
             cpu: 20m
             memory: 60Mi
           requests:
-            cpu: 20m
+            cpu: 30m
             memory: 30Mi
 - name: ibm-mongodb-operator
   spec:
@@ -73,7 +73,7 @@ const Large = `
             cpu: 1000m
             memory: 50Mi
           requests:
-            cpu: 10m
+            cpu: 20m
             memory: 40Mi
       authService:
         resources:
@@ -98,7 +98,7 @@ const Large = `
             memory: 1270Mi
           requests:
             cpu: 260m
-            memory: 210Mi
+            memory: 240Mi
       identityProvider:
         resources:
           limits:
@@ -106,7 +106,7 @@ const Large = `
             memory: 920Mi
           requests:
             cpu: 570m
-            memory: 210Mi
+            memory: 250Mi
     oidcclientwatcher:
       replicas: 1
       resources:
@@ -115,7 +115,7 @@ const Large = `
           memory: 325Mi
         requests:
           cpu: 20m
-          memory: 30Mi
+          memory: 40Mi
     pap:
       auditService:
         resources:
@@ -123,7 +123,7 @@ const Large = `
             cpu: 1000m
             memory: 50Mi
           requests:
-            cpu: 10m
+            cpu: 20m
             memory: 20Mi
       papService:
         resources:
@@ -131,7 +131,7 @@ const Large = `
             cpu: 1000m
             memory: 600Mi
           requests:
-            cpu: 30m
+            cpu: 20m
             memory: 190Mi
       replicas: 3
     policycontroller:
@@ -150,7 +150,7 @@ const Large = `
             cpu: 1000m
             memory: 50Mi
           requests:
-            cpu: 10m
+            cpu: 20m
             memory: 20Mi
       resources:
         limits:
@@ -214,7 +214,7 @@ const Large = `
         resources:
           requests:
             cpu: 20m
-            memory: 20Mi
+            memory: 100Mi
           limits:
             cpu: 50m
             memory: 128Mi
@@ -309,7 +309,7 @@ const Large = `
         replicas: 1
         resources:
           requests:
-            memory: 125Mi
+            memory: 160Mi
             cpu: 30m
           limits:
             memory: 250Mi
@@ -332,7 +332,7 @@ const Large = `
         resource:
           requests:
             cpu: 20m
-            memory: 20Mi
+            memory: 40Mi
           limits:
             cpu: 30m
             memory: 50Mi
@@ -362,7 +362,7 @@ const Large = `
         resource:
           requests:
             cpu: 360m
-            memory: 250Mi
+            memory: 260Mi
           limits:
             cpu: 540m
             memory: 500Mi
