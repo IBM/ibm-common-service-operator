@@ -220,14 +220,14 @@ do
 	"-f")
 		FORCE_DELETE=true
 		;;
-        "-n")
-                COMMON_SERVICES_NS=$2
-                shift
-                ;;
+	"-n")
+		COMMON_SERVICES_NS=$2
+		shift
+		;;
 	*)
 		warning "invalid option -- \`$1\`"
 		usage
-                exit 1
+		exit 1
 		;;
 	esac
 	shift
