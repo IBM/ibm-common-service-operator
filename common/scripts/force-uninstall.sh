@@ -24,7 +24,8 @@ function usage() {
 	Options:
 	Mandatory arguments to long options are mandatory for short options too.
 	  -h, --help                    display this help and exit
-	  -f                            force delete ibm-common-services namespace, skip normal uninstall steps
+    -n                            specify the namespace where common service is installed
+	  -f                            force delete specified or default ibm-common-services namespace, skip normal uninstall steps
 	EOF
 }
 
@@ -184,7 +185,7 @@ function delete_unavailable_apiservice() {
 }
 
 function delete_rbac_resource() {
-  ${KUBECTL} delete ClusterRoleBinding ibm-common-service-webhook secretshare-ibm-common-services $(${KUBECTL} get ClusterRoleBinding | grep nginx-ingress-clusterrole | awk '{print $1}') --ignore-not-found
+  ${KUBECTL} delete ClusterRoleBinding ibm-common-service-webhook secretshare-${COMMON_SERVICES_NS} $(${KUBECTL} get ClusterRoleBinding | grep nginx-ingress-clusterrole | awk '{print $1}') --ignore-not-found
   ${KUBECTL} delete ClusterRole ibm-common-service-webhook secretshare nginx-ingress-clusterrole --ignore-not-found
   ${KUBECTL} delete RoleBinding ibmcloud-cluster-info ibmcloud-cluster-ca-cert -n kube-public --ignore-not-found
   ${KUBECTL} delete Role ibmcloud-cluster-info ibmcloud-cluster-ca-cert -n kube-public --ignore-not-found
@@ -219,6 +220,10 @@ do
 	"-f")
 		FORCE_DELETE=true
 		;;
+  "-n")
+    COMMON_SERVICES_NS=$2
+    shift
+    ;;
 	*)
 		warning "invalid option -- \`$1\`"
 		usage
