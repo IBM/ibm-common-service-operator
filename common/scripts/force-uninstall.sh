@@ -24,7 +24,7 @@ function usage() {
 	Options:
 	Mandatory arguments to long options are mandatory for short options too.
 	  -h, --help                    display this help and exit
-    -n                            specify the namespace where common service is installed
+	  -n                            specify the namespace where common service is installed
 	  -f                            force delete specified or default ibm-common-services namespace, skip normal uninstall steps
 	EOF
 }
@@ -220,14 +220,14 @@ do
 	"-f")
 		FORCE_DELETE=true
 		;;
-  "-n")
-    COMMON_SERVICES_NS=$2
-    shift
-    ;;
+        "-n")
+                COMMON_SERVICES_NS=$2
+                shift
+                ;;
 	*)
 		warning "invalid option -- \`$1\`"
 		usage
-    exit 1
+                exit 1
 		;;
 	esac
 	shift
