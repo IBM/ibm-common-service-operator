@@ -81,7 +81,7 @@ const Medium = `
             cpu: 1000m
             memory: 1090Mi
           requests:
-            cpu: 400m
+            cpu: 600m
             memory: 540Mi
       clientRegistration:
         resources:
