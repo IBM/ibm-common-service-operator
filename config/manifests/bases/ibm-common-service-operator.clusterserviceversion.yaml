@@ -57,21 +57,6 @@ metadata:
               bindings:
                 protected-zen-serviceid:
                   secret: zen-serviceid-apikey-secret
-                public-auth-cert:
-                  secret: platform-auth-secret
-                public-auth-config:
-                  configmap: platform-auth-idp
-                public-auth-creds:
-                  secret: platform-auth-idp-credentials
-                public-cam-map:
-                  configmap: oauth-client-map
-                public-cam-secret:
-                  secret: oauth-client-secret
-                public-oidc-creds:
-                  secret: platform-oidc-credentials
-              description: Binding information that should be accessible to iam adopters
-              operand: ibm-iam-operator
-              registry: common-service
             operandRequest: {}
         - name: ibm-healthcheck-operator
           spec:
