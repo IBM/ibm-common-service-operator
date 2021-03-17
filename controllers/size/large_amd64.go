@@ -81,7 +81,7 @@ const Large = `
             cpu: 2000m
             memory: 1090Mi
           requests:
-            cpu: 400m
+            cpu: 600m
             memory: 540Mi
       clientRegistration:
         resources:
@@ -131,7 +131,7 @@ const Large = `
             cpu: 1000m
             memory: 600Mi
           requests:
-            cpu: 20m
+            cpu: 30m
             memory: 190Mi
       replicas: 3
     policycontroller:

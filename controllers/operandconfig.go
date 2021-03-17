@@ -231,9 +231,9 @@ func (r *CommonServiceReconciler) updateOperandConfig(newConfigs []interface{}) 
 		return true, err
 	}
 
-	for _, opService := range opconServices {
+	for _, newConfigForOperator := range newConfigs {
+		opService := getItemByName(opconServices, newConfigForOperator.(map[string]interface{})["name"].(string))
 		// Fetch newConfigForOperator and rules for an operator
-		newConfigForOperator := getItemByName(newConfigs, opService.(map[string]interface{})["name"].(string))
 		rules := getItemByName(ruleSlice, opService.(map[string]interface{})["name"].(string))
 		if newConfigForOperator == nil {
 			continue
