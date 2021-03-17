@@ -21,6 +21,7 @@ CONTROLLER_GEN ?= $(shell which controller-gen)
 KUSTOMIZE ?= $(shell which kustomize)
 YQ_VERSION=v4.3.1
 KUSTOMIZE_VERSION=v3.8.7
+OPERATOR_SDK_VERSION=v1.3.0
 
 CSV_PATH=bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
 
@@ -63,13 +64,15 @@ else
 endif
 
 # Default image repo
-QUAY_REGISTRY ?= quay.io/opencloudio
+QUAY_REGISTRY ?= quay.io/bitscuit
 
 ifeq ($(BUILD_LOCALLY),0)
 ARTIFACTORYA_REGISTRY ?= "hyc-cloud-private-integration-docker-local.artifactory.swg-devops.com/ibmcom"
 else
 ARTIFACTORYA_REGISTRY ?= "hyc-cloud-private-scratch-docker-local.artifactory.swg-devops.com/ibmcom"
 endif
+
+REGISTRY ?= "hyc-cloud-private-scratch-docker-local.artifactory.swg-devops.com/ibmcom"
 
 # Current Operator image name
 OPERATOR_IMAGE_NAME ?= common-service-operator
@@ -103,15 +106,17 @@ include common/Makefile.common.mk
 OS    = $(shell uname -s | tr '[:upper:]' '[:lower:]')
 ARCH  = $(shell uname -m | sed 's/x86_64/amd64/')
 
+clis: yq kustomize operator-sdk
+
 yq: ## Install yq, a yaml processor
 ifeq (, $(shell which yq 2>/dev/null))
 	@{ \
-	if [ v$(shell bin/yq --version | cut -d ' ' -f3) != $(YQ_VERSION) ]; then\
+	if [ v$(shell ./bin/yq --version | cut -d ' ' -f3) != $(YQ_VERSION) ]; then\
 		set -e ;\
 		mkdir -p bin ;\
 		$(eval ARCH := $(shell uname -m|sed 's/x86_64/amd64/'))\
 		echo "Downloading yq ...";\
-		curl -LO https://github.com/mikefarah/yq/releases/download/$(YQ_VERSION)/yq_$(OS)_$(ARCH);\
+		curl -sSLO https://github.com/mikefarah/yq/releases/download/$(YQ_VERSION)/yq_$(OS)_$(ARCH);\
 		mv yq_$(OS)_$(ARCH) ./bin/yq ;\
 		chmod +x ./bin/yq ;\
 	fi;\
@@ -132,6 +137,22 @@ ifeq (, $(shell which kustomize 2>/dev/null))
 KUSTOMIZE=$(realpath ./bin/kustomize)
 else
 KUSTOMIZE=$(shell which kustomize)
+endif
+
+operator-sdk:
+ifeq (, $(shell which operator-sdk 2>/dev/null))
+	@{ \
+	if [ "$(shell ./bin/operator-sdk version | cut -d ',' -f1 | cut -d ':' -f2 | tr -d '"' | xargs)" != $(OPERATOR_SDK_VERSION) ]; then \
+		set -e ; \
+		mkdir -p bin ;\
+		echo "Downloading operator-sdk..." ;\
+		curl -sSLo ./bin/operator-sdk "https://github.com/operator-framework/operator-sdk/releases/download/$(OPERATOR_SDK_VERSION)/operator-sdk_$(OS)_$(ARCH)" ;\
+		chmod +x ./bin/operator-sdk ;\
+	fi ;\
+	}
+OPERATOR_SDK=$(realpath ./bin/operator-sdk)
+else
+OPERATOR_SDK=$(shell which operator-sdk)
 endif
 
 check: lint-all ## Check all files lint error
@@ -163,21 +184,21 @@ deploy: manifests ## Deploy controller in the configured Kubernetes cluster in ~
 
 build-dev-image:
 	@echo "Building the $(OPERATOR_IMAGE_NAME) docker dev image for $(LOCAL_ARCH)..."
-	@docker build -t $(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME):dev \
+	@docker build -t $(REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):dev \
 	--build-arg VCS_REF=$(VCS_REF) --build-arg VCS_URL=$(VCS_URL) \
 	--build-arg GOARCH=$(LOCAL_ARCH) -f Dockerfile .
-	@docker push $(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME):dev
+	@docker push $(REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):dev
 
 build-bundle-image:
 	@cp -f bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml /tmp/ibm-common-service-operator.clusterserviceversion.yaml
 	yq eval -i 'del(.spec.replaces)' bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
-	docker build -f bundle.Dockerfile -t $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(VERSION) .
-	docker push $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(VERSION)
+	docker build -f bundle.Dockerfile -t $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(RELEASE_VERSION) .
+	docker push $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(RELEASE_VERSION)
 	@mv /tmp/ibm-common-service-operator.clusterserviceversion.yaml bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
 
 run-bundle:
-	$(OPERATOR_SDK) run bundle $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(VERSION)
-	sleep 15
+	$(OPERATOR_SDK) run bundle $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(RELEASE_VERSION)
+	sleep 30
 	$(KUBECTL) get sub ibm-namespace-scope-operator -o custom-columns=":status.installplan.name" --no-headers \
 		| xargs oc patch installplan --type merge --patch '{"spec":{"approved":true}}'
 	$(KUBECTL) get sub operand-deployment-lifecycle-manager-app -o custom-columns=":status.installplan.name" --no-headers \
@@ -218,12 +239,12 @@ manifests: ## Generate manifests e.g. CRD, RBAC etc.
 generate: ## Generate code e.g. API etc.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
-bundle-manifests: kustomize
+bundle-manifests:
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle \
 	-q --overwrite --version $(RELEASE_VERSION) $(BUNDLE_METADATA_OPTS)
 	$(OPERATOR_SDK) bundle validate ./bundle
-	yq eval -i '.metadata.annotations."olm.skipRange" = ">=3.3.0 <${RELEASE_VERSION}"' ${CSV_PATH}
-	yq eval -i '.spec.replaces = "ibm-common-service-operator.v$(PREVIOUS_VERSION)"' ${CSV_PATH}
+	$(YQ) eval -i '.metadata.annotations."olm.skipRange" = ">=3.3.0 <${RELEASE_VERSION}"' ${CSV_PATH}
+	$(YQ) eval -i '.spec.replaces = "ibm-common-service-operator.v$(PREVIOUS_VERSION)"' ${CSV_PATH}
 
 generate-all: generate manifests ## Generate bundle manifests, metadata and package manifests
 	$(OPERATOR_SDK) generate kustomize manifests -q

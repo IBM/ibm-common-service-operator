@@ -1,3 +1,4 @@
+#!/bin/bash
 #
 # Copyright 2021 IBM Corporation
 #
@@ -12,27 +13,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
 
-name: learn-github-actions.yaml
+echo "Checking if cluster is clear for deploy"
 
-on:
-  pull_request:
-
-jobs:
-  check-bats-version:
-    runs-on: ubuntu-18.04
-    steps:
-      - name: Set up Golang
-        uses: actions/setup-go@v2
-        with:
-          go-version: ^1.15
-        id: go
-
-      - name: Checkout
-        uses: actions/checkout@v2
-
-      - name: Generate bundle manifests
-        run: |
-          curl -Lo ./operator-sdk "https://github.com/operator-framework/operator-sdk/releases/download/v1.3.0/operator-sdk_linux_amd64"
-          chmod +x ./operator-sdk
-          make bundle-manifests
+oc get deployment ibm-common-service-operator
+export ret=$?
+while [ $ret -eq 0 ]; do
+    echo "Cluster already has common service operator installed. Waiting until clear"
+    sleep 60
+    oc get deployment ibm-common-service-operator
+    ret=$?
+done

@@ -1,0 +1,91 @@
+#
+# Copyright 2021 IBM Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http:#www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+name: ocp.yaml
+
+on:
+  pull_request:
+
+env:
+  AWS_OCP_KUBECONFIG: ${{ secrets.AWS_OCP_KUBECONFIG }}
+  QUAY_USERNAME: ${{ secrets.QUAY_USERNAME }}
+  QUAY_PASSWORD: ${{ secrets.QUAY_PASSWORD }}
+  QUAY_REGISTRY: quay.io/bitscuit
+  REGISTRY: hyc-cloud-private-scratch-docker-local.artifactory.swg-devops.com/ibmcom
+  SCRATCH_USERNAME: ${{ secrets.SCRATCH_USERNAME }}
+  SCRATCH_TOKEN: ${{ secrets.SCRATCH_TOKEN}}
+
+jobs:
+  test-fresh-install:
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Set up Golang
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^1.15
+        id: go
+
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Access cluster
+        run: |
+          echo "$AWS_OCP_KUBECONFIG" > ./kubeconfig
+          mkdir -p /home/runner/.kube
+          cp ./kubeconfig $HOME/.kube/config
+          oc get nodes
+
+      - name: Login to registry
+        run: |
+          docker login "$QUAY_REGISTRY" -u "$QUAY_USERNAME" -p "$QUAY_PASSWORD"
+          docker login "$REGISTRY" -u "$SCRATCH_USERNAME" -p "$SCRATCH_TOKEN"
+
+      - name: Build operator
+        run: |
+          make build-dev-image
+
+      - name: Generate bundle
+        run: |
+          mkdir ./bin
+          export PATH=$PATH:$(pwd)/bin
+          echo "$(pwd)/bin" >> $GITHUB_PATH
+          make clis
+
+          yq -i eval ".spec.template.spec.containers[0].image = \"$QUAY_REGISTRY/common-service-operator:dev\"" config/manager/manager.yaml
+          cat ./config/manager/manager.yaml
+
+          make bundle-manifests RELEASE_VERSION=99.99.99
+          cat ./bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
+
+          make build-bundle-image RELEASE_VERSION=dev
+
+      - name: Deploy operator
+        run: |
+          oc project ibm-common-services
+          ./common/scripts/tests/clear_ocp.sh
+          make run-bundle RELEASE_VERSION=dev
+          sleep 20
+      
+      - name: Test operator
+        run: |
+          oc wait --for condition=Available -n ibm-common-services --timeout=60s deployment/ibm-common-service-operator
+          oc wait --for condition=Available -n ibm-common-services --timeout=60s deployment/ibm-namespace-scope-operator
+          oc wait --for condition=Available -n ibm-common-services --timeout=60s deployment/operand-deployment-lifecycle-manager
+      
+      - name: Uninstall operator
+        run: |
+          oc project ibm-common-services
+          make cleanup-bundle

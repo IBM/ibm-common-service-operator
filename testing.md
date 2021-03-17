@@ -10,13 +10,13 @@ cat <<EOF | tee >(oc apply -f -) | cat
 apiVersion: operators.coreos.com/v1alpha1
 kind: CatalogSource
 metadata:
-  name: test-cs-operator
+  name: opencloud-operators
   namespace: openshift-marketplace
 spec:
-  displayName: test-cs-operator
+  displayName: opencloud-operators
   publisher: IBM
   sourceType: grpc
-  image: quay.io/opencloudio/ibm-common-service-catalog:3.7.0-beta
+  image: quay.io/opencloudio/ibm-common-service-catalog:3.7.1
   updateStrategy:
     registryPoll:
       interval: 45m
@@ -38,16 +38,16 @@ The actual testing consist of:
    - and any of the operand image values if necessary
 3. build operator with changes
 ```
-make build-dev
+make build-dev-image
 ```
 4. build bundle containing changes and bundle image
 ```
-make bundle-manifests VERSION=99.99.99
-make build-bundle-image VERSION=dev
+make bundle-manifests RELEASE_VERSION=99.99.99
+make build-bundle-image RELEASE_VERSION=dev
 ```
 5. deploy operator using bundle format
 ```
-make run-bundle VERSION=dev
+make run-bundle RELEASE_VERSION=dev
 ```
 6. run tests
 7. clean up
@@ -61,7 +61,7 @@ Similar to fresh installation test except you will first deploy the operator/bun
 1. change `image` value in config/manager/manager.yaml to `quay.io/<your_namespace>/common-service-operator:3.7.1`
 2. build bundle and bundle image without any changes
 ```
-make bundle
+make bundle-manifests
 make build-bundle-image
 ```
 3. deploy unchanged operator using bundle format
@@ -73,12 +73,12 @@ make run-bundle
    - and any of the operand image values if necessary
 6. build operator with changes
 ```
-make build-dev
+make build-dev-image
 ```
 7. build bundle containing changes and bundle image
 ```
-make bundle-manifests VERSION=99.99.99
-make build-bundle-image VERSION=dev
+make bundle-manifests RELEASE_VERSION=99.99.99
+make build-bundle-image RELEASE_VERSION=dev
 ```
 8. upgrade operator
 ```
