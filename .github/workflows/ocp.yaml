@@ -64,7 +64,8 @@ jobs:
           echo "$(pwd)/bin" >> $GITHUB_PATH
           make clis
 
-          yq -i eval ".spec.template.spec.containers[0].image = \"$QUAY_REGISTRY/common-service-operator:dev\"" config/manager/manager.yaml
+          arch=$(uname -m | sed 's/x86_64/amd64/'))
+          yq -i eval ".spec.template.spec.containers[0].image = \"$REGISTRY/common-service-operator-${arch}:dev\"" config/manager/manager.yaml
           cat ./config/manager/manager.yaml
 
           make bundle-manifests RELEASE_VERSION=99.99.99
