@@ -1,8 +1,19 @@
 # How to test changes
-This document assumes you will be using personal quay.io registry to push bundle and operator images to avoid accidentally changing production registries
+The testing commands rely on having access to the following registries:
 ```
-export QUAY_REGISTRY=quay.io/<your_namespace>
+quay.io/opencloudio
+hyc-cloud-private-scratch-docker-local.artifactory.swg-devops.com/ibmcom
 ```
+
+If you do not have access or would prefer to use different registries then you can overwrite them with:
+```
+export QUAY_REGISTRY=<your_registry>
+export REGISTRY=<your_registry>
+```
+
+The QUAY_REGISTRY value must point to a public registry because `operator-sdk run bundle` does not work with private registries currently (as of v1.5.0).
+
+If pushing an image to your quay.io registry with its first tag, the image repository may be set to private by default, so you will need to login to quay.io and change the repository settings to public.
 
 Also create a CatalogSource
 ```
@@ -22,8 +33,6 @@ spec:
       interval: 45m
 EOF
 ```
-
-If pushing an image to your quay.io registry with its first tag, the image repository may be set to private by default, so you will need to login to quay.io and change the repository settings to public in order for your cluster to pull the image.
 
 The actual testing consist of:
 1. verify common-service operator pod is Running
@@ -58,34 +67,36 @@ make cleanup-bundle
 ## Test upgrade with bundle
 Similar to fresh installation test except you will first deploy the operator/bundle of the most recent release without any changes, i.e. the operator/bundle code from the most recent commit in master branch
 
-1. change `image` value in config/manager/manager.yaml to `quay.io/<your_namespace>/common-service-operator:3.7.1`
-2. build bundle and bundle image without any changes
+1. deploy unchanged operator with official bundle image
 ```
-make bundle-manifests
-make build-bundle-image
+make run-bundle BUNDLE_IMAGE_NAME=ibm-common-service-operator-bundle
 ```
-3. deploy unchanged operator using bundle format
+
+If using your own registries, you can pull the official bundle image, and then push it to your registry
 ```
+docker pull quay.io/opencloudio/ibm-common-service-operator-bundle:<RELEASE_VERSION>
+docker tag quay.io/opencloudio/ibm-common-service-operator-bundle:<RELEASE_VERSION> <your_registry>/dev-common-service-operator-bundle:<RELEASE_VERSION>
+docker push <your_registry>/dev-common-service-operator-bundle:<RELEASE_VERSION>
 make run-bundle
 ```
-4. add features/fixes to repo
-5. change `image` value in config/manager/manager.yaml to `quay.io/<your_namespace>/common-service-operator:dev`
+2. add features/fixes to repo
+3. change `image` value in config/manager/manager.yaml to `quay.io/<your_namespace>/common-service-operator:dev`
    - and any of the operand image values if necessary
-6. build operator with changes
+4. build operator with changes
 ```
 make build-dev-image
 ```
-7. build bundle containing changes and bundle image
+5. build bundle containing changes and bundle image
 ```
 make bundle-manifests RELEASE_VERSION=99.99.99
 make build-bundle-image RELEASE_VERSION=dev
 ```
-8. upgrade operator
+6. upgrade operator
 ```
 make upgrade-bundle
 ```
-9. run tests
-10. clean up
+7. run tests
+8. clean up
 ```
 make cleanup-bundle
 ```
