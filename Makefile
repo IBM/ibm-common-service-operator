@@ -103,9 +103,6 @@ include common/Makefile.common.mk
 
 ##@ Development
 
-OS    = $(shell uname -s | tr '[:upper:]' '[:lower:]')
-ARCH  = $(shell uname -m | sed 's/x86_64/amd64/')
-
 clis: yq kustomize operator-sdk
 
 yq: ## Install yq, a yaml processor
@@ -114,10 +111,9 @@ ifeq (, $(shell which yq 2>/dev/null))
 	if [ v$(shell ./bin/yq --version | cut -d ' ' -f3) != $(YQ_VERSION) ]; then\
 		set -e ;\
 		mkdir -p bin ;\
-		$(eval ARCH := $(shell uname -m|sed 's/x86_64/amd64/'))\
 		echo "Downloading yq ...";\
-		curl -sSLO https://github.com/mikefarah/yq/releases/download/$(YQ_VERSION)/yq_$(OS)_$(ARCH);\
-		mv yq_$(OS)_$(ARCH) ./bin/yq ;\
+		curl -sSLO https://github.com/mikefarah/yq/releases/download/$(YQ_VERSION)/yq_$(LOCAL_OS)_$(LOCAL_ARCH);\
+		mv yq_$(LOCAL_OS)_$(LOCAL_ARCH) ./bin/yq ;\
 		chmod +x ./bin/yq ;\
 	fi;\
 	}
@@ -132,7 +128,7 @@ ifeq (, $(shell which kustomize 2>/dev/null))
 	set -e ;\
 	mkdir -p bin ;\
 	echo "Downloading kustomize ...";\
-	curl -sSLo - https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/$(KUSTOMIZE_VERSION)/kustomize_$(KUSTOMIZE_VERSION)_$(OS)_$(ARCH).tar.gz | tar xzf - -C bin/ ;\
+	curl -sSLo - https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/$(KUSTOMIZE_VERSION)/kustomize_$(KUSTOMIZE_VERSION)_$(LOCAL_OS)_$(LOCAL_ARCH).tar.gz | tar xzf - -C bin/ ;\
 	}
 KUSTOMIZE=$(realpath ./bin/kustomize)
 else
@@ -146,7 +142,7 @@ ifeq (, $(shell which operator-sdk 2>/dev/null))
 		set -e ; \
 		mkdir -p bin ;\
 		echo "Downloading operator-sdk..." ;\
-		curl -sSLo ./bin/operator-sdk "https://github.com/operator-framework/operator-sdk/releases/download/$(OPERATOR_SDK_VERSION)/operator-sdk_$(OS)_$(ARCH)" ;\
+		curl -sSLo ./bin/operator-sdk "https://github.com/operator-framework/operator-sdk/releases/download/$(OPERATOR_SDK_VERSION)/operator-sdk_$(LOCAL_OS)_$(LOCAL_ARCH)" ;\
 		chmod +x ./bin/operator-sdk ;\
 	fi ;\
 	}
