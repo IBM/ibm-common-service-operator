@@ -15,7 +15,7 @@ metadata:
         annotations:
           version: "12"
       spec:
-        channel: v3
+        channel: beta
         installPlanApproval: Automatic
         name: ibm-common-service-operator
         source: opencloud-operators
@@ -111,95 +111,95 @@ metadata:
         operators:
         - name: ibm-licensing-operator
           namespace: placeholder
-          channel: v3
+          channel: beta
           packageName: ibm-licensing-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-mongodb-operator
           namespace: placeholder
-          channel: v3
+          channel: beta
           packageName: ibm-mongodb-operator-app
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-cert-manager-operator
           namespace: placeholder
-          channel: v3
+          channel: beta
           packageName: ibm-cert-manager-operator
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-iam-operator
           namespace: placeholder
-          channel: v3
+          channel: beta
           packageName: ibm-iam-operator
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-healthcheck-operator
           namespace: placeholder
-          channel: v3
+          channel: beta
           packageName: ibm-healthcheck-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-commonui-operator
           namespace: placeholder
-          channel: v3
+          channel: beta
           packageName: ibm-commonui-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-management-ingress-operator
           namespace: placeholder
-          channel: v3
+          channel: beta
           packageName: ibm-management-ingress-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-ingress-nginx-operator
           namespace: placeholder
-          channel: v3
+          channel: beta
           packageName: ibm-ingress-nginx-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-auditlogging-operator
           namespace: placeholder
-          channel: v3
+          channel: beta
           packageName: ibm-auditlogging-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-platform-api-operator
           namespace: placeholder
-          channel: v3
+          channel: beta
           packageName: ibm-platform-api-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-monitoring-exporters-operator
           namespace: placeholder
-          channel: v3
+          channel: beta
           packageName: ibm-monitoring-exporters-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-monitoring-prometheusext-operator
           namespace: placeholder
-          channel: v3
+          channel: beta
           packageName: ibm-monitoring-prometheusext-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
-        - channel: v3
+        - channel: beta
           name: ibm-monitoring-grafana-operator
           namespace: placeholder
           packageName: ibm-monitoring-grafana-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
-        - channel: v3
+        - channel: beta
           name: ibm-events-operator
           namespace: placeholder
           packageName: ibm-events-operator
@@ -213,7 +213,7 @@ metadata:
           scope: public
           sourceName: certified-operators
           sourceNamespace: openshift-marketplace
-        - channel: v3
+        - channel: beta
           name: ibm-zen-operator
           namespace: placeholder
           packageName: ibm-zen-operator
@@ -237,7 +237,7 @@ metadata:
         annotations:
           version: "12"
       spec:
-        channel: v3
+        channel: beta
         installPlanApproval: Automatic
         name: ibm-namespace-scope-operator-restricted
         source: opencloud-operators
@@ -251,7 +251,7 @@ metadata:
         annotations:
           version: "12"
       spec:
-        channel: v3
+        channel: beta
         installPlanApproval: Automatic
         name: ibm-namespace-scope-operator
         source: opencloud-operators
@@ -265,7 +265,7 @@ metadata:
         annotations:
           version: "13"
       spec:
-        channel: v3
+        channel: beta
         installPlanApproval: Automatic
         name: ibm-odlm
         source: opencloud-operators
@@ -279,7 +279,7 @@ metadata:
         annotations:
           version: "13"
       spec:
-        channel: v3
+        channel: beta
         installPlanApproval: Automatic
         name: ibm-odlm
         source: opencloud-operators
