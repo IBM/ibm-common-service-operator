@@ -497,9 +497,6 @@ func (b *Bootstrap) waitOperatorReady(name, namespace string) error {
 		}
 
 		if version, ok := CSOperators[sub.Name]; ok {
-			if sub.Spec.Channel != "v3" {
-				return false, nil
-			}
 			if sub.Status.InstalledCSV == "" {
 				return false, nil
 			}
