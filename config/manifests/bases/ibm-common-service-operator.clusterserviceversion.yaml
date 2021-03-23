@@ -288,7 +288,7 @@ metadata:
           env:
           - name: INSTALL_SCOPE
             value: namespaced
-    olm.skipRange: '>=3.3.0 <3.8.0'
+    olm.skipRange: ""
     operators.operatorframework.io/builder: operator-sdk-v1.2.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
     repository: https://github.com/IBM/ibm-common-service-operator
@@ -310,7 +310,7 @@ spec:
       name: commonservices.operator.ibm.com
       version: v3
       specDescriptors:
-      - description: The size of deployment profile for IBM Cloud Platform Common Services
+      - description: The size of deployment profile for IBM Cloud Pak foundational services
         displayName: Size
         type: string
         path: size
@@ -382,4 +382,5 @@ spec:
   maturity: alpha
   provider:
     name: IBM
+  replaces: ibm-common-service-operator.v0.0.0
   version: 0.0.0

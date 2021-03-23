@@ -26,6 +26,8 @@ BASE_DIR=testdata
 test_profile() {
     local size_file=$1
 
+    echo "testing with file: $size_file"
+
     # keys to remove from controllers/size files before comparison
     # necessary because size files in controllers/size missing many keys that
     # OperandConfig can have
