@@ -111,6 +111,20 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 		return err
 	}
 
+	// Check Saas Deployment
+	saasEnable, err := checkSaas(b.Reader)
+	if err != nil {
+		return err
+	}
+	if saasEnable {
+		klog.Info("Saas Deployment Enabled for Common Services")
+		controlNs := util.GetControlNs(b.Reader)
+		if err := bs.CreateNamespace(controlNs); err != nil {
+			klog.Errorf("Failed to create control namespace: %v", err)
+			return err
+		}
+	}
+
 	operatorNs, err := util.GetOperatorNamespace()
 	if err != nil {
 		klog.Errorf("Getting operator namespace failed: %v", err)
@@ -237,14 +251,14 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 	return nil
 }
 
-func (b *Bootstrap) CreateNamespace() error {
+func (b *Bootstrap) CreateNamespace(name string) error {
 	nsObj := &corev1.Namespace{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Namespace",
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: b.MasterNamespace,
+			Name: name,
 		},
 	}
 

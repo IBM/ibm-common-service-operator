@@ -43,12 +43,13 @@ import (
 )
 
 type CsMaps struct {
+	ControlNs     string      `json:"controlNamespace"`
 	NsMappingList []nsMapping `json:"namespaceMapping"`
-	DefaultCsNs   string      `json:"defaultCsNs"`
+	// DefaultCsNs   string      `json:"defaultCsNs"`
 }
 
 type nsMapping struct {
-	RequestNS []string `json:"requested-from-namespace"`
+	RequestNs []string `json:"requested-from-namespace"`
 	CsNs      string   `json:"map-to-common-service-namespace"`
 }
 
@@ -242,7 +243,7 @@ func GetMasterNs(r client.Reader) (masterNs string) {
 	}
 
 	for _, nsMapping := range cmData.NsMappingList {
-		if findNamespace(nsMapping.RequestNS, operatorNs) {
+		if findNamespace(nsMapping.RequestNs, operatorNs) {
 			masterNs = nsMapping.CsNs
 			break
 		}
@@ -281,7 +282,7 @@ func UpdateNSList(r client.Reader, c client.Client, cm *corev1.ConfigMap, master
 
 	for _, nsMapping := range cmData.NsMappingList {
 		if masterNs == nsMapping.CsNs {
-			for _, ns := range nsMapping.RequestNS {
+			for _, ns := range nsMapping.RequestNs {
 				nsSet[ns] = struct{}{}
 			}
 		}
@@ -306,5 +307,56 @@ func findNamespace(nsList []string, nsName string) (exist bool) {
 			return true
 		}
 	}
+	return
+}
+
+// CheckSaas checks whether it is a SaaS deployment for Common Services
+func CheckSaas(r client.Reader) (enable bool, err error) {
+	cmName := constant.SaasConfigMap
+	cmNs := "kube-public"
+	saasConfigmap := &corev1.ConfigMap{}
+	err = r.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: cmNs}, saasConfigmap)
+	if errors.IsNotFound(err) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+	v, ok := saasConfigmap.Data["ibm_cloud_saas"]
+	if !ok {
+		return false, nil
+	}
+	if v != "true" {
+		return false, nil
+	}
+	return true, nil
+}
+
+// GetControlNs gets control namespace of deploying cluster scope services
+func GetControlNs(r client.Reader) (controlNs string) {
+	// default master namespace
+	controlNs = constant.MasterNamespace
+
+	csConfigmap, err := GetCmOfMapCs(r)
+	if err != nil {
+		klog.V(2).Infof("Don't find configmap kube-public/common-service-maps: %v", err)
+		return
+	}
+
+	commonServiceMaps, ok := csConfigmap.Data["common-service-maps.yaml"]
+	if !ok {
+		klog.Infof("There is no common-service-maps.yaml in configmap kube-public/common-service-maps")
+		return
+	}
+
+	var cmData CsMaps
+	if err := utilyaml.Unmarshal([]byte(commonServiceMaps), &cmData); err != nil {
+		klog.Errorf("Failed to fetch data of configmap common-service-maps: %v", err)
+		return
+	}
+
+	if cmData.ControlNs != nil {
+		controlNs = cmData.ControlNs
+	}
+
 	return
 }
