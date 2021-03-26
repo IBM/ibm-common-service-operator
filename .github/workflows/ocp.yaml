@@ -17,7 +17,8 @@
 name: ocp.yaml
 
 on:
-  pull_request:
+  pull_request_target:
+    types: [labeled]
 
 env:
   AWS_OCP_KUBECONFIG: ${{ secrets.AWS_OCP_KUBECONFIG }}
@@ -39,6 +40,10 @@ jobs:
         id: go
 
       - name: Checkout
+        if: contains(github.event.pull_request.labels.*.name, 'ok-to-test')
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: false
         uses: actions/checkout@v2
 
       - name: Access cluster
