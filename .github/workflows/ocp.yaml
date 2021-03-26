@@ -52,6 +52,7 @@ jobs:
           mkdir -p /home/runner/.kube
           cp ./kubeconfig $HOME/.kube/config
           oc get nodes
+          echo "test"
 
       - name: Login to registry
         run: |
