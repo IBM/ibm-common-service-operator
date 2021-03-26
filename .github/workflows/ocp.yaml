@@ -18,7 +18,7 @@ name: ocp.yaml
 
 on:
   pull_request_target:
-    types: [labeled]
+    types: [opened, synchronize, reopened, labeled]
 
 env:
   AWS_OCP_KUBECONFIG: ${{ secrets.AWS_OCP_KUBECONFIG }}
