@@ -33,6 +33,10 @@ jobs:
   test-fresh-install:
     runs-on: ubuntu-18.04
     steps:
+      - name: Test workflow
+        run: |
+          echo "test"
+
       - name: Set up Golang
         uses: actions/setup-go@v2
         with:
@@ -53,6 +57,10 @@ jobs:
           mkdir -p /home/runner/.kube
           cp ./kubeconfig $HOME/.kube/config
           oc get nodes
+
+      - name: Test workflow 2
+        run: |
+          echo "test"
 
       - name: Login to registry
         run: |
