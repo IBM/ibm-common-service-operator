@@ -41,10 +41,10 @@ jobs:
 
       - name: Checkout
         if: contains(github.event.pull_request.labels.*.name, 'ok-to-test')
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          repo: ${{ github.event.pull_request.head.repo.full_name }}
-          persist-credentials: false
+        # with:
+        #   ref: ${{ github.event.pull_request.head.ref }}
+        #   repo: ${{ github.event.pull_request.head.repo.full_name }}
+        #   persist-credentials: false
         uses: actions/checkout@v2
 
       - name: Access cluster
