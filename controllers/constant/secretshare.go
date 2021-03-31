@@ -148,9 +148,12 @@ roleRef:
 
 // Secretshare Operator CRD
 const SecretshareCRD = `
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.4.0
+    version: "1"
   name: secretshares.ibmcpcs.ibm.com
 spec:
   group: ibmcpcs.ibm.com
@@ -160,16 +163,105 @@ spec:
     plural: secretshares
     singular: secretshare
   scope: Namespaced
-  subresources:
-    status: {}
-  validation:
-    openAPIV3Schema:
-      type: object
-      x-kubernetes-preserve-unknown-fields: true
   versions:
   - name: v1
+    schema:
+      openAPIV3Schema:
+        description: SecretShare is the Schema for the secretshares API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: SecretShareSpec defines the desired state of SecretShare
+            properties:
+              configmapshares:
+                description: Configmapshares defines a list of configmap sharing information
+                items:
+                  description: Configmapshare identifies a Configmap required to be shared to another namespace
+                  properties:
+                    configmapname:
+                      description: Configmapname is the name of the configmap waiting for sharing
+                      type: string
+                    sharewith:
+                      description: Sharewith is a list of the target namespace for sharing
+                      items:
+                        description: TargetNamespace identifies the namespace the secret/configmap will be shared to
+                        properties:
+                          namespace:
+                            description: Namespace is the target namespace of the secret or configmap
+                            type: string
+                        required:
+                        - namespace
+                        type: object
+                      type: array
+                  required:
+                  - configmapname
+                  - sharewith
+                  type: object
+                type: array
+              secretshares:
+                description: Secretshares defines a list of secret sharing information
+                items:
+                  description: Secretshare identifies a secret required to be shared to another namespace
+                  properties:
+                    secretname:
+                      description: Secretname is the name of the secret waiting for sharing
+                      type: string
+                    sharewith:
+                      description: Sharewith is a list of the target namespace for sharing
+                      items:
+                        description: TargetNamespace identifies the namespace the secret/configmap will be shared to
+                        properties:
+                          namespace:
+                            description: Namespace is the target namespace of the secret or configmap
+                            type: string
+                        required:
+                        - namespace
+                        type: object
+                      type: array
+                  required:
+                  - secretname
+                  - sharewith
+                  type: object
+                type: array
+            type: object
+          status:
+            description: SecretShareStatus defines the observed status of SecretShare
+            properties:
+              members:
+                description: Members represnets the current operand status of the set
+                properties:
+                  configmapMembers:
+                    additionalProperties:
+                      description: MemberPhase identifies the status of the
+                      type: string
+                    description: ConfigmapMembers represnets the current operand status of the set
+                    type: object
+                  secretMembers:
+                    additionalProperties:
+                      description: MemberPhase identifies the status of the
+                      type: string
+                    description: SecretMembers represnets the current operand status of the set
+                    type: object
+                type: object
+            type: object
+        type: object
     served: true
     storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
 `
 
 const CsSecretshareOperator = `
