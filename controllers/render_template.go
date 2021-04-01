@@ -32,10 +32,7 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured) (
 	var newConfigs []interface{}
 	var err error
 	// Update IAM in OperandConfig
-	saasEnable, err := util.CheckSaas(r.Reader)
-	if err != nil {
-		return nil, err
-	}
+	saasEnable := util.CheckSaas(r.Reader)
 	if saasEnable {
 		klog.Info("IAM Saas configuration")
 		iamConfig, err := convertStringToSlice(iam.Template)
