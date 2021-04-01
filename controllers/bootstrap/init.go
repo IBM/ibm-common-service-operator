@@ -55,8 +55,8 @@ var csOperators = []struct {
 	Kind       string
 	APIVersion string
 }{
-	{"Webhook Operator", constant.WebhookCRD, constant.WebhookRBAC, constant.WebhookCR, "csWebhookOperator", constant.WebhookKind, constant.WebhookAPIVersion},
-	{"Secretshare Operator", constant.SecretshareCRD, constant.SecretshareRBAC, constant.SecretshareCR, "csSecretshareOperator", constant.SecretshareKind, constant.SecretshareAPIVersion},
+	{"Webhook Operator", constant.WebhookCRD, constant.WebhookRBAC, constant.WebhookCR, constant.CsWebhookOperator, constant.WebhookKind, constant.WebhookAPIVersion},
+	{"Secretshare Operator", constant.SecretshareCRD, constant.SecretshareRBAC, constant.SecretshareCR, constant.CsSecretshareOperator, constant.SecretshareKind, constant.SecretshareAPIVersion},
 }
 
 var ctx = context.Background()
