@@ -282,7 +282,7 @@ metadata:
       spec:
         operators:
         - name: ibm-licensing-operator
-          namespace: placeholderControlNs
+          namespace: controlns
           channel: beta
           packageName: ibm-licensing-operator-app
           scope: public
@@ -295,7 +295,7 @@ metadata:
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
         - name: ibm-cert-manager-operator
-          namespace: placeholderControlNs
+          namespace: controlns
           channel: beta
           packageName: ibm-cert-manager-operator
           scope: public

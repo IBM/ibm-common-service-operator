@@ -44,7 +44,7 @@ import (
 
 var (
 	placeholder               = "placeholder"
-	placeholderControlNs      = "placeholderControlNs"
+	placeholderControlNs      = "controlns"
 	CsSubResource             = "csOperatorSubscription"
 	OdlmNamespacedSubResource = "odlmNamespacedSubscription"
 	OdlmClusterSubResource    = "odlmClusterSubscription"
