@@ -97,6 +97,50 @@ spec:
                 elasticStack: {}
                 operandBindInfo: {}
                 operandRequest: {}
+        csV3SaasOperandConfig: |-
+          apiVersion: operator.ibm.com/v1alpha1
+          kind: OperandConfig
+          metadata:
+            name: common-service
+            namespace: placeholder
+            annotations:
+              version: "9"
+          spec:
+            services:
+            - name: ibm-licensing-operator
+              spec:
+                IBMLicensing:
+                  datasource: datacollector
+                operandBindInfo: {}
+            - name: ibm-mongodb-operator
+              spec:
+                mongoDB: {}
+                operandRequest: {}
+            - name: ibm-cert-manager-operator
+              spec:
+                certManager: {}
+            - name: ibm-iam-operator
+              spec:
+                authentication: {}
+                oidcclientwatcher: {}
+                pap: {}
+                policycontroller: {}
+                policydecision: {}
+                secretwatcher: {}
+                securityonboarding: {}
+                operandBindInfo:
+                  bindings:
+                    protected-zen-serviceid:
+                      secret: zen-serviceid-apikey-secret
+                operandRequest: {}
+            - name: ibm-management-ingress-operator
+              spec:
+                managementIngress: {}
+                operandBindInfo: {}
+                operandRequest: {}
+            - name: ibm-ingress-nginx-operator
+              spec:
+                nginxIngress: {}
         csV3OperandRegistry: |-
           apiVersion: operator.ibm.com/v1alpha1
           kind: OperandRegistry
@@ -201,6 +245,71 @@ spec:
               name: ibm-events-operator
               namespace: placeholder
               packageName: ibm-events-operator
+              scope: public
+              sourceName: opencloud-operators
+              sourceNamespace: openshift-marketplace
+        csV3SaasOperandRegistry: |-
+          apiVersion: operator.ibm.com/v1alpha1
+          kind: OperandRegistry
+          metadata:
+            name: common-service
+            namespace: placeholder
+            annotations:
+              version: "14"
+          spec:
+            operators:
+            - name: ibm-licensing-operator
+              namespace: placeholderControlNs
+              channel: beta
+              packageName: ibm-licensing-operator-app
+              scope: public
+              sourceName: opencloud-operators
+              sourceNamespace: openshift-marketplace
+            - name: ibm-mongodb-operator
+              namespace: placeholder
+              channel: beta
+              packageName: ibm-mongodb-operator-app
+              sourceName: opencloud-operators
+              sourceNamespace: openshift-marketplace
+            - name: ibm-cert-manager-operator
+              namespace: placeholderControlNs
+              channel: beta
+              packageName: ibm-cert-manager-operator
+              scope: public
+              sourceName: opencloud-operators
+              sourceNamespace: openshift-marketplace
+            - name: ibm-iam-operator
+              namespace: placeholder
+              channel: beta
+              packageName: ibm-iam-operator
+              scope: public
+              sourceName: opencloud-operators
+              sourceNamespace: openshift-marketplace
+            - name: ibm-management-ingress-operator
+              namespace: placeholder
+              channel: beta
+              packageName: ibm-management-ingress-operator-app
+              scope: public
+              sourceName: opencloud-operators
+              sourceNamespace: openshift-marketplace
+            - name: ibm-ingress-nginx-operator
+              namespace: placeholder
+              channel: beta
+              packageName: ibm-ingress-nginx-operator-app
+              scope: public
+              sourceName: opencloud-operators
+              sourceNamespace: openshift-marketplace
+            - channel: beta
+              name: ibm-events-operator
+              namespace: placeholder
+              packageName: ibm-events-operator
+              scope: public
+              sourceName: opencloud-operators
+              sourceNamespace: openshift-marketplace
+            - channel: beta
+              name: ibm-zen-operator
+              namespace: placeholder
+              packageName: ibm-zen-operator
               scope: public
               sourceName: opencloud-operators
               sourceNamespace: openshift-marketplace
