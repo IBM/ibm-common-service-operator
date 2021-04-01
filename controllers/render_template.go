@@ -17,16 +17,12 @@
 package controllers
 
 import (
-	"context"
 	"strings"
 
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 
-	"github.com/IBM/ibm-common-service-operator/controllers/constant"
+	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	iam "github.com/IBM/ibm-common-service-operator/controllers/iam"
 	"github.com/IBM/ibm-common-service-operator/controllers/size"
 	storageclass "github.com/IBM/ibm-common-service-operator/controllers/storageClass"
@@ -36,7 +32,7 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured) (
 	var newConfigs []interface{}
 	var err error
 	// Update IAM in OperandConfig
-	saasEnable, err := r.checkSaas()
+	saasEnable, err := util.CheckSaas(r.Reader)
 	if err != nil {
 		return nil, err
 	}
@@ -114,24 +110,4 @@ func applySizeTemplate(cs *unstructured.Unstructured, sizeTemplate string) ([]in
 		}
 	}
 	return sizes, nil
-}
-
-func (r *CommonServiceReconciler) checkSaas() (enable bool, err error) {
-	cmName := constant.SaasConfigMap
-	cmNs := "kube-public"
-	saasConfigmap := &corev1.ConfigMap{}
-	err = r.Reader.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: cmNs}, saasConfigmap)
-	if errors.IsNotFound(err) {
-		return false, nil
-	} else if err != nil {
-		return false, err
-	}
-	v, ok := saasConfigmap.Data["ibm_cloud_saas"]
-	if !ok {
-		return false, nil
-	}
-	if v != "true" {
-		return false, nil
-	}
-	return true, nil
 }

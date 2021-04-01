@@ -49,77 +49,29 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - pods
-  - services
-  - services/finalizers
-  - endpoints
-  - persistentvolumeclaims
-  - events
   - configmaps
   - secrets
   verbs:
-  - create
-  - delete
   - get
   - list
-  - patch
-  - update
   - watch
-- apiGroups:
-  - apps
-  resources:
-  - deployments
-  - daemonsets
-  - replicasets
-  - statefulsets
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - monitoring.coreos.com
-  resources:
-  - servicemonitors
-  verbs:
-  - get
-  - create
-- apiGroups:
-  - apps
-  resourceNames:
-  - ibm-common-service-webhook
-  resources:
-  - deployments/finalizers
-  verbs:
-  - update
 - apiGroups:
   - ""
   resources:
-  - pods
-  verbs:
-  - get
-- apiGroups:
-  - apps
-  resources:
-  - replicasets
-  - deployments
-  verbs:
-  - get
-- apiGroups:
-  - operator.ibm.com
-  resources:
-  - '*'
+  - configmaps
   verbs:
   - create
-  - delete
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - create
   - get
   - list
-  - patch
-  - update
   - watch
+  - update
+  - delete
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1

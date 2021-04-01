@@ -111,6 +111,17 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 		return err
 	}
 
+	// Check Saas or Multi intances Deployment
+	controlNs := util.GetControlNs(b.Reader)
+	if len(controlNs) > 0 {
+		if err := b.CreateNamespace(controlNs); err != nil {
+			klog.Errorf("Failed to create control namespace: %v", err)
+			return err
+		}
+	} else {
+		controlNs = b.MasterNamespace
+	}
+
 	operatorNs, err := util.GetOperatorNamespace()
 	if err != nil {
 		klog.Errorf("Getting operator namespace failed: %v", err)
@@ -166,11 +177,11 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 			return err
 		}
 		// Create Operator RBAC
-		if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(operator.RBAC, b.MasterNamespace))); err != nil {
+		if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(operator.RBAC, controlNs))); err != nil {
 			return err
 		}
 		// Create Operator Deployment
-		if err := b.createOrUpdateFromYaml([]byte(util.ReplaceImages(util.Namespacelize(operator.Deployment, b.MasterNamespace)))); err != nil {
+		if err := b.createOrUpdateFromYaml([]byte(util.ReplaceImages(util.Namespacelize(operator.Deployment, controlNs)))); err != nil {
 			return err
 		}
 		// Wait for CRD ready
@@ -178,7 +189,7 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 			return err
 		}
 		// Create Operator CR
-		if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(operator.CR, b.MasterNamespace))); err != nil {
+		if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(operator.CR, controlNs))); err != nil {
 			return err
 		}
 	}
@@ -208,7 +219,7 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 		}
 	}
 
-	// create or ODLM  OperandRegistry and OperandConfig CR resources
+	// create and wait ODLM OperandRegistry and OperandConfig CR resources
 	if err := b.waitResourceReady("operator.ibm.com/v1alpha1", "OperandRegistry"); err != nil {
 		return err
 	}
@@ -237,14 +248,14 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 	return nil
 }
 
-func (b *Bootstrap) CreateNamespace() error {
+func (b *Bootstrap) CreateNamespace(name string) error {
 	nsObj := &corev1.Namespace{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Namespace",
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: b.MasterNamespace,
+			Name: name,
 		},
 	}
 

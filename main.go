@@ -89,7 +89,7 @@ func main() {
 	// Create master namespace
 	if operatorNs != bs.MasterNamespace {
 		klog.Infof("Creating IBM Common Services master namespace: %s", bs.MasterNamespace)
-		if err := bs.CreateNamespace(); err != nil {
+		if err := bs.CreateNamespace(bs.MasterNamespace); err != nil {
 			klog.Errorf("Failed to create master namespace: %v", err)
 			os.Exit(1)
 		}
