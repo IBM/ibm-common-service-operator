@@ -44,7 +44,7 @@ import (
 
 var (
 	placeholder               = "placeholder"
-	placeholderControlNs      = "placeholderControlNs"
+	placeholderControlNs      = "controlns"
 	CsSubResource             = "csOperatorSubscription"
 	OdlmNamespacedSubResource = "odlmNamespacedSubscription"
 	OdlmClusterSubResource    = "odlmClusterSubscription"
@@ -121,6 +121,7 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 
 	// Check Saas or Multi intances Deployment
 	if len(b.ControlNs) > 0 {
+		klog.Infof("Creating IBM Common Services control namespace: %s", b.ControlNs)
 		if err := b.CreateNamespace(b.ControlNs); err != nil {
 			klog.Errorf("Failed to create control namespace: %v", err)
 			return err
@@ -138,7 +139,7 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 	// Grant cluster-admin to namespace scope operator
 	if operatorNs == constant.ClusterOperatorNamespace {
 		klog.Info("Creating cluster-admin permission RBAC")
-		if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.ClusterAdminRBAC, placeholder, b.MasterNamespace))); err != nil {
+		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(constant.ClusterAdminRBAC, placeholder, b.MasterNamespace))); err != nil {
 			return err
 		}
 	}
@@ -155,15 +156,15 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 		}
 		klog.Infof("Installing %s", operator.Name)
 		// Create Operator CRD
-		if err := b.createOrUpdateFromYaml([]byte(operator.CRD)); err != nil {
+		if err := b.CreateOrUpdateFromYaml([]byte(operator.CRD)); err != nil {
 			return err
 		}
 		// Create Operator RBAC
-		if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(operator.RBAC, placeholder, b.ControlNs))); err != nil {
+		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(operator.RBAC, placeholder, b.ControlNs))); err != nil {
 			return err
 		}
 		// Create Operator Deployment
-		if err := b.createOrUpdateFromYaml([]byte(util.ReplaceImages(util.Namespacelize(operator.Deployment, placeholder, b.ControlNs)))); err != nil {
+		if err := b.CreateOrUpdateFromYaml([]byte(util.ReplaceImages(util.Namespacelize(operator.Deployment, placeholder, b.ControlNs)))); err != nil {
 			return err
 		}
 		// Wait for CRD ready
@@ -171,14 +172,14 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 			return err
 		}
 		// Create Operator CR
-		if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(operator.CR, placeholder, b.ControlNs))); err != nil {
+		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(operator.CR, placeholder, b.ControlNs))); err != nil {
 			return err
 		}
 	}
 
 	// Create extra RBAC for ibmcloud-cluster-ca-cert and ibmcloud-cluster-info in kube-public
 	klog.Info("Creating RBAC for ibmcloud-cluster-info & ibmcloud-cluster-ca-cert in kube-public")
-	if err := b.createOrUpdateFromYaml([]byte(constant.ExtraRBAC)); err != nil {
+	if err := b.CreateOrUpdateFromYaml([]byte(constant.ExtraRBAC)); err != nil {
 		return err
 	}
 
@@ -219,7 +220,7 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 		if SaasRegistry := b.getYamlFromAnnotations(annotations, RegistrySaasCrResources); len(SaasRegistry) > 0 {
 			SaasRegistry = util.Namespacelize(SaasRegistry, placeholder, b.MasterNamespace)
 			SaasRegistry = util.Namespacelize(SaasRegistry, placeholderControlNs, b.ControlNs)
-			if err := b.createOrUpdateFromYaml([]byte(SaasRegistry)); err != nil {
+			if err := b.CreateOrUpdateFromYaml([]byte(SaasRegistry)); err != nil {
 				return err
 			}
 		}
@@ -240,7 +241,7 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 		if SaasConfig := b.getYamlFromAnnotations(annotations, ConfigSaasCrResources); len(SaasConfig) > 0 {
 			SaasConfig = util.Namespacelize(SaasConfig, placeholder, b.MasterNamespace)
 			SaasConfig = util.Namespacelize(SaasConfig, placeholderControlNs, b.ControlNs)
-			if err := b.createOrUpdateFromYaml([]byte(SaasConfig)); err != nil {
+			if err := b.CreateOrUpdateFromYaml([]byte(SaasConfig)); err != nil {
 				return err
 			}
 		}
@@ -296,12 +297,12 @@ func (b *Bootstrap) CreateCsCR() error {
 		_, err := b.GetObject(odlm)
 		if errors.IsNotFound(err) {
 			// Fresh Intall: No ODLM and NO CR
-			return b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsCR, placeholder, b.MasterNamespace)))
+			return b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsCR, placeholder, b.MasterNamespace)))
 		} else if err != nil {
 			return err
 		}
 		// Upgrade from 3.4.x: Have ODLM in openshift-operators and NO CR
-		return b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsNoSizeCR, placeholder, b.MasterNamespace)))
+		return b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsNoSizeCR, placeholder, b.MasterNamespace)))
 	} else if err != nil {
 		return err
 	}
@@ -316,7 +317,7 @@ func (b *Bootstrap) CreateOperatorGroup() error {
 		return err
 	}
 	if len(existOG.Items) == 0 {
-		if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsOperatorGroup, placeholder, b.MasterNamespace))); err != nil {
+		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsOperatorGroup, placeholder, b.MasterNamespace))); err != nil {
 			return err
 		}
 	}
@@ -325,7 +326,7 @@ func (b *Bootstrap) CreateOperatorGroup() error {
 
 func (b *Bootstrap) createOrUpdateResource(annotations map[string]string, resName string, resNs string) error {
 	if r, ok := annotations[resName]; ok {
-		if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(r, placeholder, resNs))); err != nil {
+		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(r, placeholder, resNs))); err != nil {
 			return err
 		}
 	} else {
@@ -337,7 +338,7 @@ func (b *Bootstrap) createOrUpdateResource(annotations map[string]string, resNam
 // func (b *Bootstrap) createOrUpdateResources(annotations map[string]string, resNames []string) error {
 // 	for _, res := range resNames {
 // 		if r, ok := annotations[res]; ok {
-// 			if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(r, placeholder, b.MasterNamespace))); err != nil {
+// 			if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(r, placeholder, b.MasterNamespace))); err != nil {
 // 				return err
 // 			}
 // 		} else {
@@ -347,7 +348,7 @@ func (b *Bootstrap) createOrUpdateResource(annotations map[string]string, resNam
 // 	return nil
 // }
 
-func (b *Bootstrap) createOrUpdateFromYaml(yamlContent []byte) error {
+func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte) error {
 	objects, err := util.YamlToObjects(yamlContent)
 	if err != nil {
 		return err
@@ -399,23 +400,23 @@ func (b *Bootstrap) createOrUpdateFromYaml(yamlContent []byte) error {
 func (b *Bootstrap) waitResourceReady(apiGroupVersion, kind string) error {
 	dc := discovery.NewDiscoveryClientForConfigOrDie(b.Config)
 	if err := utilwait.PollImmediate(time.Second*10, time.Minute*5, func() (done bool, err error) {
-		exist, err := resourceExists(dc, apiGroupVersion, kind)
+		exist, err := b.ResourceExists(dc, apiGroupVersion, kind)
 		if err != nil {
 			return exist, err
 		}
 		if !exist {
 			klog.Infof("waiting for resource ready with kind: %s, apiGroupVersion: %s", kind, apiGroupVersion)
 		}
-		return true, nil
+		return exist, nil
 	}); err != nil {
 		return err
 	}
 	return nil
 }
 
-// resourceExists returns true if the given resource kind exists
+// ResourceExists returns true if the given resource kind exists
 // in the given api groupversion
-func resourceExists(dc discovery.DiscoveryInterface, apiGroupVersion, kind string) (bool, error) {
+func (b *Bootstrap) ResourceExists(dc discovery.DiscoveryInterface, apiGroupVersion, kind string) (bool, error) {
 	_, apiLists, err := dc.ServerGroupsAndResources()
 	if err != nil {
 		return false, err
@@ -452,7 +453,7 @@ func (b *Bootstrap) installNssOperator(manualManagement bool, annotations map[st
 	}
 
 	// Create NamespaceScope CR
-	if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(constant.NamespaceScopeCR, placeholder, b.MasterNamespace))); err != nil {
+	if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(constant.NamespaceScopeCR, placeholder, b.MasterNamespace))); err != nil {
 		return err
 	}
 
@@ -490,7 +491,7 @@ func (b *Bootstrap) createNsSubscription(manualManagement bool, annotations map[
 // CreateNsScopeConfigmap creates nss configmap for operators
 func (b *Bootstrap) CreateNsScopeConfigmap() error {
 	cmRes := constant.NamespaceScopeConfigMap
-	if err := b.createOrUpdateFromYaml([]byte(util.Namespacelize(cmRes, placeholder, b.MasterNamespace))); err != nil {
+	if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cmRes, placeholder, b.MasterNamespace))); err != nil {
 		return err
 	}
 	return nil

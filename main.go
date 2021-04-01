@@ -32,6 +32,7 @@ import (
 	operatorv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	"github.com/IBM/ibm-common-service-operator/controllers"
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
+	certmanager "github.com/IBM/ibm-common-service-operator/controllers/certmanager"
 	"github.com/IBM/ibm-common-service-operator/controllers/check"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
@@ -116,6 +117,8 @@ func main() {
 
 		// Check IAM pods status
 		go check.IamStatus(mgr)
+		// Generate Issuer and Certificate CR
+		go certmanager.DeployCR(bs)
 
 		if err = (&controllers.CommonServiceReconciler{
 			Client:    mgr.GetClient(),
