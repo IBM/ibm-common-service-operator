@@ -28,6 +28,7 @@ import (
 
 	utilyaml "github.com/ghodss/yaml"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
@@ -333,12 +334,11 @@ func CheckSaas(r client.Reader) (enable bool, err error) {
 
 // GetControlNs gets control namespace of deploying cluster scope services
 func GetControlNs(r client.Reader) (controlNs string) {
-	// default master namespace
-	controlNs = constant.MasterNamespace
+	controlNs = ""
 
 	csConfigmap, err := GetCmOfMapCs(r)
 	if err != nil {
-		klog.V(2).Infof("Don't find configmap kube-public/common-service-maps: %v", err)
+		klog.V(2).Infof("Could not find configmap kube-public/common-service-maps: %v", err)
 		return
 	}
 
@@ -354,7 +354,7 @@ func GetControlNs(r client.Reader) (controlNs string) {
 		return
 	}
 
-	if cmData.ControlNs != nil {
+	if len(cmData.ControlNs) > 0 {
 		controlNs = cmData.ControlNs
 	}
 

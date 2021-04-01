@@ -111,19 +111,15 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 		return err
 	}
 
-	// Check Saas Deployment
-	controlNs := b.MasterNamespace
-	saasEnable, err := checkSaas(b.Reader)
-	if err != nil {
-		return err
-	}
-	if saasEnable {
-		klog.Info("Saas Deployment Enabled for Common Services")
-		controlNs = util.GetControlNs(b.Reader)
-		if err := bs.CreateNamespace(controlNs); err != nil {
+	// Check Saas or Multi intances Deployment
+	controlNs := util.GetControlNs(b.Reader)
+	if len(controlNs) > 0 {
+		if err := b.CreateNamespace(controlNs); err != nil {
 			klog.Errorf("Failed to create control namespace: %v", err)
 			return err
 		}
+	} else {
+		controlNs = b.MasterNamespace
 	}
 
 	operatorNs, err := util.GetOperatorNamespace()

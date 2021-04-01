@@ -17,17 +17,12 @@
 package controllers
 
 import (
-	"context"
 	"strings"
 
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
-	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	iam "github.com/IBM/ibm-common-service-operator/controllers/iam"
 	"github.com/IBM/ibm-common-service-operator/controllers/size"
 	storageclass "github.com/IBM/ibm-common-service-operator/controllers/storageClass"
