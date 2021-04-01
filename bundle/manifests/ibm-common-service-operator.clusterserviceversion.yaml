@@ -604,14 +604,14 @@ spec:
                 - watch
             - apiGroups:
                 - ""
-              resource:
+              resources:
                 - serviceaccounts
               verbs:
                 - create
                 - get
             - apiGroups:
                 - apps
-              resource:
+              resources:
                 - deployments
               verbs:
                 - create
