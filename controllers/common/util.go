@@ -184,8 +184,8 @@ func Reverse(original []string) []string {
 }
 
 // Namespacelize adds the namespace specified
-func Namespacelize(resource, ns string) string {
-	return strings.ReplaceAll(resource, "placeholder", ns)
+func Namespacelize(resource, placeholder, ns string) string {
+	return strings.ReplaceAll(resource, placeholder, ns)
 }
 
 func ReplaceImages(resource string) (result string) {
@@ -227,7 +227,7 @@ func GetMasterNs(r client.Reader) (masterNs string) {
 
 	csConfigmap, err := GetCmOfMapCs(r)
 	if err != nil {
-		klog.V(2).Infof("Don't find configmap kube-public/common-service-maps: %v", err)
+		klog.V(2).Infof("Could not find configmap kube-public/common-service-maps: %v", err)
 		return
 	}
 
@@ -312,24 +312,27 @@ func findNamespace(nsList []string, nsName string) (exist bool) {
 }
 
 // CheckSaas checks whether it is a SaaS deployment for Common Services
-func CheckSaas(r client.Reader) (enable bool, err error) {
+func CheckSaas(r client.Reader) (enable bool) {
 	cmName := constant.SaasConfigMap
 	cmNs := "kube-public"
 	saasConfigmap := &corev1.ConfigMap{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: cmNs}, saasConfigmap)
+	err := r.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: cmNs}, saasConfigmap)
 	if errors.IsNotFound(err) {
-		return false, nil
+		klog.V(2).Infof("Could not find configmap %v/%v: %v", cmNs, cmName, err)
+		return false
 	} else if err != nil {
-		return false, err
+		klog.Errorf("Failed to fetch configmap %v/%v: %v", cmNs, cmName, err)
+		return false
 	}
 	v, ok := saasConfigmap.Data["ibm_cloud_saas"]
 	if !ok {
-		return false, nil
+		klog.V(2).Infof("Could not find ibm_cloud_saas in configmap %v/%v", cmNs, cmName)
+		return false
 	}
 	if v != "true" {
-		return false, nil
+		return false
 	}
-	return true, nil
+	return true
 }
 
 // GetControlNs gets control namespace of deploying cluster scope services
