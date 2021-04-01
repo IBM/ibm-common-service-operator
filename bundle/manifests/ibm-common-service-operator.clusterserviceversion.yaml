@@ -446,6 +446,7 @@ spec:
                 - configmaps
                 - secrets
                 - pods
+                - services
               verbs:
                 - create
                 - delete
@@ -492,6 +493,20 @@ spec:
                 - patch
                 - update
                 - watch
+            - apiGroups:
+                - ""
+              resource:
+                - serviceaccounts
+              verbs:
+                - create
+                - get
+            - apiGroups:
+                - apps
+              resource:
+                - deployments
+              verbs:
+                - create
+                - get
           serviceAccountName: ibm-common-service-operator
       deployments:
         - name: ibm-common-service-operator
