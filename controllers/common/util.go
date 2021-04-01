@@ -281,6 +281,10 @@ func UpdateNSList(r client.Reader, c client.Client, cm *corev1.ConfigMap, master
 		return fmt.Errorf("failed to fetch data of configmap common-service-maps: %v", err)
 	}
 
+	if len(cmData.ControlNs) > 0 {
+		nsSet[cmData.ControlNs] = struct{}{}
+	}
+
 	for _, nsMapping := range cmData.NsMappingList {
 		if masterNs == nsMapping.CsNs {
 			for _, ns := range nsMapping.RequestNs {
