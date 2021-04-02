@@ -16,6 +16,10 @@
 
 package constant
 
+import (
+	"time"
+)
+
 const (
 	// OperatorNameEnvVar is the constant for env variable OPERATOR_NAME
 	// which is the name of the current operator
@@ -42,6 +46,8 @@ const (
 	NsSubName = "ibm-namespace-scope-operator"
 	// Namespace Scope Operator Restricted sub name
 	NsRestrictedSubName = "ibm-namespace-scope-operator-restricted"
+	//DefaultRequeueDuration is the default requeue time duration for request
+	DefaultRequeueDuration = 20 * time.Second
 )
 
 // CsOg is OperatorGroup constent for the common service operator

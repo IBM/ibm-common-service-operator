@@ -367,3 +367,71 @@ func GetControlNs(r client.Reader) (controlNs string) {
 
 	return
 }
+
+// ValidateCsMaps checks common-service-maps has no scope overlapping
+func ValidateCsMaps(cm *corev1.ConfigMap) error {
+	commonServiceMaps, ok := cm.Data["common-service-maps.yaml"]
+	if !ok {
+		return fmt.Errorf("there is no common-service-maps.yaml in configmap kube-public/common-service-maps")
+	}
+
+	var cmData CsMaps
+	if err := utilyaml.Unmarshal([]byte(commonServiceMaps), &cmData); err != nil {
+		return fmt.Errorf("failed to fetch data of configmap common-service-maps: %v", err)
+	}
+
+	nsSet := make(map[string]interface{})
+
+	for _, nsMapping := range cmData.NsMappingList {
+		// validate masterNamespace and controlNamespace
+		if cmData.ControlNs == nsMapping.CsNs {
+			return fmt.Errorf("invalid controlNamespace: %v", cmData.ControlNs)
+		}
+		if _, ok := nsSet[nsMapping.CsNs]; ok {
+			return fmt.Errorf("invalid map-to-common-service-namespace: %v", nsMapping.CsNs)
+		}
+		nsSet[nsMapping.CsNs] = struct{}{}
+		// validate CloudPak Namespace and controlNamespace
+		for _, ns := range nsMapping.RequestNs {
+			if cmData.ControlNs == ns {
+				return fmt.Errorf("invalid controlNamespace: %v", cmData.ControlNs)
+			}
+			if _, ok := nsSet[ns]; ok {
+				return fmt.Errorf("invalid requested-from-namespace: %v", ns)
+			}
+			nsSet[ns] = struct{}{}
+		}
+	}
+	return nil
+}
+
+// GetCsScope fetchs the namespaces from its own requested-from-namespace and map-to-common-service-namespace
+func GetCsScope(cm *corev1.ConfigMap, masterNs string) ([]string, error) {
+	var nsMems []string
+	nsSet := make(map[string]interface{})
+
+	commonServiceMaps, ok := cm.Data["common-service-maps.yaml"]
+	if !ok {
+		return nsMems, fmt.Errorf("there is no common-service-maps.yaml in configmap kube-public/common-service-maps")
+	}
+
+	var cmData CsMaps
+	if err := utilyaml.Unmarshal([]byte(commonServiceMaps), &cmData); err != nil {
+		return nsMems, fmt.Errorf("failed to fetch data of configmap common-service-maps: %v", err)
+	}
+
+	for _, nsMapping := range cmData.NsMappingList {
+		if masterNs == nsMapping.CsNs {
+			nsSet[masterNs] = struct{}{}
+			for _, ns := range nsMapping.RequestNs {
+				nsSet[ns] = struct{}{}
+			}
+		}
+	}
+
+	for ns := range nsSet {
+		nsMems = append(nsMems, ns)
+	}
+
+	return nsMems, nil
+}

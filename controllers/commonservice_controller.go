@@ -30,10 +30,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
+	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/controllers/deploy"
 )
 
@@ -59,6 +61,26 @@ var ctx = context.Background()
 func (r *CommonServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	klog.Infof("Reconciling CommonService: %s", req.NamespacedName)
+
+	// Validate common-service-maps and filter the namespace of CommonService CR
+	cm, err := util.GetCmOfMapCs(r.Reader)
+	if err == nil {
+		if err := util.ValidateCsMaps(cm); err != nil {
+			klog.Errorf("Unsupported common-service-maps: %v", err)
+			return reconcile.Result{RequeueAfter: constant.DefaultRequeueDuration}, err
+		}
+		csScope, err := util.GetCsScope(cm, r.Bootstrap.MasterNamespace)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		if isScoped := r.checkScope(csScope, req.NamespacedName.Namespace); !isScoped {
+			klog.Infof("CommonService CR %v is not in the scope", req.NamespacedName.String())
+			return ctrl.Result{}, nil
+		}
+	} else if !errors.IsNotFound(err) {
+		klog.Errorf("Failed to get common-service-maps: %v", err)
+		return ctrl.Result{}, err
+	}
 
 	// Fetch the CommonService instance
 	instance := &apiv3.CommonService{}

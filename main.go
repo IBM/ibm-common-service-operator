@@ -22,6 +22,7 @@ import (
 
 	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -76,6 +77,18 @@ func main() {
 	})
 	if err != nil {
 		klog.Errorf("Unable to start manager: %v", err)
+		os.Exit(1)
+	}
+
+	// Validate common-service-maps
+	cm, err := util.GetCmOfMapCs(mgr.GetAPIReader())
+	if err == nil {
+		if err := util.ValidateCsMaps(cm); err != nil {
+			klog.Errorf("Unsupported common-service-maps: %v", err)
+			os.Exit(1)
+		}
+	} else if !errors.IsNotFound(err) {
+		klog.Errorf("Failed to get common-service-maps: %v", err)
 		os.Exit(1)
 	}
 
