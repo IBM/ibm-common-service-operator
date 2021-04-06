@@ -1609,7 +1609,7 @@ metadata:
   name: ibm-common-service-webhook
   namespace: placeholder
   annotations:
-    version: "7"
+    version: "8"
 spec:
   replicas: 1
   selector:
