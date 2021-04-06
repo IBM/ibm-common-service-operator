@@ -182,7 +182,7 @@ metadata:
   name: secretshare
   namespace: placeholder
   annotations:
-    version: "10"
+    version: "11"
 spec:
   replicas: 1
   selector:
