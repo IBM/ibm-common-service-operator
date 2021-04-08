@@ -264,15 +264,6 @@ const Small = `
         limits:
           memory: 800Mi
           cpu: 1000m
-      commonWebUIConfig:
-        dashboardData:
-          resources:
-            limits:
-              cpu: 3000m
-              memory: 460Mi
-            requests:
-              cpu: 300m
-              memory: 230Mi
 - name: ibm-platform-api-operator
   spec:
     platformApi:

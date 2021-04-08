@@ -264,15 +264,6 @@ const Medium = `
         limits:
           memory: 660Mi
           cpu: 1000m
-      commonWebUIConfig:
-        dashboardData:
-          resources:
-            limits:
-              cpu: 3000m
-              memory: 600Mi
-            requests:
-              cpu: 390m
-              memory: 380Mi
 - name: ibm-platform-api-operator
   spec:
     platformApi:
