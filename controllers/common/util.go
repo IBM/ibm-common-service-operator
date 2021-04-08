@@ -436,3 +436,13 @@ func GetCsScope(cm *corev1.ConfigMap, masterNs string) ([]string, error) {
 
 	return nsMems, nil
 }
+
+// EnsureLabelsForConfigMap ensures that the specifc ConfigMap has the certain labels
+func EnsureLabelsForConfigMap(cm *corev1.ConfigMap, labels map[string]string) {
+	if cm.Labels == nil {
+		cm.Labels = make(map[string]string)
+	}
+	for k, v := range labels {
+		cm.Labels[k] = v
+	}
+}

@@ -29,8 +29,11 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
@@ -234,8 +237,33 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(instance *apiv3.CommonServi
 	return ctrl.Result{}, nil
 }
 
+func (r *CommonServiceReconciler) toCsRequest() handler.ToRequestsFunc {
+	return func(object handler.MapObject) []reconcile.Request {
+		CsInstance := []reconcile.Request{}
+		cmName := object.Meta.GetName()
+		cmNs := object.Meta.GetNamespace()
+		if cmName == constant.CsMapConfigMap && cmNs == "kube-public" {
+			CsInstance = append(CsInstance, reconcile.Request{NamespacedName: types.NamespacedName{Name: "common-service", Namespace: r.Bootstrap.MasterNamespace}})
+		}
+		return CsInstance
+	}
+}
+
 func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&apiv3.CommonService{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
-		Complete(r)
+		Watches(
+			&source.Kind{Type: &corev1.ConfigMap{}},
+			&handler.EnqueueRequestsFromMapFunc{ToRequests: r.toCsRequest()},
+			builder.WithPredicates(predicate.Funcs{
+				CreateFunc: func(e event.CreateEvent) bool {
+					return true
+				},
+				DeleteFunc: func(e event.DeleteEvent) bool {
+					return !e.DeleteStateUnknown
+				},
+				UpdateFunc: func(e event.UpdateEvent) bool {
+					return true
+				},
+			})).Complete(r)
 }

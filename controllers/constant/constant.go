@@ -48,6 +48,8 @@ const (
 	NsRestrictedSubName = "ibm-namespace-scope-operator-restricted"
 	//DefaultRequeueDuration is the default requeue time duration for request
 	DefaultRequeueDuration = 20 * time.Second
+	//CsMapsLabel is the label used to label the configmaps are managed by cs operator
+	CsManagedLabel = "operator.ibm.com/managedByCsOperator"
 )
 
 // CsOg is OperatorGroup constent for the common service operator

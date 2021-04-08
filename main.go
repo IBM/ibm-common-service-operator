@@ -17,19 +17,23 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
 
 	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
 
+	cache "github.com/IBM/controller-filtered-cache/filteredcache"
 	operatorv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	"github.com/IBM/ibm-common-service-operator/controllers"
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
@@ -68,12 +72,19 @@ func main() {
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.Parse()
 
+	gvkLabelMap := map[schema.GroupVersionKind]cache.Selector{
+		corev1.SchemeGroupVersion.WithKind("ConfigMap"): {
+			LabelSelector: constant.CsManagedLabel,
+		},
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
 		MetricsBindAddress: metricsAddr,
 		Port:               9443,
 		LeaderElection:     enableLeaderElection,
 		LeaderElectionID:   "be598e12.ibm.com",
+		NewCache:           cache.NewFilteredCacheBuilder(gvkLabelMap),
 	})
 	if err != nil {
 		klog.Errorf("Unable to start manager: %v", err)
@@ -86,6 +97,15 @@ func main() {
 		if err := util.ValidateCsMaps(cm); err != nil {
 			klog.Errorf("Unsupported common-service-maps: %v", err)
 			os.Exit(1)
+		}
+		if !(cm.Labels != nil && cm.Labels[constant.CsManagedLabel] == "true") {
+			util.EnsureLabelsForConfigMap(cm, map[string]string{
+				constant.CsManagedLabel: "true",
+			})
+			if err := mgr.GetClient().Update(context.TODO(), cm); err != nil {
+				klog.Errorf("Failed to update labels for common-service-maps: %v", err)
+				os.Exit(1)
+			}
 		}
 	} else if !errors.IsNotFound(err) {
 		klog.Errorf("Failed to get common-service-maps: %v", err)
