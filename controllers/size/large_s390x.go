@@ -256,15 +256,6 @@ const Large = `
 - name: ibm-commonui-operator
   spec:
     commonWebUI:
-      commonWebUIConfig:
-        dashboardData:
-          resources:
-            limits:
-              cpu: 3000m
-              memory: 568Mi
-            requests:
-              cpu: 362m
-              memory: 345Mi
       replicas: 3
       resources:
         limits:
