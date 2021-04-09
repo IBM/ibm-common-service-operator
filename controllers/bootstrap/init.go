@@ -18,7 +18,6 @@ package bootstrap
 
 import (
 	"context"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -371,20 +370,8 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte) error {
 			continue
 		}
 
-		annoVersion := obj.GetAnnotations()["version"]
-		if annoVersion == "" {
-			annoVersion = "0"
-		}
-		annoVersionInCluster := objInCluster.GetAnnotations()["version"]
-		if annoVersionInCluster == "" {
-			annoVersionInCluster = "0"
-		}
-
-		version, _ := strconv.Atoi(annoVersion)
-		versionInCluster, _ := strconv.Atoi(annoVersionInCluster)
-
 		// TODO: deep merge and update
-		if version > versionInCluster {
+		if compareVersion(obj.GetAnnotations()["version"], objInCluster.GetAnnotations()["version"]) {
 			klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
 			resourceVersion := objInCluster.GetResourceVersion()
 			obj.SetResourceVersion(resourceVersion)
@@ -395,6 +382,37 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte) error {
 	}
 
 	return errMsg
+}
+
+func compareVersion(v1, v2 string) (v1IsLarger bool) {
+	if v1 == "" {
+		v1 = "0.0.0"
+	}
+	v1Slice := strings.Split(v1, ".")
+	if len(v1Slice) == 1 {
+		v1 = "0.0." + v1
+	}
+
+	if v2 == "" {
+		v2 = "0.0.0"
+	}
+	v2Slice := strings.Split(v2, ".")
+	if len(v2Slice) == 1 {
+		v2 = "0.0." + v2
+	}
+
+	v1Slice = strings.Split(v1, ".")
+	v2Slice = strings.Split(v2, ".")
+	for index := range v1Slice {
+		if v1Slice[index] > v2Slice[index] {
+			return true
+		} else if v1Slice[index] == v2Slice[index] {
+			continue
+		} else {
+			return false
+		}
+	}
+	return false
 }
 
 func (b *Bootstrap) waitResourceReady(apiGroupVersion, kind string) error {

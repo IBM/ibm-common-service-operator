@@ -30,7 +30,7 @@ metadata:
         name: ibm-common-service-operator
         namespace: placeholder
         annotations:
-          version: "12"
+          version: "3.8.0"
       spec:
         channel: beta
         installPlanApproval: Automatic
@@ -44,7 +44,7 @@ metadata:
         name: common-service
         namespace: placeholder
         annotations:
-          version: "9"
+          version: "3.8.0"
       spec:
         services:
         - name: ibm-licensing-operator
@@ -121,7 +121,7 @@ metadata:
         name: common-service
         namespace: placeholder
         annotations:
-          version: "9"
+          version: "3.8.0"
       spec:
         services:
         - name: ibm-licensing-operator
@@ -199,7 +199,7 @@ metadata:
         name: common-service
         namespace: placeholder
         annotations:
-          version: "14"
+          version: "3.8.0"
       spec:
         operators:
         - name: ibm-licensing-operator
@@ -327,7 +327,7 @@ metadata:
         name: common-service
         namespace: placeholder
         annotations:
-          version: "14"
+          version: "3.8.0"
       spec:
         operators:
         - name: ibm-licensing-operator
@@ -393,7 +393,7 @@ metadata:
         name: ibm-namespace-scope-operator-restricted
         namespace: placeholder
         annotations:
-          version: "12"
+          version: "3.8.0"
       spec:
         channel: beta
         installPlanApproval: Automatic
@@ -407,7 +407,7 @@ metadata:
         name: ibm-namespace-scope-operator
         namespace: placeholder
         annotations:
-          version: "12"
+          version: "3.8.0"
       spec:
         channel: beta
         installPlanApproval: Automatic
@@ -421,7 +421,7 @@ metadata:
         name: operand-deployment-lifecycle-manager-app
         namespace: placeholder
         annotations:
-          version: "13"
+          version: "3.8.0"
       spec:
         channel: beta
         installPlanApproval: Automatic
@@ -435,7 +435,7 @@ metadata:
         name: operand-deployment-lifecycle-manager-app
         namespace: placeholder
         annotations:
-          version: "13"
+          version: "3.8.0"
       spec:
         channel: beta
         installPlanApproval: Automatic
