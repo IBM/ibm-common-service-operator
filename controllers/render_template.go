@@ -22,8 +22,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/klog"
 
-	util "github.com/IBM/ibm-common-service-operator/controllers/common"
-	iam "github.com/IBM/ibm-common-service-operator/controllers/iam"
 	"github.com/IBM/ibm-common-service-operator/controllers/size"
 	storageclass "github.com/IBM/ibm-common-service-operator/controllers/storageClass"
 )
@@ -31,16 +29,6 @@ import (
 func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured) ([]interface{}, error) {
 	var newConfigs []interface{}
 	var err error
-	// Update IAM in OperandConfig
-	saasEnable := util.CheckSaas(r.Reader)
-	if saasEnable {
-		klog.Info("IAM Saas configuration")
-		iamConfig, err := convertStringToSlice(iam.Template)
-		if err != nil {
-			return nil, err
-		}
-		newConfigs = append(newConfigs, iamConfig...)
-	}
 	// Update storageclass in OperandConfig
 	if cs.Object["spec"].(map[string]interface{})["storageClass"] != nil {
 		klog.Info("Applying storageClass configuration")

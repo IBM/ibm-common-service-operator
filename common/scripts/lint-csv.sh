@@ -28,7 +28,7 @@ if [[ "X${JQ}" == "X" ]]; then
     JQ=/tmp/jq
 fi
 if [[ "X${YQ}" == "X" ]]; then
-    curl -L -o /tmp/yq https://github.com/mikefarah/yq/releases/download/3.3.0/yq_linux_amd64
+    curl -L -o /tmp/yq https://github.com/mikefarah/yq/releases/download/4.3.1/yq_linux_amd64
     chmod +x /tmp/yq
     YQ=/tmp/yq
 fi
@@ -37,18 +37,12 @@ CSV_PATH=bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
 
 # Lint alm-examples
 echo "Lint alm-examples"
-$YQ r $CSV_PATH metadata.annotations.alm-examples | $JQ . >/dev/null || STATUS=1
+$YQ eval '.metadata.annotations.alm-examples' $CSV_PATH  | $JQ . >/dev/null || STATUS=1
 
 # Lint yamls, only CS Operator needs this part
 for section in csV3OperandConfig csV3SaasOperandConfig csV3OperandRegistry csV3SaasOperandRegistry csOperatorSubscription csSecretshareOperator csWebhookOperator csWebhookOperatorEnableOpreqWebhook nsRestrictedSubscription nsSubscription odlmClusterSubscription odlmNamespacedSubscription; do
     echo "Lint $section"
-    $YQ r $CSV_PATH metadata.annotations.$section | $YQ r - >/dev/null || STATUS=1
-done
-
-sections=$($YQ r $CSV_PATH metadata.annotations.extraResources)
-for section in ${sections//,/ }; do
-    echo "Lint $section"
-    $YQ r $CSV_PATH metadata.annotations.$section | $YQ r - >/dev/null || STATUS=1
+    $YQ eval '.metadata.annotations.$section' $CSV_PATH  | $YQ - >/dev/null || STATUS=1
 done
 
 exit $STATUS

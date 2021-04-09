@@ -34,14 +34,10 @@ import (
 	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
-	"github.com/IBM/ibm-common-service-operator/controllers/deploy"
 )
 
 // CommonServiceReconciler reconciles a CommonService object
 type CommonServiceReconciler struct {
-	client.Client
-	client.Reader
-	*deploy.Manager
 	*bootstrap.Bootstrap
 	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
@@ -63,7 +59,7 @@ func (r *CommonServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 	// Fetch the CommonService instance
 	instance := &apiv3.CommonService{}
 
-	if err := r.Client.Get(ctx, req.NamespacedName, instance); err != nil {
+	if err := r.Bootstrap.Client.Get(ctx, req.NamespacedName, instance); err != nil {
 		if errors.IsNotFound(err) {
 			if err := r.handleDelete(); err != nil {
 				return ctrl.Result{}, err
@@ -108,7 +104,7 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(instance *apiv3.CommonServic
 	}
 
 	cs := util.NewUnstructured("operator.ibm.com", "CommonService", "v3")
-	if err := r.Client.Get(ctx, types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}, cs); err != nil {
+	if err := r.Bootstrap.Client.Get(ctx, types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}, cs); err != nil {
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 		return ctrl.Result{}, err
 	}
@@ -165,7 +161,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(instance *apiv3.CommonServi
 		Name:      "common-service",
 		Namespace: r.Bootstrap.MasterNamespace,
 	}
-	if err := r.Reader.Get(ctx, opconKey, opcon); err != nil {
+	if err := r.Bootstrap.Reader.Get(ctx, opconKey, opcon); err != nil {
 		klog.Errorf("failed to get OperandConfig %s: %v", opconKey.String(), err)
 		if err := r.updatePhase(instance, CRFailed); err != nil {
 			klog.Error(err)
@@ -175,7 +171,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(instance *apiv3.CommonServi
 	}
 
 	cs := util.NewUnstructured("operator.ibm.com", "CommonService", "v3")
-	if err := r.Client.Get(ctx, types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}, cs); err != nil {
+	if err := r.Bootstrap.Client.Get(ctx, types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}, cs); err != nil {
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 		return ctrl.Result{}, err
 	}
