@@ -88,7 +88,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   annotations:
-    version: "1"
+    version: "3.8.0"
   name: ibm-common-services-cluster-admin
 rules:
 - apiGroups:
