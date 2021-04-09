@@ -119,9 +119,9 @@ function wait_for_eus() {
                     IFS='.' read -ra cur_version <<< "${version}"
                     IFS='.' read -ra eus_version <<< "${hash_version}"
                     for index in ${!cur_version[@]}; do
-                        if [[ ${cur_version[index]} > ${eus_version[index]} ]]; then
+                        if [[ $((${cur_version[index]} > ${eus_version[index]})) ]]; then
                             break
-                        elif [[ ${cur_version[index]} == ${eus_version[index]} ]]; then
+                        elif [[ $((${cur_version[index]} == ${eus_version[index]})) ]]; then
                             continue
                         else
                             succeed=false
