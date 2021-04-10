@@ -28,7 +28,7 @@ if [[ "X${JQ}" == "X" ]]; then
     JQ=/tmp/jq
 fi
 if [[ "X${YQ}" == "X" ]]; then
-    curl -L -o /tmp/yq https://github.com/mikefarah/yq/releases/download/4.3.1/yq_linux_amd64
+    curl -L -o /tmp/yq https://github.com/mikefarah/yq/releases/download/v4.3.1/yq_linux_amd64
     chmod +x /tmp/yq
     YQ=/tmp/yq
 fi
