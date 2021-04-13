@@ -36,6 +36,18 @@ metadata:
 spec:
   namespaceMembers:
   - placeholder
+---
+apiVersion: operator.ibm.com/v1
+kind: NamespaceScope
+metadata:
+  name: nss-odlm-scope
+  namespace: placeholder
+spec:
+  namespaceMembers:
+  - placeholder
+  configmapName: odlm-scope
+  restartLabels:
+    intent: projected-odlm
 `
 
 // NamespaceScopeConfigMap is the init configmap
@@ -46,5 +58,13 @@ data:
 kind: ConfigMap
 metadata:
   name: namespace-scope
+  namespace: placeholder
+---
+apiVersion: v1
+data:
+  namespaces: placeholder
+kind: ConfigMap
+metadata:
+  name: odlm-scope
   namespace: placeholder
 `

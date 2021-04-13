@@ -44,6 +44,7 @@ import (
 var (
 	placeholder               = "placeholder"
 	placeholderControlNs      = "controlns"
+	placeholderOdlmScope      = "odlmScopesholder"
 	CsSubResource             = "csOperatorSubscription"
 	OdlmNamespacedSubResource = "odlmNamespacedSubscription"
 	OdlmClusterSubResource    = "odlmClusterSubscription"
@@ -182,23 +183,9 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 		return err
 	}
 
-	// Delete the previous version ODLM operator
-	klog.Info("Trying to delete ODLM operator in openshift-operators")
-	if err := b.deleteSubscription("operand-deployment-lifecycle-manager-app", "openshift-operators"); err != nil {
-		klog.Errorf("Failed to delete ODLM operator in openshift-operators: %v", err)
-		return err
-	}
-
 	// Install ODLM Operator
-	klog.Info("Installing ODLM Operator")
-	if operatorNs == constant.ClusterOperatorNamespace {
-		if err := b.createOrUpdateResource(annotations, OdlmClusterSubResource, b.MasterNamespace); err != nil {
-			return err
-		}
-	} else {
-		if err := b.createOrUpdateResource(annotations, OdlmNamespacedSubResource, b.MasterNamespace); err != nil {
-			return err
-		}
+	if err := b.installODLM(operatorNs, annotations); err != nil {
+		return err
 	}
 
 	// create and wait ODLM OperandRegistry and OperandConfig CR resources
@@ -477,12 +464,53 @@ func (b *Bootstrap) installNssOperator(manualManagement bool, annotations map[st
 
 	cm, err := util.GetCmOfMapCs(b.Reader)
 	if err == nil {
-		err := util.UpdateNSList(b.Reader, b.Client, cm, b.MasterNamespace)
+		err := util.UpdateNSList(b.Reader, b.Client, cm, "common-service", b.MasterNamespace, false)
 		if err != nil {
 			return err
 		}
 	} else if !errors.IsNotFound(err) {
 		return err
+	}
+	return nil
+}
+
+func (b *Bootstrap) installODLM(operatorNs string, annotations map[string]string) error {
+	// Delete the previous version ODLM operator
+	klog.Info("Trying to delete ODLM operator in openshift-operators")
+	if err := b.deleteSubscription("operand-deployment-lifecycle-manager-app", "openshift-operators"); err != nil {
+		klog.Errorf("Failed to delete ODLM operator in openshift-operators: %v", err)
+		return err
+	}
+
+	// Install ODLM Operator
+	klog.Info("Installing ODLM Operator")
+	if operatorNs == constant.ClusterOperatorNamespace {
+		if err := b.createOrUpdateResource(annotations, OdlmClusterSubResource, b.MasterNamespace); err != nil {
+			return err
+		}
+	} else {
+		if odlmSub := b.getYamlFromAnnotations(annotations, OdlmNamespacedSubResource); len(odlmSub) > 0 {
+			odlmSub = util.Namespacelize(odlmSub, placeholder, b.MasterNamespace)
+			odlmScopeEnable := "false"
+			// SaaS or on-prem multi instances case, enable odlm-scope
+			if b.MasterNamespace != b.ControlNs {
+				odlmScopeEnable = "true"
+			}
+			cm, err := util.GetCmOfMapCs(b.Client)
+			if err == nil {
+				err := util.UpdateNSList(b.Reader, b.Client, cm, "nss-odlm-scope", b.MasterNamespace, true)
+				if err != nil {
+					return err
+				}
+			} else if !errors.IsNotFound(err) {
+				klog.Errorf("Failed to get common-service-maps: %v", err)
+				return err
+			}
+			odlmSub = util.Namespacelize(odlmSub, placeholderOdlmScope, odlmScopeEnable)
+			if err := b.CreateOrUpdateFromYaml([]byte(odlmSub)); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

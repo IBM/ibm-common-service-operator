@@ -258,9 +258,9 @@ func GetMasterNs(r client.Reader) (masterNs string) {
 }
 
 // UpdateNSList updates adopter namespaces of Common Services
-func UpdateNSList(r client.Reader, c client.Client, cm *corev1.ConfigMap, masterNs string) error {
+func UpdateNSList(r client.Reader, c client.Client, cm *corev1.ConfigMap, nssKey, masterNs string, addControlNs bool) error {
 	nsScope := &nssv1.NamespaceScope{}
-	nsScopeKey := types.NamespacedName{Name: "common-service", Namespace: masterNs}
+	nsScopeKey := types.NamespacedName{Name: nssKey, Namespace: masterNs}
 	if err := r.Get(context.TODO(), nsScopeKey, nsScope); err != nil {
 		return err
 	}
@@ -281,8 +281,10 @@ func UpdateNSList(r client.Reader, c client.Client, cm *corev1.ConfigMap, master
 		return fmt.Errorf("failed to fetch data of configmap common-service-maps: %v", err)
 	}
 
-	if len(cmData.ControlNs) > 0 {
-		nsSet[cmData.ControlNs] = struct{}{}
+	if addControlNs {
+		if len(cmData.ControlNs) > 0 {
+			nsSet[cmData.ControlNs] = struct{}{}
+		}
 	}
 
 	for _, nsMapping := range cmData.NsMappingList {

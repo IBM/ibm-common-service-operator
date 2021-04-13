@@ -66,7 +66,7 @@ func (r *CommonServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 	klog.Infof("Reconciling CommonService: %s", req.NamespacedName)
 
 	// Validate common-service-maps and filter the namespace of CommonService CR
-	cm, err := util.GetCmOfMapCs(r.Reader)
+	cm, err := util.GetCmOfMapCs(r.Client)
 	if err == nil {
 		if err := util.ValidateCsMaps(cm); err != nil {
 			klog.Errorf("Unsupported common-service-maps: %v", err)
