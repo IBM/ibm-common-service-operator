@@ -49,7 +49,7 @@ func DeployCR(bs *bootstrap.Bootstrap) {
 			if done {
 				break
 			}
-			time.Sleep(30 * time.Second)
+			time.Sleep(10 * time.Second)
 		}
 
 	}
@@ -57,7 +57,7 @@ func DeployCR(bs *bootstrap.Bootstrap) {
 
 func waitResourceReady(bs *bootstrap.Bootstrap, apiGroupVersion string, kind string) error {
 	dc := discovery.NewDiscoveryClientForConfigOrDie(bs.Config)
-	if err := utilwait.PollImmediateInfinite(time.Second*30, func() (done bool, err error) {
+	if err := utilwait.PollImmediateInfinite(time.Second*10, func() (done bool, err error) {
 		exist, err := bs.ResourceExists(dc, apiGroupVersion, kind)
 		if err != nil {
 			return exist, err
