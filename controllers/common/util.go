@@ -388,7 +388,7 @@ func ValidateCsMaps(cm *corev1.ConfigMap) error {
 	for _, nsMapping := range cmData.NsMappingList {
 		// validate masterNamespace and controlNamespace
 		if cmData.ControlNs == nsMapping.CsNs {
-			return fmt.Errorf("invalid controlNamespace: %v", cmData.ControlNs)
+			return fmt.Errorf("invalid controlNamespace: %v. Cannot be the same as map-to-common-service-namespace", cmData.ControlNs)
 		}
 		if _, ok := CsNsSet[nsMapping.CsNs]; ok {
 			return fmt.Errorf("invalid map-to-common-service-namespace: %v", nsMapping.CsNs)
@@ -397,7 +397,7 @@ func ValidateCsMaps(cm *corev1.ConfigMap) error {
 		// validate CloudPak Namespace and controlNamespace
 		for _, ns := range nsMapping.RequestNs {
 			if cmData.ControlNs == ns {
-				return fmt.Errorf("invalid controlNamespace: %v", cmData.ControlNs)
+				return fmt.Errorf("invalid controlNamespace: %v. Cannot be the same as requested-from-namespace", cmData.ControlNs)
 			}
 			if _, ok := RequestNsSet[ns]; ok {
 				return fmt.Errorf("invalid requested-from-namespace: %v", ns)
