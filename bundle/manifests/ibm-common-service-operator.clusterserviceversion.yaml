@@ -446,7 +446,7 @@ metadata:
           - name: INSTALL_SCOPE
             value: namespaced
           - name: ODLM_SCOPE
-            value: odlmScopesholder
+            value: "odlmScopesholder"
     olm.skipRange: ">=3.3.0 <3.8.0"
     operators.operatorframework.io/builder: operator-sdk-v1.3.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
