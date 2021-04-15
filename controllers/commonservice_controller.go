@@ -39,7 +39,6 @@ import (
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
-	"github.com/IBM/ibm-common-service-operator/controllers/deploy"
 )
 
 // CommonServiceReconciler reconciles a CommonService object
