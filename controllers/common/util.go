@@ -324,7 +324,7 @@ func CheckSaas(r client.Reader) (enable bool) {
 	saasConfigmap := &corev1.ConfigMap{}
 	err := r.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: cmNs}, saasConfigmap)
 	if errors.IsNotFound(err) {
-		klog.V(2).Infof("Could not find configmap %v/%v: %v", cmNs, cmName, err)
+		klog.V(2).Infof("There is no configmap %v/%v in the cluster: Running Common Service Operator in On-Prem mode", cmNs, cmName)
 		return false
 	} else if err != nil {
 		klog.Errorf("Failed to fetch configmap %v/%v: %v", cmNs, cmName, err)
@@ -332,12 +332,13 @@ func CheckSaas(r client.Reader) (enable bool) {
 	}
 	v, ok := saasConfigmap.Data["ibm_cloud_saas"]
 	if !ok {
-		klog.V(2).Infof("Could not find ibm_cloud_saas in configmap %v/%v", cmNs, cmName)
+		klog.V(2).Infof("There is no ibm_cloud_saas in configmap %v/%v: Running Common Service Operator in On-Prem mode", cmNs, cmName)
 		return false
 	}
 	if v != "true" {
 		return false
 	}
+	klog.V(2).Infof("Running Common Service Operator in SaaS mode")
 	return true
 }
 
@@ -347,13 +348,13 @@ func GetControlNs(r client.Reader) (controlNs string) {
 
 	csConfigmap, err := GetCmOfMapCs(r)
 	if err != nil {
-		klog.V(2).Infof("Could not find configmap kube-public/common-service-maps: %v", err)
+		klog.V(2).Info("There is no configmap kube-public/common-service-maps: Installing common services into ibm-common-services namespace")
 		return
 	}
 
 	commonServiceMaps, ok := csConfigmap.Data["common-service-maps.yaml"]
 	if !ok {
-		klog.Infof("There is no common-service-maps.yaml in configmap kube-public/common-service-maps")
+		klog.Infof("There is no common-service-maps.yaml in configmap kube-public/common-service-maps: Installing common services into ibm-common-services namespace")
 		return
 	}
 

@@ -99,9 +99,6 @@ var _ = BeforeSuite(func(done Done) {
 
 	// Setup Manager with CommonService Controller
 	err = (&CommonServiceReconciler{
-		Client:    k8sManager.GetClient(),
-		Reader:    k8sManager.GetAPIReader(),
-		Manager:   deployMgr,
 		Bootstrap: bootstrap.NewBootstrap(k8sManager),
 		Scheme:    k8sManager.GetScheme(),
 	}).SetupWithManager(k8sManager)

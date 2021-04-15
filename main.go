@@ -41,7 +41,6 @@ import (
 	"github.com/IBM/ibm-common-service-operator/controllers/check"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
-	"github.com/IBM/ibm-common-service-operator/controllers/deploy"
 	nssv1 "github.com/IBM/ibm-namespace-scope-operator/api/v1"
 	// +kubebuilder:scaffold:imports
 )
@@ -154,10 +153,7 @@ func main() {
 		go certmanager.DeployCR(bs)
 
 		if err = (&controllers.CommonServiceReconciler{
-			Client:    mgr.GetClient(),
-			Reader:    mgr.GetAPIReader(),
-			Manager:   deploy.NewDeployManager(mgr),
-			Bootstrap: bootstrap.NewBootstrap(mgr),
+			Bootstrap: bs,
 			Scheme:    mgr.GetScheme(),
 			Recorder:  mgr.GetEventRecorderFor("commonservice-controller"),
 		}).SetupWithManager(mgr); err != nil {
