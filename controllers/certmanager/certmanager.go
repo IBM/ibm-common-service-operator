@@ -44,7 +44,14 @@ func DeployCR(bs *bootstrap.Bootstrap) {
 	}
 
 	for _, cr := range DeployCRs {
-		deployResource(bs, cr)
+		for {
+			done := deployResource(bs, cr)
+			if done {
+				break
+			}
+			time.Sleep(10 * time.Second)
+		}
+
 	}
 }
 
@@ -65,7 +72,7 @@ func waitResourceReady(bs *bootstrap.Bootstrap, apiGroupVersion string, kind str
 	return nil
 }
 
-func deployResource(bs *bootstrap.Bootstrap, cr string) {
+func deployResource(bs *bootstrap.Bootstrap, cr string) bool {
 	if err := utilwait.PollImmediateInfinite(time.Second*10, func() (done bool, err error) {
 		err = bs.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, bs.MasterNamespace)))
 		if err != nil {
@@ -73,6 +80,8 @@ func deployResource(bs *bootstrap.Bootstrap, cr string) {
 		}
 		return true, nil
 	}); err != nil {
-		klog.Errorf("Failed to create Certmanager resource: %v", err)
+		klog.Errorf("Failed to create Certmanager resource: %v, retry in 30 seconds", err)
+		return false
 	}
+	return true
 }

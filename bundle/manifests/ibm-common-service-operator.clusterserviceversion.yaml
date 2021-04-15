@@ -114,84 +114,6 @@ metadata:
           spec:
             grafana: {}
             operandRequest: {}
-    csV3SaasOperandConfig: |-
-      apiVersion: operator.ibm.com/v1alpha1
-      kind: OperandConfig
-      metadata:
-        name: common-service
-        namespace: placeholder
-        annotations:
-          version: "3.8.0"
-      spec:
-        services:
-        - name: ibm-licensing-operator
-          spec:
-            IBMLicensing:
-              datasource: datacollector
-              routeEnabled: false
-            operandBindInfo: {}
-        - name: ibm-mongodb-operator
-          spec:
-            mongoDB: {}
-            operandRequest: {}
-        - name: ibm-cert-manager-operator
-          spec:
-            certManager: {}
-        - name: ibm-iam-operator
-          spec:
-            authentication: {}
-            oidcclientwatcher: {}
-            pap: {}
-            policycontroller: {}
-            policydecision: {}
-            secretwatcher: {}
-            securityonboarding: {}
-            operandBindInfo:
-              bindings:
-                protected-zen-serviceid:
-                  secret: zen-serviceid-apikey-secret
-            operandRequest: {}
-        - name: ibm-healthcheck-operator
-          spec:
-            healthService: {}
-            mustgatherService: {}
-            mustgatherConfig: {}
-        - name: ibm-commonui-operator
-          spec:
-            commonWebUI: {}
-            switcheritem: {}
-            operandRequest: {}
-            navconfiguration: {}
-            operandBindInfo: {}
-        - name: ibm-management-ingress-operator
-          spec:
-            managementIngress: {}
-            operandBindInfo: {}
-            operandRequest: {}
-        - name: ibm-ingress-nginx-operator
-          spec:
-            nginxIngress: {}
-        - name: ibm-auditlogging-operator
-          spec:
-            auditLogging: {}
-            operandBindInfo: {}
-            operandRequest: {}
-        - name: ibm-platform-api-operator
-          spec:
-            platformApi: {}
-            operandRequest: {}
-        - name: ibm-monitoring-exporters-operator
-          spec:
-            exporter: {}
-            operandRequest: {}
-        - name: ibm-monitoring-prometheusext-operator
-          spec:
-            prometheusExt: {}
-            operandRequest: {}
-        - name: ibm-monitoring-grafana-operator
-          spec:
-            grafana: {}
-            operandRequest: {}
     csV3OperandRegistry: |-
       apiVersion: operator.ibm.com/v1alpha1
       kind: OperandRegistry
@@ -320,6 +242,83 @@ metadata:
           scope: public
           sourceName: ibm-operator-catalog
           sourceNamespace: openshift-marketplace
+    csV3SaasOperandConfig: |-
+      apiVersion: operator.ibm.com/v1alpha1
+      kind: OperandConfig
+      metadata:
+        name: common-service
+        namespace: placeholder
+        annotations:
+          version: "3.8.0"
+      spec:
+        services:
+        - name: ibm-licensing-operator
+          spec:
+            IBMLicensing:
+              datasource: datacollector
+            operandBindInfo: {}
+        - name: ibm-mongodb-operator
+          spec:
+            mongoDB: {}
+            operandRequest: {}
+        - name: ibm-cert-manager-operator
+          spec:
+            certManager: {}
+        - name: ibm-iam-operator
+          spec:
+            authentication: {}
+            oidcclientwatcher: {}
+            pap: {}
+            policycontroller: {}
+            policydecision: {}
+            secretwatcher: {}
+            securityonboarding: {}
+            operandBindInfo:
+              bindings:
+                protected-zen-serviceid:
+                  secret: zen-serviceid-apikey-secret
+            operandRequest: {}
+        - name: ibm-healthcheck-operator
+          spec:
+            healthService: {}
+            mustgatherService: {}
+            mustgatherConfig: {}
+        - name: ibm-commonui-operator
+          spec:
+            commonWebUI: {}
+            switcheritem: {}
+            operandRequest: {}
+            navconfiguration: {}
+            operandBindInfo: {}
+        - name: ibm-management-ingress-operator
+          spec:
+            managementIngress: {}
+            operandBindInfo: {}
+            operandRequest: {}
+        - name: ibm-ingress-nginx-operator
+          spec:
+            nginxIngress: {}
+        - name: ibm-auditlogging-operator
+          spec:
+            auditLogging: {}
+            operandBindInfo: {}
+            operandRequest: {}
+        - name: ibm-platform-api-operator
+          spec:
+            platformApi: {}
+            operandRequest: {}
+        - name: ibm-monitoring-exporters-operator
+          spec:
+            exporter: {}
+            operandRequest: {}
+        - name: ibm-monitoring-prometheusext-operator
+          spec:
+            prometheusExt: {}
+            operandRequest: {}
+        - name: ibm-monitoring-grafana-operator
+          spec:
+            grafana: {}
+            operandRequest: {}
     csV3SaasOperandRegistry: |-
       apiVersion: operator.ibm.com/v1alpha1
       kind: OperandRegistry
@@ -446,6 +445,8 @@ metadata:
           env:
           - name: INSTALL_SCOPE
             value: namespaced
+          - name: ODLM_SCOPE
+            value: "odlmScopesholder"
     olm.skipRange: ">=3.3.0 <3.8.0"
     operators.operatorframework.io/builder: operator-sdk-v1.3.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3

@@ -29,11 +29,17 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
+	"github.com/IBM/ibm-common-service-operator/controllers/constant"
+	"github.com/IBM/ibm-common-service-operator/controllers/deploy"
 )
 
 // CommonServiceReconciler reconciles a CommonService object
@@ -55,6 +61,26 @@ var ctx = context.Background()
 func (r *CommonServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	klog.Infof("Reconciling CommonService: %s", req.NamespacedName)
+
+	// Validate common-service-maps and filter the namespace of CommonService CR
+	cm, err := util.GetCmOfMapCs(r.Client)
+	if err == nil {
+		if err := util.ValidateCsMaps(cm); err != nil {
+			klog.Errorf("Unsupported common-service-maps: %v", err)
+			return reconcile.Result{RequeueAfter: constant.DefaultRequeueDuration}, err
+		}
+		csScope, err := util.GetCsScope(cm, r.Bootstrap.MasterNamespace)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		if isScoped := r.checkScope(csScope, req.NamespacedName.Namespace); !isScoped {
+			klog.Infof("CommonService CR %v is not in the scope", req.NamespacedName.String())
+			return ctrl.Result{}, nil
+		}
+	} else if !errors.IsNotFound(err) {
+		klog.Errorf("Failed to get common-service-maps: %v", err)
+		return ctrl.Result{}, err
+	}
 
 	// Fetch the CommonService instance
 	instance := &apiv3.CommonService{}
@@ -208,8 +234,33 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(instance *apiv3.CommonServi
 	return ctrl.Result{}, nil
 }
 
+func (r *CommonServiceReconciler) toCsRequest() handler.ToRequestsFunc {
+	return func(object handler.MapObject) []reconcile.Request {
+		CsInstance := []reconcile.Request{}
+		cmName := object.Meta.GetName()
+		cmNs := object.Meta.GetNamespace()
+		if cmName == constant.CsMapConfigMap && cmNs == "kube-public" {
+			CsInstance = append(CsInstance, reconcile.Request{NamespacedName: types.NamespacedName{Name: "common-service", Namespace: r.Bootstrap.MasterNamespace}})
+		}
+		return CsInstance
+	}
+}
+
 func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&apiv3.CommonService{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
-		Complete(r)
+		Watches(
+			&source.Kind{Type: &corev1.ConfigMap{}},
+			&handler.EnqueueRequestsFromMapFunc{ToRequests: r.toCsRequest()},
+			builder.WithPredicates(predicate.Funcs{
+				CreateFunc: func(e event.CreateEvent) bool {
+					return true
+				},
+				DeleteFunc: func(e event.DeleteEvent) bool {
+					return !e.DeleteStateUnknown
+				},
+				UpdateFunc: func(e event.UpdateEvent) bool {
+					return true
+				},
+			})).Complete(r)
 }

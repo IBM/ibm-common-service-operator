@@ -420,3 +420,19 @@ func (r *CommonServiceReconciler) updatePhase(instance *apiv3.CommonService, sta
 	instance.Status.Phase = status
 	return r.Client.Status().Update(ctx, instance)
 }
+
+// checkScope checks whether the namespace is in scope
+func (r *CommonServiceReconciler) checkScope(csScope []string, key string) bool {
+	isScoped := false
+	if len(csScope) == 0 {
+		isScoped = true
+	} else {
+		for _, ns := range csScope {
+			if ns == key {
+				isScoped = true
+				break
+			}
+		}
+	}
+	return isScoped
+}

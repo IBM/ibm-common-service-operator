@@ -258,9 +258,9 @@ func GetMasterNs(r client.Reader) (masterNs string) {
 }
 
 // UpdateNSList updates adopter namespaces of Common Services
-func UpdateNSList(r client.Reader, c client.Client, cm *corev1.ConfigMap, masterNs string) error {
+func UpdateNSList(r client.Reader, c client.Client, cm *corev1.ConfigMap, nssKey, masterNs string, addControlNs bool) error {
 	nsScope := &nssv1.NamespaceScope{}
-	nsScopeKey := types.NamespacedName{Name: "common-service", Namespace: masterNs}
+	nsScopeKey := types.NamespacedName{Name: nssKey, Namespace: masterNs}
 	if err := r.Get(context.TODO(), nsScopeKey, nsScope); err != nil {
 		return err
 	}
@@ -281,8 +281,10 @@ func UpdateNSList(r client.Reader, c client.Client, cm *corev1.ConfigMap, master
 		return fmt.Errorf("failed to fetch data of configmap common-service-maps: %v", err)
 	}
 
-	if len(cmData.ControlNs) > 0 {
-		nsSet[cmData.ControlNs] = struct{}{}
+	if addControlNs {
+		if len(cmData.ControlNs) > 0 {
+			nsSet[cmData.ControlNs] = struct{}{}
+		}
 	}
 
 	for _, nsMapping := range cmData.NsMappingList {
@@ -367,4 +369,83 @@ func GetControlNs(r client.Reader) (controlNs string) {
 	}
 
 	return
+}
+
+// ValidateCsMaps checks common-service-maps has no scope overlapping
+func ValidateCsMaps(cm *corev1.ConfigMap) error {
+	commonServiceMaps, ok := cm.Data["common-service-maps.yaml"]
+	if !ok {
+		return fmt.Errorf("there is no common-service-maps.yaml in configmap kube-public/common-service-maps")
+	}
+
+	var cmData CsMaps
+	if err := utilyaml.Unmarshal([]byte(commonServiceMaps), &cmData); err != nil {
+		return fmt.Errorf("failed to fetch data of configmap common-service-maps: %v", err)
+	}
+
+	CsNsSet := make(map[string]interface{})
+	RequestNsSet := make(map[string]interface{})
+
+	for _, nsMapping := range cmData.NsMappingList {
+		// validate masterNamespace and controlNamespace
+		if cmData.ControlNs == nsMapping.CsNs {
+			return fmt.Errorf("invalid controlNamespace: %v. Cannot be the same as map-to-common-service-namespace", cmData.ControlNs)
+		}
+		if _, ok := CsNsSet[nsMapping.CsNs]; ok {
+			return fmt.Errorf("invalid map-to-common-service-namespace: %v", nsMapping.CsNs)
+		}
+		CsNsSet[nsMapping.CsNs] = struct{}{}
+		// validate CloudPak Namespace and controlNamespace
+		for _, ns := range nsMapping.RequestNs {
+			if cmData.ControlNs == ns {
+				return fmt.Errorf("invalid controlNamespace: %v. Cannot be the same as requested-from-namespace", cmData.ControlNs)
+			}
+			if _, ok := RequestNsSet[ns]; ok {
+				return fmt.Errorf("invalid requested-from-namespace: %v", ns)
+			}
+			RequestNsSet[ns] = struct{}{}
+		}
+	}
+	return nil
+}
+
+// GetCsScope fetchs the namespaces from its own requested-from-namespace and map-to-common-service-namespace
+func GetCsScope(cm *corev1.ConfigMap, masterNs string) ([]string, error) {
+	var nsMems []string
+	nsSet := make(map[string]interface{})
+
+	commonServiceMaps, ok := cm.Data["common-service-maps.yaml"]
+	if !ok {
+		return nsMems, fmt.Errorf("there is no common-service-maps.yaml in configmap kube-public/common-service-maps")
+	}
+
+	var cmData CsMaps
+	if err := utilyaml.Unmarshal([]byte(commonServiceMaps), &cmData); err != nil {
+		return nsMems, fmt.Errorf("failed to fetch data of configmap common-service-maps: %v", err)
+	}
+
+	for _, nsMapping := range cmData.NsMappingList {
+		if masterNs == nsMapping.CsNs {
+			nsSet[masterNs] = struct{}{}
+			for _, ns := range nsMapping.RequestNs {
+				nsSet[ns] = struct{}{}
+			}
+		}
+	}
+
+	for ns := range nsSet {
+		nsMems = append(nsMems, ns)
+	}
+
+	return nsMems, nil
+}
+
+// EnsureLabelsForConfigMap ensures that the specifc ConfigMap has the certain labels
+func EnsureLabelsForConfigMap(cm *corev1.ConfigMap, labels map[string]string) {
+	if cm.Labels == nil {
+		cm.Labels = make(map[string]string)
+	}
+	for k, v := range labels {
+		cm.Labels[k] = v
+	}
 }
