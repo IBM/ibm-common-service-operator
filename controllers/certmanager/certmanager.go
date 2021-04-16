@@ -63,7 +63,7 @@ func waitResourceReady(bs *bootstrap.Bootstrap, apiGroupVersion string, kind str
 			return exist, err
 		}
 		if !exist {
-			klog.Infof("waiting for resource ready with kind: %s, apiGroupVersion: %s", kind, apiGroupVersion)
+			klog.V(2).Infof("waiting for resource ready with kind: %s, apiGroupVersion: %s", kind, apiGroupVersion)
 		}
 		return exist, nil
 	}); err != nil {
@@ -80,7 +80,7 @@ func deployResource(bs *bootstrap.Bootstrap, cr string) bool {
 		}
 		return true, nil
 	}); err != nil {
-		klog.Errorf("Failed to create Certmanager resource: %v, retry in 30 seconds", err)
+		klog.Errorf("Failed to create Certmanager resource: %v, retry in 10 seconds", err)
 		return false
 	}
 	return true
