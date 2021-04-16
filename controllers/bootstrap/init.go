@@ -76,6 +76,7 @@ type CSData struct {
 	ControlNs         string
 	CatalogSourceName string
 	CatalogSourceNs   string
+	ODLMScopeEnable   string
 	ApprovalMode      string
 }
 
@@ -499,6 +500,7 @@ func (b *Bootstrap) installODLM(operatorNs string) error {
 		if b.CSData.MasterNs != b.CSData.ControlNs {
 			odlmScopeEnable = "true"
 		}
+		b.CSData.ODLMScopeEnable = odlmScopeEnable
 		cm, err := util.GetCmOfMapCs(b.Client)
 		if err == nil {
 			err := util.UpdateNSList(b.Reader, b.Client, cm, "nss-odlm-scope", b.CSData.MasterNs, true)
@@ -510,23 +512,7 @@ func (b *Bootstrap) installODLM(operatorNs string) error {
 			return err
 		}
 
-		odlmData := struct {
-			Channel           string
-			Version           string
-			MasterNs          string
-			ODLMScopeEnable   string
-			CatalogSourceName string
-			CatalogSourceNs   string
-		}{
-			Channel:           b.CSData.Channel,
-			Version:           b.CSData.Version,
-			MasterNs:          b.CSData.MasterNs,
-			ODLMScopeEnable:   odlmScopeEnable,
-			CatalogSourceName: b.CSData.CatalogSourceName,
-			CatalogSourceNs:   b.CSData.CatalogSourceNs,
-		}
-
-		if err := b.renderTemplate(constant.ODLMNamespacedSubscription, odlmData); err != nil {
+		if err := b.renderTemplate(constant.ODLMNamespacedSubscription, b.CSData); err != nil {
 			return err
 		}
 	}
