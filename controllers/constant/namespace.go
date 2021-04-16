@@ -16,6 +16,37 @@
 
 package constant
 
+const NSRestrictedSubscription = `
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: ibm-namespace-scope-operator-restricted
+  namespace: placeholder
+  annotations:
+    version: "3.8.0"
+spec:
+  channel: beta
+  installPlanApproval: Automatic
+  name: ibm-namespace-scope-operator-restricted
+  source: opencloud-operators
+  sourceNamespace: openshift-marketplace
+`
+
+const NSSubscription = `
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: ibm-namespace-scope-operator
+  namespace: placeholder
+  annotations:
+    version: "3.8.0"
+spec:
+  channel: beta
+  installPlanApproval: Automatic
+  name: ibm-namespace-scope-operator
+  source: opencloud-operators
+  sourceNamespace: openshift-marketplace
+`
 // NamespaceScope Operator CR
 const NamespaceScopeCR = `
 apiVersion: operator.ibm.com/v1

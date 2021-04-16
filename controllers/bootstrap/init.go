@@ -17,10 +17,12 @@
 package bootstrap
 
 import (
+	"bytes"
 	"context"
 	"strings"
 	"sync"
 	"time"
+	"text/template"
 
 	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
@@ -78,6 +80,24 @@ type Bootstrap struct {
 		APIVersion string
 	}
 }
+type CSData struct {
+	Channel      string
+	Version   string
+	MasterNamespace      string
+	ControlNamespace string
+	CatalogSource   string
+	ApprovalMode       string
+}
+
+type CSOperator struct {
+	Name       string
+	CRD        string
+	RBAC       string
+	CR         string
+	Deployment string
+	Kind       string
+	APIVersion string
+}
 
 // NewBootstrap is the way to create a NewBootstrap struct
 func NewBootstrap(mgr manager.Manager) (bs *Bootstrap) {
@@ -86,15 +106,7 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap) {
 	if _, err := util.GetCmOfMapCs(mgr.GetAPIReader()); err == nil {
 		csWebhookDeployment = constant.CsWebhookOperatorEnableOpreqWebhook
 	}
-	var csOperators = []struct {
-		Name       string
-		CRD        string
-		RBAC       string
-		CR         string
-		Deployment string
-		Kind       string
-		APIVersion string
-	}{
+	var csOperators = []CSOperator{
 		{"Webhook Operator", constant.WebhookCRD, constant.WebhookRBAC, constant.WebhookCR, csWebhookDeployment, constant.WebhookKind, constant.WebhookAPIVersion},
 		{"Secretshare Operator", constant.SecretshareCRD, constant.SecretshareRBAC, constant.SecretshareCR, csSecretShareDeployment, constant.SecretshareKind, constant.SecretshareAPIVersion},
 	}
@@ -139,6 +151,11 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 	// Grant cluster-admin to namespace scope operator
 	if operatorNs == constant.ClusterOperatorNamespace {
 		klog.Info("Creating cluster-admin permission RBAC")
+		var ClusterAdminRBAC bytes.Buffer
+		t := template.Must(template.New("ClusterAdminRBAC").Parse(constant.ClusterAdminRBAC))
+		if err := t.Execute(&ClusterAdminRBAC, monogdbConfigmapData); err != nil {
+			return err
+		}
 		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(constant.ClusterAdminRBAC, placeholder, b.MasterNamespace))); err != nil {
 			return err
 		}
