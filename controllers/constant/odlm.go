@@ -249,7 +249,9 @@ spec:
       certManager: {}
   - name: ibm-iam-operator
     spec:
-      authentication: {}
+      authentication:
+        config:
+          ibmCloudSaas: true
       oidcclientwatcher: {}
       pap: {}
       policycontroller: {}
