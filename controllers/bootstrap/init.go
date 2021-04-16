@@ -21,8 +21,8 @@ import (
 	"context"
 	"strings"
 	"sync"
-	"time"
 	"text/template"
+	"time"
 
 	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
@@ -45,8 +45,6 @@ import (
 
 var (
 	placeholder               = "placeholder"
-	placeholderControlNs      = "controlns"
-	placeholderOdlmScope      = "odlmScopesholder"
 	CsSubResource             = "csOperatorSubscription"
 	OdlmNamespacedSubResource = "odlmNamespacedSubscription"
 	OdlmClusterSubResource    = "odlmClusterSubscription"
@@ -54,7 +52,7 @@ var (
 	RegistrySaasCrResources   = "csV3SaasOperandRegistry"
 	ConfigCrResources         = "csV3OperandConfig"
 	ConfigSaasCrResources     = "csV3SaasOperandConfig"
-	CSOperators               = map[string]string{
+	CSOperatorVersions        = map[string]string{
 		"operand-deployment-lifecycle-manager-app": "1.5.0",
 		"ibm-cert-manager-operator":                "3.9.0",
 	}
@@ -67,26 +65,18 @@ type Bootstrap struct {
 	client.Reader
 	Config *rest.Config
 	*deploy.Manager
-	MasterNamespace string
-	ControlNs       string
-	SaasEnable      bool
-	CsOperators     []struct {
-		Name       string
-		CRD        string
-		RBAC       string
-		CR         string
-		Deployment string
-		Kind       string
-		APIVersion string
-	}
+	SaasEnable  bool
+	CSOperators []CSOperator
+	CSData      CSData
 }
 type CSData struct {
-	Channel      string
-	Version   string
-	MasterNamespace      string
-	ControlNamespace string
-	CatalogSource   string
-	ApprovalMode       string
+	Channel           string
+	Version           string
+	MasterNs          string
+	ControlNs         string
+	CatalogSourceName string
+	CatalogSourceNs   string
+	ApprovalMode      string
 }
 
 type CSOperator struct {
@@ -110,15 +100,23 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap) {
 		{"Webhook Operator", constant.WebhookCRD, constant.WebhookRBAC, constant.WebhookCR, csWebhookDeployment, constant.WebhookKind, constant.WebhookAPIVersion},
 		{"Secretshare Operator", constant.SecretshareCRD, constant.SecretshareRBAC, constant.SecretshareCR, csSecretShareDeployment, constant.SecretshareKind, constant.SecretshareAPIVersion},
 	}
+	catalogSourceName, catalogSourceNs := util.GetCatalogSource(mgr.GetAPIReader())
+
+	csData := CSData{
+		MasterNs:          util.GetMasterNs(mgr.GetAPIReader()),
+		ControlNs:         util.GetControlNs(mgr.GetAPIReader()),
+		CatalogSourceName: catalogSourceName,
+		CatalogSourceNs:   catalogSourceNs,
+	}
+
 	bs = &Bootstrap{
-		Client:          mgr.GetClient(),
-		Reader:          mgr.GetAPIReader(),
-		Config:          mgr.GetConfig(),
-		Manager:         deploy.NewDeployManager(mgr),
-		MasterNamespace: util.GetMasterNs(mgr.GetAPIReader()),
-		ControlNs:       util.GetControlNs(mgr.GetAPIReader()),
-		SaasEnable:      util.CheckSaas(mgr.GetAPIReader()),
-		CsOperators:     csOperators,
+		Client:      mgr.GetClient(),
+		Reader:      mgr.GetAPIReader(),
+		Config:      mgr.GetConfig(),
+		Manager:     deploy.NewDeployManager(mgr),
+		SaasEnable:  util.CheckSaas(mgr.GetAPIReader()),
+		CSOperators: csOperators,
+		CSData:      csData,
 	}
 	return
 }
@@ -131,15 +129,23 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 		return err
 	}
 
-	// Check Saas or Multi intances Deployment
-	if len(b.ControlNs) > 0 {
-		klog.Infof("Creating IBM Common Services control namespace: %s", b.ControlNs)
-		if err := b.CreateNamespace(b.ControlNs); err != nil {
+	if r, ok := annotations["operatorChannel"]; ok {
+		b.CSData.Channel = r
+	}
+
+	if r, ok := annotations["operatorVersion"]; ok {
+		b.CSData.Version = r
+	}
+
+	// Check Saas or Multi instances Deployment
+	if len(b.CSData.ControlNs) > 0 {
+		klog.Infof("Creating IBM Common Services control namespace: %s", b.CSData.ControlNs)
+		if err := b.CreateNamespace(b.CSData.ControlNs); err != nil {
 			klog.Errorf("Failed to create control namespace: %v", err)
 			return err
 		}
 	} else {
-		b.ControlNs = b.MasterNamespace
+		b.CSData.ControlNs = b.CSData.MasterNs
 	}
 
 	operatorNs, err := util.GetOperatorNamespace()
@@ -151,23 +157,18 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 	// Grant cluster-admin to namespace scope operator
 	if operatorNs == constant.ClusterOperatorNamespace {
 		klog.Info("Creating cluster-admin permission RBAC")
-		var ClusterAdminRBAC bytes.Buffer
-		t := template.Must(template.New("ClusterAdminRBAC").Parse(constant.ClusterAdminRBAC))
-		if err := t.Execute(&ClusterAdminRBAC, monogdbConfigmapData); err != nil {
-			return err
-		}
-		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(constant.ClusterAdminRBAC, placeholder, b.MasterNamespace))); err != nil {
+		if err := b.renderTemplate(constant.ClusterAdminRBAC, b.CSData); err != nil {
 			return err
 		}
 	}
 
 	// Install Namespace Scope Operator
-	if err := b.installNssOperator(manualManagement, annotations); err != nil {
+	if err := b.installNssOperator(manualManagement); err != nil {
 		return err
 	}
 
 	// Install CS Operators
-	for _, operator := range b.CsOperators {
+	for _, operator := range b.CSOperators {
 		if b.SaasEnable && operator.Name == "Secretshare Operator" {
 			continue
 		}
@@ -177,11 +178,11 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 			return err
 		}
 		// Create Operator RBAC
-		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(operator.RBAC, placeholder, b.ControlNs))); err != nil {
+		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(operator.RBAC, placeholder, b.CSData.ControlNs))); err != nil {
 			return err
 		}
 		// Create Operator Deployment
-		if err := b.CreateOrUpdateFromYaml([]byte(util.ReplaceImages(util.Namespacelize(operator.Deployment, placeholder, b.ControlNs)))); err != nil {
+		if err := b.CreateOrUpdateFromYaml([]byte(util.ReplaceImages(util.Namespacelize(operator.Deployment, placeholder, b.CSData.ControlNs)))); err != nil {
 			return err
 		}
 		// Wait for CRD ready
@@ -189,7 +190,7 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 			return err
 		}
 		// Create Operator CR
-		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(operator.CR, placeholder, b.ControlNs))); err != nil {
+		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(operator.CR, placeholder, b.CSData.ControlNs))); err != nil {
 			return err
 		}
 	}
@@ -201,7 +202,7 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 	}
 
 	// Install ODLM Operator
-	if err := b.installODLM(operatorNs, annotations); err != nil {
+	if err := b.installODLM(operatorNs); err != nil {
 		return err
 	}
 
@@ -213,44 +214,36 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 		return err
 	}
 
-	if err := b.waitOperatorReady("operand-deployment-lifecycle-manager-app", b.MasterNamespace); err != nil {
+	if err := b.waitOperatorReady("operand-deployment-lifecycle-manager-app", b.CSData.MasterNs); err != nil {
 		return err
 	}
 
 	klog.Info("Installing/Updating OperandRegistry")
 	if b.SaasEnable {
 		// OperandRegistry for SaaS deployment
-		if SaasRegistry := b.getYamlFromAnnotations(annotations, RegistrySaasCrResources); len(SaasRegistry) > 0 {
-			SaasRegistry = util.Namespacelize(SaasRegistry, placeholder, b.MasterNamespace)
-			SaasRegistry = util.Namespacelize(SaasRegistry, placeholderControlNs, b.ControlNs)
-			if err := b.CreateOrUpdateFromYaml([]byte(SaasRegistry)); err != nil {
-				return err
-			}
+		if err := b.renderTemplate(constant.CSV3SaasOperandRegistry, b.CSData); err != nil {
+			return err
 		}
 	} else {
-		// OperandRegistry for normal deployment
-		if err := b.createOrUpdateResource(annotations, RegistryCrResources, b.MasterNamespace); err != nil {
+		// OperandRegistry for on-prem deployment
+		if err := b.renderTemplate(constant.CSV3OperandRegistry, b.CSData); err != nil {
 			return err
 		}
 	}
 
-	if err := b.waitALLOperatorReady(b.MasterNamespace); err != nil {
+	if err := b.waitALLOperatorReady(b.CSData.MasterNs); err != nil {
 		return err
 	}
 
 	klog.Info("Installing/Updating OperandConfig")
 	if b.SaasEnable {
-		// OperandRegistry for SaaS deployment
-		if SaasConfig := b.getYamlFromAnnotations(annotations, ConfigSaasCrResources); len(SaasConfig) > 0 {
-			SaasConfig = util.Namespacelize(SaasConfig, placeholder, b.MasterNamespace)
-			SaasConfig = util.Namespacelize(SaasConfig, placeholderControlNs, b.ControlNs)
-			if err := b.CreateOrUpdateFromYaml([]byte(SaasConfig)); err != nil {
-				return err
-			}
+		// OperandConfig for SaaS deployment
+		if err := b.renderTemplate(constant.CSV3SaasOperandConfig, b.CSData); err != nil {
+			return err
 		}
 	} else {
-		// OperandConfig for normal deployment
-		if err := b.createOrUpdateResource(annotations, ConfigCrResources, b.MasterNamespace); err != nil {
+		// OperandConfig for on-prem deployment
+		if err := b.renderTemplate(constant.CSV3OperandConfig, b.CSData); err != nil {
 			return err
 		}
 	}
@@ -278,11 +271,7 @@ func (b *Bootstrap) CreateNamespace(name string) error {
 
 func (b *Bootstrap) CreateCsSubscription() error {
 	// Get all the resources from the deployment annotations
-	annotations, err := b.GetAnnotations()
-	if err != nil {
-		return err
-	}
-	if err := b.createOrUpdateResource(annotations, CsSubResource, b.MasterNamespace); err != nil {
+	if err := b.renderTemplate(constant.CSSubscription, b.CSData); err != nil {
 		return err
 	}
 	return nil
@@ -291,7 +280,7 @@ func (b *Bootstrap) CreateCsSubscription() error {
 func (b *Bootstrap) CreateCsCR() error {
 	cs := util.NewUnstructured("operator.ibm.com", "CommonService", "v3")
 	cs.SetName("common-service")
-	cs.SetNamespace(b.MasterNamespace)
+	cs.SetNamespace(b.CSData.MasterNs)
 	_, err := b.GetObject(cs)
 	if errors.IsNotFound(err) { // Only if it's a fresh install or upgrade from 3.4
 		odlm := util.NewUnstructured("operators.coreos.com", "Subscription", "v1alpha1")
@@ -300,12 +289,12 @@ func (b *Bootstrap) CreateCsCR() error {
 		_, err := b.GetObject(odlm)
 		if errors.IsNotFound(err) {
 			// Fresh Intall: No ODLM and NO CR
-			return b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsCR, placeholder, b.MasterNamespace)))
+			return b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsCR, placeholder, b.CSData.MasterNs)))
 		} else if err != nil {
 			return err
 		}
 		// Upgrade from 3.4.x: Have ODLM in openshift-operators and NO CR
-		return b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsNoSizeCR, placeholder, b.MasterNamespace)))
+		return b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsNoSizeCR, placeholder, b.CSData.MasterNs)))
 	} else if err != nil {
 		return err
 	}
@@ -316,27 +305,27 @@ func (b *Bootstrap) CreateCsCR() error {
 
 func (b *Bootstrap) CreateOperatorGroup() error {
 	existOG := &olmv1.OperatorGroupList{}
-	if err := b.Reader.List(context.TODO(), existOG, &client.ListOptions{Namespace: b.MasterNamespace}); err != nil {
+	if err := b.Reader.List(context.TODO(), existOG, &client.ListOptions{Namespace: b.CSData.MasterNs}); err != nil {
 		return err
 	}
 	if len(existOG.Items) == 0 {
-		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsOperatorGroup, placeholder, b.MasterNamespace))); err != nil {
+		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsOperatorGroup, placeholder, b.CSData.MasterNs))); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (b *Bootstrap) createOrUpdateResource(annotations map[string]string, resName string, resNs string) error {
-	if r, ok := annotations[resName]; ok {
-		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(r, placeholder, resNs))); err != nil {
-			return err
-		}
-	} else {
-		klog.Warningf("No resource %s found in annotations", resName)
-	}
-	return nil
-}
+// func (b *Bootstrap) createOrUpdateResource(annotations map[string]string, resName string, resNs string) error {
+// 	if r, ok := annotations[resName]; ok {
+// 		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(r, placeholder, resNs))); err != nil {
+// 			return err
+// 		}
+// 	} else {
+// 		klog.Warningf("No resource %s found in annotations", resName)
+// 	}
+// 	return nil
+// }
 
 // func (b *Bootstrap) createOrUpdateResources(annotations map[string]string, resNames []string) error {
 // 	for _, res := range resNames {
@@ -455,7 +444,7 @@ func (b *Bootstrap) ResourceExists(dc discovery.DiscoveryInterface, apiGroupVers
 	return false, nil
 }
 
-func (b *Bootstrap) installNssOperator(manualManagement bool, annotations map[string]string) error {
+func (b *Bootstrap) installNssOperator(manualManagement bool) error {
 	// Install Namespace Scope Operator
 	klog.Info("Creating namespace-scope configmap")
 	// Backward compatible upgrade from version 3.4.x
@@ -465,7 +454,7 @@ func (b *Bootstrap) installNssOperator(manualManagement bool, annotations map[st
 	}
 
 	klog.Info("Creating Namespace Scope Operator subscription")
-	if err := b.createNsSubscription(manualManagement, annotations); err != nil {
+	if err := b.createNsSubscription(manualManagement); err != nil {
 		klog.Errorf("Failed to create Namespace Scope Operator subscription: %v", err)
 		return err
 	}
@@ -474,14 +463,13 @@ func (b *Bootstrap) installNssOperator(manualManagement bool, annotations map[st
 		return err
 	}
 
-	// Create NamespaceScope CR
-	if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(constant.NamespaceScopeCR, placeholder, b.MasterNamespace))); err != nil {
+	if err := b.renderTemplate(constant.NamespaceScopeCR, b.CSData); err != nil {
 		return err
 	}
 
 	cm, err := util.GetCmOfMapCs(b.Reader)
 	if err == nil {
-		err := util.UpdateNSList(b.Reader, b.Client, cm, "common-service", b.MasterNamespace, false)
+		err := util.UpdateNSList(b.Reader, b.Client, cm, "common-service", b.CSData.MasterNs, false)
 		if err != nil {
 			return err
 		}
@@ -491,7 +479,7 @@ func (b *Bootstrap) installNssOperator(manualManagement bool, annotations map[st
 	return nil
 }
 
-func (b *Bootstrap) installODLM(operatorNs string, annotations map[string]string) error {
+func (b *Bootstrap) installODLM(operatorNs string) error {
 	// Delete the previous version ODLM operator
 	klog.Info("Trying to delete ODLM operator in openshift-operators")
 	if err := b.deleteSubscription("operand-deployment-lifecycle-manager-app", "openshift-operators"); err != nil {
@@ -502,49 +490,62 @@ func (b *Bootstrap) installODLM(operatorNs string, annotations map[string]string
 	// Install ODLM Operator
 	klog.Info("Installing ODLM Operator")
 	if operatorNs == constant.ClusterOperatorNamespace {
-		if err := b.createOrUpdateResource(annotations, OdlmClusterSubResource, b.MasterNamespace); err != nil {
+		if err := b.renderTemplate(constant.ODLMClusterSubscription, b.CSData); err != nil {
 			return err
 		}
 	} else {
-		if odlmSub := b.getYamlFromAnnotations(annotations, OdlmNamespacedSubResource); len(odlmSub) > 0 {
-			odlmSub = util.Namespacelize(odlmSub, placeholder, b.MasterNamespace)
-			odlmScopeEnable := "false"
-			// SaaS or on-prem multi instances case, enable odlm-scope
-			if b.MasterNamespace != b.ControlNs {
-				odlmScopeEnable = "true"
-			}
-			cm, err := util.GetCmOfMapCs(b.Client)
-			if err == nil {
-				err := util.UpdateNSList(b.Reader, b.Client, cm, "nss-odlm-scope", b.MasterNamespace, true)
-				if err != nil {
-					return err
-				}
-			} else if !errors.IsNotFound(err) {
-				klog.Errorf("Failed to get common-service-maps: %v", err)
+		odlmScopeEnable := "false"
+		// SaaS or on-prem multi instances case, enable odlm-scope
+		if b.CSData.MasterNs != b.CSData.ControlNs {
+			odlmScopeEnable = "true"
+		}
+		cm, err := util.GetCmOfMapCs(b.Client)
+		if err == nil {
+			err := util.UpdateNSList(b.Reader, b.Client, cm, "nss-odlm-scope", b.CSData.MasterNs, true)
+			if err != nil {
 				return err
 			}
-			odlmSub = util.Namespacelize(odlmSub, placeholderOdlmScope, odlmScopeEnable)
-			if err := b.CreateOrUpdateFromYaml([]byte(odlmSub)); err != nil {
-				return err
-			}
+		} else if !errors.IsNotFound(err) {
+			klog.Errorf("Failed to get common-service-maps: %v", err)
+			return err
+		}
+
+		odlmData := struct {
+			Channel           string
+			Version           string
+			MasterNs          string
+			ODLMScopeEnable   string
+			CatalogSourceName string
+			CatalogSourceNs   string
+		}{
+			Channel:           b.CSData.Channel,
+			Version:           b.CSData.Version,
+			MasterNs:          b.CSData.MasterNs,
+			ODLMScopeEnable:   odlmScopeEnable,
+			CatalogSourceName: b.CSData.CatalogSourceName,
+			CatalogSourceNs:   b.CSData.CatalogSourceNs,
+		}
+
+		if err := b.renderTemplate(constant.ODLMNamespacedSubscription, odlmData); err != nil {
+			return err
 		}
 	}
 	return nil
 }
 
-func (b *Bootstrap) createNsSubscription(manualManagement bool, annotations map[string]string) error {
-	resourceName := constant.NsSubResourceName
+func (b *Bootstrap) createNsSubscription(manualManagement bool) error {
+	resourceName := constant.NSSubscription
 	subNameToRemove := constant.NsRestrictedSubName
 	if manualManagement {
-		resourceName = constant.NsRestrictedSubResourceName
+		resourceName = constant.NSRestrictedSubscription
 		subNameToRemove = constant.NsSubName
 	}
 
-	if err := b.deleteSubscription(subNameToRemove, b.MasterNamespace); err != nil {
+	if err := b.deleteSubscription(subNameToRemove, b.CSData.MasterNs); err != nil {
 		return err
 	}
 
-	if err := b.createOrUpdateResource(annotations, resourceName, b.MasterNamespace); err != nil {
+	if err := b.renderTemplate(resourceName, b.CSData); err != nil {
 		return err
 	}
 
@@ -554,7 +555,7 @@ func (b *Bootstrap) createNsSubscription(manualManagement bool, annotations map[
 // CreateNsScopeConfigmap creates nss configmap for operators
 func (b *Bootstrap) CreateNsScopeConfigmap() error {
 	cmRes := constant.NamespaceScopeConfigMap
-	if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cmRes, placeholder, b.MasterNamespace))); err != nil {
+	if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cmRes, placeholder, b.CSData.MasterNs))); err != nil {
 		return err
 	}
 	return nil
@@ -613,7 +614,7 @@ func (b *Bootstrap) waitOperatorReady(name, namespace string) error {
 			return false, client.IgnoreNotFound(err)
 		}
 
-		if version, ok := CSOperators[sub.Name]; ok {
+		if version, ok := CSOperatorVersions[sub.Name]; ok {
 			if sub.Status.InstalledCSV == "" {
 				return false, nil
 			}
@@ -705,6 +706,18 @@ func (b *Bootstrap) waitALLOperatorReady(namespace string) error {
 
 }
 
+func (b *Bootstrap) renderTemplate(objectTemplate string, data interface{}) error {
+	var buffer bytes.Buffer
+	t := template.Must(template.New("newTemplate").Parse(objectTemplate))
+	if err := t.Execute(&buffer, data); err != nil {
+		return err
+	}
+	if err := b.CreateOrUpdateFromYaml(buffer.Bytes()); err != nil {
+		return err
+	}
+	return nil
+}
+
 // func (b *Bootstrap) getResFromAnnotations(annotations map[string]string, resName string, resNs string) (*unstructured.Unstructured, error) {
 // 	if r, ok := annotations[resName]; ok {
 // 		yamlContent := util.Namespacelize(r, placeholder, resNs)
@@ -719,10 +732,10 @@ func (b *Bootstrap) waitALLOperatorReady(namespace string) error {
 // 	return nil, nil
 // }
 
-func (b *Bootstrap) getYamlFromAnnotations(annotations map[string]string, resName string) string {
-	if r, ok := annotations[resName]; ok {
-		return r
-	}
-	klog.Warningf("No yaml %s found in annotations", resName)
-	return ""
-}
+// func (b *Bootstrap) getYamlFromAnnotations(annotations map[string]string, resName string) string {
+// 	if r, ok := annotations[resName]; ok {
+// 		return r
+// 	}
+// 	klog.Warningf("No yaml %s found in annotations", resName)
+// 	return ""
+// }

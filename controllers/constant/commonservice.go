@@ -16,18 +16,18 @@
 
 package constant
 
-const CSSubscription=`
+const CSSubscription = `
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
   name: ibm-common-service-operator
-  namespace: placeholder
+  namespace: {{ .MasterNs }}
   annotations:
-	version: "3.8.0"
+    version: {{ .Version }}
 spec:
-  channel: beta
+  channel: {{ .Channel }}
   installPlanApproval: Automatic
   name: ibm-common-service-operator
-  source: opencloud-operators
-  sourceNamespace: openshift-marketplace
+  source: {{ .CatalogSourceName }}
+  sourceNamespace: {{ .CatalogSourceNs }}
 `
