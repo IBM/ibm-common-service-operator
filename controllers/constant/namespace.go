@@ -28,8 +28,8 @@ spec:
   channel: {{ .Channel }}
   installPlanApproval: Automatic
   name: ibm-namespace-scope-operator-restricted
-  source: opencloud-operators
-  sourceNamespace: openshift-marketplace
+  source: {{ .CatalogSourceName }}
+  sourceNamespace: {{ .CatalogSourceNs }}
 `
 
 const NSSubscription = `
@@ -44,8 +44,8 @@ spec:
   channel: {{ .Channel }}
   installPlanApproval: Automatic
   name: ibm-namespace-scope-operator
-  source: opencloud-operators
-  sourceNamespace: openshift-marketplace
+  source: {{ .CatalogSourceName }}
+  sourceNamespace: {{ .CatalogSourceNs }}
 `
 
 // NamespaceScope Operator CR
