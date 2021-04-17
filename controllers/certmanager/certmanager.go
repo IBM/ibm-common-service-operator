@@ -74,7 +74,7 @@ func waitResourceReady(bs *bootstrap.Bootstrap, apiGroupVersion string, kind str
 
 func deployResource(bs *bootstrap.Bootstrap, cr string) bool {
 	if err := utilwait.PollImmediateInfinite(time.Second*10, func() (done bool, err error) {
-		err = bs.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, bs.MasterNamespace)))
+		err = bs.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, bs.CSData.MasterNs)))
 		if err != nil {
 			return false, err
 		}

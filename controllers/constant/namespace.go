@@ -16,35 +16,67 @@
 
 package constant
 
+const NSRestrictedSubscription = `
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: ibm-namespace-scope-operator-restricted
+  namespace: {{ .MasterNs }}
+  annotations:
+    version: {{ .Version }}
+spec:
+  channel: {{ .Channel }}
+  installPlanApproval: Automatic
+  name: ibm-namespace-scope-operator-restricted
+  source: {{ .CatalogSourceName }}
+  sourceNamespace: {{ .CatalogSourceNs }}
+`
+
+const NSSubscription = `
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: ibm-namespace-scope-operator
+  namespace: {{ .MasterNs }}
+  annotations:
+    version: {{ .Version }}
+spec:
+  channel: {{ .Channel }}
+  installPlanApproval: Automatic
+  name: ibm-namespace-scope-operator
+  source: {{ .CatalogSourceName }}
+  sourceNamespace: {{ .CatalogSourceNs }}
+`
+
 // NamespaceScope Operator CR
 const NamespaceScopeCR = `
 apiVersion: operator.ibm.com/v1
 kind: NamespaceScope
 metadata:
   name: common-service
-  namespace: placeholder
+  namespace: {{ .MasterNs }}
 spec:
   namespaceMembers:
-  - placeholder
+  - {{ .MasterNs }}
   - openshift-redhat-marketplace
 ---
 apiVersion: operator.ibm.com/v1
 kind: NamespaceScope
 metadata:
   name: nss-managedby-odlm
-  namespace: placeholder
+  namespace: {{ .MasterNs }}
 spec:
   namespaceMembers:
-  - placeholder
+  - {{ .MasterNs }}
 ---
 apiVersion: operator.ibm.com/v1
 kind: NamespaceScope
 metadata:
   name: nss-odlm-scope
-  namespace: placeholder
+  namespace: {{ .MasterNs }}
 spec:
   namespaceMembers:
-  - placeholder
+  - {{ .MasterNs }}
   configmapName: odlm-scope
   restartLabels:
     intent: projected-odlm

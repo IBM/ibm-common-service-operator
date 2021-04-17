@@ -68,7 +68,7 @@ func (r *CommonServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 			klog.Errorf("Unsupported common-service-maps: %v", err)
 			return reconcile.Result{RequeueAfter: constant.DefaultRequeueDuration}, err
 		}
-		csScope, err := util.GetCsScope(cm, r.Bootstrap.MasterNamespace)
+		csScope, err := util.GetCsScope(cm, r.Bootstrap.CSData.MasterNs)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -154,7 +154,7 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(instance *apiv3.CommonServic
 
 	// Create Event if there is no update in OperandConfig after applying current CR
 	if isEqual {
-		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.MasterNamespace, "common-service", instance.Namespace, instance.Name))
+		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.MasterNs, "common-service", instance.Namespace, instance.Name))
 	}
 
 	if err := r.updatePhase(instance, CRSucceeded); err != nil {
@@ -184,7 +184,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(instance *apiv3.CommonServi
 	opcon := util.NewUnstructured("operator.ibm.com", "OperandConfig", "v1alpha1")
 	opconKey := types.NamespacedName{
 		Name:      "common-service",
-		Namespace: r.Bootstrap.MasterNamespace,
+		Namespace: r.Bootstrap.CSData.MasterNs,
 	}
 	if err := r.Bootstrap.Reader.Get(ctx, opconKey, opcon); err != nil {
 		klog.Errorf("failed to get OperandConfig %s: %v", opconKey.String(), err)
@@ -221,7 +221,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(instance *apiv3.CommonServi
 
 	// Create Event if there is no update in OperandConfig after applying current CR
 	if isEqual {
-		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.MasterNamespace, "common-service", instance.Namespace, instance.Name))
+		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.MasterNs, "common-service", instance.Namespace, instance.Name))
 	}
 
 	if err := r.updatePhase(instance, CRSucceeded); err != nil {
@@ -239,7 +239,7 @@ func (r *CommonServiceReconciler) toCsRequest() handler.ToRequestsFunc {
 		cmName := object.Meta.GetName()
 		cmNs := object.Meta.GetNamespace()
 		if cmName == constant.CsMapConfigMap && cmNs == "kube-public" {
-			CsInstance = append(CsInstance, reconcile.Request{NamespacedName: types.NamespacedName{Name: "common-service", Namespace: r.Bootstrap.MasterNamespace}})
+			CsInstance = append(CsInstance, reconcile.Request{NamespacedName: types.NamespacedName{Name: "common-service", Namespace: r.Bootstrap.CSData.MasterNs}})
 		}
 		return CsInstance
 	}

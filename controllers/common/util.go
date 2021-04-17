@@ -371,6 +371,11 @@ func GetControlNs(r client.Reader) (controlNs string) {
 	return
 }
 
+// GetCatalogSource gets CatalogSource will be used by operators
+func GetCatalogSource(r client.Reader) (CatalogSourceName, CatalogSourceNS string) {
+	return "opencloud-operators", "openshift-marketplace"
+}
+
 // ValidateCsMaps checks common-service-maps has no scope overlapping
 func ValidateCsMaps(cm *corev1.ConfigMap) error {
 	commonServiceMaps, ok := cm.Data["common-service-maps.yaml"]

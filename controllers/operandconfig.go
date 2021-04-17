@@ -214,7 +214,7 @@ func (r *CommonServiceReconciler) updateOperandConfig(newConfigs []interface{}) 
 	opcon := util.NewUnstructured("operator.ibm.com", "OperandConfig", "v1alpha1")
 	opconKey := types.NamespacedName{
 		Name:      "common-service",
-		Namespace: r.Bootstrap.MasterNamespace,
+		Namespace: r.Bootstrap.CSData.MasterNs,
 	}
 	if err := r.Reader.Get(ctx, opconKey, opcon); err != nil {
 		klog.Errorf("failed to get OperandConfig %s: %v", opconKey.String(), err)
@@ -340,7 +340,7 @@ func (r *CommonServiceReconciler) handleDelete() error {
 	opcon := util.NewUnstructured("operator.ibm.com", "OperandConfig", "v1alpha1")
 	opconKey := types.NamespacedName{
 		Name:      "common-service",
-		Namespace: r.Bootstrap.MasterNamespace,
+		Namespace: r.Bootstrap.CSData.MasterNs,
 	}
 	if err := r.Reader.Get(ctx, opconKey, opcon); err != nil {
 		klog.Errorf("failed to get OperandConfig %s: %v", opconKey.String(), err)
@@ -412,7 +412,7 @@ func setSpecByName(slice []interface{}, name string, spec interface{}) []interfa
 
 // Check if the request's NamespacedName is the "master" CR
 func (r *CommonServiceReconciler) checkNamespace(key string) bool {
-	return key == r.Bootstrap.MasterNamespace+"/common-service"
+	return key == r.Bootstrap.CSData.MasterNs+"/common-service"
 }
 
 // updatePhase sets the current Phase status.

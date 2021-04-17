@@ -120,9 +120,9 @@ func main() {
 	}
 
 	// Create master namespace
-	if operatorNs != bs.MasterNamespace {
-		klog.Infof("Creating IBM Common Services master namespace: %s", bs.MasterNamespace)
-		if err := bs.CreateNamespace(bs.MasterNamespace); err != nil {
+	if operatorNs != bs.CSData.MasterNs {
+		klog.Infof("Creating IBM Common Services master namespace: %s", bs.CSData.MasterNs)
+		if err := bs.CreateNamespace(bs.CSData.MasterNs); err != nil {
 			klog.Errorf("Failed to create master namespace: %v", err)
 			os.Exit(1)
 		}
@@ -140,8 +140,8 @@ func main() {
 		}
 	}
 
-	if operatorNs == bs.MasterNamespace || operatorNs == constant.ClusterOperatorNamespace {
-		klog.Infof("Creating CommonService CR in the namespace %s", bs.MasterNamespace)
+	if operatorNs == bs.CSData.MasterNs || operatorNs == constant.ClusterOperatorNamespace {
+		klog.Infof("Creating CommonService CR in the namespace %s", bs.CSData.MasterNs)
 		if err = bs.CreateCsCR(); err != nil {
 			klog.Errorf("Failed to create CommonService CR: %v", err)
 			os.Exit(1)
@@ -162,7 +162,7 @@ func main() {
 		}
 		// +kubebuilder:scaffold:builder
 	} else {
-		klog.Infof("Creating common service operator subscription in namespace %s", bs.MasterNamespace)
+		klog.Infof("Creating common service operator subscription in namespace %s", bs.CSData.MasterNs)
 		if err = bs.CreateCsSubscription(); err != nil {
 			klog.Errorf("Failed to create common service operator subscription: %v", err)
 			os.Exit(1)
