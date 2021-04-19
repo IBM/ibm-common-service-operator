@@ -119,25 +119,25 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap) {
 		CSOperators: csOperators,
 		CSData:      csData,
 	}
+
+	// Get all the resources from the deployment annotations
+	annotations, err := bs.GetAnnotations()
+	if err != nil {
+		klog.Errorf("failed to get Annotations from csv: %v", err)
+	}
+
+	if r, ok := annotations["operatorChannel"]; ok {
+		bs.CSData.Channel = r
+	}
+
+	if r, ok := annotations["operatorVersion"]; ok {
+		bs.CSData.Version = r
+	}
 	return
 }
 
 // InitResources initialize resources at the bootstrap of operator
 func (b *Bootstrap) InitResources(manualManagement bool) error {
-	// Get all the resources from the deployment annotations
-	annotations, err := b.GetAnnotations()
-	if err != nil {
-		return err
-	}
-
-	if r, ok := annotations["operatorChannel"]; ok {
-		b.CSData.Channel = r
-	}
-
-	if r, ok := annotations["operatorVersion"]; ok {
-		b.CSData.Version = r
-	}
-
 	// Check Saas or Multi instances Deployment
 	if len(b.CSData.ControlNs) > 0 {
 		klog.Infof("Creating IBM Common Services control namespace: %s", b.CSData.ControlNs)
