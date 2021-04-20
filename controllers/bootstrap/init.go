@@ -103,7 +103,7 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap) {
 		{"Secretshare Operator", constant.SecretshareCRD, constant.SecretshareRBAC, constant.SecretshareCR, csSecretShareDeployment, constant.SecretshareKind, constant.SecretshareAPIVersion},
 	}
 	masterNs := util.GetMasterNs(mgr.GetAPIReader())
-	operatorNs,_ := util.GetOperatorNamespace()
+	operatorNs, _ := util.GetOperatorNamespace()
 	catalogSourceName, catalogSourceNs := util.GetCatalogSource("ibm-common-service-operator", operatorNs, mgr.GetAPIReader())
 	db2CatalogSourceName, _ := util.GetCatalogSource("db2u-operator", operatorNs, mgr.GetAPIReader())
 	csData := CSData{
