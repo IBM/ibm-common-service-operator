@@ -376,7 +376,9 @@ func GetControlNs(r client.Reader) (controlNs string) {
 func GetCatalogSource(packageName, ns string, r client.Reader) (CatalogSourceName, CatalogSourceNS string) {
 	pmList := &operatorsv1.PackageManifestList{}
 
-	_ = r.List(context.TODO(), pmList, &client.ListOptions{Namespace: ns})
+	err := r.List(context.TODO(), pmList, &client.ListOptions{Namespace: ns})
+
+	klog.Info(err)
 
 	var catalogsource string
 	for _, pm := range pmList.Items {
