@@ -13,7 +13,7 @@ metadata:
         name: common-service
         namespace: ibm-common-services
         annotations:
-          version: "7"
+          version: "8"
       spec:
         services:
         - name: ibm-metering-operator
@@ -89,11 +89,6 @@ metadata:
           spec:
             grafana: {}
             operandRequest: {}
-        - name: ibm-elastic-stack-operator
-          spec:
-            elasticStack: {}
-            operandBindInfo: {}
-            operandRequest: {}
     csOperandRegistry: |-
       apiVersion: operator.ibm.com/v1alpha1
       kind: OperandRegistry
@@ -101,7 +96,7 @@ metadata:
         name: common-service
         namespace: ibm-common-services
         annotations:
-          version: "11"
+          version: "12"
       spec:
         operators:
         - name: ibm-metering-operator
@@ -198,13 +193,6 @@ metadata:
           name: ibm-monitoring-grafana-operator
           namespace: ibm-common-services
           packageName: ibm-monitoring-grafana-operator-app
-          scope: public
-          sourceName: opencloud-operators
-          sourceNamespace: openshift-marketplace
-        - channel: stable-v1
-          name: ibm-elastic-stack-operator
-          namespace: ibm-common-services
-          packageName: ibm-elastic-stack-operator-app
           scope: public
           sourceName: opencloud-operators
           sourceNamespace: openshift-marketplace
