@@ -30,11 +30,4 @@ const Template = `
   spec:
     prometheusExt:
       storageClassName: placeholder
-- name: ibm-elastic-stack-operator
-  spec:
-    elasticStack:
-      elasticsearch:
-        data:
-          storage:
-            storageClass: placeholder
 `
