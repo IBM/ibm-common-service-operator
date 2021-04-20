@@ -9,10 +9,11 @@ require (
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/onsi/ginkgo v1.12.1
 	github.com/onsi/gomega v1.10.1
-	github.com/operator-framework/api v0.3.10
-	k8s.io/api v0.18.6
-	k8s.io/apimachinery v0.18.6
-	k8s.io/client-go v0.18.6
+	github.com/operator-framework/api v0.3.20
+	github.com/operator-framework/operator-lifecycle-manager v0.17.0
+	k8s.io/api v0.18.9
+	k8s.io/apimachinery v0.18.9
+	k8s.io/client-go v0.18.9
 	k8s.io/klog v1.0.0
 	sigs.k8s.io/controller-runtime v0.6.2
 )

@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	utilyaml "github.com/ghodss/yaml"
+	operatorsv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/package-server/apis/operators/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -160,7 +161,7 @@ func GetOperatorNamespace() (string, error) {
 	if len(ns) == 0 {
 		return "", fmt.Errorf("operator namespace is empty")
 	}
-	klog.V(1).Info("Found namespace Namespace: ", ns)
+	klog.V(1).Info("Found namespace: ", ns)
 	return ns, nil
 }
 
@@ -372,8 +373,30 @@ func GetControlNs(r client.Reader) (controlNs string) {
 }
 
 // GetCatalogSource gets CatalogSource will be used by operators
-func GetCatalogSource(r client.Reader) (CatalogSourceName, CatalogSourceNS string) {
-	return "opencloud-operators", "openshift-marketplace"
+func GetCatalogSource(packageName, ns string, r client.Reader) (CatalogSourceName, CatalogSourceNS string) {
+	pmList := &operatorsv1.PackageManifestList{}
+
+	_ = r.List(context.TODO(), pmList, &client.ListOptions{Namespace: ns})
+
+	var catalogsource string
+	for _, pm := range pmList.Items {
+		if pm.Status.PackageName != packageName {
+			continue
+		}
+		if pm.Status.CatalogSource == constant.IBMCatalogsource {
+			catalogsource = constant.IBMCatalogsource
+		}
+		if pm.Status.CatalogSource == constant.CSCatalogsource && catalogsource != constant.IBMCatalogsource {
+			catalogsource = constant.CSCatalogsource
+		}
+		if catalogsource == "" {
+			catalogsource = pm.Status.CatalogSource
+		}
+	}
+	if catalogsource == "" {
+		catalogsource = constant.IBMCatalogsource
+	}
+	return catalogsource, constant.CatalogsourceNs
 }
 
 // ValidateCsMaps checks common-service-maps has no scope overlapping

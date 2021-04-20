@@ -221,7 +221,7 @@ spec:
     namespace: {{ .MasterNs }}
     packageName: db2u-operator
     scope: public
-    sourceName: ibm-operator-catalog
+    sourceName: {{ .DB2CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
 `
 

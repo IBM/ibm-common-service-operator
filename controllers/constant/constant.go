@@ -50,6 +50,12 @@ const (
 	DefaultRequeueDuration = 20 * time.Second
 	//CsMapsLabel is the label used to label the configmaps are managed by cs operator
 	CsManagedLabel = "operator.ibm.com/managedByCsOperator"
+	//CatalogsourceNs is the namespace of the catalogsource
+	CatalogsourceNs = "openshift-marketplace"
+	//CSCatalogsource is the name of the common service catalogsource
+	CSCatalogsource = "opencloud-operators"
+	//IBMCatalogsource is the names of the ibm catalogsource
+	IBMCatalogsource = "ibm-operator-catalog"
 )
 
 // CsOg is OperatorGroup constent for the common service operator

@@ -70,14 +70,15 @@ type Bootstrap struct {
 	CSData      CSData
 }
 type CSData struct {
-	Channel           string
-	Version           string
-	MasterNs          string
-	ControlNs         string
-	CatalogSourceName string
-	CatalogSourceNs   string
-	ODLMScopeEnable   string
-	ApprovalMode      string
+	Channel              string
+	Version              string
+	MasterNs             string
+	ControlNs            string
+	CatalogSourceName    string
+	CatalogSourceNs      string
+	DB2CatalogSourceName string
+	ODLMScopeEnable      string
+	ApprovalMode         string
 }
 
 type CSOperator struct {
@@ -101,13 +102,15 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap) {
 		{"Webhook Operator", constant.WebhookCRD, constant.WebhookRBAC, constant.WebhookCR, csWebhookDeployment, constant.WebhookKind, constant.WebhookAPIVersion},
 		{"Secretshare Operator", constant.SecretshareCRD, constant.SecretshareRBAC, constant.SecretshareCR, csSecretShareDeployment, constant.SecretshareKind, constant.SecretshareAPIVersion},
 	}
-	catalogSourceName, catalogSourceNs := util.GetCatalogSource(mgr.GetAPIReader())
-
+	masterNs := util.GetMasterNs(mgr.GetAPIReader())
+	catalogSourceName, catalogSourceNs := util.GetCatalogSource("ibm-common-service-operator", masterNs, mgr.GetAPIReader())
+	db2CatalogSourceName, _ := util.GetCatalogSource("db2u-operator", masterNs, mgr.GetAPIReader())
 	csData := CSData{
-		MasterNs:          util.GetMasterNs(mgr.GetAPIReader()),
-		ControlNs:         util.GetControlNs(mgr.GetAPIReader()),
-		CatalogSourceName: catalogSourceName,
-		CatalogSourceNs:   catalogSourceNs,
+		MasterNs:             masterNs,
+		ControlNs:            util.GetControlNs(mgr.GetAPIReader()),
+		CatalogSourceName:    catalogSourceName,
+		CatalogSourceNs:      catalogSourceNs,
+		DB2CatalogSourceName: db2CatalogSourceName,
 	}
 
 	bs = &Bootstrap{
