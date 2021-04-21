@@ -378,7 +378,9 @@ func GetCatalogSource(packageName, ns string, r client.Reader) (CatalogSourceNam
 
 	err := r.List(context.TODO(), pmList, &client.ListOptions{Namespace: ns})
 
-	klog.Info(err)
+	if err != nil {
+		klog.Info(err)
+	}
 
 	var catalogsource string
 	for _, pm := range pmList.Items {
