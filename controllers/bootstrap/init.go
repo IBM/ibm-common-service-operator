@@ -464,8 +464,15 @@ func (b *Bootstrap) installNssOperator(manualManagement bool) error {
 		return err
 	}
 
+	// Create General NSS CRs
 	if err := b.renderTemplate(constant.NamespaceScopeCR, b.CSData); err != nil {
 		return err
+	}
+	// Create NSS CRs managedby ODLM for Single CS instance case
+	if b.CSData.MasterNs == b.CSData.ControlNs {
+		if err := b.renderTemplate(constant.NamespaceScopeCRManagedbyODLM, b.CSData); err != nil {
+			return err
+		}
 	}
 
 	cm, err := util.GetCmOfMapCs(b.Reader)
