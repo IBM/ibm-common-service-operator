@@ -19,6 +19,7 @@ package bootstrap
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -42,6 +43,7 @@ import (
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/controllers/deploy"
+	odlm "github.com/IBM/operand-deployment-lifecycle-manager/api/v1alpha1"
 )
 
 var (
@@ -142,7 +144,12 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap) {
 }
 
 // InitResources initialize resources at the bootstrap of operator
-func (b *Bootstrap) InitResources(manualManagement bool) error {
+func (b *Bootstrap) InitResources(manualManagement bool, installPlanApproval olmv1alpha1.Approval) error {
+	if installPlanApproval != "" && installPlanApproval != olmv1alpha1.ApprovalAutomatic && installPlanApproval != olmv1alpha1.ApprovalManual {
+		return fmt.Errorf("invalid value for installPlanApproval %v", installPlanApproval)
+	}
+	b.CSData.ApprovalMode = string(installPlanApproval)
+
 	// Check Saas or Multi instances Deployment
 	if len(b.CSData.ControlNs) > 0 {
 		klog.Infof("Creating IBM Common Services control namespace: %s", b.CSData.ControlNs)
@@ -225,6 +232,9 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 	}
 
 	klog.Info("Installing/Updating OperandRegistry")
+	if err := b.updateOperandRegistry(installPlanApproval); err != nil {
+		return err
+	}
 	if b.SaasEnable {
 		// OperandRegistry for SaaS deployment
 		if err := b.renderTemplate(constant.CSV3SaasOperandRegistry, b.CSData); err != nil {
@@ -346,7 +356,7 @@ func (b *Bootstrap) CreateOperatorGroup() error {
 // 	return nil
 // }
 
-func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte) error {
+func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...bool) error {
 	objects, err := util.YamlToObjects(yamlContent)
 	if err != nil {
 		return err
@@ -369,8 +379,12 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte) error {
 			continue
 		}
 
+		forceUpdate := false
+		if len(alwaysUpdate) != 0 {
+			forceUpdate = alwaysUpdate[0]
+		}
 		// TODO: deep merge and update
-		if compareVersion(obj.GetAnnotations()["version"], objInCluster.GetAnnotations()["version"]) {
+		if compareVersion(obj.GetAnnotations()["version"], objInCluster.GetAnnotations()["version"]) || forceUpdate {
 			klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
 			resourceVersion := objInCluster.GetResourceVersion()
 			obj.SetResourceVersion(resourceVersion)
@@ -536,7 +550,7 @@ func (b *Bootstrap) createNsSubscription(manualManagement bool) error {
 		return err
 	}
 
-	if err := b.renderTemplate(resourceName, b.CSData); err != nil {
+	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
 		return err
 	}
 
@@ -705,13 +719,19 @@ func (b *Bootstrap) waitALLOperatorReady(namespace string) error {
 
 }
 
-func (b *Bootstrap) renderTemplate(objectTemplate string, data interface{}) error {
+func (b *Bootstrap) renderTemplate(objectTemplate string, data interface{}, alwaysUpdate ...bool) error {
 	var buffer bytes.Buffer
 	t := template.Must(template.New("newTemplate").Parse(objectTemplate))
 	if err := t.Execute(&buffer, data); err != nil {
 		return err
 	}
-	if err := b.CreateOrUpdateFromYaml(buffer.Bytes()); err != nil {
+
+	forceUpdate := false
+	if len(alwaysUpdate) != 0 {
+		forceUpdate = alwaysUpdate[0]
+	}
+
+	if err := b.CreateOrUpdateFromYaml(buffer.Bytes(), forceUpdate); err != nil {
 		return err
 	}
 	return nil
@@ -738,3 +758,31 @@ func (b *Bootstrap) renderTemplate(objectTemplate string, data interface{}) erro
 // 	klog.Warningf("No yaml %s found in annotations", resName)
 // 	return ""
 // }
+
+func (b *Bootstrap) updateOperandRegistry(installPlanApproval olmv1alpha1.Approval) error {
+	opreg := &odlm.OperandRegistry{}
+	opregKey := types.NamespacedName{
+		Name:      "common-service",
+		Namespace: b.CSData.MasterNs,
+	}
+
+	err := b.Reader.Get(ctx, opregKey, opreg)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		klog.Errorf("failed to get OperandRegistry %s: %v", opregKey.String(), err)
+		return err
+
+	}
+
+	for i := range opreg.Spec.Operators {
+		opreg.Spec.Operators[i].InstallPlanApproval = installPlanApproval
+	}
+	if err := b.Update(ctx, opreg); err != nil {
+		klog.Errorf("failed to update OperandRegistry %s: %v", opregKey.String(), err)
+		return err
+	}
+
+	return nil
+}

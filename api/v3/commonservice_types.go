@@ -17,6 +17,7 @@
 package v3
 
 import (
+	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -34,10 +35,11 @@ type CommonServiceSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	ManualManagement bool            `json:"manualManagement,omitempty"`
-	Size             string          `json:"size,omitempty"`
-	Services         []ServiceConfig `json:"services,omitempty"`
-	StorageClass     string          `json:"storageClass,omitempty"`
+	InstallPlanApproval olmv1alpha1.Approval `json:"installPlanApproval,omitempty"`
+	ManualManagement    bool                 `json:"manualManagement,omitempty"`
+	Size                string               `json:"size,omitempty"`
+	Services            []ServiceConfig      `json:"services,omitempty"`
+	StorageClass        string               `json:"storageClass,omitempty"`
 }
 
 // CommonServiceStatus defines the observed state of CommonService

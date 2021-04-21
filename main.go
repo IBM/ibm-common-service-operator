@@ -43,6 +43,7 @@ import (
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	nssv1 "github.com/IBM/ibm-namespace-scope-operator/api/v1"
+	odlm "github.com/IBM/operand-deployment-lifecycle-manager/api/v1alpha1"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -53,6 +54,7 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
+	utilruntime.Must(odlm.AddToScheme(scheme))
 	utilruntime.Must(nssv1.AddToScheme(scheme))
 	utilruntime.Must(operatorv3.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme

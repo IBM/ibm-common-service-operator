@@ -119,7 +119,7 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(instance *apiv3.CommonServic
 	// Webhook Operator and Secretshare
 	// Delete ODLM from openshift-operators and deploy it in the masterNamespaces
 	// Deploy OperandConfig and OperandRegistry
-	if err := r.Bootstrap.InitResources(instance.Spec.ManualManagement); err != nil {
+	if err := r.Bootstrap.InitResources(instance.Spec.ManualManagement, instance.Spec.InstallPlanApproval); err != nil {
 		klog.Errorf("Failed to initialize resources: %v", err)
 		if err := r.updatePhase(instance, CRFailed); err != nil {
 			klog.Error(err)
@@ -186,7 +186,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(instance *apiv3.CommonServi
 		Name:      "common-service",
 		Namespace: r.Bootstrap.CSData.MasterNs,
 	}
-	if err := r.Bootstrap.Reader.Get(ctx, opconKey, opcon); err != nil {
+	if err := r.Reader.Get(ctx, opconKey, opcon); err != nil {
 		klog.Errorf("failed to get OperandConfig %s: %v", opconKey.String(), err)
 		if err := r.updatePhase(instance, CRFailed); err != nil {
 			klog.Error(err)
