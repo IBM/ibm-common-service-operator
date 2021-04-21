@@ -19,6 +19,7 @@ package bootstrap
 import (
 	"context"
 	"strconv"
+	"strings"
 	"time"
 
 	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
@@ -159,6 +160,18 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 	if err := b.deleteSubscription("operand-deployment-lifecycle-manager-app", "openshift-operators"); err != nil {
 		klog.Errorf("Failed to delete ODLM operator in openshift-operators: %v", err)
 		return err
+	}
+
+	isUpgrade, err := b.checkODLMVersion("operand-deployment-lifecycle-manager-app", "ibm-common-services")
+	if err != nil {
+		klog.Errorf("Failed to check ODLM operator version in ibm-common-services: %v", err)
+		return err
+	}
+	if isUpgrade {
+		if err := b.deleteSubscription("operand-deployment-lifecycle-manager-app", "ibm-common-services"); err != nil {
+			klog.Errorf("Failed to delete ODLM operator in openshift-operators: %v", err)
+			return err
+		}
 	}
 
 	// Install ODLM Operator
@@ -431,4 +444,41 @@ func (b *Bootstrap) deleteSubscription(name, namespace string) error {
 	}
 
 	return nil
+}
+
+func (b *Bootstrap) checkODLMVersion(name, namespace string) (bool, error) {
+	key := types.NamespacedName{Name: name, Namespace: namespace}
+	sub := &olmv1alpha1.Subscription{}
+	if err := b.Reader.Get(context.TODO(), key, sub); err != nil {
+		if errors.IsNotFound(err) {
+			klog.V(3).Infof("NotFound subscription %s/%s", namespace, name)
+		} else {
+			klog.Errorf("Failed to get subscription %s/%s", namespace, name)
+		}
+		return false, client.IgnoreNotFound(err)
+	}
+
+	csvList := strings.Split(sub.Status.InstalledCSV, ".v")
+	if len(csvList) != 2 {
+		return true, nil
+	}
+	csvVersion := csvList[1]
+	csvVersionSlice := strings.Split(csvVersion, ".")
+	// need to delete the ODLM whose version is smaller than 1.4.3 in upgrade
+	OldODLMVersion := []int{1, 4, 3}
+	if len(csvVersionSlice) != 3 {
+		return true, nil
+	}
+	for index := range csvVersionSlice {
+		csvVersion, err := strconv.Atoi(csvVersionSlice[index])
+		if err != nil {
+			return true, nil
+		}
+		if csvVersion < OldODLMVersion[index] {
+			return true, nil
+		} else if csvVersion == OldODLMVersion[index] {
+			continue
+		}
+	}
+	return false, nil
 }
