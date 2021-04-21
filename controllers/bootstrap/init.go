@@ -19,6 +19,7 @@ package bootstrap
 import (
 	"bytes"
 	"context"
+	"strconv"
 	"strings"
 	"sync"
 	"text/template"
@@ -616,9 +617,17 @@ func (b *Bootstrap) waitOperatorReady(name, namespace string) error {
 			csvVersionSlice := strings.Split(csvVersion, ".")
 			VersionSlice := strings.Split(version, ".")
 			for index := range csvVersionSlice {
-				if csvVersionSlice[index] > VersionSlice[index] {
+				csvVersion, err := strconv.Atoi(csvVersionSlice[index])
+				if err != nil {
+					return false, err
+				}
+				templateVersion, err := strconv.Atoi(VersionSlice[index])
+				if err != nil {
+					return false, err
+				}
+				if csvVersion > templateVersion {
 					break
-				} else if csvVersionSlice[index] == VersionSlice[index] {
+				} else if csvVersion == templateVersion {
 					continue
 				} else {
 					return false, nil
