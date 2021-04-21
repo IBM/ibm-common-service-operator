@@ -40,6 +40,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
+	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/controllers/deploy"
@@ -144,7 +145,10 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap) {
 }
 
 // InitResources initialize resources at the bootstrap of operator
-func (b *Bootstrap) InitResources(manualManagement bool, installPlanApproval olmv1alpha1.Approval) error {
+func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
+	installPlanApproval := instance.Spec.InstallPlanApproval
+	manualManagement := instance.Spec.ManualManagement
+
 	if installPlanApproval != "" && installPlanApproval != olmv1alpha1.ApprovalAutomatic && installPlanApproval != olmv1alpha1.ApprovalManual {
 		return fmt.Errorf("invalid value for installPlanApproval %v", installPlanApproval)
 	}
