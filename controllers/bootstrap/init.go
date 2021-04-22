@@ -24,6 +24,7 @@ import (
 
 	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -168,8 +169,8 @@ func (b *Bootstrap) InitResources(manualManagement bool) error {
 		return err
 	}
 	if isUpgrade {
-		if err := b.deleteSubscription("operand-deployment-lifecycle-manager-app", "ibm-common-services"); err != nil {
-			klog.Errorf("Failed to delete ODLM operator in openshift-operators: %v", err)
+		if err := b.checkODLMDeletion("ibm-common-services"); err != nil {
+			klog.Errorf("Failed to delete ODLM operator in ibm-common-services: %v", err)
 			return err
 		}
 	}
@@ -408,6 +409,62 @@ func (b *Bootstrap) CreateNsScopeConfigmap() error {
 	return nil
 }
 
+func (b *Bootstrap) checkODLMDeletion(ns string) error {
+	if err := utilwait.PollImmediate(time.Second*10, time.Minute*5, func() (done bool, err error) {
+		if err := b.deleteSubscription("operand-deployment-lifecycle-manager-app", "ibm-common-services"); err != nil {
+			klog.Errorf("Failed to delete ODLM operator in ibm-common-services: %v", err)
+			return false, err
+		}
+
+		deploy := &appsv1.Deployment{}
+		if err := b.Reader.Get(context.TODO(), types.NamespacedName{Name: "operand-deployment-lifecycle-manager", Namespace: ns}, deploy); err != nil {
+			if errors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, err
+		}
+
+		owners := deploy.GetOwnerReferences()
+		for _, owner := range owners {
+			if owner.Kind != "ClusterServiceVersion" || owner.APIVersion != "operators.coreos.com/v1alpha1" || owner.Name == "" {
+				continue
+			}
+
+			csvName := owner.Name
+
+			csv := &olmv1alpha1.ClusterServiceVersion{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      csvName,
+					Namespace: ns,
+				},
+			}
+
+			if err := b.Client.Delete(context.TODO(), csv); err != nil {
+				klog.Errorf("Failed to delete Cluster Service Version: %v", err)
+				return false, err
+			}
+		}
+
+		if err := b.Client.Delete(context.TODO(), deploy); err != nil && !errors.IsNotFound(err) {
+			klog.Errorf("Failed to delete deployment: %v", err)
+			return false, err
+		}
+
+		deployCheck := &appsv1.Deployment{}
+		if err := b.Reader.Get(context.TODO(), types.NamespacedName{Name: "operand-deployment-lifecycle-manager", Namespace: ns}, deployCheck); err != nil {
+			if errors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, err
+		}
+		return false, nil
+	}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (b *Bootstrap) deleteSubscription(name, namespace string) error {
 	key := types.NamespacedName{Name: name, Namespace: namespace}
 	sub := &olmv1alpha1.Subscription{}
@@ -458,6 +515,18 @@ func (b *Bootstrap) checkODLMVersion(name, namespace string) (bool, error) {
 		return false, client.IgnoreNotFound(err)
 	}
 
+	if sub.Status.InstalledCSV == "" || sub.Status.CurrentCSV == "" {
+		return true, nil
+	}
+
+	if sub.Status.InstalledCSV != sub.Status.CurrentCSV {
+		return true, nil
+	}
+
+	if sub.Status.State != olmv1alpha1.SubscriptionStateAtLatest {
+		return true, nil
+	}
+
 	csvList := strings.Split(sub.Status.InstalledCSV, ".v")
 	if len(csvList) != 2 {
 		return true, nil
@@ -480,5 +549,28 @@ func (b *Bootstrap) checkODLMVersion(name, namespace string) (bool, error) {
 			continue
 		}
 	}
+
+	deploy := &appsv1.Deployment{}
+	if err := b.Reader.Get(context.TODO(), types.NamespacedName{Name: "operand-deployment-lifecycle-manager", Namespace: namespace}, deploy); err != nil {
+		if errors.IsNotFound(err) {
+			return true, nil
+		}
+		klog.Info()
+		return false, err
+	}
+
+	owners := deploy.GetOwnerReferences()
+	for _, owner := range owners {
+		if owner.Kind != "ClusterServiceVersion" || owner.APIVersion != "operators.coreos.com/v1alpha1" || owner.Name == "" {
+			continue
+		}
+
+		csvName := owner.Name
+
+		if csvName != sub.Status.InstalledCSV {
+			return true, nil
+		}
+	}
+
 	return false, nil
 }
