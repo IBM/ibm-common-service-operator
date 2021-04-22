@@ -63,6 +63,21 @@ spec:
 apiVersion: operator.ibm.com/v1
 kind: NamespaceScope
 metadata:
+  name: nss-odlm-scope
+  namespace: {{ .MasterNs }}
+spec:
+  namespaceMembers:
+  - {{ .MasterNs }}
+  configmapName: odlm-scope
+  restartLabels:
+    intent: projected-odlm
+`
+
+// NamespaceScope Operator CR Managed By ODLM
+const NamespaceScopeCRManagedbyODLM = `
+apiVersion: operator.ibm.com/v1
+kind: NamespaceScope
+metadata:
   name: nss-managedby-odlm
   namespace: {{ .MasterNs }}
 spec:
@@ -72,7 +87,7 @@ spec:
 apiVersion: operator.ibm.com/v1
 kind: NamespaceScope
 metadata:
-  name: nss-odlm-scope
+  name: odlm-scope-managedby-odlm
   namespace: {{ .MasterNs }}
 spec:
   namespaceMembers:
