@@ -31,6 +31,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilwait "k8s.io/apimachinery/pkg/util/wait"
@@ -698,7 +699,9 @@ func (b *Bootstrap) waitOperatorReady(name, namespace string) error {
 func (b *Bootstrap) waitALLOperatorReady(namespace string) error {
 	subList := &olmv1alpha1.SubscriptionList{}
 
-	if err := b.Reader.List(context.TODO(), subList, &client.ListOptions{Namespace: namespace}); err != nil {
+	if err := b.Reader.List(context.TODO(), subList, &client.ListOptions{Namespace: namespace, LabelSelector: labels.SelectorFromSet(map[string]string{
+		"operator.ibm.com/opreq-control": "true",
+	})}); err != nil {
 		return err
 	}
 
