@@ -70,11 +70,11 @@ const Large = `
       auditService:
         resources:
           limits:
-            cpu: 1000m
-            memory: 50Mi
-          requests:
             cpu: 20m
             memory: 40Mi
+          requests:
+            cpu: 10m
+            memory: 20Mi
       authService:
         resources:
           limits:
@@ -120,10 +120,10 @@ const Large = `
       auditService:
         resources:
           limits:
-            cpu: 1000m
-            memory: 50Mi
-          requests:
             cpu: 20m
+            memory: 40Mi
+          requests:
+            cpu: 10m
             memory: 20Mi
       papService:
         resources:
@@ -147,10 +147,10 @@ const Large = `
       auditService:
         resources:
           limits:
-            cpu: 1000m
-            memory: 50Mi
-          requests:
             cpu: 20m
+            memory: 40Mi
+          requests:
+            cpu: 10m
             memory: 20Mi
       resources:
         limits:

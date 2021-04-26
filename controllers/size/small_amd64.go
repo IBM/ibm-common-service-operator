@@ -70,11 +70,11 @@ const Small = `
       auditService:
         resources:
           limits:
-            cpu: 1000m
-            memory: 50Mi
+            cpu: 20m
+            memory: 40Mi
           requests:
             cpu: 10m
-            memory: 40Mi
+            memory: 20Mi
       authService:
         resources:
           limits:
@@ -120,8 +120,8 @@ const Small = `
       auditService:
         resources:
           limits:
-            cpu: 1000m
-            memory: 50Mi
+            cpu: 20m
+            memory: 40Mi
           requests:
             cpu: 10m
             memory: 20Mi
@@ -147,7 +147,7 @@ const Small = `
       auditService:
         resources:
           limits:
-            cpu: 1000m
+            cpu: 20m
             memory: 40Mi
           requests:
             cpu: 10m
