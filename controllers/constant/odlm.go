@@ -106,7 +106,7 @@ metadata:
 spec:
   operators:
   - name: ibm-licensing-operator
-    namespace: {{ .MasterNs }}
+    namespace: {{ .ControlNs }}
     channel: {{ .Channel }}
     packageName: ibm-licensing-operator-app
     scope: public
@@ -119,7 +119,7 @@ spec:
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-cert-manager-operator
-    namespace: {{ .MasterNs }}
+    namespace: {{ .ControlNs }}
     channel: {{ .Channel }}
     packageName: ibm-cert-manager-operator
     scope: public
