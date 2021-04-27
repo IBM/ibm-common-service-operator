@@ -24,9 +24,9 @@ metadata:
     containerImage: quay.io/opencloudio/common-service-operator:latest
     createdAt: "2020-10-19T21:38:33Z"
     description: The IBM Common Service Operator is used to deploy IBM Common Services
-    operatorChannel: "v3"
-    operatorVersion: "3.8.0"
     olm.skipRange: ">=3.3.0 <3.8.0"
+    operatorChannel: v3
+    operatorVersion: 3.8.0
     operators.operatorframework.io/builder: operator-sdk-v1.3.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/IBM/ibm-common-service-operator
@@ -327,5 +327,5 @@ spec:
   maturity: alpha
   provider:
     name: IBM
-  replaces: ibm-common-service-operator.v3.7.1
+  replaces: ibm-common-service-operator.v3.7.3
   version: 3.8.0
