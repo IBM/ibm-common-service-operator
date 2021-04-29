@@ -407,6 +407,6 @@ spec:
     env:
     - name: INSTALL_SCOPE
       value: namespaced
-    - name: ODLM_SCOPE
-      value: "{{ .ODLMScopeEnable }}"
+    - name: ISOLATED_MODE
+      value: "{{ .IsolatedModeEnable }}"
 `

@@ -82,7 +82,7 @@ type CSData struct {
 	CatalogSourceName    string
 	CatalogSourceNs      string
 	DB2CatalogSourceName string
-	ODLMScopeEnable      string
+	IsolatedModeEnable   string
 	ApprovalMode         string
 }
 
@@ -526,12 +526,12 @@ func (b *Bootstrap) installODLM(operatorNs string) error {
 			return err
 		}
 	} else {
-		odlmScopeEnable := "false"
+		IsolatedModeEnable := "false"
 		// SaaS or on-prem multi instances case, enable odlm-scope
 		if b.CSData.MasterNs != b.CSData.ControlNs {
-			odlmScopeEnable = "true"
+			IsolatedModeEnable = "true"
 		}
-		b.CSData.ODLMScopeEnable = odlmScopeEnable
+		b.CSData.IsolatedModeEnable = IsolatedModeEnable
 		cm, err := util.GetCmOfMapCs(b.Client)
 		if err == nil {
 			err := util.UpdateNSList(b.Reader, b.Client, cm, "nss-odlm-scope", b.CSData.MasterNs, true)
