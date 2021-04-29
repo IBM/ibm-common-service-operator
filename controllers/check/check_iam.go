@@ -156,6 +156,9 @@ func createUpdateConfigmap(bs *bootstrap.Bootstrap, status string) error {
 				cm.Data[statusKey] = status
 				isUpdate = true
 			}
+		} else {
+			cm.Data[statusKey] = status
+			isUpdate = true
 		}
 	}
 
