@@ -18,6 +18,7 @@ package check
 
 import (
 	"context"
+	"regexp"
 	"time"
 
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
@@ -28,8 +29,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 
+	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 )
 
@@ -40,22 +41,19 @@ var (
 )
 
 // IamStatus check IAM status if ready
-func IamStatus(mgr manager.Manager) {
-	r := mgr.GetAPIReader()
-	c := mgr.GetClient()
-
-	MasterNamespace = util.GetMasterNs(r)
+func IamStatus(bs *bootstrap.Bootstrap) {
+	MasterNamespace = bs.CSData.MasterNs
 
 	for {
-		if !getIamSubscription(r) {
-			if err := updateConfigmap(r, c, "NotReady"); err != nil {
+		if !getIamSubscription(bs.Reader) {
+			if err := updateConfigmap(bs, "NotReady"); err != nil {
 				klog.Errorf("Create or update configmap failed: %v", err)
 			}
 			time.Sleep(2 * time.Minute)
 			continue
 		}
-		iamStatus := overallIamStatus(r)
-		if err := createUpdateConfigmap(r, c, iamStatus); err != nil {
+		iamStatus := overallIamStatus(bs.Reader)
+		if err := createUpdateConfigmap(bs, iamStatus); err != nil {
 			klog.Errorf("Create or update configmap failed: %v", err)
 		}
 		time.Sleep(2 * time.Minute)
@@ -120,21 +118,27 @@ func getDeploymentStatus(r client.Reader, name string) string {
 	return "Ready"
 }
 
-func createUpdateConfigmap(r client.Reader, c client.Client, status string) error {
+func createUpdateConfigmap(bs *bootstrap.Bootstrap, status string) error {
 	cm := &corev1.ConfigMap{}
 	cmName := "ibm-common-services-status"
 	cmNs := "kube-public"
 	if status == "NotReady" {
 		klog.Info("IAM status is NotReady, waiting some minutes...")
 	}
-	err := r.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: cmNs}, cm)
+
+	requestNsSlice := util.GetRequestNs(bs.Reader)
+	err := bs.Reader.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: cmNs}, cm)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			cm.Name = cmName
 			cm.Namespace = cmNs
 			cm.Data = make(map[string]string)
+			for _, requestNs := range requestNsSlice {
+				statusKey := requestNs + "-iamstatus"
+				cm.Data[statusKey] = status
+			}
 			cm.Data["iamstatus"] = status
-			if err := c.Create(context.TODO(), cm); err != nil {
+			if err := bs.Client.Create(context.TODO(), cm); err != nil {
 				klog.Errorf("Failed to create ConfigMap %s: %v", cmName, err)
 				return err
 			}
@@ -142,34 +146,76 @@ func createUpdateConfigmap(r client.Reader, c client.Client, status string) erro
 		}
 		return err
 	}
-	if cm.Data["iamstatus"] != status {
-		klog.Infof("IAM status is %s", status)
+	isUpdate := false
+	for _, requestNs := range requestNsSlice {
+		statusKey := requestNs + "-iamstatus"
+		// check the iamstatus of cloud pak
+		if val, ok := cm.Data[statusKey]; ok {
+			if val != status {
+				klog.Infof("IAM status for namespace %s is %s", requestNs, status)
+				cm.Data[statusKey] = status
+				isUpdate = true
+			}
+		}
+	}
+
+	if isUpdate || cm.Data["iamstatus"] != status {
 		cm.Data["iamstatus"] = status
-		if err = c.Update(context.TODO(), cm); err != nil {
+		if status == "Ready" {
+			// iamstatus in this CS is ready, check iamstatus for all other CS
+			reg, _ := regexp.Compile(`^(.*)\-iamstatus`)
+			statusSlice := make([]string, 0)
+			for key, status := range cm.Data {
+				if reg.MatchString(key) {
+					statusSlice = append(statusSlice, status)
+				}
+			}
+			for _, status := range statusSlice {
+				if status != "Ready" {
+					cm.Data["iamstatus"] = status
+					break
+				}
+			}
+		}
+		if err = bs.Client.Update(context.TODO(), cm); err != nil {
 			klog.Errorf("Failed to update ConfigMap %s: %v", cmName, err)
 			return err
 		}
 	}
+
 	return nil
 }
 
-func updateConfigmap(r client.Reader, c client.Client, status string) error {
+func updateConfigmap(bs *bootstrap.Bootstrap, status string) error {
 	cm := &corev1.ConfigMap{}
 	cmName := "ibm-common-services-status"
 	cmNs := "kube-public"
-	err := r.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: cmNs}, cm)
+	err := bs.Reader.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: cmNs}, cm)
 	if errors.IsNotFound(err) {
 		return nil
 	} else if err != nil {
 		return err
 	}
-	if cm.Data["iamstatus"] != status {
-		klog.Infof("IAM status is %s", status)
-		cm.Data["iamstatus"] = status
-		if err = c.Update(context.TODO(), cm); err != nil {
+	requestNsSlice := util.GetRequestNs(bs.Reader)
+	isUpdate := false
+	for _, requestNs := range requestNsSlice {
+		// update the iam status for each cloud pak which is using this common service
+		statusKey := requestNs + "-iamstatus"
+		if val, ok := cm.Data[statusKey]; ok {
+			if val != status {
+				klog.Infof("IAM status for namespace %s is %s", requestNs, status)
+				cm.Data[statusKey] = status
+				cm.Data["iamstatus"] = status
+				isUpdate = true
+			}
+		}
+	}
+	if isUpdate {
+		if err = bs.Client.Update(context.TODO(), cm); err != nil {
 			klog.Errorf("Failed to update ConfigMap %s: %v", cmName, err)
 			return err
 		}
 	}
+
 	return nil
 }
