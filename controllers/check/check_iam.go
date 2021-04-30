@@ -163,23 +163,7 @@ func createUpdateConfigmap(bs *bootstrap.Bootstrap, status string) error {
 	}
 
 	if isUpdate || cm.Data["iamstatus"] != status {
-		cm.Data["iamstatus"] = status
-		if status == "Ready" {
-			// iamstatus in this CS is ready, check iamstatus for all other CS
-			reg, _ := regexp.Compile(`^(.*)\-iamstatus`)
-			statusSlice := make([]string, 0)
-			for key, status := range cm.Data {
-				if reg.MatchString(key) {
-					statusSlice = append(statusSlice, status)
-				}
-			}
-			for _, status := range statusSlice {
-				if status != "Ready" {
-					cm.Data["iamstatus"] = status
-					break
-				}
-			}
-		}
+		cm.Data["iamstatus"] = checkOverallStatus(cm.Data, status)
 		if err = bs.Client.Update(context.TODO(), cm); err != nil {
 			klog.Errorf("Failed to update ConfigMap %s: %v", cmName, err)
 			return err
@@ -208,12 +192,12 @@ func updateConfigmap(bs *bootstrap.Bootstrap, status string) error {
 			if val != status {
 				klog.Infof("IAM status for namespace %s is %s", requestNs, status)
 				cm.Data[statusKey] = status
-				cm.Data["iamstatus"] = status
 				isUpdate = true
 			}
 		}
 	}
-	if isUpdate {
+	if isUpdate || cm.Data["iamstatus"] != status {
+		cm.Data["iamstatus"] = checkOverallStatus(cm.Data, status)
 		if err = bs.Client.Update(context.TODO(), cm); err != nil {
 			klog.Errorf("Failed to update ConfigMap %s: %v", cmName, err)
 			return err
@@ -221,4 +205,20 @@ func updateConfigmap(bs *bootstrap.Bootstrap, status string) error {
 	}
 
 	return nil
+}
+
+func checkOverallStatus(statusMap map[string]string, status string) string {
+	reg, _ := regexp.Compile(`^(.*)\-iamstatus`)
+	statusSlice := make([]string, 0)
+	for key, status := range statusMap {
+		if reg.MatchString(key) {
+			statusSlice = append(statusSlice, status)
+		}
+	}
+	for _, status := range statusSlice {
+		if status != "Ready" {
+			return status
+		}
+	}
+	return status
 }
