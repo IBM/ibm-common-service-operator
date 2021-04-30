@@ -402,6 +402,36 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 	return errMsg
 }
 
+func (b *Bootstrap) CheckOperatorCatalog(ns string) error {
+
+	err := utilwait.PollImmediate(time.Second*10, time.Minute*3, func() (done bool, err error) {
+		subList := &olmv1alpha1.SubscriptionList{}
+
+		if err := b.Reader.List(context.TODO(), subList, &client.ListOptions{Namespace: ns, LabelSelector: labels.SelectorFromSet(map[string]string{
+			"operators.coreos.com/ibm-common-service-operator." + ns: "",
+		})}); err != nil {
+			return false, err
+		}
+
+		if len(subList.Items) != 1 {
+			klog.V(2).Infof("Fail to find ibm-common-service-operator subscription in the namespace %s", ns)
+			return false, nil
+		}
+
+		if subList.Items[0].Spec.CatalogSource != b.CSData.CatalogSourceName || subList.Items[0].Spec.CatalogSourceNamespace != b.CSData.CatalogSourceNs {
+			subList.Items[0].Spec.CatalogSource = b.CSData.CatalogSourceName
+			subList.Items[0].Spec.CatalogSourceNamespace = b.CSData.CatalogSourceNs
+			if err := b.Client.Update(context.TODO(), &subList.Items[0]); err != nil {
+				return false, err
+			}
+		}
+		return true, nil
+
+	})
+
+	return err
+}
+
 func compareVersion(v1, v2 string) (v1IsLarger bool) {
 	if v1 == "" {
 		v1 = "0.0.0"

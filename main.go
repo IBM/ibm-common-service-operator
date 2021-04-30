@@ -123,6 +123,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err := bs.CheckOperatorCatalog(operatorNs); err != nil {
+		klog.Errorf("Checking operator catalog failed: %v", err)
+		os.Exit(1)
+	}
+
 	// Create master namespace
 	if operatorNs != bs.CSData.MasterNs {
 		klog.Infof("Creating IBM Common Services master namespace: %s", bs.CSData.MasterNs)
