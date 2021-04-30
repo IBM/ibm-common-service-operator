@@ -102,7 +102,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   annotations:
-    version: "3.8.0"
+    version: {{ .Version }}
   name: ibm-common-services-cluster-admin
 rules:
 - apiGroups:
@@ -122,7 +122,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: ibm-common-services-cluster-admin-placeholder
+  name: ibm-common-services-cluster-admin-{{ .MasterNs }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -130,5 +130,5 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: operand-deployment-lifecycle-manager
-  namespace: placeholder
+  namespace: {{ .MasterNs }}
 `
