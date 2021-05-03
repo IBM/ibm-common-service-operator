@@ -232,7 +232,7 @@ func ValidateStorageClass(csStorageClass *storagev1.StorageClassList) error {
 	klog.Info("StorageClass Number: ", size)
 
 	if size <= 0 {
-		return fmt.Errorf("no storageClass")
+		return fmt.Errorf("storageClass is not found in current cluster")
 	}
 	return nil
 }
