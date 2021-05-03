@@ -39,6 +39,8 @@ import (
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	storagev1 "k8s.io/api/storage/v1"
+
 	nssv1 "github.com/IBM/ibm-namespace-scope-operator/api/v1"
 
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
@@ -212,6 +214,27 @@ func GetCmOfMapCs(r client.Reader) (*corev1.ConfigMap, error) {
 		return nil, err
 	}
 	return csConfigmap, nil
+}
+
+// GetStorageClass gets StorageClass in current cluster
+func GetStorageClass(r client.Reader) (*storagev1.StorageClassList, error) {
+	csStorageClass := &storagev1.StorageClassList{}
+	err := r.List(context.TODO(), csStorageClass)
+	if err != nil {
+		return nil, err
+	}
+	return csStorageClass, nil
+}
+
+// ValidateStorageClass validates whether the StorageClass exist
+func ValidateStorageClass(csStorageClass *storagev1.StorageClassList) error {
+	size := len(csStorageClass.Items)
+	klog.Info("StorageClass Number: ", size)
+
+	if size <= 0 {
+		return fmt.Errorf("storageClass is not found in current cluster")
+	}
+	return nil
 }
 
 // GetMasterNs gets MasterNamespaces of deploying Common Services
