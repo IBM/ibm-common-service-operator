@@ -69,7 +69,11 @@ function check_preqreqs() {
         done
     fi
 
+    if [[ ! ((-z "$(oc get catalogsource -n openshift-marketplace | grep ibm-operator-catalog 2> /dev/null)")) ]]; then
+        wait_for_pod "openshift-marketplace" "ibm-operator-catalog"
+    fi
     wait_for_pod "openshift-marketplace" "opencloud-operators"
+
     wait_for_eus
 }
 
@@ -180,6 +184,7 @@ function switch_to_continous_delivery() {
     done < <(oc get sub --all-namespaces | grep ibm-common-service-operator | awk '{print $1" "$2}')
     
     success "Updated all ibm-common-service-operator subscriptions successfully."
+    info "Please wait a moment for ibm-common-service-operator to upgrade all foundational services."
 }
 
 function msg() {
