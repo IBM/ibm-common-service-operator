@@ -157,7 +157,7 @@ func main() {
 		}
 
 		// Check IAM pods status
-		go check.IamStatus(mgr)
+		go check.IamStatus(bs)
 		// Generate Issuer and Certificate CR
 		go certmanager.DeployCR(bs)
 

@@ -481,3 +481,39 @@ func EnsureLabelsForConfigMap(cm *corev1.ConfigMap, labels map[string]string) {
 		cm.Labels[k] = v
 	}
 }
+
+// GetRequestNs gets requested-from-namespace of map-to-common-service-namespace
+func GetRequestNs(r client.Reader) (requestNs []string) {
+	operatorNs, err := GetOperatorNamespace()
+	if err != nil {
+		klog.Errorf("Getting operator namespace failed: %v", err)
+		return
+	}
+
+	csConfigmap, err := GetCmOfMapCs(r)
+	if err != nil {
+		klog.V(2).Infof("Could not find configmap kube-public/common-service-maps: %v", err)
+		return
+	}
+
+	commonServiceMaps, ok := csConfigmap.Data["common-service-maps.yaml"]
+	if !ok {
+		klog.Infof("There is no common-service-maps.yaml in configmap kube-public/common-service-maps")
+		return
+	}
+
+	var cmData CsMaps
+	if err := utilyaml.Unmarshal([]byte(commonServiceMaps), &cmData); err != nil {
+		klog.Errorf("Failed to fetch data of configmap common-service-maps: %v", err)
+		return
+	}
+
+	for _, nsMapping := range cmData.NsMappingList {
+		if operatorNs == nsMapping.CsNs {
+			requestNs = nsMapping.RequestNs
+			break
+		}
+	}
+
+	return
+}
