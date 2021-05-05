@@ -407,21 +407,26 @@ func (b *Bootstrap) CheckOperatorCatalog(ns string) error {
 	err := utilwait.PollImmediate(time.Second*10, time.Minute*3, func() (done bool, err error) {
 		subList := &olmv1alpha1.SubscriptionList{}
 
-		if err := b.Reader.List(context.TODO(), subList, &client.ListOptions{Namespace: ns, LabelSelector: labels.SelectorFromSet(map[string]string{
-			"operators.coreos.com/ibm-common-service-operator." + ns: "",
-		})}); err != nil {
+		if err := b.Reader.List(context.TODO(), subList, &client.ListOptions{Namespace: ns}); err != nil {
 			return false, err
 		}
 
-		if len(subList.Items) != 1 {
-			klog.V(2).Infof("Fail to find ibm-common-service-operator subscription in the namespace %s", ns)
+		var csSub []olmv1alpha1.Subscription
+		for _, sub := range subList.Items {
+			if sub.Spec.Package == "ibm-common-service-operator" {
+				csSub = append(csSub, sub)
+			}
+		}
+
+		if len(csSub) != 1 {
+			klog.Errorf("Fail to find ibm-common-service-operator subscription in the namespace %s", ns)
 			return false, nil
 		}
 
-		if subList.Items[0].Spec.CatalogSource != b.CSData.CatalogSourceName || subList.Items[0].Spec.CatalogSourceNamespace != b.CSData.CatalogSourceNs {
-			subList.Items[0].Spec.CatalogSource = b.CSData.CatalogSourceName
-			subList.Items[0].Spec.CatalogSourceNamespace = b.CSData.CatalogSourceNs
-			if err := b.Client.Update(context.TODO(), &subList.Items[0]); err != nil {
+		if csSub[0].Spec.CatalogSource != b.CSData.CatalogSourceName || subList.Items[0].Spec.CatalogSourceNamespace != b.CSData.CatalogSourceNs {
+			csSub[0].Spec.CatalogSource = b.CSData.CatalogSourceName
+			csSub[0].Spec.CatalogSourceNamespace = b.CSData.CatalogSourceNs
+			if err := b.Client.Update(context.TODO(), &csSub[0]); err != nil {
 				return false, err
 			}
 		}
