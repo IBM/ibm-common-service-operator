@@ -71,7 +71,7 @@ OPERATOR_IMAGE_NAME ?= common-service-operator
 # Current Operator bundle image name
 BUNDLE_IMAGE_NAME ?= common-service-operator-bundle
 # Current Operator version
-OPERATOR_VERSION ?= 3.6.4
+OPERATOR_VERSION ?= 3.6.5
 
 # Options for 'bundle-build'
 ifneq ($(origin CHANNELS), undefined)
