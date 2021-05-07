@@ -709,10 +709,6 @@ func (b *Bootstrap) waitOperatorReady(name, namespace string) error {
 			return false, nil
 		}
 
-		if sub.Status.State != olmv1alpha1.SubscriptionStateAtLatest {
-			return false, nil
-		}
-
 		// check csv
 		csvName := sub.Status.InstalledCSV
 		if csvName != "" {
