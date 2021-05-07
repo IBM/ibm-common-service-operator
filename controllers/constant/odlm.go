@@ -239,6 +239,7 @@ spec:
     spec:
       IBMLicensing:
         datasource: datacollector
+        routeEnabled: false
       operandBindInfo: {}
   - name: ibm-mongodb-operator
     spec:
