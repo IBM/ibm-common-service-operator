@@ -74,10 +74,15 @@ func applySizeConfigs(cs *unstructured.Unstructured, isScoped bool) []interface{
 	if cs.Object["spec"].(map[string]interface{})["services"] != nil {
 		for _, configSize := range cs.Object["spec"].(map[string]interface{})["services"].([]interface{}) {
 			if !isScoped {
+				isClusterScope := false
 				for _, operator := range clusterScopeOperators {
-					if configSize.(map[string]interface{})["name"].(string) != operator {
-						continue
+					if configSize.(map[string]interface{})["name"].(string) == operator {
+						isClusterScope = true
+						break
 					}
+				}
+				if !isClusterScope {
+					continue
 				}
 			}
 			dest = append(dest, configSize)
@@ -103,10 +108,15 @@ func applySizeTemplate(cs *unstructured.Unstructured, sizeTemplate string, isSco
 
 	for _, configSize := range sizes {
 		if !isScoped {
+			isClusterScope := false
 			for _, operator := range clusterScopeOperators {
-				if configSize.(map[string]interface{})["name"].(string) != operator {
-					continue
+				if configSize.(map[string]interface{})["name"].(string) == operator {
+					isClusterScope = true
+					break
 				}
+			}
+			if !isClusterScope {
+				continue
 			}
 		}
 		config := getItemByName(src, configSize.(map[string]interface{})["name"].(string))
