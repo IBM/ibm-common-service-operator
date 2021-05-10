@@ -30,7 +30,7 @@ var (
 	clusterScopeOperators = []string{"ibm-cert-manager-operator", "ibm-licensing-operator"}
 )
 
-func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, isScoped bool) ([]interface{}, error) {
+func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, inScope bool) ([]interface{}, error) {
 	var newConfigs []interface{}
 	var err error
 	// Update storageclass in OperandConfig
@@ -47,33 +47,33 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 	var sizeConfigs []interface{}
 	switch cs.Object["spec"].(map[string]interface{})["size"] {
 	case "small":
-		sizeConfigs, err = applySizeTemplate(cs, size.Small, isScoped)
+		sizeConfigs, err = applySizeTemplate(cs, size.Small, inScope)
 		if err != nil {
 			return sizeConfigs, err
 		}
 	case "medium":
-		sizeConfigs, err = applySizeTemplate(cs, size.Medium, isScoped)
+		sizeConfigs, err = applySizeTemplate(cs, size.Medium, inScope)
 		if err != nil {
 			return sizeConfigs, err
 		}
 	case "large":
-		sizeConfigs, err = applySizeTemplate(cs, size.Large, isScoped)
+		sizeConfigs, err = applySizeTemplate(cs, size.Large, inScope)
 		if err != nil {
 			return sizeConfigs, err
 		}
 	default:
-		sizeConfigs = applySizeConfigs(cs, isScoped)
+		sizeConfigs = applySizeConfigs(cs, inScope)
 	}
 	newConfigs = append(newConfigs, sizeConfigs...)
 
 	return newConfigs, nil
 }
 
-func applySizeConfigs(cs *unstructured.Unstructured, isScoped bool) []interface{} {
+func applySizeConfigs(cs *unstructured.Unstructured, inScope bool) []interface{} {
 	var dest []interface{}
 	if cs.Object["spec"].(map[string]interface{})["services"] != nil {
 		for _, configSize := range cs.Object["spec"].(map[string]interface{})["services"].([]interface{}) {
-			if !isScoped {
+			if !inScope {
 				isClusterScope := false
 				for _, operator := range clusterScopeOperators {
 					if configSize.(map[string]interface{})["name"].(string) == operator {
@@ -92,7 +92,7 @@ func applySizeConfigs(cs *unstructured.Unstructured, isScoped bool) []interface{
 	return dest
 }
 
-func applySizeTemplate(cs *unstructured.Unstructured, sizeTemplate string, isScoped bool) ([]interface{}, error) {
+func applySizeTemplate(cs *unstructured.Unstructured, sizeTemplate string, inScope bool) ([]interface{}, error) {
 
 	var src []interface{}
 	if cs.Object["spec"].(map[string]interface{})["services"] != nil {
@@ -107,7 +107,7 @@ func applySizeTemplate(cs *unstructured.Unstructured, sizeTemplate string, isSco
 	}
 
 	for _, configSize := range sizes {
-		if !isScoped {
+		if !inScope {
 			isClusterScope := false
 			for _, operator := range clusterScopeOperators {
 				if configSize.(map[string]interface{})["name"].(string) == operator {

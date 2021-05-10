@@ -317,20 +317,20 @@ func (r *CommonServiceReconciler) getMinimalSizes(opconServices, ruleSlice []int
 			continue
 		}
 
-		isScoped := true
+		inScope := true
 		cm, err := util.GetCmOfMapCs(r.Client)
 		if err == nil {
 			csScope, err := util.GetCsScope(cm, r.Bootstrap.CSData.MasterNs)
 			if err != nil {
 				return configSummary, err
 			}
-			isScoped = r.checkScope(csScope, cs.GetNamespace())
+			inScope = r.checkScope(csScope, cs.GetNamespace())
 		} else if !errors.IsNotFound(err) {
 			klog.Errorf("Failed to get common-service-maps: %v", err)
 			return configSummary, err
 		}
 
-		csConfigs, err := r.getNewConfigs(&cs, isScoped)
+		csConfigs, err := r.getNewConfigs(&cs, inScope)
 		if err != nil {
 			return []interface{}{}, err
 		}
@@ -438,16 +438,16 @@ func (r *CommonServiceReconciler) updatePhase(instance *apiv3.CommonService, sta
 
 // checkScope checks whether the namespace is in scope
 func (r *CommonServiceReconciler) checkScope(csScope []string, key string) bool {
-	isScoped := false
+	inScope := false
 	if len(csScope) == 0 {
-		isScoped = true
+		inScope = true
 	} else {
 		for _, ns := range csScope {
 			if ns == key {
-				isScoped = true
+				inScope = true
 				break
 			}
 		}
 	}
-	return isScoped
+	return inScope
 }
