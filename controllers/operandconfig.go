@@ -24,6 +24,7 @@ import (
 
 	utilyaml "github.com/ghodss/yaml"
 	"github.com/mohae/deepcopy"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 
@@ -312,10 +313,24 @@ func (r *CommonServiceReconciler) getMinimalSizes(opconServices, ruleSlice []int
 	}
 	var configSummary []interface{}
 	for _, cs := range csList.Items {
-		if cs.Object["metadata"].(map[string]interface{})["deletionTimestamp"] != nil {
+		if cs.GetDeletionTimestamp() != nil {
 			continue
 		}
-		csConfigs, err := r.getNewConfigs(&cs)
+
+		inScope := true
+		cm, err := util.GetCmOfMapCs(r.Client)
+		if err == nil {
+			csScope, err := util.GetCsScope(cm, r.Bootstrap.CSData.MasterNs)
+			if err != nil {
+				return configSummary, err
+			}
+			inScope = r.checkScope(csScope, cs.GetNamespace())
+		} else if !errors.IsNotFound(err) {
+			klog.Errorf("Failed to get common-service-maps: %v", err)
+			return configSummary, err
+		}
+
+		csConfigs, err := r.getNewConfigs(&cs, inScope)
 		if err != nil {
 			return []interface{}{}, err
 		}
@@ -423,16 +438,16 @@ func (r *CommonServiceReconciler) updatePhase(instance *apiv3.CommonService, sta
 
 // checkScope checks whether the namespace is in scope
 func (r *CommonServiceReconciler) checkScope(csScope []string, key string) bool {
-	isScoped := false
+	inScope := false
 	if len(csScope) == 0 {
-		isScoped = true
+		inScope = true
 	} else {
 		for _, ns := range csScope {
 			if ns == key {
-				isScoped = true
+				inScope = true
 				break
 			}
 		}
 	}
-	return isScoped
+	return inScope
 }

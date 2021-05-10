@@ -62,6 +62,7 @@ func (r *CommonServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 	klog.Infof("Reconciling CommonService: %s", req.NamespacedName)
 
 	// Validate common-service-maps and filter the namespace of CommonService CR
+	inScope := true
 	cm, err := util.GetCmOfMapCs(r.Client)
 	if err == nil {
 		if err := util.ValidateCsMaps(cm); err != nil {
@@ -72,9 +73,8 @@ func (r *CommonServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		if isScoped := r.checkScope(csScope, req.NamespacedName.Namespace); !isScoped {
-			klog.Infof("CommonService CR %v is not in the scope", req.NamespacedName.String())
-			return ctrl.Result{}, nil
+		if inScope = r.checkScope(csScope, req.NamespacedName.Namespace); !inScope {
+			klog.Infof("CommonService CR %v is not in the scope, only reconciles its configuration of cluster scope resource", req.NamespacedName.String())
 		}
 	} else if !errors.IsNotFound(err) {
 		klog.Errorf("Failed to get common-service-maps: %v", err)
@@ -95,12 +95,12 @@ func (r *CommonServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 	}
 
 	if r.checkNamespace(req.NamespacedName.String()) {
-		return r.ReconcileMasterCR(instance)
+		return r.ReconcileMasterCR(instance, inScope)
 	}
-	return r.ReconcileGeneralCR(instance)
+	return r.ReconcileGeneralCR(instance, inScope)
 }
 
-func (r *CommonServiceReconciler) ReconcileMasterCR(instance *apiv3.CommonService) (ctrl.Result, error) {
+func (r *CommonServiceReconciler) ReconcileMasterCR(instance *apiv3.CommonService, inScope bool) (ctrl.Result, error) {
 
 	if instance.Status.Phase == "" {
 		if err := r.updatePhase(instance, CRInitializing); err != nil {
@@ -134,7 +134,7 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(instance *apiv3.CommonServic
 		return ctrl.Result{}, err
 	}
 
-	newConfigs, err := r.getNewConfigs(cs)
+	newConfigs, err := r.getNewConfigs(cs, inScope)
 	if err != nil {
 		if err := r.updatePhase(instance, CRFailed); err != nil {
 			klog.Error(err)
@@ -167,7 +167,7 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(instance *apiv3.CommonServic
 }
 
 // ReconcileGeneralCR is for setting the OperandConfig
-func (r *CommonServiceReconciler) ReconcileGeneralCR(instance *apiv3.CommonService) (ctrl.Result, error) {
+func (r *CommonServiceReconciler) ReconcileGeneralCR(instance *apiv3.CommonService, inScope bool) (ctrl.Result, error) {
 
 	if instance.Status.Phase == "" {
 		if err := r.updatePhase(instance, CRInitializing); err != nil {
@@ -201,7 +201,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(instance *apiv3.CommonServi
 		return ctrl.Result{}, err
 	}
 
-	newConfigs, err := r.getNewConfigs(cs)
+	newConfigs, err := r.getNewConfigs(cs, inScope)
 	if err != nil {
 		if err := r.updatePhase(instance, CRFailed); err != nil {
 			klog.Error(err)
