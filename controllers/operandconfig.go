@@ -24,6 +24,7 @@ import (
 
 	utilyaml "github.com/ghodss/yaml"
 	"github.com/mohae/deepcopy"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 
@@ -312,10 +313,24 @@ func (r *CommonServiceReconciler) getMinimalSizes(opconServices, ruleSlice []int
 	}
 	var configSummary []interface{}
 	for _, cs := range csList.Items {
-		if cs.Object["metadata"].(map[string]interface{})["deletionTimestamp"] != nil {
+		if cs.GetDeletionTimestamp() != nil {
 			continue
 		}
-		csConfigs, err := r.getNewConfigs(&cs)
+
+		isScoped := true
+		cm, err := util.GetCmOfMapCs(r.Client)
+		if err == nil {
+			csScope, err := util.GetCsScope(cm, r.Bootstrap.CSData.MasterNs)
+			if err != nil {
+				return configSummary, err
+			}
+			isScoped = r.checkScope(csScope, cs.GetNamespace())
+		} else if !errors.IsNotFound(err) {
+			klog.Errorf("Failed to get common-service-maps: %v", err)
+			return configSummary, err
+		}
+
+		csConfigs, err := r.getNewConfigs(&cs, isScoped)
 		if err != nil {
 			return []interface{}{}, err
 		}
