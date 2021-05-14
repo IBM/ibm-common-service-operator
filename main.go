@@ -176,6 +176,10 @@ func main() {
 			klog.Errorf("Failed to create common service operator subscription: %v", err)
 			os.Exit(1)
 		}
+		if err = bs.UpdateCsOpApproval(); err != nil {
+			klog.Errorf("Failed to update common service operator subscription: %v", err)
+			os.Exit(1)
+		}
 	}
 
 	klog.Info("Starting manager")

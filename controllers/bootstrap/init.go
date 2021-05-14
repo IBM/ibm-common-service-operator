@@ -111,12 +111,14 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap) {
 	operatorNs, _ := util.GetOperatorNamespace()
 	catalogSourceName, catalogSourceNs := util.GetCatalogSource("ibm-common-service-operator", operatorNs, mgr.GetAPIReader())
 	db2CatalogSourceName, _ := util.GetCatalogSource("db2u-operator", operatorNs, mgr.GetAPIReader())
+	approvalMode, _ := util.GetApprovalModeinNs(mgr.GetAPIReader(), operatorNs)
 	csData := CSData{
 		MasterNs:             masterNs,
 		ControlNs:            util.GetControlNs(mgr.GetAPIReader()),
 		CatalogSourceName:    catalogSourceName,
 		CatalogSourceNs:      catalogSourceNs,
 		DB2CatalogSourceName: db2CatalogSourceName,
+		ApprovalMode:         approvalMode,
 	}
 
 	bs = &Bootstrap{
@@ -150,10 +152,12 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 	installPlanApproval := instance.Spec.InstallPlanApproval
 	manualManagement := instance.Spec.ManualManagement
 
-	if installPlanApproval != "" && installPlanApproval != olmv1alpha1.ApprovalAutomatic && installPlanApproval != olmv1alpha1.ApprovalManual {
-		return fmt.Errorf("invalid value for installPlanApproval %v", installPlanApproval)
+	if installPlanApproval != "" {
+		if installPlanApproval != olmv1alpha1.ApprovalAutomatic && installPlanApproval != olmv1alpha1.ApprovalManual {
+			return fmt.Errorf("invalid value for installPlanApproval %v", installPlanApproval)
+		}
+		b.CSData.ApprovalMode = string(installPlanApproval)
 	}
-	b.CSData.ApprovalMode = string(installPlanApproval)
 
 	// Check Saas or Multi instances Deployment
 	if len(b.CSData.ControlNs) > 0 {
@@ -246,8 +250,10 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 	}
 
 	klog.Info("Installing/Updating OperandRegistry")
-	if err := b.updateOperandRegistry(installPlanApproval); err != nil {
-		return err
+	if installPlanApproval != "" || b.CSData.ApprovalMode == string(olmv1alpha1.ApprovalManual) {
+		if err := b.updateApprovalMode(); err != nil {
+			return err
+		}
 	}
 	if b.SaasEnable {
 		// OperandRegistry for SaaS deployment
@@ -813,7 +819,40 @@ func (b *Bootstrap) renderTemplate(objectTemplate string, data interface{}, alwa
 // 	return ""
 // }
 
-func (b *Bootstrap) updateOperandRegistry(installPlanApproval olmv1alpha1.Approval) error {
+func (b *Bootstrap) UpdateCsOpApproval() error {
+	sub := &olmv1alpha1.Subscription{}
+	subKey := types.NamespacedName{
+		Name:      "ibm-common-service-operator",
+		Namespace: b.CSData.MasterNs,
+	}
+
+	if err := b.Reader.Get(ctx, subKey, sub); err != nil {
+		return err
+	}
+	if b.CSData.ApprovalMode == string(olmv1alpha1.ApprovalManual) && sub.Spec.InstallPlanApproval != olmv1alpha1.ApprovalManual {
+		sub.Spec.InstallPlanApproval = olmv1alpha1.ApprovalManual
+		if err := b.Client.Update(ctx, sub); err != nil {
+			return err
+		}
+		podList := &corev1.PodList{}
+		opts := []client.ListOption{
+			client.InNamespace(b.CSData.MasterNs),
+			client.MatchingLabels(map[string]string{"name": "ibm-common-service-operator"}),
+		}
+		if err := b.Reader.List(ctx, podList, opts...); err != nil {
+			return err
+		}
+		for _, pod := range podList.Items {
+			if err := b.Client.Delete(ctx, &pod); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (b *Bootstrap) updateApprovalMode() error {
 	opreg := &odlm.OperandRegistry{}
 	opregKey := types.NamespacedName{
 		Name:      "common-service",
@@ -831,7 +870,7 @@ func (b *Bootstrap) updateOperandRegistry(installPlanApproval olmv1alpha1.Approv
 	}
 
 	for i := range opreg.Spec.Operators {
-		opreg.Spec.Operators[i].InstallPlanApproval = installPlanApproval
+		opreg.Spec.Operators[i].InstallPlanApproval = olmv1alpha1.Approval(b.CSData.ApprovalMode)
 	}
 	if err := b.Update(ctx, opreg); err != nil {
 		klog.Errorf("failed to update OperandRegistry %s: %v", opregKey.String(), err)

@@ -26,7 +26,7 @@ metadata:
     version: {{ .Version }}
 spec:
   channel: {{ .Channel }}
-  installPlanApproval: Automatic
+  installPlanApproval: {{ .ApprovalMode }}
   name: ibm-common-service-operator
   source: {{ .CatalogSourceName }}
   sourceNamespace: {{ .CatalogSourceNs }}

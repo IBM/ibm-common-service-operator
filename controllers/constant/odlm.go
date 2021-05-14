@@ -110,12 +110,14 @@ spec:
     channel: {{ .Channel }}
     packageName: ibm-licensing-operator-app
     scope: public
+    installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-mongodb-operator
     namespace: {{ .MasterNs }}
     channel: {{ .Channel }}
     packageName: ibm-mongodb-operator-app
+    installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-cert-manager-operator
@@ -123,6 +125,7 @@ spec:
     channel: {{ .Channel }}
     packageName: ibm-cert-manager-operator
     scope: public
+    installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-iam-operator
@@ -130,6 +133,7 @@ spec:
     channel: {{ .Channel }}
     packageName: ibm-iam-operator
     scope: public
+    installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-healthcheck-operator
@@ -137,6 +141,7 @@ spec:
     channel: {{ .Channel }}
     packageName: ibm-healthcheck-operator-app
     scope: public
+    installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-commonui-operator
@@ -144,6 +149,7 @@ spec:
     channel: {{ .Channel }}
     packageName: ibm-commonui-operator-app
     scope: public
+    installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-management-ingress-operator
@@ -151,6 +157,7 @@ spec:
     channel: {{ .Channel }}
     packageName: ibm-management-ingress-operator-app
     scope: public
+    installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-ingress-nginx-operator
@@ -158,6 +165,7 @@ spec:
     channel: {{ .Channel }}
     packageName: ibm-ingress-nginx-operator-app
     scope: public
+    installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-auditlogging-operator
@@ -165,6 +173,7 @@ spec:
     channel: {{ .Channel }}
     packageName: ibm-auditlogging-operator-app
     scope: public
+    installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-platform-api-operator
@@ -172,6 +181,7 @@ spec:
     channel: {{ .Channel }}
     packageName: ibm-platform-api-operator-app
     scope: public
+    installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-monitoring-exporters-operator
@@ -179,6 +189,7 @@ spec:
     channel: {{ .Channel }}
     packageName: ibm-monitoring-exporters-operator-app
     scope: public
+    installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-monitoring-prometheusext-operator
@@ -186,6 +197,7 @@ spec:
     channel: {{ .Channel }}
     packageName: ibm-monitoring-prometheusext-operator-app
     scope: public
+    installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - channel: {{ .Channel }}
@@ -193,6 +205,7 @@ spec:
     namespace: {{ .MasterNs }}
     packageName: ibm-monitoring-grafana-operator-app
     scope: public
+    installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - channel: {{ .Channel }}
@@ -200,6 +213,7 @@ spec:
     namespace: {{ .MasterNs }}
     packageName: ibm-events-operator
     scope: public
+    installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - channel: stable
@@ -207,6 +221,7 @@ spec:
     namespace: openshift-redhat-marketplace
     packageName: redhat-marketplace-operator
     scope: public
+    installPlanApproval: {{ .ApprovalMode }}
     sourceName: certified-operators
     sourceNamespace: {{ .CatalogSourceNs }}
   - channel: {{ .Channel }}
@@ -214,6 +229,7 @@ spec:
     namespace: {{ .MasterNs }}
     packageName: ibm-zen-operator
     scope: public
+    installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - channel: v1.0
@@ -221,6 +237,7 @@ spec:
     namespace: {{ .MasterNs }}
     packageName: db2u-operator
     scope: public
+    installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .DB2CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
 `
@@ -322,12 +339,14 @@ spec:
     channel: {{ .Channel }}
     packageName: ibm-licensing-operator-app
     scope: public
+    installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-mongodb-operator
     namespace: {{ .MasterNs }}
     channel: {{ .Channel }}
     packageName: ibm-mongodb-operator-app
+    installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-cert-manager-operator
@@ -335,6 +354,7 @@ spec:
     channel: {{ .Channel }}
     packageName: ibm-cert-manager-operator
     scope: public
+    installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-iam-operator
@@ -342,6 +362,7 @@ spec:
     channel: {{ .Channel }}
     packageName: ibm-iam-operator
     scope: public
+    installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-management-ingress-operator
@@ -349,6 +370,7 @@ spec:
     channel: {{ .Channel }}
     packageName: ibm-management-ingress-operator-app
     scope: public
+    installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-ingress-nginx-operator
@@ -356,6 +378,7 @@ spec:
     channel: {{ .Channel }}
     packageName: ibm-ingress-nginx-operator-app
     scope: public
+    installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - channel: {{ .Channel }}
@@ -363,6 +386,7 @@ spec:
     namespace: {{ .MasterNs }}
     packageName: ibm-events-operator
     scope: public
+    installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - channel: {{ .Channel }}
@@ -370,6 +394,7 @@ spec:
     namespace: {{ .MasterNs }}
     packageName: ibm-zen-operator
     scope: public
+    installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
 `

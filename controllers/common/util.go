@@ -27,8 +27,10 @@ import (
 	"strings"
 
 	utilyaml "github.com/ghodss/yaml"
+	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	operatorsv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/package-server/apis/operators/v1"
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -38,8 +40,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	storagev1 "k8s.io/api/storage/v1"
 
 	nssv1 "github.com/IBM/ibm-namespace-scope-operator/api/v1"
 
@@ -392,6 +392,21 @@ func GetControlNs(r client.Reader) (controlNs string) {
 		controlNs = cmData.ControlNs
 	}
 
+	return
+}
+
+func GetApprovalModeinNs(r client.Reader, ns string) (approvalMode string, err error) {
+	approvalMode = string(olmv1alpha1.ApprovalAutomatic)
+	subList := &olmv1alpha1.SubscriptionList{}
+	if err := r.List(context.TODO(), subList, &client.ListOptions{Namespace: ns}); err != nil {
+		return approvalMode, err
+	}
+	for _, sub := range subList.Items {
+		if sub.Spec.InstallPlanApproval == olmv1alpha1.ApprovalManual {
+			approvalMode = string(olmv1alpha1.ApprovalManual)
+			return
+		}
+	}
 	return
 }
 
