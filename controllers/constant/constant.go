@@ -56,6 +56,8 @@ const (
 	CSCatalogsource = "opencloud-operators"
 	//IBMCatalogsource is the names of the ibm catalogsource
 	IBMCatalogsource = "ibm-operator-catalog"
+	//IBMCSPackage is the package name of the ibm common service operator
+	IBMCSPackage = "ibm-common-service-operator"
 )
 
 // CsOg is OperatorGroup constent for the common service operator
