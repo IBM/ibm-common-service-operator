@@ -109,7 +109,7 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap) {
 	}
 	masterNs := util.GetMasterNs(mgr.GetAPIReader())
 	operatorNs, _ := util.GetOperatorNamespace()
-	catalogSourceName, catalogSourceNs := util.GetCatalogSource("ibm-common-service-operator", operatorNs, mgr.GetAPIReader())
+	catalogSourceName, catalogSourceNs := util.GetCatalogSource(constant.IBMCSPackage, operatorNs, mgr.GetAPIReader())
 	db2CatalogSourceName, _ := util.GetCatalogSource("db2u-operator", operatorNs, mgr.GetAPIReader())
 	approvalMode, _ := util.GetApprovalModeinNs(mgr.GetAPIReader(), operatorNs)
 	csData := CSData{
@@ -428,7 +428,7 @@ func (b *Bootstrap) CheckOperatorCatalog(ns string) error {
 
 		var csSub []olmv1alpha1.Subscription
 		for _, sub := range subList.Items {
-			if sub.Spec.Package == "ibm-common-service-operator" {
+			if sub.Spec.Package == constant.IBMCSPackage {
 				csSub = append(csSub, sub)
 			}
 		}
