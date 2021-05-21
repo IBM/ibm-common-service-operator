@@ -238,8 +238,6 @@ spec:
     packageName: db2u-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .DB2CatalogSourceName }}
-    sourceNamespace: {{ .CatalogSourceNs }}
 `
 
 const CSV3SaasOperandConfig = `

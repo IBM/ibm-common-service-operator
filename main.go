@@ -116,7 +116,11 @@ func main() {
 	}
 
 	// New bootstrap Object
-	bs := bootstrap.NewBootstrap(mgr)
+	bs, err := bootstrap.NewBootstrap(mgr)
+	if err != nil {
+		klog.Errorf("Bootstrap failed: %v", err)
+		os.Exit(1)
+	}
 	operatorNs, err := util.GetOperatorNamespace()
 	if err != nil {
 		klog.Errorf("Getting operator namespace failed: %v", err)

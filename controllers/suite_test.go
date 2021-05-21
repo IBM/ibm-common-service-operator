@@ -97,9 +97,12 @@ var _ = BeforeSuite(func(done Done) {
 
 	deployMgr = deploy.NewDeployManager(k8sManager)
 
+	b, err := bootstrap.NewBootstrap(k8sManager)
+	Expect(err).ToNot(HaveOccurred())
+
 	// Setup Manager with CommonService Controller
 	err = (&CommonServiceReconciler{
-		Bootstrap: bootstrap.NewBootstrap(k8sManager),
+		Bootstrap: b,
 		Scheme:    k8sManager.GetScheme(),
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
