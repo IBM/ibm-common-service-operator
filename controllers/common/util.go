@@ -420,25 +420,24 @@ func GetCatalogSource(packageName, ns string, r client.Reader) (CatalogSourceNam
 		klog.Info(err)
 	}
 
-	var catalogsource string
 	for _, pm := range pmList.Items {
 		if pm.Status.PackageName != packageName {
 			continue
 		}
 		if pm.Status.CatalogSource == constant.IBMCatalogsource {
-			catalogsource = constant.IBMCatalogsource
+			CatalogSourceName = constant.IBMCatalogsource
+			CatalogSourceNS = constant.CatalogsourceNs
 		}
-		if pm.Status.CatalogSource == constant.CSCatalogsource && catalogsource != constant.IBMCatalogsource {
-			catalogsource = constant.CSCatalogsource
+		if pm.Status.CatalogSource == constant.CSCatalogsource && CatalogSourceName != constant.IBMCatalogsource {
+			CatalogSourceName = constant.CSCatalogsource
+			CatalogSourceNS = constant.CatalogsourceNs
 		}
-		if catalogsource == "" {
-			catalogsource = pm.Status.CatalogSource
+		if CatalogSourceName == "" {
+			CatalogSourceName = pm.Status.CatalogSource
+			CatalogSourceNS = pm.Status.CatalogSourceNamespace
 		}
 	}
-	if catalogsource == "" {
-		catalogsource = constant.IBMCatalogsource
-	}
-	return catalogsource, constant.CatalogsourceNs
+	return CatalogSourceName, CatalogSourceNS
 }
 
 // ValidateCsMaps checks common-service-maps has no scope overlapping

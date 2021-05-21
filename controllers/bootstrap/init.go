@@ -75,15 +75,14 @@ type Bootstrap struct {
 	CSData      CSData
 }
 type CSData struct {
-	Channel              string
-	Version              string
-	MasterNs             string
-	ControlNs            string
-	CatalogSourceName    string
-	CatalogSourceNs      string
-	DB2CatalogSourceName string
-	IsolatedModeEnable   string
-	ApprovalMode         string
+	Channel            string
+	Version            string
+	MasterNs           string
+	ControlNs          string
+	CatalogSourceName  string
+	CatalogSourceNs    string
+	IsolatedModeEnable string
+	ApprovalMode       string
 }
 
 type CSOperator struct {
@@ -97,7 +96,7 @@ type CSOperator struct {
 }
 
 // NewBootstrap is the way to create a NewBootstrap struct
-func NewBootstrap(mgr manager.Manager) (bs *Bootstrap) {
+func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 	csWebhookDeployment := constant.CsWebhookOperator
 	csSecretShareDeployment := constant.CsSecretshareOperator
 	if _, err := util.GetCmOfMapCs(mgr.GetAPIReader()); err == nil {
@@ -108,17 +107,25 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap) {
 		{"Secretshare Operator", constant.SecretshareCRD, constant.SecretshareRBAC, constant.SecretshareCR, csSecretShareDeployment, constant.SecretshareKind, constant.SecretshareAPIVersion},
 	}
 	masterNs := util.GetMasterNs(mgr.GetAPIReader())
-	operatorNs, _ := util.GetOperatorNamespace()
+	operatorNs, err := util.GetOperatorNamespace()
+	if err != nil {
+		return
+	}
 	catalogSourceName, catalogSourceNs := util.GetCatalogSource(constant.IBMCSPackage, operatorNs, mgr.GetAPIReader())
-	db2CatalogSourceName, _ := util.GetCatalogSource("db2u-operator", operatorNs, mgr.GetAPIReader())
-	approvalMode, _ := util.GetApprovalModeinNs(mgr.GetAPIReader(), operatorNs)
+	if catalogSourceName == "" || catalogSourceNs == "" {
+		err = fmt.Errorf("failed to get catalogsource")
+		return
+	}
+	approvalMode, err := util.GetApprovalModeinNs(mgr.GetAPIReader(), operatorNs)
+	if err != nil {
+		return
+	}
 	csData := CSData{
-		MasterNs:             masterNs,
-		ControlNs:            util.GetControlNs(mgr.GetAPIReader()),
-		CatalogSourceName:    catalogSourceName,
-		CatalogSourceNs:      catalogSourceNs,
-		DB2CatalogSourceName: db2CatalogSourceName,
-		ApprovalMode:         approvalMode,
+		MasterNs:          masterNs,
+		ControlNs:         util.GetControlNs(mgr.GetAPIReader()),
+		CatalogSourceName: catalogSourceName,
+		CatalogSourceNs:   catalogSourceNs,
+		ApprovalMode:      approvalMode,
 	}
 
 	bs = &Bootstrap{
