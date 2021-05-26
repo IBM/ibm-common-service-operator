@@ -35,7 +35,8 @@ import (
 )
 
 var (
-	DeployNames     = []string{"ibm-iam-operator", "auth-idp", "auth-pap", "auth-pdp", "oidcclient-watcher"}
+	SaaSDeployNames = []string{"ibm-iam-operator", "auth-idp", "auth-pap", "auth-pdp", "oidcclient-watcher"}
+	DeployNames     = []string{"ibm-iam-operator", "auth-idp", "auth-pap", "auth-pdp", "oidcclient-watcher", "secret-watcher"}
 	JobNames        = []string{"iam-onboarding", "security-onboarding", "oidc-client-registration"}
 	MasterNamespace string
 )
@@ -52,7 +53,15 @@ func IamStatus(bs *bootstrap.Bootstrap) {
 			time.Sleep(2 * time.Minute)
 			continue
 		}
-		iamStatus := overallIamStatus(bs.Reader)
+
+		var deploymentList []string
+		if bs.SaasEnable {
+			deploymentList = SaaSDeployNames
+		} else {
+			deploymentList = DeployNames
+		}
+
+		iamStatus := overallIamStatus(bs.Reader, deploymentList)
 		if err := createUpdateConfigmap(bs, iamStatus); err != nil {
 			klog.Errorf("Create or update configmap failed: %v", err)
 		}
@@ -69,8 +78,8 @@ func getIamSubscription(r client.Reader) bool {
 	return err == nil
 }
 
-func overallIamStatus(r client.Reader) string {
-	for _, deploy := range DeployNames {
+func overallIamStatus(r client.Reader, deploymentList []string) string {
+	for _, deploy := range deploymentList {
 		status := getDeploymentStatus(r, deploy)
 		if status == "NotReady" {
 			return status
