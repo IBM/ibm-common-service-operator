@@ -19,33 +19,29 @@ package certmanager
 import (
 	"time"
 
-	utilwait "k8s.io/apimachinery/pkg/util/wait"
-	discovery "k8s.io/client-go/discovery"
 	"k8s.io/klog"
 
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
-	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 )
 
 var (
 	DeployCRs       = []string{CSSSIssuer, CSCACert, CSCAIssuer}
 	apiGroupVersion = "certmanager.k8s.io/v1alpha1"
 	Kinds           = []string{"Issuer", "Certificate"}
-	MasterNamespace string
 	placeholder     = "placeholder"
 )
 
 // DeployCR deploys CR certificate and issuer when their CRDs are ready
 func DeployCR(bs *bootstrap.Bootstrap) {
 	for _, kind := range Kinds {
-		if err := waitResourceReady(bs, apiGroupVersion, kind); err != nil {
+		if err := bs.WaitResourceReady(apiGroupVersion, kind); err != nil {
 			klog.Errorf("Failed to wait for resource ready with kind %s, apiGroupVersion: %s", kind, apiGroupVersion)
 		}
 	}
 
 	for _, cr := range DeployCRs {
 		for {
-			done := deployResource(bs, cr)
+			done := bs.DeployResource(cr, placeholder)
 			if done {
 				break
 			}
@@ -55,33 +51,34 @@ func DeployCR(bs *bootstrap.Bootstrap) {
 	}
 }
 
-func waitResourceReady(bs *bootstrap.Bootstrap, apiGroupVersion string, kind string) error {
-	dc := discovery.NewDiscoveryClientForConfigOrDie(bs.Config)
-	if err := utilwait.PollImmediateInfinite(time.Second*10, func() (done bool, err error) {
-		exist, err := bs.ResourceExists(dc, apiGroupVersion, kind)
-		if err != nil {
-			return exist, err
-		}
-		if !exist {
-			klog.V(2).Infof("waiting for resource ready with kind: %s, apiGroupVersion: %s", kind, apiGroupVersion)
-		}
-		return exist, nil
-	}); err != nil {
-		return err
-	}
-	return nil
-}
+// Move those function to init.go
+// func waitResourceReady(bs *bootstrap.Bootstrap, apiGroupVersion string, kind string) error {
+// 	dc := discovery.NewDiscoveryClientForConfigOrDie(bs.Config)
+// 	if err := utilwait.PollImmediateInfinite(time.Second*10, func() (done bool, err error) {
+// 		exist, err := bs.ResourceExists(dc, apiGroupVersion, kind)
+// 		if err != nil {
+// 			return exist, err
+// 		}
+// 		if !exist {
+// 			klog.V(2).Infof("waiting for resource ready with kind: %s, apiGroupVersion: %s", kind, apiGroupVersion)
+// 		}
+// 		return exist, nil
+// 	}); err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }
 
-func deployResource(bs *bootstrap.Bootstrap, cr string) bool {
-	if err := utilwait.PollImmediateInfinite(time.Second*10, func() (done bool, err error) {
-		err = bs.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, bs.CSData.MasterNs)))
-		if err != nil {
-			return false, err
-		}
-		return true, nil
-	}); err != nil {
-		klog.Errorf("Failed to create Certmanager resource: %v, retry in 10 seconds", err)
-		return false
-	}
-	return true
-}
+// func deployResource(bs *bootstrap.Bootstrap, cr string) bool {
+// 	if err := utilwait.PollImmediateInfinite(time.Second*10, func() (done bool, err error) {
+// 		err = bs.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, bs.CSData.MasterNs)))
+// 		if err != nil {
+// 			return false, err
+// 		}
+// 		return true, nil
+// 	}); err != nil {
+// 		klog.Errorf("Failed to create Certmanager resource: %v, retry in 10 seconds", err)
+// 		return false
+// 	}
+// 	return true
+// }

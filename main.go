@@ -42,6 +42,7 @@ import (
 	"github.com/IBM/ibm-common-service-operator/controllers/check"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
+	nss "github.com/IBM/ibm-common-service-operator/controllers/namespacescope"
 	nssv1 "github.com/IBM/ibm-namespace-scope-operator/api/v1"
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/api/v1alpha1"
 	// +kubebuilder:scaffold:imports
@@ -164,6 +165,8 @@ func main() {
 		go check.IamStatus(bs)
 		// Generate Issuer and Certificate CR
 		go certmanager.DeployCR(bs)
+		// Sync up NSS CR
+		go nss.SyncUpCR(bs)
 
 		if err = (&controllers.CommonServiceReconciler{
 			Bootstrap: bs,
