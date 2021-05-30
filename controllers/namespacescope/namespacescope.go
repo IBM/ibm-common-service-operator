@@ -20,6 +20,7 @@ import (
 	"context"
 	"time"
 
+	gset "github.com/deckarep/golang-set"
 	"k8s.io/apimachinery/pkg/types"
 	utilwait "k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
@@ -76,20 +77,24 @@ func SyncUpCR(bs *bootstrap.Bootstrap) {
 			continue
 		}
 
+		sourceNsSet := gset.NewSet()
+		targetNsSet := gset.NewSet()
+		// we cann't convert []T to []interface{} directly in Go, have to add it to set by loop
+		for _, ns := range sourceNsScope.Spec.NamespaceMembers {
+			sourceNsSet.Add(ns)
+		}
+		for _, ns := range targetNsScope.Spec.NamespaceMembers {
+			targetNsSet.Add(ns)
+		}
+
 		// sync up when namepsace in source CR is different from target CR
-		if len(sourceNsScope.Spec.NamespaceMembers) != len(targetNsScope.Spec.NamespaceMembers) {
-			var sourcenNsMems []string
-			sourceNsSet := make(map[string]interface{})
-			for _, ns := range sourceNsScope.Spec.NamespaceMembers {
-				sourceNsSet[ns] = struct{}{}
+		if !sourceNsSet.Equal(targetNsSet) {
+			sourcenNsMems := sourceNsSet.ToSlice()
+			var targetNsMems []string
+			for _, ns := range sourcenNsMems {
+				targetNsMems = append(targetNsMems, ns.(string))
 			}
-
-			for ns := range sourceNsSet {
-				sourcenNsMems = append(sourcenNsMems, ns)
-			}
-
-			targetNsScope.Spec.NamespaceMembers = sourcenNsMems
-
+			targetNsScope.Spec.NamespaceMembers = targetNsMems
 			if err := bs.Client.Update(ctx, targetNsScope); err != nil {
 				klog.Errorf("Failed to update NSS resource %s: %v, retry again", targetNsScopeKey.String(), err)
 				continue
