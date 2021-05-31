@@ -79,11 +79,12 @@ func SyncUpCR(bs *bootstrap.Bootstrap) {
 
 		sourceNsSet := gset.NewSet()
 		targetNsSet := gset.NewSet()
-		// we cann't convert []T to []interface{} directly in Go, have to add it to set by loop
+		// we can't convert []T to []interface{} directly in Go, have to add it to set by loop
 		for _, ns := range sourceNsScope.Spec.NamespaceMembers {
 			sourceNsSet.Add(ns)
 		}
 		for _, ns := range targetNsScope.Spec.NamespaceMembers {
+			sourceNsSet.Add(ns)
 			targetNsSet.Add(ns)
 		}
 
