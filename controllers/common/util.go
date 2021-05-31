@@ -25,6 +25,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"time"
 
 	utilyaml "github.com/ghodss/yaml"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
@@ -38,6 +39,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer/streaming"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/apimachinery/pkg/types"
+	utilwait "k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -553,4 +555,52 @@ func GetRequestNs(r client.Reader) (requestNs []string) {
 	}
 
 	return
+}
+
+// GetNssCmNs gets namespaces from namespace-scope ConfigMap
+func GetNssCmNs(r client.Reader) (nssCmNs []string) {
+	operatorNs, err := GetOperatorNamespace()
+	if err != nil {
+		klog.Errorf("Getting operator namespace failed: %v", err)
+		return
+	}
+
+	nssConfigMap := GetCmOfNss(r, operatorNs)
+
+	nssNsMems, ok := nssConfigMap.Data["namespaces"]
+	if !ok {
+		klog.Infof("There is no namespace in configmap %v/%v", operatorNs, constant.NamespaceScopeConfigmapName)
+		return
+	}
+	nssCmNs = strings.Split(nssNsMems, ",")
+
+	return nssCmNs
+}
+
+// GetCmOfNss gets ConfigMap of Namespace-scope
+func GetCmOfNss(r client.Reader, operatorNs string) *corev1.ConfigMap {
+	cmName := constant.NamespaceScopeConfigmapName
+	cmNs := operatorNs
+	nssConfigmap := &corev1.ConfigMap{}
+
+	for {
+		if err := utilwait.PollImmediateInfinite(time.Second*10, func() (done bool, err error) {
+			err = r.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: cmNs}, nssConfigmap)
+			if err != nil {
+				if errors.IsNotFound(err) {
+					klog.V(2).Infof("waiting for configmap %v/%v", operatorNs, constant.NamespaceScopeConfigmapName)
+					return false, nil
+				}
+				return false, err
+			}
+			return true, nil
+		}); err == nil {
+			break
+		} else {
+			klog.Errorf("Failed to get configmap %v/%v: %v, retry in 10 seconds", operatorNs, constant.NamespaceScopeConfigmapName, err)
+			time.Sleep(10 * time.Second)
+		}
+	}
+
+	return nssConfigmap
 }
