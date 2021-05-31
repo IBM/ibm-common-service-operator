@@ -421,79 +421,6 @@
     }
   },
   {
-    "name": "ibm-monitoring-exporters-operator",
-    "spec": {
-      "exporter": {
-        "collectd": {
-          "resource": {
-            "limits": {
-              "cpu": "30m",
-              "memory": "50Mi"
-            },
-            "requests": {
-              "cpu": "20m",
-              "memory": "20Mi"
-            }
-          },
-          "routerResource": {
-            "limits": {
-              "cpu": "30m",
-              "memory": "50Mi"
-            },
-            "requests": {
-              "cpu": "10m",
-              "memory": "20Mi"
-            }
-          }
-        },
-        "kubeStateMetrics": {
-          "resource": {
-            "limits": {
-              "cpu": "540m",
-              "memory": "500Mi"
-            },
-            "requests": {
-              "cpu": "360m",
-              "memory": "250Mi"
-            }
-          },
-          "routerResource": {
-            "limits": {
-              "cpu": "25m",
-              "memory": "50Mi"
-            },
-            "requests": {
-              "cpu": "10m",
-              "memory": "20Mi"
-            }
-          }
-        },
-        "nodeExporter": {
-          "resource": {
-            "limits": {
-              "cpu": "20m",
-              "memory": "60Mi"
-            },
-            "requests": {
-              "cpu": "20m",
-              "memory": "30Mi"
-            }
-          },
-          "routerResource": {
-            "limits": {
-              "cpu": "100m",
-              "memory": "256Mi"
-            },
-            "requests": {
-              "cpu": "10m",
-              "memory": "20Mi"
-            }
-          }
-        }
-      }
-    }
-  },
-  {
     "name": "ibm-monitoring-grafana-operator",
     "spec": {
       "grafana": {
@@ -526,59 +453,6 @@
             "limits": {
               "cpu": "70m",
               "memory": "80Mi"
-            },
-            "requests": {
-              "cpu": "20m",
-              "memory": "20Mi"
-            }
-          }
-        }
-      }
-    }
-  },
-  {
-    "name": "ibm-monitoring-prometheusext-operator",
-    "spec": {
-      "prometheusExt": {
-        "alertManagerConfig": {
-          "resource": {
-            "limits": {
-              "cpu": "30m",
-              "memory": "50Mi"
-            },
-            "requests": {
-              "cpu": "20m",
-              "memory": "30Mi"
-            }
-          }
-        },
-        "mcmMonitor": {
-          "resource": {
-            "limits": {
-              "cpu": "50m",
-              "memory": "120Mi"
-            },
-            "requests": {
-              "cpu": "10m",
-              "memory": "20Mi"
-            }
-          }
-        },
-        "prometheusConfig": {
-          "resource": {
-            "limits": {
-              "cpu": "955m",
-              "memory": "15470Mi"
-            },
-            "requests": {
-              "cpu": "660m",
-              "memory": "8800Mi"
-            }
-          },
-          "routerResource": {
-            "limits": {
-              "cpu": "75m",
-              "memory": "50Mi"
             },
             "requests": {
               "cpu": "20m",

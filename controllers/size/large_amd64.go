@@ -316,54 +316,6 @@ const Large = `
           limits:
             cpu: 100m
             memory: 200Mi
-- name: ibm-monitoring-exporters-operator
-  spec:
-    exporter:
-      collectd:
-        resource:
-          requests:
-            cpu: 20m
-            memory: 40Mi
-          limits:
-            cpu: 30m
-            memory: 50Mi
-        routerResource:
-          limits:
-            cpu: 30m
-            memory: 50Mi
-          requests:
-            cpu: 10m
-            memory: 20Mi
-      nodeExporter:
-        resource:
-          requests:
-            cpu: 20m
-            memory: 30Mi
-          limits:
-            cpu: 20m
-            memory: 60Mi
-        routerResource:
-          requests:
-            cpu: 10m
-            memory: 20Mi
-          limits:
-            cpu: 100m
-            memory: 256Mi
-      kubeStateMetrics:
-        resource:
-          requests:
-            cpu: 360m
-            memory: 260Mi
-          limits:
-            cpu: 540m
-            memory: 500Mi
-        routerResource:
-          limits:
-            cpu: 25m
-            memory: 50Mi
-          requests:
-            cpu: 10m
-            memory: 20Mi
 - name: ibm-monitoring-grafana-operator
   spec:
     grafana:
@@ -391,38 +343,4 @@ const Large = `
           limits:
             cpu: 70m
             memory: 80Mi
-- name: ibm-monitoring-prometheusext-operator
-  spec:
-    prometheusExt:
-      prometheusConfig:
-        routerResource:
-          requests:
-            cpu: 20m
-            memory: 20Mi
-          limits:
-            cpu: 75m
-            memory: 50Mi
-        resource:
-          requests:
-            cpu: 660m
-            memory: 8800Mi
-          limits:
-            cpu: 955m
-            memory: 15470Mi
-      alertManagerConfig:
-        resource:
-          requests:
-            cpu: 20m
-            memory: 30Mi
-          limits:
-            cpu: 30m
-            memory: 50Mi
-      mcmMonitor:
-        resource:
-          requests:
-            cpu: 10m
-            memory: 20Mi
-          limits:
-            cpu: 50m
-            memory: 120Mi
 `

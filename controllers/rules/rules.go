@@ -326,54 +326,6 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
-- name: ibm-monitoring-exporters-operator
-  spec:
-    exporter:
-      collectd:
-        resource:
-          requests:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-          limits:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-        routerResource:
-          limits:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-          requests:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-      nodeExporter:
-        resource:
-          requests:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-          limits:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-        routerResource:
-          requests:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-          limits:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-      kubeStateMetrics:
-        resource:
-          requests:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-          limits:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-        routerResource:
-          limits:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-          requests:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
 - name: ibm-monitoring-grafana-operator
   spec:
     grafana:
@@ -395,40 +347,6 @@ const ConfigurationRules = `
             memory: LARGEST_VALUE
       routerConfig:
         resources:
-          requests:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-          limits:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-- name: ibm-monitoring-prometheusext-operator
-  spec:
-    prometheusExt:
-      prometheusConfig:
-        routerResource:
-          requests:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-          limits:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-        resource:
-          requests:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-          limits:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-      alertManagerConfig:
-        resource:
-          requests:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-          limits:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-      mcmMonitor:
-        resource:
           requests:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
