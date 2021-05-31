@@ -77,22 +77,22 @@ func SyncUpCR(bs *bootstrap.Bootstrap) {
 			continue
 		}
 
-		sourceNsSet := gset.NewSet()
+		mergeNsSet := gset.NewSet()
 		targetNsSet := gset.NewSet()
 		// we can't convert []T to []interface{} directly in Go, have to add it to set by loop
 		for _, ns := range sourceNsScope.Spec.NamespaceMembers {
-			sourceNsSet.Add(ns)
+			mergeNsSet.Add(ns)
 		}
 		for _, ns := range targetNsScope.Spec.NamespaceMembers {
-			sourceNsSet.Add(ns)
+			mergeNsSet.Add(ns)
 			targetNsSet.Add(ns)
 		}
 
 		// sync up when namepsace in source CR is different from target CR
-		if !sourceNsSet.Equal(targetNsSet) {
-			sourcenNsMems := sourceNsSet.ToSlice()
+		if !mergeNsSet.Equal(targetNsSet) {
+			mergeNsMems := mergeNsSet.ToSlice()
 			var targetNsMems []string
-			for _, ns := range sourcenNsMems {
+			for _, ns := range mergeNsMems {
 				targetNsMems = append(targetNsMems, ns.(string))
 			}
 			targetNsScope.Spec.NamespaceMembers = targetNsMems
