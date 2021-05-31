@@ -84,6 +84,8 @@ function hash_operator() {
         "ibm-cert-manager-operator") eval "$2='3.8.0'";;
         "ibm-mongodb-operator") eval "$2='1.2.0'";;
         "ibm-iam-operator") eval "$2='3.8.0'";;
+        "ibm-monitoring-exporters-operator") eval "$2='1.9.0'";;
+        "ibm-monitoring-prometheus-operator-ext") eval "$2='1.9.0'";;
         "ibm-monitoring-grafana-operator") eval "$2='1.10.0'";;
         "ibm-healthcheck-operator") eval "$2='3.8.0'";;
         "ibm-management-ingress-operator") eval "$2='1.4.0'";;
