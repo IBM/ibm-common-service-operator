@@ -37,6 +37,7 @@ type CommonServiceSpec struct {
 
 	InstallPlanApproval olmv1alpha1.Approval `json:"installPlanApproval,omitempty"`
 	ManualManagement    bool                 `json:"manualManagement,omitempty"`
+	RouteHost           string               `json:"routeHost,omitempty"`
 	Size                string               `json:"size,omitempty"`
 	Services            []ServiceConfig      `json:"services,omitempty"`
 	StorageClass        string               `json:"storageClass,omitempty"`
