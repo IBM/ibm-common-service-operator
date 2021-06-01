@@ -19,6 +19,6 @@ package routehost
 const RouteHostTemplate = `
 - name: ibm-management-ingress-operator
   spec:
-  	ManagementIngress:
+    ManagementIngress:
       routeHost: placeholder
 `
