@@ -3,14 +3,8 @@ layout: go.kubebuilder.io/v3
 projectName: ibm-common-service-operator
 repo: github.com/IBM/ibm-common-service-operator
 resources:
--
-  # TODO(user): Uncomment the below line if this resource implements a controller, else delete it.
-  # controller: true
-  domain: ibm.com
-  group: operator
+- group: operator
   kind: CommonService
-  # TODO(user): Update the package path for your API if the below value is incorrect.
-  path: github.com/IBM/ibm-common-service-operator/api/v3
   version: v3
 version: "3"
 plugins:
