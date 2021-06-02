@@ -135,15 +135,15 @@ func createUpdateConfigmap(bs *bootstrap.Bootstrap, status string) error {
 		klog.Info("IAM status is NotReady, waiting some minutes...")
 	}
 
-	requestNsSlice := util.GetRequestNs(bs.Reader)
+	nssNsSlice := util.GetNssCmNs(bs.Reader)
 	err := bs.Reader.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: cmNs}, cm)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			cm.Name = cmName
 			cm.Namespace = cmNs
 			cm.Data = make(map[string]string)
-			for _, requestNs := range requestNsSlice {
-				statusKey := requestNs + "-iamstatus"
+			for _, nssNs := range nssNsSlice {
+				statusKey := nssNs + "-iamstatus"
 				cm.Data[statusKey] = status
 			}
 			cm.Data["iamstatus"] = status
@@ -156,12 +156,12 @@ func createUpdateConfigmap(bs *bootstrap.Bootstrap, status string) error {
 		return err
 	}
 	isUpdate := false
-	for _, requestNs := range requestNsSlice {
-		statusKey := requestNs + "-iamstatus"
+	for _, nssNs := range nssNsSlice {
+		statusKey := nssNs + "-iamstatus"
 		// check the iamstatus of cloud pak
 		if val, ok := cm.Data[statusKey]; ok {
 			if val != status {
-				klog.Infof("IAM status for namespace %s is %s", requestNs, status)
+				klog.Infof("IAM status for namespace %s is %s", nssNs, status)
 				cm.Data[statusKey] = status
 				isUpdate = true
 			}
@@ -192,14 +192,14 @@ func updateConfigmap(bs *bootstrap.Bootstrap, status string) error {
 	} else if err != nil {
 		return err
 	}
-	requestNsSlice := util.GetRequestNs(bs.Reader)
+	nssNsSlice := util.GetNssCmNs(bs.Reader)
 	isUpdate := false
-	for _, requestNs := range requestNsSlice {
+	for _, nssNs := range nssNsSlice {
 		// update the iam status for each cloud pak which is using this common service
-		statusKey := requestNs + "-iamstatus"
+		statusKey := nssNs + "-iamstatus"
 		if val, ok := cm.Data[statusKey]; ok {
 			if val != status {
-				klog.Infof("IAM status for namespace %s is %s", requestNs, status)
+				klog.Infof("IAM status for namespace %s is %s", nssNs, status)
 				cm.Data[statusKey] = status
 				isUpdate = true
 			}

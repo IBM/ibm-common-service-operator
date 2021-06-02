@@ -58,6 +58,8 @@ const (
 	IBMCatalogsource = "ibm-operator-catalog"
 	//IBMCSPackage is the package name of the ibm common service operator
 	IBMCSPackage = "ibm-common-service-operator"
+	// NamespaceScopeConfigmapName is the name of ConfigMap which stores the NamespaceScope Info
+	NamespaceScopeConfigmapName = "namespace-scope"
 )
 
 // CsOg is OperatorGroup constent for the common service operator
