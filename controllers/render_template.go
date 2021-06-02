@@ -58,18 +58,10 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 	// Update multipleInstancesEnabled when multi-instances
 	if r.Bootstrap.MultiInstancesEnable {
 		klog.Info("Applying multipleInstancesEnabled configuration")
-		klog.Info("[DEBUG] multi-template")
-		klog.Info(multipleinstancesenabled.MultipleInstancesEnabledTemplate)
 		multipleinstancesenabledConfig, err := convertStringToSlice(strings.ReplaceAll(multipleinstancesenabled.MultipleInstancesEnabledTemplate, "placeholder", "true"))
-
 		if err != nil {
-			klog.Info("[DEBUG] multipleinstancesenabledConfig ERROR")
 			return nil, err
 		}
-
-		klog.Info("[DEBUG] multipleinstancesenabledConfig")
-		klog.Info(multipleinstancesenabledConfig)
-
 		newConfigs = append(newConfigs, multipleinstancesenabledConfig...)
 	}
 
