@@ -886,3 +886,36 @@ func (b *Bootstrap) updateApprovalMode() error {
 
 	return nil
 }
+
+// WaitResourceReady returns true only when the specific resource CRD is created
+func (b *Bootstrap) WaitResourceReady(apiGroupVersion string, kind string) error {
+	dc := discovery.NewDiscoveryClientForConfigOrDie(b.Config)
+	if err := utilwait.PollImmediateInfinite(time.Second*10, func() (done bool, err error) {
+		exist, err := b.ResourceExists(dc, apiGroupVersion, kind)
+		if err != nil {
+			return exist, err
+		}
+		if !exist {
+			klog.V(2).Infof("waiting for resource ready with kind: %s, apiGroupVersion: %s", kind, apiGroupVersion)
+		}
+		return exist, nil
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+
+// deployResource deploys the given resource CR
+func (b *Bootstrap) DeployResource(cr, placeholder string) bool {
+	if err := utilwait.PollImmediateInfinite(time.Second*10, func() (done bool, err error) {
+		err = b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.MasterNs)))
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	}); err != nil {
+		klog.Errorf("Failed to create Certmanager resource: %v, retry in 10 seconds", err)
+		return false
+	}
+	return true
+}
