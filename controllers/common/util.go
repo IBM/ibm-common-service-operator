@@ -368,6 +368,12 @@ func CheckSaas(r client.Reader) (enable bool) {
 	return true
 }
 
+// CheckMultiInstance checks whether it is a MultiInstances including SaaS and on-prem MultiInstances
+func CheckMultiInstances(r client.Reader) (enable bool) {
+	controlNs := GetControlNs(r)
+	return len(controlNs) > 0
+}
+
 // GetControlNs gets control namespace of deploying cluster scope services
 func GetControlNs(r client.Reader) (controlNs string) {
 	controlNs = ""

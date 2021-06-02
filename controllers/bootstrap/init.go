@@ -70,9 +70,10 @@ type Bootstrap struct {
 	client.Reader
 	Config *rest.Config
 	*deploy.Manager
-	SaasEnable  bool
-	CSOperators []CSOperator
-	CSData      CSData
+	SaasEnable           bool
+	MultiInstancesEnable bool
+	CSOperators          []CSOperator
+	CSData               CSData
 }
 type CSData struct {
 	Channel            string
@@ -129,13 +130,14 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 	}
 
 	bs = &Bootstrap{
-		Client:      mgr.GetClient(),
-		Reader:      mgr.GetAPIReader(),
-		Config:      mgr.GetConfig(),
-		Manager:     deploy.NewDeployManager(mgr),
-		SaasEnable:  util.CheckSaas(mgr.GetAPIReader()),
-		CSOperators: csOperators,
-		CSData:      csData,
+		Client:               mgr.GetClient(),
+		Reader:               mgr.GetAPIReader(),
+		Config:               mgr.GetConfig(),
+		Manager:              deploy.NewDeployManager(mgr),
+		SaasEnable:           util.CheckSaas(mgr.GetAPIReader()),
+		MultiInstancesEnable: util.CheckMultiInstances(mgr.GetAPIReader()),
+		CSOperators:          csOperators,
+		CSData:               csData,
 	}
 
 	// Get all the resources from the deployment annotations
@@ -167,7 +169,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 	}
 
 	// Check Saas or Multi instances Deployment
-	if len(b.CSData.ControlNs) > 0 {
+	if b.MultiInstancesEnable {
 		klog.Infof("Creating IBM Common Services control namespace: %s", b.CSData.ControlNs)
 		if err := b.CreateNamespace(b.CSData.ControlNs); err != nil {
 			klog.Errorf("Failed to create control namespace: %v", err)
@@ -550,7 +552,7 @@ func (b *Bootstrap) installNssOperator(manualManagement bool) error {
 		return err
 	}
 	// Create NSS CRs managedby ODLM for Single CS instance case
-	if b.CSData.MasterNs == b.CSData.ControlNs {
+	if !b.MultiInstancesEnable {
 		if err := b.renderTemplate(constant.NamespaceScopeCRManagedbyODLM, b.CSData); err != nil {
 			return err
 		}
@@ -583,12 +585,9 @@ func (b *Bootstrap) installODLM(operatorNs string) error {
 			return err
 		}
 	} else {
-		IsolatedModeEnable := "false"
 		// SaaS or on-prem multi instances case, enable odlm-scope
-		if b.CSData.MasterNs != b.CSData.ControlNs {
-			IsolatedModeEnable = "true"
-		}
-		b.CSData.IsolatedModeEnable = IsolatedModeEnable
+		b.CSData.IsolatedModeEnable = strconv.FormatBool(b.MultiInstancesEnable)
+
 		cm, err := util.GetCmOfMapCs(b.Client)
 		if err == nil {
 			err := util.UpdateNSList(b.Reader, b.Client, cm, "nss-odlm-scope", b.CSData.MasterNs, true)
