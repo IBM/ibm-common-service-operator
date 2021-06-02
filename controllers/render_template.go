@@ -105,20 +105,20 @@ func applySizeTemplate(cs *unstructured.Unstructured, sizeTemplate string, inSco
 		klog.Errorf("convert size to interface slice: %v", err)
 		return nil, err
 	}
-
-	for _, configSize := range sizes {
-		if !inScope {
-			isClusterScope := false
+	var newSizes []interface{}
+	if !inScope {
+		// delete all namespace-scoped operator's template
+		for _, configSize := range sizes {
 			for _, operator := range clusterScopeOperators {
 				if configSize.(map[string]interface{})["name"].(string) == operator {
-					isClusterScope = true
-					break
+					newSizes = append(newSizes, configSize)
 				}
 			}
-			if !isClusterScope {
-				continue
-			}
 		}
+		sizes = newSizes
+	}
+
+	for _, configSize := range sizes {
 		config := getItemByName(src, configSize.(map[string]interface{})["name"].(string))
 		if config == nil {
 			continue
