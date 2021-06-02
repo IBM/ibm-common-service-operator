@@ -261,7 +261,7 @@ func (r *CommonServiceReconciler) updateOperandConfig(newConfigs []interface{}) 
 		}
 	}
 
-	// Checking all the common service CRs to get the minimal size
+	// Checking all the common service CRs to get the minimal(unique largest) size
 	opconServices, err = r.getMinimalSizes(opconServices, ruleSlice)
 	if err != nil {
 		return true, err
