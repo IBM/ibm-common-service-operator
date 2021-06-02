@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/klog"
 
+	multipleinstancesenabled "github.com/IBM/ibm-common-service-operator/controllers/multipleInstancesEnabled"
 	routehost "github.com/IBM/ibm-common-service-operator/controllers/routeHost"
 	"github.com/IBM/ibm-common-service-operator/controllers/size"
 	storageclass "github.com/IBM/ibm-common-service-operator/controllers/storageClass"
@@ -52,6 +53,24 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 			return nil, err
 		}
 		newConfigs = append(newConfigs, routeHostConfig...)
+	}
+
+	// Update multipleInstancesEnabled when multi-instances
+	if r.Bootstrap.MultiInstancesEnable {
+		klog.Info("Applying multipleInstancesEnabled configuration")
+		klog.Info("[DEBUG] multi-template")
+		klog.Info(multipleinstancesenabled.MultipleInstancesEnabledTemplate)
+		multipleinstancesenabledConfig, err := convertStringToSlice(strings.ReplaceAll(multipleinstancesenabled.MultipleInstancesEnabledTemplate, "placeholder", "true"))
+
+		if err != nil {
+			klog.Info("[DEBUG] multipleinstancesenabledConfig ERROR")
+			return nil, err
+		}
+
+		klog.Info("[DEBUG] multipleinstancesenabledConfig")
+		klog.Info(multipleinstancesenabledConfig)
+
+		newConfigs = append(newConfigs, multipleinstancesenabledConfig...)
 	}
 
 	klog.Info("Applying size configuration")
