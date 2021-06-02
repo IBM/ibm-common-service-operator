@@ -21,8 +21,4 @@ const MultipleInstancesEnabledTemplate = `
   spec:
     managementIngress:
       multipleInstancesEnabled: placeholder
-- name: ibm-ingress-nginx-operator
-  spec:
-    nginxIngress:
-      multipleInstancesEnabled: placeholder
 `
