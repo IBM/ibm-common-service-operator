@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/klog"
 
+	routehost "github.com/IBM/ibm-common-service-operator/controllers/routeHost"
 	"github.com/IBM/ibm-common-service-operator/controllers/size"
 	storageclass "github.com/IBM/ibm-common-service-operator/controllers/storageClass"
 )
@@ -41,6 +42,16 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 			return nil, err
 		}
 		newConfigs = append(newConfigs, storageConfig...)
+	}
+
+	// Update routeHost
+	if cs.Object["spec"].(map[string]interface{})["routeHost"] != nil {
+		klog.Info("Applying routeHost configuration")
+		routeHostConfig, err := convertStringToSlice(strings.ReplaceAll(routehost.RouteHostTemplate, "placeholder", cs.Object["spec"].(map[string]interface{})["routeHost"].(string)))
+		if err != nil {
+			return nil, err
+		}
+		newConfigs = append(newConfigs, routeHostConfig...)
 	}
 
 	klog.Info("Applying size configuration")
