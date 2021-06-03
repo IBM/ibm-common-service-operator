@@ -37,8 +37,12 @@ var (
 
 // DeployCR deploys CR certificate and issuer when their CRDs are ready
 func DeployCR(bs *bootstrap.Bootstrap) {
+	deployedNs := bs.CSData.MasterNs
+	if bs.MultiInstancesEnable {
+		deployedNs = bs.CSData.ControlNs
+	}
 	for {
-		if !getCertSubscription(bs.Reader, bs.CSData.MasterNs) {
+		if !getCertSubscription(bs.Reader, deployedNs) {
 			time.Sleep(2 * time.Minute)
 			continue
 		}
