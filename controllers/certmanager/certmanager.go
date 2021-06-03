@@ -17,9 +17,13 @@
 package certmanager
 
 import (
+	"context"
 	"time"
 
+	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 )
@@ -33,6 +37,14 @@ var (
 
 // DeployCR deploys CR certificate and issuer when their CRDs are ready
 func DeployCR(bs *bootstrap.Bootstrap) {
+	for {
+		if !getCertSubscription(bs.Reader, bs.CSData.MasterNs) {
+			time.Sleep(2 * time.Minute)
+			continue
+		}
+		break
+	}
+
 	for _, kind := range Kinds {
 		if err := bs.WaitResourceReady(apiGroupVersion, kind); err != nil {
 			klog.Errorf("Failed to wait for resource ready with kind %s, apiGroupVersion: %s", kind, apiGroupVersion)
@@ -49,6 +61,15 @@ func DeployCR(bs *bootstrap.Bootstrap) {
 		}
 
 	}
+}
+
+// getCertSubscription return true if Cert Manager subscription found, otherwise return false
+func getCertSubscription(r client.Reader, MasterNs string) bool {
+	subName := "ibm-cert-manager-operator"
+	subNs := MasterNs
+	sub := &olmv1alpha1.Subscription{}
+	err := r.Get(context.TODO(), types.NamespacedName{Name: subName, Namespace: subNs}, sub)
+	return err == nil
 }
 
 // Move those function to init.go
