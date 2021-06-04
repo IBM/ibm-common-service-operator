@@ -135,7 +135,7 @@ func createUpdateConfigmap(bs *bootstrap.Bootstrap, status string) error {
 		klog.Info("IAM status is NotReady, waiting some minutes...")
 	}
 
-	nssNsSlice := util.GetNssCmNs(bs.Reader)
+	nssNsSlice := util.GetNssCmNs(bs.Reader, bs.CSData.MasterNs)
 	err := bs.Reader.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: cmNs}, cm)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -192,7 +192,7 @@ func updateConfigmap(bs *bootstrap.Bootstrap, status string) error {
 	} else if err != nil {
 		return err
 	}
-	nssNsSlice := util.GetNssCmNs(bs.Reader)
+	nssNsSlice := util.GetNssCmNs(bs.Reader, bs.CSData.MasterNs)
 	isUpdate := false
 	for _, nssNs := range nssNsSlice {
 		// update the iam status for each cloud pak which is using this common service
