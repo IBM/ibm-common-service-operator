@@ -75,35 +75,3 @@ func getCertSubscription(r client.Reader, MasterNs string) bool {
 	err := r.Get(context.TODO(), types.NamespacedName{Name: subName, Namespace: subNs}, sub)
 	return err == nil
 }
-
-// Move those function to init.go
-// func waitResourceReady(bs *bootstrap.Bootstrap, apiGroupVersion string, kind string) error {
-// 	dc := discovery.NewDiscoveryClientForConfigOrDie(bs.Config)
-// 	if err := utilwait.PollImmediateInfinite(time.Second*10, func() (done bool, err error) {
-// 		exist, err := bs.ResourceExists(dc, apiGroupVersion, kind)
-// 		if err != nil {
-// 			return exist, err
-// 		}
-// 		if !exist {
-// 			klog.V(2).Infof("waiting for resource ready with kind: %s, apiGroupVersion: %s", kind, apiGroupVersion)
-// 		}
-// 		return exist, nil
-// 	}); err != nil {
-// 		return err
-// 	}
-// 	return nil
-// }
-
-// func deployResource(bs *bootstrap.Bootstrap, cr string) bool {
-// 	if err := utilwait.PollImmediateInfinite(time.Second*10, func() (done bool, err error) {
-// 		err = bs.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, bs.CSData.MasterNs)))
-// 		if err != nil {
-// 			return false, err
-// 		}
-// 		return true, nil
-// 	}); err != nil {
-// 		klog.Errorf("Failed to create Certmanager resource: %v, retry in 10 seconds", err)
-// 		return false
-// 	}
-// 	return true
-// }
