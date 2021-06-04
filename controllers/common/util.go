@@ -588,7 +588,7 @@ func GetCmOfNss(r client.Reader, operatorNs string) *corev1.ConfigMap {
 			err = r.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: cmNs}, nssConfigmap)
 			if err != nil {
 				if errors.IsNotFound(err) {
-					klog.V(2).Infof("waiting for configmap %v/%v", operatorNs, constant.NamespaceScopeConfigmapName)
+					klog.Infof("waiting for configmap %v/%v", operatorNs, constant.NamespaceScopeConfigmapName)
 					return false, nil
 				}
 				return false, err
