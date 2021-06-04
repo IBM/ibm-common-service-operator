@@ -564,18 +564,12 @@ func GetRequestNs(r client.Reader) (requestNs []string) {
 }
 
 // GetNssCmNs gets namespaces from namespace-scope ConfigMap
-func GetNssCmNs(r client.Reader) (nssCmNs []string) {
-	operatorNs, err := GetOperatorNamespace()
-	if err != nil {
-		klog.Errorf("Getting operator namespace failed: %v", err)
-		return
-	}
-
-	nssConfigMap := GetCmOfNss(r, operatorNs)
+func GetNssCmNs(r client.Reader, masterNs string) (nssCmNs []string) {
+	nssConfigMap := GetCmOfNss(r, masterNs)
 
 	nssNsMems, ok := nssConfigMap.Data["namespaces"]
 	if !ok {
-		klog.Infof("There is no namespace in configmap %v/%v", operatorNs, constant.NamespaceScopeConfigmapName)
+		klog.Infof("There is no namespace in configmap %v/%v", masterNs, constant.NamespaceScopeConfigmapName)
 		return
 	}
 	nssCmNs = strings.Split(nssNsMems, ",")
