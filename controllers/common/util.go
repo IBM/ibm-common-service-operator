@@ -229,14 +229,13 @@ func GetStorageClass(r client.Reader) (*storagev1.StorageClassList, error) {
 }
 
 // ValidateStorageClass validates whether the StorageClass exist
-func ValidateStorageClass(csStorageClass *storagev1.StorageClassList) error {
+func ValidateStorageClass(csStorageClass *storagev1.StorageClassList) {
 	size := len(csStorageClass.Items)
 	klog.Info("StorageClass Number: ", size)
 
 	if size <= 0 {
-		return fmt.Errorf("storageClass is not found in current cluster")
+		klog.Info("storageClass is not found in current cluster")
 	}
-	return nil
 }
 
 // GetMasterNs gets MasterNamespaces of deploying Common Services
