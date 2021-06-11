@@ -197,12 +197,8 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 	csStorageClass, err := util.GetStorageClass(b.Reader)
 	if err != nil {
 		klog.Info("failed to get StorageClass")
-		// return fmt.Errorf("failed to get StorageClass")
 	}
 	util.ValidateStorageClass(csStorageClass)
-	// if err := util.ValidateStorageClass(csStorageClass); err != nil {
-	// 	return err
-	// }
 
 	// Install Namespace Scope Operator
 	if err := b.installNssOperator(manualManagement); err != nil {
