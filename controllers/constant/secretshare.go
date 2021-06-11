@@ -78,7 +78,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   annotations:
-    version: "3.8.0"
+    version: "3.8.1"
   creationTimestamp: null
   name: secretshare
 rules:
@@ -153,7 +153,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.4.0
-    version: "3.8.0"
+    version: "3.8.1"
   name: secretshares.ibmcpcs.ibm.com
 spec:
   group: ibmcpcs.ibm.com
@@ -271,7 +271,7 @@ metadata:
   name: secretshare
   namespace: placeholder
   annotations:
-    version: "3.8.0"
+    version: "3.8.1"
 spec:
   replicas: 1
   selector:
