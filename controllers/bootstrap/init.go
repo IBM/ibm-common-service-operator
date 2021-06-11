@@ -196,7 +196,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 	// Check storageClass
 	csStorageClass, err := util.GetStorageClass(b.Reader)
 	if err != nil {
-		klog.Info("failed to get StorageClass")
+		return err
 	}
 	util.ValidateStorageClass(csStorageClass)
 

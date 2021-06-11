@@ -222,10 +222,15 @@ func GetCmOfMapCs(r client.Reader) (*corev1.ConfigMap, error) {
 func GetStorageClass(r client.Reader) (*storagev1.StorageClassList, error) {
 	csStorageClass := &storagev1.StorageClassList{}
 	err := r.List(context.TODO(), csStorageClass)
-	if err != nil {
-		return nil, err
+	if err == nil {
+		return csStorageClass, nil
 	}
-	return csStorageClass, nil
+
+	if errors.IsNotFound(err) {
+		return nil, fmt.Errorf("storageClassList is not found")
+	}
+
+	return nil, fmt.Errorf("fail to get storageClassList")
 }
 
 // ValidateStorageClass validates whether the StorageClass exist
