@@ -263,6 +263,9 @@ if [[ "$FORCE_DELETE" == "false" ]]; then
   ${KUBECTL} delete MutatingWebhookConfiguration cert-manager-webhook ibm-common-service-webhook-configuration namespace-admission-config --ignore-not-found
 fi
 
+title "Deleting iam-status configMap in kube-public namespace"
+${KUBECTL} delete configmap ibm-common-services-status -n kube-public --ignore-not-found
+
 title "Deleting namespace ${COMMON_SERVICES_NS}"
 ${KUBECTL} delete namespace ${COMMON_SERVICES_NS} --ignore-not-found &
 if wait_for_namespace_deleted ${COMMON_SERVICES_NS}; then
