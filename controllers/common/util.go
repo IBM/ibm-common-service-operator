@@ -218,23 +218,19 @@ func GetCmOfMapCs(r client.Reader) (*corev1.ConfigMap, error) {
 	return csConfigmap, nil
 }
 
-// GetStorageClass gets StorageClass in current cluster
-func GetStorageClass(r client.Reader) (*storagev1.StorageClassList, error) {
+// CheckStorageClass gets StorageClassList in current cluster, then validates whether StorageClass created
+func CheckStorageClass(r client.Reader) error {
 	csStorageClass := &storagev1.StorageClassList{}
 	err := r.List(context.TODO(), csStorageClass)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("fail to list storageClass: %v", err)
 	}
-	return csStorageClass, nil
-}
 
-// ValidateStorageClass validates whether the StorageClass exist
-func ValidateStorageClass(csStorageClass *storagev1.StorageClassList) error {
 	size := len(csStorageClass.Items)
 	klog.Info("StorageClass Number: ", size)
 
 	if size <= 0 {
-		return fmt.Errorf("storageClass is not found in current cluster")
+		klog.Info("storageClass is not found in current cluster")
 	}
 	return nil
 }

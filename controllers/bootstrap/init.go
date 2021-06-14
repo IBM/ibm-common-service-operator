@@ -194,11 +194,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 	}
 
 	// Check storageClass
-	csStorageClass, err := util.GetStorageClass(b.Reader)
-	if err != nil {
-		return fmt.Errorf("failed to get StorageClass")
-	}
-	if err := util.ValidateStorageClass(csStorageClass); err != nil {
+	if err := util.CheckStorageClass(b.Reader); err != nil {
 		return err
 	}
 
