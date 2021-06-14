@@ -157,8 +157,7 @@ func createUpdateConfigmap(bs *bootstrap.Bootstrap, status string) error {
 		return err
 	}
 
-	cmOfMapCs, err := util.GetCmOfMapCs(bs.Reader)
-	if err != nil {
+	if _, err := util.GetCmOfMapCs(bs.Reader); err != nil {
 		// backward compatibility for non-cs-mapping case
 		// overwrite the cm.Data by nss ConfigMap
 		if errors.IsNotFound(err) {
@@ -179,23 +178,17 @@ func createUpdateConfigmap(bs *bootstrap.Bootstrap, status string) error {
 
 	// cs-mapping configMap is found
 	isUpdate := false
-	nsMems, err := util.GetCsScope(cmOfMapCs, bs.CSData.MasterNs)
 	if err != nil {
 		return err
 	}
-	for _, ns := range nsMems {
+	for _, ns := range nssNsSlice {
 		statusKey := ns + "-iamstatus"
-		// check the iamstatus of cloud pak
-		if val, ok := cm.Data[statusKey]; ok {
-			if val != status {
-				klog.Infof("IAM status for namespace %s is %s", ns, status)
-				cm.Data[statusKey] = status
-				isUpdate = true
-			}
+		if status == "NotReady" {
+			delete(cm.Data, statusKey)
 		} else {
 			cm.Data[statusKey] = status
-			isUpdate = true
 		}
+		isUpdate = true
 	}
 
 	if overallStatus := checkOverallStatus(cm.Data); cm.Data["iamstatus"] != overallStatus {
@@ -263,6 +256,10 @@ func checkOverallStatus(statusMap map[string]string) string {
 			statusSlice = append(statusSlice, status)
 		}
 	}
+	if len(statusSlice) == 0 {
+		return "NotReady"
+	}
+
 	for _, status := range statusSlice {
 		if status != "Ready" {
 			return status
