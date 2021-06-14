@@ -104,7 +104,7 @@ spec:
   provider:
     name: IBM
   relatedImages:
-  - image: quay.io/opencloudio/common-service-operator:latest
-    name: ibm-common-service-operator.v0.0.0
+  - image: quay.io/opencloudio/common-service-operator@sha256:sha256:e7f42050d54530c708f162abcf04aae1b63ce6f5ca6e97af81a4a83f6ae708f6
+    name: ibm-common-service-operator.v3.8.0
   replaces: ibm-common-service-operator.v0.0.0
   version: 0.0.0
