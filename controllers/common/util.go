@@ -230,7 +230,7 @@ func CheckStorageClass(r client.Reader) error {
 	klog.Info("StorageClass Number: ", size)
 
 	if size <= 0 {
-		klog.Info("storageClass is not found in current cluster")
+		klog.Warning("storageClass is not found in current cluster")
 	}
 	return nil
 }
