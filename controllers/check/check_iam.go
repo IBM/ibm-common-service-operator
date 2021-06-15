@@ -178,8 +178,9 @@ func createUpdateConfigmap(bs *bootstrap.Bootstrap, status string) error {
 
 	// cs-mapping configMap is found
 	isUpdate := false
-	if err != nil {
-		return err
+
+	if cm.Data == nil {
+		cm.Data = make(map[string]string)
 	}
 	for _, ns := range nssNsSlice {
 		statusKey := ns + "-iamstatus"
