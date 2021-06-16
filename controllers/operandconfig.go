@@ -233,16 +233,12 @@ func (r *CommonServiceReconciler) updateOperandConfig(newConfigs []interface{}) 
 	}
 
 	for _, newConfigForOperator := range newConfigs {
+		opService := getItemByName(opconServices, newConfigForOperator.(map[string]interface{})["name"].(string))
+		// Fetch newConfigForOperator and rules for an operator
+		rules := getItemByName(ruleSlice, opService.(map[string]interface{})["name"].(string))
 		if newConfigForOperator == nil {
 			continue
 		}
-		opService := getItemByName(opconServices, newConfigForOperator.(map[string]interface{})["name"].(string))
-		if opService == nil {
-			continue
-		}
-		// Fetch newConfigForOperator and rules for an operator
-		rules := getItemByName(ruleSlice, opService.(map[string]interface{})["name"].(string))
-
 		for cr, spec := range opService.(map[string]interface{})["spec"].(map[string]interface{}) {
 			if newConfigForOperator.(map[string]interface{})["spec"].(map[string]interface{})[cr] == nil {
 				continue
