@@ -47,7 +47,7 @@ func IamStatus(bs *bootstrap.Bootstrap) {
 
 	for {
 		if !getIamSubscription(bs.Reader) {
-			if err := cleanUpConfigmap(bs); err != nil {
+			if err := updateConfigmap(bs, "NotReady"); err != nil {
 				klog.Errorf("Create or update configmap failed: %v", err)
 			}
 			time.Sleep(2 * time.Minute)
@@ -138,7 +138,6 @@ func createUpdateConfigmap(bs *bootstrap.Bootstrap, status string) error {
 	nssNsSlice := util.GetNssCmNs(bs.Reader, bs.CSData.MasterNs)
 	err := bs.Reader.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: cmNs}, cm)
 	if err != nil {
-		// create the iam-status configMap
 		if errors.IsNotFound(err) {
 			cm.Name = cmName
 			cm.Namespace = cmNs
@@ -156,48 +155,24 @@ func createUpdateConfigmap(bs *bootstrap.Bootstrap, status string) error {
 		}
 		return err
 	}
-
-	if _, err := util.GetCmOfMapCs(bs.Reader); err != nil {
-		// backward compatibility for non-cs-mapping case
-		// overwrite the cm.Data by nss ConfigMap
-		if errors.IsNotFound(err) {
-			cm.Data = make(map[string]string)
-			for _, nssNs := range nssNsSlice {
-				statusKey := nssNs + "-iamstatus"
-				cm.Data[statusKey] = status
-			}
-			cm.Data["iamstatus"] = status
-			if err = bs.Client.Update(context.TODO(), cm); err != nil {
-				klog.Errorf("Failed to update ConfigMap %s: %v", cmName, err)
-				return err
-			}
-			return nil
-		}
-		return err
-	}
-
-	// cs-mapping configMap is found
 	isUpdate := false
-
-	if cm.Data == nil {
-		cm.Data = make(map[string]string)
-	}
-	for _, ns := range nssNsSlice {
-		statusKey := ns + "-iamstatus"
-		if status == "NotReady" {
-			delete(cm.Data, statusKey)
+	for _, nssNs := range nssNsSlice {
+		statusKey := nssNs + "-iamstatus"
+		// check the iamstatus of cloud pak
+		if val, ok := cm.Data[statusKey]; ok {
+			if val != status {
+				klog.Infof("IAM status for namespace %s is %s", nssNs, status)
+				cm.Data[statusKey] = status
+				isUpdate = true
+			}
 		} else {
 			cm.Data[statusKey] = status
+			isUpdate = true
 		}
-		isUpdate = true
 	}
 
-	if overallStatus := checkOverallStatus(cm.Data); cm.Data["iamstatus"] != overallStatus {
-		cm.Data["iamstatus"] = overallStatus
-		isUpdate = true
-	}
-
-	if isUpdate {
+	if isUpdate || cm.Data["iamstatus"] != status {
+		cm.Data["iamstatus"] = checkOverallStatus(cm.Data, status)
 		if err = bs.Client.Update(context.TODO(), cm); err != nil {
 			klog.Errorf("Failed to update ConfigMap %s: %v", cmName, err)
 			return err
@@ -207,7 +182,7 @@ func createUpdateConfigmap(bs *bootstrap.Bootstrap, status string) error {
 	return nil
 }
 
-func cleanUpConfigmap(bs *bootstrap.Bootstrap) error {
+func updateConfigmap(bs *bootstrap.Bootstrap, status string) error {
 	cm := &corev1.ConfigMap{}
 	cmName := "ibm-common-services-status"
 	cmNs := "kube-public"
@@ -217,39 +192,31 @@ func cleanUpConfigmap(bs *bootstrap.Bootstrap) error {
 	} else if err != nil {
 		return err
 	}
-
-	cmOfMapCs, err := util.GetCmOfMapCs(bs.Reader)
-	if err != nil {
-		// backward compatibility for non-cs-mapping case
-		// clean up the cm.Data if there is no iam subscriptions
-		if errors.IsNotFound(err) {
-			cm.Data = make(map[string]string)
-		} else {
-			return err
-		}
-	} else {
-		nsMems, err := util.GetCsScope(cmOfMapCs, bs.CSData.MasterNs)
-		if err != nil {
-			return err
-		}
-		for _, ns := range nsMems {
-			delete(cm.Data, ns)
+	nssNsSlice := util.GetNssCmNs(bs.Reader, bs.CSData.MasterNs)
+	isUpdate := false
+	for _, nssNs := range nssNsSlice {
+		// update the iam status for each cloud pak which is using this common service
+		statusKey := nssNs + "-iamstatus"
+		if val, ok := cm.Data[statusKey]; ok {
+			if val != status {
+				klog.Infof("IAM status for namespace %s is %s", nssNs, status)
+				cm.Data[statusKey] = status
+				isUpdate = true
+			}
 		}
 	}
-
-	if _, ok := cm.Data["iamstatus"]; ok {
-		cm.Data["iamstatus"] = checkOverallStatus(cm.Data)
-	}
-
-	if err = bs.Client.Update(context.TODO(), cm); err != nil {
-		klog.Errorf("Failed to update ConfigMap %s: %v", cmName, err)
-		return err
+	if isUpdate || cm.Data["iamstatus"] != status {
+		cm.Data["iamstatus"] = checkOverallStatus(cm.Data, status)
+		if err = bs.Client.Update(context.TODO(), cm); err != nil {
+			klog.Errorf("Failed to update ConfigMap %s: %v", cmName, err)
+			return err
+		}
 	}
 
 	return nil
 }
 
-func checkOverallStatus(statusMap map[string]string) string {
+func checkOverallStatus(statusMap map[string]string, status string) string {
 	reg, _ := regexp.Compile(`^(.*)\-iamstatus`)
 	statusSlice := make([]string, 0)
 	for key, status := range statusMap {
@@ -257,14 +224,10 @@ func checkOverallStatus(statusMap map[string]string) string {
 			statusSlice = append(statusSlice, status)
 		}
 	}
-	if len(statusSlice) == 0 {
-		return "NotReady"
-	}
-
 	for _, status := range statusSlice {
 		if status != "Ready" {
 			return status
 		}
 	}
-	return "Ready"
+	return status
 }
