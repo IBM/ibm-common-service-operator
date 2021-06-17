@@ -230,7 +230,7 @@ func CheckStorageClass(r client.Reader) error {
 	klog.Info("StorageClass Number: ", size)
 
 	if size <= 0 {
-		klog.Warning("StorageClass is not found, which is required by MongoDB service, please refer to Cloudpak's documentation for prerequisites.")
+		klog.Warning("StorageClass is not found, which might be required by CloudPak service, please refer to Cloudpak's documentation for prerequisites.")
 	}
 	return nil
 }
