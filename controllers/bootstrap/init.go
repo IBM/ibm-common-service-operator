@@ -203,6 +203,15 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 		return err
 	}
 
+	// Install Crossplane Operator
+	var bedrockshim = true // TODO: replace with spec.features.bedrockshim.enabled
+	if bedrockshim {
+		klog.Info("[DEBUG] bedrockshim is true")
+		if err := b.installCrossplaneOperator(manualManagement); err != nil {
+			return err
+		}
+	}
+
 	// Install CS Operators
 	for _, operator := range b.CSOperators {
 		if b.SaasEnable && operator.Name == "Secretshare Operator" {
@@ -566,6 +575,28 @@ func (b *Bootstrap) installNssOperator(manualManagement bool) error {
 	return nil
 }
 
+func (b *Bootstrap) installCrossplaneOperator(manualManagement bool) error {
+	klog.Info("[DEBUG] start of crossplane")
+	// Install Crossplane Operator
+	klog.Info("Creating crossplane configmap")
+	if err := b.CreateCrossConfigmap(); err != nil {
+		klog.Errorf("Failed to create crossplane ConfigMap: %v", err)
+		return err
+	}
+
+	klog.Info("Creating Crossplane Operator subscription")
+	if err := b.createCrossplaneSubscription(manualManagement); err != nil {
+		klog.Errorf("Failed to create Crossplane Operator subscription: %v", err)
+		return err
+	}
+
+	if err := b.waitResourceReady("operator.ibm.com/v1", "Crossplane"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (b *Bootstrap) installODLM(operatorNs string) error {
 	// Delete the previous version ODLM operator
 	klog.Info("Trying to delete ODLM operator in openshift-operators")
@@ -627,6 +658,24 @@ func (b *Bootstrap) CreateNsScopeConfigmap() error {
 	if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cmRes, placeholder, b.CSData.MasterNs))); err != nil {
 		return err
 	}
+	return nil
+}
+
+// CreateCrossConfigmap creates crossplane configmap for operators
+func (b *Bootstrap) CreateCrossConfigmap() error {
+	cmRes := constant.CrossConfigMap
+	if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cmRes, placeholder, b.CSData.MasterNs))); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (b *Bootstrap) createCrossplaneSubscription(manualManagement bool) error {
+	resourceName := constant.CrossSubscription
+	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
+		return err
+	}
+
 	return nil
 }
 
