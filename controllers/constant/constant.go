@@ -46,6 +46,8 @@ const (
 	NsSubName = "ibm-namespace-scope-operator"
 	// Namespace Scope Operator Restricted sub name
 	NsRestrictedSubName = "ibm-namespace-scope-operator-restricted"
+	// Crossplane Operator resource name
+	CrossSubResourceName = "crossSubscription"
 	//DefaultRequeueDuration is the default requeue time duration for request
 	DefaultRequeueDuration = 20 * time.Second
 	//CsMapsLabel is the label used to label the configmaps are managed by cs operator
