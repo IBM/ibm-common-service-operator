@@ -203,11 +203,14 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 		return err
 	}
 
-	// Install Crossplane Operator
+	// Install Crossplane Operator & Cloud Operator
 	var bedrockshim = true // TODO: replace with spec.features.bedrockshim.enabled
 	if bedrockshim {
 		klog.Info("[DEBUG] bedrockshim is true")
-		if err := b.installCrossplaneOperator(manualManagement); err != nil {
+		if err := b.installCrossplaneOperator(); err != nil {
+			return err
+		}
+		if err := b.installCloudOperator(); err != nil {
 			return err
 		}
 	}
@@ -575,22 +578,34 @@ func (b *Bootstrap) installNssOperator(manualManagement bool) error {
 	return nil
 }
 
-func (b *Bootstrap) installCrossplaneOperator(manualManagement bool) error {
+func (b *Bootstrap) installCrossplaneOperator() error {
 	klog.Info("[DEBUG] start of crossplane")
 	// Install Crossplane Operator
-	klog.Info("Creating crossplane configmap")
-	if err := b.CreateCrossConfigmap(); err != nil {
-		klog.Errorf("Failed to create crossplane ConfigMap: %v", err)
-		return err
-	}
+	// klog.Info("Creating crossplane configmap")
+	// if err := b.CreateCrossConfigmap(); err != nil {
+	// 	klog.Errorf("Failed to create crossplane ConfigMap: %v", err)
+	// 	return err
+	// }
 
 	klog.Info("Creating Crossplane Operator subscription")
-	if err := b.createCrossplaneSubscription(manualManagement); err != nil {
+	if err := b.createCrossplaneSubscription(); err != nil {
 		klog.Errorf("Failed to create Crossplane Operator subscription: %v", err)
 		return err
 	}
 
-	if err := b.waitResourceReady("operator.ibm.com/v1", "Crossplane"); err != nil {
+	// if err := b.waitResourceReady("operator.ibm.com/v1", "Crossplane"); err != nil {
+	// 	return err
+	// }
+
+	return nil
+}
+
+func (b *Bootstrap) installCloudOperator() error {
+	klog.Info("[DEBUG] start of IBM Cloud Operator")
+
+	klog.Info("Creating IBM Cloud Operator subscription")
+	if err := b.createCloudSubscription(); err != nil {
+		klog.Errorf("Failed to create IBM Cloud Operator subscription: %v", err)
 		return err
 	}
 
@@ -662,16 +677,25 @@ func (b *Bootstrap) CreateNsScopeConfigmap() error {
 }
 
 // CreateCrossConfigmap creates crossplane configmap for operators
-func (b *Bootstrap) CreateCrossConfigmap() error {
-	cmRes := constant.CrossConfigMap
-	if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cmRes, placeholder, b.CSData.MasterNs))); err != nil {
+// func (b *Bootstrap) CreateCrossConfigmap() error {
+// 	cmRes := constant.CrossConfigMap
+// 	if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cmRes, placeholder, b.CSData.MasterNs))); err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }
+
+func (b *Bootstrap) createCrossplaneSubscription() error {
+	resourceName := constant.CrossSubscription
+	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
 		return err
 	}
+
 	return nil
 }
 
-func (b *Bootstrap) createCrossplaneSubscription(manualManagement bool) error {
-	resourceName := constant.CrossSubscription
+func (b *Bootstrap) createCloudSubscription() error {
+	resourceName := constant.IbmCloudSubscription
 	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
 		return err
 	}

@@ -16,32 +16,30 @@
 
 package constant
 
-const CrossSubscription = `
+const IbmCloudSubscription = `
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
-  name: ibm-crossplane-operator-app
+  name: ibmcloud-operator
   namespace: {{ .MasterNs }}
   annotations:
     version: {{ .Version }}
 spec:
   channel: {{ .Channel }}
   installPlanApproval: Automatic
-  name: ibm-crossplane-operator-app
+  name: ibmcloud-operator
   source: {{ .CatalogSourceName }}
   sourceNamespace: {{ .CatalogSourceNs }}
 `
 
-// sample subscription
 // apiVersion: operators.coreos.com/v1alpha1
 // kind: Subscription
 // metadata:
-//   name: ibm-crossplane-operator-app
+//   name: ibmcloud-operator
 //   namespace: ibm-common-services
 // spec:
-//   channel: v3
+//   channel: stable
 //   installPlanApproval: Automatic
-//   name: ibm-crossplane-operator-app
-//   source: opencloud-operators
+//   name: ibmcloud-operator
+//   source: community-operators
 //   sourceNamespace: openshift-marketplace
-//   startingCSV: ibm-crossplane-operator.v1.0.0
