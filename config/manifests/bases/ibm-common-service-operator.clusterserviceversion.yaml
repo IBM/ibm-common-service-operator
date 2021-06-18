@@ -101,7 +101,7 @@ spec:
   - email: support@ibm.com
     name: IBM Support
   maturity: alpha
-  minKubeVersion: "1.19"
+  minKubeVersion: "1.19.0"
   provider:
     name: IBM
   replaces: ibm-common-service-operator.v0.0.0
