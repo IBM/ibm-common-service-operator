@@ -28,5 +28,4 @@ spec:
   name: ibm-crossplane-operator-app
   source: {{ .CatalogSourceName }}
   sourceNamespace: {{ .CatalogSourceNs }}
-  startingCSV: ibm-crossplane-operator.v1.0.0
 `
