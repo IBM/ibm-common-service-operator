@@ -35,12 +35,23 @@ type CommonServiceSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
+	Features            *Features            `json:"features,omitempty"`
 	InstallPlanApproval olmv1alpha1.Approval `json:"installPlanApproval,omitempty"`
 	ManualManagement    bool                 `json:"manualManagement,omitempty"`
 	RouteHost           string               `json:"routeHost,omitempty"`
 	Size                string               `json:"size,omitempty"`
 	Services            []ServiceConfig      `json:"services,omitempty"`
 	StorageClass        string               `json:"storageClass,omitempty"`
+}
+
+// Features defines the features.bedrockshim.enabled
+type Features struct {
+	Bedrockshim *Bedrockshim `json:"bedrockshim,omitempty"`
+}
+
+// Bedrockshim defines the features.bedrockshim.enabled
+type Bedrockshim struct {
+	Enabled bool `json:"enabled,omitempty"`
 }
 
 // CommonServiceStatus defines the observed state of CommonService
