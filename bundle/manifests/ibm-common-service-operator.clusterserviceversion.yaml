@@ -124,6 +124,7 @@ spec:
               resources:
                 - subscriptions
                 - clusterserviceversions
+                - catalogsources
               verbs:
                 - delete
                 - get

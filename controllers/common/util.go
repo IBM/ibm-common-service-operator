@@ -24,6 +24,7 @@ import (
 	"io/ioutil"
 	"os"
 	"reflect"
+	"regexp"
 	"strings"
 	"time"
 
@@ -418,17 +419,28 @@ func GetApprovalModeinNs(r client.Reader, ns string) (approvalMode string, err e
 func GetCatalogSource(packageName, ns string, r client.Reader) (CatalogSourceName, CatalogSourceNS string) {
 	pmList := &operatorsv1.PackageManifestList{}
 
-	err := r.List(context.TODO(), pmList, &client.ListOptions{Namespace: ns})
-
-	if err != nil {
+	if err := r.List(context.TODO(), pmList, &client.ListOptions{Namespace: ns}); err != nil {
 		klog.Info(err)
+	}
+
+	devEnabled := false
+	CSCatalogsource := &olmv1alpha1.CatalogSource{}
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: constant.CSCatalogsource, Namespace: constant.CatalogsourceNs}, CSCatalogsource); err != nil {
+		if !errors.IsNotFound(err) {
+			klog.Info(err)
+		}
+	} else {
+		reg, _ := regexp.Compile(`^(.*)\.artifactory\.(.*)`)
+		if reg.MatchString(CSCatalogsource.Spec.Image) {
+			devEnabled = true
+		}
 	}
 
 	for _, pm := range pmList.Items {
 		if pm.Status.PackageName != packageName {
 			continue
 		}
-		if pm.Status.CatalogSource == constant.IBMCatalogsource {
+		if pm.Status.CatalogSource == constant.IBMCatalogsource && !devEnabled {
 			CatalogSourceName = constant.IBMCatalogsource
 			CatalogSourceNS = constant.CatalogsourceNs
 		}
