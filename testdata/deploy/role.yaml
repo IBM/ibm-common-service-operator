@@ -31,6 +31,13 @@ rules:
   - delete
   - get
   - list
+# check catalogsource migration for highest priority of internal dev build
+- apiGroups:
+  - operators.coreos.com
+  resources:
+  - catalogsources
+  verbs:
+  - get
 # cluster watch CommonService
 - apiGroups:
   - operator.ibm.com
