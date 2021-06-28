@@ -430,7 +430,7 @@ func GetCatalogSource(packageName, ns string, r client.Reader) (CatalogSourceNam
 			klog.Info(err)
 		}
 	} else {
-		reg, _ := regexp.Compile(`^(.*)\.artifactory\.(.*)`)
+		reg, _ := regexp.Compile(constant.DevBuildImage)
 		if reg.MatchString(CSCatalogsource.Spec.Image) {
 			devEnabled = true
 		}
