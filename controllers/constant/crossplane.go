@@ -22,26 +22,11 @@ kind: Subscription
 metadata:
   name: ibm-crossplane-operator-app
   namespace: {{ .MasterNs }}
-  annotations:
-    version: {{ .Version }}
 spec:
   channel: {{ .Channel }}
   installPlanApproval: Automatic
   name: ibm-crossplane-operator-app
   source: {{ .CatalogSourceName }}
   sourceNamespace: {{ .CatalogSourceNs }}
+  startingCSV: ibm-crossplane-operator.v1.0.0
 `
-
-// sample subscription
-// apiVersion: operators.coreos.com/v1alpha1
-// kind: Subscription
-// metadata:
-//   name: ibm-crossplane-operator-app
-//   namespace: ibm-common-services
-// spec:
-//   channel: v3
-//   installPlanApproval: Automatic
-//   name: ibm-crossplane-operator-app
-//   source: opencloud-operators
-//   sourceNamespace: openshift-marketplace
-//   startingCSV: ibm-crossplane-operator.v1.0.0

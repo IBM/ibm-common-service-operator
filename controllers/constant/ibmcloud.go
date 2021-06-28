@@ -22,24 +22,10 @@ kind: Subscription
 metadata:
   name: ibmcloud-operator
   namespace: {{ .MasterNs }}
-  annotations:
-    version: {{ .Version }}
 spec:
-  channel: {{ .Channel }}
+  channel: stable
   installPlanApproval: Automatic
   name: ibmcloud-operator
-  source: {{ .CatalogSourceName }}
+  source: community-operators
   sourceNamespace: {{ .CatalogSourceNs }}
 `
-
-// apiVersion: operators.coreos.com/v1alpha1
-// kind: Subscription
-// metadata:
-//   name: ibmcloud-operator
-//   namespace: ibm-common-services
-// spec:
-//   channel: stable
-//   installPlanApproval: Automatic
-//   name: ibmcloud-operator
-//   source: community-operators
-//   sourceNamespace: openshift-marketplace

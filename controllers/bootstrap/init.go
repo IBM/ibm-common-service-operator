@@ -204,14 +204,22 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 	}
 
 	// Install Crossplane Operator & Cloud Operator
-	var bedrockshim = true // TODO: replace with spec.features.bedrockshim.enabled
+	bedrockshim := false
+	if instance.Spec.Features != nil {
+		if instance.Spec.Features.Bedrockshim != nil {
+			bedrockshim = instance.Spec.Features.Bedrockshim.Enabled
+		}
+	}
+
 	if bedrockshim {
-		klog.Info("[DEBUG] bedrockshim is true")
 		if err := b.installCrossplaneOperator(); err != nil {
 			return err
 		}
-		if err := b.installCloudOperator(); err != nil {
-			return err
+
+		if b.SaasEnable {
+			if err := b.installCloudOperator(); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -579,36 +587,20 @@ func (b *Bootstrap) installNssOperator(manualManagement bool) error {
 }
 
 func (b *Bootstrap) installCrossplaneOperator() error {
-	klog.Info("[DEBUG] start of crossplane")
-	// Install Crossplane Operator
-	// klog.Info("Creating crossplane configmap")
-	// if err := b.CreateCrossConfigmap(); err != nil {
-	// 	klog.Errorf("Failed to create crossplane ConfigMap: %v", err)
-	// 	return err
-	// }
-
 	klog.Info("Creating Crossplane Operator subscription")
 	if err := b.createCrossplaneSubscription(); err != nil {
 		klog.Errorf("Failed to create Crossplane Operator subscription: %v", err)
 		return err
 	}
-
-	// if err := b.waitResourceReady("operator.ibm.com/v1", "Crossplane"); err != nil {
-	// 	return err
-	// }
-
 	return nil
 }
 
 func (b *Bootstrap) installCloudOperator() error {
-	klog.Info("[DEBUG] start of IBM Cloud Operator")
-
 	klog.Info("Creating IBM Cloud Operator subscription")
 	if err := b.createCloudSubscription(); err != nil {
 		klog.Errorf("Failed to create IBM Cloud Operator subscription: %v", err)
 		return err
 	}
-
 	return nil
 }
 
