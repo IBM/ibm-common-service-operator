@@ -668,15 +668,6 @@ func (b *Bootstrap) CreateNsScopeConfigmap() error {
 	return nil
 }
 
-// CreateCrossConfigmap creates crossplane configmap for operators
-// func (b *Bootstrap) CreateCrossConfigmap() error {
-// 	cmRes := constant.CrossConfigMap
-// 	if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cmRes, placeholder, b.CSData.MasterNs))); err != nil {
-// 		return err
-// 	}
-// 	return nil
-// }
-
 func (b *Bootstrap) createCrossplaneSubscription() error {
 	resourceName := constant.CrossSubscription
 	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
