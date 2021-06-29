@@ -203,6 +203,26 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 		return err
 	}
 
+	// Install Crossplane Operator & Cloud Operator
+	bedrockshim := false
+	if instance.Spec.Features != nil {
+		if instance.Spec.Features.Bedrockshim != nil {
+			bedrockshim = instance.Spec.Features.Bedrockshim.Enabled
+		}
+	}
+
+	if bedrockshim {
+		if err := b.installCrossplaneOperator(); err != nil {
+			return err
+		}
+
+		if b.SaasEnable {
+			if err := b.installCloudOperator(); err != nil {
+				return err
+			}
+		}
+	}
+
 	// Install CS Operators
 	for _, operator := range b.CSOperators {
 		if b.SaasEnable && operator.Name == "Secretshare Operator" {
@@ -566,6 +586,24 @@ func (b *Bootstrap) installNssOperator(manualManagement bool) error {
 	return nil
 }
 
+func (b *Bootstrap) installCrossplaneOperator() error {
+	klog.Info("Creating Crossplane Operator subscription")
+	if err := b.createCrossplaneSubscription(); err != nil {
+		klog.Errorf("Failed to create Crossplane Operator subscription: %v", err)
+		return err
+	}
+	return nil
+}
+
+func (b *Bootstrap) installCloudOperator() error {
+	klog.Info("Creating IBM Cloud Operator subscription")
+	if err := b.createCloudSubscription(); err != nil {
+		klog.Errorf("Failed to create IBM Cloud Operator subscription: %v", err)
+		return err
+	}
+	return nil
+}
+
 func (b *Bootstrap) installODLM(operatorNs string) error {
 	// Delete the previous version ODLM operator
 	klog.Info("Trying to delete ODLM operator in openshift-operators")
@@ -627,6 +665,24 @@ func (b *Bootstrap) CreateNsScopeConfigmap() error {
 	if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cmRes, placeholder, b.CSData.MasterNs))); err != nil {
 		return err
 	}
+	return nil
+}
+
+func (b *Bootstrap) createCrossplaneSubscription() error {
+	resourceName := constant.CrossSubscription
+	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (b *Bootstrap) createCloudSubscription() error {
+	resourceName := constant.IbmCloudSubscription
+	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
+		return err
+	}
+
 	return nil
 }
 
