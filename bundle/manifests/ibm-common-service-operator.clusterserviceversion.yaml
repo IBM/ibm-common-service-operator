@@ -119,7 +119,7 @@ spec:
 
     For more information about the IBM Cloud Pak Security Context Constraints, see [Managing Security Context Constraints](https://ibm.biz/cpkspec-scc).
 
-    ## Limitations
+    ### Limitations
 
     No
   displayName: IBM Cloud Pak foundational services
