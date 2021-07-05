@@ -39,6 +39,18 @@ spec:
       containers:
       - command:
         - /manager
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
         image: quay.io/opencloudio/common-service-operator:latest
         imagePullPolicy: Always
         name: ibm-common-service-operator

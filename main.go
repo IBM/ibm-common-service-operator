@@ -33,6 +33,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
 	cache "github.com/IBM/controller-filtered-cache/filteredcache"
 	operatorv3 "github.com/IBM/ibm-common-service-operator/api/v3"
@@ -69,8 +70,10 @@ func main() {
 	klog.InitFlags(nil)
 	defer klog.Flush()
 	var metricsAddr string
+	var probeAddr string
 	var enableLeaderElection bool
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
+	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
@@ -83,12 +86,13 @@ func main() {
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:             scheme,
-		MetricsBindAddress: metricsAddr,
-		Port:               9443,
-		LeaderElection:     enableLeaderElection,
-		LeaderElectionID:   "be598e12.ibm.com",
-		NewCache:           cache.NewFilteredCacheBuilder(gvkLabelMap),
+		Scheme:                 scheme,
+		MetricsBindAddress:     metricsAddr,
+		HealthProbeBindAddress: probeAddr,
+		Port:                   9443,
+		LeaderElection:         enableLeaderElection,
+		LeaderElectionID:       "be598e12.ibm.com",
+		NewCache:               cache.NewFilteredCacheBuilder(gvkLabelMap),
 	})
 	if err != nil {
 		klog.Errorf("Unable to start manager: %v", err)
@@ -187,6 +191,15 @@ func main() {
 			klog.Errorf("Failed to update common service operator subscription: %v", err)
 			os.Exit(1)
 		}
+	}
+
+	if err := mgr.AddHealthzCheck("health", healthz.Ping); err != nil {
+		klog.Errorf("unable to set up health check: %v", err)
+		os.Exit(1)
+	}
+	if err := mgr.AddReadyzCheck("check", healthz.Ping); err != nil {
+		klog.Errorf("unable to set up ready check: %v", err)
+		os.Exit(1)
 	}
 
 	klog.Info("Starting manager")
