@@ -769,10 +769,6 @@ func (b *Bootstrap) waitOperatorReady(name, namespace string) error {
 			}
 		}
 
-		if sub.Status.InstalledCSV != sub.Status.CurrentCSV {
-			return false, nil
-		}
-
 		// check csv
 		csvName := sub.Status.InstalledCSV
 		if csvName != "" {
