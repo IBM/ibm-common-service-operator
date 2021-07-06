@@ -30,7 +30,7 @@ spec:
   sourceNamespace: {{ .CatalogSourceNs }}
 `
 
-const CrossCR = `
+const CrossplaneCR = `
 apiVersion: operator.ibm.com/v1beta1
 kind: Crossplane
 metadata:

@@ -689,7 +689,7 @@ func (b *Bootstrap) createCrossplaneSubscription() error {
 }
 
 func (b *Bootstrap) createCrossplaneCR() error {
-	resourceName := constant.CrossCR
+	resourceName := constant.CrossplaneCR
 	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
 		return err
 	}
