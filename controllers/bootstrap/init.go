@@ -589,16 +589,27 @@ func (b *Bootstrap) installNssOperator(manualManagement bool) error {
 func (b *Bootstrap) installCrossplaneOperator() error {
 	klog.Info("Creating Crossplane Operator subscription")
 	if err := b.createCrossplaneSubscription(); err != nil {
-		klog.Errorf("Failed to create Crossplane Operator subscription: %v", err)
+		klog.Errorf("Failed to create or update Crossplane Operator subscription: %v", err)
 		return err
 	}
+
+	if err := b.waitResourceReady("operator.ibm.com/v1beta1", "Crossplane"); err != nil {
+		return err
+	}
+
+	klog.Info("Creating Crossplane Operator CR")
+	if err := b.createCrossplaneCR(); err != nil {
+		klog.Errorf("Failed to create or update Crossplane Operator CR: %v", err)
+		return err
+	}
+
 	return nil
 }
 
 func (b *Bootstrap) installCloudOperator() error {
 	klog.Info("Creating IBM Cloud Operator subscription")
 	if err := b.createCloudSubscription(); err != nil {
-		klog.Errorf("Failed to create IBM Cloud Operator subscription: %v", err)
+		klog.Errorf("Failed to create or update IBM Cloud Operator subscription: %v", err)
 		return err
 	}
 	return nil
@@ -674,6 +685,14 @@ func (b *Bootstrap) createCrossplaneSubscription() error {
 		return err
 	}
 
+	return nil
+}
+
+func (b *Bootstrap) createCrossplaneCR() error {
+	resourceName := constant.CrossCR
+	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
+		return err
+	}
 	return nil
 }
 
