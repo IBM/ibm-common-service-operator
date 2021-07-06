@@ -84,6 +84,7 @@ type CSData struct {
 	CatalogSourceNs    string
 	IsolatedModeEnable string
 	ApprovalMode       string
+	OnPremMultiEnable  string
 }
 
 type CSOperator struct {
@@ -304,6 +305,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 		}
 	} else {
 		// OperandConfig for on-prem deployment
+		b.CSData.OnPremMultiEnable = strconv.FormatBool(b.MultiInstancesEnable)
 		if err := b.renderTemplate(constant.CSV3OperandConfig, b.CSData); err != nil {
 			return err
 		}

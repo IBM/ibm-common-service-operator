@@ -40,7 +40,9 @@ spec:
       certManager: {}
   - name: ibm-iam-operator
     spec:
-      authentication: {}
+      authentication:
+        config:
+          onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       oidcclientwatcher: {}
       pap: {}
       policycontroller: {}
