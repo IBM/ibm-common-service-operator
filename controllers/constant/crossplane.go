@@ -29,3 +29,27 @@ spec:
   source: {{ .CatalogSourceName }}
   sourceNamespace: {{ .CatalogSourceNs }}
 `
+
+const CrossplaneCR = `
+apiVersion: operator.ibm.com/v1beta1
+kind: Crossplane
+metadata:
+  namespace: {{ .MasterNs }}
+  name: ibm-crossplane
+  labels:
+    app.kubernetes.io/instance: ibm-crossplane
+    app.kubernetes.io/managed-by: ibm-crossplane-operator
+    app.kubernetes.io/name: ibm-crossplane-operator
+spec:
+  configuration:
+    packages:
+      - 'quay.io/opencloudio/ibm-crossplane-bedrock-shim-config:1.0.0'
+  replicas: 1
+  resourcesCrossplane:
+    limits:
+      cpu: 100m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+`
