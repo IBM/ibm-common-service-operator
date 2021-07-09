@@ -63,6 +63,14 @@ const Large = `
         requests:
           cpu: 500m
           memory: 3072Mi
+      metrics:
+        resources:
+          requests:
+            cpu: 100m
+            memory: 300Mi
+          limits:
+            cpu: 1000m
+            memory: 350Mi
 - name: ibm-iam-operator
   spec:
     authentication:
@@ -316,54 +324,6 @@ const Large = `
           requests:
             cpu: 59m
             memory: 231Mi
-- name: ibm-monitoring-exporters-operator
-  spec:
-    exporter:
-      collectd:
-        resource:
-          limits:
-            cpu: 30m
-            memory: 100Mi
-          requests:
-            cpu: 30m
-            memory: 75Mi
-        routerResource:
-          limits:
-            cpu: 30m
-            memory: 50Mi
-          requests:
-            cpu: 20m
-            memory: 50Mi
-      kubeStateMetrics:
-        resource:
-          limits:
-            cpu: 540m
-            memory: 275Mi
-          requests:
-            cpu: 500m
-            memory: 230Mi
-        routerResource:
-          limits:
-            cpu: 25m
-            memory: 50Mi
-          requests:
-            cpu: 20m
-            memory: 50Mi
-      nodeExporter:
-        resource:
-          limits:
-            cpu: 20m
-            memory: 67Mi
-          requests:
-            cpu: 5m
-            memory: 67Mi
-        routerResource:
-          limits:
-            cpu: 100m
-            memory: 472Mi
-          requests:
-            cpu: 50m
-            memory: 128Mi
 - name: ibm-monitoring-grafana-operator
   spec:
     grafana:
@@ -391,38 +351,4 @@ const Large = `
           requests:
             cpu: 25m
             memory: 65Mi
-- name: ibm-monitoring-prometheusext-operator
-  spec:
-    prometheusExt:
-      alertManagerConfig:
-        resource:
-          limits:
-            cpu: 30m
-            memory: 100Mi
-          requests:
-            cpu: 30m
-            memory: 67Mi
-      mcmMonitor:
-        resource:
-          limits:
-            cpu: 50m
-            memory: 50Mi
-          requests:
-            cpu: 30m
-            memory: 50Mi
-      prometheusConfig:
-        resource:
-          limits:
-            cpu: 955m
-            memory: 18345Mi
-          requests:
-            cpu: 660m
-            memory: 13755Mi
-        routerResource:
-          limits:
-            cpu: 75m
-            memory: 50Mi
-          requests:
-            cpu: 10m
-            memory: 50Mi
 `

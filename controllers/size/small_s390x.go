@@ -63,6 +63,14 @@ const Small = `
         requests:
           cpu: 500m
           memory: 700Mi
+      metrics:
+        resources:
+          requests:
+            cpu: 100m
+            memory: 300Mi
+          limits:
+            cpu: 1000m
+            memory: 350Mi
 - name: ibm-iam-operator
   spec:
     authentication:
@@ -316,54 +324,6 @@ const Small = `
           limits:
             cpu: 35m
             memory: 150Mi
-- name: ibm-monitoring-exporters-operator
-  spec:
-    exporter:
-      collectd:
-        resource:
-          requests:
-            cpu: 30m
-            memory: 50Mi
-          limits:
-            cpu: 30m
-            memory: 50Mi
-        routerResource:
-          limits:
-            cpu: 25m
-            memory: 50Mi
-          requests:
-            cpu: 10m
-            memory: 50Mi
-      nodeExporter:
-        resource:
-          requests:
-            cpu: 5m
-            memory: 50Mi
-          limits:
-            cpu: 20m
-            memory: 50Mi
-        routerResource:
-          requests:
-            cpu: 50m
-            memory: 128Mi
-          limits:
-            cpu: 100m
-            memory: 256Mi
-      kubeStateMetrics:
-        resource:
-          requests:
-            cpu: 500m
-            memory: 110Mi
-          limits:
-            cpu: 540m
-            memory: 160Mi
-        routerResource:
-          limits:
-            cpu: 25m
-            memory: 50Mi
-          requests:
-            cpu: 10m
-            memory: 50Mi
 - name: ibm-monitoring-grafana-operator
   spec:
     grafana:
@@ -390,39 +350,5 @@ const Small = `
             memory: 50Mi
           limits:
             cpu: 50m
-            memory: 50Mi
-- name: ibm-monitoring-prometheusext-operator
-  spec:
-    prometheusExt:
-      prometheusConfig:
-        routerResource:
-          requests:
-            cpu: 10m
-            memory: 50Mi
-          limits:
-            cpu: 75m
-            memory: 50Mi
-        resource:
-          requests:
-            cpu: 65m
-            memory: 1920Mi
-          limits:
-            cpu: 130m
-            memory: 2570Mi
-      alertManagerConfig:
-        resource:
-          requests:
-            cpu: 30m
-            memory: 50Mi
-          limits:
-            cpu: 30m
-            memory: 50Mi
-      mcmMonitor:
-        resource:
-          requests:
-            cpu: 30m
-            memory: 50Mi
-          limits:
-            cpu: 30m
             memory: 50Mi
 `
