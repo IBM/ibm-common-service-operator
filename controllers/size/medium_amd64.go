@@ -26,7 +26,7 @@ const Medium = `
             cpu: 100m
             memory: 1000Mi
           requests:
-            cpu: 100m
+            cpu: 30m
             memory: 500Mi
       certManagerController:
         resources:
