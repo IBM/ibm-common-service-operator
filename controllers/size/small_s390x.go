@@ -23,10 +23,10 @@ const Small = `
       certManagerCAInjector:
         resources:
           limits:
-            cpu: 35m
+            cpu: 100m
             memory: 520Mi
           requests:
-            cpu: 30m
+            cpu: 100m
             memory: 350Mi
       certManagerController:
         resources:

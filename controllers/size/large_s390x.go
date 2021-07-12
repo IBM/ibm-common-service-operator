@@ -26,7 +26,7 @@ const Large = `
             cpu: 100m
             memory: 770Mi
           requests:
-            cpu: 40m
+            cpu: 100m
             memory: 581Mi
       certManagerController:
         resources:

@@ -26,7 +26,7 @@ const Small = `
             cpu: 150m
             memory: 550Mi
           requests:
-            cpu: 30m
+            cpu: 100m
             memory: 350Mi
       certManagerController:
         resources:
