@@ -115,6 +115,26 @@ function switch_to_continous_delivery() {
         msg ""
     done < <(oc get sub -n ibm-common-services | awk '{print $1}')
 
+    certmanagersub=$(oc get sub ibm-cert-manager-operator -n ibm-common-services --ignore-not-found)
+    certmanagercsv=$(oc get csv -n ibm-common-services | grep ibm-cert-manager-operator | awk '{print $1}')
+    if [[ "X${certmanagersub}" != "X" ]]; then
+        msg "Deleting ibm-cert-manager-operator in namesapce ibm-common-services, it will be re-installed by ODLM after the upgrade is successful ..."
+        msg "-----------------------------------------------------------------------"
+
+        in_step=1
+        msg "[${in_step}] Removing the subscription of ibm-cert-manager-operator in namesapce ibm-common-services ..."
+        oc delete sub ibm-cert-manager-operator -n ibm-common-services 2> /dev/null
+
+        in_step=$((in_step + 1))
+        msg "[${in_step}] Removing the csv of ibm-cert-manager-operator in namesapce ibm-common-services ..."
+        oc delete csv ${certmanagercsv} -n ibm-common-services 2> /dev/null
+
+        msg ""
+
+        success "Remove ibm-cert-manager-operator successfully."
+        msg ""
+    fi
+
     success "Updated all operator subscriptions in namespace ibm-common-services successfully."
 
     msg "Creating namespace scope config in namespace ibm-common-services..."
