@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-package certmanager
+package goroutines
 
 import (
 	"context"
@@ -28,15 +28,8 @@ import (
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 )
 
-var (
-	DeployCRs       = []string{CSSSIssuer, CSCACert, CSCAIssuer}
-	apiGroupVersion = "certmanager.k8s.io/v1alpha1"
-	Kinds           = []string{"Issuer", "Certificate"}
-	placeholder     = "placeholder"
-)
-
-// DeployCR deploys CR certificate and issuer when their CRDs are ready
-func DeployCR(bs *bootstrap.Bootstrap) {
+// DeployCertManagerCR deploys CR certificate and issuer when their CRDs are ready
+func DeployCertManagerCR(bs *bootstrap.Bootstrap) {
 	deployedNs := bs.CSData.MasterNs
 	if bs.MultiInstancesEnable {
 		deployedNs = bs.CSData.ControlNs
@@ -49,13 +42,13 @@ func DeployCR(bs *bootstrap.Bootstrap) {
 		break
 	}
 
-	for _, kind := range Kinds {
-		if err := bs.WaitResourceReady(apiGroupVersion, kind); err != nil {
-			klog.Errorf("Failed to wait for resource ready with kind %s, apiGroupVersion: %s", kind, apiGroupVersion)
+	for _, kind := range CertManagerKinds {
+		if err := bs.WaitResourceReady(CertManagerApiGroupVersion, kind); err != nil {
+			klog.Errorf("Failed to wait for resource ready with kind %s, apiGroupVersion: %s", kind, CertManagerApiGroupVersion)
 		}
 	}
 
-	for _, cr := range DeployCRs {
+	for _, cr := range CertManagerCRs {
 		for {
 			done := bs.DeployResource(cr, placeholder)
 			if done {

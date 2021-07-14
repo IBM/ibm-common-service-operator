@@ -39,11 +39,9 @@ import (
 	operatorv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	"github.com/IBM/ibm-common-service-operator/controllers"
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
-	certmanager "github.com/IBM/ibm-common-service-operator/controllers/certmanager"
-	"github.com/IBM/ibm-common-service-operator/controllers/check"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
-	nss "github.com/IBM/ibm-common-service-operator/controllers/namespacescope"
+	"github.com/IBM/ibm-common-service-operator/controllers/goroutines"
 	nssv1 "github.com/IBM/ibm-namespace-scope-operator/api/v1"
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/api/v1alpha1"
 	// +kubebuilder:scaffold:imports
@@ -166,11 +164,11 @@ func main() {
 		}
 
 		// Check IAM pods status
-		go check.IamStatus(bs)
+		go goroutines.CheckIamStatus(bs)
 		// Generate Issuer and Certificate CR
-		go certmanager.DeployCR(bs)
+		go goroutines.DeployCertManagerCR(bs)
 		// Sync up NSS CR
-		go nss.SyncUpCR(bs)
+		go goroutines.SyncUpNSSCR(bs)
 
 		if err = (&controllers.CommonServiceReconciler{
 			Bootstrap: bs,

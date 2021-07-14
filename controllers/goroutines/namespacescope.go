@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-package nss
+package goroutines
 
 import (
 	"context"
@@ -30,29 +30,21 @@ import (
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 )
 
-var (
-	apiGroupVersion = "operator.ibm.com/v1"
-	Kinds           = []string{"NamespaceScope"}
-	CRList          = []string{"common-service", "nss-odlm-scope"}
-	sourceCR        = "common-service"
-	targetCR        = "nss-odlm-scope"
-)
-
 var ctx = context.Background()
 
-// SyncUpCR syncs up the namespace members in source CR and target CR
-func SyncUpCR(bs *bootstrap.Bootstrap) {
+// SyncUpNSSCR syncs up the namespace members in source CR and target CR
+func SyncUpNSSCR(bs *bootstrap.Bootstrap) {
 	for {
 		// wait for nss CRD
-		for _, kind := range Kinds {
-			if err := bs.WaitResourceReady(apiGroupVersion, kind); err != nil {
-				klog.Errorf("Failed to wait for resource ready with kind %s, apiGroupVersion: %s", kind, apiGroupVersion)
+		for _, kind := range NSSKinds {
+			if err := bs.WaitResourceReady(OperatorApiGroupVersion, kind); err != nil {
+				klog.Errorf("Failed to wait for resource ready with kind %s, apiGroupVersion: %s", kind, OperatorApiGroupVersion)
 				continue
 			}
 		}
 
 		// wait for source and target CR
-		for _, cr := range CRList {
+		for _, cr := range NSSCRList {
 			for {
 				ready := waitCRReady(bs, cr, bs.CSData.MasterNs)
 				if ready {
@@ -64,14 +56,14 @@ func SyncUpCR(bs *bootstrap.Bootstrap) {
 
 		// fetch the source and target NSS CR
 		sourceNsScope := &nssv1.NamespaceScope{}
-		sourceNsScopeKey := types.NamespacedName{Name: sourceCR, Namespace: bs.CSData.MasterNs}
+		sourceNsScopeKey := types.NamespacedName{Name: NSSSourceCR, Namespace: bs.CSData.MasterNs}
 		if err := bs.Reader.Get(ctx, sourceNsScopeKey, sourceNsScope); err != nil {
 			klog.Errorf("Failed to get NSS CR %s: %v, retry again", sourceNsScopeKey.String(), err)
 			continue
 		}
 
 		targetNsScope := &nssv1.NamespaceScope{}
-		targetNsScopeKey := types.NamespacedName{Name: targetCR, Namespace: bs.CSData.MasterNs}
+		targetNsScopeKey := types.NamespacedName{Name: NSSTargetCR, Namespace: bs.CSData.MasterNs}
 		if err := bs.Reader.Get(ctx, targetNsScopeKey, targetNsScope); err != nil {
 			klog.Errorf("Failed to get NSS CR %s: %v, retry again", targetNsScopeKey.String(), err)
 			continue
