@@ -21,13 +21,13 @@ import (
 )
 
 var (
-	OperatorApiGroupVersion = "operator.ibm.com/v1"
+	OperatorAPIGroupVersion = "operator.ibm.com/v1"
 
 	IAMSaaSDeployNames = []string{"ibm-iam-operator", "auth-idp", "auth-pap", "auth-pdp", "oidcclient-watcher"}
 	IAMDeployNames     = []string{"ibm-iam-operator", "auth-idp", "auth-pap", "auth-pdp", "oidcclient-watcher", "secret-watcher"}
 	IAMJobNames        = []string{"iam-onboarding", "security-onboarding", "oidc-client-registration"}
 
-	CertManagerApiGroupVersion = "certmanager.k8s.io/v1alpha1"
+	CertManagerAPIGroupVersion = "certmanager.k8s.io/v1alpha1"
 	CertManagerKinds           = []string{"Issuer", "Certificate"}
 	CertManagerCRs             = []string{constant.CSSSIssuer, constant.CSCACert, constant.CSCAIssuer}
 

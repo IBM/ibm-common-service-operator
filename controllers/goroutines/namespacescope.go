@@ -37,8 +37,8 @@ func SyncUpNSSCR(bs *bootstrap.Bootstrap) {
 	for {
 		// wait for nss CRD
 		for _, kind := range NSSKinds {
-			if err := bs.WaitResourceReady(OperatorApiGroupVersion, kind); err != nil {
-				klog.Errorf("Failed to wait for resource ready with kind %s, apiGroupVersion: %s", kind, OperatorApiGroupVersion)
+			if err := bs.WaitResourceReady(OperatorAPIGroupVersion, kind); err != nil {
+				klog.Errorf("Failed to wait for resource ready with kind %s, apiGroupVersion: %s", kind, OperatorAPIGroupVersion)
 				continue
 			}
 		}
