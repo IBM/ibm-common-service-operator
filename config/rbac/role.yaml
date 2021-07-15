@@ -26,6 +26,13 @@ rules:
   - create
   - update
   - watch
+# check catalogsource migration for highest priority of internal dev build
+- apiGroups:
+  - operators.coreos.com
+  resources:
+  - catalogsources
+  verbs:
+  - get
 # delete existing subscriptions in openshift-operators/ibm-common-services
 - apiGroups:
   - operators.coreos.com
@@ -121,6 +128,7 @@ rules:
   - admissionregistration.k8s.io
   resources:
   - mutatingwebhookconfigurations
+  - validatingwebhookconfigurations
   verbs:
   - create
   - delete

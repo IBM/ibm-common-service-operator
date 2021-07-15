@@ -14,8 +14,18 @@
 // limitations under the License.
 //
 
-package version
+package constant
 
-var (
-	Version = "3.9.1"
-)
+const IbmCloudSubscription = `
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: ibmcloud-operator
+  namespace: {{ .MasterNs }}
+spec:
+  channel: stable
+  installPlanApproval: Automatic
+  name: ibmcloud-operator
+  source: community-operators
+  sourceNamespace: {{ .CatalogSourceNs }}
+`

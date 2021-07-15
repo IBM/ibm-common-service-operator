@@ -259,9 +259,12 @@ if [[ "$FORCE_DELETE" == "false" ]]; then
   delete_rbac_resource
 
   title "Deleting webhooks"
-  ${KUBECTL} delete ValidatingWebhookConfiguration cert-manager-webhook --ignore-not-found
-  ${KUBECTL} delete MutatingWebhookConfiguration cert-manager-webhook ibm-common-service-webhook-configuration namespace-admission-config --ignore-not-found
+  ${KUBECTL} delete ValidatingWebhookConfiguration cert-manager-webhook ibm-cs-ns-mapping-webhook-configuration --ignore-not-found
+  ${KUBECTL} delete MutatingWebhookConfiguration cert-manager-webhook ibm-common-service-webhook-configuration ibm-operandrequest-webhook-configuration namespace-admission-config --ignore-not-found
 fi
+
+title "Deleting iam-status configMap in kube-public namespace"
+${KUBECTL} delete configmap ibm-common-services-status -n kube-public --ignore-not-found
 
 title "Deleting namespace ${COMMON_SERVICES_NS}"
 ${KUBECTL} delete namespace ${COMMON_SERVICES_NS} --ignore-not-found &
