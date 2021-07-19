@@ -43,14 +43,18 @@ spec:
           httpGet:
             path: /healthz
             port: 8081
-          initialDelaySeconds: 2
-          periodSeconds: 3
+          initialDelaySeconds: 60
+          timeoutSeconds: 3
+          periodSeconds: 20
+          failureThreshold: 10
         livenessProbe:
           httpGet:
             path: /readyz
             port: 8081
-          initialDelaySeconds: 2
-          periodSeconds: 5
+          initialDelaySeconds: 120
+          timeoutSeconds: 10
+          periodSeconds: 60
+          failureThreshold: 10
         image: quay.io/opencloudio/common-service-operator:latest
         imagePullPolicy: Always
         name: ibm-common-service-operator
