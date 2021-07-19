@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-package multipleinstancesenabled
+package constant
 
 const MultipleInstancesEnabledTemplate = `
 - name: ibm-management-ingress-operator

@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-package check
+package goroutines
 
 import (
 	"context"
@@ -34,15 +34,8 @@ import (
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 )
 
-var (
-	SaaSDeployNames = []string{"ibm-iam-operator", "auth-idp", "auth-pap", "auth-pdp", "oidcclient-watcher"}
-	DeployNames     = []string{"ibm-iam-operator", "auth-idp", "auth-pap", "auth-pdp", "oidcclient-watcher", "secret-watcher"}
-	JobNames        = []string{"iam-onboarding", "security-onboarding", "oidc-client-registration"}
-	MasterNamespace string
-)
-
-// IamStatus check IAM status if ready
-func IamStatus(bs *bootstrap.Bootstrap) {
+// CheckIamStatus check IAM status if ready
+func CheckIamStatus(bs *bootstrap.Bootstrap) {
 	MasterNamespace = bs.CSData.MasterNs
 
 	for {
@@ -56,9 +49,9 @@ func IamStatus(bs *bootstrap.Bootstrap) {
 
 		var deploymentList []string
 		if bs.SaasEnable {
-			deploymentList = SaaSDeployNames
+			deploymentList = IAMSaaSDeployNames
 		} else {
-			deploymentList = DeployNames
+			deploymentList = IAMDeployNames
 		}
 
 		iamStatus := overallIamStatus(bs.Reader, deploymentList)
@@ -85,7 +78,7 @@ func overallIamStatus(r client.Reader, deploymentList []string) string {
 			return status
 		}
 	}
-	for _, job := range JobNames {
+	for _, job := range IAMJobNames {
 		status := getJobStatus(r, job)
 		if status == "NotReady" {
 			return status

@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-package certmanager
+package constant
 
 // CSCAIssuer is the CR of cs-ca-issuer
 const CSCAIssuer = `

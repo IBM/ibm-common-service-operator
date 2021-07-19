@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-package routehost
+package constant
 
 const RouteHostTemplate = `
 - name: ibm-management-ingress-operator
