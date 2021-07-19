@@ -35,10 +35,6 @@ apiVersion: pkg.crossplane.io/v1
 kind: Configuration
 metadata:
   name: ibm-crossplane-bedrock-shim-config
-  labels:
-    app.kubernetes.io/instance: ibm-crossplane
-    app.kubernetes.io/managed-by: ibm-crossplane-operator
-    app.kubernetes.io/name: ibm-crossplane-operator
 spec:
   ignoreCrossplaneConstraints: false
   package: 'quay.io/opencloudio/ibm-crossplane-bedrock-shim-config:1.0.0'
