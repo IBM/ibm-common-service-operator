@@ -31,25 +31,20 @@ spec:
 `
 
 const CrossplaneCR = `
-apiVersion: operator.ibm.com/v1beta1
-kind: Crossplane
+apiVersion: pkg.crossplane.io/v1
+kind: Configuration
 metadata:
-  namespace: {{ .MasterNs }}
-  name: ibm-crossplane
+  annotations:
+  name: ibm-crossplane-bedrock-shim-config
   labels:
     app.kubernetes.io/instance: ibm-crossplane
     app.kubernetes.io/managed-by: ibm-crossplane-operator
     app.kubernetes.io/name: ibm-crossplane-operator
 spec:
-  configuration:
-    packages:
-      - 'quay.io/opencloudio/ibm-crossplane-bedrock-shim-config:1.0.0'
-  replicas: 1
-  resourcesCrossplane:
-    limits:
-      cpu: 100m
-      memory: 512Mi
-    requests:
-      cpu: 100m
-      memory: 256Mi
+  ignoreCrossplaneConstraints: false
+  package: 'quay.io/opencloudio/ibm-crossplane-bedrock-shim-config:1.0.0'
+  packagePullPolicy: Always
+  revisionActivationPolicy: Automatic
+  revisionHistoryLimit: 1
+  skipDependencyResolution: false
 `
