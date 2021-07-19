@@ -34,7 +34,6 @@ const CrossplaneCR = `
 apiVersion: pkg.crossplane.io/v1
 kind: Configuration
 metadata:
-  annotations:
   name: ibm-crossplane-bedrock-shim-config
   labels:
     app.kubernetes.io/instance: ibm-crossplane
