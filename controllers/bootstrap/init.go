@@ -157,6 +157,25 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 	return
 }
 
+// Crossplane install crossplane operator when bedrockshim is true
+func (b *Bootstrap) Crossplane(instance *apiv3.CommonService) error {
+	// Install Crossplane Operator
+	bedrockshim := false
+	if instance.Spec.Features != nil {
+		if instance.Spec.Features.Bedrockshim != nil {
+			bedrockshim = instance.Spec.Features.Bedrockshim.Enabled
+		}
+	}
+
+	if bedrockshim {
+		if err := b.installCrossplaneOperator(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // InitResources initialize resources at the bootstrap of operator
 func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 	installPlanApproval := instance.Spec.InstallPlanApproval
@@ -204,7 +223,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 		return err
 	}
 
-	// Install Crossplane Operator & Cloud Operator
+	// Install Cloud Operator
 	bedrockshim := false
 	if instance.Spec.Features != nil {
 		if instance.Spec.Features.Bedrockshim != nil {
@@ -213,10 +232,6 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 	}
 
 	if bedrockshim {
-		if err := b.installCrossplaneOperator(); err != nil {
-			return err
-		}
-
 		if b.SaasEnable {
 			if err := b.installCloudOperator(); err != nil {
 				return err

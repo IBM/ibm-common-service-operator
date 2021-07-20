@@ -134,6 +134,15 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(instance *apiv3.CommonServic
 		return ctrl.Result{}, err
 	}
 
+	if err := r.Bootstrap.Crossplane(instance); err != nil {
+		klog.Errorf("Failed to install crossplane operator: %v", err)
+		if err := r.updatePhase(instance, CRFailed); err != nil {
+			klog.Error(err)
+		}
+		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
+		return ctrl.Result{}, err
+	}
+
 	newConfigs, err := r.getNewConfigs(cs, inScope)
 	if err != nil {
 		if err := r.updatePhase(instance, CRFailed); err != nil {
@@ -197,6 +206,15 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(instance *apiv3.CommonServi
 
 	cs := util.NewUnstructured("operator.ibm.com", "CommonService", "v3")
 	if err := r.Bootstrap.Client.Get(ctx, types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}, cs); err != nil {
+		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
+		return ctrl.Result{}, err
+	}
+
+	if err := r.Bootstrap.Crossplane(instance); err != nil {
+		klog.Errorf("Failed to install crossplane operator: %v", err)
+		if err := r.updatePhase(instance, CRFailed); err != nil {
+			klog.Error(err)
+		}
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 		return ctrl.Result{}, err
 	}
