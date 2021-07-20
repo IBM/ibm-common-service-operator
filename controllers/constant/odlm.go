@@ -83,14 +83,6 @@ spec:
     spec:
       platformApi: {}
       operandRequest: {}
-  - name: ibm-monitoring-exporters-operator
-    spec:
-      exporter: {}
-      operandRequest: {}
-  - name: ibm-monitoring-prometheusext-operator
-    spec:
-      prometheusExt: {}
-      operandRequest: {}
   - name: ibm-monitoring-grafana-operator
     spec:
       grafana: {}
@@ -182,22 +174,6 @@ spec:
     namespace: {{ .MasterNs }}
     channel: {{ .Channel }}
     packageName: ibm-platform-api-operator-app
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: {{ .CatalogSourceNs }}
-  - name: ibm-monitoring-exporters-operator
-    namespace: {{ .MasterNs }}
-    channel: {{ .Channel }}
-    packageName: ibm-monitoring-exporters-operator-app
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: {{ .CatalogSourceNs }}
-  - name: ibm-monitoring-prometheusext-operator
-    namespace: {{ .MasterNs }}
-    channel: {{ .Channel }}
-    packageName: ibm-monitoring-prometheusext-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
@@ -309,14 +285,6 @@ spec:
   - name: ibm-platform-api-operator
     spec:
       platformApi: {}
-      operandRequest: {}
-  - name: ibm-monitoring-exporters-operator
-    spec:
-      exporter: {}
-      operandRequest: {}
-  - name: ibm-monitoring-prometheusext-operator
-    spec:
-      prometheusExt: {}
       operandRequest: {}
   - name: ibm-monitoring-grafana-operator
     spec:
