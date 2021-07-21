@@ -35,6 +35,8 @@ apiVersion: pkg.crossplane.io/v1
 kind: Configuration
 metadata:
   name: ibm-crossplane-bedrock-shim-config
+  labels:
+    ibm-crossplane-provider: {{ .CrossplaneProvider }}
 spec:
   ignoreCrossplaneConstraints: false
   package: 'quay.io/opencloudio/ibm-crossplane-bedrock-shim-config:1.0.0'
