@@ -134,13 +134,15 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(instance *apiv3.CommonServic
 		return ctrl.Result{}, err
 	}
 
-	if err := r.Bootstrap.Crossplane(instance); err != nil {
-		klog.Errorf("Failed to install crossplane operator: %v", err)
-		if err := r.updatePhase(instance, CRFailed); err != nil {
-			klog.Error(err)
+	if inScope {
+		if err := r.Bootstrap.CrossplaneCloudOperator(instance); err != nil {
+			klog.Errorf("Failed to install crossplane or cloud operator: %v", err)
+			if err := r.updatePhase(instance, CRFailed); err != nil {
+				klog.Error(err)
+			}
+			klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
+			return ctrl.Result{}, err
 		}
-		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
-		return ctrl.Result{}, err
 	}
 
 	newConfigs, err := r.getNewConfigs(cs, inScope)
@@ -210,13 +212,15 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(instance *apiv3.CommonServi
 		return ctrl.Result{}, err
 	}
 
-	if err := r.Bootstrap.Crossplane(instance); err != nil {
-		klog.Errorf("Failed to install crossplane operator: %v", err)
-		if err := r.updatePhase(instance, CRFailed); err != nil {
-			klog.Error(err)
+	if inScope {
+		if err := r.Bootstrap.CrossplaneCloudOperator(instance); err != nil {
+			klog.Errorf("Failed to install crossplane or cloud operator: %v", err)
+			if err := r.updatePhase(instance, CRFailed); err != nil {
+				klog.Error(err)
+			}
+			klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
+			return ctrl.Result{}, err
 		}
-		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
-		return ctrl.Result{}, err
 	}
 
 	newConfigs, err := r.getNewConfigs(cs, inScope)
