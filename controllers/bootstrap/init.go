@@ -85,6 +85,7 @@ type CSData struct {
 	IsolatedModeEnable string
 	ApprovalMode       string
 	OnPremMultiEnable  string
+	CrossplaneProvider string
 }
 
 type CSOperator struct {
@@ -213,14 +214,18 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 	}
 
 	if bedrockshim {
-		if err := b.installCrossplaneOperator(); err != nil {
-			return err
-		}
+		b.CSData.CrossplaneProvider = "odlm"
 
 		if b.SaasEnable {
+			b.CSData.CrossplaneProvider = "saas"
 			if err := b.installCloudOperator(); err != nil {
 				return err
 			}
+
+		}
+
+		if err := b.installCrossplaneOperator(); err != nil {
+			return err
 		}
 	}
 
