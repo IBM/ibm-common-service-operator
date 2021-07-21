@@ -600,7 +600,7 @@ func (b *Bootstrap) installCrossplaneOperator() error {
 		klog.Errorf("Failed to create or update Crossplane Configuration: %v", err)
 		return err
 	}
-	
+
 	klog.Info("Creating Crossplane Lock")
 	if err := b.createCrossplaneLock(); err != nil {
 		klog.Errorf("Failed to create or update Crossplane Lock: %v", err)
