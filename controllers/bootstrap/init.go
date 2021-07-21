@@ -594,16 +594,24 @@ func (b *Bootstrap) installCrossplaneOperator() error {
 		klog.Errorf("Failed to create or update Crossplane Operator subscription: %v", err)
 		return err
 	}
+	
+	klog.Info("Creating Crossplane Configuration")
+	if err := b.createCrossplaneConfiguration(); err != nil {
+		klog.Errorf("Failed to create or update Crossplane Operator CR: %v", err)
+		return err
+	}
+	
+	klog.Info("Creating Crossplane Operator CR")
+	if err := b.createCrossplaneLock(); err != nil {
+		klog.Errorf("Failed to create or update Crossplane Operator CR: %v", err)
+		return err
+	}
 
 	if err := b.waitResourceReady("operator.ibm.com/v1beta1", "Crossplane"); err != nil {
 		return err
 	}
 
-	klog.Info("Creating Crossplane Operator CR")
-	if err := b.createCrossplaneCR(); err != nil {
-		klog.Errorf("Failed to create or update Crossplane Operator CR: %v", err)
-		return err
-	}
+
 
 	return nil
 }
@@ -690,8 +698,16 @@ func (b *Bootstrap) createCrossplaneSubscription() error {
 	return nil
 }
 
-func (b *Bootstrap) createCrossplaneCR() error {
-	resourceName := constant.CrossplaneCR
+func (b *Bootstrap) createCrossplaneConfiguration() error {
+	resourceName := constant.CrossConfiguration
+	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (b *Bootstrap) createCrossplaneLock() error {
+	resourceName := constant.CrossLock
 	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
 		return err
 	}
