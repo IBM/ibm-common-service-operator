@@ -607,12 +607,6 @@ func (b *Bootstrap) installCrossplaneOperator() error {
 		return err
 	}
 
-	if err := b.waitResourceReady("operator.ibm.com/v1beta1", "Crossplane"); err != nil {
-		return err
-	}
-
-
-
 	return nil
 }
 
