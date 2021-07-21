@@ -30,7 +30,7 @@ spec:
   sourceNamespace: {{ .CatalogSourceNs }}
 `
 
-const CrossplaneCR = `
+const ConfigurationCR = `
 apiVersion: pkg.crossplane.io/v1
 kind: Configuration
 metadata:
@@ -42,4 +42,13 @@ spec:
   revisionActivationPolicy: Automatic
   revisionHistoryLimit: 1
   skipDependencyResolution: false
+`
+
+const LockCR = `
+apiVersion: pkg.crossplane.io/v1alpha1
+kind: Lock
+metadata:
+  name: lock
+  finalizers:
+    - lock.pkg.crossplane.io
 `
