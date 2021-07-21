@@ -49,6 +49,4 @@ apiVersion: pkg.crossplane.io/v1alpha1
 kind: Lock
 metadata:
   name: lock
-  finalizers:
-    - lock.pkg.crossplane.io
 `
