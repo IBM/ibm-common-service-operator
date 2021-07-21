@@ -30,7 +30,7 @@ spec:
   sourceNamespace: {{ .CatalogSourceNs }}
 `
 
-const ConfigurationCR = `
+const CrossConfiguration = `
 apiVersion: pkg.crossplane.io/v1
 kind: Configuration
 metadata:
@@ -44,7 +44,7 @@ spec:
   skipDependencyResolution: false
 `
 
-const LockCR = `
+const CrossLock = `
 apiVersion: pkg.crossplane.io/v1alpha1
 kind: Lock
 metadata:
