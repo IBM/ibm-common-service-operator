@@ -29,6 +29,7 @@ function main() {
 
     check_preqreqs
     switch_to_continous_delivery
+    check_switch_complete
 }
 
 function check_preqreqs() {
@@ -100,6 +101,9 @@ function switch_to_continous_delivery() {
     fi
 
     while read -r sub; do
+        if [[ ${sub} == "NAME" ]]; then
+            continue
+        fi
 
         msg "Updating subscription ${sub} in namespace ibm-common-services..."
         msg "-----------------------------------------------------------------------"
@@ -135,8 +139,6 @@ function switch_to_continous_delivery() {
         msg ""
     fi
 
-    success "Updated all operator subscriptions in namespace ibm-common-services successfully."
-
     msg "Creating namespace scope config in namespace ibm-common-services..."
     msg "-----------------------------------------------------------------------"
     cat <<EOF | kubectl apply -f -
@@ -150,6 +152,30 @@ data:
 EOF
     msg ""
     success "Created namespace scope config in namespace ibm-common-services."
+}
+
+function check_switch_complete() {
+    STEP=$((STEP + 1 ))
+
+    title "[${STEP}] Checking whether the channel switch is completed..."
+    msg "-----------------------------------------------------------------------"
+
+    while read -r sub; do
+        if [[ ${sub} == "NAME" ]]; then
+            continue
+        fi
+
+        msg "Checking subscription ${sub} in namespace ibm-common-services..."
+        msg "-----------------------------------------------------------------------"
+        
+        channel=$(oc get sub ${sub} -n ibm-common-services -o jsonpath='{.spec.channel}')
+        if [[ "$channel" != "v3" ]]; then
+            error "the channel of subscription ${sub} in namespace ibm-common-services is not v3, please try to re-run the script"
+        fi
+
+    done < <(oc get sub -n ibm-common-services | awk '{print $1}')
+
+    success "Updated all operator subscriptions in namespace ibm-common-services successfully."
 }
 
 function msg() {
