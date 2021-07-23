@@ -160,6 +160,8 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 
 // CrossplaneCloudOperator install crossplane & cloud operator when bedrockshim is true
 func (b *Bootstrap) CrossplaneCloudOperator(instance *apiv3.CommonService) error {
+	
+	// Install Crossplane Operator & Cloud Operator
 	bedrockshim := false
 	if instance.Spec.Features != nil {
 		if instance.Spec.Features.Bedrockshim != nil {
@@ -167,19 +169,19 @@ func (b *Bootstrap) CrossplaneCloudOperator(instance *apiv3.CommonService) error
 		}
 	}
 
-	// Install Crossplane Operator
 	if bedrockshim {
-		if err := b.installCrossplaneOperator(); err != nil {
-			return err
-		}
-	}
+		b.CSData.CrossplaneProvider = "odlm"
 
-	// Install Cloud Operator
-	if bedrockshim {
 		if b.SaasEnable {
+			b.CSData.CrossplaneProvider = "ibmcloud"
 			if err := b.installCloudOperator(); err != nil {
 				return err
 			}
+
+		}
+
+		if err := b.installCrossplaneOperator(); err != nil {
+			return err
 		}
 	}
 
@@ -231,30 +233,6 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 	// Install Namespace Scope Operator
 	if err := b.installNssOperator(manualManagement); err != nil {
 		return err
-	}
-
-	// Install Crossplane Operator & Cloud Operator
-	bedrockshim := false
-	if instance.Spec.Features != nil {
-		if instance.Spec.Features.Bedrockshim != nil {
-			bedrockshim = instance.Spec.Features.Bedrockshim.Enabled
-		}
-	}
-
-	if bedrockshim {
-		b.CSData.CrossplaneProvider = "odlm"
-
-		if b.SaasEnable {
-			b.CSData.CrossplaneProvider = "ibmcloud"
-			if err := b.installCloudOperator(); err != nil {
-				return err
-			}
-
-		}
-
-		if err := b.installCrossplaneOperator(); err != nil {
-			return err
-		}
 	}
 
 	// Install CS Operators
