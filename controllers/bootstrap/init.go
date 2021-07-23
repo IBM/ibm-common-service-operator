@@ -217,7 +217,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 		b.CSData.CrossplaneProvider = "odlm"
 
 		if b.SaasEnable {
-			b.CSData.CrossplaneProvider = "saas"
+			b.CSData.CrossplaneProvider = "ibmcloud"
 			if err := b.installCloudOperator(); err != nil {
 				return err
 			}
