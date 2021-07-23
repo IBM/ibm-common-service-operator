@@ -60,6 +60,14 @@ type nsMapping struct {
 	CsNs      string   `json:"map-to-common-service-namespace"`
 }
 
+type OperatorSub struct {
+	Channel             string               `json:"channel"`
+	InstallPlanApproval olmv1alpha1.Approval `json:"installPlanApproval,omitempty"`
+	Name                string               `json:"name"`
+	Source              string               `json:"source,omitempty"`
+	SourceNamespace     string               `json:"sourceNamespace,omitempty"`
+}
+
 var (
 	ImageList = []string{"IBM_SECRETSHARE_OPERATOR_IMAGE", "IBM_CS_WEBHOOK_IMAGE"}
 )

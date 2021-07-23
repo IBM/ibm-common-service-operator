@@ -22,8 +22,6 @@ kind: Subscription
 metadata:
   name: ibm-common-service-operator
   namespace: {{ .MasterNs }}
-  annotations:
-    version: {{ .Version }}
 spec:
   channel: {{ .Channel }}
   installPlanApproval: {{ .ApprovalMode }}

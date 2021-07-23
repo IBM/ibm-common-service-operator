@@ -421,6 +421,8 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 
 	for _, obj := range objects {
 		gvk := obj.GetObjectKind().GroupVersionKind()
+		// tempSub := &olmv1alpha1.Subscription{}
+		// tempSub.Spec = ([]byte)obj["spec"]
 
 		objInCluster, err := b.GetObject(obj)
 		if errors.IsNotFound(err) {
@@ -438,18 +440,63 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 		if len(alwaysUpdate) != 0 {
 			forceUpdate = alwaysUpdate[0]
 		}
-		// TODO: deep merge and update
-		if compareVersion(obj.GetAnnotations()["version"], objInCluster.GetAnnotations()["version"]) || forceUpdate {
-			klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
-			resourceVersion := objInCluster.GetResourceVersion()
-			obj.SetResourceVersion(resourceVersion)
-			if err := b.UpdateObject(obj); err != nil {
-				errMsg = err
+
+		// do not compareVersion if the resource is subscription
+		if gvk.Kind == "Subscription" { // debug
+			sub := b.GetSubscription(ctx, obj.GetName(), b.CSData.MasterNs)
+
+			var opt util.OperatorSub
+			// if err := utilyaml.Unmarshal([]byte(obj["spec"]), &opt); err != nil {
+			// 	return fmt.Errorf("failed to convert obj interface to instance: %v", err)
+			// }
+
+			if compareSub(sub, opt) || forceUpdate { // todo: reduce duplicated code
+				klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
+				resourceVersion := objInCluster.GetResourceVersion()
+				obj.SetResourceVersion(resourceVersion)
+				if err := b.UpdateObject(obj); err != nil {
+					errMsg = err
+				}
+			}
+		} else {
+			// TODO: deep merge and update
+			if compareVersion(obj.GetAnnotations()["version"], objInCluster.GetAnnotations()["version"]) || forceUpdate {
+				klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
+				resourceVersion := objInCluster.GetResourceVersion()
+				obj.SetResourceVersion(resourceVersion)
+				if err := b.UpdateObject(obj); err != nil {
+					errMsg = err
+				}
 			}
 		}
 	}
 
 	return errMsg
+}
+
+// GetSubscription returns the subscrption instance of "name" from "namespace" namespace
+func (b *Bootstrap) GetSubscription(ctx context.Context, name, namespace string) *olmv1alpha1.Subscription {
+	klog.Info("Fetch Subscription: %s/%s", namespace, name)
+	sub := &olmv1alpha1.Subscription{}
+	subKey := types.NamespacedName{
+		Name:      name,
+		Namespace: namespace,
+	}
+
+	if err := b.Reader.Get(ctx, subKey, sub); err != nil {
+		return nil
+	}
+
+	return sub
+}
+
+func compareSub(sub *olmv1alpha1.Subscription, template util.OperatorSub) (needUpdate bool) {
+	spec := sub.Spec
+	return spec.CatalogSource != template.Source ||
+		spec.Channel != template.Channel ||
+		spec.CatalogSourceNamespace != template.SourceNamespace ||
+		spec.Package != template.Name ||
+		spec.InstallPlanApproval != template.InstallPlanApproval
 }
 
 func (b *Bootstrap) CheckOperatorCatalog(ns string) error {
