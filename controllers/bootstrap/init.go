@@ -606,6 +606,14 @@ func (b *Bootstrap) installCrossplaneOperator() error {
 		return err
 	}
 	
+	if err := b.waitResourceReady("pkg.crossplane.io/v1", "Configuration"); err != nil {
+		return err
+	}
+	
+	if err := b.waitResourceReady("pkg.crossplane.io/v1alpha1", "Lock"); err != nil {
+		return err
+	}
+	
 	klog.Info("Creating Crossplane Configuration")
 	if err := b.createCrossplaneConfiguration(); err != nil {
 		klog.Errorf("Failed to create or update Crossplane Configuration: %v", err)
