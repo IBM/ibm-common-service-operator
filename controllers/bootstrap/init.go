@@ -26,6 +26,7 @@ import (
 	"text/template"
 	"time"
 
+	utilyaml "github.com/ghodss/yaml"
 	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -446,9 +447,10 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 			sub := b.GetSubscription(ctx, obj.GetName(), b.CSData.MasterNs)
 
 			var opt util.OperatorSub
-			// if err := utilyaml.Unmarshal([]byte(obj["spec"]), &opt); err != nil {
-			// 	return fmt.Errorf("failed to convert obj interface to instance: %v", err)
-			// }
+			interfaceOpt := util.GetNestedString(obj, "spec")
+			if err := utilyaml.Unmarshal(interfaceOpt.([]byte), &opt); err != nil {
+				return fmt.Errorf("failed to convert obj interface to instance: %v", err)
+			}
 
 			if compareSub(sub, opt) || forceUpdate { // todo: reduce duplicated code
 				klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)

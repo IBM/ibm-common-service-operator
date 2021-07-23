@@ -288,6 +288,12 @@ func GetMasterNs(r client.Reader) (masterNs string) {
 	return
 }
 
+// GetNestedString get specific field "fields" from the unstructured object
+func GetNestedString(u *unstructured.Unstructured, fields ...string) interface{} {
+	val, _, _ := unstructured.NestedString(u.Object, fields...)
+	return val
+}
+
 // UpdateNSList updates adopter namespaces of Common Services
 func UpdateNSList(r client.Reader, c client.Client, cm *corev1.ConfigMap, nssKey, masterNs string, addControlNs bool) error {
 	nsScope := &nssv1.NamespaceScope{}
