@@ -441,7 +441,6 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 			forceUpdate = alwaysUpdate[0]
 		}
 
-		klog.Info("[DEBUG] in CreateOrUpdateFromYaml")
 		// do not compareVersion if the resource is subscription
 		if gvk.Kind == "Subscription" { // debug
 			klog.Info("[DEBUG] Resource Type is Subscription")
@@ -531,12 +530,23 @@ func compareSub(sub *olmv1alpha1.Subscription, template util.OperatorSub) (needU
 		klog.Info("[DEBUG] spec.Package, template.Name: ", spec.Package, template.Name)
 	}
 
-	klog.Info("[DEBUG] spec.InstallPlanApproval, template.InstallPlanApproval: ", spec.InstallPlanApproval, template.InstallPlanApproval)
+	// var sTemp string = string(spec.InstallPlanApproval)
+	// klog.Info("[DEBUG] sTemp")
+	// klog.Info(sTemp)
+
+	// if sTemp != template.InstallPlanApproval {
+	// 	klog.Info("[DEBUG] YESYES")
+	// }
+
+	if string(spec.InstallPlanApproval) != template.InstallPlanApproval {
+		klog.Info("[DEBUG] spec.InstallPlanApproval, template.InstallPlanApproval: ", spec.InstallPlanApproval, template.InstallPlanApproval)
+	}
+
 	return spec.CatalogSource != template.Source ||
 		spec.Channel != template.Channel ||
 		spec.CatalogSourceNamespace != template.SourceNamespace ||
-		spec.Package != template.Name
-	// spec.InstallPlanApproval != template.InstallPlanApproval
+		spec.Package != template.Name ||
+		string(spec.InstallPlanApproval) != template.InstallPlanApproval
 }
 
 func (b *Bootstrap) CheckOperatorCatalog(ns string) error {
@@ -721,11 +731,7 @@ func (b *Bootstrap) installODLM(operatorNs string) error {
 	}
 
 	// Install ODLM Operator
-	klog.Info("[DEBUG] Installing ODLM Operator 1")
 	klog.Info("Installing ODLM Operator")
-	klog.Info("[DEBUG] operatorNs: ", operatorNs)
-	klog.Info("[DEBUG] constant.ClusterOperatorNamespace: ", constant.ClusterOperatorNamespace)
-	klog.Info("[DEBUG] Installing ODLM Operator 2")
 	if operatorNs == constant.ClusterOperatorNamespace {
 		if err := b.renderTemplate(constant.ODLMClusterSubscription, b.CSData); err != nil {
 			return err
