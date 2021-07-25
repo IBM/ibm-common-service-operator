@@ -61,11 +61,12 @@ type nsMapping struct {
 }
 
 type OperatorSub struct {
-	Channel             string               `json:"channel"`
-	InstallPlanApproval olmv1alpha1.Approval `json:"installPlanApproval,omitempty"`
-	Name                string               `json:"name"`
-	Source              string               `json:"source,omitempty"`
-	SourceNamespace     string               `json:"sourceNamespace,omitempty"`
+	Channel string `json:"channel"`
+	// InstallPlanApproval olmv1alpha1.Approval `json:"installPlanApproval,omitempty"`
+	InstallPlanApproval string `json:"installPlanApproval,omitempty"`
+	Name                string `json:"name"`
+	Source              string `json:"source,omitempty"`
+	SourceNamespace     string `json:"sourceNamespace,omitempty"`
 }
 
 var (

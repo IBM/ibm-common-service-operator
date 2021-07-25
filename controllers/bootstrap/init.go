@@ -26,7 +26,6 @@ import (
 	"text/template"
 	"time"
 
-	utilyaml "github.com/ghodss/yaml"
 	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -442,23 +441,41 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 			forceUpdate = alwaysUpdate[0]
 		}
 
+		klog.Info("[DEBUG] in CreateOrUpdateFromYaml")
 		// do not compareVersion if the resource is subscription
 		if gvk.Kind == "Subscription" { // debug
-			sub := b.GetSubscription(ctx, obj.GetName(), b.CSData.MasterNs)
+			klog.Info("[DEBUG] Resource Type is Subscription")
+			klog.Info("[DEBUG] obj.GetName(): ", obj.GetName())
+			sub := b.GetSubscription(ctx, obj.GetName(), b.CSData.MasterNs) // atodo check the name
+
+			klog.Info("[DEBUG] obj: ")
+			klog.Info(obj)
 
 			var opt util.OperatorSub
-			interfaceOpt := util.GetNestedString(obj, "spec")
-			if err := utilyaml.Unmarshal(interfaceOpt.([]byte), &opt); err != nil {
-				return fmt.Errorf("failed to convert obj interface to instance: %v", err)
-			}
+			opt.Channel = util.GetNestedString(obj, "spec", "channel").(string)
+			opt.InstallPlanApproval = util.GetNestedString(obj, "spec", "installPlanApproval").(string)
+			// opt.InstallPlanApproval = util.GetNestedString(obj, "spec", "installPlanApproval").(olmv1alpha1.Approval)
+			// Observed a panic: &runtime.TypeAssertionError{_interface:(*runtime._type)(0x158dd40), concrete:(*runtime._type)(0x155b940), asserted:(*runtime._type)(0x1557580), missingMethod:""} (interface conversion: interface {} is string, not v1alpha1.Approval)
+			opt.Name = util.GetNestedString(obj, "spec", "name").(string)
+			opt.Source = util.GetNestedString(obj, "spec", "source").(string)
+			opt.SourceNamespace = util.GetNestedString(obj, "spec", "sourceNamespace").(string)
 
-			if compareSub(sub, opt) || forceUpdate { // todo: reduce duplicated code
+			// klog.Info("[DEBUG] utilyaml.Unmarshal(interfaceOpt.([]byte), &opt)")
+			// if err := utilyaml.Unmarshal(interfaceOpt.([]byte), &opt); err != nil {
+			// 	return fmt.Errorf("failed to convert obj interface to instance: %v", err)
+			// }
+
+			if compareSub(sub, opt) { // todo: reduce duplicated code
+				// if compareSub(sub, opt) || forceUpdate { // todo: need forceupdate here?
+				klog.Info("[DEBUG] compareSub is true")
 				klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
 				resourceVersion := objInCluster.GetResourceVersion()
 				obj.SetResourceVersion(resourceVersion)
 				if err := b.UpdateObject(obj); err != nil {
 					errMsg = err
 				}
+			} else {
+				klog.Info("[DEBUG] compareSub is false")
 			}
 		} else {
 			// TODO: deep merge and update
@@ -478,27 +495,48 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 
 // GetSubscription returns the subscrption instance of "name" from "namespace" namespace
 func (b *Bootstrap) GetSubscription(ctx context.Context, name, namespace string) *olmv1alpha1.Subscription {
-	klog.Info("Fetch Subscription: %s/%s", namespace, name)
+	klog.Info("[DEBUG] in GetSubscription")
+	klog.Info("Fetch Subscription: ", namespace, name)
 	sub := &olmv1alpha1.Subscription{}
 	subKey := types.NamespacedName{
 		Name:      name,
 		Namespace: namespace,
 	}
 
-	if err := b.Reader.Get(ctx, subKey, sub); err != nil {
+	if err := b.Client.Get(ctx, subKey, sub); err != nil {
 		return nil
 	}
 
+	// klog.Info("[DEBUG] sub.spec")
+	// klog.Info(sub.Spec)
 	return sub
 }
 
 func compareSub(sub *olmv1alpha1.Subscription, template util.OperatorSub) (needUpdate bool) {
 	spec := sub.Spec
+
+	if spec.CatalogSource != template.Source {
+		klog.Info("[DEBUG] spec.CatalogSource, template.Source: ", spec.CatalogSource, template.Source)
+	}
+
+	if spec.Channel != template.Channel {
+		klog.Info("[DEBUG] spec.Channel, template.Channel: ", spec.Channel, template.Channel)
+	}
+
+	if spec.CatalogSourceNamespace != template.SourceNamespace {
+		klog.Info("[DEBUG] spec.CatalogSourceNamespace, template.SourceNamespace: ", spec.CatalogSourceNamespace, template.SourceNamespace)
+	}
+
+	if spec.Package != template.Name {
+		klog.Info("[DEBUG] spec.Package, template.Name: ", spec.Package, template.Name)
+	}
+
+	klog.Info("[DEBUG] spec.InstallPlanApproval, template.InstallPlanApproval: ", spec.InstallPlanApproval, template.InstallPlanApproval)
 	return spec.CatalogSource != template.Source ||
 		spec.Channel != template.Channel ||
 		spec.CatalogSourceNamespace != template.SourceNamespace ||
-		spec.Package != template.Name ||
-		spec.InstallPlanApproval != template.InstallPlanApproval
+		spec.Package != template.Name
+	// spec.InstallPlanApproval != template.InstallPlanApproval
 }
 
 func (b *Bootstrap) CheckOperatorCatalog(ns string) error {
@@ -683,7 +721,11 @@ func (b *Bootstrap) installODLM(operatorNs string) error {
 	}
 
 	// Install ODLM Operator
+	klog.Info("[DEBUG] Installing ODLM Operator 1")
 	klog.Info("Installing ODLM Operator")
+	klog.Info("[DEBUG] operatorNs: ", operatorNs)
+	klog.Info("[DEBUG] constant.ClusterOperatorNamespace: ", constant.ClusterOperatorNamespace)
+	klog.Info("[DEBUG] Installing ODLM Operator 2")
 	if operatorNs == constant.ClusterOperatorNamespace {
 		if err := b.renderTemplate(constant.ODLMClusterSubscription, b.CSData); err != nil {
 			return err
