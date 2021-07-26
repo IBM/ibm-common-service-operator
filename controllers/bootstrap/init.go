@@ -160,7 +160,7 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 
 // CrossplaneCloudOperator install crossplane & cloud operator when bedrockshim is true
 func (b *Bootstrap) CrossplaneCloudOperator(instance *apiv3.CommonService) error {
-	
+
 	// Install Crossplane Operator & Cloud Operator
 	bedrockshim := false
 	if instance.Spec.Features != nil {
@@ -605,15 +605,15 @@ func (b *Bootstrap) installCrossplaneOperator() error {
 		klog.Errorf("Failed to create or update Crossplane Operator subscription: %v", err)
 		return err
 	}
-	
+
 	if err := b.waitResourceReady("pkg.crossplane.io/v1", "Configuration"); err != nil {
 		return err
 	}
-	
+
 	if err := b.waitResourceReady("pkg.crossplane.io/v1alpha1", "Lock"); err != nil {
 		return err
 	}
-	
+
 	klog.Info("Creating Crossplane Configuration")
 	if err := b.createCrossplaneConfiguration(); err != nil {
 		klog.Errorf("Failed to create or update Crossplane Configuration: %v", err)
