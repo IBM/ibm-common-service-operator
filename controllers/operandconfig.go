@@ -301,6 +301,11 @@ func checkCRFromOperandConfig(serviceStatus map[string]interface{}, operatorName
 	if !ok {
 		return true
 	}
+
+	if opStatus.(map[string]interface{})["customResourceStatus"] == nil {
+		return true
+	}
+
 	for cr := range opStatus.(map[string]interface{})["customResourceStatus"].(map[string]interface{}) {
 		if strings.EqualFold(cr, crName) {
 			return false
