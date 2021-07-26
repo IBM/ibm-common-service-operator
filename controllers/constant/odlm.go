@@ -405,8 +405,6 @@ kind: Subscription
 metadata:
   name: operand-deployment-lifecycle-manager-app
   namespace: {{ .MasterNs }}
-  annotations:
-    version: {{ .Version }}
 spec:
   channel: {{ .Channel }}
   installPlanApproval: Automatic
@@ -421,8 +419,6 @@ kind: Subscription
 metadata:
   name: operand-deployment-lifecycle-manager-app
   namespace: {{ .MasterNs }}
-  annotations:
-    version: {{ .Version }}
 spec:
   channel: {{ .Channel }}
   installPlanApproval: Automatic
