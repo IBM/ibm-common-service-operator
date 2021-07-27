@@ -85,6 +85,7 @@ type CSData struct {
 	IsolatedModeEnable string
 	ApprovalMode       string
 	OnPremMultiEnable  string
+	CrossplaneProvider string
 }
 
 type CSOperator struct {
@@ -159,6 +160,8 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 
 // CrossplaneCloudOperator install crossplane & cloud operator when bedrockshim is true
 func (b *Bootstrap) CrossplaneCloudOperator(instance *apiv3.CommonService) error {
+
+	// Install Crossplane Operator & Cloud Operator
 	bedrockshim := false
 	if instance.Spec.Features != nil {
 		if instance.Spec.Features.Bedrockshim != nil {
@@ -166,19 +169,19 @@ func (b *Bootstrap) CrossplaneCloudOperator(instance *apiv3.CommonService) error
 		}
 	}
 
-	// Install Crossplane Operator
 	if bedrockshim {
-		if err := b.installCrossplaneOperator(); err != nil {
-			return err
-		}
-	}
+		b.CSData.CrossplaneProvider = "odlm"
 
-	// Install Cloud Operator
-	if bedrockshim {
 		if b.SaasEnable {
+			b.CSData.CrossplaneProvider = "ibmcloud"
 			if err := b.installCloudOperator(); err != nil {
 				return err
 			}
+
+		}
+
+		if err := b.installCrossplaneOperator(); err != nil {
+			return err
 		}
 	}
 
@@ -603,13 +606,23 @@ func (b *Bootstrap) installCrossplaneOperator() error {
 		return err
 	}
 
-	if err := b.waitResourceReady("operator.ibm.com/v1beta1", "Crossplane"); err != nil {
+	if err := b.waitResourceReady("pkg.crossplane.io/v1", "Configuration"); err != nil {
 		return err
 	}
 
-	klog.Info("Creating Crossplane Operator CR")
-	if err := b.createCrossplaneCR(); err != nil {
-		klog.Errorf("Failed to create or update Crossplane Operator CR: %v", err)
+	if err := b.waitResourceReady("pkg.crossplane.io/v1alpha1", "Lock"); err != nil {
+		return err
+	}
+
+	klog.Info("Creating Crossplane Configuration")
+	if err := b.createCrossplaneConfiguration(); err != nil {
+		klog.Errorf("Failed to create or update Crossplane Configuration: %v", err)
+		return err
+	}
+
+	klog.Info("Creating Crossplane Lock")
+	if err := b.createCrossplaneLock(); err != nil {
+		klog.Errorf("Failed to create or update Crossplane Lock: %v", err)
 		return err
 	}
 
@@ -698,8 +711,16 @@ func (b *Bootstrap) createCrossplaneSubscription() error {
 	return nil
 }
 
-func (b *Bootstrap) createCrossplaneCR() error {
-	resourceName := constant.CrossplaneCR
+func (b *Bootstrap) createCrossplaneConfiguration() error {
+	resourceName := constant.CrossConfiguration
+	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (b *Bootstrap) createCrossplaneLock() error {
+	resourceName := constant.CrossLock
 	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
 		return err
 	}
