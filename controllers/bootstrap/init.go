@@ -29,8 +29,10 @@ import (
 	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -441,18 +443,45 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 		if len(alwaysUpdate) != 0 {
 			forceUpdate = alwaysUpdate[0]
 		}
-		// TODO: deep merge and update
-		if compareVersion(obj.GetAnnotations()["version"], objInCluster.GetAnnotations()["version"]) || forceUpdate {
+		update := forceUpdate
+
+		// do not compareVersion if the resource is subscription
+		if gvk.Kind == "Subscription" {
+			sub := b.GetSubscription(ctx, obj.GetName(), b.CSData.MasterNs)
+			update = !equality.Semantic.DeepEqual(sub.Object["spec"], obj.Object["spec"])
+		} else if compareVersion(obj.GetAnnotations()["version"], objInCluster.GetAnnotations()["version"]) {
+			update = true
+		}
+
+		if update {
 			klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
-			resourceVersion := objInCluster.GetResourceVersion()
-			obj.SetResourceVersion(resourceVersion)
-			if err := b.UpdateObject(obj); err != nil {
+			objInCluster.Object["spec"] = obj.Object["spec"]
+			objInCluster.SetAnnotations(obj.GetAnnotations())
+			objInCluster.SetLabels(obj.GetLabels())
+			if err := b.UpdateObject(objInCluster); err != nil {
 				errMsg = err
 			}
 		}
 	}
 
 	return errMsg
+}
+
+// GetSubscription returns the subscription instance of "name" from "namespace" namespace
+func (b *Bootstrap) GetSubscription(ctx context.Context, name, namespace string) *unstructured.Unstructured {
+	klog.Info("Fetch Subscription: ", namespace, name)
+	sub := &unstructured.Unstructured{}
+	sub.SetGroupVersionKind(olmv1alpha1.SchemeGroupVersion.WithKind("subscription"))
+	subKey := types.NamespacedName{
+		Name:      name,
+		Namespace: namespace,
+	}
+
+	if err := b.Client.Get(ctx, subKey, sub); err != nil {
+		return nil
+	}
+
+	return sub
 }
 
 func (b *Bootstrap) CheckOperatorCatalog(ns string) error {
