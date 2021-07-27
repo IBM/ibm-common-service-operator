@@ -61,12 +61,13 @@ type nsMapping struct {
 }
 
 type OperatorSub struct {
-	Channel string `json:"channel"`
-	// InstallPlanApproval olmv1alpha1.Approval `json:"installPlanApproval,omitempty"`
+	Channel             string `json:"channel"`
 	InstallPlanApproval string `json:"installPlanApproval,omitempty"`
 	Name                string `json:"name"`
 	Source              string `json:"source,omitempty"`
 	SourceNamespace     string `json:"sourceNamespace,omitempty"`
+	InstallScope        string `json:"INSTALL_SCOPE"`
+	IsolatedMode        string `json:"ISOLATED_MODE"`
 }
 
 var (
@@ -292,6 +293,12 @@ func GetMasterNs(r client.Reader) (masterNs string) {
 // GetNestedString get specific field "fields" from the unstructured object
 func GetNestedString(u *unstructured.Unstructured, fields ...string) interface{} {
 	val, _, _ := unstructured.NestedString(u.Object, fields...)
+	return val
+}
+
+// GetNestedSlice get a list of value of fields from the unstructured object
+func GetNestedSlice(u *unstructured.Unstructured, fields ...string) []interface{} {
+	val, _, _ := unstructured.NestedSlice(u.Object, fields...)
 	return val
 }
 

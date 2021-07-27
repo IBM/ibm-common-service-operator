@@ -421,8 +421,6 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 
 	for _, obj := range objects {
 		gvk := obj.GetObjectKind().GroupVersionKind()
-		// tempSub := &olmv1alpha1.Subscription{}
-		// tempSub.Spec = ([]byte)obj["spec"]
 
 		objInCluster, err := b.GetObject(obj)
 		if errors.IsNotFound(err) {
@@ -440,51 +438,42 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 		if len(alwaysUpdate) != 0 {
 			forceUpdate = alwaysUpdate[0]
 		}
+		update := forceUpdate
 
 		// do not compareVersion if the resource is subscription
-		if gvk.Kind == "Subscription" { // debug
-			klog.Info("[DEBUG] Resource Type is Subscription")
-			klog.Info("[DEBUG] obj.GetName(): ", obj.GetName())
-			sub := b.GetSubscription(ctx, obj.GetName(), b.CSData.MasterNs) // atodo check the name
-
-			klog.Info("[DEBUG] obj: ")
-			klog.Info(obj)
+		if gvk.Kind == "Subscription" {
+			sub := b.GetSubscription(ctx, obj.GetName(), b.CSData.MasterNs)
 
 			var opt util.OperatorSub
 			opt.Channel = util.GetNestedString(obj, "spec", "channel").(string)
 			opt.InstallPlanApproval = util.GetNestedString(obj, "spec", "installPlanApproval").(string)
-			// opt.InstallPlanApproval = util.GetNestedString(obj, "spec", "installPlanApproval").(olmv1alpha1.Approval)
-			// Observed a panic: &runtime.TypeAssertionError{_interface:(*runtime._type)(0x158dd40), concrete:(*runtime._type)(0x155b940), asserted:(*runtime._type)(0x1557580), missingMethod:""} (interface conversion: interface {} is string, not v1alpha1.Approval)
 			opt.Name = util.GetNestedString(obj, "spec", "name").(string)
 			opt.Source = util.GetNestedString(obj, "spec", "source").(string)
 			opt.SourceNamespace = util.GetNestedString(obj, "spec", "sourceNamespace").(string)
-
-			// klog.Info("[DEBUG] utilyaml.Unmarshal(interfaceOpt.([]byte), &opt)")
-			// if err := utilyaml.Unmarshal(interfaceOpt.([]byte), &opt); err != nil {
-			// 	return fmt.Errorf("failed to convert obj interface to instance: %v", err)
-			// }
-
-			if compareSub(sub, opt) { // todo: reduce duplicated code
-				// if compareSub(sub, opt) || forceUpdate { // todo: need forceupdate here?
-				klog.Info("[DEBUG] compareSub is true")
-				klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
-				resourceVersion := objInCluster.GetResourceVersion()
-				obj.SetResourceVersion(resourceVersion)
-				if err := b.UpdateObject(obj); err != nil {
-					errMsg = err
-				}
-			} else {
-				klog.Info("[DEBUG] compareSub is false")
+			optEnv := util.GetNestedSlice(obj, "spec", "config", "env")
+			var optEnvSlice []map[string]interface{}
+			for _, s := range optEnv {
+				optEnvSlice = append(optEnvSlice, s.(map[string]interface{}))
 			}
-		} else {
+			if len(optEnvSlice) > 0 {
+				opt.InstallScope = optEnvSlice[0]["value"].(string)
+				opt.IsolatedMode = optEnvSlice[1]["value"].(string)
+			}
+
+			if compareSub(sub, opt) {
+				update = true
+			}
+		} else if compareVersion(obj.GetAnnotations()["version"], objInCluster.GetAnnotations()["version"]) {
+			update = true
+		}
+
+		if update {
 			// TODO: deep merge and update
-			if compareVersion(obj.GetAnnotations()["version"], objInCluster.GetAnnotations()["version"]) || forceUpdate {
-				klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
-				resourceVersion := objInCluster.GetResourceVersion()
-				obj.SetResourceVersion(resourceVersion)
-				if err := b.UpdateObject(obj); err != nil {
-					errMsg = err
-				}
+			klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
+			resourceVersion := objInCluster.GetResourceVersion()
+			obj.SetResourceVersion(resourceVersion)
+			if err := b.UpdateObject(obj); err != nil {
+				errMsg = err
 			}
 		}
 	}
@@ -494,7 +483,6 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 
 // GetSubscription returns the subscrption instance of "name" from "namespace" namespace
 func (b *Bootstrap) GetSubscription(ctx context.Context, name, namespace string) *olmv1alpha1.Subscription {
-	klog.Info("[DEBUG] in GetSubscription")
 	klog.Info("Fetch Subscription: ", namespace, name)
 	sub := &olmv1alpha1.Subscription{}
 	subKey := types.NamespacedName{
@@ -506,47 +494,42 @@ func (b *Bootstrap) GetSubscription(ctx context.Context, name, namespace string)
 		return nil
 	}
 
-	// klog.Info("[DEBUG] sub.spec")
-	// klog.Info(sub.Spec)
 	return sub
 }
 
 func compareSub(sub *olmv1alpha1.Subscription, template util.OperatorSub) (needUpdate bool) {
 	spec := sub.Spec
 
-	if spec.CatalogSource != template.Source {
-		klog.Info("[DEBUG] spec.CatalogSource, template.Source: ", spec.CatalogSource, template.Source)
-	}
-
-	if spec.Channel != template.Channel {
-		klog.Info("[DEBUG] spec.Channel, template.Channel: ", spec.Channel, template.Channel)
-	}
-
-	if spec.CatalogSourceNamespace != template.SourceNamespace {
-		klog.Info("[DEBUG] spec.CatalogSourceNamespace, template.SourceNamespace: ", spec.CatalogSourceNamespace, template.SourceNamespace)
-	}
-
-	if spec.Package != template.Name {
-		klog.Info("[DEBUG] spec.Package, template.Name: ", spec.Package, template.Name)
-	}
-
-	// var sTemp string = string(spec.InstallPlanApproval)
-	// klog.Info("[DEBUG] sTemp")
-	// klog.Info(sTemp)
-
-	// if sTemp != template.InstallPlanApproval {
-	// 	klog.Info("[DEBUG] YESYES")
-	// }
-
-	if string(spec.InstallPlanApproval) != template.InstallPlanApproval {
-		klog.Info("[DEBUG] spec.InstallPlanApproval, template.InstallPlanApproval: ", spec.InstallPlanApproval, template.InstallPlanApproval)
+	subConfig := false
+	if len(spec.Config.Env) > 0 {
+		if spec.Config.Env[0].Name == "INSTALL_SCOPE" {
+			if spec.Config.Env[0].Value != template.InstallScope {
+				subConfig = true
+			} else if len(spec.Config.Env) > 1 && spec.Config.Env[1].Value != template.IsolatedMode {
+				subConfig = true
+			}
+		} else if spec.Config.Env[0].Name == "ISOLATED_MODE" {
+			if spec.Config.Env[0].Value != template.IsolatedMode {
+				subConfig = true
+			} else if len(spec.Config.Env) > 1 && spec.Config.Env[1].Value != template.InstallScope {
+				subConfig = true
+			}
+		}
+	} else if len(spec.Config.Env) == 0 {
+		if len(template.InstallScope) > 0 || len(template.IsolatedMode) > 0 {
+			subConfig = true
+		}
+	} else if len(spec.Config.Env) > 2 {
+		// TODO: if more fields add in Subscription/Spec/Config -> need create a more general method to compare
+		klog.Warning("More than 2 fields found in Subscription/Spec/Config/Env")
 	}
 
 	return spec.CatalogSource != template.Source ||
 		spec.Channel != template.Channel ||
 		spec.CatalogSourceNamespace != template.SourceNamespace ||
 		spec.Package != template.Name ||
-		string(spec.InstallPlanApproval) != template.InstallPlanApproval
+		string(spec.InstallPlanApproval) != template.InstallPlanApproval ||
+		subConfig
 }
 
 func (b *Bootstrap) CheckOperatorCatalog(ns string) error {
@@ -732,6 +715,7 @@ func (b *Bootstrap) installODLM(operatorNs string) error {
 
 	// Install ODLM Operator
 	klog.Info("Installing ODLM Operator")
+
 	if operatorNs == constant.ClusterOperatorNamespace {
 		if err := b.renderTemplate(constant.ODLMClusterSubscription, b.CSData); err != nil {
 			return err
