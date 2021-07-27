@@ -29,8 +29,10 @@ import (
 	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -443,36 +445,17 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 		// do not compareVersion if the resource is subscription
 		if gvk.Kind == "Subscription" {
 			sub := b.GetSubscription(ctx, obj.GetName(), b.CSData.MasterNs)
-
-			var opt util.OperatorSub
-			opt.Channel = util.GetNestedString(obj, "spec", "channel").(string)
-			opt.InstallPlanApproval = util.GetNestedString(obj, "spec", "installPlanApproval").(string)
-			opt.Name = util.GetNestedString(obj, "spec", "name").(string)
-			opt.Source = util.GetNestedString(obj, "spec", "source").(string)
-			opt.SourceNamespace = util.GetNestedString(obj, "spec", "sourceNamespace").(string)
-			optEnv := util.GetNestedSlice(obj, "spec", "config", "env")
-			var optEnvSlice []map[string]interface{}
-			for _, s := range optEnv {
-				optEnvSlice = append(optEnvSlice, s.(map[string]interface{}))
-			}
-			if len(optEnvSlice) > 0 {
-				opt.InstallScope = optEnvSlice[0]["value"].(string)
-				opt.IsolatedMode = optEnvSlice[1]["value"].(string)
-			}
-
-			if compareSub(sub, opt) {
-				update = true
-			}
+			update = !equality.Semantic.DeepEqual(sub.Object["spec"], obj.Object["spec"])
 		} else if compareVersion(obj.GetAnnotations()["version"], objInCluster.GetAnnotations()["version"]) {
 			update = true
 		}
 
 		if update {
-			// TODO: deep merge and update
 			klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
-			resourceVersion := objInCluster.GetResourceVersion()
-			obj.SetResourceVersion(resourceVersion)
-			if err := b.UpdateObject(obj); err != nil {
+			objInCluster.Object["spec"] = obj.Object["spec"]
+			objInCluster.SetAnnotations(obj.GetAnnotations())
+			objInCluster.SetLabels(obj.GetLabels())
+			if err := b.UpdateObject(objInCluster); err != nil {
 				errMsg = err
 			}
 		}
@@ -481,10 +464,11 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 	return errMsg
 }
 
-// GetSubscription returns the subscrption instance of "name" from "namespace" namespace
-func (b *Bootstrap) GetSubscription(ctx context.Context, name, namespace string) *olmv1alpha1.Subscription {
+// GetSubscription returns the subscription instance of "name" from "namespace" namespace
+func (b *Bootstrap) GetSubscription(ctx context.Context, name, namespace string) *unstructured.Unstructured {
 	klog.Info("Fetch Subscription: ", namespace, name)
-	sub := &olmv1alpha1.Subscription{}
+	sub := &unstructured.Unstructured{}
+	sub.SetGroupVersionKind(olmv1alpha1.SchemeGroupVersion.WithKind("subscription"))
 	subKey := types.NamespacedName{
 		Name:      name,
 		Namespace: namespace,
@@ -495,41 +479,6 @@ func (b *Bootstrap) GetSubscription(ctx context.Context, name, namespace string)
 	}
 
 	return sub
-}
-
-func compareSub(sub *olmv1alpha1.Subscription, template util.OperatorSub) (needUpdate bool) {
-	spec := sub.Spec
-
-	subConfig := false
-	if len(spec.Config.Env) > 0 {
-		if spec.Config.Env[0].Name == "INSTALL_SCOPE" {
-			if spec.Config.Env[0].Value != template.InstallScope {
-				subConfig = true
-			} else if len(spec.Config.Env) > 1 && spec.Config.Env[1].Value != template.IsolatedMode {
-				subConfig = true
-			}
-		} else if spec.Config.Env[0].Name == "ISOLATED_MODE" {
-			if spec.Config.Env[0].Value != template.IsolatedMode {
-				subConfig = true
-			} else if len(spec.Config.Env) > 1 && spec.Config.Env[1].Value != template.InstallScope {
-				subConfig = true
-			}
-		}
-	} else if len(spec.Config.Env) == 0 {
-		if len(template.InstallScope) > 0 || len(template.IsolatedMode) > 0 {
-			subConfig = true
-		}
-	} else if len(spec.Config.Env) > 2 {
-		// TODO: if more fields add in Subscription/Spec/Config -> need create a more general method to compare
-		klog.Warning("More than 2 fields found in Subscription/Spec/Config/Env")
-	}
-
-	return spec.CatalogSource != template.Source ||
-		spec.Channel != template.Channel ||
-		spec.CatalogSourceNamespace != template.SourceNamespace ||
-		spec.Package != template.Name ||
-		string(spec.InstallPlanApproval) != template.InstallPlanApproval ||
-		subConfig
 }
 
 func (b *Bootstrap) CheckOperatorCatalog(ns string) error {
@@ -715,7 +664,6 @@ func (b *Bootstrap) installODLM(operatorNs string) error {
 
 	// Install ODLM Operator
 	klog.Info("Installing ODLM Operator")
-
 	if operatorNs == constant.ClusterOperatorNamespace {
 		if err := b.renderTemplate(constant.ODLMClusterSubscription, b.CSData); err != nil {
 			return err
