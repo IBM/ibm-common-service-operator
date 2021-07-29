@@ -267,6 +267,19 @@ spec:
               verbs:
                 - create
                 - get
+            - apiGroups:
+                - pkg.crossplane.io
+              resources:
+                - locks
+                - configurations
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
           serviceAccountName: ibm-common-service-operator
       deployments:
         - name: ibm-common-service-operator
