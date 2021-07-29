@@ -22,8 +22,6 @@ kind: Subscription
 metadata:
   name: ibm-namespace-scope-operator-restricted
   namespace: {{ .MasterNs }}
-  annotations:
-    version: {{ .Version }}
 spec:
   channel: {{ .Channel }}
   installPlanApproval: Automatic
@@ -38,8 +36,6 @@ kind: Subscription
 metadata:
   name: ibm-namespace-scope-operator
   namespace: {{ .MasterNs }}
-  annotations:
-    version: {{ .Version }}
 spec:
   channel: {{ .Channel }}
   installPlanApproval: Automatic

@@ -119,25 +119,7 @@ function switch_to_continous_delivery() {
         msg ""
     done < <(oc get sub -n ibm-common-services | awk '{print $1}')
 
-    certmanagersub=$(oc get sub ibm-cert-manager-operator -n ibm-common-services --ignore-not-found)
-    certmanagercsv=$(oc get csv -n ibm-common-services | grep ibm-cert-manager-operator | awk '{print $1}')
-    if [[ "X${certmanagersub}" != "X" ]]; then
-        msg "Deleting ibm-cert-manager-operator in namesapce ibm-common-services, it will be re-installed by ODLM after the upgrade is successful ..."
-        msg "-----------------------------------------------------------------------"
-
-        in_step=1
-        msg "[${in_step}] Removing the subscription of ibm-cert-manager-operator in namesapce ibm-common-services ..."
-        oc delete sub ibm-cert-manager-operator -n ibm-common-services 2> /dev/null
-
-        in_step=$((in_step + 1))
-        msg "[${in_step}] Removing the csv of ibm-cert-manager-operator in namesapce ibm-common-services ..."
-        oc delete csv ${certmanagercsv} -n ibm-common-services 2> /dev/null
-
-        msg ""
-
-        success "Remove ibm-cert-manager-operator successfully."
-        msg ""
-    fi
+    delete_operator "operand-deployment-lifecycle-manager-app ibm-namespace-scope-operator-restricted ibm-namespace-scope-operator ibm-cert-manager-operator" "ibm-common-services"
 
     msg "Creating namespace scope config in namespace ibm-common-services..."
     msg "-----------------------------------------------------------------------"
@@ -176,6 +158,26 @@ function check_switch_complete() {
     done < <(oc get sub -n ibm-common-services | awk '{print $1}')
 
     success "Updated all operator subscriptions in namespace ibm-common-services successfully."
+}
+
+function delete_operator() {
+    subs=$1
+    ns=$2
+    for sub in ${subs}; do
+        msg "Deleting ${sub} in namesapce ${ns}, it will be re-installed after the upgrade is successful ..."
+        msg "-----------------------------------------------------------------------"
+        csv=$(oc get sub ${sub} -n ${ns} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
+        in_step=1
+        msg "[${in_step}] Removing the subscription of ${sub} in namesapce ${ns} ..."
+        oc delete sub ${sub} -n ${ns} --ignore-not-found
+        in_step=$((in_step + 1))
+        msg "[${in_step}] Removing the csv of ${sub} in namesapce ${ns} ..."
+        [[ "X${csv}" != "X" ]] && oc delete csv ${csv}  -n ${ns} --ignore-not-found
+        msg ""
+
+        success "Remove $sub successfully."
+        msg ""
+    done
 }
 
 function msg() {
