@@ -61,6 +61,7 @@ type nsMapping struct {
 }
 
 type BedrockOperator struct {
+	Name    string `json:"name"`
 	Version string `json:"version"`
 	Status  string `json:"status"`
 }

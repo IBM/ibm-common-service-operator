@@ -54,9 +54,17 @@ type Bedrockshim struct {
 	Enabled bool `json:"enabled,omitempty"`
 }
 
+// BedrockOperator maintains a list of bedrock operators
+type BedrockOperator struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+	Status  string `json:"status"`
+}
+
 // CommonServiceStatus defines the observed state of CommonService
 type CommonServiceStatus struct {
-	Phase string `json:"phase,omitempty"`
+	Phase            string            `json:"phase,omitempty"`
+	BedrockOperators []BedrockOperator `json:"bedrockOperators,omitempty"`
 }
 
 // +kubebuilder:object:root=true
