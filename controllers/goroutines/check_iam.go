@@ -21,6 +21,7 @@ import (
 	"regexp"
 	"time"
 
+	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -33,6 +34,79 @@ import (
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 )
+
+// UpdateCsCrStatus will update cs cr status according to each bedrock operator
+func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
+	MasterNamespace := bs.CSData.MasterNs
+	// ControlNamespace := bs.CSData.ControlNs
+
+	for {
+		instance := &apiv3.CommonService{}
+		// if err := bs.Client.Get(ctx, MasterNamespace.(types.NamespacedName), instance); err != nil { // get ibm-common-services ns cs cr
+		if instance == nil {
+			klog.Infof("[DEBUG] %s CS CR not created", MasterNamespace)
+			// maybe add a waiting time?
+			continue
+		}
+
+		var operatorSlice []util.BedrockOperator
+		// get all installed operator
+
+		operatorSlice = getBedrockOperator(bs, "ibm-iam-operator", operatorSlice) // atodo: can I pass the slice as pointer? so less deep copy
+		operatorSlice = getBedrockOperator(bs, "ibm-cert-manager-operator", operatorSlice)
+		klog.Info("[DEBUG] operatorSlice length")
+		klog.Info(len(operatorSlice))
+
+		// update cs cr according to operatorSlice
+		for _, opt := range operatorSlice {
+			// opt.Version
+			// opt.Status
+		}
+		// instance.Status = operatorSlice // atodo: enable parameter for each oprator
+
+		time.Sleep(1 * time.Minute) // atodo: adjust the wait time
+	}
+}
+
+func getBedrockOperator(bs *bootstrap.Bootstrap, name string, operatorSlice []util.BedrockOperator) []util.BedrockOperator {
+	var opt util.BedrockOperator
+
+	// fetch subscription
+	sub := &olmv1alpha1.Subscription{}
+	// iamSub.SetGroupVersionKind(olmv1alpha1.SchemeGroupVersion.WithKind("subscription"))
+	subKey := types.NamespacedName{
+		Name:      name,
+		Namespace: MasterNamespace,
+	}
+	if subErr := bs.Client.Get(ctx, subKey, sub); subErr != nil {
+		klog.Info(subErr)
+		return nil
+	}
+	klog.Info("[DEBUG] operator name + version")
+	klog.Info(sub.Status.InstalledCSV)
+	opt.Version = sub.Status.InstalledCSV
+
+	// fetch csv
+	csvKey := types.NamespacedName{
+		Name:      opt.Version,
+		Namespace: MasterNamespace,
+	}
+	csv := &olmv1alpha1.ClusterServiceVersion{}
+	// opt.SetGroupVersionKind(olmv1alpha1.SchemeGroupVersion.WithKind("ClusterServiceVersion"))
+	if csvErr := bs.Client.Get(ctx, csvKey, csv); csvErr != nil {
+		klog.Info(csvErr)
+		return nil
+	}
+	csvStatus := csv.Status.Conditions[len(csv.Status.Conditions)-1].Phase
+	klog.Info("[DEBUG] csv Status")
+	klog.Info(csvStatus)
+	// opt.Status = csvStatus
+
+	if opt.Version != nil && opt.Status != nil {
+		operatorSlice = append(operatorSlice, opt)
+	}
+	return operatorSlice
+}
 
 // CheckIamStatus check IAM status if ready
 func CheckIamStatus(bs *bootstrap.Bootstrap) {

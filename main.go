@@ -169,6 +169,8 @@ func main() {
 		go goroutines.DeployCertManagerCR(bs)
 		// Sync up NSS CR
 		go goroutines.SyncUpNSSCR(bs)
+		// Update CS CR Status
+		go goroutines.UpdateCsCrStatus(bs)
 
 		if err = (&controllers.CommonServiceReconciler{
 			Bootstrap: bs,
