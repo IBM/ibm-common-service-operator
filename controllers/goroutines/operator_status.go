@@ -61,10 +61,15 @@ func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 			"operand-deployment-lifecycle-manager-app"}
 
 		for _, name := range operatorsName {
+			var opt apiv3.BedrockOperator
 			if bs.MultiInstancesEnable && (name == "ibm-cert-manager-operator" || name == "ibm-licensing-operator") {
-				getBedrockOperator(bs, name, bs.CSData.ControlNs, &operatorSlice)
+				opt = getBedrockOperator(bs, name, bs.CSData.ControlNs)
 			} else {
-				getBedrockOperator(bs, name, bs.CSData.MasterNs, &operatorSlice)
+				opt = getBedrockOperator(bs, name, bs.CSData.MasterNs)
+			}
+
+			if opt.Version != "" && opt.Status != "" {
+				operatorSlice = append(operatorSlice, opt)
 			}
 		}
 
@@ -77,7 +82,7 @@ func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 	}
 }
 
-func getBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string, operatorSlice *[]apiv3.BedrockOperator) {
+func getBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string) apiv3.BedrockOperator {
 	var opt apiv3.BedrockOperator
 
 	// fetch subscription
@@ -87,7 +92,7 @@ func getBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string, operato
 		Namespace: namespace,
 	}
 	if subErr := bs.Client.Get(ctx, subKey, sub); subErr != nil {
-		return
+		return opt
 	}
 	installCSV := sub.Status.InstalledCSV
 	if installCSV != "" {
@@ -101,16 +106,13 @@ func getBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string, operato
 		Name:      installCSV,
 		Namespace: namespace,
 	}
-	csv.SetGroupVersionKind(olmv1alpha1.SchemeGroupVersion.WithKind("ClusterServiceVersion"))
 	if csvErr := bs.Reader.Get(ctx, csvKey, csv); csvErr != nil {
-		return
+		return opt
 	}
 	if len(csv.Status.Conditions) > 0 {
 		csvStatus := csv.Status.Conditions[len(csv.Status.Conditions)-1].Phase
 		opt.Status = fmt.Sprintf("%v", csvStatus)
 	}
 
-	if opt.Version != "" && opt.Status != "" {
-		(*operatorSlice) = append((*operatorSlice), opt)
-	}
+	return opt
 }
