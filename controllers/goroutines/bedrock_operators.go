@@ -42,7 +42,6 @@ func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 		}
 
 		var operatorSlice []apiv3.BedrockOperator
-		// get all installed operator
 		operatorsName := []string{
 			"ibm-auditlogging-operator",
 			"ibm-cert-manager-operator",
@@ -91,8 +90,10 @@ func getBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string, operato
 		return
 	}
 	installCSV := sub.Status.InstalledCSV
-	opt.Name = installCSV[:strings.IndexByte(installCSV, '.')]
-	opt.Version = installCSV[strings.IndexByte(installCSV, '.')+1:]
+	if installCSV != "" {
+		opt.Name = installCSV[:strings.IndexByte(installCSV, '.')]
+		opt.Version = installCSV[strings.IndexByte(installCSV, '.')+1:]
+	}
 
 	// fetch csv
 	csv := &olmv1alpha1.ClusterServiceVersion{}
@@ -104,8 +105,10 @@ func getBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string, operato
 	if csvErr := bs.Reader.Get(ctx, csvKey, csv); csvErr != nil {
 		return
 	}
-	csvStatus := csv.Status.Conditions[len(csv.Status.Conditions)-1].Phase
-	opt.Status = fmt.Sprintf("%v", csvStatus)
+	if len(csv.Status.Conditions) > 0 {
+		csvStatus := csv.Status.Conditions[len(csv.Status.Conditions)-1].Phase
+		opt.Status = fmt.Sprintf("%v", csvStatus)
+	}
 
 	if opt.Version != "" && opt.Status != "" {
 		(*operatorSlice) = append((*operatorSlice), opt)
