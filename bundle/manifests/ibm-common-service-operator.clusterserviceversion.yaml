@@ -198,6 +198,8 @@ spec:
                 - list
                 - update
                 - watch
+                - bind
+                - escalate
             - apiGroups:
                 - ""
               resources:

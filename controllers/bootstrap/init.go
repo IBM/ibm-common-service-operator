@@ -455,10 +455,9 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 
 		if update {
 			klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
-			objInCluster.Object["spec"] = obj.Object["spec"]
-			objInCluster.SetAnnotations(obj.GetAnnotations())
-			objInCluster.SetLabels(obj.GetLabels())
-			if err := b.UpdateObject(objInCluster); err != nil {
+			resourceVersion := objInCluster.GetResourceVersion()
+			obj.SetResourceVersion(resourceVersion)
+			if err := b.UpdateObject(obj); err != nil {
 				errMsg = err
 			}
 		}

@@ -78,6 +78,8 @@ rules:
   - list
   - update
   - watch
+  - bind
+  - escalate
 # copy secret and configmap to other namespaces
 - verbs:
   - create
