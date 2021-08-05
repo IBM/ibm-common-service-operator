@@ -78,6 +78,18 @@ spec:
           status:
             description: CommonServiceStatus defines the observed state of CommonService
             properties:
+              bedrockOperators:
+                items:
+                  description: BedrockOperator maintains a list of bedrock operators
+                  properties:
+                    name:
+                      type: string
+                    status:
+                      type: string
+                    version:
+                      type: string
+                  type: object
+                type: array
               phase:
                 type: string
             type: object
