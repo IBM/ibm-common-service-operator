@@ -60,12 +60,6 @@ type nsMapping struct {
 	CsNs      string   `json:"map-to-common-service-namespace"`
 }
 
-type BedrockOperator struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
-	Status  string `json:"status"`
-}
-
 var (
 	ImageList = []string{"IBM_SECRETSHARE_OPERATOR_IMAGE", "IBM_CS_WEBHOOK_IMAGE"}
 )

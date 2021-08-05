@@ -18,12 +18,9 @@ package goroutines
 
 import (
 	"context"
-	"fmt"
 	"regexp"
-	"strings"
 	"time"
 
-	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -36,75 +33,6 @@ import (
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 )
-
-// UpdateCsCrStatus will update cs cr status according to each bedrock operator
-func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
-	MasterNamespace := bs.CSData.MasterNs
-	// ControlNamespace := bs.CSData.ControlNs
-
-	for {
-		instance := &apiv3.CommonService{}
-		if instance == nil {
-			klog.Infof("[DEBUG] %s CS CR not created", MasterNamespace)
-			continue
-		}
-
-		var operatorSlice []util.BedrockOperator
-		// get all installed operator
-		operatorSlice = getBedrockOperator(bs, "ibm-iam-operator", operatorSlice) // atodo: can I pass the slice as pointer? so less deep copy
-		operatorSlice = getBedrockOperator(bs, "ibm-cert-manager-operator", operatorSlice)
-
-		// update cs cr according to operatorSlice
-		for _, opt := range operatorSlice {
-			var crOpt apiv3.BedrockOperator
-			crOpt.Name = opt.Name
-			crOpt.Version = opt.Version
-			crOpt.Status = opt.Status
-
-			klog.Info(crOpt.Name)
-			klog.Info(crOpt.Version)
-			klog.Info(crOpt.Status)
-			instance.Status.BedrockOperators = append(instance.Status.BedrockOperators, crOpt)
-		}
-
-		time.Sleep(10 * time.Second) // atodo: adjust the wait time
-	}
-}
-
-func getBedrockOperator(bs *bootstrap.Bootstrap, name string, operatorSlice []util.BedrockOperator) []util.BedrockOperator {
-	// TODO: test with an operator not installed
-	var opt util.BedrockOperator
-
-	// fetch subscription
-	sub := &olmv1alpha1.Subscription{}
-	subKey := types.NamespacedName{
-		Name:      name,
-		Namespace: MasterNamespace,
-	}
-	if subErr := bs.Client.Get(ctx, subKey, sub); subErr != nil {
-		return nil
-	}
-	installCSV := sub.Status.InstalledCSV
-	opt.Name = installCSV[:strings.IndexByte(installCSV, '.')]
-	opt.Version = installCSV[strings.IndexByte(installCSV, '.')+1:]
-
-	// fetch csv
-	csvKey := types.NamespacedName{
-		Name:      installCSV,
-		Namespace: MasterNamespace,
-	}
-	csv := &olmv1alpha1.ClusterServiceVersion{}
-	if csvErr := bs.Client.Get(ctx, csvKey, csv); csvErr != nil {
-		return nil
-	}
-	csvStatus := csv.Status.Conditions[len(csv.Status.Conditions)-1].Phase
-	opt.Status = fmt.Sprintf("%v", csvStatus)
-
-	if opt.Version != "" && opt.Status != "" {
-		operatorSlice = append(operatorSlice, opt)
-	}
-	return operatorSlice
-}
 
 // CheckIamStatus check IAM status if ready
 func CheckIamStatus(bs *bootstrap.Bootstrap) {
