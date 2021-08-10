@@ -63,13 +63,15 @@ func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 
 		for _, name := range operatorsName {
 			var opt apiv3.BedrockOperator
+			var err error
+
 			if bs.MultiInstancesEnable && (name == "ibm-cert-manager-operator" || name == "ibm-licensing-operator") {
-				opt = getBedrockOperator(bs, name, bs.CSData.ControlNs)
+				opt, err = getBedrockOperator(bs, name, bs.CSData.ControlNs)
 			} else {
-				opt = getBedrockOperator(bs, name, bs.CSData.MasterNs)
+				opt, err = getBedrockOperator(bs, name, bs.CSData.MasterNs)
 			}
 
-			if opt.Version != "" && opt.Status != "" {
+			if err == nil {
 				operatorSlice = append(operatorSlice, opt)
 			}
 		}
@@ -83,8 +85,9 @@ func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 	}
 }
 
-func getBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string) apiv3.BedrockOperator {
+func getBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string) (apiv3.BedrockOperator, error) {
 	var opt apiv3.BedrockOperator
+	opt.Name = name
 
 	// fetch subscription
 	sub := &olmv1alpha1.Subscription{}
@@ -93,7 +96,7 @@ func getBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string) apiv3.B
 		Namespace: namespace,
 	}
 	if err := bs.Client.Get(ctx, subKey, sub); err != nil {
-		return opt
+		return opt, err
 	}
 	installedCSV := sub.Status.InstalledCSV
 	if installedCSV != "" {
@@ -108,27 +111,32 @@ func getBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string) apiv3.B
 		Namespace: namespace,
 	}
 	if err := bs.Reader.Get(ctx, csvKey, csv); err != nil {
-		return opt
+		klog.Warningf("%s CSV %s", name, err)
 	}
 
-	// fetch installplan
-	installplanName := sub.Status.Install.Name
-	if installplanName == "" {
-		opt.SubscriptionStatus = "Failed"
+	// fetch installplanName
+	installplanName := ""
+	if sub.Status.Install != nil {
+		installplanName = sub.Status.Install.Name
 	}
 	opt.InstallPlanName = installplanName
 
 	// determinate subscription status
-	currentCSV := sub.Status.CurrentCSV
-	installedIsLarger := util.CompareVersion(installedCSV, currentCSV)
-	currentIsLarger := util.CompareVersion(currentCSV, installedCSV)
-	if !installedIsLarger && !currentIsLarger {
-		// installedCSV == currentCSV
-		opt.SubscriptionStatus = "Succeeded"
-	} else if currentIsLarger {
-		opt.SubscriptionStatus = "Upgrade available"
+	if installplanName == "" {
+		opt.SubscriptionStatus = "Failed"
+		opt.InstallPlanName = "Not Found"
 	} else {
-		klog.Warning("installedCSV version is larger than currentCSV")
+		currentCSV := sub.Status.CurrentCSV
+		installedIsLarger := util.CompareVersion(installedCSV, currentCSV)
+		currentIsLarger := util.CompareVersion(currentCSV, installedCSV)
+		if !installedIsLarger && !currentIsLarger {
+			// installedCSV == currentCSV
+			opt.SubscriptionStatus = "Succeeded"
+		} else if currentIsLarger {
+			opt.SubscriptionStatus = "Upgrade available"
+		} else {
+			klog.Warning("installedCSV version is larger than currentCSV")
+		}
 	}
 
 	if len(csv.Status.Conditions) > 0 {
@@ -136,5 +144,5 @@ func getBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string) apiv3.B
 		opt.Status = fmt.Sprintf("%v", csvStatus)
 	}
 
-	return opt
+	return opt, nil
 }
