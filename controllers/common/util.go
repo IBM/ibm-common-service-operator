@@ -64,6 +64,38 @@ var (
 	ImageList = []string{"IBM_SECRETSHARE_OPERATOR_IMAGE", "IBM_CS_WEBHOOK_IMAGE"}
 )
 
+// CompareVersion takes vx.y.z, vx.y.z -> bool
+func CompareVersion(v1, v2 string) (v1IsLarger bool) {
+	if v1 == "" {
+		v1 = "0.0.0"
+	}
+	v1Slice := strings.Split(v1, ".")
+	if len(v1Slice) == 1 {
+		v1 = "0.0." + v1
+	}
+
+	if v2 == "" {
+		v2 = "0.0.0"
+	}
+	v2Slice := strings.Split(v2, ".")
+	if len(v2Slice) == 1 {
+		v2 = "0.0." + v2
+	}
+
+	v1Slice = strings.Split(v1, ".")
+	v2Slice = strings.Split(v2, ".")
+	for index := range v1Slice {
+		if v1Slice[index] > v2Slice[index] {
+			return true
+		} else if v1Slice[index] == v2Slice[index] {
+			continue
+		} else {
+			return false
+		}
+	}
+	return false
+}
+
 // YamlToObjects convert YAML content to unstructured objects
 func YamlToObjects(yamlContent []byte) ([]*unstructured.Unstructured, error) {
 	var objects []*unstructured.Unstructured

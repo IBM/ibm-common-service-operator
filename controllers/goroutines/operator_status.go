@@ -27,6 +27,7 @@ import (
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
+	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 )
 
 // UpdateCsCrStatus will update cs cr status according to each bedrock operator
@@ -91,24 +92,45 @@ func getBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string) apiv3.B
 		Name:      name,
 		Namespace: namespace,
 	}
-	if subErr := bs.Client.Get(ctx, subKey, sub); subErr != nil {
+	if err := bs.Client.Get(ctx, subKey, sub); err != nil {
 		return opt
 	}
-	installCSV := sub.Status.InstalledCSV
-	if installCSV != "" {
-		opt.Name = installCSV[:strings.IndexByte(installCSV, '.')]
-		opt.Version = installCSV[strings.IndexByte(installCSV, '.')+1:]
+	installedCSV := sub.Status.InstalledCSV
+	if installedCSV != "" {
+		opt.Name = installedCSV[:strings.IndexByte(installedCSV, '.')]
+		opt.Version = installedCSV[strings.IndexByte(installedCSV, '.')+1:]
 	}
 
 	// fetch csv
 	csv := &olmv1alpha1.ClusterServiceVersion{}
 	csvKey := types.NamespacedName{
-		Name:      installCSV,
+		Name:      installedCSV,
 		Namespace: namespace,
 	}
-	if csvErr := bs.Reader.Get(ctx, csvKey, csv); csvErr != nil {
+	if err := bs.Reader.Get(ctx, csvKey, csv); err != nil {
 		return opt
 	}
+
+	// fetch installplan
+	installplanName := sub.Status.Install.Name
+	if installplanName == "" {
+		opt.SubscriptionStatus = "Failed"
+	}
+	opt.InstallPlanName = installplanName
+
+	// determinate subscription status
+	currentCSV := sub.Status.CurrentCSV
+	installedIsLarger := util.CompareVersion(installedCSV, currentCSV)
+	currentIsLarger := util.CompareVersion(currentCSV, installedCSV)
+	if !installedIsLarger && !currentIsLarger {
+		// installedCSV == currentCSV
+		opt.SubscriptionStatus = "Succeeded"
+	} else if currentIsLarger {
+		opt.SubscriptionStatus = "Upgrade available"
+	} else {
+		klog.Warning("installedCSV version is larger than currentCSV")
+	}
+
 	if len(csv.Status.Conditions) > 0 {
 		csvStatus := csv.Status.Conditions[len(csv.Status.Conditions)-1].Phase
 		opt.Status = fmt.Sprintf("%v", csvStatus)

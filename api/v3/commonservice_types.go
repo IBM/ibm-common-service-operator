@@ -56,9 +56,11 @@ type Bedrockshim struct {
 
 // BedrockOperator maintains a list of bedrock operators
 type BedrockOperator struct {
-	Name    string `json:"name,omitempty"`
-	Version string `json:"version,omitempty"`
-	Status  string `json:"status,omitempty"`
+	Name               string `json:"name,omitempty"`
+	Version            string `json:"version,omitempty"`
+	Status             string `json:"status,omitempty"`
+	SubscriptionStatus string `json:"subscriptionStatus,omitempty"`
+	InstallPlanName    string `json:"installPlanName,omitempty"`
 }
 
 // CommonServiceStatus defines the observed state of CommonService
