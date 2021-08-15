@@ -257,7 +257,7 @@ spec:
       IBMLicensing:
         datasource: datacollector
         routeEnabled: false
-		logLevel: VERBOSE
+        logLevel: VERBOSE
       operandBindInfo: {}
   - name: ibm-mongodb-operator
     spec:
