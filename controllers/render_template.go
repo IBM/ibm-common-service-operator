@@ -66,6 +66,11 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 	klog.Info("Applying size configuration")
 	var sizeConfigs []interface{}
 	switch cs.Object["spec"].(map[string]interface{})["size"] {
+	case "starterset":
+		sizeConfigs, err = applySizeTemplate(cs, size.StarterSet, inScope)
+		if err != nil {
+			return sizeConfigs, err
+		}
 	case "small":
 		sizeConfigs, err = applySizeTemplate(cs, size.Small, inScope)
 		if err != nil {

@@ -16,7 +16,7 @@ metadata:
             "name": "example-commonservice"
           },
           "spec": {
-            "size": "small"
+            "size": "starterset"
           }
         }
       ]
@@ -27,7 +27,7 @@ metadata:
     olm.skipRange: ">=3.3.0 <3.11.0"
     operatorChannel: v3
     operatorVersion: 3.11.0
-    operators.operatorframework.io/builder: operator-sdk-v1.8.0
+    operators.operatorframework.io/builder: operator-sdk-v1.10.0+git
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/IBM/ibm-common-service-operator
     support: IBM
@@ -51,6 +51,7 @@ spec:
             displayName: Size
             path: size
             x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:select:starterset
               - urn:alm:descriptor:com.tectonic.ui:select:small
               - urn:alm:descriptor:com.tectonic.ui:select:medium
               - urn:alm:descriptor:com.tectonic.ui:select:large
