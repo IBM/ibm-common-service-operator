@@ -327,23 +327,23 @@ spec:
                         value: quay.io/opencloudio/ibm-secretshare-operator:1.7.0
                     image: quay.io/opencloudio/common-service-operator:latest
                     imagePullPolicy: Always
-                    name: ibm-common-service-operator
-                    readinessProbe:
-                      httpGet:
-                        path: /healthz
-                        port: 8081
-                      initialDelaySeconds: 3
-                      timeoutSeconds: 3
-                      periodSeconds: 20
-                      failureThreshold: 10
                     livenessProbe:
+                      failureThreshold: 10
                       httpGet:
                         path: /readyz
                         port: 8081
                       initialDelaySeconds: 120
-                      timeoutSeconds: 10
                       periodSeconds: 60
+                      timeoutSeconds: 10
+                    name: ibm-common-service-operator
+                    readinessProbe:
                       failureThreshold: 10
+                      httpGet:
+                        path: /healthz
+                        port: 8081
+                      initialDelaySeconds: 3
+                      periodSeconds: 20
+                      timeoutSeconds: 3
                     resources:
                       limits:
                         cpu: 500m
@@ -396,8 +396,15 @@ spec:
     - email: support@ibm.com
       name: IBM Support
   maturity: alpha
-  minKubeVersion: "1.19.0"
+  minKubeVersion: 1.19.0
   provider:
     name: IBM
+  relatedImages:
+  - image: quay.io/opencloudio/common-service-operator:3.10.0
+    name: COMMON_SERVICE_OPERATOR_IMAGE
+  - image: quay.io/opencloudio/ibm-cs-webhook:1.6.0
+    name: IBM_CS_WEBHOOK_IMAGE
+  - image: quay.io/opencloudio/ibm-secretshare-operator:1.7.0
+    name: IBM_SECRETSHARE_OPERATOR_IMAGE
   replaces: ibm-common-service-operator.v3.10.0
   version: 3.11.0

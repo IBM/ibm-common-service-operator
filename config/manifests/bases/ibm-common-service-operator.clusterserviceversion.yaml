@@ -139,5 +139,12 @@ spec:
   minKubeVersion: 1.19.0
   provider:
     name: IBM
+  relatedImages:
+  - image: quay.io/opencloudio/common-service-operator
+    name: COMMON_SERVICE_OPERATOR_IMAGE
+  - image: quay.io/opencloudio/ibm-cs-webhook:1.6.0
+    name: IBM_CS_WEBHOOK_IMAGE
+  - image: quay.io/opencloudio/ibm-secretshare-operator:1.7.0
+    name: IBM_SECRETSHARE_OPERATOR_IMAGE
   replaces: ibm-common-service-operator.v0.0.0
   version: 0.0.0
