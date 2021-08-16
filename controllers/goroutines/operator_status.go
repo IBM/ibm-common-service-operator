@@ -27,7 +27,6 @@ import (
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
-	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 )
 
 // UpdateCsCrStatus will update cs cr status according to each bedrock operator
@@ -130,10 +129,7 @@ func getBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string) (apiv3.
 		opt.InstallPlanName = "Not Found"
 	} else {
 		currentCSV := sub.Status.CurrentCSV
-		installedIsLarger := util.CompareVersion(installedCSV, currentCSV)
-		currentIsLarger := util.CompareVersion(currentCSV, installedCSV)
-		if !installedIsLarger && !currentIsLarger {
-			// installedCSV == currentCSV
+		if installedCSV == currentCSV {
 			opt.SubscriptionStatus = "Succeeded"
 		} else {
 			opt.SubscriptionStatus = fmt.Sprintf("%v", sub.Status.State)
