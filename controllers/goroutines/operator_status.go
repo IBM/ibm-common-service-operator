@@ -110,6 +110,11 @@ func getBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string) (apiv3.
 	}
 	if err := bs.Reader.Get(ctx, csvKey, csv); err != nil {
 		klog.Warningf("%s CSV %s", name, err)
+	} else {
+		if len(csv.Status.Conditions) > 0 {
+			csvStatus := csv.Status.Conditions[len(csv.Status.Conditions)-1].Phase
+			opt.Status = fmt.Sprintf("%v", csvStatus)
+		}
 	}
 
 	// fetch installplanName
@@ -130,16 +135,9 @@ func getBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string) (apiv3.
 		if !installedIsLarger && !currentIsLarger {
 			// installedCSV == currentCSV
 			opt.SubscriptionStatus = "Succeeded"
-		} else if currentIsLarger {
-			opt.SubscriptionStatus = "Upgrade available"
 		} else {
-			klog.Warning("installedCSV version is larger than currentCSV")
+			opt.SubscriptionStatus = fmt.Sprintf("%v", sub.Status.State)
 		}
-	}
-
-	if len(csv.Status.Conditions) > 0 {
-		csvStatus := csv.Status.Conditions[len(csv.Status.Conditions)-1].Phase
-		opt.Status = fmt.Sprintf("%v", csvStatus)
 	}
 
 	return opt, nil
