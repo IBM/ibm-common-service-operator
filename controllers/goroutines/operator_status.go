@@ -37,10 +37,6 @@ func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 			continue
 		}
 
-		if instance == nil {
-			continue
-		}
-
 		var operatorSlice []apiv3.BedrockOperator
 		operatorsName := []string{
 			"ibm-auditlogging-operator",
