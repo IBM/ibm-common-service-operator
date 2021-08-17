@@ -253,6 +253,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
+`
 
 const CSV3SaasOperandConfig = `
 apiVersion: operator.ibm.com/v1alpha1
