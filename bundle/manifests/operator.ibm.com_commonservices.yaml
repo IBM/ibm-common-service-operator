@@ -82,9 +82,13 @@ spec:
                 items:
                   description: BedrockOperator maintains a list of bedrock operators
                   properties:
+                    installPlanName:
+                      type: string
                     name:
                       type: string
                     status:
+                      type: string
+                    subscriptionStatus:
                       type: string
                     version:
                       type: string

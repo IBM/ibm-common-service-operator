@@ -34,10 +34,8 @@ func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 	for {
 		instance := &apiv3.CommonService{}
 		if err := bs.Client.Get(ctx, types.NamespacedName{Name: "common-service", Namespace: MasterNamespace}, instance); err != nil {
-			continue
-		}
-
-		if instance == nil {
+			klog.Warningf("Getting Common-service CR with error: %s", err)
+			time.Sleep(5 * time.Second)
 			continue
 		}
 
@@ -62,13 +60,15 @@ func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 
 		for _, name := range operatorsName {
 			var opt apiv3.BedrockOperator
+			var err error
+
 			if bs.MultiInstancesEnable && (name == "ibm-cert-manager-operator" || name == "ibm-licensing-operator") {
-				opt = getBedrockOperator(bs, name, bs.CSData.ControlNs)
+				opt, err = getBedrockOperator(bs, name, bs.CSData.ControlNs)
 			} else {
-				opt = getBedrockOperator(bs, name, bs.CSData.MasterNs)
+				opt, err = getBedrockOperator(bs, name, bs.CSData.MasterNs)
 			}
 
-			if opt.Version != "" && opt.Status != "" {
+			if err == nil {
 				operatorSlice = append(operatorSlice, opt)
 			}
 		}
@@ -82,8 +82,9 @@ func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 	}
 }
 
-func getBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string) apiv3.BedrockOperator {
+func getBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string) (apiv3.BedrockOperator, error) {
 	var opt apiv3.BedrockOperator
+	opt.Name = name
 
 	// fetch subscription
 	sub := &olmv1alpha1.Subscription{}
@@ -91,28 +92,49 @@ func getBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string) apiv3.B
 		Name:      name,
 		Namespace: namespace,
 	}
-	if subErr := bs.Client.Get(ctx, subKey, sub); subErr != nil {
-		return opt
+	if err := bs.Client.Get(ctx, subKey, sub); err != nil {
+		return opt, err
 	}
-	installCSV := sub.Status.InstalledCSV
-	if installCSV != "" {
-		opt.Name = installCSV[:strings.IndexByte(installCSV, '.')]
-		opt.Version = installCSV[strings.IndexByte(installCSV, '.')+1:]
+	installedCSV := sub.Status.InstalledCSV
+	if installedCSV != "" {
+		opt.Name = installedCSV[:strings.IndexByte(installedCSV, '.')]
+		opt.Version = installedCSV[strings.IndexByte(installedCSV, '.')+1:]
 	}
 
 	// fetch csv
 	csv := &olmv1alpha1.ClusterServiceVersion{}
 	csvKey := types.NamespacedName{
-		Name:      installCSV,
+		Name:      installedCSV,
 		Namespace: namespace,
 	}
-	if csvErr := bs.Reader.Get(ctx, csvKey, csv); csvErr != nil {
-		return opt
-	}
-	if len(csv.Status.Conditions) > 0 {
-		csvStatus := csv.Status.Conditions[len(csv.Status.Conditions)-1].Phase
-		opt.Status = fmt.Sprintf("%v", csvStatus)
+	if err := bs.Reader.Get(ctx, csvKey, csv); err != nil {
+		klog.Warningf("Failed to get %s CSV: %s", name, err)
+	} else {
+		if len(csv.Status.Conditions) > 0 {
+			csvStatus := csv.Status.Conditions[len(csv.Status.Conditions)-1].Phase
+			opt.Status = fmt.Sprintf("%v", csvStatus)
+		}
 	}
 
-	return opt
+	// fetch installplanName
+	installplanName := ""
+	if sub.Status.Install != nil {
+		installplanName = sub.Status.Install.Name
+	}
+	opt.InstallPlanName = installplanName
+
+	// determinate subscription status
+	if installplanName == "" {
+		opt.SubscriptionStatus = "Failed"
+		opt.InstallPlanName = "Not Found"
+	} else {
+		currentCSV := sub.Status.CurrentCSV
+		if installedCSV == currentCSV {
+			opt.SubscriptionStatus = "Succeeded"
+		} else {
+			opt.SubscriptionStatus = fmt.Sprintf("%v", sub.Status.State)
+		}
+	}
+
+	return opt, nil
 }
