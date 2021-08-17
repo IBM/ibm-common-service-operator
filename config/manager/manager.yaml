@@ -62,9 +62,9 @@ spec:
         - name: OPERATOR_NAME
           value: "ibm-common-service-operator"
         - name: IBM_CS_WEBHOOK_IMAGE
-          value: quay.io/opencloudio/ibm-cs-webhook:1.6.0
+          value: quay.io/opencloudio/ibm-cs-webhook:1.7.0
         - name: IBM_SECRETSHARE_OPERATOR_IMAGE
-          value: quay.io/opencloudio/ibm-secretshare-operator:1.7.0
+          value: quay.io/opencloudio/ibm-secretshare-operator:1.8.0
         resources:
           limits:
             cpu: 500m
