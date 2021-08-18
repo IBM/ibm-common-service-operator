@@ -240,6 +240,12 @@ spec:
     packageName: db2u-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+  - channel: stable
+    name: cloud-native-postgresql
+    namespace: {{ .MasterNs }}
+    packageName: cloud-native-postgresql
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
 `
 
 const CSV3SaasOperandConfig = `
