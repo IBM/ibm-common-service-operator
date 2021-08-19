@@ -185,8 +185,30 @@ func (b *Bootstrap) CrossplaneCloudOperator(instance *apiv3.CommonService) error
 		if err := b.installCrossplaneOperator(); err != nil {
 			return err
 		}
+	} else {
+		if err := b.DeleteCrossplaneCloudSubscription(b.CSData.MasterNs); err != nil {
+			return err
+		}
 	}
 
+	return nil
+}
+
+// DeleteCrossplaneCloudSubscription deleted crossplane & cloud operator subscription when bedrockshim set to false or CS CR is removed
+func (b *Bootstrap) DeleteCrossplaneCloudSubscription(namespace string) error {
+	klog.Infof("Trying to delete ibm-crossplane-operator in %s", namespace)
+	if err := b.deleteSubscription("ibm-crossplane-operator-app", namespace); err != nil {
+		klog.Errorf("Failed to delete ibm-crossplane-operator in %s: %v", namespace, err)
+		return err
+	}
+
+	if b.SaasEnable {
+		klog.Infof("Trying to delete ibm-cloud-operator in %s", namespace)
+		if err := b.deleteSubscription("ibmcloud-operator", namespace); err != nil {
+			klog.Errorf("Failed to delete ibm-cloud-operator in %s: %v", namespace, err)
+			return err
+		}
+	}
 	return nil
 }
 
