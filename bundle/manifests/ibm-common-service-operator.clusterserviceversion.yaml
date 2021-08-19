@@ -330,7 +330,7 @@ spec:
                     livenessProbe:
                       failureThreshold: 10
                       httpGet:
-                        path: /readyz
+                        path: /healthz
                         port: 8081
                       initialDelaySeconds: 120
                       periodSeconds: 60
@@ -339,7 +339,7 @@ spec:
                     readinessProbe:
                       failureThreshold: 10
                       httpGet:
-                        path: /healthz
+                        path: /readyz
                         port: 8081
                       initialDelaySeconds: 3
                       periodSeconds: 20

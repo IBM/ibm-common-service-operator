@@ -41,7 +41,7 @@ spec:
         - /manager
         readinessProbe:
           httpGet:
-            path: /healthz
+            path: /readyz
             port: 8081
           initialDelaySeconds: 3
           timeoutSeconds: 3
@@ -49,7 +49,7 @@ spec:
           failureThreshold: 10
         livenessProbe:
           httpGet:
-            path: /readyz
+            path: /healthz
             port: 8081
           initialDelaySeconds: 120
           timeoutSeconds: 10
