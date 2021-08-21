@@ -100,6 +100,11 @@ spec:
       AnalyticsProxy: {}
       operandBindInfo: {}
       operandRequest: {}
+  - name: ibm-apicatalog
+    spec:
+      apicatalogmanager: {}
+      operandBindInfo: {}
+      operandRequest: {}
 `
 
 const CSV3OperandRegistry = `
@@ -255,6 +260,12 @@ spec:
     name: cloud-native-postgresql
     namespace: {{ .MasterNs }}
     packageName: cloud-native-postgresql
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+  - channel: v3
+    name: ibm-apicatalog
+    namespace: {{ .MasterNs }}
+    packageName: ibm-apicatalog
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
 `
