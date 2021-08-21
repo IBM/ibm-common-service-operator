@@ -433,4 +433,8 @@ const StarterSet = `
           limits:
             cpu: 30m
             memory: 50Mi
+- name: ibm-apicatalog
+  spec:
+    apicatalogmanager:
+      profile: small
 `
