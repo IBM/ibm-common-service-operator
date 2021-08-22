@@ -296,13 +296,76 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 	}
 	if b.SaasEnable {
 		// OperandRegistry for SaaS deployment
-		if err := b.renderTemplate(constant.CSV3SaasOperandRegistry, b.CSData); err != nil {
+		obj, err := b.GetObjs(constant.CSV3OperandRegistry, b.CSData)
+		if err != nil {
 			return err
+		}
+		for i := range obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{}) {
+			if obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{})[i].(map[string]interface{})["sourceName"] != nil {
+				continue
+			}
+			catalogsource, catalogsourceNs := util.GetCatalogSource(obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{})[i].(map[string]interface{})["packageName"].(string), b.CSData.MasterNs, b.Reader)
+			if catalogsource != "" || catalogsourceNs != "" {
+				obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{})[i].(map[string]interface{})["sourceName"], obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{})[i].(map[string]interface{})["sourceNamespace"] = catalogsource, catalogsourceNs
+			}
+		}
+		objInCluster, err := b.GetObject(obj[0])
+		if errors.IsNotFound(err) {
+			klog.Infof("Creating resource with name: %s, namespace: %s, kind: %s, apiversion: %s\n", obj[0].GetName(), obj[0].GetNamespace(), obj[0].GetKind(), obj[0].GetAPIVersion())
+			if err := b.CreateObject(obj[0]); err != nil {
+				return err
+			}
+		} else if err != nil {
+			return err
+		} else {
+			klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s\n", obj[0].GetName(), obj[0].GetNamespace(), obj[0].GetKind(), obj[0].GetAPIVersion())
+			resourceVersion := objInCluster.GetResourceVersion()
+			obj[0].SetResourceVersion(resourceVersion)
+			if util.CompareVersion(obj[0].GetAnnotations()["version"], objInCluster.GetAnnotations()["version"]) {
+				if err := b.UpdateObject(obj[0]); err != nil {
+					return err
+				}
+			}
 		}
 	} else {
 		// OperandRegistry for on-prem deployment
-		if err := b.renderTemplate(constant.CSV3OperandRegistry, b.CSData); err != nil {
+		obj, err := b.GetObjs(constant.CSV3OperandRegistry, b.CSData)
+		if err != nil {
+			klog.Error(err)
 			return err
+		}
+		for i := range obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{}) {
+			if obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{})[i].(map[string]interface{})["sourceName"] != nil {
+				continue
+			}
+			catalogsource, catalogsourceNs := util.GetCatalogSource(obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{})[i].(map[string]interface{})["packageName"].(string), b.CSData.MasterNs, b.Reader)
+			if catalogsource != "" || catalogsourceNs != "" {
+				obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{})[i].(map[string]interface{})["sourceName"], obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{})[i].(map[string]interface{})["sourceNamespace"] = catalogsource, catalogsourceNs
+			}
+		}
+		objInCluster, err := b.GetObject(obj[0])
+		if errors.IsNotFound(err) {
+			klog.Infof("Creating resource with name: %s, namespace: %s, kind: %s, apiversion: %s\n", obj[0].GetName(), obj[0].GetNamespace(), obj[0].GetKind(), obj[0].GetAPIVersion())
+			if err := b.CreateObject(obj[0]); err != nil {
+				klog.Error(err)
+				return err
+
+			}
+		} else if err != nil {
+			klog.Error(err)
+
+			return err
+		} else {
+			klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s\n", obj[0].GetName(), obj[0].GetNamespace(), obj[0].GetKind(), obj[0].GetAPIVersion())
+			resourceVersion := objInCluster.GetResourceVersion()
+			obj[0].SetResourceVersion(resourceVersion)
+			if util.CompareVersion(obj[0].GetAnnotations()["version"], objInCluster.GetAnnotations()["version"]) {
+				if err := b.UpdateObject(obj[0]); err != nil {
+					klog.Error(err)
+
+					return err
+				}
+			}
 		}
 	}
 
@@ -896,6 +959,20 @@ func (b *Bootstrap) renderTemplate(objectTemplate string, data interface{}, alwa
 		return err
 	}
 	return nil
+}
+
+func (b *Bootstrap) GetObjs(objectTemplate string, data interface{}, alwaysUpdate ...bool) ([]*unstructured.Unstructured, error) {
+	var buffer bytes.Buffer
+	t := template.Must(template.New("newTemplate").Parse(objectTemplate))
+	if err := t.Execute(&buffer, data); err != nil {
+		return nil, err
+	}
+
+	objects, err := util.YamlToObjects(buffer.Bytes())
+	if err != nil {
+		return nil, err
+	}
+	return objects, nil
 }
 
 // func (b *Bootstrap) getResFromAnnotations(annotations map[string]string, resName string, resNs string) (*unstructured.Unstructured, error) {

@@ -25,6 +25,7 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -468,24 +469,70 @@ func GetCatalogSource(packageName, ns string, r client.Reader) (CatalogSourceNam
 		}
 	}
 
+	var packageManifestList []operatorsv1.PackageManifest
 	for _, pm := range pmList.Items {
 		if pm.Status.PackageName != packageName {
 			continue
 		}
-		if pm.Status.CatalogSource == constant.IBMCatalogsource && !devEnabled {
-			CatalogSourceName = constant.IBMCatalogsource
-			CatalogSourceNS = constant.CatalogsourceNs
+		if pm.Status.CatalogSource == constant.IBMCatalogsource && pm.Status.CatalogSourceNamespace == constant.CatalogsourceNs && devEnabled {
+			continue
 		}
-		if pm.Status.CatalogSource == constant.CSCatalogsource && CatalogSourceName != constant.IBMCatalogsource {
-			CatalogSourceName = constant.CSCatalogsource
-			CatalogSourceNS = constant.CatalogsourceNs
-		}
-		if CatalogSourceName == "" {
-			CatalogSourceName = pm.Status.CatalogSource
-			CatalogSourceNS = pm.Status.CatalogSourceNamespace
-		}
+		packageManifestList = append(packageManifestList, pm)
 	}
-	return CatalogSourceName, CatalogSourceNS
+	sort.Sort(sortablePM(packageManifestList))
+
+	if len(packageManifestList) == 0 {
+		return "", ""
+	}
+
+	return packageManifestList[0].Status.CatalogSource, packageManifestList[0].Status.CatalogSourceNamespace
+}
+
+type sortablePM []operatorsv1.PackageManifest
+
+func (s sortablePM) Len() int      { return len(s) }
+func (s sortablePM) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s sortablePM) Less(i, j int) bool {
+	//IBMCatalogsource has the highest priority
+	if s[i].Status.CatalogSource == constant.IBMCatalogsource && s[i].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+		return true
+	}
+	if s[j].Status.CatalogSource == constant.IBMCatalogsource && s[j].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+		return false
+	}
+	//CSCatalogsource has the second highest priority
+	if s[i].Status.CatalogSource == constant.CSCatalogsource && s[i].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+		return true
+	}
+	if s[j].Status.CatalogSource == constant.CSCatalogsource && s[j].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+		return false
+	}
+	//priority of CertifiedCatalogsource, CommunityCatalogsource, RedhatMarketplaceCatalogsource and RedhatCatalogsource are lower than others
+	if s[i].Status.CatalogSource == constant.CertifiedCatalogsource && s[i].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+		return false
+	}
+	if s[j].Status.CatalogSource == constant.CertifiedCatalogsource && s[j].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+		return true
+	}
+	if s[i].Status.CatalogSource == constant.CommunityCatalogsource && s[i].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+		return false
+	}
+	if s[j].Status.CatalogSource == constant.CommunityCatalogsource && s[j].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+		return true
+	}
+	if s[i].Status.CatalogSource == constant.RedhatMarketplaceCatalogsource && s[i].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+		return false
+	}
+	if s[j].Status.CatalogSource == constant.RedhatMarketplaceCatalogsource && s[j].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+		return true
+	}
+	if s[i].Status.CatalogSource == constant.RedhatCatalogsource && s[i].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+		return false
+	}
+	if s[j].Status.CatalogSource == constant.RedhatCatalogsource && s[j].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+		return true
+	}
+	return true
 }
 
 // ValidateCsMaps checks common-service-maps has no scope overlapping
