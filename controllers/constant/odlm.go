@@ -253,6 +253,12 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
+  - channel: stable
+    name: cloud-native-postgresql
+    namespace: {{ .MasterNs }}
+    packageName: cloud-native-postgresql
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
 `
 
 const CSV3SaasOperandConfig = `
@@ -270,6 +276,7 @@ spec:
       IBMLicensing:
         datasource: datacollector
         routeEnabled: false
+        logLevel: VERBOSE
       operandBindInfo: {}
   - name: ibm-mongodb-operator
     spec:

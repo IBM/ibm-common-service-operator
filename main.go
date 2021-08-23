@@ -169,6 +169,8 @@ func main() {
 		go goroutines.DeployCertManagerCR(bs)
 		// Sync up NSS CR
 		go goroutines.SyncUpNSSCR(bs)
+		// Update CS CR Status
+		go goroutines.UpdateCsCrStatus(bs)
 
 		if err = (&controllers.CommonServiceReconciler{
 			Bootstrap: bs,
@@ -191,11 +193,11 @@ func main() {
 		}
 	}
 
-	if err := mgr.AddHealthzCheck("health", healthz.Ping); err != nil {
+	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		klog.Errorf("unable to set up health check: %v", err)
 		os.Exit(1)
 	}
-	if err := mgr.AddReadyzCheck("check", healthz.Ping); err != nil {
+	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		klog.Errorf("unable to set up ready check: %v", err)
 		os.Exit(1)
 	}

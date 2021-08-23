@@ -78,6 +78,8 @@ rules:
   - list
   - update
   - watch
+  - bind
+  - escalate
 # copy secret and configmap to other namespaces
 - verbs:
   - create
@@ -151,6 +153,19 @@ rules:
   verbs:
   - create
   - get
+- apiGroups:
+  - pkg.crossplane.io
+  resources:
+  - locks
+  - configurations
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role

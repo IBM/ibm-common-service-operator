@@ -16,7 +16,7 @@
 
 package size
 
-const Large = `
+const StarterSet = `
 - name: ibm-cert-manager-operator
   spec:
     certManager:
@@ -24,45 +24,45 @@ const Large = `
         resources:
           limits:
             cpu: 100m
-            memory: 1000Mi
+            memory: 520Mi
           requests:
             cpu: 30m
-            memory: 500Mi
+            memory: 350Mi
       certManagerController:
         resources:
           limits:
-            cpu: 80m
-            memory: 1010Mi
+            cpu: 110m
+            memory: 530Mi
           requests:
-            cpu: 20m
-            memory: 510Mi
+            cpu: 70m
+            memory: 390Mi
       certManagerWebhook:
         resources:
           limits:
             cpu: 60m
             memory: 100Mi
           requests:
-            cpu: 30m
-            memory: 40Mi
+            cpu: 50m
+            memory: 90Mi
       configMapWatcher:
         resources:
           limits:
-            cpu: 30m
+            cpu: 10m
             memory: 60Mi
           requests:
-            cpu: 30m
-            memory: 30Mi
+            cpu: 10m
+            memory: 60Mi
 - name: ibm-mongodb-operator
   spec:
     mongoDB:
-      replicas: 3
+      replicas: 1
       resources:
         limits:
-          cpu: 3000m
-          memory: 3Gi
+          cpu: 1000m
+          memory: 700Mi
         requests:
           cpu: 500m
-          memory: 3Gi
+          memory: 700Mi
       metrics:
         resources:
           requests:
@@ -74,23 +74,23 @@ const Large = `
 - name: ibm-iam-operator
   spec:
     authentication:
-      replicas: 3
+      replicas: 1
       auditService:
         resources:
           limits:
-            cpu: 20m
-            memory: 40Mi
+            cpu: 1000m
+            memory: 50Mi
           requests:
-            cpu: 10m
-            memory: 20Mi
+            cpu: 20m
+            memory: 50Mi
       authService:
         resources:
           limits:
-            cpu: 2000m
-            memory: 1090Mi
+            cpu: 1000m
+            memory: 650Mi
           requests:
-            cpu: 600m
-            memory: 540Mi
+            cpu: 140m
+            memory: 525Mi
       clientRegistration:
         resources:
           limits:
@@ -103,79 +103,79 @@ const Large = `
         resources:
           limits:
             cpu: 1000m
-            memory: 1270Mi
+            memory: 220Mi
           requests:
-            cpu: 260m
-            memory: 240Mi
+            cpu: 50m
+            memory: 120Mi
       identityProvider:
         resources:
           limits:
             cpu: 1000m
-            memory: 920Mi
+            memory: 230Mi
           requests:
-            cpu: 570m
-            memory: 250Mi
+            cpu: 80m
+            memory: 130Mi
     oidcclientwatcher:
       replicas: 1
       resources:
         limits:
           cpu: 1000m
-          memory: 325Mi
+          memory: 256Mi
         requests:
-          cpu: 20m
-          memory: 40Mi
+          cpu: 30m
+          memory: 50Mi
     pap:
       auditService:
         resources:
           limits:
-            cpu: 20m
-            memory: 40Mi
+            cpu: 1000m
+            memory: 50Mi
           requests:
-            cpu: 10m
-            memory: 20Mi
+            cpu: 20m
+            memory: 50Mi
       papService:
         resources:
           limits:
             cpu: 1000m
-            memory: 600Mi
+            memory: 330Mi
           requests:
-            cpu: 30m
-            memory: 190Mi
-      replicas: 3
+            cpu: 50m
+            memory: 160Mi
+      replicas: 1
     policycontroller:
       replicas: 1
       resources:
         limits:
           cpu: 1000m
-          memory: 80Mi
+          memory: 50Mi
         requests:
           cpu: 20m
-          memory: 40Mi
+          memory: 50Mi
     policydecision:
       auditService:
         resources:
           limits:
-            cpu: 20m
-            memory: 40Mi
+            cpu: 1000m
+            memory: 50Mi
           requests:
-            cpu: 10m
-            memory: 20Mi
+            cpu: 20m
+            memory: 50Mi
       resources:
         limits:
           cpu: 1000m
-          memory: 420Mi
+          memory: 50Mi
         requests:
-          cpu: 70m
-          memory: 30Mi
-      replicas: 3
+          cpu: 20m
+          memory: 50Mi
+      replicas: 1
     secretwatcher:
       resources:
         limits:
           cpu: 1000m
-          memory: 220Mi
+          memory: 145Mi
         requests:
-          cpu: 20m
-          memory: 50Mi
+          cpu: 30m
+          memory: 120Mi
       replicas: 1
     securityonboarding:
       replicas: 1
@@ -197,53 +197,53 @@ const Large = `
 - name: ibm-management-ingress-operator
   spec:
     managementIngress:
-      replicas: 3
+      replicas: 1
       resources:
         requests:
-          cpu: 70m
-          memory: 256Mi
+          cpu: 50m
+          memory: 100Mi
         limits:
-          cpu: 1000m
-          memory: 1Gi
+          cpu: 50m
+          memory: 170Mi
 - name: ibm-ingress-nginx-operator
   spec:
     nginxIngress:
       ingress:
-        replicas: 3
+        replicas: 1
         resources:
           requests:
             cpu: 100m
-            memory: 256Mi
+            memory: 140Mi
           limits:
-            cpu: 1000m
-            memory: 1Gi
+            cpu: 100m
+            memory: 350Mi
       defaultBackend:
         replicas: 1
         resources:
           requests:
             cpu: 20m
-            memory: 100Mi
+            memory: 50Mi
           limits:
-            cpu: 50m
-            memory: 128Mi
+            cpu: 20m
+            memory: 50Mi
       kubectl:
         resources:
           requests:
             memory: 150Mi
             cpu: 30m
           limits:
-            memory: 256Mi
-            cpu: 100m
+            memory: 150Mi
+            cpu: 30m
 - name: ibm-licensing-operator
   spec:
     IBMLicensing:
       resources:
         requests:
-          cpu: 200m
-          memory: 510Mi
+          cpu: 100m
+          memory: 220Mi
         limits:
-          cpu: 300m
-          memory: 1020Mi
+          cpu: 200m
+          memory: 320Mi
     IBMLicenseServiceReporter:
       databaseContainer:
         resources:
@@ -264,13 +264,13 @@ const Large = `
 - name: ibm-commonui-operator
   spec:
     commonWebUI:
-      replicas: 3
+      replicas: 1
       resources:
         requests:
-          memory: 490Mi
-          cpu: 450m
+          memory: 256Mi
+          cpu: 150m
         limits:
-          memory: 660Mi
+          memory: 440Mi
           cpu: 1000m
 - name: ibm-platform-api-operator
   spec:
@@ -281,16 +281,16 @@ const Large = `
             cpu: 25m
             memory: 50Mi
           requests:
-            cpu: 20m
-            memory: 30Mi
+            cpu: 25m
+            memory: 50Mi
       platformApi:
         resources:
           limits:
             cpu: 25m
-            memory: 60Mi
+            memory: 50Mi
           requests:
-            cpu: 20m
-            memory: 30Mi
+            cpu: 25m
+            memory: 50Mi
       replicas: 1
 - name: ibm-healthcheck-operator
   spec:
@@ -308,10 +308,10 @@ const Large = `
         replicas: 1
         resources:
           requests:
-            memory: 160Mi
-            cpu: 30m
+            memory: 50Mi
+            cpu: 20m
           limits:
-            memory: 250Mi
+            memory: 100Mi
             cpu: 200m
 - name: ibm-auditlogging-operator
   spec:
@@ -319,59 +319,59 @@ const Large = `
       fluentd:
         resources:
           requests:
-            cpu: 60m
+            cpu: 25m
             memory: 100Mi
           limits:
-            cpu: 100m
-            memory: 200Mi
+            cpu: 35m
+            memory: 150Mi
 - name: ibm-monitoring-exporters-operator
   spec:
     exporter:
       collectd:
         resource:
           requests:
-            cpu: 20m
-            memory: 40Mi
+            cpu: 30m
+            memory: 50Mi
           limits:
             cpu: 30m
             memory: 50Mi
-        routerResource:
-          limits:
-            cpu: 30m
-            memory: 50Mi
-          requests:
-            cpu: 10m
-            memory: 20Mi
-      nodeExporter:
-        resource:
-          requests:
-            cpu: 20m
-            memory: 30Mi
-          limits:
-            cpu: 20m
-            memory: 60Mi
-        routerResource:
-          requests:
-            cpu: 10m
-            memory: 20Mi
-          limits:
-            cpu: 100m
-            memory: 256Mi
-      kubeStateMetrics:
-        resource:
-          requests:
-            cpu: 360m
-            memory: 260Mi
-          limits:
-            cpu: 540m
-            memory: 500Mi
         routerResource:
           limits:
             cpu: 25m
             memory: 50Mi
           requests:
             cpu: 10m
-            memory: 20Mi
+            memory: 50Mi
+      nodeExporter:
+        resource:
+          requests:
+            cpu: 5m
+            memory: 50Mi
+          limits:
+            cpu: 20m
+            memory: 50Mi
+        routerResource:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 100m
+            memory: 256Mi
+      kubeStateMetrics:
+        resource:
+          requests:
+            cpu: 500m
+            memory: 110Mi
+          limits:
+            cpu: 540m
+            memory: 160Mi
+        routerResource:
+          limits:
+            cpu: 25m
+            memory: 50Mi
+          requests:
+            cpu: 10m
+            memory: 50Mi
 - name: ibm-monitoring-grafana-operator
   spec:
     grafana:
@@ -379,58 +379,58 @@ const Large = `
         resources:
           requests:
             cpu: 20m
-            memory: 200Mi
+            memory: 65Mi
           limits:
             cpu: 150m
-            memory: 230Mi
+            memory: 100Mi
       dashboardConfig:
         resources:
           requests:
-            cpu: 25m
-            memory: 145Mi
+            cpu: 5m
+            memory: 50Mi
           limits:
-            cpu: 70m
-            memory: 170Mi
+            cpu: 20m
+            memory: 80Mi
       routerConfig:
         resources:
           requests:
-            cpu: 20m
-            memory: 20Mi
+            cpu: 10m
+            memory: 50Mi
           limits:
-            cpu: 70m
-            memory: 80Mi
+            cpu: 50m
+            memory: 50Mi
 - name: ibm-monitoring-prometheusext-operator
   spec:
     prometheusExt:
       prometheusConfig:
         routerResource:
           requests:
-            cpu: 20m
-            memory: 20Mi
+            cpu: 10m
+            memory: 50Mi
           limits:
             cpu: 75m
             memory: 50Mi
         resource:
           requests:
-            cpu: 660m
-            memory: 8800Mi
+            cpu: 65m
+            memory: 1920Mi
           limits:
-            cpu: 955m
-            memory: 15470Mi
+            cpu: 130m
+            memory: 2570Mi
       alertManagerConfig:
         resource:
           requests:
-            cpu: 20m
-            memory: 30Mi
+            cpu: 30m
+            memory: 50Mi
           limits:
             cpu: 30m
             memory: 50Mi
       mcmMonitor:
         resource:
           requests:
-            cpu: 10m
-            memory: 20Mi
+            cpu: 30m
+            memory: 50Mi
           limits:
-            cpu: 50m
-            memory: 120Mi
+            cpu: 30m
+            memory: 50Mi
 `

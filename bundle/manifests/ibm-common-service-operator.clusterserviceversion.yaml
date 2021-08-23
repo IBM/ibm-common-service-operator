@@ -16,7 +16,7 @@ metadata:
             "name": "example-commonservice"
           },
           "spec": {
-            "size": "small"
+            "size": "starterset"
           }
         }
       ]
@@ -24,10 +24,10 @@ metadata:
     containerImage: quay.io/opencloudio/common-service-operator:latest
     createdAt: "2020-10-19T21:38:33Z"
     description: The IBM Common Service Operator is used to deploy IBM Common Services
-    olm.skipRange: ">=3.3.0 <3.10.0"
+    olm.skipRange: ">=3.3.0 <3.11.0"
     operatorChannel: v3
-    operatorVersion: 3.10.0
-    operators.operatorframework.io/builder: operator-sdk-v1.8.0
+    operatorVersion: 3.11.0
+    operators.operatorframework.io/builder: operator-sdk-v1.10.0+git
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/IBM/ibm-common-service-operator
     support: IBM
@@ -36,13 +36,13 @@ metadata:
     operatorframework.io/arch.ppc64le: supported
     operatorframework.io/arch.s390x: supported
     operatorframework.io/os.linux: supported
-  name: ibm-common-service-operator.v3.10.0
+  name: ibm-common-service-operator.v3.11.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-      - description: CommonService is the Schema for the commonservices API. Documentation For additional details regarding install parameters check https://ibm.biz/icpfs39install. License By installing this product you accept the license terms https://ibm.biz/icpfs39license 
+      - description: CommonService is the Schema for the commonservices API. Documentation For additional details regarding install parameters check https://ibm.biz/icpfs39install. License By installing this product you accept the license terms https://ibm.biz/icpfs39license
         displayName: CommonService
         kind: CommonService
         name: commonservices.operator.ibm.com
@@ -51,6 +51,7 @@ spec:
             displayName: Size
             path: size
             x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:select:starterset
               - urn:alm:descriptor:com.tectonic.ui:select:small
               - urn:alm:descriptor:com.tectonic.ui:select:medium
               - urn:alm:descriptor:com.tectonic.ui:select:large
@@ -81,7 +82,7 @@ spec:
 
     ## Operator versions
 
-     - 3.10.0
+     - 3.11.0
 
     ## Prerequisites
 
@@ -97,7 +98,7 @@ spec:
     | -------------------------- | ----------- | ----------- | --------- | ------ |
     | ibm common service operator | 200          | 0.2        | 1          | worker |
     | **Total**                  | 200         | 0.2         | 1         |        |
-  
+
     ## Documentation
 
     - If you are using the operator as part of an IBM Cloud Pak, see the documentation for that IBM Cloud Pak. For a list of IBM Cloud Paks, see [IBM Cloud Paks that use IBM Cloud Pak foundational services](http://ibm.biz/cpcs_cloudpaks).
@@ -198,6 +199,8 @@ spec:
                 - list
                 - update
                 - watch
+                - bind
+                - escalate
             - apiGroups:
                 - ""
               resources:
@@ -267,6 +270,19 @@ spec:
               verbs:
                 - create
                 - get
+            - apiGroups:
+                - pkg.crossplane.io
+              resources:
+                - locks
+                - configurations
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
           serviceAccountName: ibm-common-service-operator
       deployments:
         - name: ibm-common-service-operator
@@ -306,28 +322,28 @@ spec:
                       - name: OPERATOR_NAME
                         value: ibm-common-service-operator
                       - name: IBM_CS_WEBHOOK_IMAGE
-                        value: quay.io/opencloudio/ibm-cs-webhook:1.6.0
+                        value: quay.io/opencloudio/ibm-cs-webhook:1.7.0
                       - name: IBM_SECRETSHARE_OPERATOR_IMAGE
-                        value: quay.io/opencloudio/ibm-secretshare-operator:1.7.0
+                        value: quay.io/opencloudio/ibm-secretshare-operator:1.8.0
                     image: quay.io/opencloudio/common-service-operator:latest
                     imagePullPolicy: Always
-                    name: ibm-common-service-operator
-                    readinessProbe:
+                    livenessProbe:
+                      failureThreshold: 10
                       httpGet:
                         path: /healthz
                         port: 8081
-                      initialDelaySeconds: 3
-                      timeoutSeconds: 3
-                      periodSeconds: 20
+                      initialDelaySeconds: 120
+                      periodSeconds: 60
+                      timeoutSeconds: 10
+                    name: ibm-common-service-operator
+                    readinessProbe:
                       failureThreshold: 10
-                    livenessProbe:
                       httpGet:
                         path: /readyz
                         port: 8081
-                      initialDelaySeconds: 120
-                      timeoutSeconds: 10
-                      periodSeconds: 60
-                      failureThreshold: 10
+                      initialDelaySeconds: 3
+                      periodSeconds: 20
+                      timeoutSeconds: 3
                     resources:
                       limits:
                         cpu: 500m
@@ -380,8 +396,15 @@ spec:
     - email: support@ibm.com
       name: IBM Support
   maturity: alpha
-  minKubeVersion: "1.19.0"
+  minKubeVersion: 1.19.0
   provider:
     name: IBM
-  replaces: ibm-common-service-operator.v3.9.0
-  version: 3.10.0
+  relatedImages:
+  - image: quay.io/opencloudio/common-service-operator:3.10.0
+    name: COMMON_SERVICE_OPERATOR_IMAGE
+  - image: quay.io/opencloudio/ibm-cs-webhook:1.7.0
+    name: IBM_CS_WEBHOOK_IMAGE
+  - image: quay.io/opencloudio/ibm-secretshare-operator:1.8.0
+    name: IBM_SECRETSHARE_OPERATOR_IMAGE
+  replaces: ibm-common-service-operator.v3.10.0
+  version: 3.11.0

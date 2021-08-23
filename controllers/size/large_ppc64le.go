@@ -63,6 +63,14 @@ const Large = `
         requests:
           cpu: 500m
           memory: 3072Mi
+      metrics:
+        resources:
+          requests:
+            cpu: 100m
+            memory: 300Mi
+          limits:
+            cpu: 1000m
+            memory: 350Mi
 - name: ibm-iam-operator
   spec:
     authentication:

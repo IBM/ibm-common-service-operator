@@ -110,7 +110,7 @@ oc get crd operandrequest
 
 ### Configure Size
 
-The IBM Common Service Operator will bootstrap a `commonservice` CR in the `ibm-common-services` namespace. The initialized size is `small`.
+The IBM Common Service Operator will bootstrap a `commonservice` CR in the `ibm-common-services` namespace. The initialized size is `starterset`.
 
 ```yaml
 apiVersion: operator.ibm.com/v3
@@ -119,10 +119,11 @@ metadata:
   name: common-service
   namespace: ibm-common-services
 spec:
-  size: small
+  size: starterset
 ```
 
-The supported sizes are: `small`, `medium` and `large`.
+The supported sizes are: `starterset`, `small`, `medium` and `large`.
+**NOTE** In the post installation, once the size is changed from `starterset` to other size profile, we could not roll back to `starterset` anymore. We are able to switch between `small`, `medium` and `large`.
 
 ### Configure general parameters
 
@@ -135,7 +136,7 @@ metadata:
   name: common-service
   namespace: ibm-common-services
 spec:
-  size: small
+  size: starterset
   services:
   - name: ibm-mongodb-operator
     spec:

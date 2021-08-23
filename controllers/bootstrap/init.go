@@ -449,16 +449,15 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 		if gvk.Kind == "Subscription" {
 			sub := b.GetSubscription(ctx, obj.GetName(), b.CSData.MasterNs)
 			update = !equality.Semantic.DeepEqual(sub.Object["spec"], obj.Object["spec"])
-		} else if compareVersion(obj.GetAnnotations()["version"], objInCluster.GetAnnotations()["version"]) {
+		} else if util.CompareVersion(obj.GetAnnotations()["version"], objInCluster.GetAnnotations()["version"]) {
 			update = true
 		}
 
 		if update {
 			klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
-			objInCluster.Object["spec"] = obj.Object["spec"]
-			objInCluster.SetAnnotations(obj.GetAnnotations())
-			objInCluster.SetLabels(obj.GetLabels())
-			if err := b.UpdateObject(objInCluster); err != nil {
+			resourceVersion := objInCluster.GetResourceVersion()
+			obj.SetResourceVersion(resourceVersion)
+			if err := b.UpdateObject(obj); err != nil {
 				errMsg = err
 			}
 		}
@@ -517,37 +516,6 @@ func (b *Bootstrap) CheckOperatorCatalog(ns string) error {
 	})
 
 	return err
-}
-
-func compareVersion(v1, v2 string) (v1IsLarger bool) {
-	if v1 == "" {
-		v1 = "0.0.0"
-	}
-	v1Slice := strings.Split(v1, ".")
-	if len(v1Slice) == 1 {
-		v1 = "0.0." + v1
-	}
-
-	if v2 == "" {
-		v2 = "0.0.0"
-	}
-	v2Slice := strings.Split(v2, ".")
-	if len(v2Slice) == 1 {
-		v2 = "0.0." + v2
-	}
-
-	v1Slice = strings.Split(v1, ".")
-	v2Slice = strings.Split(v2, ".")
-	for index := range v1Slice {
-		if v1Slice[index] > v2Slice[index] {
-			return true
-		} else if v1Slice[index] == v2Slice[index] {
-			continue
-		} else {
-			return false
-		}
-	}
-	return false
 }
 
 func (b *Bootstrap) waitResourceReady(apiGroupVersion, kind string) error {
