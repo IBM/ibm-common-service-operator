@@ -68,9 +68,7 @@ rules:
   - rbac.authorization.k8s.io
   resources:
   - clusterroles
-  - clusterrolebindings
   - roles
-  - rolebindings
   verbs:
   - create
   - delete
@@ -78,9 +76,7 @@ rules:
   - list
   - update
   - watch
-  - bind
   - escalate
-# copy secret and configmap to other namespaces
 - verbs:
   - create
   - delete
@@ -92,53 +88,31 @@ rules:
   apiGroups:
   - ''
   resources:
-  - events
   - configmaps
-  - secrets
-  - pods
-  - services
-# manage its own CR
+  resourceNames:
+  - common-service-maps
+  - ibm-common-services-status
 - verbs:
-  - create
-  - delete
   - get
   - list
-  - patch
-  - update
   - watch
   apiGroups:
-  - ibmcpcs.ibm.com
+  - ''
   resources:
-  - secretshares
-  - secretshares/status
-# manage its own CR
+  - configmaps
 - apiGroups:
-  - operator.ibm.com
+  - rbac.authorization.k8s.io
   resources:
-  - podpresets
-  - podpresets/status
+  - clusterrolebindings
+  - rolebindings
   verbs:
   - create
   - delete
   - get
   - list
-  - patch
   - update
   - watch
-# manage mutation webhook configuration
-- apiGroups:
-  - admissionregistration.k8s.io
-  resources:
-  - mutatingwebhookconfigurations
-  - validatingwebhookconfigurations
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
+  - bind
 - apiGroups:
   - ""
   resources:
