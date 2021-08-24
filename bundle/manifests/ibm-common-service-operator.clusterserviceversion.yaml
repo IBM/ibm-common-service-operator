@@ -189,8 +189,42 @@ spec:
                 - rbac.authorization.k8s.io
               resources:
                 - clusterroles
-                - clusterrolebindings
                 - roles
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - update
+                - watch
+                - escalate
+            - apiGroups:
+                - ""
+              resourceNames:
+                - common-service-maps
+                - ibm-common-services-status
+              resources:
+                - configmaps
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
+            - apiGroups:
+                - ""
+              resources:
+                - configmaps
+              verbs:
+                - get
+                - list
+                - watch
+            - apiGroups:
+                - rbac.authorization.k8s.io
+              resources:
+                - clusterrolebindings
                 - rolebindings
               verbs:
                 - create
@@ -200,62 +234,6 @@ spec:
                 - update
                 - watch
                 - bind
-                - escalate
-            - apiGroups:
-                - ""
-              resources:
-                - events
-                - configmaps
-                - secrets
-                - pods
-                - services
-              verbs:
-                - create
-                - delete
-                - get
-                - list
-                - patch
-                - update
-                - watch
-            - apiGroups:
-                - ibmcpcs.ibm.com
-              resources:
-                - secretshares
-                - secretshares/status
-              verbs:
-                - create
-                - delete
-                - get
-                - list
-                - patch
-                - update
-                - watch
-            - apiGroups:
-                - operator.ibm.com
-              resources:
-                - podpresets
-                - podpresets/status
-              verbs:
-                - create
-                - delete
-                - get
-                - list
-                - patch
-                - update
-                - watch
-            - apiGroups:
-                - admissionregistration.k8s.io
-              resources:
-                - mutatingwebhookconfigurations
-                - validatingwebhookconfigurations
-              verbs:
-                - create
-                - delete
-                - get
-                - list
-                - patch
-                - update
-                - watch
             - apiGroups:
                 - ""
               resources:
