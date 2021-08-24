@@ -251,8 +251,6 @@ spec:
     packageName: user-data-services-operator-certified
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: {{ .CatalogSourceNs }}
   - channel: stable
     name: cloud-native-postgresql
     namespace: {{ .MasterNs }}
