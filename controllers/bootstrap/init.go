@@ -78,16 +78,17 @@ type Bootstrap struct {
 	CSData               CSData
 }
 type CSData struct {
-	Channel            string
-	Version            string
-	MasterNs           string
-	ControlNs          string
-	CatalogSourceName  string
-	CatalogSourceNs    string
-	IsolatedModeEnable string
-	ApprovalMode       string
-	OnPremMultiEnable  string
-	CrossplaneProvider string
+	Channel             string
+	Version             string
+	MasterNs            string
+	ControlNs           string
+	CatalogSourceName   string
+	CatalogSourceNs     string
+	IsolatedModeEnable  string
+	ApprovalMode        string
+	OnPremMultiEnable   string
+	CrossplaneProvider  string
+	CrossplaneEnabledCR map[string]bool
 }
 
 type CSOperator struct {
@@ -172,6 +173,12 @@ func (b *Bootstrap) CrossplaneCloudOperator(instance *apiv3.CommonService) error
 	}
 
 	if bedrockshim {
+		if b.CSData.CrossplaneEnabledCR == nil {
+			b.CSData.CrossplaneEnabledCR = make(map[string]bool)
+		}
+		b.CSData.CrossplaneEnabledCR[instance.Namespace+"/"+instance.Name] = true
+		klog.Info(b.CSData.CrossplaneEnabledCR)
+
 		b.CSData.CrossplaneProvider = "odlm"
 
 		if b.SaasEnable {
@@ -179,14 +186,13 @@ func (b *Bootstrap) CrossplaneCloudOperator(instance *apiv3.CommonService) error
 			if err := b.installCloudOperator(); err != nil {
 				return err
 			}
-
 		}
 
 		if err := b.installCrossplaneOperator(); err != nil {
 			return err
 		}
 	} else {
-		if err := b.DeleteCrossplaneCloudSubscription(b.CSData.MasterNs); err != nil {
+		if err := b.DeleteCrossplaneCloudSubscription(b.CSData.MasterNs, instance.Namespace+"/"+instance.Name); err != nil {
 			return err
 		}
 	}
@@ -195,7 +201,20 @@ func (b *Bootstrap) CrossplaneCloudOperator(instance *apiv3.CommonService) error
 }
 
 // DeleteCrossplaneCloudSubscription deleted crossplane & cloud operator subscription when bedrockshim set to false or CS CR is removed
-func (b *Bootstrap) DeleteCrossplaneCloudSubscription(namespace string) error {
+func (b *Bootstrap) DeleteCrossplaneCloudSubscription(namespace, NamespacedName string) error {
+	if b.CSData.CrossplaneEnabledCR[NamespacedName] {
+		delete(b.CSData.CrossplaneEnabledCR, NamespacedName)
+	} else {
+		return nil
+	}
+
+	if len(b.CSData.CrossplaneEnabledCR) != 0 {
+		for cr, v := range b.CSData.CrossplaneEnabledCR {
+			klog.Infof("Unable to uninstall crossplane/cloud operator due to %s Spec.Features.Bedrockshim.Enabled is True", cr)
+		}
+		return nil
+	}
+
 	klog.Infof("Trying to delete ibm-crossplane-operator in %s", namespace)
 	if err := b.deleteSubscription("ibm-crossplane-operator-app", namespace); err != nil {
 		klog.Errorf("Failed to delete ibm-crossplane-operator in %s: %v", namespace, err)
