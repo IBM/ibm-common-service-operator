@@ -31,7 +31,7 @@ spec:
 `
 
 const CrossConfiguration = `
-apiVersion: pkg.crossplane.io/v1
+apiVersion: pkg.ibm.crossplane.io/v1
 kind: Configuration
 metadata:
   name: ibm-crossplane-bedrock-shim-config
@@ -47,7 +47,7 @@ spec:
 `
 
 const CrossLock = `
-apiVersion: pkg.crossplane.io/v1alpha1
+apiVersion: pkg.ibm.crossplane.io/v1alpha1
 kind: Lock
 metadata:
   name: lock
