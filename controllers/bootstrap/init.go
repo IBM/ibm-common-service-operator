@@ -177,7 +177,6 @@ func (b *Bootstrap) CrossplaneCloudOperator(instance *apiv3.CommonService) error
 			b.CSData.CrossplaneEnabledCR = make(map[string]bool)
 		}
 		b.CSData.CrossplaneEnabledCR[instance.Namespace+"/"+instance.Name] = true
-		klog.Info(b.CSData.CrossplaneEnabledCR)
 
 		b.CSData.CrossplaneProvider = "odlm"
 
@@ -209,7 +208,7 @@ func (b *Bootstrap) DeleteCrossplaneCloudSubscription(namespace, NamespacedName 
 	}
 
 	if len(b.CSData.CrossplaneEnabledCR) != 0 {
-		for cr, v := range b.CSData.CrossplaneEnabledCR {
+		for cr := range b.CSData.CrossplaneEnabledCR {
 			klog.Infof("Unable to uninstall crossplane/cloud operator due to %s Spec.Features.Bedrockshim.Enabled is True", cr)
 		}
 		return nil
@@ -218,6 +217,16 @@ func (b *Bootstrap) DeleteCrossplaneCloudSubscription(namespace, NamespacedName 
 	klog.Infof("Trying to delete ibm-crossplane-operator in %s", namespace)
 	if err := b.deleteSubscription("ibm-crossplane-operator-app", namespace); err != nil {
 		klog.Errorf("Failed to delete ibm-crossplane-operator in %s: %v", namespace, err)
+		return err
+	}
+
+	klog.Infof("Trying to delete ibm-crossplane-operator CR in %s", namespace)
+	resourceCrossConfiguration := constant.CrossConfiguration
+	if err := b.DeleteFromYaml(resourceCrossConfiguration, b.CSData); err != nil {
+		return err
+	}
+	resourceCrossLock := constant.CrossLock
+	if err := b.DeleteFromYaml(resourceCrossLock, b.CSData); err != nil {
 		return err
 	}
 
@@ -564,6 +573,43 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 			if err := b.UpdateObject(obj); err != nil {
 				errMsg = err
 			}
+		}
+	}
+
+	return errMsg
+}
+
+// DeleteFromYaml takes [objectTemplate, b.CSData] and delete the object according to the objectTemplate
+func (b *Bootstrap) DeleteFromYaml(objectTemplate string, data interface{}) error {
+	var buffer bytes.Buffer
+	t := template.Must(template.New("newTemplate").Parse(objectTemplate))
+	if err := t.Execute(&buffer, data); err != nil {
+		return err
+	}
+
+	yamlContent := buffer.Bytes()
+	objects, err := util.YamlToObjects(yamlContent)
+	if err != nil {
+		return err
+	}
+
+	var errMsg error
+
+	for _, obj := range objects {
+		gvk := obj.GetObjectKind().GroupVersionKind()
+
+		_, err := b.GetObject(obj)
+		if errors.IsNotFound(err) {
+			klog.Infof("Not Found name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n, skipping", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
+			continue
+		} else if err != nil {
+			errMsg = err
+			continue
+		}
+
+		klog.Infof("Deleting resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
+		if err := b.DeleteObject(obj); err != nil {
+			errMsg = err
 		}
 	}
 
