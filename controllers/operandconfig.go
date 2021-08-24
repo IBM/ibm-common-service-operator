@@ -148,6 +148,7 @@ func mergeChangedMap(key string, defaultMap interface{}, changedMap interface{},
 					"replicas": true,
 					"cpu":      true,
 					"memory":   true,
+					"profile":  true,
 				}
 				if _, ok := comparableKeys[key]; ok {
 					finalMap[key], _ = rules.ResourceComparison(defaultMap, changedMap)

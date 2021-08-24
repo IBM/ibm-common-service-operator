@@ -531,7 +531,7 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 
 // GetSubscription returns the subscription instance of "name" from "namespace" namespace
 func (b *Bootstrap) GetSubscription(ctx context.Context, name, namespace string) *unstructured.Unstructured {
-	klog.Info("Fetch Subscription: ", namespace, name)
+	klog.Infof("Fetch Subscription: %v/%v", namespace, name)
 	sub := &unstructured.Unstructured{}
 	sub.SetGroupVersionKind(olmv1alpha1.SchemeGroupVersion.WithKind("subscription"))
 	subKey := types.NamespacedName{
