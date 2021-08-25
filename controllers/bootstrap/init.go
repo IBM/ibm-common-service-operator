@@ -214,12 +214,7 @@ func (b *Bootstrap) DeleteCrossplaneCloudSubscription(namespace, NamespacedName 
 		return nil
 	}
 
-	klog.Infof("Trying to delete ibm-crossplane-operator in %s", namespace)
-	if err := b.deleteSubscription("ibm-crossplane-operator-app", namespace); err != nil {
-		klog.Errorf("Failed to delete ibm-crossplane-operator in %s: %v", namespace, err)
-		return err
-	}
-
+	// delete crossplane cr
 	klog.Infof("Trying to delete ibm-crossplane-operator CR in %s", namespace)
 	resourceCrossConfiguration := constant.CrossConfiguration
 	if err := b.DeleteFromYaml(resourceCrossConfiguration, b.CSData); err != nil {
@@ -230,6 +225,12 @@ func (b *Bootstrap) DeleteCrossplaneCloudSubscription(namespace, NamespacedName 
 		return err
 	}
 
+	// delete crossplane/cloud operator subscription
+	klog.Infof("Trying to delete ibm-crossplane-operator in %s", namespace)
+	if err := b.deleteSubscription("ibm-crossplane-operator-app", namespace); err != nil {
+		klog.Errorf("Failed to delete ibm-crossplane-operator in %s: %v", namespace, err)
+		return err
+	}
 	if b.SaasEnable {
 		klog.Infof("Trying to delete ibm-cloud-operator in %s", namespace)
 		if err := b.deleteSubscription("ibmcloud-operator", namespace); err != nil {
@@ -598,7 +599,7 @@ func (b *Bootstrap) DeleteFromYaml(objectTemplate string, data interface{}) erro
 	for _, obj := range objects {
 		gvk := obj.GetObjectKind().GroupVersionKind()
 
-		_, err := b.GetObject(obj)
+		objInCluster, err := b.GetObject(obj)
 		if errors.IsNotFound(err) {
 			klog.Infof("Not Found name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n, skipping", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
 			continue
@@ -607,10 +608,30 @@ func (b *Bootstrap) DeleteFromYaml(objectTemplate string, data interface{}) erro
 			continue
 		}
 
-		klog.Infof("Deleting resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
+		resourceVersion := objInCluster.GetResourceVersion()
+		obj.SetResourceVersion(resourceVersion)
+		obj.SetFinalizers(make([]string, 0))
+		if err := b.UpdateObject(obj); err != nil {
+			return err
+		}
+
+		klog.Infof("Deleting object with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
 		if err := b.DeleteObject(obj); err != nil {
 			errMsg = err
 		}
+
+		// waiting for the object be deleted
+		if err := utilwait.PollImmediate(time.Second*10, time.Minute*5, func() (done bool, err error) {
+			_, errNotFound := b.GetObject(obj)
+			if errors.IsNotFound(errNotFound) {
+				return true, nil
+			}
+			klog.Infof("waiting for object with name: %s, namespace: %s, kind: %s, apiversion: %s/%s to delete\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
+			return false, nil
+		}); err != nil {
+			return err
+		}
+
 	}
 
 	return errMsg
