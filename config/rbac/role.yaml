@@ -69,40 +69,6 @@ rules:
   resources:
   - clusterroles
   - roles
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - update
-  - watch
-  - escalate
-- verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-  apiGroups:
-  - ''
-  resources:
-  - configmaps
-  resourceNames:
-  - common-service-maps
-  - ibm-common-services-status
-- verbs:
-  - get
-  - list
-  - watch
-  apiGroups:
-  - ''
-  resources:
-  - configmaps
-- apiGroups:
-  - rbac.authorization.k8s.io
-  resources:
   - clusterrolebindings
   - rolebindings
   verbs:
@@ -112,7 +78,29 @@ rules:
   - list
   - update
   - watch
+  - escalate
   - bind
+- verbs:
+  - delete
+  - update
+  apiGroups:
+  - ''
+  resources:
+  - configmaps
+  resourceNames:
+  - common-service-maps
+  - ibm-common-services-status
+  - odlm-scope
+  - namespace-scope
+- verbs:
+  - create
+  - get
+  - list
+  - watch
+  apiGroups:
+  - ''
+  resources:
+  - configmaps
 - apiGroups:
   - ""
   resources:
@@ -128,7 +116,7 @@ rules:
   - create
   - get
 - apiGroups:
-  - pkg.crossplane.io
+  - pkg.ibm.crossplane.io
   resources:
   - locks
   - configurations
