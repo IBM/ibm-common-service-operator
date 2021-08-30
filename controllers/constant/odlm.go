@@ -97,7 +97,6 @@ spec:
       operandRequest: {}
   - name: user-data-services-operator
     spec:
-      AnalyticsProxy: {}
       operandBindInfo: {}
       operandRequest: {}
 `
