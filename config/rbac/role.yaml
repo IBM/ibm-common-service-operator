@@ -108,6 +108,7 @@ rules:
   verbs:
   - create
   - get
+  - update
 - apiGroups:
   - apps
   resources:
@@ -116,10 +117,45 @@ rules:
   - create
   - get
 - apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - update
+  resourceNames:
+  - ibm-common-service-webhook
+  - secretshare
+- apiGroups:
   - pkg.ibm.crossplane.io
   resources:
   - locks
   - configurations
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ibmcpcs.ibm.com
+  resources:
+  - secretshares
+  - secretshares/status
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - operator.ibm.com
+  resources:
+  - podpresets
+  - podpresets/status
   verbs:
   - create
   - delete
