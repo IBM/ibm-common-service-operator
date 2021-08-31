@@ -229,6 +229,7 @@ spec:
               verbs:
                 - create
                 - get
+                - update
             - apiGroups:
                 - apps
               resources:
@@ -237,10 +238,45 @@ spec:
                 - create
                 - get
             - apiGroups:
+                - apps
+              resourceNames:
+                - ibm-common-service-webhook
+                - secretshare
+              resources:
+                - deployments
+              verbs:
+                - update
+            - apiGroups:
                 - pkg.ibm.crossplane.io
               resources:
                 - locks
                 - configurations
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
+            - apiGroups:
+                - ibmcpcs.ibm.com
+              resources:
+                - secretshares
+                - secretshares/status
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
+            - apiGroups:
+                - operator.ibm.com
+              resources:
+                - podpresets
+                - podpresets/status
               verbs:
                 - create
                 - delete
