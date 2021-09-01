@@ -95,7 +95,7 @@ spec:
     spec:
       grafana: {}
       operandRequest: {}
-  - name: user-data-services-operator
+  - name: ibm-user-data-services-operator
     spec:
       operandBindInfo: {}
       operandRequest: {}
@@ -245,9 +245,9 @@ spec:
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
   - channel: {{ .Channel }}
-    name: user-data-services-operator
+    name: ibm-user-data-services-operator
     namespace: {{ .MasterNs }}
-    packageName: user-data-services-operator-certified
+    packageName: ibm-user-data-services-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
   - channel: stable
