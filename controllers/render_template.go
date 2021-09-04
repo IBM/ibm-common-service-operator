@@ -22,10 +22,8 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/klog"
 
-	multipleinstancesenabled "github.com/IBM/ibm-common-service-operator/controllers/multipleInstancesEnabled"
-	routehost "github.com/IBM/ibm-common-service-operator/controllers/routeHost"
+	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/controllers/size"
-	storageclass "github.com/IBM/ibm-common-service-operator/controllers/storageClass"
 )
 
 var (
@@ -38,7 +36,7 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 	// Update storageclass in OperandConfig
 	if cs.Object["spec"].(map[string]interface{})["storageClass"] != nil {
 		klog.Info("Applying storageClass configuration")
-		storageConfig, err := convertStringToSlice(strings.ReplaceAll(storageclass.Template, "placeholder", cs.Object["spec"].(map[string]interface{})["storageClass"].(string)))
+		storageConfig, err := convertStringToSlice(strings.ReplaceAll(constant.StorageClassTemplate, "placeholder", cs.Object["spec"].(map[string]interface{})["storageClass"].(string)))
 		if err != nil {
 			return nil, err
 		}
@@ -48,7 +46,7 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 	// Update routeHost
 	if cs.Object["spec"].(map[string]interface{})["routeHost"] != nil {
 		klog.Info("Applying routeHost configuration")
-		routeHostConfig, err := convertStringToSlice(strings.ReplaceAll(routehost.RouteHostTemplate, "placeholder", cs.Object["spec"].(map[string]interface{})["routeHost"].(string)))
+		routeHostConfig, err := convertStringToSlice(strings.ReplaceAll(constant.RouteHostTemplate, "placeholder", cs.Object["spec"].(map[string]interface{})["routeHost"].(string)))
 		if err != nil {
 			return nil, err
 		}
@@ -58,7 +56,7 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 	// Update multipleInstancesEnabled when multi-instances
 	if r.Bootstrap.MultiInstancesEnable {
 		klog.Info("Applying multipleInstancesEnabled configuration")
-		multipleinstancesenabledConfig, err := convertStringToSlice(strings.ReplaceAll(multipleinstancesenabled.MultipleInstancesEnabledTemplate, "placeholder", "true"))
+		multipleinstancesenabledConfig, err := convertStringToSlice(strings.ReplaceAll(constant.MultipleInstancesEnabledTemplate, "placeholder", "true"))
 		if err != nil {
 			return nil, err
 		}
@@ -68,6 +66,11 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 	klog.Info("Applying size configuration")
 	var sizeConfigs []interface{}
 	switch cs.Object["spec"].(map[string]interface{})["size"] {
+	case "starterset":
+		sizeConfigs, err = applySizeTemplate(cs, size.StarterSet, inScope)
+		if err != nil {
+			return sizeConfigs, err
+		}
 	case "small":
 		sizeConfigs, err = applySizeTemplate(cs, size.Small, inScope)
 		if err != nil {

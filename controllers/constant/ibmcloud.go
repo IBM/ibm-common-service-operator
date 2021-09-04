@@ -16,16 +16,16 @@
 
 package constant
 
-const CSSubscription = `
+const IbmCloudSubscription = `
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
-  name: ibm-common-service-operator
+  name: ibmcloud-operator
   namespace: {{ .MasterNs }}
 spec:
-  channel: {{ .Channel }}
-  installPlanApproval: {{ .ApprovalMode }}
-  name: ibm-common-service-operator
-  source: {{ .CatalogSourceName }}
+  channel: stable
+  installPlanApproval: Automatic
+  name: ibmcloud-operator
+  source: community-operators
   sourceNamespace: {{ .CatalogSourceNs }}
 `

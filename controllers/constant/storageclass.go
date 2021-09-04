@@ -14,9 +14,9 @@
 // limitations under the License.
 //
 
-package storageclass
+package constant
 
-const Template = `
+const StorageClassTemplate = `
 - name: ibm-mongodb-operator
   spec:
     mongoDB:

@@ -24,6 +24,8 @@ import (
 	"io/ioutil"
 	"os"
 	"reflect"
+	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -62,6 +64,38 @@ type nsMapping struct {
 var (
 	ImageList = []string{"IBM_SECRETSHARE_OPERATOR_IMAGE", "IBM_CS_WEBHOOK_IMAGE"}
 )
+
+// CompareVersion takes vx.y.z, vx.y.z -> bool
+func CompareVersion(v1, v2 string) (v1IsLarger bool) {
+	if v1 == "" {
+		v1 = "0.0.0"
+	}
+	v1Slice := strings.Split(v1, ".")
+	if len(v1Slice) == 1 {
+		v1 = "0.0." + v1
+	}
+
+	if v2 == "" {
+		v2 = "0.0.0"
+	}
+	v2Slice := strings.Split(v2, ".")
+	if len(v2Slice) == 1 {
+		v2 = "0.0." + v2
+	}
+
+	v1Slice = strings.Split(v1, ".")
+	v2Slice = strings.Split(v2, ".")
+	for index := range v1Slice {
+		if v1Slice[index] > v2Slice[index] {
+			return true
+		} else if v1Slice[index] == v2Slice[index] {
+			continue
+		} else {
+			return false
+		}
+	}
+	return false
+}
 
 // YamlToObjects convert YAML content to unstructured objects
 func YamlToObjects(yamlContent []byte) ([]*unstructured.Unstructured, error) {
@@ -418,30 +452,87 @@ func GetApprovalModeinNs(r client.Reader, ns string) (approvalMode string, err e
 func GetCatalogSource(packageName, ns string, r client.Reader) (CatalogSourceName, CatalogSourceNS string) {
 	pmList := &operatorsv1.PackageManifestList{}
 
-	err := r.List(context.TODO(), pmList, &client.ListOptions{Namespace: ns})
-
-	if err != nil {
+	if err := r.List(context.TODO(), pmList, &client.ListOptions{Namespace: ns}); err != nil {
 		klog.Info(err)
 	}
 
+	devEnabled := false
+	CSCatalogsource := &olmv1alpha1.CatalogSource{}
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: constant.CSCatalogsource, Namespace: constant.CatalogsourceNs}, CSCatalogsource); err != nil {
+		if !errors.IsNotFound(err) {
+			klog.Info(err)
+		}
+	} else {
+		reg, _ := regexp.Compile(constant.DevBuildImage)
+		if reg.MatchString(CSCatalogsource.Spec.Image) {
+			devEnabled = true
+		}
+	}
+
+	var packageManifestList []operatorsv1.PackageManifest
 	for _, pm := range pmList.Items {
 		if pm.Status.PackageName != packageName {
 			continue
 		}
-		if pm.Status.CatalogSource == constant.IBMCatalogsource {
-			CatalogSourceName = constant.IBMCatalogsource
-			CatalogSourceNS = constant.CatalogsourceNs
+		if pm.Status.CatalogSource == constant.IBMCatalogsource && pm.Status.CatalogSourceNamespace == constant.CatalogsourceNs && devEnabled {
+			continue
 		}
-		if pm.Status.CatalogSource == constant.CSCatalogsource && CatalogSourceName != constant.IBMCatalogsource {
-			CatalogSourceName = constant.CSCatalogsource
-			CatalogSourceNS = constant.CatalogsourceNs
-		}
-		if CatalogSourceName == "" {
-			CatalogSourceName = pm.Status.CatalogSource
-			CatalogSourceNS = pm.Status.CatalogSourceNamespace
-		}
+		packageManifestList = append(packageManifestList, pm)
 	}
-	return CatalogSourceName, CatalogSourceNS
+	sort.Sort(sortablePM(packageManifestList))
+
+	if len(packageManifestList) == 0 {
+		return "", ""
+	}
+
+	return packageManifestList[0].Status.CatalogSource, packageManifestList[0].Status.CatalogSourceNamespace
+}
+
+type sortablePM []operatorsv1.PackageManifest
+
+func (s sortablePM) Len() int      { return len(s) }
+func (s sortablePM) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s sortablePM) Less(i, j int) bool {
+	//IBMCatalogsource has the highest priority
+	if s[i].Status.CatalogSource == constant.IBMCatalogsource && s[i].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+		return true
+	}
+	if s[j].Status.CatalogSource == constant.IBMCatalogsource && s[j].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+		return false
+	}
+	//CSCatalogsource has the second highest priority
+	if s[i].Status.CatalogSource == constant.CSCatalogsource && s[i].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+		return true
+	}
+	if s[j].Status.CatalogSource == constant.CSCatalogsource && s[j].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+		return false
+	}
+	//priority of CertifiedCatalogsource, CommunityCatalogsource, RedhatMarketplaceCatalogsource and RedhatCatalogsource are lower than others
+	if s[i].Status.CatalogSource == constant.CertifiedCatalogsource && s[i].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+		return false
+	}
+	if s[j].Status.CatalogSource == constant.CertifiedCatalogsource && s[j].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+		return true
+	}
+	if s[i].Status.CatalogSource == constant.CommunityCatalogsource && s[i].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+		return false
+	}
+	if s[j].Status.CatalogSource == constant.CommunityCatalogsource && s[j].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+		return true
+	}
+	if s[i].Status.CatalogSource == constant.RedhatMarketplaceCatalogsource && s[i].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+		return false
+	}
+	if s[j].Status.CatalogSource == constant.RedhatMarketplaceCatalogsource && s[j].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+		return true
+	}
+	if s[i].Status.CatalogSource == constant.RedhatCatalogsource && s[i].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+		return false
+	}
+	if s[j].Status.CatalogSource == constant.RedhatCatalogsource && s[j].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+		return true
+	}
+	return true
 }
 
 // ValidateCsMaps checks common-service-maps has no scope overlapping

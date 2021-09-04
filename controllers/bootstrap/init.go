@@ -29,8 +29,10 @@ import (
 	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -84,6 +86,8 @@ type CSData struct {
 	CatalogSourceNs    string
 	IsolatedModeEnable string
 	ApprovalMode       string
+	OnPremMultiEnable  string
+	CrossplaneProvider string
 }
 
 type CSOperator struct {
@@ -154,6 +158,36 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		bs.CSData.Version = r
 	}
 	return
+}
+
+// CrossplaneCloudOperator install crossplane & cloud operator when bedrockshim is true
+func (b *Bootstrap) CrossplaneCloudOperator(instance *apiv3.CommonService) error {
+
+	// Install Crossplane Operator & Cloud Operator
+	bedrockshim := false
+	if instance.Spec.Features != nil {
+		if instance.Spec.Features.Bedrockshim != nil {
+			bedrockshim = instance.Spec.Features.Bedrockshim.Enabled
+		}
+	}
+
+	if bedrockshim {
+		b.CSData.CrossplaneProvider = "odlm"
+
+		if b.SaasEnable {
+			b.CSData.CrossplaneProvider = "ibmcloud"
+			if err := b.installCloudOperator(); err != nil {
+				return err
+			}
+
+		}
+
+		if err := b.installCrossplaneOperator(); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // InitResources initialize resources at the bootstrap of operator
@@ -262,13 +296,76 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 	}
 	if b.SaasEnable {
 		// OperandRegistry for SaaS deployment
-		if err := b.renderTemplate(constant.CSV3SaasOperandRegistry, b.CSData); err != nil {
+		obj, err := b.GetObjs(constant.CSV3OperandRegistry, b.CSData)
+		if err != nil {
 			return err
+		}
+		for i := range obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{}) {
+			if obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{})[i].(map[string]interface{})["sourceName"] != nil {
+				continue
+			}
+			catalogsource, catalogsourceNs := util.GetCatalogSource(obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{})[i].(map[string]interface{})["packageName"].(string), b.CSData.MasterNs, b.Reader)
+			if catalogsource != "" || catalogsourceNs != "" {
+				obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{})[i].(map[string]interface{})["sourceName"], obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{})[i].(map[string]interface{})["sourceNamespace"] = catalogsource, catalogsourceNs
+			}
+		}
+		objInCluster, err := b.GetObject(obj[0])
+		if errors.IsNotFound(err) {
+			klog.Infof("Creating resource with name: %s, namespace: %s, kind: %s, apiversion: %s\n", obj[0].GetName(), obj[0].GetNamespace(), obj[0].GetKind(), obj[0].GetAPIVersion())
+			if err := b.CreateObject(obj[0]); err != nil {
+				return err
+			}
+		} else if err != nil {
+			return err
+		} else {
+			klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s\n", obj[0].GetName(), obj[0].GetNamespace(), obj[0].GetKind(), obj[0].GetAPIVersion())
+			resourceVersion := objInCluster.GetResourceVersion()
+			obj[0].SetResourceVersion(resourceVersion)
+			if util.CompareVersion(obj[0].GetAnnotations()["version"], objInCluster.GetAnnotations()["version"]) {
+				if err := b.UpdateObject(obj[0]); err != nil {
+					return err
+				}
+			}
 		}
 	} else {
 		// OperandRegistry for on-prem deployment
-		if err := b.renderTemplate(constant.CSV3OperandRegistry, b.CSData); err != nil {
+		obj, err := b.GetObjs(constant.CSV3OperandRegistry, b.CSData)
+		if err != nil {
+			klog.Error(err)
 			return err
+		}
+		for i := range obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{}) {
+			if obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{})[i].(map[string]interface{})["sourceName"] != nil {
+				continue
+			}
+			catalogsource, catalogsourceNs := util.GetCatalogSource(obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{})[i].(map[string]interface{})["packageName"].(string), b.CSData.MasterNs, b.Reader)
+			if catalogsource != "" || catalogsourceNs != "" {
+				obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{})[i].(map[string]interface{})["sourceName"], obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{})[i].(map[string]interface{})["sourceNamespace"] = catalogsource, catalogsourceNs
+			}
+		}
+		objInCluster, err := b.GetObject(obj[0])
+		if errors.IsNotFound(err) {
+			klog.Infof("Creating resource with name: %s, namespace: %s, kind: %s, apiversion: %s\n", obj[0].GetName(), obj[0].GetNamespace(), obj[0].GetKind(), obj[0].GetAPIVersion())
+			if err := b.CreateObject(obj[0]); err != nil {
+				klog.Error(err)
+				return err
+
+			}
+		} else if err != nil {
+			klog.Error(err)
+
+			return err
+		} else {
+			klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s\n", obj[0].GetName(), obj[0].GetNamespace(), obj[0].GetKind(), obj[0].GetAPIVersion())
+			resourceVersion := objInCluster.GetResourceVersion()
+			obj[0].SetResourceVersion(resourceVersion)
+			if util.CompareVersion(obj[0].GetAnnotations()["version"], objInCluster.GetAnnotations()["version"]) {
+				if err := b.UpdateObject(obj[0]); err != nil {
+					klog.Error(err)
+
+					return err
+				}
+			}
 		}
 	}
 
@@ -284,6 +381,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 		}
 	} else {
 		// OperandConfig for on-prem deployment
+		b.CSData.OnPremMultiEnable = strconv.FormatBool(b.MultiInstancesEnable)
 		if err := b.renderTemplate(constant.CSV3OperandConfig, b.CSData); err != nil {
 			return err
 		}
@@ -408,8 +506,17 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 		if len(alwaysUpdate) != 0 {
 			forceUpdate = alwaysUpdate[0]
 		}
-		// TODO: deep merge and update
-		if compareVersion(obj.GetAnnotations()["version"], objInCluster.GetAnnotations()["version"]) || forceUpdate {
+		update := forceUpdate
+
+		// do not compareVersion if the resource is subscription
+		if gvk.Kind == "Subscription" {
+			sub := b.GetSubscription(ctx, obj.GetName(), b.CSData.MasterNs)
+			update = !equality.Semantic.DeepEqual(sub.Object["spec"], obj.Object["spec"])
+		} else if util.CompareVersion(obj.GetAnnotations()["version"], objInCluster.GetAnnotations()["version"]) {
+			update = true
+		}
+
+		if update {
 			klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
 			resourceVersion := objInCluster.GetResourceVersion()
 			obj.SetResourceVersion(resourceVersion)
@@ -420,6 +527,23 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 	}
 
 	return errMsg
+}
+
+// GetSubscription returns the subscription instance of "name" from "namespace" namespace
+func (b *Bootstrap) GetSubscription(ctx context.Context, name, namespace string) *unstructured.Unstructured {
+	klog.Infof("Fetch Subscription: %v/%v", namespace, name)
+	sub := &unstructured.Unstructured{}
+	sub.SetGroupVersionKind(olmv1alpha1.SchemeGroupVersion.WithKind("subscription"))
+	subKey := types.NamespacedName{
+		Name:      name,
+		Namespace: namespace,
+	}
+
+	if err := b.Client.Get(ctx, subKey, sub); err != nil {
+		return nil
+	}
+
+	return sub
 }
 
 func (b *Bootstrap) CheckOperatorCatalog(ns string) error {
@@ -455,37 +579,6 @@ func (b *Bootstrap) CheckOperatorCatalog(ns string) error {
 	})
 
 	return err
-}
-
-func compareVersion(v1, v2 string) (v1IsLarger bool) {
-	if v1 == "" {
-		v1 = "0.0.0"
-	}
-	v1Slice := strings.Split(v1, ".")
-	if len(v1Slice) == 1 {
-		v1 = "0.0." + v1
-	}
-
-	if v2 == "" {
-		v2 = "0.0.0"
-	}
-	v2Slice := strings.Split(v2, ".")
-	if len(v2Slice) == 1 {
-		v2 = "0.0." + v2
-	}
-
-	v1Slice = strings.Split(v1, ".")
-	v2Slice = strings.Split(v2, ".")
-	for index := range v1Slice {
-		if v1Slice[index] > v2Slice[index] {
-			return true
-		} else if v1Slice[index] == v2Slice[index] {
-			continue
-		} else {
-			return false
-		}
-	}
-	return false
 }
 
 func (b *Bootstrap) waitResourceReady(apiGroupVersion, kind string) error {
@@ -566,6 +659,45 @@ func (b *Bootstrap) installNssOperator(manualManagement bool) error {
 	return nil
 }
 
+func (b *Bootstrap) installCrossplaneOperator() error {
+	klog.Info("Creating Crossplane Operator subscription")
+	if err := b.createCrossplaneSubscription(); err != nil {
+		klog.Errorf("Failed to create or update Crossplane Operator subscription: %v", err)
+		return err
+	}
+
+	if err := b.waitResourceReady("pkg.ibm.crossplane.io/v1", "Configuration"); err != nil {
+		return err
+	}
+
+	if err := b.waitResourceReady("pkg.ibm.crossplane.io/v1alpha1", "Lock"); err != nil {
+		return err
+	}
+
+	klog.Info("Creating Crossplane Configuration")
+	if err := b.createCrossplaneConfiguration(); err != nil {
+		klog.Errorf("Failed to create or update Crossplane Configuration: %v", err)
+		return err
+	}
+
+	klog.Info("Creating Crossplane Lock")
+	if err := b.createCrossplaneLock(); err != nil {
+		klog.Errorf("Failed to create or update Crossplane Lock: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+func (b *Bootstrap) installCloudOperator() error {
+	klog.Info("Creating IBM Cloud Operator subscription")
+	if err := b.createCloudSubscription(); err != nil {
+		klog.Errorf("Failed to create or update IBM Cloud Operator subscription: %v", err)
+		return err
+	}
+	return nil
+}
+
 func (b *Bootstrap) installODLM(operatorNs string) error {
 	// Delete the previous version ODLM operator
 	klog.Info("Trying to delete ODLM operator in openshift-operators")
@@ -627,6 +759,40 @@ func (b *Bootstrap) CreateNsScopeConfigmap() error {
 	if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cmRes, placeholder, b.CSData.MasterNs))); err != nil {
 		return err
 	}
+	return nil
+}
+
+func (b *Bootstrap) createCrossplaneSubscription() error {
+	resourceName := constant.CrossSubscription
+	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (b *Bootstrap) createCrossplaneConfiguration() error {
+	resourceName := constant.CrossConfiguration
+	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (b *Bootstrap) createCrossplaneLock() error {
+	resourceName := constant.CrossLock
+	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (b *Bootstrap) createCloudSubscription() error {
+	resourceName := constant.IbmCloudSubscription
+	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -793,6 +959,20 @@ func (b *Bootstrap) renderTemplate(objectTemplate string, data interface{}, alwa
 		return err
 	}
 	return nil
+}
+
+func (b *Bootstrap) GetObjs(objectTemplate string, data interface{}, alwaysUpdate ...bool) ([]*unstructured.Unstructured, error) {
+	var buffer bytes.Buffer
+	t := template.Must(template.New("newTemplate").Parse(objectTemplate))
+	if err := t.Execute(&buffer, data); err != nil {
+		return nil, err
+	}
+
+	objects, err := util.YamlToObjects(buffer.Bytes())
+	if err != nil {
+		return nil, err
+	}
+	return objects, nil
 }
 
 // func (b *Bootstrap) getResFromAnnotations(annotations map[string]string, resName string, resNs string) (*unstructured.Unstructured, error) {

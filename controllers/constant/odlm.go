@@ -40,7 +40,9 @@ spec:
       certManager: {}
   - name: ibm-iam-operator
     spec:
-      authentication: {}
+      authentication:
+        config:
+          onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       oidcclientwatcher: {}
       pap: {}
       policycontroller: {}
@@ -92,6 +94,10 @@ spec:
   - name: ibm-monitoring-grafana-operator
     spec:
       grafana: {}
+      operandRequest: {}
+  - name: ibm-user-data-services-operator
+    spec:
+      operandBindInfo: {}
       operandRequest: {}
 `
 
@@ -238,6 +244,18 @@ spec:
     packageName: db2u-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+  - channel: {{ .Channel }}
+    name: ibm-user-data-services-operator
+    namespace: {{ .MasterNs }}
+    packageName: ibm-user-data-services-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+  - channel: stable
+    name: cloud-native-postgresql
+    namespace: {{ .MasterNs }}
+    packageName: cloud-native-postgresql
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
 `
 
 const CSV3SaasOperandConfig = `
@@ -255,6 +273,7 @@ spec:
       IBMLicensing:
         datasource: datacollector
         routeEnabled: false
+        logLevel: VERBOSE
       operandBindInfo: {}
   - name: ibm-mongodb-operator
     spec:
@@ -403,8 +422,6 @@ kind: Subscription
 metadata:
   name: operand-deployment-lifecycle-manager-app
   namespace: {{ .MasterNs }}
-  annotations:
-    version: {{ .Version }}
 spec:
   channel: {{ .Channel }}
   installPlanApproval: Automatic
@@ -419,8 +436,6 @@ kind: Subscription
 metadata:
   name: operand-deployment-lifecycle-manager-app
   namespace: {{ .MasterNs }}
-  annotations:
-    version: {{ .Version }}
 spec:
   channel: {{ .Channel }}
   installPlanApproval: Automatic

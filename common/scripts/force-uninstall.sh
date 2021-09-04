@@ -203,13 +203,66 @@ function force_delete() {
   fi
 }
 
+function delete_iamcr_cloudpak_ns() {
+	local crds=$1
+	local namespace=$2
+	for crd in ${crds}; do
+		crs=$(${KUBECTL} get ${crd} --no-headers --ignore-not-found -n ${namespace} 2>/dev/null | awk '{print $1}')
+		for cr in ${crs}; do
+			msg "Removing the resource: ${crd}/${cr}"
+			${KUBECTL} delete ${crd}  $cr -n ${namespace} --ignore-not-found &
+		done
+	done
+}
+
+function force_delete_iamcr_cloudpak_ns() {
+	local crds=$1
+	local namespace=$2
+	# add finializers to resource
+	for crd in ${crds}; do
+    		crs=$(${KUBECTL} get ${crd} --no-headers --ignore-not-found -n ${namespace} 2>/dev/null | awk '{print $1}')
+    		for cr in ${crs}; do
+			msg "Removing the finalizers for resource: ${crd}/${cr}"
+			${KUBECTL} patch ${crd} ${cr} -n ${namespace} --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]' 2>/dev/null
+		done
+	done
+}
+
+function wait_for_delete_iamcr_cloudpak_ns(){
+	local crds=$1
+	local namespace=$2
+	retries=${3:-10}
+	interval=${4:-30}
+	index=0
+	while true; do
+		local new_crds=
+		for crd in ${crds}; do
+			if [[ "X$(${KUBECTL} get ${crd} -n ${namespace} --ignore-not-found)" != "X" ]]; then
+				new_crds="${new_crds} ${crd}"
+			fi
+		done
+		crds=${new_crds}
+		if [[ "X$crds" != "X" ]]; then
+			if [[ ${index} -eq ${retries} ]]; then
+				error "Timeout delete resources: $crds"
+				return 1
+			fi
+			sleep $interval
+			((index++))
+			wait_msg "DELETE - Waiting: resource ${crds} delete complete [$(($retries - $index)) retries left]"
+		else
+			break
+		fi
+	done
+
+}
 #-------------------------------------- Clean UP --------------------------------------#
 COMMON_SERVICES_NS=${COMMON_SERVICES_NS:-ibm-common-services}
 KUBECTL=$(command -v kubectl 2>/dev/null)
 [[ "X$KUBECTL" == "X" ]] && error "kubectl: command not found" && exit 1
 step=0
 FORCE_DELETE=false
-
+REMOVE_IAM_CP_NS=false
 while [ "$#" -gt "0" ]
 do
 	case "$1" in
@@ -222,6 +275,11 @@ do
 		;;
 	"-n")
 		COMMON_SERVICES_NS=$2
+		shift
+		;;
+	"-cpn")
+		cloudpak_ns=$2
+		REMOVE_IAM_CP_NS=true
 		shift
 		;;
 	*)
@@ -259,12 +317,21 @@ if [[ "$FORCE_DELETE" == "false" ]]; then
   delete_rbac_resource
 
   title "Deleting webhooks"
-  ${KUBECTL} delete ValidatingWebhookConfiguration cert-manager-webhook --ignore-not-found
-  ${KUBECTL} delete MutatingWebhookConfiguration cert-manager-webhook ibm-common-service-webhook-configuration namespace-admission-config --ignore-not-found
+  ${KUBECTL} delete ValidatingWebhookConfiguration cert-manager-webhook ibm-cs-ns-mapping-webhook-configuration --ignore-not-found
+  ${KUBECTL} delete MutatingWebhookConfiguration cert-manager-webhook ibm-common-service-webhook-configuration ibm-operandrequest-webhook-configuration namespace-admission-config --ignore-not-found
 fi
 
 title "Deleting iam-status configMap in kube-public namespace"
 ${KUBECTL} delete configmap ibm-common-services-status -n kube-public --ignore-not-found
+
+if [[ "$REMOVE_IAM_CP_NS" == "true" ]]; then
+  title "Deleting iam crs in cloudpak namespace"
+	if [[ "$FORCE_DELETE" == "true" ]]; then
+		force_delete_iamcr_cloudpak_ns "client rolebinding" $cloudpak_ns
+	fi
+	delete_iamcr_cloudpak_ns "client rolebinding" $cloudpak_ns
+	wait_for_delete_iamcr_cloudpak_ns "client rolebinding" $cloudpak_ns 5 10
+fi
 
 title "Deleting namespace ${COMMON_SERVICES_NS}"
 ${KUBECTL} delete namespace ${COMMON_SERVICES_NS} --ignore-not-found &

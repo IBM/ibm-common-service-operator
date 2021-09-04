@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-package certmanager
+package constant
 
 // CSCAIssuer is the CR of cs-ca-issuer
 const CSCAIssuer = `
@@ -22,7 +22,7 @@ apiVersion: certmanager.k8s.io/v1alpha1
 kind: Issuer
 metadata:
   annotations:
-    version: "3.9.0"
+    version: "3.11.0"
   labels:
     app.kubernetes.io/instance: cs-ca-issuer
     app.kubernetes.io/managed-by: cert-manager-controller
@@ -40,7 +40,7 @@ apiVersion: certmanager.k8s.io/v1alpha1
 kind: Issuer
 metadata:
   annotations:
-    version: "3.9.0"
+    version: "3.11.0"
   labels:
     app.kubernetes.io/instance: cs-ss-issuer
     app.kubernetes.io/managed-by: cert-manager-controller
@@ -57,7 +57,7 @@ apiVersion: certmanager.k8s.io/v1alpha1
 kind: Certificate
 metadata:
   annotations:
-    version: "3.9.0"
+    version: "3.11.0"
   labels:
     app.kubernetes.io/instance: cs-ca-certificate
     app.kubernetes.io/managed-by: cert-manager-controller

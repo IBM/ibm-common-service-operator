@@ -25,7 +25,25 @@ import (
 	"k8s.io/klog"
 )
 
+var (
+	profileSize = map[string]int{
+		"small":  1,
+		"medium": 2,
+		"large":  3,
+	}
+)
+
 func resourceStringComparison(resourceA, resourceB string) (string, string, error) {
+	if sizeA, ok := profileSize[resourceA]; ok {
+		if sizeB, ok := profileSize[resourceB]; ok {
+			if sizeA > sizeB {
+				return resourceA, resourceB, nil
+			}
+			return resourceB, resourceA, nil
+		}
+		err := fmt.Errorf("failed to compare resources %s and %s", resourceA, resourceB)
+		return "", "", err
+	}
 	quantityA, err := resource.ParseQuantity(resourceA)
 	if err != nil {
 		return "", "", err
@@ -75,6 +93,8 @@ func ResourceEqualComparison(resourceA interface{}, resourceB interface{}) bool 
 
 	isEqual := true
 	switch resourceA := resourceA.(type) {
+	// TODO: consider the slices
+	// case []interface{}:
 	case map[string]interface{}:
 		if resourceB == nil {
 			isEqual = false

@@ -35,6 +35,7 @@ type CommonServiceSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
+	Features            *Features            `json:"features,omitempty"`
 	InstallPlanApproval olmv1alpha1.Approval `json:"installPlanApproval,omitempty"`
 	ManualManagement    bool                 `json:"manualManagement,omitempty"`
 	RouteHost           string               `json:"routeHost,omitempty"`
@@ -43,9 +44,29 @@ type CommonServiceSpec struct {
 	StorageClass        string               `json:"storageClass,omitempty"`
 }
 
+// Features defines the features.bedrockshim.enabled
+type Features struct {
+	Bedrockshim *Bedrockshim `json:"bedrockshim,omitempty"`
+}
+
+// Bedrockshim defines the features.bedrockshim.enabled
+type Bedrockshim struct {
+	Enabled bool `json:"enabled,omitempty"`
+}
+
+// BedrockOperator maintains a list of bedrock operators
+type BedrockOperator struct {
+	Name               string `json:"name,omitempty"`
+	Version            string `json:"version,omitempty"`
+	Status             string `json:"status,omitempty"`
+	SubscriptionStatus string `json:"subscriptionStatus,omitempty"`
+	InstallPlanName    string `json:"installPlanName,omitempty"`
+}
+
 // CommonServiceStatus defines the observed state of CommonService
 type CommonServiceStatus struct {
-	Phase string `json:"phase,omitempty"`
+	Phase            string            `json:"phase,omitempty"`
+	BedrockOperators []BedrockOperator `json:"bedrockOperators,omitempty"`
 }
 
 // +kubebuilder:object:root=true

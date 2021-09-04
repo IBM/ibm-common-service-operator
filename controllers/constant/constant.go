@@ -56,10 +56,20 @@ const (
 	CSCatalogsource = "opencloud-operators"
 	//IBMCatalogsource is the names of the ibm catalogsource
 	IBMCatalogsource = "ibm-operator-catalog"
+	//Certified is the names of the ibm catalogsource
+	CertifiedCatalogsource = "certified-operators"
+	//Community is the names of the ibm catalogsource
+	CommunityCatalogsource = "community-operators"
+	//RedhatMarketplace is the names of the ibm catalogsource
+	RedhatMarketplaceCatalogsource = "redhat-marketplace"
+	//Redhat is the names of the ibm catalogsource
+	RedhatCatalogsource = "redhat-operators"
 	//IBMCSPackage is the package name of the ibm common service operator
 	IBMCSPackage = "ibm-common-service-operator"
 	// NamespaceScopeConfigmapName is the name of ConfigMap which stores the NamespaceScope Info
 	NamespaceScopeConfigmapName = "namespace-scope"
+	// devBuildImage is regular expression of the image address of internal dev build for testing
+	DevBuildImage = `^hyc\-cloud\-private\-(.*)\-docker\-local\.artifactory\.swg\-devops\.com\/ibmcom\/ibm\-common\-service\-catalog\:(.*)`
 )
 
 // CsOg is OperatorGroup constent for the common service operator
@@ -84,7 +94,7 @@ metadata:
   name: common-service
   namespace: placeholder
 spec:
-  size: small
+  size: starterset
 `
 
 // CsNoSizeCR is the default common service operator CR for upgrade

@@ -148,6 +148,7 @@ func mergeChangedMap(key string, defaultMap interface{}, changedMap interface{},
 					"replicas": true,
 					"cpu":      true,
 					"memory":   true,
+					"profile":  true,
 				}
 				if _, ok := comparableKeys[key]; ok {
 					finalMap[key], _ = rules.ResourceComparison(defaultMap, changedMap)
@@ -301,6 +302,11 @@ func checkCRFromOperandConfig(serviceStatus map[string]interface{}, operatorName
 	if !ok {
 		return true
 	}
+
+	if opStatus.(map[string]interface{})["customResourceStatus"] == nil {
+		return true
+	}
+
 	for cr := range opStatus.(map[string]interface{})["customResourceStatus"].(map[string]interface{}) {
 		if strings.EqualFold(cr, crName) {
 			return false

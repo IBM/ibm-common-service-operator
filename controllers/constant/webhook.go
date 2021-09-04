@@ -91,7 +91,7 @@ kind: ClusterRole
 metadata:
   name: ibm-common-service-webhook
   annotations:
-    version: "3.9.0"
+    version: "3.11.0"
 rules:
 - apiGroups:
     - ""
@@ -133,6 +133,7 @@ rules:
     - admissionregistration.k8s.io
   resources:
     - mutatingwebhookconfigurations
+    - validatingwebhookconfigurations
   verbs:
     - create
     - delete
@@ -170,7 +171,7 @@ kind: CustomResourceDefinition
 metadata:
   name: podpresets.operator.ibm.com
   annotations:
-    version: "3.9.0"
+    version: "3.11.0"
 spec:
   group: operator.ibm.com
   names:
@@ -1646,7 +1647,7 @@ metadata:
   name: ibm-common-service-webhook
   namespace: placeholder
   annotations:
-    version: "3.9.0"
+    version: "3.11.0"
 spec:
   replicas: 1
   selector:
@@ -1704,7 +1705,7 @@ metadata:
   name: ibm-common-service-webhook
   namespace: placeholder
   annotations:
-    version: "3.9.0"
+    version: "3.11.0"
 spec:
   replicas: 1
   selector:

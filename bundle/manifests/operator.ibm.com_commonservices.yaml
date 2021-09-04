@@ -38,6 +38,16 @@ spec:
           spec:
             description: CommonServiceSpec defines the desired state of CommonService
             properties:
+              features:
+                description: Features defines the features.bedrockshim.enabled
+                properties:
+                  bedrockshim:
+                    description: Bedrockshim defines the features.bedrockshim.enabled
+                    properties:
+                      enabled:
+                        type: boolean
+                    type: object
+                type: object
               installPlanApproval:
                 description: Approval is the user approval policy for an InstallPlan.
                   It must be one of "Automatic" or "Manual".
@@ -68,6 +78,22 @@ spec:
           status:
             description: CommonServiceStatus defines the observed state of CommonService
             properties:
+              bedrockOperators:
+                items:
+                  description: BedrockOperator maintains a list of bedrock operators
+                  properties:
+                    installPlanName:
+                      type: string
+                    name:
+                      type: string
+                    status:
+                      type: string
+                    subscriptionStatus:
+                      type: string
+                    version:
+                      type: string
+                  type: object
+                type: array
               phase:
                 type: string
             type: object

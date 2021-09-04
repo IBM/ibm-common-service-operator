@@ -29,6 +29,7 @@ function main() {
 
     check_preqreqs
     switch_to_continous_delivery
+    check_switch_complete
 }
 
 function check_preqreqs() {
@@ -100,6 +101,9 @@ function switch_to_continous_delivery() {
     fi
 
     while read -r sub; do
+        if [[ ${sub} == "NAME" ]]; then
+            continue
+        fi
 
         msg "Updating subscription ${sub} in namespace ibm-common-services..."
         msg "-----------------------------------------------------------------------"
@@ -115,7 +119,7 @@ function switch_to_continous_delivery() {
         msg ""
     done < <(oc get sub -n ibm-common-services | awk '{print $1}')
 
-    success "Updated all operator subscriptions in namespace ibm-common-services successfully."
+    delete_operator "operand-deployment-lifecycle-manager-app ibm-namespace-scope-operator-restricted ibm-namespace-scope-operator ibm-cert-manager-operator" "ibm-common-services"
 
     msg "Creating namespace scope config in namespace ibm-common-services..."
     msg "-----------------------------------------------------------------------"
@@ -130,6 +134,50 @@ data:
 EOF
     msg ""
     success "Created namespace scope config in namespace ibm-common-services."
+}
+
+function check_switch_complete() {
+    STEP=$((STEP + 1 ))
+
+    title "[${STEP}] Checking whether the channel switch is completed..."
+    msg "-----------------------------------------------------------------------"
+
+    while read -r sub; do
+        if [[ ${sub} == "NAME" ]]; then
+            continue
+        fi
+
+        msg "Checking subscription ${sub} in namespace ibm-common-services..."
+        msg "-----------------------------------------------------------------------"
+        
+        channel=$(oc get sub ${sub} -n ibm-common-services -o jsonpath='{.spec.channel}')
+        if [[ "$channel" != "v3" ]]; then
+            error "the channel of subscription ${sub} in namespace ibm-common-services is not v3, please try to re-run the script"
+        fi
+
+    done < <(oc get sub -n ibm-common-services | awk '{print $1}')
+
+    success "Updated all operator subscriptions in namespace ibm-common-services successfully."
+}
+
+function delete_operator() {
+    subs=$1
+    ns=$2
+    for sub in ${subs}; do
+        msg "Deleting ${sub} in namesapce ${ns}, it will be re-installed after the upgrade is successful ..."
+        msg "-----------------------------------------------------------------------"
+        csv=$(oc get sub ${sub} -n ${ns} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
+        in_step=1
+        msg "[${in_step}] Removing the subscription of ${sub} in namesapce ${ns} ..."
+        oc delete sub ${sub} -n ${ns} --ignore-not-found
+        in_step=$((in_step + 1))
+        msg "[${in_step}] Removing the csv of ${sub} in namesapce ${ns} ..."
+        [[ "X${csv}" != "X" ]] && oc delete csv ${csv}  -n ${ns} --ignore-not-found
+        msg ""
+
+        success "Remove $sub successfully."
+        msg ""
+    done
 }
 
 function msg() {

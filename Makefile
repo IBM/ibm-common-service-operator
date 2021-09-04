@@ -35,7 +35,7 @@ VCS_REF ?= $(shell git rev-parse HEAD)
 VERSION ?= $(shell git describe --exact-match 2> /dev/null || \
                 git describe --match=$(git rev-parse --short=8 HEAD) --always --dirty --abbrev=8)
 RELEASE_VERSION ?= $(shell cat ./version/version.go | grep "Version =" | awk '{ print $$3}' | tr -d '"')
-PREVIOUS_VERSION := 3.7.2
+PREVIOUS_VERSION := 3.10.0
 LATEST_VERSION ?= latest
 
 LOCAL_OS := $(shell uname)
@@ -106,7 +106,7 @@ include common/Makefile.common.mk
 clis: yq kustomize operator-sdk
 
 yq: ## Install yq, a yaml processor
-ifeq (, $(shell which yq 2>/dev/null))
+ifneq ($(shell yq -V | cut -d ' ' -f 3 | cut -d '.' -f 1 ), 4)
 	@{ \
 	if [ v$(shell ./bin/yq --version | cut -d ' ' -f3) != $(YQ_VERSION) ]; then\
 		set -e ;\
@@ -136,7 +136,7 @@ KUSTOMIZE=$(shell which kustomize)
 endif
 
 operator-sdk:
-ifeq (, $(shell which operator-sdk 2>/dev/null))
+ifneq ($(shell operator-sdk version | cut -d ',' -f1 | cut -d ':' -f2 | tr -d '"' | xargs | cut -d '.' -f1), v1)
 	@{ \
 	if [ "$(shell ./bin/operator-sdk version | cut -d ',' -f1 | cut -d ':' -f2 | tr -d '"' | xargs)" != $(OPERATOR_SDK_VERSION) ]; then \
 		set -e ; \
@@ -263,7 +263,7 @@ coverage: ## Run code coverage test
 
 ##@ Build
 
-build-operator-image: ## Build the operator image.
+build-operator-image: $(CONFIG_DOCKER_TARGET) ## Build the operator image.
 	@echo "Building the $(OPERATOR_IMAGE_NAME) docker image for $(LOCAL_ARCH)..."
 	@docker build -t $(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(VERSION) \
 	--build-arg VCS_REF=$(VCS_REF) --build-arg VCS_URL=$(VCS_URL) \

@@ -16,16 +16,39 @@
 
 package constant
 
-const CSSubscription = `
+const CrossSubscription = `
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
-  name: ibm-common-service-operator
+  name: ibm-crossplane-operator-app
   namespace: {{ .MasterNs }}
 spec:
   channel: {{ .Channel }}
-  installPlanApproval: {{ .ApprovalMode }}
-  name: ibm-common-service-operator
+  installPlanApproval: Automatic
+  name: ibm-crossplane-operator-app
   source: {{ .CatalogSourceName }}
   sourceNamespace: {{ .CatalogSourceNs }}
+`
+
+const CrossConfiguration = `
+apiVersion: pkg.ibm.crossplane.io/v1
+kind: Configuration
+metadata:
+  name: ibm-crossplane-bedrock-shim-config
+  labels:
+    ibm-crossplane-provider: {{ .CrossplaneProvider }}
+spec:
+  ignoreCrossplaneConstraints: false
+  package: 'quay.io/opencloudio/ibm-crossplane-bedrock-shim-config:1.0.0'
+  packagePullPolicy: Always
+  revisionActivationPolicy: Automatic
+  revisionHistoryLimit: 1
+  skipDependencyResolution: false
+`
+
+const CrossLock = `
+apiVersion: pkg.ibm.crossplane.io/v1alpha1
+kind: Lock
+metadata:
+  name: lock
 `
