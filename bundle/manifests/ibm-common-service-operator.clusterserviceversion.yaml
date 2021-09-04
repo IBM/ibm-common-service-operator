@@ -240,6 +240,11 @@ spec:
                 - update
             - apiGroups:
                 - ""
+              resourceNames:
+                - common-service-maps
+                - ibm-common-services-status
+                - odlm-scope
+                - namespace-scope
               resources:
                 - configmaps
               verbs:
@@ -277,39 +282,41 @@ spec:
                 - locks
                 - configurations
               verbs:
-                - create
                 - delete
-                - get
-                - list
-                - patch
                 - update
-                - watch
             - apiGroups:
-                - ibmcpcs.ibm.com
+                - ""
               resources:
-                - secretshares
-                - secretshares/status
+                - configmaps
               verbs:
                 - create
-                - delete
                 - get
                 - list
-                - patch
-                - update
                 - watch
             - apiGroups:
-                - operator.ibm.com
+                - ""
               resources:
-                - podpresets
-                - podpresets/status
+                - serviceaccounts
               verbs:
                 - create
-                - delete
                 - get
-                - list
-                - patch
                 - update
-                - watch
+            - apiGroups:
+                - apps
+              resources:
+                - deployments
+              verbs:
+                - create
+                - get
+            - apiGroups:
+                - apps
+              resourceNames:
+                - ibm-common-service-webhook
+                - secretshare
+              resources:
+                - deployments
+              verbs:
+                - update
             - apiGroups:
                 - storage.k8s.io
               resources:

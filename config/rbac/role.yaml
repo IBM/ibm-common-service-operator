@@ -132,11 +132,8 @@ rules:
   - configurations
   verbs:
   - create
-  - delete
   - get
   - list
-  - patch
-  - update
   - watch
 - apiGroups:
   - kubernetes.crossplane.io
@@ -145,10 +142,7 @@ rules:
   - providerconfigs
   verbs:
   - create
-  - delete
   - get
-  - list
-  - patch
   - update
   - watch
 - apiGroups:
