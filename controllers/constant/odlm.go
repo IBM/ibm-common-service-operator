@@ -95,10 +95,6 @@ spec:
     spec:
       grafana: {}
       operandRequest: {}
-  - name: ibm-user-data-services-operator
-    spec:
-      operandBindInfo: {}
-      operandRequest: {}
 `
 
 const CSV3OperandRegistry = `
@@ -242,12 +238,6 @@ spec:
     name: ibm-db2u-operator
     namespace: {{ .MasterNs }}
     packageName: db2u-operator
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-  - channel: {{ .Channel }}
-    name: ibm-user-data-services-operator
-    namespace: {{ .MasterNs }}
-    packageName: ibm-user-data-services-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
   - channel: stable
