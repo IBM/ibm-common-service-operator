@@ -95,6 +95,10 @@ spec:
     spec:
       grafana: {}
       operandRequest: {}
+  - name: ibm-user-data-services-operator
+    spec:
+      operandBindInfo: {}
+      operandRequest: {}
 `
 
 const CSV3OperandRegistry = `
@@ -244,6 +248,12 @@ spec:
     name: cloud-native-postgresql
     namespace: {{ .MasterNs }}
     packageName: cloud-native-postgresql
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+  - channel: {{ .Channel }}
+    name: ibm-user-data-services-operator
+    namespace: {{ .MasterNs }}
+    packageName: ibm-user-data-services-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
 `
