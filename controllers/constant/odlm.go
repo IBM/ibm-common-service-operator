@@ -99,6 +99,11 @@ spec:
     spec:
       operandBindInfo: {}
       operandRequest: {}
+  - name: ibm-apicatalog
+    spec:
+      apicatalogmanager: {}
+      operandBindInfo: {}
+      operandRequest: {}
 `
 
 const CSV3OperandRegistry = `
@@ -248,6 +253,12 @@ spec:
     name: cloud-native-postgresql
     namespace: {{ .MasterNs }}
     packageName: cloud-native-postgresql
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+  - channel: {{ .Channel }}
+    name: ibm-apicatalog
+    namespace: {{ .MasterNs }}
+    packageName: ibm-apicatalog
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
   - channel: {{ .Channel }}
