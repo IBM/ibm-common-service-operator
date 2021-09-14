@@ -106,7 +106,7 @@ include common/Makefile.common.mk
 clis: yq kustomize operator-sdk
 
 yq: ## Install yq, a yaml processor
-ifeq (, $(shell which yq 2>/dev/null))
+ifneq ($(shell yq -V | cut -d ' ' -f 3 | cut -d '.' -f 1 ), 4)
 	@{ \
 	if [ v$(shell ./bin/yq --version | cut -d ' ' -f3) != $(YQ_VERSION) ]; then\
 		set -e ;\
@@ -136,7 +136,7 @@ KUSTOMIZE=$(shell which kustomize)
 endif
 
 operator-sdk:
-ifeq (, $(shell which operator-sdk 2>/dev/null))
+ifneq ($(shell operator-sdk version | cut -d ',' -f1 | cut -d ':' -f2 | tr -d '"' | xargs | cut -d '.' -f1), v1)
 	@{ \
 	if [ "$(shell ./bin/operator-sdk version | cut -d ',' -f1 | cut -d ':' -f2 | tr -d '"' | xargs)" != $(OPERATOR_SDK_VERSION) ]; then \
 		set -e ; \

@@ -666,11 +666,11 @@ func (b *Bootstrap) installCrossplaneOperator() error {
 		return err
 	}
 
-	if err := b.waitResourceReady("pkg.crossplane.io/v1", "Configuration"); err != nil {
+	if err := b.waitResourceReady("pkg.ibm.crossplane.io/v1", "Configuration"); err != nil {
 		return err
 	}
 
-	if err := b.waitResourceReady("pkg.crossplane.io/v1alpha1", "Lock"); err != nil {
+	if err := b.waitResourceReady("pkg.ibm.crossplane.io/v1alpha1", "Lock"); err != nil {
 		return err
 	}
 
