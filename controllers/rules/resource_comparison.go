@@ -102,7 +102,9 @@ func ResourceEqualComparison(resourceA interface{}, resourceB interface{}) bool 
 			} else {
 				// TODO: need to find a better way to compare when the order of slice is not fixed
 				for index := range resourceA {
-					isEqual = isEqual && ResourceEqualComparison(resourceA[index], resourceB[index])
+					if !ResourceEqualComparison(resourceA[index], resourceB[index]) {
+						return false
+					}
 				}
 			}
 		}
