@@ -47,6 +47,7 @@ func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 			operatorsName = append(operatorsName, opreg.Spec.Operators[i].Name)
 		}
 		operatorsName = append(operatorsName, []string{
+			"ibmcloud-operator",
 			"ibm-crossplane-operator-app",
 			"ibm-namespace-scope-operator",
 			"operand-deployment-lifecycle-manager-app"}...)
