@@ -44,12 +44,18 @@ type CommonServiceSpec struct {
 	StorageClass        string               `json:"storageClass,omitempty"`
 }
 
-// Features defines the features.bedrockshim.enabled
+// Features defines the configurations of Cloud Pak Services
 type Features struct {
 	Bedrockshim *Bedrockshim `json:"bedrockshim,omitempty"`
+	APICatalog  *APICatalog  `json:"apiCatalog,omitempty"`
 }
 
-// Bedrockshim defines the features.bedrockshim.enabled
+// APICatalog defines the configuration of APICatalog
+type APICatalog struct {
+	StorageClass string `json:"storageClass,omitempty"`
+}
+
+// Bedrockshim defines the configuration of Bedrockshim
 type Bedrockshim struct {
 	Enabled bool `json:"enabled,omitempty"`
 }

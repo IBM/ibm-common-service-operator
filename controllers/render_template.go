@@ -63,6 +63,19 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 		newConfigs = append(newConfigs, multipleinstancesenabledConfig...)
 	}
 
+	// Update storageclass for API Catalog
+	if features := cs.Object["spec"].(map[string]interface{})["features"]; features != nil {
+		if apiCatalog := features.(map[string]interface{})["apiCatalog"]; apiCatalog != nil {
+			if storageClass := apiCatalog.(map[string]interface{})["storageClass"]; storageClass != nil {
+				storageConfig, err := convertStringToSlice(strings.ReplaceAll(constant.APICatalogTemplate, "placeholder", storageClass.(string)))
+				if err != nil {
+					return nil, err
+				}
+				newConfigs = append(newConfigs, storageConfig...)
+			}
+		}
+	}
+
 	klog.Info("Applying size configuration")
 	var sizeConfigs []interface{}
 	switch cs.Object["spec"].(map[string]interface{})["size"] {
