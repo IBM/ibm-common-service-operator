@@ -40,23 +40,17 @@ func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 		}
 
 		var operatorSlice []apiv3.BedrockOperator
-		operatorsName := []string{
-			"ibm-auditlogging-operator",
-			"ibm-cert-manager-operator",
-			"ibm-commonui-operator",
+
+		operatorsName := []string{}
+		opreg := bs.GetOperandRegistry(ctx, "common-service", bs.CSData.MasterNs)
+		for i := range opreg.Spec.Operators {
+			operatorsName = append(operatorsName, opreg.Spec.Operators[i].Name)
+		}
+		operatorsName = append(operatorsName, []string{
+			"ibmcloud-operator",
 			"ibm-crossplane-operator-app",
-			"ibm-events-operator",
-			"ibm-healthcheck-operator",
-			"ibm-iam-operator",
-			"ibm-ingress-nginx-operator",
-			"ibm-licensing-operator",
-			"ibm-management-ingress-operator",
-			"ibm-mongodb-operator",
-			"ibm-monitoring-grafana-operator",
 			"ibm-namespace-scope-operator",
-			"ibm-platform-api-operator",
-			"ibm-zen-operator",
-			"operand-deployment-lifecycle-manager-app"}
+			"operand-deployment-lifecycle-manager-app"}...)
 
 		for _, name := range operatorsName {
 			var opt apiv3.BedrockOperator

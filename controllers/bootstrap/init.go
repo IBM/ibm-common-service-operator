@@ -546,6 +546,23 @@ func (b *Bootstrap) GetSubscription(ctx context.Context, name, namespace string)
 	return sub
 }
 
+// GetOperandRegistry returns the OperandRegistry instance of "name" from "namespace" namespace
+func (b *Bootstrap) GetOperandRegistry(ctx context.Context, name, namespace string) *odlm.OperandRegistry {
+	klog.Infof("Fetch OperandRegistry: %v/%v", namespace, name)
+	opreg := &odlm.OperandRegistry{}
+	opregKey := types.NamespacedName{
+		Name:      name,
+		Namespace: namespace,
+	}
+
+	if err := b.Reader.Get(ctx, opregKey, opreg); err != nil {
+		klog.Errorf("failed to get OperandRegistry %s: %v", opregKey.String(), err)
+		return nil
+	}
+
+	return opreg
+}
+
 func (b *Bootstrap) CheckOperatorCatalog(ns string) error {
 
 	err := utilwait.PollImmediate(time.Second*10, time.Minute*3, func() (done bool, err error) {
