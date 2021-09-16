@@ -85,7 +85,7 @@ spec:
                       type: string
                     name:
                       type: string
-                    status:
+                    operatorStatus:
                       type: string
                     subscriptionStatus:
                       type: string

@@ -106,7 +106,7 @@ func getBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string) (apiv3.
 	} else {
 		if len(csv.Status.Conditions) > 0 {
 			csvStatus := csv.Status.Conditions[len(csv.Status.Conditions)-1].Phase
-			opt.Status = fmt.Sprintf("%v", csvStatus)
+			opt.OperatorStatus = fmt.Sprintf("%v", csvStatus)
 		}
 	}
 
