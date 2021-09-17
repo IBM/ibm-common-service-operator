@@ -64,7 +64,7 @@ type Bedrockshim struct {
 type BedrockOperator struct {
 	Name               string `json:"name,omitempty"`
 	Version            string `json:"version,omitempty"`
-	Status             string `json:"status,omitempty"`
+	OperatorStatus     string `json:"operatorStatus,omitempty"`
 	SubscriptionStatus string `json:"subscriptionStatus,omitempty"`
 	InstallPlanName    string `json:"installPlanName,omitempty"`
 }
