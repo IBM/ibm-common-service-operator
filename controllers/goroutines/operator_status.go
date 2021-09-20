@@ -42,6 +42,12 @@ func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 		var operatorSlice []apiv3.BedrockOperator
 
 		operatorsName := []string{}
+
+		// wait ODLM OperandRegistry CR resources
+		if err := bs.WaitResourceReady("operator.ibm.com/v1alpha1", "OperandRegistry"); err != nil {
+			klog.Error("Failed to wait for resource ready with kind: OperandRegistry, apiGroupVersion: operator.ibm.com/v1alpha1")
+		}
+
 		opreg := bs.GetOperandRegistry(ctx, "common-service", bs.CSData.MasterNs)
 		for i := range opreg.Spec.Operators {
 			operatorsName = append(operatorsName, opreg.Spec.Operators[i].Name)
