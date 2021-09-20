@@ -119,7 +119,7 @@ Click and install IBM Common Service Operator into `common-service` namespace.
 
 ![Install Preview](./images/install-operator.png)
 
-You can choose the `stable-v1` channel for installing the common service in the last release or choose the `beta` channel to install the latest beta release.
+You can choose the `stable-v1` channel for installing the common service in the EUS release or choose the `v3` channel to install the latest release.
 
 Waiting for few minutes the IBM Common Service Operator and ODLM will be installed.
 
