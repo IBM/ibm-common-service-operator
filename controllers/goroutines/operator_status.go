@@ -22,6 +22,7 @@ import (
 	"time"
 
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 
@@ -76,7 +77,7 @@ func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 
 			if err == nil {
 				operatorSlice = append(operatorSlice, opt)
-			} else {
+			} else if !errors.IsNotFound(err) {
 				klog.Errorf("fail to check operator: %s", err)
 			}
 		}
