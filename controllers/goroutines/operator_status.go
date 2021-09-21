@@ -52,10 +52,11 @@ func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 
 		opreg := bs.GetOperandRegistry(ctx, "common-service", bs.CSData.MasterNs)
 		if opreg == nil {
-			klog.Warning("OperandRegistry common-service is not ready not")
+			klog.Warning("OperandRegistry common-service is not ready, retry in 5 seconds")
 			time.Sleep(5 * time.Second)
 			continue
 		}
+
 		for i := range opreg.Spec.Operators {
 			operatorsName = append(operatorsName, opreg.Spec.Operators[i].Name)
 		}
