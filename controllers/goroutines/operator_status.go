@@ -22,6 +22,7 @@ import (
 	"time"
 
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 
@@ -33,7 +34,7 @@ import (
 func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 	for {
 		instance := &apiv3.CommonService{}
-		if err := bs.Client.Get(ctx, types.NamespacedName{Name: "common-service", Namespace: MasterNamespace}, instance); err != nil {
+		if err := bs.Reader.Get(ctx, types.NamespacedName{Name: "common-service", Namespace: MasterNamespace}, instance); err != nil {
 			klog.Warningf("Getting Common-service CR with error: %s", err)
 			time.Sleep(5 * time.Second)
 			continue
@@ -46,9 +47,15 @@ func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 		// wait ODLM OperandRegistry CR resources
 		if err := bs.WaitResourceReady("operator.ibm.com/v1alpha1", "OperandRegistry"); err != nil {
 			klog.Error("Failed to wait for resource ready with kind: OperandRegistry, apiGroupVersion: operator.ibm.com/v1alpha1")
+			continue
 		}
 
 		opreg := bs.GetOperandRegistry(ctx, "common-service", bs.CSData.MasterNs)
+		if opreg == nil {
+			klog.Warning("OperandRegistry common-service is not ready not")
+			time.Sleep(5 * time.Second)
+			continue
+		}
 		for i := range opreg.Spec.Operators {
 			operatorsName = append(operatorsName, opreg.Spec.Operators[i].Name)
 		}
@@ -70,6 +77,8 @@ func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 
 			if err == nil {
 				operatorSlice = append(operatorSlice, opt)
+			} else if !errors.IsNotFound(err) {
+				klog.Errorf("fail to check operator: %s", err)
 			}
 		}
 
