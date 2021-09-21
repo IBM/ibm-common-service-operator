@@ -34,7 +34,7 @@ import (
 func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 	for {
 		instance := &apiv3.CommonService{}
-		if err := bs.Client.Get(ctx, types.NamespacedName{Name: "common-service", Namespace: MasterNamespace}, instance); err != nil {
+		if err := bs.Reader.Get(ctx, types.NamespacedName{Name: "common-service", Namespace: MasterNamespace}, instance); err != nil {
 			klog.Warningf("Getting Common-service CR with error: %s", err)
 			time.Sleep(5 * time.Second)
 			continue
