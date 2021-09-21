@@ -79,7 +79,7 @@ func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 			if err == nil {
 				operatorSlice = append(operatorSlice, opt)
 			} else if !errors.IsNotFound(err) {
-				klog.Errorf("fail to check operator: %s", err)
+				klog.Errorf("Failed to check operator %s: %v", name, err)
 			}
 		}
 
