@@ -44,7 +44,7 @@ func DeployCertManagerCR(bs *bootstrap.Bootstrap) {
 
 	for _, kind := range CertManagerKinds {
 		if err := bs.WaitResourceReady(CertManagerAPIGroupVersion, kind); err != nil {
-			klog.Errorf("Failed to wait for resource ready with kind %s, apiGroupVersion: %s", kind, CertManagerAPIGroupVersion)
+			klog.Errorf("Failed to wait for resource ready with kind: %s, apiGroupVersion: %s", kind, CertManagerAPIGroupVersion)
 		}
 	}
 

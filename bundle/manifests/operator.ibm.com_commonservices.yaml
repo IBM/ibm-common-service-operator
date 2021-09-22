@@ -39,10 +39,16 @@ spec:
             description: CommonServiceSpec defines the desired state of CommonService
             properties:
               features:
-                description: Features defines the features.bedrockshim.enabled
+                description: Features defines the configurations of Cloud Pak Services
                 properties:
+                  apiCatalog:
+                    description: APICatalog defines the configuration of APICatalog
+                    properties:
+                      storageClass:
+                        type: string
+                    type: object
                   bedrockshim:
-                    description: Bedrockshim defines the features.bedrockshim.enabled
+                    description: Bedrockshim defines the configuration of Bedrockshim
                     properties:
                       enabled:
                         type: boolean
@@ -86,7 +92,7 @@ spec:
                       type: string
                     name:
                       type: string
-                    status:
+                    operatorStatus:
                       type: string
                     subscriptionStatus:
                       type: string

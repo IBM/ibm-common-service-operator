@@ -93,8 +93,22 @@ func ResourceEqualComparison(resourceA interface{}, resourceB interface{}) bool 
 
 	isEqual := true
 	switch resourceA := resourceA.(type) {
-	// TODO: consider the slices
-	// case []interface{}:
+	case []interface{}:
+		if resourceB == nil {
+			isEqual = false
+		} else if resourceB, ok := resourceB.([]interface{}); ok {
+			if len(resourceA) != len(resourceB) {
+				isEqual = false
+			} else {
+				// TODO: need to find a better way to compare when the order of slice is not fixed
+				for index := range resourceA {
+					if !ResourceEqualComparison(resourceA[index], resourceB[index]) {
+						return false
+					}
+				}
+			}
+		}
+		return isEqual
 	case map[string]interface{}:
 		if resourceB == nil {
 			isEqual = false

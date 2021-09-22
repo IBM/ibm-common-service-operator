@@ -435,4 +435,8 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+- name: ibm-apicatalog
+  spec:
+    apicatalogmanager:
+      profile: LARGEST_VALUE
 `

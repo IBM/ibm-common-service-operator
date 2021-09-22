@@ -24,9 +24,9 @@ metadata:
     containerImage: quay.io/opencloudio/common-service-operator:latest
     createdAt: "2020-10-19T21:38:33Z"
     description: The IBM Common Service Operator is used to deploy IBM Common Services
-    olm.skipRange: ">=3.3.0 <3.11.0"
+    olm.skipRange: ">=3.3.0 <3.12.0"
     operatorChannel: v3
-    operatorVersion: 3.11.0
+    operatorVersion: 3.12.0
     operators.operatorframework.io/builder: operator-sdk-v1.10.0+git
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/IBM/ibm-common-service-operator
@@ -36,7 +36,7 @@ metadata:
     operatorframework.io/arch.ppc64le: supported
     operatorframework.io/arch.s390x: supported
     operatorframework.io/os.linux: supported
-  name: ibm-common-service-operator.v3.11.0
+  name: ibm-common-service-operator.v3.12.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -55,6 +55,22 @@ spec:
               - urn:alm:descriptor:com.tectonic.ui:select:small
               - urn:alm:descriptor:com.tectonic.ui:select:medium
               - urn:alm:descriptor:com.tectonic.ui:select:large
+        statusDescriptors:
+          - description: Installed Bedrock Operator Name
+            displayName: Name
+            path: bedrockOperators[0].name
+          - description: Installed Bedrock Operator InstallPlan Name
+            displayName: InstallPlanName
+            path: bedrockOperators[0].installPlanName
+          - description: Installed Bedrock Operator Status
+            displayName: OperatorStatus
+            path: bedrockOperators[0].operatorStatus
+          - description: Installed Bedrock Operator Subscription Status
+            displayName: SubscriptionStatus
+            path: bedrockOperators[0].subscriptionStatus
+          - description: Installed Bedrock Operator Version
+            displayName: Version
+            path: bedrockOperators[0].version
         version: v3
   description: |-
     # Introduction
@@ -82,7 +98,7 @@ spec:
 
     ## Operator versions
 
-     - 3.11.0
+     - 3.12.0
 
     ## Prerequisites
 
@@ -229,6 +245,7 @@ spec:
               verbs:
                 - create
                 - get
+                - update
             - apiGroups:
                 - apps
               resources:
@@ -237,10 +254,45 @@ spec:
                 - create
                 - get
             - apiGroups:
+                - apps
+              resourceNames:
+                - ibm-common-service-webhook
+                - secretshare
+              resources:
+                - deployments
+              verbs:
+                - update
+            - apiGroups:
                 - pkg.ibm.crossplane.io
               resources:
                 - locks
                 - configurations
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
+            - apiGroups:
+                - ibmcpcs.ibm.com
+              resources:
+                - secretshares
+                - secretshares/status
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
+            - apiGroups:
+                - operator.ibm.com
+              resources:
+                - podpresets
+                - podpresets/status
               verbs:
                 - create
                 - delete
@@ -288,9 +340,9 @@ spec:
                       - name: OPERATOR_NAME
                         value: ibm-common-service-operator
                       - name: IBM_CS_WEBHOOK_IMAGE
-                        value: quay.io/opencloudio/ibm-cs-webhook:1.7.0
+                        value: quay.io/opencloudio/ibm-cs-webhook:1.8.0
                       - name: IBM_SECRETSHARE_OPERATOR_IMAGE
-                        value: quay.io/opencloudio/ibm-secretshare-operator:1.8.0
+                        value: quay.io/opencloudio/ibm-secretshare-operator:1.9.0
                     image: quay.io/opencloudio/common-service-operator:latest
                     imagePullPolicy: Always
                     livenessProbe:
@@ -366,11 +418,11 @@ spec:
   provider:
     name: IBM
   relatedImages:
-    - image: quay.io/opencloudio/common-service-operator:3.10.0
+    - image: quay.io/opencloudio/common-service-operator:3.12.0
       name: COMMON_SERVICE_OPERATOR_IMAGE
-    - image: quay.io/opencloudio/ibm-cs-webhook:1.7.0
+    - image: quay.io/opencloudio/ibm-cs-webhook:1.8.0
       name: IBM_CS_WEBHOOK_IMAGE
-    - image: quay.io/opencloudio/ibm-secretshare-operator:1.8.0
+    - image: quay.io/opencloudio/ibm-secretshare-operator:1.9.0
       name: IBM_SECRETSHARE_OPERATOR_IMAGE
-  replaces: ibm-common-service-operator.v3.10.0
-  version: 3.11.0
+  replaces: ibm-common-service-operator.v3.11.0
+  version: 3.12.0

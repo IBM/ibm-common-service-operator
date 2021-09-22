@@ -95,9 +95,13 @@ spec:
     spec:
       grafana: {}
       operandRequest: {}
-  - name: user-data-services-operator
+  - name: ibm-user-data-services-operator
     spec:
-      AnalyticsProxy: {}
+      operandBindInfo: {}
+      operandRequest: {}
+  - name: ibm-apicatalog
+    spec:
+      apicatalogmanager: {}
       operandBindInfo: {}
       operandRequest: {}
 `
@@ -245,16 +249,22 @@ spec:
     packageName: db2u-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
-  - channel: {{ .Channel }}
-    name: user-data-services-operator
-    namespace: {{ .MasterNs }}
-    packageName: user-data-services-operator-certified
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
   - channel: stable
     name: cloud-native-postgresql
     namespace: {{ .MasterNs }}
     packageName: cloud-native-postgresql
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+  - channel: {{ .Channel }}
+    name: ibm-apicatalog
+    namespace: {{ .MasterNs }}
+    packageName: ibm-apicatalog
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+  - channel: {{ .Channel }}
+    name: ibm-user-data-services-operator
+    namespace: {{ .MasterNs }}
+    packageName: ibm-user-data-services-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
 `

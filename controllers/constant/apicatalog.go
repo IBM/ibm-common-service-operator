@@ -14,8 +14,13 @@
 // limitations under the License.
 //
 
-package version
+package constant
 
-var (
-	Version = "3.12.0"
-)
+const APICatalogTemplate = `
+- name: ibm-apicatalog
+  spec:
+    apicatalogmanager:
+      externalDB:
+        databaseVolumeClaimTemplate:
+          storageClassName: placeholder
+`

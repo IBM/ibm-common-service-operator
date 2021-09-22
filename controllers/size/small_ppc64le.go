@@ -433,4 +433,8 @@ const Small = `
           limits:
             cpu: 100m
             memory: 100Mi
+- name: ibm-apicatalog
+  spec:
+    apicatalogmanager:
+      profile: small
 `
