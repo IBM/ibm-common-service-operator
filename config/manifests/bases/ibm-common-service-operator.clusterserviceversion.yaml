@@ -37,10 +37,10 @@ spec:
         displayName: Size
         path: size
         x-descriptors:
-          - urn:alm:descriptor:com.tectonic.ui:select:starterset
-          - urn:alm:descriptor:com.tectonic.ui:select:small
-          - urn:alm:descriptor:com.tectonic.ui:select:medium
-          - urn:alm:descriptor:com.tectonic.ui:select:large
+        - urn:alm:descriptor:com.tectonic.ui:select:starterset
+        - urn:alm:descriptor:com.tectonic.ui:select:small
+        - urn:alm:descriptor:com.tectonic.ui:select:medium
+        - urn:alm:descriptor:com.tectonic.ui:select:large
       statusDescriptors:
       - description: Installed Bedrock Operator Name
         displayName: Name
