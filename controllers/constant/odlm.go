@@ -111,8 +111,7 @@ spec:
     resources:
       - apiVersion: batch/v1
         kind: Job
-        metadata:
-          name: create-postgres-license-config
+        name: create-postgres-license-config
         data:
           spec:
             activeDeadlineSeconds: 600
@@ -168,12 +167,10 @@ spec:
                 serviceAccountName: edb-license-sa
       - apiVersion: v1
         kind: ServiceAccount
-        metadata:
-          name: edb-license-sa
+        name: edb-license-sa
       - apiVersion: rbac.authorization.k8s.io/v1
         kind: RoleBinding
-        metadata:
-          name: edb-license-rolebinding
+        name: edb-license-rolebinding
         subjects:
         - kind: ServiceAccount
           name: edb-license-sa
@@ -183,8 +180,7 @@ spec:
           apiGroup: rbac.authorization.k8s.io
       - apiVersion: rbac.authorization.k8s.io/v1
         kind: Role
-        metadata:
-          name: edb-license-role
+        name: edb-license-role
         rules:
         - apiGroups:
           - ""
@@ -453,8 +449,7 @@ spec:
     resources:
       - apiVersion: batch/v1
         kind: Job
-        metadata:
-          name: create-postgres-license-config
+        name: create-postgres-license-config
         data:
           spec:
             activeDeadlineSeconds: 600
@@ -510,12 +505,10 @@ spec:
                 serviceAccountName: edb-license-sa
       - apiVersion: v1
         kind: ServiceAccount
-        metadata:
-          name: edb-license-sa
+        name: edb-license-sa
       - apiVersion: rbac.authorization.k8s.io/v1
         kind: RoleBinding
-        metadata:
-          name: edb-license-rolebinding
+        name: edb-license-rolebinding
         subjects:
         - kind: ServiceAccount
           name: edb-license-sa
@@ -525,8 +518,7 @@ spec:
           apiGroup: rbac.authorization.k8s.io
       - apiVersion: rbac.authorization.k8s.io/v1
         kind: Role
-        metadata:
-          name: edb-license-role
+        name: edb-license-role
         rules:
         - apiGroups:
           - ""
