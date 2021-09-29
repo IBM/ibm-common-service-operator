@@ -116,6 +116,8 @@ spec:
             template:
               metadata:
               spec:
+                imagePullSecrets:
+                  - name: ibm-entitlement-key
                 affinity:
                   nodeAffinity:
                     requiredDuringSchedulingIgnoredDuringExecution:
@@ -168,25 +170,27 @@ spec:
       - apiVersion: rbac.authorization.k8s.io/v1
         kind: RoleBinding
         name: edb-license-rolebinding
-        subjects:
-        - kind: ServiceAccount
-          name: edb-license-sa
-        roleRef:
-          kind: Role
-          name: edb-license-role
-          apiGroup: rbac.authorization.k8s.io
+        data:
+          subjects:
+          - kind: ServiceAccount
+            name: edb-license-sa
+          roleRef:
+            kind: Role
+            name: edb-license-role
+            apiGroup: rbac.authorization.k8s.io
       - apiVersion: rbac.authorization.k8s.io/v1
         kind: Role
         name: edb-license-role
-        rules:
-        - apiGroups:
-          - ""
-          resources:
-          - secret
-          verbs:
-          - create
-          - update
-          - patch
+        data:
+          rules:
+          - apiGroups:
+            - ""
+            resources:
+            - secret
+            verbs:
+            - create
+            - update
+            - patch
 `
 
 const CSV3OperandRegistry = `
