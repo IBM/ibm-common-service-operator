@@ -599,20 +599,12 @@ func (b *Bootstrap) DeleteFromYaml(objectTemplate string, data interface{}) erro
 	for _, obj := range objects {
 		gvk := obj.GetObjectKind().GroupVersionKind()
 
-		objInCluster, err := b.GetObject(obj)
 		if errors.IsNotFound(err) {
 			klog.Infof("Not Found name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n, skipping", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
 			continue
 		} else if err != nil {
 			errMsg = err
 			continue
-		}
-
-		resourceVersion := objInCluster.GetResourceVersion()
-		obj.SetResourceVersion(resourceVersion)
-		obj.SetFinalizers(make([]string, 0))
-		if err := b.UpdateObject(obj); err != nil {
-			return err
 		}
 
 		klog.Infof("Deleting object with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
