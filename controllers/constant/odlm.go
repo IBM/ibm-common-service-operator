@@ -104,6 +104,96 @@ spec:
       apicatalogmanager: {}
       operandBindInfo: {}
       operandRequest: {}
+  - name: cloud-native-postgresql
+    spec:
+      operandBindInfo: {}
+      operandRequest: {}
+    resources:
+      - apiVersion: batch/v1
+        kind: Job
+        metadata:
+          name: create-postgres-license-config
+        data:
+          spec:
+            activeDeadlineSeconds: 600
+            backoffLimit: 5
+            template:
+              metadata:
+              spec:
+                affinity:
+                  nodeAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                      nodeSelectorTerms:
+                      - matchExpressions:
+                        - key: beta.kubernetes.io/arch
+                          operator: In
+                          values:
+                          - amd64
+                containers:
+                - command:
+                  - bash
+                  - -c
+                  - |
+                    cat << EOF | kubectl apply -f -
+                    apiVersion: v1
+                    kind: Secret
+                    type: Opaque
+                    metadata:
+                      name: postgresql-operator-controller-manager-config
+                    data:
+                      EDB_LICENSE_KEY: $(base64 /license_keys/edb/EDB_LICENSE_KEY | tr -d '\n')
+                    EOF
+                  image: cp.icr.io/cp/cpd/wd-postgres-license@sha256:4d8d0ecd31d04e15f757ffda74101ef5bd7fb5789db1ffcef892e961ef312ebf
+                  name: edb-license
+                  resources:
+                    limits:
+                      cpu: 500m
+                      memory: 512Mi
+                    requests:
+                      cpu: 100m
+                      memory: 50Mi
+                  securityContext:
+                    allowPrivilegeEscalation: false
+                    capabilities:
+                      drop:
+                      - ALL
+                    privileged: false
+                    readOnlyRootFilesystem: false
+                hostIPC: false
+                hostNetwork: false
+                hostPID: false
+                restartPolicy: Never
+                securityContext:
+                  runAsNonRoot: true
+                serviceAccountName: edb-license-sa
+      - apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          name: edb-license-sa
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        metadata:
+          name: edb-license-rolebinding
+        subjects:
+        - kind: ServiceAccount
+          name: edb-license-sa
+        roleRef:
+          kind: Role
+          name: edb-license-role
+          apiGroup: rbac.authorization.k8s.io
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: Role
+        metadata:
+          name: edb-license-role
+        rules:
+        - apiGroups:
+          - ""
+          resources:
+          - secret
+          verbs:
+          - create
+          - update
+          - patch
 `
 
 const CSV3OperandRegistry = `
@@ -356,6 +446,96 @@ spec:
     spec:
       grafana: {}
       operandRequest: {}
+  - name: cloud-native-postgresql
+    spec:
+      operandBindInfo: {}
+      operandRequest: {}
+    resources:
+      - apiVersion: batch/v1
+        kind: Job
+        metadata:
+          name: create-postgres-license-config
+        data:
+          spec:
+            activeDeadlineSeconds: 600
+            backoffLimit: 5
+            template:
+              metadata:
+              spec:
+                affinity:
+                  nodeAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                      nodeSelectorTerms:
+                      - matchExpressions:
+                        - key: beta.kubernetes.io/arch
+                          operator: In
+                          values:
+                          - amd64
+                containers:
+                - command:
+                  - bash
+                  - -c
+                  - |
+                    cat << EOF | kubectl apply -f -
+                    apiVersion: v1
+                    kind: Secret
+                    type: Opaque
+                    metadata:
+                      name: postgresql-operator-controller-manager-config
+                    data:
+                      EDB_LICENSE_KEY: $(base64 /license_keys/edb/EDB_LICENSE_KEY | tr -d '\n')
+                    EOF
+                  image: cp.icr.io/cp/cpd/wd-postgres-license@sha256:4d8d0ecd31d04e15f757ffda74101ef5bd7fb5789db1ffcef892e961ef312ebf
+                  name: edb-license
+                  resources:
+                    limits:
+                      cpu: 500m
+                      memory: 512Mi
+                    requests:
+                      cpu: 100m
+                      memory: 50Mi
+                  securityContext:
+                    allowPrivilegeEscalation: false
+                    capabilities:
+                      drop:
+                      - ALL
+                    privileged: false
+                    readOnlyRootFilesystem: false
+                hostIPC: false
+                hostNetwork: false
+                hostPID: false
+                restartPolicy: Never
+                securityContext:
+                  runAsNonRoot: true
+                serviceAccountName: edb-license-sa
+      - apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          name: edb-license-sa
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        metadata:
+          name: edb-license-rolebinding
+        subjects:
+        - kind: ServiceAccount
+          name: edb-license-sa
+        roleRef:
+          kind: Role
+          name: edb-license-role
+          apiGroup: rbac.authorization.k8s.io
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: Role
+        metadata:
+          name: edb-license-role
+        rules:
+        - apiGroups:
+          - ""
+          resources:
+          - secret
+          verbs:
+          - create
+          - update
+          - patch
 `
 
 const CSV3SaasOperandRegistry = `
@@ -431,6 +611,12 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
+  - channel: stable
+    name: cloud-native-postgresql
+    namespace: {{ .MasterNs }}
+    packageName: cloud-native-postgresql
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
 `
 
 const ODLMClusterSubscription = `
