@@ -285,6 +285,14 @@ spec:
                 - patch
                 - update
                 - watch
+            - apiGroups:
+                - storage.k8s.io
+              resources:
+                - storageclasses
+              verbs:
+                - get
+                - list
+                - watch
           serviceAccountName: ibm-common-service-operator
       deployments:
         - name: ibm-common-service-operator
