@@ -168,17 +168,6 @@ spec:
         kind: ServiceAccount
         name: edb-license-sa
       - apiVersion: rbac.authorization.k8s.io/v1
-        kind: RoleBinding
-        name: edb-license-rolebinding
-        data:
-          subjects:
-          - kind: ServiceAccount
-            name: edb-license-sa
-          roleRef:
-            kind: Role
-            name: edb-license-role
-            apiGroup: rbac.authorization.k8s.io
-      - apiVersion: rbac.authorization.k8s.io/v1
         kind: Role
         name: edb-license-role
         data:
@@ -191,6 +180,17 @@ spec:
             - create
             - update
             - patch
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        name: edb-license-rolebinding
+        data:
+          subjects:
+          - kind: ServiceAccount
+            name: edb-license-sa
+          roleRef:
+            kind: Role
+            name: edb-license-role
+            apiGroup: rbac.authorization.k8s.io
 `
 
 const CSV3OperandRegistry = `
