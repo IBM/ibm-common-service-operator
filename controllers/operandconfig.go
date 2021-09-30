@@ -276,6 +276,10 @@ func (r *CommonServiceReconciler) updateOperandConfig(newConfigs []interface{}) 
 	isEqual := true
 	for _, opService := range opconServices {
 		existingOpService := getItemByName(existingOpconServices.([]interface{}), opService.(map[string]interface{})["name"].(string))
+        if opService.(map[string]interface{})["name"].(string) == "cloud-native-postgresql" {
+			// skip sizing compare for cloud-native-postgresql
+            continue
+        }
 		for cr, spec := range opService.(map[string]interface{})["spec"].(map[string]interface{}) {
 			existingCrSpec := existingOpService.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
 			if isEqual = rules.ResourceEqualComparison(existingCrSpec, spec); !isEqual {
@@ -349,6 +353,10 @@ func (r *CommonServiceReconciler) getMinimalSizes(opconServices, ruleSlice []int
 
 	for _, opService := range opconServices {
 		crSummary := getItemByName(configSummary, opService.(map[string]interface{})["name"].(string))
+        if opService.(map[string]interface{})["name"].(string) == "cloud-native-postgresql" {
+			// skip sizing compare for cloud-native-postgresql
+            continue
+        }
 		for cr, spec := range opService.(map[string]interface{})["spec"].(map[string]interface{}) {
 			if crSummary == nil || crSummary.(map[string]interface{})["spec"] == nil || crSummary.(map[string]interface{})["spec"].(map[string]interface{})[cr] == nil {
 				continue
