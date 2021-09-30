@@ -105,6 +105,7 @@ spec:
       operandBindInfo: {}
       operandRequest: {}
   - name: cloud-native-postgresql
+    spec: {}
     resources:
       - apiVersion: batch/v1
         kind: Job
