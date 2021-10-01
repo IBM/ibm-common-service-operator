@@ -319,10 +319,10 @@ const Small = `
       fluentd:
         resources:
           requests:
-            cpu: 20m
+            cpu: 30m
             memory: 20Mi
           limits:
-            cpu: 50m
+            cpu: 60m
             memory: 150Mi
 - name: ibm-monitoring-exporters-operator
   spec:
