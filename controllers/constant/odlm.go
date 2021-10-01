@@ -176,11 +176,13 @@ spec:
           - apiGroups:
             - ""
             resources:
-            - secret
+            - secrets
             verbs:
             - create
             - update
             - patch
+            - get
+            - list
       - apiVersion: rbac.authorization.k8s.io/v1
         kind: RoleBinding
         name: edb-license-rolebinding
