@@ -161,7 +161,7 @@ spec:
                 hostIPC: false
                 hostNetwork: false
                 hostPID: false
-                restartPolicy: Never
+                restartPolicy: OnFailure
                 securityContext:
                   runAsNonRoot: true
                 serviceAccountName: edb-license-sa
