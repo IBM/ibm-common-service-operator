@@ -128,7 +128,7 @@ spec:
                           operator: In
                           values:
                           - amd64
-                containers:
+                initContainers:
                 - command:
                   - bash
                   - -c
@@ -144,6 +144,29 @@ spec:
                     EOF
                   image: cp.icr.io/cp/cpd/wd-postgres-license@sha256:4d8d0ecd31d04e15f757ffda74101ef5bd7fb5789db1ffcef892e961ef312ebf
                   name: edb-license
+                  resources:
+                    limits:
+                      cpu: 500m
+                      memory: 512Mi
+                    requests:
+                      cpu: 100m
+                      memory: 50Mi
+                  securityContext:
+                    allowPrivilegeEscalation: false
+                    capabilities:
+                      drop:
+                      - ALL
+                    privileged: false
+                    readOnlyRootFilesystem: false
+                containers:
+                - command:
+                  - bash
+                  - '-c'
+                  - >-
+                    kubectl delete pods -n ibm-common-services -l app.kubernetes.io/name=cloud-native-postgresql
+                  image: >-
+                    cp.icr.io/cp/cpd/wd-postgres-license@sha256:4d8d0ecd31d04e15f757ffda74101ef5bd7fb5789db1ffcef892e961ef312ebf
+                  name: restart-edb-pod
                   resources:
                     limits:
                       cpu: 500m
@@ -176,6 +199,7 @@ spec:
           - apiGroups:
             - ""
             resources:
+            - pods
             - secrets
             verbs:
             - create
@@ -183,6 +207,7 @@ spec:
             - patch
             - get
             - list
+            - delete
       - apiVersion: rbac.authorization.k8s.io/v1
         kind: RoleBinding
         name: edb-license-rolebinding
