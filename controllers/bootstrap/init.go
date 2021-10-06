@@ -78,17 +78,16 @@ type Bootstrap struct {
 	CSData               CSData
 }
 type CSData struct {
-	Channel             string
-	Version             string
-	MasterNs            string
-	ControlNs           string
-	CatalogSourceName   string
-	CatalogSourceNs     string
-	IsolatedModeEnable  string
-	ApprovalMode        string
-	OnPremMultiEnable   string
-	CrossplaneProvider  string
-	CrossplaneEnabledCR map[string]bool
+	Channel            string
+	Version            string
+	MasterNs           string
+	ControlNs          string
+	CatalogSourceName  string
+	CatalogSourceNs    string
+	IsolatedModeEnable string
+	ApprovalMode       string
+	OnPremMultiEnable  string
+	CrossplaneProvider string
 }
 
 type CSOperator struct {
@@ -173,11 +172,6 @@ func (b *Bootstrap) CrossplaneCloudOperator(instance *apiv3.CommonService) error
 	}
 
 	if bedrockshim {
-		if b.CSData.CrossplaneEnabledCR == nil {
-			b.CSData.CrossplaneEnabledCR = make(map[string]bool)
-		}
-		b.CSData.CrossplaneEnabledCR[instance.Namespace+"/"+instance.Name] = true
-
 		b.CSData.CrossplaneProvider = "odlm"
 
 		if b.SaasEnable {
@@ -191,7 +185,7 @@ func (b *Bootstrap) CrossplaneCloudOperator(instance *apiv3.CommonService) error
 			return err
 		}
 	} else {
-		if err := b.DeleteCrossplaneCloudSubscription(b.CSData.MasterNs, instance.Namespace+"/"+instance.Name); err != nil {
+		if err := b.DeleteCrossplaneCloudSubscription(b.CSData.MasterNs); err != nil {
 			return err
 		}
 	}
@@ -200,44 +194,70 @@ func (b *Bootstrap) CrossplaneCloudOperator(instance *apiv3.CommonService) error
 }
 
 // DeleteCrossplaneCloudSubscription deleted crossplane & cloud operator subscription when bedrockshim set to false or CS CR is removed
-func (b *Bootstrap) DeleteCrossplaneCloudSubscription(namespace, NamespacedName string) error {
-	if b.CSData.CrossplaneEnabledCR[NamespacedName] {
-		delete(b.CSData.CrossplaneEnabledCR, NamespacedName)
-	} else {
-		return nil
+func (b *Bootstrap) DeleteCrossplaneCloudSubscription(namespace string) error {
+	// Fetch all the CommonService instances
+	klog.Info("Fetch all the CommonService instances")
+	csList := util.NewUnstructuredList("operator.ibm.com", "CommonService", "v3")
+	if err := b.Client.List(ctx, csList); err != nil {
+		return err
 	}
-
-	if len(b.CSData.CrossplaneEnabledCR) != 0 {
-		for cr := range b.CSData.CrossplaneEnabledCR {
-			klog.Infof("Unable to uninstall crossplane/cloud operator due to %s Spec.Features.Bedrockshim.Enabled is True", cr)
+	uninstallCrossplane := true
+	for _, cs := range csList.Items {
+		if cs.GetDeletionTimestamp() != nil {
+			continue
 		}
-		return nil
-	}
-
-	// delete crossplane cr
-	klog.Infof("Trying to delete ibm-crossplane-operator CR in %s", namespace)
-	resourceCrossConfiguration := constant.CrossConfiguration
-	if err := b.DeleteFromYaml(resourceCrossConfiguration, b.CSData); err != nil {
-		return err
-	}
-	resourceCrossLock := constant.CrossLock
-	if err := b.DeleteFromYaml(resourceCrossLock, b.CSData); err != nil {
-		return err
-	}
-
-	// delete crossplane/cloud operator subscription
-	klog.Infof("Trying to delete ibm-crossplane-operator in %s", namespace)
-	if err := b.deleteSubscription("ibm-crossplane-operator-app", namespace); err != nil {
-		klog.Errorf("Failed to delete ibm-crossplane-operator in %s: %v", namespace, err)
-		return err
-	}
-	if b.SaasEnable {
-		klog.Infof("Trying to delete ibm-cloud-operator in %s", namespace)
-		if err := b.deleteSubscription("ibmcloud-operator", namespace); err != nil {
-			klog.Errorf("Failed to delete ibm-cloud-operator in %s: %v", namespace, err)
-			return err
+		if cs.Object["spec"].(map[string]interface{})["features"] != nil &&
+			cs.Object["spec"].(map[string]interface{})["features"].(map[string]interface{})["bedrockshim"] != nil &&
+			cs.Object["spec"].(map[string]interface{})["features"].(map[string]interface{})["bedrockshim"].(map[string]interface{})["enabled"] != nil {
+			if cs.Object["spec"].(map[string]interface{})["features"].(map[string]interface{})["bedrockshim"].(map[string]interface{})["enabled"].(bool) {
+				uninstallCrossplane = false
+			}
 		}
 	}
+
+	if uninstallCrossplane {
+		_, crossplaneErr := b.GetSubscription(ctx, "ibm-crossplane-operator-app", namespace)
+		if errors.IsNotFound(crossplaneErr) {
+			klog.Infof("%s not installed, skipping", "ibm-crossplane-operator-app")
+		} else if crossplaneErr != nil {
+			klog.Errorf("Failed to get subscription %s/%s", namespace, "ibm-crossplane-operator-app")
+		} else {
+			// delete crossplane cr
+			klog.Infof("Trying to delete ibm-crossplane-operator CR in %s", namespace)
+			resourceCrossConfiguration := constant.CrossConfiguration
+			if err := b.DeleteFromYaml(resourceCrossConfiguration, b.CSData); err != nil {
+				return err
+			}
+			resourceCrossLock := constant.CrossLock
+			if err := b.DeleteFromYaml(resourceCrossLock, b.CSData); err != nil {
+				return err
+			}
+
+			// delete crossplane operator subscription
+			klog.Infof("Trying to delete ibm-crossplane-operator in %s", namespace)
+			if err := b.deleteSubscription("ibm-crossplane-operator-app", namespace); err != nil {
+				klog.Errorf("Failed to delete ibm-crossplane-operator in %s: %v", namespace, err)
+				return err
+			}
+		}
+
+		if b.SaasEnable {
+			_, cloudErr := b.GetSubscription(ctx, "ibmcloud-operator", namespace)
+			if errors.IsNotFound(cloudErr) {
+				klog.Infof("%s not installed, skipping", "ibmcloud-operator")
+			} else if cloudErr != nil {
+				klog.Errorf("Failed to get subscription %s/%s", namespace, "ibmcloud-operator")
+			} else {
+				// delete cloud operator subscription
+				klog.Infof("Trying to delete ibm-cloud-operator in %s", namespace)
+				if err := b.deleteSubscription("ibmcloud-operator", namespace); err != nil {
+					klog.Errorf("Failed to delete ibm-cloud-operator in %s: %v", namespace, err)
+					return err
+				}
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -561,7 +581,10 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 
 		// do not compareVersion if the resource is subscription
 		if gvk.Kind == "Subscription" {
-			sub := b.GetSubscription(ctx, obj.GetName(), b.CSData.MasterNs)
+			sub, err := b.GetSubscription(ctx, obj.GetName(), b.CSData.MasterNs)
+			if err != nil {
+				klog.Errorf("Failed to get subscription %s/%s", b.CSData.MasterNs, obj.GetName())
+			}
 			update = !equality.Semantic.DeepEqual(sub.Object["spec"], obj.Object["spec"])
 		} else if util.CompareVersion(obj.GetAnnotations()["version"], objInCluster.GetAnnotations()["version"]) {
 			update = true
@@ -630,7 +653,7 @@ func (b *Bootstrap) DeleteFromYaml(objectTemplate string, data interface{}) erro
 }
 
 // GetSubscription returns the subscription instance of "name" from "namespace" namespace
-func (b *Bootstrap) GetSubscription(ctx context.Context, name, namespace string) *unstructured.Unstructured {
+func (b *Bootstrap) GetSubscription(ctx context.Context, name, namespace string) (*unstructured.Unstructured, error) {
 	klog.Infof("Fetch Subscription: %v/%v", namespace, name)
 	sub := &unstructured.Unstructured{}
 	sub.SetGroupVersionKind(olmv1alpha1.SchemeGroupVersion.WithKind("subscription"))
@@ -640,10 +663,10 @@ func (b *Bootstrap) GetSubscription(ctx context.Context, name, namespace string)
 	}
 
 	if err := b.Client.Get(ctx, subKey, sub); err != nil {
-		return nil
+		return nil, err
 	}
 
-	return sub
+	return sub, nil
 }
 
 // GetOperandRegistry returns the OperandRegistry instance of "name" from "namespace" namespace
