@@ -65,7 +65,6 @@ spec:
       switcheritem: {}
       operandRequest: {}
       navconfiguration: {}
-      operandBindInfo: {}
   - name: ibm-management-ingress-operator
     spec:
       managementIngress: {}
