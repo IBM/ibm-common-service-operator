@@ -394,6 +394,14 @@ spec:
     packageName: analyticsengine-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+  - channel: {{ .Channel }}
+    name: ibm-bts-operator
+    namespace: {{ .MasterNs }}
+    packageName: ibm-bts-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: {{ .CatalogSourceNs }}
 `
 
 const CSV3SaasOperandConfig = `
@@ -548,6 +556,14 @@ spec:
     name: ibm-zen-operator
     namespace: {{ .MasterNs }}
     packageName: ibm-zen-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: {{ .CatalogSourceNs }}
+  - channel: {{ .Channel }}
+    name: ibm-bts-operator
+    namespace: {{ .MasterNs }}
+    packageName: ibm-bts-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
