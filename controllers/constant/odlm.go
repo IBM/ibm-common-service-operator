@@ -376,7 +376,7 @@ spec:
     packageName: ibm-apicatalog
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
-  - channel: {{ .Channel }}
+  - channel: alpha
     name: ibm-user-data-services-operator
     namespace: {{ .MasterNs }}
     packageName: ibm-user-data-services-operator
