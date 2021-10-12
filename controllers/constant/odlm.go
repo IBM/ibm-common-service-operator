@@ -163,7 +163,7 @@ spec:
                   - bash
                   - '-c'
                   - >-
-                    kubectl delete pods -n ibm-common-services -l app.kubernetes.io/name=cloud-native-postgresql
+                    kubectl delete pods -l app.kubernetes.io/name=cloud-native-postgresql
                   image: >-
                     cp.icr.io/cp/cpd/wd-postgres-license@sha256:4d8d0ecd31d04e15f757ffda74101ef5bd7fb5789db1ffcef892e961ef312ebf
                   name: restart-edb-pod
