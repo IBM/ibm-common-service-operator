@@ -29,6 +29,7 @@ metadata:
     operatorVersion: 3.13.0
     operators.operatorframework.io/builder: operator-sdk-v1.11.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
+    nss.operator.ibm.com/managed-operators: cloud-native-postgresql
     repository: https://github.com/IBM/ibm-common-service-operator
     support: IBM
   labels:
