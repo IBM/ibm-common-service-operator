@@ -38,7 +38,7 @@ spec:
         - name: IBM_CS_WEBHOOK_IMAGE
           value: quay.io/opencloudio/ibm-cs-webhook:1.8.0
         - name: IBM_SECRETSHARE_OPERATOR_IMAGE
-          value: quay.io/opencloudio/ibm-secretshare-operator:1.9.0
+          value: quay.io/opencloudio/ibm-secretshare-operator:1.9.1
         image: siji/operator:cs
         imagePullPolicy: Always
         name: ibm-common-service-operator
