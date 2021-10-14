@@ -398,8 +398,6 @@ spec:
     packageName: ibm-bts-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: {{ .CatalogSourceNs }}
 `
 
 const CSV3SaasOperandConfig = `
@@ -564,8 +562,6 @@ spec:
     packageName: ibm-bts-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: {{ .CatalogSourceNs }}
 `
 
 const ODLMClusterSubscription = `
