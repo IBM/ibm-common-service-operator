@@ -9,9 +9,10 @@ metadata:
     description: The IBM Common Service Operator is used to deploy IBM Common Services
     olm.skipRange: ""
     operatorChannel: v3
-    operatorVersion: 3.12.0
+    operatorVersion: 3.13.0
     operators.operatorframework.io/builder: operator-sdk-v1.2.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
+    nss.operator.ibm.com/managed-operators: cloud-native-postgresql
     repository: https://github.com/IBM/ibm-common-service-operator
     support: IBM
   labels:
@@ -84,7 +85,7 @@ spec:
 
     ## Operator versions
 
-     - 3.12.0
+     - 3.13.0
 
     ## Prerequisites
 
@@ -158,9 +159,9 @@ spec:
   relatedImages:
   - image: quay.io/opencloudio/common-service-operator
     name: COMMON_SERVICE_OPERATOR_IMAGE
-  - image: quay.io/opencloudio/ibm-cs-webhook:1.8.0
+  - image: quay.io/opencloudio/ibm-cs-webhook:1.9.0
     name: IBM_CS_WEBHOOK_IMAGE
-  - image: quay.io/opencloudio/ibm-secretshare-operator:1.9.0
+  - image: quay.io/opencloudio/ibm-secretshare-operator:1.10.0
     name: IBM_SECRETSHARE_OPERATOR_IMAGE
   replaces: ibm-common-service-operator.v0.0.0
   version: 0.0.0

@@ -18,11 +18,9 @@ package constant
 
 // CSCAIssuer is the CR of cs-ca-issuer
 const CSCAIssuer = `
-apiVersion: cert-manager.io/v1
+apiVersion: certmanager.k8s.io/v1alpha1
 kind: Issuer
 metadata:
-  annotations:
-    version: "3.12.0"
   labels:
     app.kubernetes.io/instance: cs-ca-issuer
     app.kubernetes.io/managed-by: cert-manager-controller
@@ -36,11 +34,9 @@ spec:
 
 // CSSSIsuuer is the CR of cs-ss-issuer
 const CSSSIssuer = `
-apiVersion: cert-manager.io/v1
+apiVersion: certmanager.k8s.io/v1alpha1
 kind: Issuer
 metadata:
-  annotations:
-    version: "3.12.0"
   labels:
     app.kubernetes.io/instance: cs-ss-issuer
     app.kubernetes.io/managed-by: cert-manager-controller
@@ -53,11 +49,9 @@ spec:
 
 // CSCACert is the CR of cs-ca-certificate
 const CSCACert = `
-apiVersion: cert-manager.io/v1
+apiVersion: certmanager.k8s.io/v1alpha1
 kind: Certificate
 metadata:
-  annotations:
-    version: "3.12.0"
   labels:
     app.kubernetes.io/instance: cs-ca-certificate
     app.kubernetes.io/managed-by: cert-manager-controller
