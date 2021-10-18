@@ -810,19 +810,9 @@ func (b *Bootstrap) installCrossplaneOperator() error {
 		return err
 	}
 
-	if err := b.waitResourceReady("pkg.ibm.crossplane.io/v1alpha1", "Lock"); err != nil {
-		return err
-	}
-
 	klog.Info("Creating Crossplane Configuration")
 	if err := b.createCrossplaneConfiguration(); err != nil {
 		klog.Errorf("Failed to create or update Crossplane Configuration: %v", err)
-		return err
-	}
-
-	klog.Info("Creating Crossplane Lock")
-	if err := b.createCrossplaneLock(); err != nil {
-		klog.Errorf("Failed to create or update Crossplane Lock: %v", err)
 		return err
 	}
 
@@ -913,14 +903,6 @@ func (b *Bootstrap) createCrossplaneSubscription() error {
 
 func (b *Bootstrap) createCrossplaneConfiguration() error {
 	resourceName := constant.CrossConfiguration
-	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (b *Bootstrap) createCrossplaneLock() error {
-	resourceName := constant.CrossLock
 	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
 		return err
 	}
