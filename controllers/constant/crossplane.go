@@ -47,7 +47,7 @@ spec:
 `
 
 const CrossLock = `
-apiVersion: pkg.ibm.crossplane.io/v1alpha1
+apiVersion: pkg.ibm.crossplane.io/v1beta1
 kind: Lock
 metadata:
   name: lock
