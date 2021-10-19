@@ -84,6 +84,11 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 		if err != nil {
 			return sizeConfigs, err
 		}
+	case "starter":
+		sizeConfigs, err = applySizeTemplate(cs, size.Starter, inScope)
+		if err != nil {
+			return sizeConfigs, err
+		}
 	case "small":
 		sizeConfigs, err = applySizeTemplate(cs, size.Small, inScope)
 		if err != nil {
@@ -96,6 +101,11 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 		}
 	case "large":
 		sizeConfigs, err = applySizeTemplate(cs, size.Large, inScope)
+		if err != nil {
+			return sizeConfigs, err
+		}
+	case "production":
+		sizeConfigs, err = applySizeTemplate(cs, size.Production, inScope)
 		if err != nil {
 			return sizeConfigs, err
 		}
