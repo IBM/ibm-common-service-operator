@@ -217,6 +217,9 @@ spec:
             kind: Role
             name: edb-license-role
             apiGroup: rbac.authorization.k8s.io
+  - name: ibm-bts-operator
+    spec:
+      operandRequest: {}
 `
 
 const CSV3OperandRegistry = `
@@ -480,6 +483,9 @@ spec:
   - name: ibm-monitoring-grafana-operator
     spec:
       grafana: {}
+      operandRequest: {}
+  - name: ibm-bts-operator
+    spec:
       operandRequest: {}
 `
 
