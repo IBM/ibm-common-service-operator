@@ -171,6 +171,8 @@ func main() {
 		go goroutines.SyncUpNSSCR(bs)
 		// Update CS CR Status
 		go goroutines.UpdateCsCrStatus(bs)
+		// Create or Update CPP configuration
+		go goroutines.CreateUpdateConfig(bs)
 
 		if err = (&controllers.CommonServiceReconciler{
 			Bootstrap: bs,
