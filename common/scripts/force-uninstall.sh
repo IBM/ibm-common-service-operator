@@ -143,7 +143,7 @@ function delete_operand() {
   local crds=$1
   for crd in ${crds}; do
     if ${KUBECTL} api-resources | grep $crd &>/dev/null; then
-      for ns in $(oc get $crd --no-headers --all-namespaces --ignore-not-found | awk '{print $1}' | sort -n | uniq); do
+      for ns in $(${KUBECTL} get $crd --no-headers --all-namespaces --ignore-not-found | awk '{print $1}' | sort -n | uniq); do
         crs=$(${KUBECTL} get ${crd} --no-headers --ignore-not-found -n ${ns} 2>/dev/null | awk '{print $1}')
         if [[ "X${crs}" != "X" ]]; then
           msg "Deleting ${crd} from namespace ${ns}"
