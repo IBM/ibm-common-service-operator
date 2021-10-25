@@ -20,6 +20,7 @@ import (
 	"context"
 	"flag"
 	"os"
+	"time"
 
 	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
@@ -36,15 +37,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
 	cache "github.com/IBM/controller-filtered-cache/filteredcache"
+	nssv1 "github.com/IBM/ibm-namespace-scope-operator/api/v1"
+	ssv1 "github.com/IBM/ibm-secretshare-operator/api/v1"
+	odlm "github.com/IBM/operand-deployment-lifecycle-manager/api/v1alpha1"
+
 	operatorv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	"github.com/IBM/ibm-common-service-operator/controllers"
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/controllers/goroutines"
-	nssv1 "github.com/IBM/ibm-namespace-scope-operator/api/v1"
-	ssv1 "github.com/IBM/ibm-secretshare-operator/api/v1"
-	odlm "github.com/IBM/operand-deployment-lifecycle-manager/api/v1alpha1"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -120,6 +122,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	typeCorrect, err := bootstrap.CheckClusterType(mgr, util.GetMasterNs(mgr.GetAPIReader()))
+	if err != nil {
+		klog.Errorf("Failed to verify cluster type  %v", err)
+		os.Exit(1)
+	}
+
+	if !typeCorrect {
+		klog.Error("Cluster type specificed in the ibm-cpp-config isn't correct")
+		time.Sleep(2 * time.Minute)
+		os.Exit(1)
+	}
+
 	// New bootstrap Object
 	bs, err := bootstrap.NewBootstrap(mgr)
 	if err != nil {
@@ -173,6 +187,8 @@ func main() {
 		go goroutines.SyncUpNSSCR(bs)
 		// Update CS CR Status
 		go goroutines.UpdateCsCrStatus(bs)
+		// Create or Update CPP configuration
+		go goroutines.CreateUpdateConfig(bs)
 
 		if err = (&controllers.CommonServiceReconciler{
 			Bootstrap: bs,

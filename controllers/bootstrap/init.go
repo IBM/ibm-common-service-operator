@@ -111,6 +111,17 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		{"Webhook Operator", constant.WebhookCRD, constant.WebhookRBAC, constant.WebhookCR, csWebhookDeployment, constant.WebhookKind, constant.WebhookAPIVersion},
 		{"Secretshare Operator", constant.SecretshareCRD, constant.SecretshareRBAC, constant.SecretshareCR, csSecretShareDeployment, constant.SecretshareKind, constant.SecretshareAPIVersion},
 	}
+	isOCP, err := bs.CheckClusterType()
+	if err != nil {
+		return
+	}
+
+	if !isOCP {
+		csOperators = []CSOperator{
+			{"Secretshare Operator", constant.SecretshareCRD, constant.SecretshareRBAC, constant.SecretshareCR, csSecretShareDeployment, constant.SecretshareKind, constant.SecretshareAPIVersion},
+		}
+	}
+
 	masterNs := util.GetMasterNs(mgr.GetAPIReader())
 	operatorNs, err := util.GetOperatorNamespace()
 	if err != nil {
@@ -191,6 +202,20 @@ func (b *Bootstrap) CrossplaneCloudOperator(instance *apiv3.CommonService) error
 	}
 
 	return nil
+}
+
+func (b *Bootstrap) CheckClusterType() (bool, error) {
+	config := &corev1.ConfigMap{}
+	if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: "ibm-cpp-config", Namespace: b.CSData.MasterNs}, config); err != nil && !errors.IsNotFound(err) {
+		return false, err
+	} else if errors.IsNotFound(err) {
+		return true, nil
+	} else {
+		if config.Data["kubernetes_cluster_type"] == "" || config.Data["kubernetes_cluster_type"] == "ocp" {
+			return true, nil
+		}
+		return false, nil
+	}
 }
 
 // DeleteCrossplaneCloudSubscription deleted crossplane & cloud operator subscription when bedrockshim set to false or CS CR is removed
@@ -1212,4 +1237,41 @@ func (b *Bootstrap) DeployResource(cr, placeholder string) bool {
 		return false
 	}
 	return true
+}
+
+func CheckClusterType(mgr manager.Manager, ns string) (bool, error) {
+	config := &corev1.ConfigMap{}
+	if err := mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: "ibm-cpp-config", Namespace: ns}, config); err != nil && !errors.IsNotFound(err) {
+		return false, err
+	} else if errors.IsNotFound(err) {
+		return true, nil
+	} else {
+		if config.Data["kubernetes_cluster_type"] == "" {
+			return true, nil
+		}
+		var isOCP bool
+		dc := discovery.NewDiscoveryClientForConfigOrDie(mgr.GetConfig())
+		_, apiLists, err := dc.ServerGroupsAndResources()
+		if err != nil {
+			return false, err
+		}
+		for _, apiList := range apiLists {
+			if apiList.GroupVersion == "machineconfiguration.openshift.io/v1" {
+				for _, r := range apiList.APIResources {
+					if r.Kind == "MachineConfig" {
+						isOCP = true
+					}
+				}
+			}
+		}
+
+		if config.Data["kubernetes_cluster_type"] == "ocp" && !isOCP || config.Data["kubernetes_cluster_type"] != "ocp" && isOCP {
+			klog.Error("cluster type isn't correct")
+
+			return false, nil
+		}
+
+		klog.Info("cluster type is correct")
+		return true, nil
+	}
 }
