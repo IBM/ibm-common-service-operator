@@ -647,6 +647,7 @@ func (b *Bootstrap) DeleteFromYaml(objectTemplate string, data interface{}) erro
 	for _, obj := range objects {
 		gvk := obj.GetObjectKind().GroupVersionKind()
 
+		_, err := b.GetObject(obj)
 		if errors.IsNotFound(err) {
 			klog.Infof("Not Found name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n, skipping", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
 			continue
