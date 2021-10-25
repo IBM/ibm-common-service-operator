@@ -1090,3 +1090,40 @@ func (b *Bootstrap) DeployResource(cr, placeholder string) bool {
 	}
 	return true
 }
+
+func CheckClusterType(mgr manager.Manager, ns string) (bool, error) {
+	config := &corev1.ConfigMap{}
+	if err := mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: "ibm-cpp-config", Namespace: ns}, config); err != nil && !errors.IsNotFound(err) {
+		return false, err
+	} else if errors.IsNotFound(err) {
+		return true, nil
+	} else {
+		if config.Data["kubernetes_cluster_type"] == "" {
+			return true, nil
+		}
+		var isOCP bool
+		dc := discovery.NewDiscoveryClientForConfigOrDie(mgr.GetConfig())
+		_, apiLists, err := dc.ServerGroupsAndResources()
+		if err != nil {
+			return false, err
+		}
+		for _, apiList := range apiLists {
+			if apiList.GroupVersion == "machineconfiguration.openshift.io/v1" {
+				for _, r := range apiList.APIResources {
+					if r.Kind == "MachineConfig" {
+						isOCP = true
+					}
+				}
+			}
+		}
+
+		if config.Data["kubernetes_cluster_type"] == "ocp" && !isOCP || config.Data["kubernetes_cluster_type"] != "ocp" && isOCP {
+			klog.Error("cluster type isn't correct")
+
+			return false, nil
+		}
+
+		klog.Info("cluster type is correct")
+		return true, nil
+	}
+}
