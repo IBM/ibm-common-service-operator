@@ -22,6 +22,7 @@ import (
 	"time"
 
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 
@@ -33,30 +34,37 @@ import (
 func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 	for {
 		instance := &apiv3.CommonService{}
-		if err := bs.Client.Get(ctx, types.NamespacedName{Name: "common-service", Namespace: MasterNamespace}, instance); err != nil {
+		if err := bs.Reader.Get(ctx, types.NamespacedName{Name: "common-service", Namespace: MasterNamespace}, instance); err != nil {
 			klog.Warningf("Getting Common-service CR with error: %s", err)
 			time.Sleep(5 * time.Second)
 			continue
 		}
 
 		var operatorSlice []apiv3.BedrockOperator
-		operatorsName := []string{
-			"ibm-auditlogging-operator",
-			"ibm-cert-manager-operator",
-			"ibm-commonui-operator",
+
+		operatorsName := []string{}
+
+		// wait ODLM OperandRegistry CR resources
+		if err := bs.WaitResourceReady("operator.ibm.com/v1alpha1", "OperandRegistry"); err != nil {
+			klog.Error("Failed to wait for resource ready with kind: OperandRegistry, apiGroupVersion: operator.ibm.com/v1alpha1")
+			continue
+		}
+
+		opreg := bs.GetOperandRegistry(ctx, "common-service", bs.CSData.MasterNs)
+		if opreg == nil {
+			klog.Warning("OperandRegistry common-service is not ready, retry in 5 seconds")
+			time.Sleep(5 * time.Second)
+			continue
+		}
+
+		for i := range opreg.Spec.Operators {
+			operatorsName = append(operatorsName, opreg.Spec.Operators[i].Name)
+		}
+		operatorsName = append(operatorsName, []string{
+			"ibmcloud-operator",
 			"ibm-crossplane-operator-app",
-			"ibm-events-operator",
-			"ibm-healthcheck-operator",
-			"ibm-iam-operator",
-			"ibm-ingress-nginx-operator",
-			"ibm-licensing-operator",
-			"ibm-management-ingress-operator",
-			"ibm-mongodb-operator",
-			"ibm-monitoring-grafana-operator",
 			"ibm-namespace-scope-operator",
-			"ibm-platform-api-operator",
-			"ibm-zen-operator",
-			"operand-deployment-lifecycle-manager-app"}
+			"operand-deployment-lifecycle-manager-app"}...)
 
 		for _, name := range operatorsName {
 			var opt apiv3.BedrockOperator
@@ -70,6 +78,8 @@ func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 
 			if err == nil {
 				operatorSlice = append(operatorSlice, opt)
+			} else if !errors.IsNotFound(err) {
+				klog.Errorf("Failed to check operator %s: %v", name, err)
 			}
 		}
 
@@ -112,7 +122,7 @@ func getBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string) (apiv3.
 	} else {
 		if len(csv.Status.Conditions) > 0 {
 			csvStatus := csv.Status.Conditions[len(csv.Status.Conditions)-1].Phase
-			opt.Status = fmt.Sprintf("%v", csvStatus)
+			opt.OperatorStatus = fmt.Sprintf("%v", csvStatus)
 		}
 	}
 

@@ -38,6 +38,7 @@ import (
 
 	cache "github.com/IBM/controller-filtered-cache/filteredcache"
 	nssv1 "github.com/IBM/ibm-namespace-scope-operator/api/v1"
+	ssv1 "github.com/IBM/ibm-secretshare-operator/api/v1"
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/api/v1alpha1"
 
 	operatorv3 "github.com/IBM/ibm-common-service-operator/api/v3"
@@ -58,6 +59,7 @@ func init() {
 
 	utilruntime.Must(odlm.AddToScheme(scheme))
 	utilruntime.Must(nssv1.AddToScheme(scheme))
+	utilruntime.Must(ssv1.AddToScheme(scheme))
 	utilruntime.Must(operatorv3.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 

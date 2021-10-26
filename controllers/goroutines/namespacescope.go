@@ -18,14 +18,17 @@ package goroutines
 
 import (
 	"context"
+	"reflect"
 	"time"
 
 	gset "github.com/deckarep/golang-set"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	utilwait "k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
 
 	nssv1 "github.com/IBM/ibm-namespace-scope-operator/api/v1"
+	ssv1 "github.com/IBM/ibm-secretshare-operator/api/v1"
 
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 )
@@ -91,6 +94,59 @@ func SyncUpNSSCR(bs *bootstrap.Bootstrap) {
 			if err := bs.Client.Update(ctx, targetNsScope); err != nil {
 				klog.Errorf("Failed to update NSS resource %s: %v, retry again", targetNsScopeKey.String(), err)
 				continue
+			}
+		}
+
+		// wait for secretshare CRD
+		if err := bs.WaitResourceReady(SecretShareAPIGroupVersion, SecretShareKind); err != nil {
+			klog.Errorf("Failed to wait for resource ready with kind %s, apiGroupVersion: %s", SecretShareKind, SecretShareAPIGroupVersion)
+			continue
+		}
+
+		secretshare := &ssv1.SecretShare{}
+		secretshareKey := types.NamespacedName{Name: SecretShareCppName, Namespace: bs.CSData.MasterNs}
+		nsList := []ssv1.TargetNamespace{}
+		scopeCR := &nssv1.NamespaceScope{}
+		if err := bs.Reader.Get(ctx, targetNsScopeKey, scopeCR); err != nil {
+			klog.Errorf("Failed to get NSS resource %s: %v, retry again", targetNsScopeKey.String(), err)
+			continue
+		}
+		for _, ns := range scopeCR.Status.ValidatedMembers {
+			nsList = append(nsList, ssv1.TargetNamespace{Namespace: ns})
+		}
+		if err := bs.Reader.Get(ctx, secretshareKey, secretshare); err != nil && !errors.IsNotFound(err) {
+			klog.Errorf("Failed to get SecretShare CR %s: %v, retry again", secretshareKey.String(), err)
+			continue
+		} else if errors.IsNotFound(err) {
+			secretshare.ObjectMeta.Name = SecretShareCppName
+			secretshare.ObjectMeta.Namespace = bs.CSData.MasterNs
+			secretshare.Spec = ssv1.SecretShareSpec{
+				Configmapshares: []ssv1.Configmapshare{
+					{
+						Configmapname: "ibm-cpp-config",
+						Sharewith:     nsList,
+					},
+				},
+			}
+			if err := bs.Client.Create(ctx, secretshare); err != nil {
+				klog.Errorf("Failed to create SecretShare CR %s: %v, retry again", secretshareKey.String(), err)
+				continue
+			}
+		} else {
+			originalss := secretshare.DeepCopy()
+			secretshare.Spec = ssv1.SecretShareSpec{
+				Configmapshares: []ssv1.Configmapshare{
+					{
+						Configmapname: "ibm-cpp-config",
+						Sharewith:     nsList,
+					},
+				},
+			}
+			if !reflect.DeepEqual(originalss, secretshare) {
+				if err := bs.Client.Update(ctx, secretshare); err != nil {
+					klog.Errorf("Failed to update SecretShare CR %s: %v, retry again", secretshareKey.String(), err)
+					continue
+				}
 			}
 		}
 

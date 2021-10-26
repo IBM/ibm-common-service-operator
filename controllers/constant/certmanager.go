@@ -21,8 +21,6 @@ const CSCAIssuer = `
 apiVersion: certmanager.k8s.io/v1alpha1
 kind: Issuer
 metadata:
-  annotations:
-    version: "4.0.0"
   labels:
     app.kubernetes.io/instance: cs-ca-issuer
     app.kubernetes.io/managed-by: cert-manager-controller
@@ -39,8 +37,6 @@ const CSSSIssuer = `
 apiVersion: certmanager.k8s.io/v1alpha1
 kind: Issuer
 metadata:
-  annotations:
-    version: "4.0.0"
   labels:
     app.kubernetes.io/instance: cs-ss-issuer
     app.kubernetes.io/managed-by: cert-manager-controller
@@ -56,8 +52,6 @@ const CSCACert = `
 apiVersion: certmanager.k8s.io/v1alpha1
 kind: Certificate
 metadata:
-  annotations:
-    version: "4.0.0"
   labels:
     app.kubernetes.io/instance: cs-ca-certificate
     app.kubernetes.io/managed-by: cert-manager-controller

@@ -39,7 +39,7 @@ metadata:
     ibm-crossplane-provider: {{ .CrossplaneProvider }}
 spec:
   ignoreCrossplaneConstraints: false
-  package: 'quay.io/opencloudio/ibm-crossplane-bedrock-shim-config:1.0.0'
+  package: FromEnvVar
   packagePullPolicy: Always
   revisionActivationPolicy: Automatic
   revisionHistoryLimit: 1
@@ -47,7 +47,7 @@ spec:
 `
 
 const CrossLock = `
-apiVersion: pkg.ibm.crossplane.io/v1alpha1
+apiVersion: pkg.ibm.crossplane.io/v1beta1
 kind: Lock
 metadata:
   name: lock

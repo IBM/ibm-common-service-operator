@@ -319,10 +319,10 @@ const Medium = `
       fluentd:
         resources:
           requests:
-            cpu: 20m
+            cpu: 35m
             memory: 20Mi
           limits:
-            cpu: 50m
+            cpu: 65m
             memory: 200Mi
 - name: ibm-monitoring-exporters-operator
   spec:

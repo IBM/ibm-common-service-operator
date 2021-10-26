@@ -52,6 +52,8 @@ metadata:
   name: common-service
   namespace: {{ .MasterNs }}
 spec:
+  csvInjector:
+    enable: true
   namespaceMembers:
   - {{ .MasterNs }}
   - openshift-redhat-marketplace

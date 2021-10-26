@@ -23,6 +23,10 @@ import (
 var (
 	OperatorAPIGroupVersion = "operator.ibm.com/v1"
 
+	SecretShareAPIGroupVersion = "ibmcpcs.ibm.com/v1"
+	SecretShareKind            = "SecretShare"
+	SecretShareCppName         = "ibm-cpp-config"
+
 	IAMSaaSDeployNames = []string{"ibm-iam-operator", "auth-idp", "auth-pap", "auth-pdp", "oidcclient-watcher"}
 	IAMDeployNames     = []string{"ibm-iam-operator", "auth-idp", "auth-pap", "auth-pdp", "oidcclient-watcher", "secret-watcher"}
 	IAMJobNames        = []string{"iam-onboarding", "security-onboarding", "oidc-client-registration"}

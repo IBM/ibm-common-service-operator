@@ -29,6 +29,7 @@ metadata:
     operatorVersion: 4.0.0-k
     operators.operatorframework.io/builder: operator-sdk-v1.10.0+git
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
+    nss.operator.ibm.com/managed-operators: cloud-native-postgresql
     repository: https://github.com/IBM/ibm-common-service-operator
     support: IBM
   labels:
@@ -52,9 +53,27 @@ spec:
             path: size
             x-descriptors:
               - urn:alm:descriptor:com.tectonic.ui:select:starterset
+              - urn:alm:descriptor:com.tectonic.ui:select:starter
               - urn:alm:descriptor:com.tectonic.ui:select:small
               - urn:alm:descriptor:com.tectonic.ui:select:medium
               - urn:alm:descriptor:com.tectonic.ui:select:large
+              - urn:alm:descriptor:com.tectonic.ui:select:production
+        statusDescriptors:
+          - description: Installed Bedrock Operator Name
+            displayName: Name
+            path: bedrockOperators[0].name
+          - description: Installed Bedrock Operator InstallPlan Name
+            displayName: InstallPlanName
+            path: bedrockOperators[0].installPlanName
+          - description: Installed Bedrock Operator Status
+            displayName: OperatorStatus
+            path: bedrockOperators[0].operatorStatus
+          - description: Installed Bedrock Operator Subscription Status
+            displayName: SubscriptionStatus
+            path: bedrockOperators[0].subscriptionStatus
+          - description: Installed Bedrock Operator Version
+            displayName: Version
+            path: bedrockOperators[0].version
         version: v3
   description: |-
     # Introduction
@@ -332,9 +351,9 @@ spec:
                       - name: OPERATOR_NAME
                         value: ibm-common-service-operator
                       - name: IBM_CS_WEBHOOK_IMAGE
-                        value: quay.io/opencloudio/ibm-cs-webhook:1.8.0
+                        value: quay.io/opencloudio/ibm-cs-webhook:1.9.0
                       - name: IBM_SECRETSHARE_OPERATOR_IMAGE
-                        value: quay.io/opencloudio/ibm-secretshare-operator:1.9.0
+                        value: quay.io/opencloudio/ibm-secretshare-operator:1.10.0
                     image: quay.io/opencloudio/common-service-operator:latest
                     imagePullPolicy: Always
                     livenessProbe:
@@ -412,9 +431,9 @@ spec:
   relatedImages:
     - image: quay.io/opencloudio/common-service-operator:4.0.0-k
       name: COMMON_SERVICE_OPERATOR_IMAGE
-    - image: quay.io/opencloudio/ibm-cs-webhook:1.8.0
+    - image: quay.io/opencloudio/ibm-cs-webhook:1.9.0
       name: IBM_CS_WEBHOOK_IMAGE
-    - image: quay.io/opencloudio/ibm-secretshare-operator:1.9.0
+    - image: quay.io/opencloudio/ibm-secretshare-operator:1.10.0
       name: IBM_SECRETSHARE_OPERATOR_IMAGE
   replaces: ibm-common-service-operator.v3.11.0
   version: 4.0.0-k

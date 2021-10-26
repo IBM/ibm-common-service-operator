@@ -65,7 +65,6 @@ spec:
       switcheritem: {}
       operandRequest: {}
       navconfiguration: {}
-      operandBindInfo: {}
   - name: ibm-management-ingress-operator
     spec:
       managementIngress: {}
@@ -103,6 +102,123 @@ spec:
     spec:
       apicatalogmanager: {}
       operandBindInfo: {}
+      operandRequest: {}
+  - name: cloud-native-postgresql
+    resources:
+      - apiVersion: batch/v1
+        kind: Job
+        name: create-postgres-license-config
+        data:
+          spec:
+            activeDeadlineSeconds: 600
+            backoffLimit: 5
+            template:
+              metadata:
+              spec:
+                imagePullSecrets:
+                  - name: ibm-entitlement-key
+                affinity:
+                  nodeAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                      nodeSelectorTerms:
+                      - matchExpressions:
+                        - key: kubernetes.io/arch
+                          operator: In
+                          values:
+                          - amd64
+                initContainers:
+                - command:
+                  - bash
+                  - -c
+                  - |
+                    cat << EOF | kubectl apply -f -
+                    apiVersion: v1
+                    kind: Secret
+                    type: Opaque
+                    metadata:
+                      name: postgresql-operator-controller-manager-config
+                    data:
+                      EDB_LICENSE_KEY: $(base64 /license_keys/edb/EDB_LICENSE_KEY | tr -d '\n')
+                    EOF
+                  image: cp.icr.io/cp/cpd/wd-postgres-license@sha256:4d8d0ecd31d04e15f757ffda74101ef5bd7fb5789db1ffcef892e961ef312ebf
+                  name: edb-license
+                  resources:
+                    limits:
+                      cpu: 500m
+                      memory: 512Mi
+                    requests:
+                      cpu: 100m
+                      memory: 50Mi
+                  securityContext:
+                    allowPrivilegeEscalation: false
+                    capabilities:
+                      drop:
+                      - ALL
+                    privileged: false
+                    readOnlyRootFilesystem: false
+                containers:
+                - command:
+                  - bash
+                  - '-c'
+                  - >-
+                    kubectl delete pods -l app.kubernetes.io/name=cloud-native-postgresql
+                  image: >-
+                    cp.icr.io/cp/cpd/wd-postgres-license@sha256:4d8d0ecd31d04e15f757ffda74101ef5bd7fb5789db1ffcef892e961ef312ebf
+                  name: restart-edb-pod
+                  resources:
+                    limits:
+                      cpu: 500m
+                      memory: 512Mi
+                    requests:
+                      cpu: 100m
+                      memory: 50Mi
+                  securityContext:
+                    allowPrivilegeEscalation: false
+                    capabilities:
+                      drop:
+                      - ALL
+                    privileged: false
+                    readOnlyRootFilesystem: false
+                hostIPC: false
+                hostNetwork: false
+                hostPID: false
+                restartPolicy: OnFailure
+                securityContext:
+                  runAsNonRoot: true
+                serviceAccountName: edb-license-sa
+      - apiVersion: v1
+        kind: ServiceAccount
+        name: edb-license-sa
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: Role
+        name: edb-license-role
+        data:
+          rules:
+          - apiGroups:
+            - ""
+            resources:
+            - pods
+            - secrets
+            verbs:
+            - create
+            - update
+            - patch
+            - get
+            - list
+            - delete
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        name: edb-license-rolebinding
+        data:
+          subjects:
+          - kind: ServiceAccount
+            name: edb-license-sa
+          roleRef:
+            kind: Role
+            name: edb-license-role
+            apiGroup: rbac.authorization.k8s.io
+  - name: ibm-bts-operator
+    spec:
       operandRequest: {}
 `
 
@@ -261,10 +377,28 @@ spec:
     packageName: ibm-apicatalog
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
-  - channel: {{ .Channel }}
+  - channel: alpha
     name: ibm-user-data-services-operator
     namespace: {{ .MasterNs }}
     packageName: ibm-user-data-services-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+  - channel: {{ .Channel }}
+    name: ibm-zen-cpp-operator
+    namespace: {{ .MasterNs }}
+    packageName: zen-cpp-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+  - channel: stable-v1
+    name: ibm-cpd-ae-operator-subscription
+    namespace: {{ .MasterNs }}
+    packageName: analyticsengine-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+  - channel: {{ .Channel }}
+    name: ibm-bts-operator
+    namespace: {{ .MasterNs }}
+    packageName: ibm-bts-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
 `
@@ -350,6 +484,9 @@ spec:
     spec:
       grafana: {}
       operandRequest: {}
+  - name: ibm-bts-operator
+    spec:
+      operandRequest: {}
 `
 
 const CSV3SaasOperandRegistry = `
@@ -425,6 +562,12 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
+  - channel: {{ .Channel }}
+    name: ibm-bts-operator
+    namespace: {{ .MasterNs }}
+    packageName: ibm-bts-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
 `
 
 const ODLMClusterSubscription = `

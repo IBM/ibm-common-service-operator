@@ -5,6 +5,7 @@ go 1.15
 require (
 	github.com/IBM/controller-filtered-cache v0.2.1
 	github.com/IBM/ibm-namespace-scope-operator v1.0.1
+	github.com/IBM/ibm-secretshare-operator v1.9.0
 	github.com/IBM/operand-deployment-lifecycle-manager v1.5.0
 	github.com/deckarep/golang-set v1.7.1
 	github.com/ghodss/yaml v1.0.0
