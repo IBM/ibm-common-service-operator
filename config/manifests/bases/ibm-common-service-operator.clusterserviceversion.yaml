@@ -9,7 +9,7 @@ metadata:
     description: The IBM Common Service Operator is used to deploy IBM Common Services
     olm.skipRange: ""
     operatorChannel: v3
-    operatorVersion: 3.13.0
+    operatorVersion: 4.0.0-k
     operators.operatorframework.io/builder: operator-sdk-v1.2.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
     nss.operator.ibm.com/managed-operators: cloud-native-postgresql
@@ -87,8 +87,8 @@ spec:
 
     ## Operator versions
 
-     - 3.13.0
-
+     - 4.0.0-k
+     
     ## Prerequisites
 
     Before you install this operator, you need to first install the operator prerequisites:

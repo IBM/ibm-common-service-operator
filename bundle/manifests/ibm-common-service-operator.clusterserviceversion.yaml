@@ -24,10 +24,10 @@ metadata:
     containerImage: quay.io/opencloudio/common-service-operator:latest
     createdAt: "2020-10-19T21:38:33Z"
     description: The IBM Common Service Operator is used to deploy IBM Common Services
-    olm.skipRange: ">=3.3.0 <3.13.0"
+    olm.skipRange: ">=3.3.0 <4.0.0-k"
     operatorChannel: v3
-    operatorVersion: 3.13.0
-    operators.operatorframework.io/builder: operator-sdk-v1.11.0
+    operatorVersion: 4.0.0-k
+    operators.operatorframework.io/builder: operator-sdk-v1.10.0+git
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     nss.operator.ibm.com/managed-operators: cloud-native-postgresql
     repository: https://github.com/IBM/ibm-common-service-operator
@@ -37,7 +37,7 @@ metadata:
     operatorframework.io/arch.ppc64le: supported
     operatorframework.io/arch.s390x: supported
     operatorframework.io/os.linux: supported
-  name: ibm-common-service-operator.v3.13.0
+  name: ibm-common-service-operator.v4.0.0-k
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -101,7 +101,7 @@ spec:
 
     ## Operator versions
 
-     - 3.13.0
+     - 4.0.0-k
 
     ## Prerequisites
 
@@ -429,11 +429,11 @@ spec:
   provider:
     name: IBM
   relatedImages:
-    - image: quay.io/opencloudio/common-service-operator:3.13.0
+    - image: quay.io/opencloudio/common-service-operator:4.0.0-k
       name: COMMON_SERVICE_OPERATOR_IMAGE
     - image: quay.io/opencloudio/ibm-cs-webhook:1.9.0
       name: IBM_CS_WEBHOOK_IMAGE
     - image: quay.io/opencloudio/ibm-secretshare-operator:1.10.0
       name: IBM_SECRETSHARE_OPERATOR_IMAGE
-  replaces: ibm-common-service-operator.v3.12.0
-  version: 3.13.0
+  replaces: ibm-common-service-operator.v3.11.0
+  version: 4.0.0-k
