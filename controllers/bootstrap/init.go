@@ -111,7 +111,12 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		{"Webhook Operator", constant.WebhookCRD, constant.WebhookRBAC, constant.WebhookCR, csWebhookDeployment, constant.WebhookKind, constant.WebhookAPIVersion},
 		{"Secretshare Operator", constant.SecretshareCRD, constant.SecretshareRBAC, constant.SecretshareCR, csSecretShareDeployment, constant.SecretshareKind, constant.SecretshareAPIVersion},
 	}
-	isOCP, err := bs.CheckClusterType()
+	masterNs := util.GetMasterNs(mgr.GetAPIReader())
+	operatorNs, err := util.GetOperatorNamespace()
+	if err != nil {
+		return
+	}
+	isOCP, err := isOCP(mgr, masterNs)
 	if err != nil {
 		return
 	}
@@ -120,12 +125,6 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		csOperators = []CSOperator{
 			{"Secretshare Operator", constant.SecretshareCRD, constant.SecretshareRBAC, constant.SecretshareCR, csSecretShareDeployment, constant.SecretshareKind, constant.SecretshareAPIVersion},
 		}
-	}
-
-	masterNs := util.GetMasterNs(mgr.GetAPIReader())
-	operatorNs, err := util.GetOperatorNamespace()
-	if err != nil {
-		return
 	}
 	catalogSourceName, catalogSourceNs := util.GetCatalogSource(constant.IBMCSPackage, operatorNs, mgr.GetAPIReader())
 	if catalogSourceName == "" || catalogSourceNs == "" {
@@ -204,9 +203,9 @@ func (b *Bootstrap) CrossplaneCloudOperator(instance *apiv3.CommonService) error
 	return nil
 }
 
-func (b *Bootstrap) CheckClusterType() (bool, error) {
+func isOCP(mgr manager.Manager, ns string) (bool, error) {
 	config := &corev1.ConfigMap{}
-	if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: "ibm-cpp-config", Namespace: b.CSData.MasterNs}, config); err != nil && !errors.IsNotFound(err) {
+	if err := mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: "ibm-cpp-config", Namespace: ns}, config); err != nil && !errors.IsNotFound(err) {
 		return false, err
 	} else if errors.IsNotFound(err) {
 		return true, nil
