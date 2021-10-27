@@ -67,6 +67,7 @@ type BedrockOperator struct {
 	OperatorStatus     string `json:"operatorStatus,omitempty"`
 	SubscriptionStatus string `json:"subscriptionStatus,omitempty"`
 	InstallPlanName    string `json:"installPlanName,omitempty"`
+	Troubleshooting string `json:"troubleshooting,omitempty"`
 }
 
 // CommonServiceStatus defines the observed state of CommonService

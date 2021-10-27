@@ -91,6 +91,8 @@ spec:
                       type: string
                     version:
                       type: string
+                    troubleshooting:
+                      type: string
                   type: object
                 type: array
               phase:

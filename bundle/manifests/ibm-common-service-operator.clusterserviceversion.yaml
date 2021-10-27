@@ -38,7 +38,7 @@ metadata:
     operatorframework.io/arch.s390x: supported
     operatorframework.io/os.linux: supported
   name: ibm-common-service-operator.v3.13.0
-  namespace: placeholder
+  namespace: ibm-common-services
 spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
@@ -74,6 +74,9 @@ spec:
           - description: Installed Bedrock Operator Version
             displayName: Version
             path: bedrockOperators[0].version
+          - description: Installed Bedrock Operator Troubleshooting
+            displayName: Troubleshooting
+            path: bedrockOperators[0].troubleshooting
         version: v3
   description: |-
     # Introduction
