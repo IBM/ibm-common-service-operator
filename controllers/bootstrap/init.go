@@ -864,7 +864,7 @@ func (b *Bootstrap) cleanup(operatorNs string) error {
 	bindinfo.SetGroupVersionKind(schema.GroupVersionKind{Group: "operator.ibm.com", Version: "v1alpha1", Kind: "OperandBindInfo"})
 	bindinfo.SetName("ibm-commonui-bindinfo")
 	bindinfo.SetNamespace(operatorNs)
-	if err := b.Client.Delete(context.TODO(),bindinfo); err != nil && !errors.IsNotFound(err) {
+	if err := b.Client.Delete(context.TODO(), bindinfo); err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 	return nil
