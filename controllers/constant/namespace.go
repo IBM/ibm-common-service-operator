@@ -51,6 +51,8 @@ kind: NamespaceScope
 metadata:
   name: common-service
   namespace: {{ .MasterNs }}
+  annotations:
+    version: {{ .Version }}
 spec:
   csvInjector:
     enable: true
