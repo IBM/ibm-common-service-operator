@@ -34,6 +34,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilwait "k8s.io/apimachinery/pkg/util/wait"
@@ -368,6 +369,11 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 
 	// Install ODLM Operator
 	if err := b.installODLM(operatorNs); err != nil {
+		return err
+	}
+
+	// Clean up deprecated ressource
+	if err := b.cleanup(operatorNs); err != nil {
 		return err
 	}
 
@@ -848,6 +854,17 @@ func (b *Bootstrap) installCloudOperator() error {
 	klog.Info("Creating IBM Cloud Operator subscription")
 	if err := b.createCloudSubscription(); err != nil {
 		klog.Errorf("Failed to create or update IBM Cloud Operator subscription: %v", err)
+		return err
+	}
+	return nil
+}
+
+func (b *Bootstrap) cleanup(operatorNs string) error {
+	bindinfo := &unstructured.Unstructured{}
+	bindinfo.SetGroupVersionKind(schema.GroupVersionKind{Group: "operator.ibm.com", Version: "v1alpha1", Kind: "OperandBindInfo"})
+	bindinfo.SetName("ibm-commonui-bindinfo")
+	bindinfo.SetNamespace(operatorNs)
+	if err := b.Client.Delete(context.TODO(), bindinfo); err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 	return nil
