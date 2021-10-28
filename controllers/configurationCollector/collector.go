@@ -62,6 +62,10 @@ func (b *configbuilder) setDefaultStorageClass() *configbuilder {
 		}
 		allSCList = append(allSCList, sc.GetName())
 	}
+
+	if b.data == nil {
+		b.data = make(map[string]string)
+	}
 	if defaultSC != "" {
 		b.data["storageclass.default"] = defaultSC
 	}
