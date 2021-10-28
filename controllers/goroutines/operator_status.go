@@ -28,6 +28,7 @@ import (
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
+	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 )
 
 // UpdateCsCrStatus will update cs cr status according to each bedrock operator
@@ -144,6 +145,10 @@ func getBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string) (apiv3.
 		} else {
 			opt.SubscriptionStatus = fmt.Sprintf("%v", sub.Status.State)
 		}
+	}
+
+	if opt.OperatorStatus == "" || opt.OperatorStatus != "Succeeded" || opt.SubscriptionStatus == "" || opt.SubscriptionStatus != "Succeeded" {
+		opt.Troubleshooting = constant.GeneralTroubleshooting
 	}
 
 	return opt, nil

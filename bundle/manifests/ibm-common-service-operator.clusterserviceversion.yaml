@@ -74,6 +74,9 @@ spec:
           - description: Installed Bedrock Operator Version
             displayName: Version
             path: bedrockOperators[0].version
+          - description: Installed Bedrock Operator Troubleshooting
+            displayName: Troubleshooting
+            path: bedrockOperators[0].troubleshooting
         version: v3
   description: |-
     # Introduction
