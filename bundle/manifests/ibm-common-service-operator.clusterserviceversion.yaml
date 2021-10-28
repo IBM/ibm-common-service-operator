@@ -38,7 +38,7 @@ metadata:
     operatorframework.io/arch.s390x: supported
     operatorframework.io/os.linux: supported
   name: ibm-common-service-operator.v3.13.0
-  namespace: ibm-common-services
+  namespace: placeholder
 spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
