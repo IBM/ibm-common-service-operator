@@ -72,9 +72,9 @@ func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 			var err error
 
 			if bs.MultiInstancesEnable && (name == "ibm-cert-manager-operator" || name == "ibm-licensing-operator") {
-				opt, err = getBedrockOperator(bs, name, bs.CSData.ControlNs)
+				opt, err = getBedrockOperator(bs, name, bs.CSData.ControlNs, instance)
 			} else {
-				opt, err = getBedrockOperator(bs, name, bs.CSData.MasterNs)
+				opt, err = getBedrockOperator(bs, name, bs.CSData.MasterNs, instance)
 			}
 
 			if err == nil {
@@ -93,7 +93,7 @@ func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 	}
 }
 
-func getBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string) (apiv3.BedrockOperator, error) {
+func getBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string, reference *apiv3.CommonService) (apiv3.BedrockOperator, error) {
 	var opt apiv3.BedrockOperator
 	opt.Name = name
 
@@ -149,6 +149,12 @@ func getBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string) (apiv3.
 
 	if opt.OperatorStatus == "" || opt.OperatorStatus != "Succeeded" || opt.SubscriptionStatus == "" || opt.SubscriptionStatus != "Succeeded" {
 		opt.Troubleshooting = constant.GeneralTroubleshooting
+	}
+
+	if opt.SubscriptionStatus == "" || opt.SubscriptionStatus != "Succeeded" {
+		bs.EventRecorder.Eventf(reference, "Warning", "Bedrock Operator Failed", "Subscription %s/%s is not healthy, please check troubleshooting document %s for reasons and solutions", name, installedCSV, constant.GeneralTroubleshooting)
+	} else if opt.OperatorStatus == "" || opt.OperatorStatus != "Succeeded" {
+		bs.EventRecorder.Eventf(reference, "Warning", "Bedrock Operator Failed", "ClusterServiceVersion %s/%s is not healthy, please check troubleshooting document %s for reasons and solutions", namespace, installedCSV, constant.GeneralTroubleshooting)
 	}
 
 	return opt, nil
