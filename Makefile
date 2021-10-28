@@ -72,7 +72,7 @@ else
 ARTIFACTORYA_REGISTRY ?= "hyc-cloud-private-scratch-docker-local.artifactory.swg-devops.com/ibmcom"
 endif
 
-REGISTRY ?= "quay.io/zhuoxi_li"
+REGISTRY ?= "hyc-cloud-private-scratch-docker-local.artifactory.swg-devops.com/ibmcom"
 
 # Current Operator image name
 OPERATOR_IMAGE_NAME ?= common-service-operator

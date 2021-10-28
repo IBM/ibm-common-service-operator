@@ -16,7 +16,4 @@
 
 package constant
 
-var DocMap = map[string]string{
-	"Pending":"https://ibmdocs-test.mybluemix.net/docs/en/cpfs?topic=ii-operator-shows-pending-status-in-namespace-olm-known-issue",
-	"Failed":"todo""}
-
+const GeneralTroubleshooting =  `https://ibm.biz/cpfs_general_troubleshooting`

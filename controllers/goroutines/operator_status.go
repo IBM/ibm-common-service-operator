@@ -147,12 +147,8 @@ func getBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string) (apiv3.
 		}
 	}
 
-	// atodo testing
-	if opt.Name == "ibm-namespace-scope-operator" {
-		opt.SubscriptionStatus = "Failed"
-	}
-	if opt.SubscriptionStatus == "Failed" {
-		opt.Troubleshooting = constant.DocMap["Failed"]
+	if opt.OperatorStatus == "" || opt.OperatorStatus != "Succeeded" || opt.SubscriptionStatus == "" || opt.SubscriptionStatus != "Succeeded" {
+		opt.Troubleshooting = constant.GeneralTroubleshooting
 	}
 
 	return opt, nil
