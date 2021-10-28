@@ -107,7 +107,8 @@ func SyncUpNSSCR(bs *bootstrap.Bootstrap) {
 		secretshareKey := types.NamespacedName{Name: SecretShareCppName, Namespace: bs.CSData.MasterNs}
 		nsList := []ssv1.TargetNamespace{}
 		scopeCR := &nssv1.NamespaceScope{}
-		if err := bs.Reader.Get(ctx, targetNsScopeKey, scopeCR); err != nil {
+		odlmNsScopeKey := types.NamespacedName{Name: "odlm-scope-managedby-odlm", Namespace: bs.CSData.MasterNs}
+		if err := bs.Reader.Get(ctx, odlmNsScopeKey, scopeCR); err != nil {
 			klog.Errorf("Failed to get NSS resource %s: %v, retry again", targetNsScopeKey.String(), err)
 			continue
 		}
