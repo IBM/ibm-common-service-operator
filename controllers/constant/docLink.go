@@ -16,4 +16,4 @@
 
 package constant
 
-const GeneralTroubleshooting =  `https://ibm.biz/cpfs_general_troubleshooting`
+const GeneralTroubleshooting = `https://ibm.biz/cpfs_general_troubleshooting`
