@@ -40,6 +40,7 @@ import (
 	utilwait "k8s.io/apimachinery/pkg/util/wait"
 	discovery "k8s.io/client-go/discovery"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -72,6 +73,7 @@ type Bootstrap struct {
 	client.Client
 	client.Reader
 	Config *rest.Config
+	record.EventRecorder
 	*deploy.Manager
 	SaasEnable           bool
 	MultiInstancesEnable bool
@@ -148,6 +150,7 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		Client:               mgr.GetClient(),
 		Reader:               mgr.GetAPIReader(),
 		Config:               mgr.GetConfig(),
+		EventRecorder:        mgr.GetEventRecorderFor("ibm-common-service-operator"),
 		Manager:              deploy.NewDeployManager(mgr),
 		SaasEnable:           util.CheckSaas(mgr.GetAPIReader()),
 		MultiInstancesEnable: util.CheckMultiInstances(mgr.GetAPIReader()),
