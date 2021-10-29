@@ -124,6 +124,8 @@ func getBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string, referen
 		if len(csv.Status.Conditions) > 0 {
 			csvStatus := csv.Status.Conditions[len(csv.Status.Conditions)-1].Phase
 			opt.OperatorStatus = fmt.Sprintf("%v", csvStatus)
+		} else {
+			opt.OperatorStatus = "NotReady"
 		}
 	}
 
@@ -148,7 +150,7 @@ func getBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string, referen
 	}
 
 	if opt.OperatorStatus == "" || opt.OperatorStatus != "Succeeded" || opt.SubscriptionStatus == "" || opt.SubscriptionStatus != "Succeeded" {
-		opt.Troubleshooting = constant.GeneralTroubleshooting
+		opt.Troubleshooting = "Operator status is not healthy, please check " + constant.GeneralTroubleshooting + " for more information"
 	}
 
 	if opt.SubscriptionStatus == "" || opt.SubscriptionStatus != "Succeeded" {
