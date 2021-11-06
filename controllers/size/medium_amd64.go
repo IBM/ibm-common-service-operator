@@ -23,7 +23,7 @@ const Medium = `
       certManagerCAInjector:
         resources:
           limits:
-            cpu: 35m
+            cpu: 100m
             memory: 1000Mi
           requests:
             cpu: 30m
@@ -47,10 +47,10 @@ const Medium = `
       configMapWatcher:
         resources:
           limits:
-            cpu: 20m
+            cpu: 60m
             memory: 60Mi
           requests:
-            cpu: 20m
+            cpu: 30m
             memory: 30Mi
 - name: ibm-mongodb-operator
   spec:
