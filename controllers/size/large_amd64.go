@@ -47,10 +47,10 @@ const Large = `
       configMapWatcher:
         resources:
           limits:
-            cpu: 60m
+            cpu: 20m
             memory: 60Mi
           requests:
-            cpu: 30m
+            cpu: 20m
             memory: 30Mi
 - name: ibm-mongodb-operator
   spec:
