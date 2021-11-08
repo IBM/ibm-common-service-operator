@@ -375,7 +375,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 		return err
 	}
 
-	// Clean up deprecated ressource
+	// Clean up deprecated resource
 	if err := b.cleanup(operatorNs); err != nil {
 		return err
 	}

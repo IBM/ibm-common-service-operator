@@ -460,30 +460,25 @@ func GetCatalogSource(packageName, ns string, r client.Reader) (CatalogSourceNam
 		klog.Info(err)
 	}
 
-	devEnabled := false
-	CSCatalogsource := &olmv1alpha1.CatalogSource{}
-	if err := r.Get(context.TODO(), types.NamespacedName{Name: constant.CSCatalogsource, Namespace: constant.CatalogsourceNs}, CSCatalogsource); err != nil {
-		if !errors.IsNotFound(err) {
-			klog.Info(err)
-		}
-	} else {
-		reg, _ := regexp.Compile(constant.DevBuildImage)
-		if reg.MatchString(CSCatalogsource.Spec.Image) {
-			devEnabled = true
-		}
-	}
-
 	var packageManifestList []operatorsv1.PackageManifest
 	for _, pm := range pmList.Items {
 		if pm.Status.PackageName != packageName {
 			continue
 		}
-		if pm.Status.CatalogSource == constant.IBMCatalogsource && pm.Status.CatalogSourceNamespace == constant.CatalogsourceNs && devEnabled {
-			continue
-		}
 		packageManifestList = append(packageManifestList, pm)
 	}
-	sort.Sort(sortablePM(packageManifestList))
+	sort.Sort(sortablePM{
+		r:                   r,
+		PackageManifestList: packageManifestList,
+	})
+
+	var packageManifestStringList []string
+
+	for _, packageManifest := range packageManifestList {
+		packageManifestStringList = append(packageManifestStringList, packageManifest.Status.CatalogSourceNamespace+"/"+packageManifest.Status.CatalogSource)
+	}
+
+	klog.Infof("Available catalogsource for operator %v: %v", packageName, strings.Join(packageManifestStringList, ","))
 
 	if len(packageManifestList) == 0 {
 		return "", ""
@@ -492,48 +487,83 @@ func GetCatalogSource(packageName, ns string, r client.Reader) (CatalogSourceNam
 	return packageManifestList[0].Status.CatalogSource, packageManifestList[0].Status.CatalogSourceNamespace
 }
 
-type sortablePM []operatorsv1.PackageManifest
+type sortablePM struct {
+	r                   client.Reader
+	PackageManifestList []operatorsv1.PackageManifest
+}
 
-func (s sortablePM) Len() int      { return len(s) }
-func (s sortablePM) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s sortablePM) Len() int { return len(s.PackageManifestList) }
+func (s sortablePM) Swap(i, j int) {
+	s.PackageManifestList[i], s.PackageManifestList[j] = s.PackageManifestList[j], s.PackageManifestList[i]
+}
 func (s sortablePM) Less(i, j int) bool {
+	idevEnabled := false
+	iCSCatalogsource := &olmv1alpha1.CatalogSource{}
+	if err := s.r.Get(context.TODO(), types.NamespacedName{Name: s.PackageManifestList[i].Status.CatalogSource, Namespace: s.PackageManifestList[i].Status.CatalogSourceNamespace}, iCSCatalogsource); err != nil {
+		if !errors.IsNotFound(err) {
+			klog.Info(err)
+		}
+	} else {
+		reg, _ := regexp.Compile(constant.DevBuildImage)
+		if reg.MatchString(iCSCatalogsource.Spec.Image) {
+			idevEnabled = true
+		}
+	}
+	jdevEnabled := false
+	jCSCatalogsource := &olmv1alpha1.CatalogSource{}
+	if err := s.r.Get(context.TODO(), types.NamespacedName{Name: s.PackageManifestList[j].Status.CatalogSource, Namespace: s.PackageManifestList[j].Status.CatalogSourceNamespace}, jCSCatalogsource); err != nil {
+		if !errors.IsNotFound(err) {
+			klog.Info(err)
+		}
+	} else {
+		reg, _ := regexp.Compile(constant.DevBuildImage)
+		if reg.MatchString(jCSCatalogsource.Spec.Image) {
+			jdevEnabled = true
+		}
+	}
+	if idevEnabled && !jdevEnabled {
+		return true
+	} else if !idevEnabled && jdevEnabled {
+		return false
+	}
+
 	//IBMCatalogsource has the highest priority
-	if s[i].Status.CatalogSource == constant.IBMCatalogsource && s[i].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+	if s.PackageManifestList[i].Status.CatalogSource == constant.IBMCatalogsource && s.PackageManifestList[i].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
 		return true
 	}
-	if s[j].Status.CatalogSource == constant.IBMCatalogsource && s[j].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+	if s.PackageManifestList[j].Status.CatalogSource == constant.IBMCatalogsource && s.PackageManifestList[j].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
 		return false
 	}
 	//CSCatalogsource has the second highest priority
-	if s[i].Status.CatalogSource == constant.CSCatalogsource && s[i].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+	if s.PackageManifestList[i].Status.CatalogSource == constant.CSCatalogsource && s.PackageManifestList[i].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
 		return true
 	}
-	if s[j].Status.CatalogSource == constant.CSCatalogsource && s[j].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+	if s.PackageManifestList[j].Status.CatalogSource == constant.CSCatalogsource && s.PackageManifestList[j].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
 		return false
 	}
 	//priority of CertifiedCatalogsource, CommunityCatalogsource, RedhatMarketplaceCatalogsource and RedhatCatalogsource are lower than others
-	if s[i].Status.CatalogSource == constant.CertifiedCatalogsource && s[i].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+	if s.PackageManifestList[i].Status.CatalogSource == constant.CertifiedCatalogsource && s.PackageManifestList[i].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
 		return false
 	}
-	if s[j].Status.CatalogSource == constant.CertifiedCatalogsource && s[j].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+	if s.PackageManifestList[j].Status.CatalogSource == constant.CertifiedCatalogsource && s.PackageManifestList[j].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
 		return true
 	}
-	if s[i].Status.CatalogSource == constant.CommunityCatalogsource && s[i].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+	if s.PackageManifestList[i].Status.CatalogSource == constant.CommunityCatalogsource && s.PackageManifestList[i].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
 		return false
 	}
-	if s[j].Status.CatalogSource == constant.CommunityCatalogsource && s[j].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+	if s.PackageManifestList[j].Status.CatalogSource == constant.CommunityCatalogsource && s.PackageManifestList[j].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
 		return true
 	}
-	if s[i].Status.CatalogSource == constant.RedhatMarketplaceCatalogsource && s[i].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+	if s.PackageManifestList[i].Status.CatalogSource == constant.RedhatMarketplaceCatalogsource && s.PackageManifestList[i].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
 		return false
 	}
-	if s[j].Status.CatalogSource == constant.RedhatMarketplaceCatalogsource && s[j].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+	if s.PackageManifestList[j].Status.CatalogSource == constant.RedhatMarketplaceCatalogsource && s.PackageManifestList[j].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
 		return true
 	}
-	if s[i].Status.CatalogSource == constant.RedhatCatalogsource && s[i].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+	if s.PackageManifestList[i].Status.CatalogSource == constant.RedhatCatalogsource && s.PackageManifestList[i].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
 		return false
 	}
-	if s[j].Status.CatalogSource == constant.RedhatCatalogsource && s[j].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
+	if s.PackageManifestList[j].Status.CatalogSource == constant.RedhatCatalogsource && s.PackageManifestList[j].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
 		return true
 	}
 	return true
