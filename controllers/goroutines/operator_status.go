@@ -118,8 +118,13 @@ func getBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string, referen
 		Name:      installedCSV,
 		Namespace: namespace,
 	}
+
 	if err := bs.Reader.Get(ctx, csvKey, csv); err != nil {
-		klog.Warningf("Failed to get %s CSV: %s", name, err)
+		if installedCSV == "" {
+			klog.Warningf("Failed to get %s CSV: installedCSV is not found. Please check Subscription", name)
+		} else {
+			klog.Warningf("Failed to get %s CSV: %s", name, err)
+		}
 	} else {
 		if len(csv.Status.Conditions) > 0 {
 			csvStatus := csv.Status.Conditions[len(csv.Status.Conditions)-1].Phase
