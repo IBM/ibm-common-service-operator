@@ -23,19 +23,19 @@ const Small = `
       certManagerCAInjector:
         resources:
           limits:
-            cpu: 35m
-            memory: 520Mi
+            cpu: 100m
+            memory: 1000Mi
           requests:
-            cpu: 20m
-            memory: 170Mi
+            cpu: 30m
+            memory: 500Mi
       certManagerController:
         resources:
           limits:
             cpu: 80m
-            memory: 530Mi
+            memory: 1010Mi
           requests:
             cpu: 20m
-            memory: 140Mi
+            memory: 510Mi
       certManagerWebhook:
         resources:
           limits:

@@ -23,7 +23,7 @@ const Medium = `
       certManagerCAInjector:
         resources:
           limits:
-            cpu: 35m
+            cpu: 100m
             memory: 1000Mi
           requests:
             cpu: 30m
