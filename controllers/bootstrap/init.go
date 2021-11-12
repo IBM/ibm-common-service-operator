@@ -425,7 +425,11 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 			klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s\n", obj[0].GetName(), obj[0].GetNamespace(), obj[0].GetKind(), obj[0].GetAPIVersion())
 			resourceVersion := objInCluster.GetResourceVersion()
 			obj[0].SetResourceVersion(resourceVersion)
-			if util.CompareVersion(obj[0].GetAnnotations()["version"], objInCluster.GetAnnotations()["version"]) {
+			v1IsLarger, convertErr := util.CompareVersion(obj[0].GetAnnotations()["version"], objInCluster.GetAnnotations()["version"])
+			if convertErr != nil {
+				return convertErr
+			}
+			if v1IsLarger {
 				if err := b.UpdateObject(obj[0]); err != nil {
 					return err
 				}
@@ -463,7 +467,11 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 			klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s\n", obj[0].GetName(), obj[0].GetNamespace(), obj[0].GetKind(), obj[0].GetAPIVersion())
 			resourceVersion := objInCluster.GetResourceVersion()
 			obj[0].SetResourceVersion(resourceVersion)
-			if util.CompareVersion(obj[0].GetAnnotations()["version"], objInCluster.GetAnnotations()["version"]) {
+			v1IsLarger, convertErr := util.CompareVersion(obj[0].GetAnnotations()["version"], objInCluster.GetAnnotations()["version"])
+			if convertErr != nil {
+				return convertErr
+			}
+			if v1IsLarger {
 				if err := b.UpdateObject(obj[0]); err != nil {
 					klog.Error(err)
 
@@ -619,8 +627,14 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 				klog.Errorf("Failed to get subscription %s/%s", b.CSData.MasterNs, obj.GetName())
 			}
 			update = !equality.Semantic.DeepEqual(sub.Object["spec"], obj.Object["spec"])
-		} else if util.CompareVersion(obj.GetAnnotations()["version"], objInCluster.GetAnnotations()["version"]) {
-			update = true
+		} else {
+			v1IsLarger, convertErr := util.CompareVersion(obj.GetAnnotations()["version"], objInCluster.GetAnnotations()["version"])
+			if convertErr != nil {
+				return convertErr
+			}
+			if v1IsLarger {
+				update = true
+			}
 		}
 
 		if update {
