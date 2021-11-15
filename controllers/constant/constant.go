@@ -68,8 +68,10 @@ const (
 	IBMCSPackage = "ibm-common-service-operator"
 	// NamespaceScopeConfigmapName is the name of ConfigMap which stores the NamespaceScope Info
 	NamespaceScopeConfigmapName = "namespace-scope"
-	// devBuildImage is regular expression of the image address of internal dev build for testing
+	// DevBuildImage is regular expression of the image address of internal dev build for testing
 	DevBuildImage = `^hyc\-cloud\-private\-(.*)\-docker\-local\.artifactory\.swg\-devops\.com\/ibmcom\/ibm\-common\-service\-catalog\:(.*)`
+	// BedrockCatalogsourcePriority is an annotation defined in the catalogsource
+	BedrockCatalogsourcePriority = "bedrock_catalogsource_priority"
 )
 
 // CsOg is OperatorGroup constent for the common service operator
