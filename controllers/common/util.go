@@ -26,6 +26,7 @@ import (
 	"reflect"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -65,8 +66,8 @@ var (
 	ImageList = []string{"IBM_SECRETSHARE_OPERATOR_IMAGE", "IBM_CS_WEBHOOK_IMAGE"}
 )
 
-// CompareVersion takes vx.y.z, vx.y.z -> bool
-func CompareVersion(v1, v2 string) (v1IsLarger bool) {
+// CompareVersion takes vx.y.z, vx.y.z -> bool: if v1 is larger than v2
+func CompareVersion(v1, v2 string) (v1IsLarger bool, err error) {
 	if v1 == "" {
 		v1 = "0.0.0"
 	}
@@ -86,15 +87,24 @@ func CompareVersion(v1, v2 string) (v1IsLarger bool) {
 	v1Slice = strings.Split(v1, ".")
 	v2Slice = strings.Split(v2, ".")
 	for index := range v1Slice {
-		if v1Slice[index] > v2Slice[index] {
-			return true
-		} else if v1Slice[index] == v2Slice[index] {
+		v1SplitInt, e1 := strconv.Atoi(v1Slice[index])
+		if e1 != nil {
+			return false, e1
+		}
+		v2SplitInt, e2 := strconv.Atoi(v2Slice[index])
+		if e2 != nil {
+			return false, e2
+		}
+
+		if v1SplitInt > v2SplitInt {
+			return true, nil
+		} else if v1SplitInt == v2SplitInt {
 			continue
 		} else {
-			return false
+			return false, nil
 		}
 	}
-	return false
+	return false, nil
 }
 
 // YamlToObjects convert YAML content to unstructured objects
