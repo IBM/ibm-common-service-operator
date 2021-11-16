@@ -72,7 +72,6 @@ func CompareVersion(v1, v2 string) (v1IsLarger bool, err error) {
 		v1 = "0.0.0"
 	}
 	v1Slice := strings.Split(v1, ".")
-	fmt.Println(v1Slice)
 	if len(v1Slice) == 1 {
 		v1 = "0.0." + v1
 	}
