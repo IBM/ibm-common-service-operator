@@ -401,6 +401,12 @@ spec:
     packageName: ibm-bts-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+  - channel: v1.3
+    name: ibm-cloud-databases-redis-operator
+    namespace: {{ .MasterNs }}
+    packageName: ibm-cloud-databases-redis-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
 `
 
 const CSV3SaasOperandConfig = `
