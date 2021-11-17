@@ -125,7 +125,6 @@ function switch_to_eus() {
     oc delete ValidatingWebhookConfiguration cert-manager-webhook --ignore-not-found
     oc delete MutatingWebhookConfiguration cert-manager-webhook --ignore-not-found
     oc delete apiservice v1beta1.webhook.certmanager.k8s.io --ignore-not-found
-    oc delete apiservice v1.metering.ibm.com --ignore-not-found
 }
 
 function delete_operator() {
