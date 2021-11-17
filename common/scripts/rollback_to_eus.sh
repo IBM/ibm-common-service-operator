@@ -102,6 +102,8 @@ function switch_to_eus() {
     oc -n $namespace delete operandconfig common-service --ignore-not-found
     msg ""
 
+    oc -n $namespace delete certmanager default --ignore-not-found
+    
     for sub in ${operatorlist[@]}; do
         delete_operator $sub $namespace
     done
