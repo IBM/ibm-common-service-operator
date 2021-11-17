@@ -509,6 +509,8 @@ func (s sortablePM) Swap(i, j int) {
 func (s sortablePM) Less(i, j int) bool {
 	idevEnabled := false
 	iCSCatalogsource := &olmv1alpha1.CatalogSource{}
+	iPriority := "0"
+	jPriority := "0"
 	if err := s.r.Get(context.TODO(), types.NamespacedName{Name: s.PackageManifestList[i].Status.CatalogSource, Namespace: s.PackageManifestList[i].Status.CatalogSourceNamespace}, iCSCatalogsource); err != nil {
 		if !errors.IsNotFound(err) {
 			klog.Info(err)
@@ -517,6 +519,9 @@ func (s sortablePM) Less(i, j int) bool {
 		reg, _ := regexp.Compile(constant.DevBuildImage)
 		if reg.MatchString(iCSCatalogsource.Spec.Image) {
 			idevEnabled = true
+		}
+		if iCSCatalogsource.GetAnnotations() != nil && iCSCatalogsource.GetAnnotations()[constant.BedrockCatalogsourcePriority] != "" {
+			iPriority = iCSCatalogsource.GetAnnotations()[constant.BedrockCatalogsourcePriority]
 		}
 	}
 	jdevEnabled := false
@@ -530,7 +535,18 @@ func (s sortablePM) Less(i, j int) bool {
 		if reg.MatchString(jCSCatalogsource.Spec.Image) {
 			jdevEnabled = true
 		}
+		if jCSCatalogsource.GetAnnotations() != nil && jCSCatalogsource.GetAnnotations()[constant.BedrockCatalogsourcePriority] != "" {
+			jPriority = jCSCatalogsource.GetAnnotations()[constant.BedrockCatalogsourcePriority]
+		}
 	}
+	iPriorityInt, _ := strconv.Atoi(iPriority)
+	jPriorityInt, _ := strconv.Atoi(jPriority)
+	if iPriorityInt > jPriorityInt {
+		return true
+	} else if iPriorityInt < jPriorityInt {
+		return false
+	}
+
 	if idevEnabled && !jdevEnabled {
 		return true
 	} else if !idevEnabled && jdevEnabled {
