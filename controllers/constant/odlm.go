@@ -154,7 +154,7 @@ spec:
                   - >-
                     kubectl delete pods -l app.kubernetes.io/name=cloud-native-postgresql
                   image: >-
-                    cp.icr.io/cp/cpd/wd-postgres-license@sha256:4d8d0ecd31d04e15f757ffda74101ef5bd7fb5789db1ffcef892e961ef312ebf
+                    icr.io/cp/cpd/edb-postgres-license-provider@sha256:f2528d1166cb3c4c4f34bd257b406604d1aef8b13f79419576fb81e8a90f9344
                   name: restart-edb-pod
                   resources:
                     limits:
