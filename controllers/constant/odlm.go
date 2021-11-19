@@ -117,15 +117,6 @@ spec:
               spec:
                 imagePullSecrets:
                   - name: ibm-entitlement-key
-                affinity:
-                  nodeAffinity:
-                    requiredDuringSchedulingIgnoredDuringExecution:
-                      nodeSelectorTerms:
-                      - matchExpressions:
-                        - key: kubernetes.io/arch
-                          operator: In
-                          values:
-                          - amd64
                 initContainers:
                 - command:
                   - bash
