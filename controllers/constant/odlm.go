@@ -126,6 +126,8 @@ spec:
                           operator: In
                           values:
                           - amd64
+                          - ppc64le
+                          - s390x
                 initContainers:
                 - command:
                   - bash
@@ -140,7 +142,7 @@ spec:
                     data:
                       EDB_LICENSE_KEY: $(base64 /license_keys/edb/EDB_LICENSE_KEY | tr -d '\n')
                     EOF
-                  image: cp.icr.io/cp/cpd/wd-postgres-license@sha256:4d8d0ecd31d04e15f757ffda74101ef5bd7fb5789db1ffcef892e961ef312ebf
+                  image: cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:607231e7337608278220853bd0bb04002488a6e74d4418752b1720133daef036
                   name: edb-license
                   resources:
                     limits:
@@ -163,7 +165,7 @@ spec:
                   - >-
                     kubectl delete pods -l app.kubernetes.io/name=cloud-native-postgresql
                   image: >-
-                    cp.icr.io/cp/cpd/wd-postgres-license@sha256:4d8d0ecd31d04e15f757ffda74101ef5bd7fb5789db1ffcef892e961ef312ebf
+                    cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:607231e7337608278220853bd0bb04002488a6e74d4418752b1720133daef036
                   name: restart-edb-pod
                   resources:
                     limits:
