@@ -52,3 +52,29 @@ kind: Lock
 metadata:
   name: lock
 `
+
+const CrossKubernetesProvider = `
+apiVersion: pkg.ibm.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-kubernetes
+spec:
+  ignoreCrossplaneConstraints: false
+  package: 'quay.io/ppyt/provider:21'
+  packagePullPolicy: Always
+  revisionActivationPolicy: Automatic
+  revisionHistoryLimit: 1
+  skipDependencyResolution: false
+`
+
+const CrossKubernetesProviderConfig = `
+apiVersion: kubernetes.crossplane.io/v1alpha1
+kind: ProviderConfig
+metadata:
+  finalizers:
+    - in-use.crossplane.io
+  name: kubernetes-provider
+spec:
+  credentials:
+    source: InjectedIdentity
+`
