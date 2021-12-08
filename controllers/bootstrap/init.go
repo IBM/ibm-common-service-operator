@@ -881,6 +881,16 @@ func (b *Bootstrap) installCrossplaneOperator() error {
 		klog.Errorf("Failed to create or update Crossplane Kubernetes Provider: %v", err)
 		return err
 	}
+	
+	if err := b.waitResourceReady("kubernetes.crossplane.io/v1alpha1", "ProviderConfig"); err != nil {
+		return err
+	}
+
+	klog.Info("Creating Crossplane Kubernetes ProviderConfig")
+	if err := b.createCrossplaneKubernetesProviderConfig(); err != nil {
+		klog.Errorf("Failed to create or update Crossplane Kubernetes ProviderConfig: %v", err)
+		return err
+	}
 
 	return nil
 }
