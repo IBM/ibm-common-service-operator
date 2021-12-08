@@ -260,6 +260,14 @@ func (b *Bootstrap) DeleteCrossplaneCloudSubscription(namespace string) error {
 			if err := b.DeleteFromYaml(resourceCrossLock, b.CSData); err != nil {
 				return err
 			}
+			resourceCrossKubernetesProvider := constant.CrossKubernetesProvider
+			if err := b.DeleteFromYaml(resourceCrossKubernetesProvider, b.CSData); err != nil {
+				return err
+			}
+			resourceCrossKubernetesProviderConfig := constant.CrossKubernetesProviderConfig
+			if err := b.DeleteFromYaml(resourceCrossKubernetesProviderConfig, b.CSData); err != nil {
+				return err
+			}
 
 			// delete crossplane operator subscription
 			klog.Infof("Trying to delete ibm-crossplane-operator in %s", namespace)
@@ -864,6 +872,16 @@ func (b *Bootstrap) installCrossplaneOperator() error {
 		return err
 	}
 
+	if err := b.waitResourceReady("pkg.ibm.crossplane.io/v1", "Provider"); err != nil {
+		return err
+	}
+
+	klog.Info("Creating Crossplane Kubernetes Provider")
+	if err := b.createCrossplaneKubernetesProvider(); err != nil {
+		klog.Errorf("Failed to create or update Crossplane Kubernetes Provider: %v", err)
+		return err
+	}
+
 	return nil
 }
 
@@ -962,6 +980,22 @@ func (b *Bootstrap) createCrossplaneSubscription() error {
 
 func (b *Bootstrap) createCrossplaneConfiguration() error {
 	resourceName := constant.CrossConfiguration
+	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (b *Bootstrap) createCrossplaneKubernetesProvider() error {
+	resourceName := constant.CrossKubernetesProvider
+	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (b *Bootstrap) createCrossplaneKubernetesProviderConfig() error {
+	resourceName := constant.CrossKubernetesProviderConfig
 	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
 		return err
 	}
