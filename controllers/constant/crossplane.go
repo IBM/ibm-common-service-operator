@@ -60,7 +60,7 @@ metadata:
   name: provider-kubernetes
 spec:
   ignoreCrossplaneConstraints: false
-  package: 'quay.io/ppyt/provider:21'
+  package: 'quay.io/ppyt/provider:22'
   packagePullPolicy: Always
   revisionActivationPolicy: Automatic
   revisionHistoryLimit: 1
