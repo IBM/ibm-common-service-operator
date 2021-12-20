@@ -181,9 +181,6 @@ e2e-test: ## Run e2e test
 	OPERATOR_NAMESPACE=ibm-common-services \
 	go test ./controllers/... -coverprofile cover.out
 
-coverage: ## Run code coverage test
-	@common/scripts/codecov.sh ${BUILD_LOCALLY} "controllers"
-
 ##@ Build
 
 build-operator-image: $(CONFIG_DOCKER_TARGET) ## Build the operator image.
