@@ -324,54 +324,6 @@ const Small = `
           limits:
             cpu: 50m
             memory: 300Mi
-- name: ibm-monitoring-exporters-operator
-  spec:
-    exporter:
-      collectd:
-        resource:
-          requests:
-            cpu: 30m
-            memory: 50Mi
-          limits:
-            cpu: 30m
-            memory: 150Mi
-        routerResource:
-          limits:
-            cpu: 25m
-            memory: 250Mi
-          requests:
-            cpu: 10m
-            memory: 50Mi
-      nodeExporter:
-        resource:
-          requests:
-            cpu: 5m
-            memory: 50Mi
-          limits:
-            cpu: 20m
-            memory: 200Mi
-        routerResource:
-          requests:
-            cpu: 50m
-            memory: 128Mi
-          limits:
-            cpu: 100m
-            memory: 256Mi
-      kubeStateMetrics:
-        resource:
-          requests:
-            cpu: 500m
-            memory: 110Mi
-          limits:
-            cpu: 1000m
-            memory: 250Mi
-        routerResource:
-          limits:
-            cpu: 25m
-            memory: 250Mi
-          requests:
-            cpu: 10m
-            memory: 50Mi
 - name: ibm-monitoring-grafana-operator
   spec:
     grafana:
@@ -399,40 +351,6 @@ const Small = `
           limits:
             cpu: 50m
             memory: 250Mi
-- name: ibm-monitoring-prometheusext-operator
-  spec:
-    prometheusExt:
-      prometheusConfig:
-        routerResource:
-          requests:
-            cpu: 10m
-            memory: 50Mi
-          limits:
-            cpu: 75m
-            memory: 250Mi
-        resource:
-          requests:
-            cpu: 65m
-            memory: 1920Mi
-          limits:
-            cpu: 1000m
-            memory: 3300Mi
-      alertManagerConfig:
-        resource:
-          requests:
-            cpu: 30m
-            memory: 50Mi
-          limits:
-            cpu: 30m
-            memory: 100Mi
-      mcmMonitor:
-        resource:
-          requests:
-            cpu: 30m
-            memory: 50Mi
-          limits:
-            cpu: 100m
-            memory: 100Mi
 - name: ibm-apicatalog
   spec:
     apicatalogmanager:
