@@ -53,18 +53,18 @@ metadata:
   name: lock
 `
 
-const CrossKubernetesProvider = `
-apiVersion: pkg.ibm.crossplane.io/v1
-kind: Provider
+const CrossKubernetesProviderSubscription = `
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
 metadata:
-  name: provider-kubernetes
+  name: crossplane-provider-kubernetes-operator
+  namespace: {{ .MasterNs }}
 spec:
-  ignoreCrossplaneConstraints: false
-  package: 'quay.io/ppyt/provider:22'
-  packagePullPolicy: Always
-  revisionActivationPolicy: Automatic
-  revisionHistoryLimit: 1
-  skipDependencyResolution: false
+  channel: {{ .Channel }}
+  installPlanApproval: Automatic
+  name: crossplane-provider-kubernetes-operator
+  source: {{ .CatalogSourceName }}
+  sourceNamespace: {{ .CatalogSourceNs }}
 `
 
 const CrossKubernetesProviderConfig = `
@@ -77,4 +77,33 @@ metadata:
 spec:
   credentials:
     source: InjectedIdentity
+`
+
+const CrossIBMCloudProviderSubscription = `
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: crossplane-provider-ibm-cloud-operator
+  namespace: {{ .MasterNs }}
+spec:
+  channel: {{ .Channel }}
+  installPlanApproval: Automatic
+  name: crossplane-provider-ibm-cloud-operator
+  source: {{ .CatalogSourceName }}
+  sourceNamespace: {{ .CatalogSourceNs }}
+`
+
+const CrossIBMCloudProviderConfig = `
+apiVersion: ibmcloud.crossplane.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: ibm-crossplane-provider-ibm-cloud
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: {{ .MasterNs }}
+      name: provider-ibm-cloud-secret
+      key: credentials
+  region: us-south
 `

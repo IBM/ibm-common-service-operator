@@ -174,10 +174,10 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 	return
 }
 
-// CrossplaneCloudOperator install crossplane & cloud operator when bedrockshim is true
-func (b *Bootstrap) CrossplaneCloudOperator(instance *apiv3.CommonService) error {
+// CrossplaneOperatorProviderOperator installs Crossplane & Provider when bedrockshim is true
+func (b *Bootstrap) CrossplaneOperatorProviderOperator(instance *apiv3.CommonService) error {
 
-	// Install Crossplane Operator & Cloud Operator
+	// Install Crossplane Operator & Provider Operator
 	bedrockshim := false
 	if instance.Spec.Features != nil {
 		if instance.Spec.Features.Bedrockshim != nil {
@@ -186,20 +186,29 @@ func (b *Bootstrap) CrossplaneCloudOperator(instance *apiv3.CommonService) error
 	}
 
 	if bedrockshim {
+		if err := b.installCrossplaneOperator(); err != nil {
+			return err
+		}
+
 		b.CSData.CrossplaneProvider = "odlm"
 
 		if b.SaasEnable {
 			b.CSData.CrossplaneProvider = "ibmcloud"
-			if err := b.installCloudOperator(); err != nil {
+		}
+
+		switch b.CSData.CrossplaneProvider {
+		case "odlm":
+			if err := b.installKubernetesProvider(); err != nil {
+				return err
+			}
+		case "ibmcloud":
+			if err := b.installIBMCloudProvider(); err != nil {
 				return err
 			}
 		}
 
-		if err := b.installCrossplaneOperator(); err != nil {
-			return err
-		}
 	} else {
-		if err := b.DeleteCrossplaneCloudSubscription(b.CSData.MasterNs); err != nil {
+		if err := b.DeleteCrossplaneAndProviderSubscription(b.CSData.MasterNs); err != nil {
 			return err
 		}
 	}
@@ -221,8 +230,8 @@ func isOCP(mgr manager.Manager, ns string) (bool, error) {
 	}
 }
 
-// DeleteCrossplaneCloudSubscription deleted crossplane & cloud operator subscription when bedrockshim set to false or CS CR is removed
-func (b *Bootstrap) DeleteCrossplaneCloudSubscription(namespace string) error {
+// DeleteCrossplaneAndProviderSubscription deletes Crossplane & Provider subscription when bedrockshim set to false or CS CR is removed
+func (b *Bootstrap) DeleteCrossplaneAndProviderSubscription(namespace string) error {
 	// Fetch all the CommonService instances
 	klog.Info("Fetch all the CommonService instances")
 	csList := util.NewUnstructuredList("operator.ibm.com", "CommonService", "v3")
@@ -244,6 +253,48 @@ func (b *Bootstrap) DeleteCrossplaneCloudSubscription(namespace string) error {
 	}
 
 	if uninstallCrossplane {
+		_, providerErr := b.GetSubscription(ctx, "crossplane-provider-kubernetes-operator", namespace)
+		if errors.IsNotFound(providerErr) {
+			klog.Infof("%s not installed, skipping", "crossplane-provider-kubernetes-operator")
+		} else if providerErr != nil {
+			klog.Errorf("Failed to get subscription %s/%s", namespace, "crossplane-provider-kubernetes-operator")
+		} else {
+			klog.Infof("Trying to delete Kubernetes Provider in %s", namespace)
+			// delete ProviderConfig cr
+			resourceCrossKubernetesProviderConfig := constant.CrossKubernetesProviderConfig
+			if err := b.DeleteFromYaml(resourceCrossKubernetesProviderConfig, b.CSData); err != nil {
+				return err
+			}
+
+			// delete Kubernetes Provider subscription
+			klog.Infof("Trying to delete crossplane-provider-kubernetes-operator in %s", namespace)
+			if err := b.deleteSubscription("crossplane-provider-kubernetes-operator", namespace); err != nil {
+				klog.Errorf("Failed to delete crossplane-provider-kubernetes-operator in %s: %v", namespace, err)
+				return err
+			}
+		}
+
+		_, providerErr = b.GetSubscription(ctx, "crossplane-provider-ibm-cloud-operator", namespace)
+		if errors.IsNotFound(providerErr) {
+			klog.Infof("%s not installed, skipping", "crossplane-provider-ibm-cloud-operator")
+		} else if providerErr != nil {
+			klog.Errorf("Failed to get subscription %s/%s", namespace, "crossplane-provider-ibm-cloud-operator")
+		} else {
+			klog.Infof("Trying to delete IBM Cloud Provider in %s", namespace)
+			// delete ProviderConfig cr
+			resourceCrossIBMCloudProviderConfig := constant.CrossIBMCloudProviderConfig
+			if err := b.DeleteFromYaml(resourceCrossIBMCloudProviderConfig, b.CSData); err != nil {
+				return err
+			}
+
+			// delete IBM Cloud Provider subscription
+			klog.Infof("Trying to delete crossplane-provider-ibm-cloud-operator in %s", namespace)
+			if err := b.deleteSubscription("crossplane-provider-ibm-cloud-operator", namespace); err != nil {
+				klog.Errorf("Failed to delete crossplane-provider-ibm-cloud-operator in %s: %v", namespace, err)
+				return err
+			}
+		}
+
 		_, crossplaneErr := b.GetSubscription(ctx, "ibm-crossplane-operator-app", namespace)
 		if errors.IsNotFound(crossplaneErr) {
 			klog.Infof("%s not installed, skipping", "ibm-crossplane-operator-app")
@@ -260,14 +311,6 @@ func (b *Bootstrap) DeleteCrossplaneCloudSubscription(namespace string) error {
 			if err := b.DeleteFromYaml(resourceCrossLock, b.CSData); err != nil {
 				return err
 			}
-			resourceCrossKubernetesProvider := constant.CrossKubernetesProvider
-			if err := b.DeleteFromYaml(resourceCrossKubernetesProvider, b.CSData); err != nil {
-				return err
-			}
-			resourceCrossKubernetesProviderConfig := constant.CrossKubernetesProviderConfig
-			if err := b.DeleteFromYaml(resourceCrossKubernetesProviderConfig, b.CSData); err != nil {
-				return err
-			}
 
 			// delete crossplane operator subscription
 			klog.Infof("Trying to delete ibm-crossplane-operator in %s", namespace)
@@ -277,21 +320,6 @@ func (b *Bootstrap) DeleteCrossplaneCloudSubscription(namespace string) error {
 			}
 		}
 
-		if b.SaasEnable {
-			_, cloudErr := b.GetSubscription(ctx, "ibmcloud-operator", namespace)
-			if errors.IsNotFound(cloudErr) {
-				klog.Infof("%s not installed, skipping", "ibmcloud-operator")
-			} else if cloudErr != nil {
-				klog.Errorf("Failed to get subscription %s/%s", namespace, "ibmcloud-operator")
-			} else {
-				// delete cloud operator subscription
-				klog.Infof("Trying to delete ibm-cloud-operator in %s", namespace)
-				if err := b.deleteSubscription("ibmcloud-operator", namespace); err != nil {
-					klog.Errorf("Failed to delete ibm-cloud-operator in %s: %v", namespace, err)
-					return err
-				}
-			}
-		}
 	}
 
 	return nil
@@ -872,13 +900,13 @@ func (b *Bootstrap) installCrossplaneOperator() error {
 		return err
 	}
 
-	if err := b.waitResourceReady("pkg.ibm.crossplane.io/v1", "Provider"); err != nil {
-		return err
-	}
+	return nil
+}
 
-	klog.Info("Creating Crossplane Kubernetes Provider")
-	if err := b.createCrossplaneKubernetesProvider(); err != nil {
-		klog.Errorf("Failed to create or update Crossplane Kubernetes Provider: %v", err)
+func (b *Bootstrap) installKubernetesProvider() error {
+	klog.Info("Creating Crossplane Kubernetes Provider subscription")
+	if err := b.createCrossplaneKubernetesProviderSubscription(); err != nil {
+		klog.Errorf("Failed to create or update Crossplane Kubernetes Provider subscription: %v", err)
 		return err
 	}
 
@@ -891,14 +919,23 @@ func (b *Bootstrap) installCrossplaneOperator() error {
 		klog.Errorf("Failed to create or update Crossplane Kubernetes ProviderConfig: %v", err)
 		return err
 	}
-
 	return nil
 }
 
-func (b *Bootstrap) installCloudOperator() error {
-	klog.Info("Creating IBM Cloud Operator subscription")
-	if err := b.createCloudSubscription(); err != nil {
-		klog.Errorf("Failed to create or update IBM Cloud Operator subscription: %v", err)
+func (b *Bootstrap) installIBMCloudProvider() error {
+	klog.Info("Creating Crossplane IBM Cloud Provider subscription")
+	if err := b.createCrossplaneIBMCloudProviderSubscription(); err != nil {
+		klog.Errorf("Failed to create or update Crossplane IBM Cloud Provider subscription: %v", err)
+		return err
+	}
+
+	if err := b.waitResourceReady("ibmcloud.crossplane.io/v1beta1", "ProviderConfig"); err != nil {
+		return err
+	}
+
+	klog.Info("Creating Crossplane IBM Cloud ProviderConfig")
+	if err := b.createCrossplaneIBMCloudProviderConfig(); err != nil {
+		klog.Errorf("Failed to create or update Crossplane IBM Cloud ProviderConfig: %v", err)
 		return err
 	}
 	return nil
@@ -996,8 +1033,8 @@ func (b *Bootstrap) createCrossplaneConfiguration() error {
 	return nil
 }
 
-func (b *Bootstrap) createCrossplaneKubernetesProvider() error {
-	resourceName := constant.CrossKubernetesProvider
+func (b *Bootstrap) createCrossplaneKubernetesProviderSubscription() error {
+	resourceName := constant.CrossKubernetesProviderSubscription
 	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
 		return err
 	}
@@ -1012,12 +1049,19 @@ func (b *Bootstrap) createCrossplaneKubernetesProviderConfig() error {
 	return nil
 }
 
-func (b *Bootstrap) createCloudSubscription() error {
-	resourceName := constant.IbmCloudSubscription
+func (b *Bootstrap) createCrossplaneIBMCloudProviderSubscription() error {
+	resourceName := constant.CrossIBMCloudProviderSubscription
 	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
 		return err
 	}
+	return nil
+}
 
+func (b *Bootstrap) createCrossplaneIBMCloudProviderConfig() error {
+	resourceName := constant.CrossIBMCloudProviderConfig
+	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
+		return err
+	}
 	return nil
 }
 
