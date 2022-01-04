@@ -400,7 +400,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 	}
 	if b.SaasEnable {
 		// OperandRegistry for SaaS deployment
-		obj, err := b.GetObjs(constant.CSV3OperandRegistry, b.CSData)
+		obj, err := b.GetObjs(constant.CSV3SaasOperandRegistry, b.CSData)
 		if err != nil {
 			return err
 		}
