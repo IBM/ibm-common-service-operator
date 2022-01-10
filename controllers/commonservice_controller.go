@@ -89,7 +89,7 @@ func (r *CommonServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 			if err := r.handleDelete(); err != nil {
 				return ctrl.Result{}, err
 			}
-			if err := r.Bootstrap.DeleteCrossplaneCloudSubscription(r.Bootstrap.CSData.MasterNs); err != nil {
+			if err := r.Bootstrap.DeleteCrossplaneAndProviderSubscription(r.Bootstrap.CSData.MasterNs); err != nil {
 				return ctrl.Result{}, err
 			}
 			klog.Info("Deleted reconciling CommonService CR successfully")
@@ -138,7 +138,7 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(instance *apiv3.CommonServic
 	}
 
 	if inScope {
-		if err := r.Bootstrap.CrossplaneCloudOperator(instance); err != nil {
+		if err := r.Bootstrap.CrossplaneOperatorProviderOperator(instance); err != nil {
 			klog.Errorf("Failed to install crossplane or cloud operator: %v", err)
 			if err := r.updatePhase(instance, CRFailed); err != nil {
 				klog.Error(err)
@@ -216,7 +216,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(instance *apiv3.CommonServi
 	}
 
 	if inScope {
-		if err := r.Bootstrap.CrossplaneCloudOperator(instance); err != nil {
+		if err := r.Bootstrap.CrossplaneOperatorProviderOperator(instance); err != nil {
 			klog.Errorf("Failed to install crossplane or cloud operator: %v", err)
 			if err := r.updatePhase(instance, CRFailed); err != nil {
 				klog.Error(err)

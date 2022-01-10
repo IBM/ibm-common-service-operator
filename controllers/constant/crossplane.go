@@ -52,3 +52,58 @@ kind: Lock
 metadata:
   name: lock
 `
+
+const CrossKubernetesProviderSubscription = `
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: crossplane-provider-kubernetes-operator
+  namespace: {{ .MasterNs }}
+spec:
+  channel: {{ .Channel }}
+  installPlanApproval: Automatic
+  name: crossplane-provider-kubernetes-operator
+  source: {{ .CatalogSourceName }}
+  sourceNamespace: {{ .CatalogSourceNs }}
+`
+
+const CrossKubernetesProviderConfig = `
+apiVersion: kubernetes.crossplane.io/v1alpha1
+kind: ProviderConfig
+metadata:
+  finalizers:
+    - in-use.crossplane.io
+  name: kubernetes-provider
+spec:
+  credentials:
+    source: InjectedIdentity
+`
+
+const CrossIBMCloudProviderSubscription = `
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: crossplane-provider-ibm-cloud-operator
+  namespace: {{ .MasterNs }}
+spec:
+  channel: {{ .Channel }}
+  installPlanApproval: Automatic
+  name: crossplane-provider-ibm-cloud-operator
+  source: {{ .CatalogSourceName }}
+  sourceNamespace: {{ .CatalogSourceNs }}
+`
+
+const CrossIBMCloudProviderConfig = `
+apiVersion: ibmcloud.crossplane.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: ibm-crossplane-provider-ibm-cloud
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: {{ .MasterNs }}
+      name: provider-ibm-cloud-secret
+      key: credentials
+  region: us-south
+`
