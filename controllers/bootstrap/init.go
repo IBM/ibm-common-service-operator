@@ -93,7 +93,6 @@ type CSData struct {
 	CrossplaneProvider string
 }
 
-
 type CSOperator struct {
 	Name       string
 	CRD        string
