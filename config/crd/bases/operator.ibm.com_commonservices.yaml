@@ -95,6 +95,8 @@ spec:
                       type: string
                   type: object
                 type: array
+              overallStatus:
+                type: string
               phase:
                 type: string
             type: object
