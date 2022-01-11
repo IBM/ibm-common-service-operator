@@ -367,12 +367,6 @@ spec:
     packageName: zen-cpp-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
-  - channel: stable-v1
-    name: ibm-cpd-ae-operator-subscription
-    namespace: {{ .MasterNs }}
-    packageName: analyticsengine-operator
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
   - channel: {{ .Channel }}
     name: ibm-bts-operator
     namespace: {{ .MasterNs }}
