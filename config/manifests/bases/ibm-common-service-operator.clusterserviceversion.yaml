@@ -168,5 +168,7 @@ spec:
     name: IBM_CS_WEBHOOK_IMAGE
   - image: quay.io/opencloudio/ibm-secretshare-operator:1.10.0
     name: IBM_SECRETSHARE_OPERATOR_IMAGE
+  - name: IBM_ZEN_OPERATOR_IMAGE
+    value: quay.io/opencloudio/ibm-zen-operator:1.5.0
   replaces: ibm-common-service-operator.v0.0.0
   version: 0.0.0

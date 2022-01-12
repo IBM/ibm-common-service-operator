@@ -91,6 +91,7 @@ type CSData struct {
 	ApprovalMode       string
 	OnPremMultiEnable  string
 	CrossplaneProvider string
+	ZenOperatorImage   string
 }
 
 type CSOperator struct {
@@ -144,6 +145,7 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		CatalogSourceName: catalogSourceName,
 		CatalogSourceNs:   catalogSourceNs,
 		ApprovalMode:      approvalMode,
+		ZenOperatorImage:  util.GetImage("IBM_ZEN_OPERATOR_IMAGE"),
 	}
 
 	bs = &Bootstrap{
