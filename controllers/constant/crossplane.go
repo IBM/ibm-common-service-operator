@@ -17,8 +17,8 @@
 package constant
 
 const (
-	ICPPKOperator  = "ibm-crossplane-provider-kubernetes-operator"
-	ICPPICOperator = "ibm-crossplane-provider-ibm-cloud-operator"
+	ICPPKOperator  = "ibm-crossplane-provider-kubernetes-operator-app"
+	ICPPICOperator = "ibm-crossplane-provider-ibm-cloud-operator-app"
 	ICPOperator    = "ibm-crossplane-operator-app"
 )
 
@@ -26,12 +26,12 @@ const CrossSubscription = `
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
-  name: ibm-crossplane-operator-app
+  name: {{ .ICPOperator }}
   namespace: {{ .MasterNs }}
 spec:
   channel: {{ .Channel }}
   installPlanApproval: Automatic
-  name: ibm-crossplane-operator-app
+  name: {{ .ICPOperator }}
   source: {{ .CatalogSourceName }}
   sourceNamespace: {{ .CatalogSourceNs }}
 `
@@ -63,12 +63,12 @@ const CrossKubernetesProviderSubscription = `
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
-  name: ibm-crossplane-provider-kubernetes-operator
+  name: {{ .ICPPKOperator}}
   namespace: {{ .MasterNs }}
 spec:
   channel: {{ .Channel }}
   installPlanApproval: Automatic
-  name: ibm-crossplane-provider-kubernetes-operator
+  name: {{ .ICPPKOperator }}
   source: {{ .CatalogSourceName }}
   sourceNamespace: {{ .CatalogSourceNs }}
 `
@@ -89,12 +89,12 @@ const CrossIBMCloudProviderSubscription = `
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
-  name: ibm-crossplane-provider-ibm-cloud-operator
+  name: {{ .ICPPICOperator }}
   namespace: {{ .MasterNs }}
 spec:
   channel: {{ .Channel }}
   installPlanApproval: Automatic
-  name: ibm-crossplane-provider-ibm-cloud-operator
+  name: {{ .ICPPICOperator }}
   source: {{ .CatalogSourceName }}
   sourceNamespace: {{ .CatalogSourceNs }}
 `

@@ -92,6 +92,9 @@ type CSData struct {
 	OnPremMultiEnable  string
 	CrossplaneProvider string
 	ZenOperatorImage   string
+	ICPPKOperator      string
+	ICPPICOperator     string
+	ICPOperator        string
 }
 
 type CSOperator struct {
@@ -146,6 +149,9 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		CatalogSourceNs:   catalogSourceNs,
 		ApprovalMode:      approvalMode,
 		ZenOperatorImage:  util.GetImage("IBM_ZEN_OPERATOR_IMAGE"),
+		ICPPKOperator:     constant.ICPPKOperator,
+		ICPPICOperator:    constant.ICPPICOperator,
+		ICPOperator:       constant.ICPOperator,
 	}
 
 	bs = &Bootstrap{
