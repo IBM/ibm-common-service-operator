@@ -57,12 +57,12 @@ const CrossKubernetesProviderSubscription = `
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
-  name: crossplane-provider-kubernetes-operator
+  name: ibm-crossplane-provider-kubernetes-operator
   namespace: {{ .MasterNs }}
 spec:
   channel: {{ .Channel }}
   installPlanApproval: Automatic
-  name: crossplane-provider-kubernetes-operator
+  name: ibm-crossplane-provider-kubernetes-operator
   source: {{ .CatalogSourceName }}
   sourceNamespace: {{ .CatalogSourceNs }}
 `
@@ -83,12 +83,12 @@ const CrossIBMCloudProviderSubscription = `
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
-  name: crossplane-provider-ibm-cloud-operator
+  name: ibm-crossplane-provider-ibm-cloud-operator
   namespace: {{ .MasterNs }}
 spec:
   channel: {{ .Channel }}
   installPlanApproval: Automatic
-  name: crossplane-provider-ibm-cloud-operator
+  name: ibm-crossplane-provider-ibm-cloud-operator
   source: {{ .CatalogSourceName }}
   sourceNamespace: {{ .CatalogSourceNs }}
 `
