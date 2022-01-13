@@ -63,6 +63,9 @@ spec:
       - description: Installed Bedrock Operator Troubleshooting
         displayName: Troubleshooting
         path: bedrockOperators[0].troubleshooting
+      - description: The Overall Status Of All Installed Bedrock Operators
+        displayName: OverallStatus
+        path: overallStatus
       version: v3
   description: |-
     # Introduction

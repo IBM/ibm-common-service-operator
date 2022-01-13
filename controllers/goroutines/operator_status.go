@@ -84,7 +84,18 @@ func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 			}
 		}
 
+		// update status for each operators: BedrockOperators list
 		instance.Status.BedrockOperators = operatorSlice
+
+		// update operators overall status: OverallStatus
+		instance.Status.OverallStatus = "Succeeded"
+		for _, opt := range operatorSlice {
+			if opt.OperatorStatus != "Succeeded" {
+				instance.Status.OverallStatus = "NotReady"
+				break
+			}
+		}
+
 		if err := bs.Client.Status().Update(ctx, instance); err != nil {
 			klog.Warning(err)
 		}
