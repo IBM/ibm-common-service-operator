@@ -255,11 +255,11 @@ func (b *Bootstrap) DeleteCrossplaneAndProviderSubscription(namespace string) er
 	}
 
 	if uninstallCrossplane {
-		_, providerErr := b.GetSubscription(ctx, "crossplane-provider-kubernetes-operator", namespace)
+		_, providerErr := b.GetSubscription(ctx, constant.ICPPKOperator, namespace)
 		if errors.IsNotFound(providerErr) {
-			klog.Infof("%s not installed, skipping", "crossplane-provider-kubernetes-operator")
+			klog.Infof("%s not installed, skipping", constant.ICPPKOperator)
 		} else if providerErr != nil {
-			klog.Errorf("Failed to get subscription %s/%s", namespace, "crossplane-provider-kubernetes-operator")
+			klog.Errorf("Failed to get subscription %s/%s", namespace, constant.ICPPKOperator)
 		} else {
 			klog.Infof("Trying to delete Kubernetes Provider in %s", namespace)
 			// delete ProviderConfig cr
@@ -269,18 +269,18 @@ func (b *Bootstrap) DeleteCrossplaneAndProviderSubscription(namespace string) er
 			}
 
 			// delete Kubernetes Provider subscription
-			klog.Infof("Trying to delete crossplane-provider-kubernetes-operator in %s", namespace)
-			if err := b.deleteSubscription("crossplane-provider-kubernetes-operator", namespace); err != nil {
-				klog.Errorf("Failed to delete crossplane-provider-kubernetes-operator in %s: %v", namespace, err)
+			klog.Infof("Trying to delete %s in %s", constant.ICPPKOperator, namespace)
+			if err := b.deleteSubscription(constant.ICPPKOperator, namespace); err != nil {
+				klog.Errorf("Failed to delete %s in %s: %v", constant.ICPPKOperator, namespace, err)
 				return err
 			}
 		}
 
-		_, providerErr = b.GetSubscription(ctx, "crossplane-provider-ibm-cloud-operator", namespace)
+		_, providerErr = b.GetSubscription(ctx, constant.ICPPICOperator, namespace)
 		if errors.IsNotFound(providerErr) {
-			klog.Infof("%s not installed, skipping", "crossplane-provider-ibm-cloud-operator")
+			klog.Infof("%s not installed, skipping", constant.ICPPICOperator)
 		} else if providerErr != nil {
-			klog.Errorf("Failed to get subscription %s/%s", namespace, "crossplane-provider-ibm-cloud-operator")
+			klog.Errorf("Failed to get subscription %s/%s", namespace, constant.ICPPICOperator)
 		} else {
 			klog.Infof("Trying to delete IBM Cloud Provider in %s", namespace)
 			// delete ProviderConfig cr
@@ -290,21 +290,21 @@ func (b *Bootstrap) DeleteCrossplaneAndProviderSubscription(namespace string) er
 			}
 
 			// delete IBM Cloud Provider subscription
-			klog.Infof("Trying to delete crossplane-provider-ibm-cloud-operator in %s", namespace)
-			if err := b.deleteSubscription("crossplane-provider-ibm-cloud-operator", namespace); err != nil {
-				klog.Errorf("Failed to delete crossplane-provider-ibm-cloud-operator in %s: %v", namespace, err)
+			klog.Infof("Trying to delete %s in %s", constant.ICPPICOperator, namespace)
+			if err := b.deleteSubscription(constant.ICPPICOperator, namespace); err != nil {
+				klog.Errorf("Failed to delete %s in %s: %v", constant.ICPPICOperator, namespace, err)
 				return err
 			}
 		}
 
-		_, crossplaneErr := b.GetSubscription(ctx, "ibm-crossplane-operator-app", namespace)
+		_, crossplaneErr := b.GetSubscription(ctx, constant.ICPOperator, namespace)
 		if errors.IsNotFound(crossplaneErr) {
-			klog.Infof("%s not installed, skipping", "ibm-crossplane-operator-app")
+			klog.Infof("%s not installed, skipping", constant.ICPOperator)
 		} else if crossplaneErr != nil {
-			klog.Errorf("Failed to get subscription %s/%s", namespace, "ibm-crossplane-operator-app")
+			klog.Errorf("Failed to get subscription %s/%s", namespace, constant.ICPOperator)
 		} else {
 			// delete crossplane cr
-			klog.Infof("Trying to delete ibm-crossplane-operator CR in %s", namespace)
+			klog.Infof("Trying to delete %s CR in %s", constant.ICPOperator, namespace)
 			resourceCrossConfiguration := constant.CrossConfiguration
 			if err := b.DeleteFromYaml(resourceCrossConfiguration, b.CSData); err != nil {
 				return err
@@ -315,9 +315,9 @@ func (b *Bootstrap) DeleteCrossplaneAndProviderSubscription(namespace string) er
 			}
 
 			// delete crossplane operator subscription
-			klog.Infof("Trying to delete ibm-crossplane-operator in %s", namespace)
-			if err := b.deleteSubscription("ibm-crossplane-operator-app", namespace); err != nil {
-				klog.Errorf("Failed to delete ibm-crossplane-operator in %s: %v", namespace, err)
+			klog.Infof("Trying to delete %s in %s", constant.ICPOperator, namespace)
+			if err := b.deleteSubscription(constant.ICPOperator, namespace); err != nil {
+				klog.Errorf("Failed to delete %s in %s: %v", constant.ICPOperator, namespace, err)
 				return err
 			}
 		}

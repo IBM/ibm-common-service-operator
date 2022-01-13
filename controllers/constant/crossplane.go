@@ -16,6 +16,12 @@
 
 package constant
 
+const (
+	ICPPKOperator  = "ibm-crossplane-provider-kubernetes-operator"
+	ICPPICOperator = "ibm-crossplane-provider-ibm-cloud-operator"
+	ICPOperator    = "ibm-crossplane-operator-app"
+)
+
 const CrossSubscription = `
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
