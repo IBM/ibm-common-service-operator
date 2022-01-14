@@ -1199,6 +1199,9 @@ func (b *Bootstrap) waitALLOperatorReady(namespace string) error {
 	)
 
 	for _, sub := range subList.Items {
+		if sub.Name == "ibm-zen-operator" {
+			continue
+		}
 		var (
 			// Copy variables into iteration scope
 			name = sub.Name
