@@ -62,8 +62,9 @@ func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 			operatorsName = append(operatorsName, opreg.Spec.Operators[i].Name)
 		}
 		operatorsName = append(operatorsName, []string{
-			"ibmcloud-operator",
-			"ibm-crossplane-operator-app",
+			constant.ICPPKOperator,
+			constant.ICPPICOperator,
+			constant.ICPOperator,
 			"ibm-namespace-scope-operator",
 			"operand-deployment-lifecycle-manager-app"}...)
 
@@ -84,7 +85,18 @@ func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 			}
 		}
 
+		// update status for each operators: BedrockOperators list
 		instance.Status.BedrockOperators = operatorSlice
+
+		// update operators overall status: OverallStatus
+		instance.Status.OverallStatus = "Succeeded"
+		for _, opt := range operatorSlice {
+			if opt.OperatorStatus != "Succeeded" {
+				instance.Status.OverallStatus = "NotReady"
+				break
+			}
+		}
+
 		if err := bs.Client.Status().Update(ctx, instance); err != nil {
 			klog.Warning(err)
 		}

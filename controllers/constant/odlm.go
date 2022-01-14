@@ -214,6 +214,57 @@ spec:
   - name: ibm-bts-operator
     spec:
       operandRequest: {}
+  - name: ibm-zen-operator
+    resources:
+      - apiVersion: batch/v1
+        data:
+          spec:
+            activeDeadlineSeconds: 600
+            backoffLimit: 5
+            template:
+              metadata: null
+              spec:
+                affinity:
+                  nodeAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                      nodeSelectorTerms:
+                        - matchExpressions:
+                            - key: kubernetes.io/arch
+                              operator: In
+                              values:
+                                - amd64
+                                - ppc64le
+                                - s390x
+                containers:
+                  - command:
+                      - bash
+                      - '-c'
+                      - bash /setup/pre-zen.sh
+                    image: {{ .ZenOperatorImage }}
+                    name: pre-zen-job
+                    resources:
+                      limits:
+                        cpu: 500m
+                        memory: 512Mi
+                      requests:
+                        cpu: 100m
+                        memory: 50Mi
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      capabilities:
+                        drop:
+                          - ALL
+                      privileged: false
+                      readOnlyRootFilesystem: false
+                restartPolicy: OnFailure
+                securityContext:
+                  runAsNonRoot: true
+                serviceAccount: operand-deployment-lifecycle-manager
+                serviceAccountName: operand-deployment-lifecycle-manager
+                terminationGracePeriodSeconds: 30
+        force: true
+        kind: Job
+        name: pre-zen-operand-config-job 
 `
 
 const CSV3OperandRegistry = `
@@ -451,6 +502,57 @@ spec:
   - name: ibm-bts-operator
     spec:
       operandRequest: {}
+      - name: ibm-zen-operator
+      resources:
+        - apiVersion: batch/v1
+          data:
+            spec:
+              activeDeadlineSeconds: 600
+              backoffLimit: 5
+              template:
+                metadata: null
+                spec:
+                  affinity:
+                    nodeAffinity:
+                      requiredDuringSchedulingIgnoredDuringExecution:
+                        nodeSelectorTerms:
+                          - matchExpressions:
+                              - key: kubernetes.io/arch
+                                operator: In
+                                values:
+                                  - amd64
+                                  - ppc64le
+                                  - s390x
+                  containers:
+                    - command:
+                        - bash
+                        - '-c'
+                        - bash /setup/pre-zen.sh
+                      image: {{ .ZenOperatorImage }}
+                      name: pre-zen-job
+                      resources:
+                        limits:
+                          cpu: 500m
+                          memory: 512Mi
+                        requests:
+                          cpu: 100m
+                          memory: 50Mi
+                      securityContext:
+                        allowPrivilegeEscalation: false
+                        capabilities:
+                          drop:
+                            - ALL
+                        privileged: false
+                        readOnlyRootFilesystem: false
+                  restartPolicy: OnFailure
+                  securityContext:
+                    runAsNonRoot: true
+                  serviceAccount: operand-deployment-lifecycle-manager
+                  serviceAccountName: operand-deployment-lifecycle-manager
+                  terminationGracePeriodSeconds: 30
+          force: true
+          kind: Job
+          name: pre-zen-operand-config-job 
 `
 
 const CSV3SaasOperandRegistry = `

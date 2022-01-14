@@ -74,6 +74,7 @@ type BedrockOperator struct {
 type CommonServiceStatus struct {
 	Phase            string            `json:"phase,omitempty"`
 	BedrockOperators []BedrockOperator `json:"bedrockOperators,omitempty"`
+	OverallStatus    string            `json:"overallStatus,omitempty"`
 }
 
 // +kubebuilder:object:root=true
