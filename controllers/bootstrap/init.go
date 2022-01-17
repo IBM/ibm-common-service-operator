@@ -194,14 +194,14 @@ func (b *Bootstrap) CrossplaneOperatorProviderOperator(instance *apiv3.CommonSer
 	}
 
 	if bedrockshim {
-		if err := b.installCrossplaneOperator(); err != nil {
-			return err
-		}
-
 		b.CSData.CrossplaneProvider = "odlm"
 
 		if b.SaasEnable {
 			b.CSData.CrossplaneProvider = "ibmcloud"
+		}
+		
+		if err := b.installCrossplaneOperator(); err != nil {
+			return err
 		}
 
 		switch b.CSData.CrossplaneProvider {
