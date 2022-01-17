@@ -199,7 +199,7 @@ func (b *Bootstrap) CrossplaneOperatorProviderOperator(instance *apiv3.CommonSer
 		if b.SaasEnable {
 			b.CSData.CrossplaneProvider = "ibmcloud"
 		}
-		
+
 		if err := b.installCrossplaneOperator(); err != nil {
 			return err
 		}
