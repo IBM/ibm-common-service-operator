@@ -57,6 +57,7 @@ function main() {
     fi
     check_preqreqs $CS_NAMESPACE
     switch_to_eus $CS_NAMESPACE
+    success "Successfully cleaned up CD version of foundational services, please manually install EUS version of foundational services."
 }
 
 function check_preqreqs() {
@@ -95,6 +96,10 @@ function switch_to_eus() {
     title "[${STEP}] Removing the cd version of Common Service Operators..."
     msg "-----------------------------------------------------------------------"
 
+    msg "Deleteing licensing Bindinfo"    
+    oc -n $namespace delete operandbindinfo ibm-licensing-bindinfo --ignore-not-found
+    msg ""
+
     delete_operator "operand-deployment-lifecycle-manager-app" $namespace
     
     msg "Delete default OperandRegistry and OperandConfig CRs..."
@@ -102,7 +107,8 @@ function switch_to_eus() {
     oc -n $namespace delete operandconfig common-service --ignore-not-found
     msg ""
 
-    oc -n $namespace delete certmanager default --ignore-not-found
+    oc delete certmanager default --ignore-not-found
+    msg ""
     
     for sub in ${operatorlist[@]}; do
         delete_operator $sub $namespace
@@ -118,18 +124,27 @@ function switch_to_eus() {
     STEP=$((STEP + 1 ))
     title "[${STEP}] Cleaning up additional resources..."
     msg "-----------------------------------------------------------------------"
+    in_step=1
+    msg "[${in_step}] Deleting RBAC resources of foundational services"
     delete_rbac_resource $namespace
-    msg "Deleting iam-status configMap in kube-public namespace" 
+
+    in_step=$((in_step + 1))
+    msg "[${in_step}] Deleting iam-status configMap in kube-public namespace" 
     oc delete configmap ibm-common-services-status -n kube-public --ignore-not-found
-    msg "Deleting cert-manager webhooks and apiservice" 
+
+    in_step=$((in_step + 1))
+    msg "[${in_step}] Deleting cert-manager webhooks and apiservice" 
     oc delete ValidatingWebhookConfiguration cert-manager-webhook --ignore-not-found
     oc delete MutatingWebhookConfiguration cert-manager-webhook --ignore-not-found
     oc delete apiservice v1beta1.webhook.certmanager.k8s.io --ignore-not-found
-    msg "Deleting metering apiservice" 
+
+    in_step=$((in_step + 1))
+    msg "[${in_step}] Deleting metering apiservice" 
     oc delete apiservice v1.metering.ibm.com --ignore-not-found
-    msg "Deleting LicenseServiceReporter instance"
-    oc -n $namespace delete ibmlicenseservicereporters instance --ignore-not-found
     
+    in_step=$((in_step + 1))
+    msg "[${in_step}] Deleting LicenseServiceReporter instance"
+    oc -n $namespace delete ibmlicenseservicereporters instance --ignore-not-found
 }
 
 function delete_operator() {
