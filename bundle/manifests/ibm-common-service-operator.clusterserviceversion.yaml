@@ -318,6 +318,19 @@ spec:
                 - get
                 - list
                 - watch
+            - apiGroups:
+                - kubernetes.crossplane.io
+                - ibmcloud.crossplane.io
+              resources:
+                - providerconfigs
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
           serviceAccountName: ibm-common-service-operator
       deployments:
         - name: ibm-common-service-operator

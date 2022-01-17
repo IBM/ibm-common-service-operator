@@ -139,7 +139,7 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(instance *apiv3.CommonServic
 
 	if inScope {
 		if err := r.Bootstrap.CrossplaneOperatorProviderOperator(instance); err != nil {
-			klog.Errorf("Failed to install crossplane or cloud operator: %v", err)
+			klog.Errorf("Failed to install crossplane or provider operator: %v", err)
 			if err := r.updatePhase(instance, CRFailed); err != nil {
 				klog.Error(err)
 			}
@@ -217,7 +217,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(instance *apiv3.CommonServi
 
 	if inScope {
 		if err := r.Bootstrap.CrossplaneOperatorProviderOperator(instance); err != nil {
-			klog.Errorf("Failed to install crossplane or cloud operator: %v", err)
+			klog.Errorf("Failed to install crossplane or provider operator: %v", err)
 			if err := r.updatePhase(instance, CRFailed); err != nil {
 				klog.Error(err)
 			}
