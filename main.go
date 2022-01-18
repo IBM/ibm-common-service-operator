@@ -122,16 +122,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	typeCorrect, err := bootstrap.CheckClusterType(mgr, util.GetMasterNs(mgr.GetAPIReader()))
-	if err != nil {
-		klog.Errorf("Failed to verify cluster type  %v", err)
-		os.Exit(1)
-	}
+	for {
+		typeCorrect, err := bootstrap.CheckClusterType(mgr, util.GetMasterNs(mgr.GetAPIReader()))
+		if err != nil {
+			klog.Errorf("Failed to verify cluster type  %v", err)
+			continue
+		}
 
-	if !typeCorrect {
-		klog.Error("Cluster type specificed in the ibm-cpp-config isn't correct")
-		time.Sleep(2 * time.Minute)
-		os.Exit(1)
+		if !typeCorrect {
+			klog.Error("Cluster type specificed in the ibm-cpp-config isn't correct")
+			time.Sleep(2 * time.Minute)
+		} else {
+			break
+		}
 	}
 
 	// New bootstrap Object
