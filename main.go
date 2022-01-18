@@ -126,7 +126,7 @@ func main() {
 		typeCorrect, err := bootstrap.CheckClusterType(mgr, util.GetMasterNs(mgr.GetAPIReader()))
 		if err != nil {
 			klog.Errorf("Failed to verify cluster type  %v", err)
-			os.Exit(1)
+			continue
 		}
 
 		if !typeCorrect {
