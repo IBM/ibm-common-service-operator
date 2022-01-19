@@ -240,6 +240,11 @@ spec:
                       - bash
                       - '-c'
                       - bash /setup/pre-zen.sh
+                    env:
+                      - name: common_services_namespace
+                        valueFrom:
+                          fieldRef:
+                            fieldPath: metadata.namespace
                     image: {{ .ZenOperatorImage }}
                     name: pre-zen-job
                     resources:
@@ -528,6 +533,11 @@ spec:
                         - bash
                         - '-c'
                         - bash /setup/pre-zen.sh
+                      env:
+                        - name: common_services_namespace
+                          valueFrom:
+                            fieldRef:
+                              fieldPath: metadata.namespace
                       image: {{ .ZenOperatorImage }}
                       name: pre-zen-job
                       resources:
