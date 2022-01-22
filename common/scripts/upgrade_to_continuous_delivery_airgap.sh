@@ -164,14 +164,14 @@ function delete_operator() {
     subs=$1
     ns=$2
     for sub in ${subs}; do
-        msg "Deleting ${sub} in namesapce ${ns}, it will be re-installed after the upgrade is successful ..."
+        msg "Deleting ${sub} in namespace ${ns}, it will be re-installed after the upgrade is successful ..."
         msg "-----------------------------------------------------------------------"
         csv=$(oc get sub ${sub} -n ${ns} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
         in_step=1
-        msg "[${in_step}] Removing the subscription of ${sub} in namesapce ${ns} ..."
+        msg "[${in_step}] Removing the subscription of ${sub} in namespace ${ns} ..."
         oc delete sub ${sub} -n ${ns} --ignore-not-found
         in_step=$((in_step + 1))
-        msg "[${in_step}] Removing the csv of ${sub} in namesapce ${ns} ..."
+        msg "[${in_step}] Removing the csv of ${sub} in namespace ${ns} ..."
         [[ "X${csv}" != "X" ]] && oc delete csv ${csv}  -n ${ns} --ignore-not-found
         msg ""
 
