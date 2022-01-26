@@ -455,7 +455,7 @@ func (r *CommonServiceReconciler) updatePhase(instance *apiv3.CommonService, sta
 // checkScope checks whether the namespace is in scope
 func (r *CommonServiceReconciler) checkScope(csScope []string, key string) bool {
 	inScope := false
-	if len(csScope) == 0 {
+	if !r.Bootstrap.MultiInstancesEnable || len(csScope) == 0 {
 		inScope = true
 	} else {
 		for _, ns := range csScope {
