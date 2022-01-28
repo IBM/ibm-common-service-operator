@@ -429,20 +429,6 @@ spec:
     packageName: ibm-bts-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
-  - channel: v3
-    name: ibm-apicatalog
-    namespace: {{ .MasterNs }}
-    packageName: ibm-apicatalog
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-  - channel: {{ .Channel }}
-    name: ibm-bts-operator
-    namespace: {{ .MasterNs }}
-    packageName: ibm-bts-operator
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: {{ .CatalogSourceNs }}
 `
 
 const CSV3SaasOperandConfig = `
