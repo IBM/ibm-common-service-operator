@@ -448,15 +448,6 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 		obj, err := b.GetObjs(constant.CSV3SaasOperandRegistry, b.CSData)
 		if err != nil {
 			return err
-		} else {
-			klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s\n", obj[0].GetName(), obj[0].GetNamespace(), obj[0].GetKind(), obj[0].GetAPIVersion())
-			resourceVersion := objInCluster.GetResourceVersion()
-			obj[0].SetResourceVersion(resourceVersion)
-			if util.CompareVersion(obj[0].GetAnnotations()["version"], objInCluster.GetAnnotations()["version"]) {
-				if err := b.UpdateObject(obj[0]); err != nil {
-					return err
-				}
-			}
 		}
 		for i := range obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{}) {
 			if obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{})[i].(map[string]interface{})["sourceName"] != nil {
