@@ -45,8 +45,8 @@ metadata:
     ibm-crossplane-provider: {{ .CrossplaneProvider }}
 spec:
   ignoreCrossplaneConstraints: false
-  package: FromEnvVar
-  packagePullPolicy: Always
+  package: ibm-crossplane-bedrock-shim-config
+  packagePullPolicy: Never
   revisionActivationPolicy: Automatic
   revisionHistoryLimit: 1
   skipDependencyResolution: false
