@@ -1,8 +1,8 @@
 # Overview
 
-This folder contains the list of network policies those required for Bedrock Common Services to work in a cluster where the deny_all has been implemented. The script `install_networkpolicy.sh` provided to install all the YAML definition of NetworkPolicies for Bedrock Common Services to the specified namespace. If you have the deny-all policy in place, the ingress traffic to all pods in not allowed. In this scenario, for foundational services to work, you need to import and install network policies. If you do not use deny-all policy, you may not need to import or install network policies.
+This folder contains the list of network policies those required for Bedrock Common Services to work in a cluster where the deny_all policy has been implemented. The script **install_networkpolicy.sh** provided to install all the YAML definition of NetworkPolicies for Bedrock Common Services to the specified namespace. If you have the deny-all policy in place, the ingress traffic to all pods in not allowed. In this scenario, for foundational services to work, you need to import and install network policies. If you do not use deny-all policy, you may not need to import or install network policies.
 
-For more details on the usage of the script and to check various supported inputs , refer to the document https://www.ibm.com/docs/en/cpfs?topic=operator-installing-network-policies
+For more details on the usage of the script and to check various supported inputs , refer to the [document section](https://www.ibm.com/docs/en/cpfs?topic=operator-installing-network-policies)
 
 ## Sample usage - installing Network Policies
 
