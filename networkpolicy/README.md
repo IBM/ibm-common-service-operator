@@ -17,8 +17,6 @@ networkpolicy % ./install_networkpolicy.sh
 -----------------------------------------------------------------------
 ibm-common-services
 ibm-common-services
-[INFO] Installing 00-default-deny-all.yaml ...
-networkpolicy.networking.k8s.io/default-deny-ingress created
 [INFO] Installing bedrock-access-to-auth-idp.yaml ...
 networkpolicy.networking.k8s.io/access-to-auth-idp created
 [INFO] Installing bedrock-access-to-cert-manager-webhook.yaml ...
@@ -61,7 +59,6 @@ networkpolicy % ./install_networkpolicy.sh -u
 [✔] IBM Common Services found in namespace ibm-common-services
 # [0] Removing Bedrock Network Policies ...
 -----------------------------------------------------------------------
-networkpolicy.networking.k8s.io "default-deny-ingress" deleted
 networkpolicy.networking.k8s.io "access-to-auth-idp" deleted
 networkpolicy.networking.k8s.io "access-to-cert-manager-webhook" deleted
 networkpolicy.networking.k8s.io "access-to-ibm-cs-webhook" deleted
