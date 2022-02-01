@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: access-to-thanos-from-grafana
+  namespace: "openshift-monitoring"
+  labels:
+    component: cpfs
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: thanos-query
+  policyTypes:
+  - Ingress
+  ingress:
+    - from:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              app: "grafana"
