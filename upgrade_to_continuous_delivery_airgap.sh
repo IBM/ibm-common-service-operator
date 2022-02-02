@@ -52,6 +52,15 @@ function check_preqreqs() {
     fi
 }
 
+function deprecated_operator() {
+    case $1 in
+        "ibm-metering-operator-app") return 0;;
+        "ibm-monitoring-exporters-operator-app") return 0;;
+        "ibm-monitoring-prometheusext-operator-app") return 0;;
+        *) return 1;;
+    esac
+}
+
 function switch_to_continous_delivery() {
     STEP=$((STEP + 1 ))
 
@@ -105,6 +114,12 @@ function switch_to_continous_delivery() {
             continue
         fi
 
+        if deprecated_operator ${sub}; then
+            msg "Skipped subscription ${sub} in namespace ibm-common-services..."
+            msg "-----------------------------------------------------------------------"
+            continue
+        fi
+
         msg "Updating subscription ${sub} in namespace ibm-common-services..."
         msg "-----------------------------------------------------------------------"
         
@@ -144,6 +159,12 @@ function check_switch_complete() {
 
     while read -r sub; do
         if [[ ${sub} == "NAME" ]]; then
+            continue
+        fi
+
+        if deprecated_operator ${sub}; then
+            msg "Skipped subscription ${sub} in namespace ibm-common-services..."
+            msg "-----------------------------------------------------------------------"
             continue
         fi
 
