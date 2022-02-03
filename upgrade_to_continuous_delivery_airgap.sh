@@ -54,9 +54,9 @@ function check_preqreqs() {
 
 function deprecated_operator() {
     case $1 in
-        "ibm-metering-operator-app") return 0;;
-        "ibm-monitoring-exporters-operator-app") return 0;;
-        "ibm-monitoring-prometheusext-operator-app") return 0;;
+        "ibm-metering-operator") return 0;;
+        "ibm-monitoring-exporters-operator") return 0;;
+        "ibm-monitoring-prometheusext-operator") return 0;;
         *) return 1;;
     esac
 }
