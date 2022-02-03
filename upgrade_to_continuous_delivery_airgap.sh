@@ -67,9 +67,9 @@ function switch_to_continous_delivery() {
     title "[${STEP}] Switching to Continous Delivery Version (switching into v3 channel)..."
     msg "-----------------------------------------------------------------------"
 
-    msg "Updating OperandRegistry common-service in namespace ibm-common-services..."
-    msg "-----------------------------------------------------------------------"
-    oc -n ibm-common-services get operandregistry common-service -o yaml | sed 's/stable-v1/v3/g' | oc -n ibm-common-services apply -f -
+    # msg "Updating OperandRegistry common-service in namespace ibm-common-services..."
+    # msg "-----------------------------------------------------------------------"
+    # oc -n ibm-common-services get operandregistry common-service -o yaml | sed 's/stable-v1/v3/g' | oc -n ibm-common-services apply -f -
 
     while read -r ns cssub; do
 
