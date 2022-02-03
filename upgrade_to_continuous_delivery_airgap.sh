@@ -90,24 +90,7 @@ function switch_to_continous_delivery() {
     success "Updated all ibm-common-service-operator subscriptions successfully."
     msg ""
 
-    odlmsub=$(oc get sub operand-deployment-lifecycle-manager-app -n openshift-operators --ignore-not-found)
-    if [[ "X${odlmsub}" != "X" ]]; then
-        msg "Updating subscription Operand Deployment Lifecycle Manager in namespace openshift-operators..."
-        msg "-----------------------------------------------------------------------"
-        
-        in_step=1
-        msg "[${in_step}] Removing the startingCSV ..."
-        oc patch sub operand-deployment-lifecycle-manager-app -n openshift-operators --type="json" -p '[{"op": "remove", "path":"/spec/startingCSV"}]' 2> /dev/null
-
-        in_step=$((in_step + 1))
-        msg "[${in_step}] Switching channel from stable-v1 to v3 ..."
-        oc patch sub operand-deployment-lifecycle-manager-app -n openshift-operators --type="json" -p '[{"op": "replace", "path":"/spec/channel", "value":"v3"}]' 2> /dev/null
-
-        msg ""
-
-        success "Updated Operand Deployment Lifecycle Manager subscription successfully."
-        msg ""
-    fi
+    delete_operator "operand-deployment-lifecycle-manager-app ibm-namespace-scope-operator-restricted ibm-namespace-scope-operator ibm-cert-manager-operator" "ibm-common-services"
 
     while read -r sub; do
         if [[ ${sub} == "NAME" ]]; then
@@ -134,7 +117,6 @@ function switch_to_continous_delivery() {
         msg ""
     done < <(oc get sub -n ibm-common-services | awk '{print $1}')
 
-    delete_operator "operand-deployment-lifecycle-manager-app ibm-namespace-scope-operator-restricted ibm-namespace-scope-operator ibm-cert-manager-operator" "ibm-common-services"
 
     msg "Creating namespace scope config in namespace ibm-common-services..."
     msg "-----------------------------------------------------------------------"
