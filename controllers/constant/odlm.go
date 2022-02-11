@@ -678,4 +678,6 @@ spec:
       value: namespaced
     - name: ISOLATED_MODE
       value: "{{ .IsolatedModeEnable }}"
+    - name: OPERATORCHECKER_MODE
+      value: true
 `
