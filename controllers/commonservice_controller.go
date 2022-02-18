@@ -20,6 +20,8 @@ import (
 	"context"
 	"fmt"
 
+	// certmanagerv1alpha1 "github.com/ibm/ibm-cert-manager-operator/apis/certmanager/v1alpha1"
+	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -92,7 +94,11 @@ func (r *CommonServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 			if err := r.Bootstrap.DeleteCrossplaneAndProviderSubscription(r.Bootstrap.CSData.MasterNs); err != nil {
 				return ctrl.Result{}, err
 			}
-			klog.Info("Deleted reconciling CommonService CR successfully")
+			// Generate Issuer and Certificate CR
+			if err := r.Bootstrap.DeployCertManagerCR(); err != nil {
+				return ctrl.Result{}, err
+			}
+			klog.Info("Finished reconciling to delete CommonService: %s/%s", req.NamespacedName.Namespace, req.NamespacedName.Name)
 		}
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
@@ -140,6 +146,15 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(instance *apiv3.CommonServic
 	if inScope {
 		if err := r.Bootstrap.CrossplaneOperatorProviderOperator(instance); err != nil {
 			klog.Errorf("Failed to install crossplane or provider operator: %v", err)
+			if err := r.updatePhase(instance, CRFailed); err != nil {
+				klog.Error(err)
+			}
+			klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
+			return ctrl.Result{}, err
+		}
+		// Generate Issuer and Certificate CR
+		if err := r.Bootstrap.DeployCertManagerCR(); err != nil {
+			klog.Errorf("Failed to deploy cert manager CRs: %v", err)
 			if err := r.updatePhase(instance, CRFailed); err != nil {
 				klog.Error(err)
 			}
@@ -224,6 +239,15 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(instance *apiv3.CommonServi
 			klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 			return ctrl.Result{}, err
 		}
+		// Generate Issuer and Certificate CR
+		if err := r.Bootstrap.DeployCertManagerCR(); err != nil {
+			klog.Errorf("Failed to deploy cert manager CRs: %v", err)
+			if err := r.updatePhase(instance, CRFailed); err != nil {
+				klog.Error(err)
+			}
+			klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
+			return ctrl.Result{}, err
+		}
 	}
 
 	newConfigs, err := r.getNewConfigs(cs, inScope)
@@ -258,7 +282,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(instance *apiv3.CommonServi
 	return ctrl.Result{}, nil
 }
 
-func (r *CommonServiceReconciler) toCsRequest() handler.ToRequestsFunc {
+func (r *CommonServiceReconciler) mappingToCsRequest() handler.ToRequestsFunc {
 	return func(object handler.MapObject) []reconcile.Request {
 		CsInstance := []reconcile.Request{}
 		cmName := object.Meta.GetName()
@@ -270,12 +294,61 @@ func (r *CommonServiceReconciler) toCsRequest() handler.ToRequestsFunc {
 	}
 }
 
+// func (r *CommonServiceReconciler) certsToCsRequest() handler.MapFunc {
+// 	return func(object client.Object) []reconcile.Request {
+// 		CsInstance := []reconcile.Request{}
+// 		certName := object.GetName()
+// 		certNs := object.GetNamespace()
+// 		if certName == constant.CSCACertificate && certNs == r.Bootstrap.CSData.MasterNs {
+// 			CsInstance = append(CsInstance, reconcile.Request{NamespacedName: types.NamespacedName{Name: "common-service", Namespace: r.Bootstrap.CSData.MasterNs}})
+// 		}
+// 		return CsInstance
+// 	}
+// }
+
+func (r *CommonServiceReconciler) certSubToCsRequest() handler.ToRequestsFunc {
+	return func(object handler.MapObject) []reconcile.Request {
+		CsInstance := []reconcile.Request{}
+		certSubName := object.Meta.GetName()
+		certSubNs := object.Meta.GetNamespace()
+		if certSubName == constant.CertManagerSub && certSubNs == r.Bootstrap.CSData.ControlNs {
+			CsInstance = append(CsInstance, reconcile.Request{NamespacedName: types.NamespacedName{Name: "common-service", Namespace: r.Bootstrap.CSData.MasterNs}})
+		}
+		return CsInstance
+	}
+}
+
 func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&apiv3.CommonService{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Watches(
 			&source.Kind{Type: &corev1.ConfigMap{}},
-			&handler.EnqueueRequestsFromMapFunc{ToRequests: r.toCsRequest()},
+			&handler.EnqueueRequestsFromMapFunc{ToRequests: r.mappingToCsRequest()},
+			builder.WithPredicates(predicate.Funcs{
+				CreateFunc: func(e event.CreateEvent) bool {
+					return true
+				},
+				DeleteFunc: func(e event.DeleteEvent) bool {
+					return !e.DeleteStateUnknown
+				},
+				UpdateFunc: func(e event.UpdateEvent) bool {
+					return true
+				},
+			})).
+		// Watches(
+		// 	&source.Kind{Type: &certmanagerv1alpha1.Certificate{}},
+		// 	handler.EnqueueRequestsFromMapFunc(r.certsToCsRequest()),
+		// 	builder.WithPredicates(predicate.Funcs{
+		// 		DeleteFunc: func(e event.DeleteEvent) bool {
+		// 			return !e.DeleteStateUnknown
+		// 		},
+		// 		UpdateFunc: func(e event.UpdateEvent) bool {
+		// 			return true
+		// 		},
+		// 	})).
+		Watches(
+			&source.Kind{Type: &olmv1alpha1.Subscription{}},
+			&handler.EnqueueRequestsFromMapFunc{ToRequests: r.certSubToCsRequest()},
 			builder.WithPredicates(predicate.Funcs{
 				CreateFunc: func(e event.CreateEvent) bool {
 					return true

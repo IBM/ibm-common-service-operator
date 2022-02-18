@@ -242,7 +242,7 @@ func isOCP(mgr manager.Manager, ns string) (bool, error) {
 // DeleteCrossplaneAndProviderSubscription deletes Crossplane & Provider subscription when bedrockshim set to false or CS CR is removed
 func (b *Bootstrap) DeleteCrossplaneAndProviderSubscription(namespace string) error {
 	// Fetch all the CommonService instances
-	klog.Info("Fetch all the CommonService instances")
+	klog.V(2).Info("Fetch all the CommonService instances")
 	csList := util.NewUnstructuredList("operator.ibm.com", "CommonService", "v3")
 	if err := b.Client.List(ctx, csList); err != nil {
 		return err
@@ -285,7 +285,7 @@ func (b *Bootstrap) DeleteCrossplaneAndProviderSubscription(namespace string) er
 
 		_, providerErr = b.GetSubscription(ctx, constant.ICPPICOperator, namespace)
 		if errors.IsNotFound(providerErr) {
-			klog.Infof("%s not installed, skipping", constant.ICPPICOperator)
+			klog.Infof("Skipped the uninstallation, %s not installed", constant.ICPPICOperator)
 		} else if providerErr != nil {
 			klog.Errorf("Failed to get subscription %s/%s", namespace, constant.ICPPICOperator)
 		} else {
@@ -306,7 +306,7 @@ func (b *Bootstrap) DeleteCrossplaneAndProviderSubscription(namespace string) er
 
 		_, crossplaneErr := b.GetSubscription(ctx, constant.ICPOperator, namespace)
 		if errors.IsNotFound(crossplaneErr) {
-			klog.Infof("%s not installed, skipping", constant.ICPOperator)
+			klog.Infof("Skipped the uninstallation, %s not installed", constant.ICPOperator)
 		} else if crossplaneErr != nil {
 			klog.Errorf("Failed to get subscription %s/%s", namespace, constant.ICPOperator)
 		} else {
@@ -1344,7 +1344,7 @@ func (b *Bootstrap) updateApprovalMode() error {
 	return nil
 }
 
-// WaitResourceReady returns true only when the specific resource CRD is created
+// WaitResourceReady returns true only when the specific resource CRD is created and wait for infinite time
 func (b *Bootstrap) WaitResourceReady(apiGroupVersion string, kind string) error {
 	dc := discovery.NewDiscoveryClientForConfigOrDie(b.Config)
 	if err := utilwait.PollImmediateInfinite(time.Second*10, func() (done bool, err error) {
@@ -1419,4 +1419,57 @@ func CheckClusterType(mgr manager.Manager, ns string) (bool, error) {
 		klog.Info("cluster type is correct")
 		return true, nil
 	}
+}
+
+func (b *Bootstrap) DeployCertManagerCR() error {
+	deployedNs := b.CSData.MasterNs
+	if b.MultiInstancesEnable {
+		deployedNs = b.CSData.ControlNs
+	}
+	_, err := b.GetSubscription(ctx, constant.CertManagerSub, deployedNs)
+	if errors.IsNotFound(err) {
+		klog.Infof("Skipped deploying cert manager CRs, %s not installed yet.", constant.CertManagerSub)
+	} else if err != nil {
+		klog.Errorf("Failed to get subscription %s/%s", deployedNs, constant.CertManagerSub)
+	} else {
+		klog.V(2).Info("Fetch all the CommonService instances")
+		csList := util.NewUnstructuredList("operator.ibm.com", "CommonService", "v3")
+		if err := b.Client.List(ctx, csList); err != nil {
+			return err
+		}
+		deployRootCert := true
+		var crWithBYOCert string
+		for _, cs := range csList.Items {
+			if cs.GetDeletionTimestamp() != nil {
+				continue
+			}
+			if cs.Object["spec"].(map[string]interface{})["BYOCACertificate"] == true {
+				deployRootCert = false
+				crWithBYOCert = cs.GetNamespace() + "/" + cs.GetName()
+				break
+			}
+		}
+		klog.Info("Deploying Cert Manager CRs")
+		for _, kind := range constant.CertManagerKinds {
+			if err := b.waitResourceReady(constant.CertManagerAPIGroupVersion, kind); err != nil {
+				klog.Errorf("Failed to wait for resource ready with kind: %s, apiGroupVersion: %s", kind, constant.CertManagerAPIGroupVersion)
+			}
+		}
+
+		for _, cr := range constant.CertManagerIssuers {
+			if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, deployedNs))); err != nil {
+				return err
+			}
+		}
+		if deployRootCert {
+			for _, cr := range constant.CertManagerCerts {
+				if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, deployedNs))); err != nil {
+					return err
+				}
+			}
+		} else {
+			klog.Infof("Skipped deploying %s, BYOCertififcate feature is enabled in %s", constant.CSCACertificate, crWithBYOCert)
+		}
+	}
+	return nil
 }

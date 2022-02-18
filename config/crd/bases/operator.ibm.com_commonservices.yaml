@@ -32,6 +32,8 @@ spec:
           spec:
             description: CommonServiceSpec defines the desired state of CommonService
             properties:
+              BYOCACertificate:
+                type: boolean
               features:
                 description: Features defines the configurations of Cloud Pak Services
                 properties:
@@ -89,9 +91,9 @@ spec:
                       type: string
                     subscriptionStatus:
                       type: string
-                    version:
-                      type: string
                     troubleshooting:
+                      type: string
+                    version:
                       type: string
                   type: object
                 type: array

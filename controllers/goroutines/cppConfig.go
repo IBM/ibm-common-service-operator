@@ -30,7 +30,7 @@ import (
 	collector "github.com/IBM/ibm-common-service-operator/controllers/configurationCollector"
 )
 
-// CreateUpdateConfig deploys CR certificate and issuer when their CRDs are ready
+// CreateUpdateConfig deploys config builder for global cpp configmap
 func CreateUpdateConfig(bs *bootstrap.Bootstrap) {
 
 	for {

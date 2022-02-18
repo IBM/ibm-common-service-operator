@@ -24,12 +24,12 @@ metadata:
     containerImage: quay.io/opencloudio/common-service-operator:latest
     createdAt: "2020-10-19T21:38:33Z"
     description: The IBM Common Service Operator is used to deploy IBM Common Services
+    nss.operator.ibm.com/managed-operators: cloud-native-postgresql
     olm.skipRange: ">=3.3.0 <3.16.0"
     operatorChannel: v3
     operatorVersion: 3.16.0
-    operators.operatorframework.io/builder: operator-sdk-v1.11.0
+    operators.operatorframework.io/builder: operator-sdk-v1.14.0+git
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
-    nss.operator.ibm.com/managed-operators: cloud-native-postgresql
     repository: https://github.com/IBM/ibm-common-service-operator
     support: IBM
   labels:
@@ -286,6 +286,19 @@ spec:
                 - update
                 - watch
             - apiGroups:
+                - kubernetes.crossplane.io
+                - ibmcloud.crossplane.io
+              resources:
+                - providerconfigs
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
+            - apiGroups:
                 - ibmcpcs.ibm.com
               resources:
                 - secretshares
@@ -318,19 +331,6 @@ spec:
               verbs:
                 - get
                 - list
-                - watch
-            - apiGroups:
-                - kubernetes.crossplane.io
-                - ibmcloud.crossplane.io
-              resources:
-                - providerconfigs
-              verbs:
-                - create
-                - delete
-                - get
-                - list
-                - patch
-                - update
                 - watch
           serviceAccountName: ibm-common-service-operator
       deployments:

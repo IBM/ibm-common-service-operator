@@ -72,6 +72,10 @@ const (
 	DevBuildImage = `^hyc\-cloud\-private\-(.*)\-docker\-local\.artifactory\.swg\-devops\.com\/ibmcom\/ibm\-common\-service\-catalog\:(.*)`
 	// BedrockCatalogsourcePriority is an annotation defined in the catalogsource
 	BedrockCatalogsourcePriority = "bedrock_catalogsource_priority"
+	// CSCACertificate is the name of cs-ca-certificate
+	CSCACertificate = "cs-ca-certificate"
+	// CertManagerSub is the name of ibm-cert-manager-operator subscription
+	CertManagerSub = "ibm-cert-manager-operator"
 )
 
 // CsOg is OperatorGroup constent for the common service operator

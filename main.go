@@ -182,10 +182,10 @@ func main() {
 			os.Exit(1)
 		}
 
+		// Generate Issuer and Certificate CR, integrated into Controller logic
+		// go goroutines.DeployCertManagerCR(bs)
 		// Check IAM pods status
 		go goroutines.CheckIamStatus(bs)
-		// Generate Issuer and Certificate CR
-		go goroutines.DeployCertManagerCR(bs)
 		// Sync up NSS CR
 		go goroutines.SyncUpNSSCR(bs)
 		// Update CS CR Status

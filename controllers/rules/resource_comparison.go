@@ -60,8 +60,8 @@ func resourceStringComparison(resourceA, resourceB string) (string, string, erro
 
 func ResourceComparison(resourceA, resourceB interface{}) (interface{}, interface{}) {
 
-	klog.V(2).Infof("Kind of A %s", reflect.TypeOf(resourceA).Kind())
-	klog.V(2).Infof("Kind of B %s", reflect.TypeOf(resourceB).Kind())
+	klog.V(3).Infof("Kind of A %s", reflect.TypeOf(resourceA).Kind())
+	klog.V(3).Infof("Kind of B %s", reflect.TypeOf(resourceB).Kind())
 
 	switch resourceA.(type) {
 	case string:
@@ -88,8 +88,8 @@ func ResourceComparison(resourceA, resourceB interface{}) (interface{}, interfac
 
 func ResourceEqualComparison(resourceA interface{}, resourceB interface{}) bool {
 
-	klog.V(2).Infof("Kind of A %s", reflect.TypeOf(resourceA).Kind())
-	klog.V(2).Infof("Kind of B %s", reflect.TypeOf(resourceB).Kind())
+	klog.V(3).Infof("Kind of A %s", reflect.TypeOf(resourceA).Kind())
+	klog.V(3).Infof("Kind of B %s", reflect.TypeOf(resourceB).Kind())
 
 	isEqual := true
 	switch resourceA := resourceA.(type) {
