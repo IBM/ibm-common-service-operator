@@ -16,6 +16,13 @@
 
 package constant
 
+var (
+	CertManagerAPIGroupVersion = "certmanager.k8s.io/v1alpha1"
+	CertManagerKinds           = []string{"Issuer", "Certificate"}
+	CertManagerIssuers         = []string{CSSSIssuer, CSCAIssuer}
+	CertManagerCerts           = []string{CSCACert}
+)
+
 // CSCAIssuer is the CR of cs-ca-issuer
 const CSCAIssuer = `
 apiVersion: certmanager.k8s.io/v1alpha1

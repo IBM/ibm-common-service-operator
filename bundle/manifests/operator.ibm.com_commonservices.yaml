@@ -38,6 +38,8 @@ spec:
           spec:
             description: CommonServiceSpec defines the desired state of CommonService
             properties:
+              BYOCertificate:
+                type: boolean
               features:
                 description: Features defines the configurations of Cloud Pak Services
                 properties:
@@ -70,6 +72,7 @@ spec:
                     spec:
                       additionalProperties:
                         x-kubernetes-preserve-unknown-fields: true
+                        type: object
                       type: object
                   required:
                   - name
@@ -96,9 +99,9 @@ spec:
                       type: string
                     subscriptionStatus:
                       type: string
-                    version:
-                      type: string
                     troubleshooting:
+                      type: string
+                    version:
                       type: string
                   type: object
                 type: array

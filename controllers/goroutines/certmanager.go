@@ -16,55 +16,55 @@
 
 package goroutines
 
-import (
-	"context"
-	"time"
+// import (
+// 	"context"
+// 	"time"
 
-	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/klog"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+// 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+// 	"k8s.io/apimachinery/pkg/types"
+// 	"k8s.io/klog"
+// 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
-)
+// 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
+// )
 
-// DeployCertManagerCR deploys CR certificate and issuer when their CRDs are ready
-func DeployCertManagerCR(bs *bootstrap.Bootstrap) {
-	deployedNs := bs.CSData.MasterNs
-	if bs.MultiInstancesEnable {
-		deployedNs = bs.CSData.ControlNs
-	}
-	for {
-		if !getCertSubscription(bs.Reader, deployedNs) {
-			time.Sleep(2 * time.Minute)
-			continue
-		}
-		break
-	}
+// // DeployCertManagerCR deploys CR certificate and issuer when their CRDs are ready
+// func DeployCertManagerCR(bs *bootstrap.Bootstrap) {
+// 	deployedNs := bs.CSData.MasterNs
+// 	if bs.MultiInstancesEnable {
+// 		deployedNs = bs.CSData.ControlNs
+// 	}
+// 	for {
+// 		if !getCertSubscription(bs.Reader, deployedNs) {
+// 			time.Sleep(2 * time.Minute)
+// 			continue
+// 		}
+// 		break
+// 	}
 
-	for _, kind := range CertManagerKinds {
-		if err := bs.WaitResourceReady(CertManagerAPIGroupVersion, kind); err != nil {
-			klog.Errorf("Failed to wait for resource ready with kind: %s, apiGroupVersion: %s", kind, CertManagerAPIGroupVersion)
-		}
-	}
+// 	for _, kind := range CertManagerKinds {
+// 		if err := bs.WaitResourceReady(CertManagerAPIGroupVersion, kind); err != nil {
+// 			klog.Errorf("Failed to wait for resource ready with kind: %s, apiGroupVersion: %s", kind, CertManagerAPIGroupVersion)
+// 		}
+// 	}
 
-	for _, cr := range CertManagerCRs {
-		for {
-			done := bs.DeployResource(cr, placeholder)
-			if done {
-				break
-			}
-			time.Sleep(10 * time.Second)
-		}
+// 	for _, cr := range CertManagerCRs {
+// 		for {
+// 			done := bs.DeployResource(cr, placeholder)
+// 			if done {
+// 				break
+// 			}
+// 			time.Sleep(10 * time.Second)
+// 		}
 
-	}
-}
+// 	}
+// }
 
-// getCertSubscription return true if Cert Manager subscription found, otherwise return false
-func getCertSubscription(r client.Reader, MasterNs string) bool {
-	subName := "ibm-cert-manager-operator"
-	subNs := MasterNs
-	sub := &olmv1alpha1.Subscription{}
-	err := r.Get(context.TODO(), types.NamespacedName{Name: subName, Namespace: subNs}, sub)
-	return err == nil
-}
+// // getCertSubscription return true if Cert Manager subscription found, otherwise return false
+// func getCertSubscription(r client.Reader, MasterNs string) bool {
+// 	subName := "ibm-cert-manager-operator"
+// 	subNs := MasterNs
+// 	sub := &olmv1alpha1.Subscription{}
+// 	err := r.Get(context.TODO(), types.NamespacedName{Name: subName, Namespace: subNs}, sub)
+// 	return err == nil
+// }

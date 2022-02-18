@@ -42,6 +42,7 @@ type CommonServiceSpec struct {
 	Size                string               `json:"size,omitempty"`
 	Services            []ServiceConfig      `json:"services,omitempty"`
 	StorageClass        string               `json:"storageClass,omitempty"`
+	BYOCertificate      bool                 `json:"BYOCertificate,omitempty"`
 }
 
 // Features defines the configurations of Cloud Pak Services

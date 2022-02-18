@@ -105,6 +105,7 @@ rules:
   - ""
   resources:
   - serviceaccounts
+  - events
   verbs:
   - create
   - get

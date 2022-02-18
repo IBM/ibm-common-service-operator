@@ -242,7 +242,7 @@ func isOCP(mgr manager.Manager, ns string) (bool, error) {
 // DeleteCrossplaneAndProviderSubscription deletes Crossplane & Provider subscription when bedrockshim set to false or CS CR is removed
 func (b *Bootstrap) DeleteCrossplaneAndProviderSubscription(namespace string) error {
 	// Fetch all the CommonService instances
-	klog.Info("Fetch all the CommonService instances")
+	klog.V(2).Info("Fetch all the CommonService instances")
 	csList := util.NewUnstructuredList("operator.ibm.com", "CommonService", "v3")
 	if err := b.Client.List(ctx, csList); err != nil {
 		return err
@@ -1344,7 +1344,7 @@ func (b *Bootstrap) updateApprovalMode() error {
 	return nil
 }
 
-// WaitResourceReady returns true only when the specific resource CRD is created
+// WaitResourceReady returns true only when the specific resource CRD is created and wait for infinite time
 func (b *Bootstrap) WaitResourceReady(apiGroupVersion string, kind string) error {
 	dc := discovery.NewDiscoveryClientForConfigOrDie(b.Config)
 	if err := utilwait.PollImmediateInfinite(time.Second*10, func() (done bool, err error) {
@@ -1419,4 +1419,53 @@ func CheckClusterType(mgr manager.Manager, ns string) (bool, error) {
 		klog.Info("cluster type is correct")
 		return true, nil
 	}
+}
+
+func (b *Bootstrap) DeployCertManagerCR() error {
+	_, err := b.GetSubscription(ctx, constant.CertManagerSub, b.CSData.ControlNs)
+	if errors.IsNotFound(err) {
+		klog.Infof("%s not installed, skipping deploying cert manager CRs", constant.CertManagerSub)
+	} else if err != nil {
+		klog.Errorf("Failed to get subscription %s/%s", b.CSData.ControlNs, constant.CertManagerSub)
+	} else {
+		klog.V(2).Info("Fetch all the CommonService instances")
+		csList := util.NewUnstructuredList("operator.ibm.com", "CommonService", "v3")
+		if err := b.Client.List(ctx, csList); err != nil {
+			return err
+		}
+		deployRootCert := true
+		var crWithBYOCert string
+		for _, cs := range csList.Items {
+			if cs.GetDeletionTimestamp() != nil {
+				continue
+			}
+			if cs.Object["spec"].(map[string]interface{})["BYOCertificate"] == true {
+				deployRootCert = false
+				crWithBYOCert = cs.GetNamespace() + "/" + cs.GetName()
+				break
+			}
+		}
+		klog.Info("Deploying Cert Manager CRs")
+		for _, kind := range constant.CertManagerKinds {
+			if err := b.waitResourceReady(constant.CertManagerAPIGroupVersion, kind); err != nil {
+				klog.Errorf("Failed to wait for resource ready with kind: %s, apiGroupVersion: %s", kind, constant.CertManagerAPIGroupVersion)
+			}
+		}
+
+		for _, cr := range constant.CertManagerIssuers {
+			if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.ControlNs))); err != nil {
+				return err
+			}
+		}
+		if deployRootCert {
+			for _, cr := range constant.CertManagerCerts {
+				if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.ControlNs))); err != nil {
+					return err
+				}
+			}
+		} else {
+			klog.Infof("Skipped deploying %s since BYOCertififcate feature is enabled in %s", constant.CSCACertificate, crWithBYOCert)
+		}
+	}
+	return nil
 }
