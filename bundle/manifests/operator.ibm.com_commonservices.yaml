@@ -38,7 +38,7 @@ spec:
           spec:
             description: CommonServiceSpec defines the desired state of CommonService
             properties:
-              BYOCertificate:
+              BYOCACertificate:
                 type: boolean
               features:
                 description: Features defines the configurations of Cloud Pak Services

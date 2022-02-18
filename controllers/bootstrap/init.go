@@ -1443,7 +1443,7 @@ func (b *Bootstrap) DeployCertManagerCR() error {
 			if cs.GetDeletionTimestamp() != nil {
 				continue
 			}
-			if cs.Object["spec"].(map[string]interface{})["BYOCertificate"] == true {
+			if cs.Object["spec"].(map[string]interface{})["BYOCACertificate"] == true {
 				deployRootCert = false
 				crWithBYOCert = cs.GetNamespace() + "/" + cs.GetName()
 				break
