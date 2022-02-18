@@ -27,16 +27,10 @@ var (
 	IAMDeployNames     = []string{"ibm-iam-operator", "auth-idp", "auth-pap", "auth-pdp", "oidcclient-watcher", "secret-watcher"}
 	IAMJobNames        = []string{"iam-onboarding", "security-onboarding", "oidc-client-registration"}
 
-	// Integrated into controller logic
-	// CertManagerAPIGroupVersion = "certmanager.k8s.io/v1alpha1"
-	// CertManagerKinds           = []string{"Issuer", "Certificate"}
-	// CertManagerCRs             = []string{constant.CSSSIssuer, constant.CSCACert, constant.CSCAIssuer}
-
 	NSSKinds    = []string{"NamespaceScope"}
 	NSSCRList   = []string{"common-service", "nss-odlm-scope"}
 	NSSSourceCR = "common-service"
 	NSSTargetCR = "nss-odlm-scope"
 
 	MasterNamespace string
-	// placeholder     = "placeholder"
 )
