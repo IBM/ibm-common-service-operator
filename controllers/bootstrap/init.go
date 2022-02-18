@@ -285,7 +285,7 @@ func (b *Bootstrap) DeleteCrossplaneAndProviderSubscription(namespace string) er
 
 		_, providerErr = b.GetSubscription(ctx, constant.ICPPICOperator, namespace)
 		if errors.IsNotFound(providerErr) {
-			klog.Infof("%s not installed, skipping", constant.ICPPICOperator)
+			klog.Infof("Skipped the uninstallation, %s not installed", constant.ICPPICOperator)
 		} else if providerErr != nil {
 			klog.Errorf("Failed to get subscription %s/%s", namespace, constant.ICPPICOperator)
 		} else {
@@ -306,7 +306,7 @@ func (b *Bootstrap) DeleteCrossplaneAndProviderSubscription(namespace string) er
 
 		_, crossplaneErr := b.GetSubscription(ctx, constant.ICPOperator, namespace)
 		if errors.IsNotFound(crossplaneErr) {
-			klog.Infof("%s not installed, skipping", constant.ICPOperator)
+			klog.Infof("Skipped the uninstallation, %s not installed", constant.ICPOperator)
 		} else if crossplaneErr != nil {
 			klog.Errorf("Failed to get subscription %s/%s", namespace, constant.ICPOperator)
 		} else {
@@ -1422,11 +1422,15 @@ func CheckClusterType(mgr manager.Manager, ns string) (bool, error) {
 }
 
 func (b *Bootstrap) DeployCertManagerCR() error {
-	_, err := b.GetSubscription(ctx, constant.CertManagerSub, b.CSData.ControlNs)
+	deployedNs := b.CSData.MasterNs
+	if b.MultiInstancesEnable {
+		deployedNs = b.CSData.ControlNs
+	}
+	_, err := b.GetSubscription(ctx, constant.CertManagerSub, deployedNs)
 	if errors.IsNotFound(err) {
-		klog.Infof("%s not installed, skipping deploying cert manager CRs", constant.CertManagerSub)
+		klog.Infof("Skipped deploying cert manager CRs, %s not installed yet.", constant.CertManagerSub)
 	} else if err != nil {
-		klog.Errorf("Failed to get subscription %s/%s", b.CSData.ControlNs, constant.CertManagerSub)
+		klog.Errorf("Failed to get subscription %s/%s", deployedNs, constant.CertManagerSub)
 	} else {
 		klog.V(2).Info("Fetch all the CommonService instances")
 		csList := util.NewUnstructuredList("operator.ibm.com", "CommonService", "v3")
@@ -1453,18 +1457,18 @@ func (b *Bootstrap) DeployCertManagerCR() error {
 		}
 
 		for _, cr := range constant.CertManagerIssuers {
-			if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.ControlNs))); err != nil {
+			if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, deployedNs))); err != nil {
 				return err
 			}
 		}
 		if deployRootCert {
 			for _, cr := range constant.CertManagerCerts {
-				if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.ControlNs))); err != nil {
+				if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, deployedNs))); err != nil {
 					return err
 				}
 			}
 		} else {
-			klog.Infof("Skipped deploying %s since BYOCertififcate feature is enabled in %s", constant.CSCACertificate, crWithBYOCert)
+			klog.Infof("Skipped deploying %s, BYOCertififcate feature is enabled in %s", constant.CSCACertificate, crWithBYOCert)
 		}
 	}
 	return nil

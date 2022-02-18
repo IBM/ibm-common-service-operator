@@ -94,7 +94,11 @@ func (r *CommonServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 			if err := r.Bootstrap.DeleteCrossplaneAndProviderSubscription(r.Bootstrap.CSData.MasterNs); err != nil {
 				return ctrl.Result{}, err
 			}
-			klog.Info("Deleted reconciling CommonService CR successfully")
+			// Generate Issuer and Certificate CR
+			if err := r.Bootstrap.DeployCertManagerCR(); err != nil {
+				return ctrl.Result{}, err
+			}
+			klog.Info("Finished reconciling to delete CommonService: %s/%s", req.NamespacedName.Namespace, req.NamespacedName.Name)
 		}
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
