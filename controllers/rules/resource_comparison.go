@@ -88,59 +88,61 @@ func ResourceComparison(resourceA, resourceB interface{}) (interface{}, interfac
 
 func ResourceEqualComparison(resourceA interface{}, resourceB interface{}) bool {
 
-	klog.V(3).Infof("Kind of A %s", reflect.TypeOf(resourceA).Kind())
-	klog.V(3).Infof("Kind of B %s", reflect.TypeOf(resourceB).Kind())
+	if resourceA != nil && resourceB != nil {
+		klog.V(3).Infof("Kind of A %s", reflect.TypeOf(resourceA).Kind())
+		klog.V(3).Infof("Kind of B %s", reflect.TypeOf(resourceB).Kind())
 
-	isEqual := true
-	switch resourceA := resourceA.(type) {
-	case []interface{}:
-		if resourceB == nil {
-			isEqual = false
-		} else if resourceB, ok := resourceB.([]interface{}); ok {
-			if len(resourceA) != len(resourceB) {
-				isEqual = false
-			} else {
-				// TODO: need to find a better way to compare when the order of slice is not fixed
-				for index := range resourceA {
-					if !ResourceEqualComparison(resourceA[index], resourceB[index]) {
-						return false
+		isEqual := true
+		switch resourceA := resourceA.(type) {
+		case []interface{}:
+			if resourceB, ok := resourceB.([]interface{}); ok {
+				if len(resourceA) != len(resourceB) {
+					isEqual = false
+				} else {
+					// TODO: need to find a better way to compare when the order of slice is not fixed
+					for index := range resourceA {
+						if !ResourceEqualComparison(resourceA[index], resourceB[index]) {
+							return false
+						}
 					}
 				}
 			}
-		}
-		return isEqual
-	case map[string]interface{}:
-		if resourceB == nil {
-			isEqual = false
-		} else if _, ok := resourceB.(map[string]interface{}); ok { //Check that the changed map value is also a map[string]interface
-			resourceARef := resourceA
-			resourceBRef := resourceB.(map[string]interface{})
-			for newKey := range resourceARef {
-				isEqual = ResourceEqualComparison(resourceARef[newKey], resourceBRef[newKey])
-				if !isEqual {
-					break
+			return isEqual
+		case map[string]interface{}:
+			if _, ok := resourceB.(map[string]interface{}); ok { //Check that the changed map value is also a map[string]interface
+				resourceARef := resourceA
+				resourceBRef := resourceB.(map[string]interface{})
+				for newKey := range resourceARef {
+					isEqual = ResourceEqualComparison(resourceARef[newKey], resourceBRef[newKey])
+					if !isEqual {
+						break
+					}
 				}
 			}
-		}
-		return isEqual
-	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
-		strA := fmt.Sprintf("%v", resourceA)
-		strB := fmt.Sprintf("%v", resourceB)
+			return isEqual
+		case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
+			strA := fmt.Sprintf("%v", resourceA)
+			strB := fmt.Sprintf("%v", resourceB)
 
-		floatA, _ := strconv.ParseFloat(strA, 64)
-		floatB, _ := strconv.ParseFloat(strB, 64)
-		if floatA == floatB {
-			isEqual = true
-		} else {
-			isEqual = false
+			floatA, _ := strconv.ParseFloat(strA, 64)
+			floatB, _ := strconv.ParseFloat(strB, 64)
+			if floatA == floatB {
+				isEqual = true
+			} else {
+				isEqual = false
+			}
+			return isEqual
+		default:
+			if resourceA == resourceB {
+				isEqual = true
+			} else {
+				isEqual = false
+			}
+			return isEqual
 		}
-		return isEqual
-	default:
-		if resourceA == resourceB {
-			isEqual = true
-		} else {
-			isEqual = false
-		}
-		return isEqual
 	}
+	if resourceA == nil && resourceB == nil {
+		return true
+	}
+	return false
 }

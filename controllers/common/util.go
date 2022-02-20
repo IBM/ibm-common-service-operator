@@ -310,7 +310,7 @@ func GetMasterNs(r client.Reader) (masterNs string) {
 	}
 
 	for _, nsMapping := range cmData.NsMappingList {
-		if findNamespace(nsMapping.RequestNs, operatorNs) {
+		if Contains(nsMapping.RequestNs, operatorNs) {
 			masterNs = nsMapping.CsNs
 			break
 		}
@@ -372,15 +372,6 @@ func UpdateNSList(r client.Reader, c client.Client, cm *corev1.ConfigMap, nssKey
 	}
 
 	return nil
-}
-
-func findNamespace(nsList []string, nsName string) (exist bool) {
-	for _, ns := range nsList {
-		if ns == nsName {
-			return true
-		}
-	}
-	return
 }
 
 // CheckSaas checks whether it is a SaaS deployment for Common Services

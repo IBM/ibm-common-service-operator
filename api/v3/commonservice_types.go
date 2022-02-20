@@ -26,8 +26,9 @@ import (
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 type ServiceConfig struct {
-	Name string                          `json:"name"`
-	Spec map[string]runtime.RawExtension `json:"spec"`
+	Name               string                          `json:"name"`
+	Spec               map[string]runtime.RawExtension `json:"spec"`
+	ManagementStrategy string                          `json:"managementStrategy,omitempty"`
 }
 
 // CommonServiceSpec defines the desired state of CommonService
@@ -43,6 +44,7 @@ type CommonServiceSpec struct {
 	Services            []ServiceConfig      `json:"services,omitempty"`
 	StorageClass        string               `json:"storageClass,omitempty"`
 	BYOCACertificate    bool                 `json:"BYOCACertificate,omitempty"`
+	ProfileController   string               `json:"profileController,omitempty"`
 }
 
 // Features defines the configurations of Cloud Pak Services

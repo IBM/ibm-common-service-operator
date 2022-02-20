@@ -98,7 +98,7 @@ func (r *CommonServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 			if err := r.Bootstrap.DeployCertManagerCR(); err != nil {
 				return ctrl.Result{}, err
 			}
-			klog.Info("Finished reconciling to delete CommonService: %s/%s", req.NamespacedName.Namespace, req.NamespacedName.Name)
+			klog.Infof("Finished reconciling to delete CommonService: %s/%s", req.NamespacedName.Namespace, req.NamespacedName.Name)
 		}
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
@@ -163,7 +163,7 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(instance *apiv3.CommonServic
 		}
 	}
 
-	newConfigs, err := r.getNewConfigs(cs, inScope)
+	newConfigs, serviceControllerMapping, err := r.getNewConfigs(cs, inScope)
 	if err != nil {
 		if err := r.updatePhase(instance, CRFailed); err != nil {
 			klog.Error(err)
@@ -172,7 +172,7 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(instance *apiv3.CommonServic
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	isEqual, err := r.updateOperandConfig(newConfigs)
+	isEqual, err := r.updateOperandConfig(newConfigs, serviceControllerMapping)
 	if err != nil {
 		if err := r.updatePhase(instance, CRFailed); err != nil {
 			klog.Error(err)
@@ -250,7 +250,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(instance *apiv3.CommonServi
 		}
 	}
 
-	newConfigs, err := r.getNewConfigs(cs, inScope)
+	newConfigs, serviceControllerMapping, err := r.getNewConfigs(cs, inScope)
 	if err != nil {
 		if err := r.updatePhase(instance, CRFailed); err != nil {
 			klog.Error(err)
@@ -259,7 +259,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(instance *apiv3.CommonServi
 		return ctrl.Result{}, err
 	}
 
-	isEqual, err := r.updateOperandConfig(newConfigs)
+	isEqual, err := r.updateOperandConfig(newConfigs, serviceControllerMapping)
 	if err != nil {
 		if err := r.updatePhase(instance, CRFailed); err != nil {
 			klog.Error(err)
