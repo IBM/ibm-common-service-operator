@@ -30,6 +30,7 @@ spec:
     spec:
       IBMLicensing:
         datasource: datacollector
+      IBMLicenseServiceReporter: {}
       operandBindInfo: {}
   - name: ibm-mongodb-operator
     spec:
@@ -459,6 +460,7 @@ spec:
         datasource: datacollector
         routeEnabled: false
         logLevel: VERBOSE
+      IBMLicenseServiceReporter: {}
       operandBindInfo: {}
   - name: ibm-mongodb-operator
     spec:

@@ -396,7 +396,6 @@ func (r *CommonServiceReconciler) getMinimalSizes(opconServices, ruleSlice []int
 		serviceControllerMappingSummary = mergeProfileController(serviceControllerMappingSummary, serviceControllerMapping)
 		tmpConfigsSlice[len(tmpConfigsSlice)] = csConfigs
 	}
-	klog.Infof("Get mapping %v", serviceControllerMappingSummary)
 	for _, csConfigs := range tmpConfigsSlice {
 		configSummary = mergeCSCRs(configSummary, csConfigs, ruleSlice, serviceControllerMappingSummary)
 	}

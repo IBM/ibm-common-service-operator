@@ -64,6 +64,14 @@ const ConfigurationRules = `
         requests:
           cpu: LARGEST_VALUE
           memory: LARGEST_VALUE
+      metrics:
+        resources:
+          requests:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
 - name: ibm-iam-operator
   spec:
     authentication:
