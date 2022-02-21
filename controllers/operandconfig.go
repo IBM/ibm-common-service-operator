@@ -411,12 +411,12 @@ func (r *CommonServiceReconciler) getMinimalSizes(opconServices, ruleSlice []int
 			serviceController = controller
 		}
 		for cr, spec := range opService.(map[string]interface{})["spec"].(map[string]interface{}) {
-			if crSummary == nil || crSummary.(map[string]interface{})["spec"] == nil || crSummary.(map[string]interface{})["spec"].(map[string]interface{})[cr] == nil {
-				continue
-			}
 			if _, ok := nonDefaultProfileController[serviceController]; ok {
 				// clean up OperandConfig
 				opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = resetResourceInTemplate(spec.(map[string]interface{}), cr, nil, false)
+				continue
+			}
+			if crSummary == nil || crSummary.(map[string]interface{})["spec"] == nil || crSummary.(map[string]interface{})["spec"].(map[string]interface{})[cr] == nil {
 				continue
 			}
 			serviceForCR := crSummary.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
