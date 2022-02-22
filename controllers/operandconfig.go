@@ -87,10 +87,10 @@ func mergeProfileController(serviceControllerMappingSummary, serviceControllerMa
 	return serviceControllerMappingSummary
 }
 
-func mergeCSCRs(csSummary, csCR, ruleslice []interface{}, serviceControllerMappingSummary map[string]string) []interface{} {
+func mergeCSCRs(csSummary, csCR, ruleSlice []interface{}, serviceControllerMappingSummary map[string]string) []interface{} {
 	for _, operator := range csCR {
 		summaryCR := getItemByName(csSummary, operator.(map[string]interface{})["name"].(string))
-		rules := getItemByName(ruleslice, operator.(map[string]interface{})["name"].(string))
+		rules := getItemByName(ruleSlice, operator.(map[string]interface{})["name"].(string))
 		if summaryCR == nil || summaryCR.(map[string]interface{})["spec"] == nil {
 			summaryCR = map[string]interface{}{
 				"name": operator.(map[string]interface{})["name"].(string),
@@ -104,7 +104,7 @@ func mergeCSCRs(csSummary, csCR, ruleslice []interface{}, serviceControllerMappi
 		for cr, spec := range operator.(map[string]interface{})["spec"].(map[string]interface{}) {
 			if _, ok := nonDefaultProfileController[serviceController]; ok {
 				// clean up merged CS CR
-				operator.(map[string]interface{})["spec"].(map[string]interface{})[cr] = resetResourceInTemplate(spec.(map[string]interface{}), cr, rules, false)
+				operator.(map[string]interface{})["spec"].(map[string]interface{})[cr] = resetResourceInTemplate(spec.(map[string]interface{}), cr, rules)
 			}
 			if summaryCR.(map[string]interface{})["spec"].(map[string]interface{})[cr] == nil {
 				summaryCR.(map[string]interface{})["spec"].(map[string]interface{})[cr] = map[string]interface{}{}
@@ -281,16 +281,9 @@ func (r *CommonServiceReconciler) updateOperandConfig(newConfigs []interface{}, 
 		rules := getItemByName(ruleSlice, opService.(map[string]interface{})["name"].(string))
 
 		for cr, spec := range opService.(map[string]interface{})["spec"].(map[string]interface{}) {
-			var overwrite bool
-			if opcon.Object["status"] != nil && opcon.Object["status"].(map[string]interface{})["serviceStatus"] != nil {
-				overwrite = checkCRFromOperandConfig(opcon.Object["status"].(map[string]interface{})["serviceStatus"].(map[string]interface{}), opService.(map[string]interface{})["name"].(string), cr)
-			} else {
-				overwrite = true
-			}
 			if _, ok := nonDefaultProfileController[serviceController]; ok {
 				// clean up OperandConfig
-				opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = resetResourceInTemplate(spec.(map[string]interface{}), cr, rules, overwrite)
-				continue
+				opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = resetResourceInTemplate(spec.(map[string]interface{}), cr, rules)
 			}
 
 			if newConfigForOperator.(map[string]interface{})["spec"].(map[string]interface{})[cr] == nil {
@@ -298,6 +291,12 @@ func (r *CommonServiceReconciler) updateOperandConfig(newConfigs []interface{}, 
 			}
 			newConfigForCR := newConfigForOperator.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
 
+			var overwrite bool
+			if opcon.Object["status"] != nil && opcon.Object["status"].(map[string]interface{})["serviceStatus"] != nil {
+				overwrite = checkCRFromOperandConfig(opcon.Object["status"].(map[string]interface{})["serviceStatus"].(map[string]interface{}), opService.(map[string]interface{})["name"].(string), cr)
+			} else {
+				overwrite = true
+			}
 			if rules != nil && rules.(map[string]interface{})["spec"] != nil && rules.(map[string]interface{})["spec"].(map[string]interface{})[cr] != nil {
 				ruleForCR := rules.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
 				opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsIntoOperandConfig(spec.(map[string]interface{}), newConfigForCR, ruleForCR, overwrite)
@@ -405,6 +404,7 @@ func (r *CommonServiceReconciler) getMinimalSizes(opconServices, ruleSlice []int
 		if opService.(map[string]interface{})["spec"] == nil {
 			continue
 		}
+		rules := getItemByName(ruleSlice, opService.(map[string]interface{})["name"].(string))
 		serviceController := serviceControllerMappingSummary["profileController"]
 		if controller, ok := serviceControllerMappingSummary[opService.(map[string]interface{})["name"].(string)]; ok {
 			serviceController = controller
@@ -412,8 +412,7 @@ func (r *CommonServiceReconciler) getMinimalSizes(opconServices, ruleSlice []int
 		for cr, spec := range opService.(map[string]interface{})["spec"].(map[string]interface{}) {
 			if _, ok := nonDefaultProfileController[serviceController]; ok {
 				// clean up OperandConfig
-				opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = resetResourceInTemplate(spec.(map[string]interface{}), cr, nil, false)
-				continue
+				opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = resetResourceInTemplate(spec.(map[string]interface{}), cr, rules)
 			}
 			if crSummary == nil || crSummary.(map[string]interface{})["spec"] == nil || crSummary.(map[string]interface{})["spec"].(map[string]interface{})[cr] == nil {
 				continue
@@ -522,40 +521,43 @@ func (r *CommonServiceReconciler) checkScope(csScope []string, key string) bool 
 	return inScope
 }
 
-func resetResourceInTemplate(changedMap map[string]interface{}, cr string, rules interface{}, overwrite bool) map[string]interface{} {
+func resetResourceInTemplate(changedMap map[string]interface{}, cr string, rules interface{}) map[string]interface{} {
 	var rulesForCR map[string]interface{}
 	if rules != nil && rules.(map[string]interface{})["spec"] != nil && rules.(map[string]interface{})["spec"].(map[string]interface{})[cr] != nil {
 		rulesForCR = rules.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
 	}
-	if !overwrite && rulesForCR != nil {
-		for key := range changedMap {
-			// Remove the items not from the rules
-			filterChangedMapWithRules(key, changedMap[key], rulesForCR[key], changedMap)
-		}
-	}
 	for key := range changedMap {
-		resetChangedMap(key, changedMap[key], changedMap)
+		resetChangedMap(key, changedMap[key], rulesForCR, changedMap)
 	}
 	return changedMap
 }
 
-func resetChangedMap(key string, changedMap interface{}, finalMap map[string]interface{}) {
-	switch changedMap := changedMap.(type) {
-	case map[string]interface{}:
-		//Check that the changed map value doesn't contain this map at all and is nil
-		changedMapRef := changedMap
-		for newKey := range changedMapRef {
-			resetChangedMap(newKey, changedMapRef[newKey], finalMap[key].(map[string]interface{}))
-		}
-	default:
-		var requiredResetKeys = map[string]bool{
-			"replicas": true,
-			"cpu":      true,
-			"memory":   true,
-			// "profile":  true,
-		}
-		if _, ok := requiredResetKeys[key]; ok {
-			delete(finalMap, key)
+func resetChangedMap(key string, changedMap interface{}, rulesForCR, finalMap map[string]interface{}) {
+	var rules interface{}
+	if rulesForCR != nil {
+		rules = rulesForCR[key]
+	}
+	if rules != nil {
+		switch changedMap := changedMap.(type) {
+		case map[string]interface{}:
+			if _, ok := rules.(map[string]interface{}); ok {
+				rulesRef := rules.(map[string]interface{})
+				changedMapRef := changedMap
+				for newKey := range changedMapRef {
+					resetChangedMap(newKey, changedMapRef[newKey], rulesRef, finalMap[key].(map[string]interface{}))
+				}
+			}
+
+		default:
+			var requiredResetKeys = map[string]bool{
+				"replicas": true,
+				"cpu":      true,
+				"memory":   true,
+				// "profile":  true,
+			}
+			if _, ok := requiredResetKeys[key]; ok {
+				delete(finalMap, key)
+			}
 		}
 	}
 }
