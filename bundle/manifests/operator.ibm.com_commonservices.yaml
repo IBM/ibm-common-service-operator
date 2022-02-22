@@ -62,11 +62,15 @@ spec:
                 type: string
               manualManagement:
                 type: boolean
+              profileController:
+                type: string
               routeHost:
                 type: string
               services:
                 items:
                   properties:
+                    managementStrategy:
+                      type: string
                     name:
                       type: string
                     spec:

@@ -44,6 +44,14 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:select:medium
         - urn:alm:descriptor:com.tectonic.ui:select:large
         - urn:alm:descriptor:com.tectonic.ui:select:production
+      - description: The profile controller for IBM Cloud Pak foundational services
+        displayName: ProfileController
+        path: profileController
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:select:default
+        - urn:alm:descriptor:com.tectonic.ui:select:commonservice
+        - urn:alm:descriptor:com.tectonic.ui:select:turbonomic
+        - urn:alm:descriptor:com.tectonic.ui:select:vpa
       statusDescriptors:
       - description: Installed Bedrock Operator Name
         displayName: Name
