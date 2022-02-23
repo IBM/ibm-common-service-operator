@@ -109,6 +109,11 @@ func SyncUpNSSCR(bs *bootstrap.Bootstrap) {
 		scopeCR := &nssv1.NamespaceScope{}
 		odlmNsScopeKey := types.NamespacedName{Name: "odlm-scope-managedby-odlm", Namespace: bs.CSData.MasterNs}
 		if err := bs.Reader.Get(ctx, odlmNsScopeKey, scopeCR); err != nil {
+			if errors.IsNotFound(err) {
+				klog.Warningf("Not found NSS resource %s: %v, retry in 1 minute", targetNsScopeKey.String(), err)
+				time.Sleep(1 * time.Minute)
+				continue
+			}
 			klog.Errorf("Failed to get NSS resource %s: %v, retry again", targetNsScopeKey.String(), err)
 			continue
 		}
