@@ -1457,13 +1457,13 @@ func (b *Bootstrap) DeployCertManagerCR() error {
 		}
 
 		for _, cr := range constant.CertManagerIssuers {
-			if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, deployedNs))); err != nil {
+			if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.MasterNs))); err != nil {
 				return err
 			}
 		}
 		if deployRootCert {
 			for _, cr := range constant.CertManagerCerts {
-				if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, deployedNs))); err != nil {
+				if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.MasterNs))); err != nil {
 					return err
 				}
 			}
