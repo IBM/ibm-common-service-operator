@@ -465,5 +465,5 @@ spec:
       name: IBM_CS_WEBHOOK_IMAGE
     - image: quay.io/opencloudio/ibm-secretshare-operator:1.13.0
       name: IBM_SECRETSHARE_OPERATOR_IMAGE
-  replaces: ibm-common-service-operator.v3.16.0
+  replaces: ibm-common-service-operator.v3.15.1
   version: 3.16.1
