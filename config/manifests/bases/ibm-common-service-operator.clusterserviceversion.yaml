@@ -10,7 +10,7 @@ metadata:
     nss.operator.ibm.com/managed-operators: cloud-native-postgresql
     olm.skipRange: ""
     operatorChannel: v3
-    operatorVersion: 3.16.0
+    operatorVersion: 3.17.0
     operators.operatorframework.io/builder: operator-sdk-v1.2.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
     repository: https://github.com/IBM/ibm-common-service-operator
@@ -101,7 +101,7 @@ spec:
 
     ## Operator versions
 
-     - 3.16.0
+     - 3.17.0
 
     ## Prerequisites
 
