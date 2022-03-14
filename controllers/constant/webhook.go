@@ -91,7 +91,7 @@ kind: ClusterRole
 metadata:
   name: ibm-common-service-webhook
   annotations:
-    version: "3.16.1"
+    version: "3.16.2"
 rules:
 - apiGroups:
     - ""
@@ -171,7 +171,7 @@ kind: CustomResourceDefinition
 metadata:
   name: podpresets.operator.ibm.com
   annotations:
-    version: "3.16.1"
+    version: "3.16.2"
 spec:
   group: operator.ibm.com
   names:
@@ -1647,7 +1647,7 @@ metadata:
   name: ibm-common-service-webhook
   namespace: placeholder
   annotations:
-    version: "3.16.1"
+    version: "3.16.2"
 spec:
   replicas: 1
   selector:
@@ -1705,7 +1705,7 @@ metadata:
   name: ibm-common-service-webhook
   namespace: placeholder
   annotations:
-    version: "3.16.1"
+    version: "3.16.2"
 spec:
   replicas: 1
   selector:
