@@ -68,9 +68,13 @@ function main() {
     msg "-----------------------------------------------------------------------"
 
     check_preqreqs 
+    AllNamespaceMode=false
+    if [[ ${COMMON_SERVICES_NS} == "openshift-operators" ]]; then
+        AllNamespaceMode=true
+    fi
     edit_cs_csv "${COMMON_SERVICES_NS}"
     wait_for_scasle_down "${COMMON_SERVICES_NS}" "ibm-common-service-operator"
-    edit_odlm_sub "${ODLM_NS}"
+    edit_odlm_sub "${ODLM_NS}" ${AllNamespaceMode}
 
 }
 
@@ -119,11 +123,15 @@ function edit_odlm_sub() {
     msg "-----------------------------------------------------------------------"
 
     local namespace=$1
+    local allNamespaceMode=$2
     while read -r odlm_sub; do
         msg "Edit ${odlm_sub} in namespace ${namespace} ..."
         msg "-----------------------------------------------------------------------"
         
         oc patch subscription ${odlm_sub} -n ${namespace} --type="json" -p '[{"op": "replace", "path":"/spec/config/env/2/value", "value": "false"}]' 2> /dev/null
+        if [[ ($? -ne 0) && ("${allNamespaceMode}" = true) ]]; then
+            oc patch subscription ${odlm_sub} -n ${namespace} --type merge --patch '{"spec":{"config":{"env":[{"name": "OPERATORCHECKER_MODE", "value": "false"}]}}}' 2> /dev/null
+        fi
 
         msg ""
     done < <(oc get subscription -n ${namespace} | grep operand-deployment-lifecycle-manager-app | awk '{print $1}')
