@@ -66,7 +66,7 @@ function usage() {
 	Mandatory arguments to long options are mandatory for short options too.
 	  -h, --help                     display this help and exit
 	  -cs                            specify the patched image of ibm-common-service-operator
-	  -oodlm                         specify the patched image of operand-deployment-lifecycle-manager
+	  -odlm                          specify the patched image of operand-deployment-lifecycle-manager
 	EOF
 }
 
