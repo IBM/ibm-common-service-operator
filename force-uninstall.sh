@@ -192,6 +192,24 @@ function delete_rbac_resource() {
   ${KUBECTL} delete scc nginx-ingress-scc --ignore-not-found
 }
 
+function cleanup_cluster() {
+  # Delete the previous version ODLM operator
+  if ${KUBECTL} get sub operand-deployment-lifecycle-manager-app -n openshift-operators &>/dev/null; then
+    title "Deleting ODLM Operator"
+    delete_operator "operand-deployment-lifecycle-manager-app" "openshift-operators"
+  fi
+
+  title "Deleting RBAC resources"
+  delete_rbac_resource
+
+  title "Deleting webhooks"
+  ${KUBECTL} delete ValidatingWebhookConfiguration cert-manager-webhook ibm-cs-ns-mapping-webhook-configuration --ignore-not-found
+  ${KUBECTL} delete MutatingWebhookConfiguration cert-manager-webhook ibm-common-service-webhook-configuration ibm-operandrequest-webhook-configuration namespace-admission-config --ignore-not-found
+
+  title "Deleting iam-status configMap in kube-public namespace"
+  ${KUBECTL} delete configmap ibm-common-services-status -n kube-public --ignore-not-found
+}
+
 function force_delete() {
   local namespace=$1
   local remaining=$(get_remaining_resources_from_namespace "$namespace")
@@ -307,22 +325,8 @@ if [[ "$FORCE_DELETE" == "false" ]]; then
   delete_operand "CommonService OperandRegistry OperandConfig"
   delete_operand "NamespaceScope" && wait_for_deleted "NamespaceScope"
 
-  # Delete the previous version ODLM operator
-  if ${KUBECTL} get sub operand-deployment-lifecycle-manager-app -n openshift-operators &>/dev/null; then
-    title "Deleting ODLM Operator"
-    delete_operator "operand-deployment-lifecycle-manager-app" "openshift-operators"
-  fi
-
-  title "Deleting RBAC resources"
-  delete_rbac_resource
-
-  title "Deleting webhooks"
-  ${KUBECTL} delete ValidatingWebhookConfiguration cert-manager-webhook ibm-cs-ns-mapping-webhook-configuration --ignore-not-found
-  ${KUBECTL} delete MutatingWebhookConfiguration cert-manager-webhook ibm-common-service-webhook-configuration ibm-operandrequest-webhook-configuration namespace-admission-config --ignore-not-found
+  cleanup_cluster
 fi
-
-title "Deleting iam-status configMap in kube-public namespace"
-${KUBECTL} delete configmap ibm-common-services-status -n kube-public --ignore-not-found
 
 if [[ "$REMOVE_IAM_CP_NS" == "true" ]]; then
   title "Deleting iam crs in cloudpak namespace"
@@ -339,6 +343,8 @@ if wait_for_namespace_deleted ${COMMON_SERVICES_NS}; then
   success "Common Services uninstall finished and successfull."
   exit 0
 fi
+
+cleanup_cluster
 
 title "Force delete remaining resources"
 delete_unavailable_apiservice
