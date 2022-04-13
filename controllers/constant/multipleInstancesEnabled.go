@@ -21,4 +21,8 @@ const MultipleInstancesEnabledTemplate = `
   spec:
     managementIngress:
       multipleInstancesEnabled: placeholder
+- name: ibm-commonui-operator
+  spec:
+    commonWebUI:
+      multipleInstancesEnabled: placeholder
 `
