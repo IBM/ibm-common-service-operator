@@ -48,6 +48,11 @@ spec:
         kind: CommonService
         name: commonservices.operator.ibm.com
         specDescriptors:
+          - description: Define CSV license.accept parameter
+            displayName: LicenseAccept
+            path: license.accept
+            x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:checkbox
           - description: The size of deployment profile for IBM Cloud Pak foundational services
             displayName: Size
             path: size
