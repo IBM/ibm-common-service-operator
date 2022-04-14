@@ -33,7 +33,7 @@ spec:
       kind: CommonService
       name: commonservices.operator.ibm.com
       specDescriptors:
-      - description: Each CSV should define a CRD with a license.accept parameter
+      - description: Define CSV license.accept parameter
         displayName: LicenseAccept
         path: license.accept
         x-descriptors:
