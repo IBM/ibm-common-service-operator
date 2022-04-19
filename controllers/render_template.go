@@ -174,7 +174,7 @@ func applySizeTemplate(cs *unstructured.Unstructured, sizeTemplate string, servi
 			serviceControllerMapping[configSize.(map[string]interface{})["name"].(string)] = controller.(string)
 		}
 		if configSize == nil {
-			configSize = config
+			// configSize = config
 			continue
 		}
 		for cr, size := range mergeSizeProfile(configSize.(map[string]interface{})["spec"].(map[string]interface{}), config.(map[string]interface{})["spec"].(map[string]interface{})) {
