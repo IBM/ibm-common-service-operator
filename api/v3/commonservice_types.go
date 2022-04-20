@@ -45,6 +45,23 @@ type CommonServiceSpec struct {
 	StorageClass        string               `json:"storageClass,omitempty"`
 	BYOCACertificate    bool                 `json:"BYOCACertificate,omitempty"`
 	ProfileController   string               `json:"profileController,omitempty"`
+	License             LicenseList          `json:"license"`
+}
+
+// LicenseList defines the license specification in CSV
+type LicenseList struct {
+	// Accepting the license - URL: https://ibm.biz/integration-licenses
+	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:hidden"
+	Accept bool `json:"accept"`
+	// The type of license being accepted.
+	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:hidden"
+	Use string `json:"use,omitempty"`
+	// The license being accepted where the component has multiple.
+	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:hidden"
+	License string `json:"license,omitempty"`
+	// The license key for this deployment.
+	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:hidden"
+	Key string `json:"key,omitempty"`
 }
 
 // Features defines the configurations of Cloud Pak Services
