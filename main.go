@@ -204,6 +204,10 @@ func main() {
 		// +kubebuilder:scaffold:builder
 	} else {
 		klog.Infof("Creating common service operator subscription in namespace %s", bs.CSData.MasterNs)
+		if err = bs.CheckCsSubscription(); err != nil {
+			klog.Errorf("Failed to check common service operator subscription: %v", err)
+			os.Exit(1)
+		}
 		if err = bs.CreateCsSubscription(); err != nil {
 			klog.Errorf("Failed to create common service operator subscription: %v", err)
 			os.Exit(1)
