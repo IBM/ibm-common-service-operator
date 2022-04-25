@@ -573,6 +573,26 @@ func (b *Bootstrap) CreateCsSubscription() error {
 	return nil
 }
 
+func (b *Bootstrap) CheckCsSubscription() error {
+	subs, err := b.ListSubscriptions(ctx, b.CSData.MasterNs, client.ListOptions{Namespace: b.CSData.MasterNs, LabelSelector: labels.SelectorFromSet(map[string]string{
+		"operators.coreos.com/ibm-common-service-operator." + b.CSData.MasterNs: "",
+	})})
+
+	if err != nil {
+		return err
+	}
+	// check all the CS subscrtipions and delete the operator not deployed by ibm-common-service-operator
+	for _, sub := range subs.Items {
+		if sub.GetName() != "ibm-common-service-operator" {
+			if err := b.deleteSubscription(sub.GetName(), sub.GetNamespace()); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 func (b *Bootstrap) CreateCsCR() error {
 	cs := util.NewUnstructured("operator.ibm.com", "CommonService", "v3")
 	cs.SetName("common-service")
@@ -765,6 +785,17 @@ func (b *Bootstrap) GetSubscription(ctx context.Context, name, namespace string)
 	}
 
 	return sub, nil
+}
+
+// GetSubscription returns the subscription instances from a  namespace
+func (b *Bootstrap) ListSubscriptions(ctx context.Context, namespace string, listOptions client.ListOptions) (*unstructured.UnstructuredList, error) {
+	klog.Infof("List Subscriptions in namespace %v", namespace)
+	subs := &unstructured.UnstructuredList{}
+	subs.SetGroupVersionKind(olmv1alpha1.SchemeGroupVersion.WithKind("SubscriptionList"))
+	if err := b.Client.List(ctx, subs, &listOptions); err != nil {
+		return nil, err
+	}
+	return subs, nil
 }
 
 // GetOperandRegistry returns the OperandRegistry instance of "name" from "namespace" namespace
