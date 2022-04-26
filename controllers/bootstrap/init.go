@@ -1341,6 +1341,8 @@ func (b *Bootstrap) updateApprovalMode() error {
 		return err
 	}
 
+	b.UpdateCsOpApproval()
+
 	return nil
 }
 
