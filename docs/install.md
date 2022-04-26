@@ -11,6 +11,7 @@
     - [Search IBM Common Service Operator in the OperatorHub](#search-ibm-common-service-operator-in-the-operatorhub)
     - [Install IBM Common Service Operator](#install-ibm-common-service-operator)
   - [4.Configure IBM Common Services](#4configure-ibm-common-services)
+    - [Accept License](#accept-license)
     - [Configure Size](#configure-size)
     - [Configure general parameters](#configure-general-parameters)
   - [5.Install Individual Common Services](#5install-individual-common-services)
@@ -133,6 +134,21 @@ So far, the IBM Common Service Operator and ODLM operator installation is comple
 2. In the `IBM Common Service Operator` row, click the Provided APIs `CommonService`
 3. Select `common-service` and edit
 
+### Accept License
+
+Accepting the license - URL: https://ibm.biz/integration-licenses
+
+```yaml
+apiVersion: operator.ibm.com/v3
+kind: CommonService
+metadata:
+  name: common-service
+  namespace: ibm-common-services
+spec:
+  license:
+    accept: true
+```
+
 ### Configure Size
 
 The IBM Common Service Operator will create the following CR in the `ibm-common-services` namespace. The initialized size is `starterset`.
@@ -144,6 +160,8 @@ metadata:
   name: common-service
   namespace: ibm-common-services
 spec:
+  license:
+    accept: true
   size: starterset
 ```
 
@@ -161,6 +179,8 @@ metadata:
   name: common-service
   namespace: ibm-common-services
 spec:
+  license:
+    accept: true
   size: starterset
   services:
   - name: ibm-mongodb-operator
