@@ -1341,7 +1341,10 @@ func (b *Bootstrap) updateApprovalMode() error {
 		return err
 	}
 
-	b.UpdateCsOpApproval()
+	if err = b.UpdateCsOpApproval(); err != nil {
+		klog.Errorf("Failed to update common service operator subscription: %v", err)
+		return err
+	}
 
 	return nil
 }
