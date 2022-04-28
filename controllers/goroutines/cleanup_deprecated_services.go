@@ -153,12 +153,10 @@ func CleanUpDeprecatedServices(bs *bootstrap.Bootstrap) {
 			for _, resource := range resourcesList {
 				operatorNs, err := util.GetOperatorNamespace()
 				if err != nil {
-					klog.Errorf("Getting operator namespace failed: %v", err)
 					continue
 				}
 
 				if err := cleanup(bs, resource.name, operatorNs, resource.group, resource.kind); err != nil {
-					klog.Errorf("Clean up resource failed: %v", err)
 					continue
 				}
 			}
