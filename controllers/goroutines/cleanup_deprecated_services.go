@@ -40,105 +40,105 @@ type Resource struct {
 }
 
 var deprecatedServicesMap = map[string][]*Resource{
-	"ibm-monitoring-exporters-operator": []*Resource{
-		&Resource{
+	"ibm-monitoring-exporters-operator": {
+		{
 			name:  "ibm-monitoring",
 			group: "monitoring.operator.ibm.com",
 			kind:  "Exporter",
 		},
-		&Resource{
+		{
 			name:  "monitoring-exporters-operator-request",
 			group: "operator.ibm.com",
 			kind:  "OperandRequest",
 		},
 	},
-	"ibm-monitoring-prometheusext-operator": []*Resource{
-		&Resource{
+	"ibm-monitoring-prometheusext-operator": {
+		{
 			name:  "ibm-monitoring",
 			group: "monitoring.operator.ibm.com",
 			kind:  "PrometheusExt",
 		},
-		&Resource{
+		{
 			name:  "monitoring-prometheus-ext-operator-request",
 			group: "operator.ibm.com",
 			kind:  "OperandRequest",
 		},
 	},
-	"ibm-metering-operator": []*Resource{
-		&Resource{
+	"ibm-metering-operator": {
+		{
 			name:  "metering",
 			group: "operator.ibm.com",
 			kind:  "Metering",
 		},
-		&Resource{
+		{
 			name:  "meteringui",
 			group: "operator.ibm.com",
 			kind:  "MeteringUI",
 		},
-		&Resource{
+		{
 			name:  "meteringreportserver",
 			group: "operator.ibm.com",
 			kind:  "MeteringReportServer",
 		},
-		&Resource{
+		{
 			name:  "ibm-metering-bindinfo",
 			group: "operator.ibm.com",
 			kind:  "OperandBindInfo",
 		},
-		&Resource{
+		{
 			name:  "ibm-metering-request",
 			group: "operator.ibm.com",
 			kind:  "OperandRequest",
 		},
 	},
-	"ibm-elastic-stack-operator": []*Resource{
-		&Resource{
+	"ibm-elastic-stack-operator": {
+		{
 			name:  "logging",
 			group: "elasticstack.ibm.com",
 			kind:  "ElasticStack",
 		},
-		&Resource{
+		{
 			name:  "ibm-elastic-stack-bindinfo",
 			group: "operator.ibm.com",
 			kind:  "OperandBindInfo",
 		},
-		&Resource{
+		{
 			name:  "ibm-elastic-stack-request",
 			group: "operator.ibm.com",
 			kind:  "OperandRequest",
 		},
 	},
-	"ibm-catalog-ui-operator": []*Resource{
-		&Resource{
+	"ibm-catalog-ui-operator": {
+		{
 			name:  "catalog-ui",
 			group: "operator.ibm.com",
 			kind:  "CatalogUI",
 		},
-		&Resource{
+		{
 			name:  "catalog-ui-request",
 			group: "operator.ibm.com",
 			kind:  "OperandRequest",
 		},
 	},
-	"ibm-helm-api-operator": []*Resource{
-		&Resource{
+	"ibm-helm-api-operator": {
+		{
 			name:  "helm-api",
 			group: "operator.ibm.com",
 			kind:  "HelmAPI",
 		},
-		&Resource{
+		{
 			name:  "helm-api-request",
 			group: "operator.ibm.com",
 			kind:  "OperandRequest",
 		},
 	},
-	"ibm-helm-repo-operator": []*Resource{
-		&Resource{
+	"ibm-helm-repo-operator": {
+		{
 			name:  "helm-repo",
 			group: "operator.ibm.com",
 			kind:  "HelmRepo",
 		},
-		&Resource{
+		{
 			name:  "helm-repo-request",
 			group: "operator.ibm.com",
 			kind:  "OperandRequest",
@@ -156,11 +156,18 @@ func CleanUpDeprecatedServices(bs *bootstrap.Bootstrap) {
 					klog.Errorf("Getting operator namespace failed: %v", err)
 					continue
 				}
-				cleanup(bs, resource.name, operatorNs, resource.group, resource.kind)
+
+				if err := cleanup(bs, resource.name, operatorNs, resource.group, resource.kind); err != nil {
+					klog.Errorf("Clean up resource failed: %v", err)
+					continue
+				}
 			}
 
 			// delete sub & csv
-			deleteSubscription(bs, service, MasterNamespace)
+			if err := deleteSubscription(bs, service, MasterNamespace); err != nil {
+				klog.Errorf("Delete subscription failed: %v", err)
+				continue
+			}
 		}
 
 		time.Sleep(2 * time.Minute)
