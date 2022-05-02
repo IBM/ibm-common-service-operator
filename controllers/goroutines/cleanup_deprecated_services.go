@@ -34,114 +34,133 @@ import (
 )
 
 type Resource struct {
-	name  string
-	group string
-	kind  string
+	name    string
+	version string
+	group   string
+	kind    string
 }
 
 var deprecatedServicesMap = map[string][]*Resource{
 	"ibm-monitoring-exporters-operator": {
 		{
-			name:  "ibm-monitoring",
-			group: "monitoring.operator.ibm.com",
-			kind:  "Exporter",
+			name:    "ibm-monitoring",
+			version: "v1alpha1",
+			group:   "monitoring.operator.ibm.com",
+			kind:    "Exporter",
 		},
 		{
-			name:  "monitoring-exporters-operator-request",
-			group: "operator.ibm.com",
-			kind:  "OperandRequest",
+			name:    "monitoring-exporters-operator-request",
+			version: "v1alpha1",
+			group:   "operator.ibm.com",
+			kind:    "OperandRequest",
 		},
 	},
 	"ibm-monitoring-prometheusext-operator": {
 		{
-			name:  "ibm-monitoring",
-			group: "monitoring.operator.ibm.com",
-			kind:  "PrometheusExt",
+			name:    "ibm-monitoring",
+			version: "v1alpha1",
+			group:   "monitoring.operator.ibm.com",
+			kind:    "PrometheusExt",
 		},
 		{
-			name:  "monitoring-prometheus-ext-operator-request",
-			group: "operator.ibm.com",
-			kind:  "OperandRequest",
+			name:    "monitoring-prometheus-ext-operator-request",
+			version: "v1alpha1",
+			group:   "operator.ibm.com",
+			kind:    "OperandRequest",
 		},
 	},
 	"ibm-metering-operator": {
 		{
-			name:  "metering",
-			group: "operator.ibm.com",
-			kind:  "Metering",
+			name:    "metering",
+			version: "v1alpha1",
+			group:   "operator.ibm.com",
+			kind:    "Metering",
 		},
 		{
-			name:  "meteringui",
-			group: "operator.ibm.com",
-			kind:  "MeteringUI",
+			name:    "meteringui",
+			version: "v1alpha1",
+			group:   "operator.ibm.com",
+			kind:    "MeteringUI",
 		},
 		{
-			name:  "meteringreportserver",
-			group: "operator.ibm.com",
-			kind:  "MeteringReportServer",
+			name:    "meteringreportserver",
+			version: "v1alpha1",
+			group:   "operator.ibm.com",
+			kind:    "MeteringReportServer",
 		},
 		{
-			name:  "ibm-metering-bindinfo",
-			group: "operator.ibm.com",
-			kind:  "OperandBindInfo",
+			name:    "ibm-metering-bindinfo",
+			version: "v1alpha1",
+			group:   "operator.ibm.com",
+			kind:    "OperandBindInfo",
 		},
 		{
-			name:  "ibm-metering-request",
-			group: "operator.ibm.com",
-			kind:  "OperandRequest",
+			name:    "ibm-metering-request",
+			version: "v1alpha1",
+			group:   "operator.ibm.com",
+			kind:    "OperandRequest",
 		},
 	},
 	"ibm-elastic-stack-operator": {
 		{
-			name:  "logging",
-			group: "elasticstack.ibm.com",
-			kind:  "ElasticStack",
+			name:    "logging",
+			version: "v1alpha1",
+			group:   "elasticstack.ibm.com",
+			kind:    "ElasticStack",
 		},
 		{
-			name:  "ibm-elastic-stack-bindinfo",
-			group: "operator.ibm.com",
-			kind:  "OperandBindInfo",
+			name:    "ibm-elastic-stack-bindinfo",
+			version: "v1alpha1",
+			group:   "operator.ibm.com",
+			kind:    "OperandBindInfo",
 		},
 		{
-			name:  "ibm-elastic-stack-request",
-			group: "operator.ibm.com",
-			kind:  "OperandRequest",
+			name:    "ibm-elastic-stack-request",
+			version: "v1alpha1",
+			group:   "operator.ibm.com",
+			kind:    "OperandRequest",
 		},
 	},
 	"ibm-catalog-ui-operator": {
 		{
-			name:  "catalog-ui",
-			group: "operator.ibm.com",
-			kind:  "CatalogUI",
+			name:    "catalog-ui",
+			version: "v1alpha1",
+			group:   "operator.ibm.com",
+			kind:    "CatalogUI",
 		},
 		{
-			name:  "catalog-ui-request",
-			group: "operator.ibm.com",
-			kind:  "OperandRequest",
+			name:    "catalog-ui-request",
+			version: "v1alpha1",
+			group:   "operator.ibm.com",
+			kind:    "OperandRequest",
 		},
 	},
 	"ibm-helm-api-operator": {
 		{
-			name:  "helm-api",
-			group: "operator.ibm.com",
-			kind:  "HelmAPI",
+			name:    "helm-api",
+			version: "v1alpha1",
+			group:   "operator.ibm.com",
+			kind:    "HelmAPI",
 		},
 		{
-			name:  "helm-api-request",
-			group: "operator.ibm.com",
-			kind:  "OperandRequest",
+			name:    "helm-api-request",
+			version: "v1alpha1",
+			group:   "operator.ibm.com",
+			kind:    "OperandRequest",
 		},
 	},
 	"ibm-helm-repo-operator": {
 		{
-			name:  "helm-repo",
-			group: "operator.ibm.com",
-			kind:  "HelmRepo",
+			name:    "helm-repo",
+			version: "v1alpha1",
+			group:   "operator.ibm.com",
+			kind:    "HelmRepo",
 		},
 		{
-			name:  "helm-repo-request",
-			group: "operator.ibm.com",
-			kind:  "OperandRequest",
+			name:    "helm-repo-request",
+			version: "v1alpha1",
+			group:   "operator.ibm.com",
+			kind:    "OperandRequest",
 		},
 	},
 }
@@ -156,7 +175,7 @@ func CleanUpDeprecatedServices(bs *bootstrap.Bootstrap) {
 					continue
 				}
 
-				if err := cleanup(bs, resource.name, operatorNs, resource.group, resource.kind); err != nil {
+				if err := cleanup(bs, resource.name, operatorNs, resource.version, resource.group, resource.kind); err != nil {
 					continue
 				}
 			}
@@ -172,9 +191,9 @@ func CleanUpDeprecatedServices(bs *bootstrap.Bootstrap) {
 	}
 }
 
-func cleanup(bs *bootstrap.Bootstrap, name, operatorNs string, group, kind string) error {
+func cleanup(bs *bootstrap.Bootstrap, name, operatorNs string, version, group, kind string) error {
 	resource := &unstructured.Unstructured{}
-	resource.SetGroupVersionKind(schema.GroupVersionKind{Group: group, Version: "v1alpha1", Kind: kind})
+	resource.SetGroupVersionKind(schema.GroupVersionKind{Group: group, Version: version, Kind: kind})
 	resource.SetName(name)
 	resource.SetNamespace(operatorNs)
 	if err := bs.Client.Delete(context.TODO(), resource); err != nil {
