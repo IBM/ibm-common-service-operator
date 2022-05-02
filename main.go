@@ -192,6 +192,8 @@ func main() {
 		go goroutines.UpdateCsCrStatus(bs)
 		// Create or Update CPP configuration
 		go goroutines.CreateUpdateConfig(bs)
+		// Clean up decprecated services
+		go goroutines.CleanUpDeprecatedServices(bs)
 
 		if err = (&controllers.CommonServiceReconciler{
 			Bootstrap: bs,
