@@ -22,8 +22,8 @@ github.com/IBM/controller-filtered-cache v0.2.0/go.mod h1:x6kTgtNFa6YL5mqVUh14RM
 github.com/IBM/controller-filtered-cache v0.2.1 h1:9pKLDkFRSI4uddBGvaz5tVzSAJHLlOsvVK5nN9CGz1E=
 github.com/IBM/controller-filtered-cache v0.2.1/go.mod h1:x6kTgtNFa6YL5mqVUh14RMoW89ycqP9/6ZjgzkBP808=
 github.com/IBM/ibm-namespace-scope-operator v1.0.0-alpha/go.mod h1:wkE4MMVf3IKwsu90Gxy4No/S5gZ/PC6EHKcoXKiX21Q=
-github.com/IBM/ibm-namespace-scope-operator v1.0.1 h1:o5t/cr+HlgCHXmHofMK4GvpBZ1nnrFf1w75Z2FX6QQI=
-github.com/IBM/ibm-namespace-scope-operator v1.0.1/go.mod h1:VxYHSntVk9dfhs53TFMOX7UTorH+twHXQJgd6tgq5vE=
+github.com/IBM/ibm-namespace-scope-operator v1.11.0 h1:l8CPz+1XBvb77vWvNRU5AFFAAgD3bL3pcVXtUcvnyXk=
+github.com/IBM/ibm-namespace-scope-operator v1.11.0/go.mod h1:wLkJV6mcFiZx/8ZpnGb46sbO8Q4SuYVSLSE5YrgY4v8=
 github.com/IBM/ibm-secretshare-operator v1.9.0 h1:tXni/gmp1/clOU4xFBo+SU908YBGwZOEMTLvuV/+Gsw=
 github.com/IBM/ibm-secretshare-operator v1.9.0/go.mod h1:V7yo2jCqYMPfJsuZoFn0so5zs7FrSIQfPAAGkV8xIVo=
 github.com/IBM/operand-deployment-lifecycle-manager v1.5.0 h1:48WEZZGX9FOm7jQj+y6+Imkow8UD6J8QNWtMaUkL8gU=

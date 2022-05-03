@@ -83,7 +83,7 @@ func SyncUpNSSCR(bs *bootstrap.Bootstrap) {
 			targetNsSet.Add(ns)
 		}
 
-		// sync up when namepsace in source CR is different from target CR
+		// sync up when namespace in source CR is different from target CR
 		if !mergeNsSet.Equal(targetNsSet) {
 			mergeNsMems := mergeNsSet.ToSlice()
 			var targetNsMems []string
