@@ -679,7 +679,7 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 			continue
 		}
 
-		if obj.GetDeletionTimestamp() != nil {
+		if objInCluster.GetDeletionTimestamp() != nil {
 			errMsg = fmt.Errorf("resource %s/%s is being deleted, retry later, kind: %s, apiversion: %s/%s", obj.GetNamespace(), obj.GetName(), gvk.Kind, gvk.Group, gvk.Version)
 			continue
 		}
