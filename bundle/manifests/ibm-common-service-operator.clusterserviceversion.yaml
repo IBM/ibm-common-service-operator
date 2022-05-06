@@ -472,4 +472,5 @@ spec:
       name: IBM_CS_WEBHOOK_IMAGE
     - image: icr.io/cpopen/cpfs/ibm-secretshare-operator:1.15.0
       name: IBM_SECRETSHARE_OPERATOR_IMAGE
+  replaces: ibm-common-service-operator.v3.17.0
   version: 3.18.0
