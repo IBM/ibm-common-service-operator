@@ -193,9 +193,11 @@ var deprecatedServicesMap = map[string][]*Resource{
 func CleanUpDeprecatedServices(bs *bootstrap.Bootstrap) {
 	for {
 		for service, resourcesList := range deprecatedServicesMap {
+			getResourceFailed := false
 			for _, resource := range resourcesList {
 				operatorNs, err := util.GetOperatorNamespace()
 				if err != nil {
+					getResourceFailed = true
 					continue
 				}
 
@@ -205,9 +207,11 @@ func CleanUpDeprecatedServices(bs *bootstrap.Bootstrap) {
 			}
 
 			// delete sub & csv
-			if err := deleteSubscription(bs, service, MasterNamespace); err != nil {
-				klog.Errorf("Delete subscription failed: %v", err)
-				continue
+			if !getResourceFailed {
+				if err := deleteSubscription(bs, service, MasterNamespace); err != nil {
+					klog.Errorf("Delete subscription failed: %v", err)
+					continue
+				}
 			}
 		}
 
