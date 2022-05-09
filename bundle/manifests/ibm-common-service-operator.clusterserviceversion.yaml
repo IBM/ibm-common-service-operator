@@ -347,6 +347,13 @@ spec:
                 - get
                 - list
                 - watch
+            - apiGroups:
+                - operator.ibm.com
+              resources:
+                - meteringreportservers
+              verbs:
+                - delete
+                - get
           serviceAccountName: ibm-common-service-operator
       deployments:
         - name: ibm-common-service-operator
