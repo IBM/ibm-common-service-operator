@@ -202,6 +202,7 @@ func CleanUpDeprecatedServices(bs *bootstrap.Bootstrap) {
 				}
 
 				if err := cleanup(bs, operatorNs, resource); err != nil {
+					getResourceFailed = true
 					continue
 				}
 			}
