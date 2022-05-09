@@ -33,11 +33,17 @@ import (
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 )
 
+const (
+	namespaceScope = "namespaceScope"
+	clusterScope   = "clusterScope"
+)
+
 type Resource struct {
 	name    string
 	version string
 	group   string
 	kind    string
+	scope   string
 }
 
 var deprecatedServicesMap = map[string][]*Resource{
@@ -47,12 +53,14 @@ var deprecatedServicesMap = map[string][]*Resource{
 			version: "v1alpha1",
 			group:   "monitoring.operator.ibm.com",
 			kind:    "Exporter",
+			scope:   namespaceScope,
 		},
 		{
 			name:    "monitoring-exporters-operator-request",
 			version: "v1alpha1",
 			group:   "operator.ibm.com",
 			kind:    "OperandRequest",
+			scope:   namespaceScope,
 		},
 	},
 	"ibm-monitoring-prometheusext-operator": {
@@ -61,12 +69,14 @@ var deprecatedServicesMap = map[string][]*Resource{
 			version: "v1alpha1",
 			group:   "monitoring.operator.ibm.com",
 			kind:    "PrometheusExt",
+			scope:   namespaceScope,
 		},
 		{
 			name:    "monitoring-prometheus-ext-operator-request",
 			version: "v1alpha1",
 			group:   "operator.ibm.com",
 			kind:    "OperandRequest",
+			scope:   namespaceScope,
 		},
 	},
 	"ibm-metering-operator": {
@@ -75,30 +85,35 @@ var deprecatedServicesMap = map[string][]*Resource{
 			version: "v1alpha1",
 			group:   "operator.ibm.com",
 			kind:    "Metering",
+			scope:   namespaceScope,
 		},
 		{
 			name:    "meteringui",
 			version: "v1alpha1",
 			group:   "operator.ibm.com",
 			kind:    "MeteringUI",
+			scope:   namespaceScope,
 		},
 		{
 			name:    "meteringreportserver",
 			version: "v1alpha1",
 			group:   "operator.ibm.com",
 			kind:    "MeteringReportServer",
+			scope:   clusterScope,
 		},
 		{
 			name:    "ibm-metering-bindinfo",
 			version: "v1alpha1",
 			group:   "operator.ibm.com",
 			kind:    "OperandBindInfo",
+			scope:   namespaceScope,
 		},
 		{
 			name:    "ibm-metering-request",
 			version: "v1alpha1",
 			group:   "operator.ibm.com",
 			kind:    "OperandRequest",
+			scope:   namespaceScope,
 		},
 	},
 	"ibm-elastic-stack-operator": {
@@ -107,18 +122,21 @@ var deprecatedServicesMap = map[string][]*Resource{
 			version: "v1alpha1",
 			group:   "elasticstack.ibm.com",
 			kind:    "ElasticStack",
+			scope:   namespaceScope,
 		},
 		{
 			name:    "ibm-elastic-stack-bindinfo",
 			version: "v1alpha1",
 			group:   "operator.ibm.com",
 			kind:    "OperandBindInfo",
+			scope:   namespaceScope,
 		},
 		{
 			name:    "ibm-elastic-stack-request",
 			version: "v1alpha1",
 			group:   "operator.ibm.com",
 			kind:    "OperandRequest",
+			scope:   namespaceScope,
 		},
 	},
 	"ibm-catalog-ui-operator": {
@@ -127,12 +145,14 @@ var deprecatedServicesMap = map[string][]*Resource{
 			version: "v1alpha1",
 			group:   "operator.ibm.com",
 			kind:    "CatalogUI",
+			scope:   namespaceScope,
 		},
 		{
 			name:    "catalog-ui-request",
 			version: "v1alpha1",
 			group:   "operator.ibm.com",
 			kind:    "OperandRequest",
+			scope:   namespaceScope,
 		},
 	},
 	"ibm-helm-api-operator": {
@@ -141,12 +161,14 @@ var deprecatedServicesMap = map[string][]*Resource{
 			version: "v1alpha1",
 			group:   "operator.ibm.com",
 			kind:    "HelmAPI",
+			scope:   namespaceScope,
 		},
 		{
 			name:    "helm-api-request",
 			version: "v1alpha1",
 			group:   "operator.ibm.com",
 			kind:    "OperandRequest",
+			scope:   namespaceScope,
 		},
 	},
 	"ibm-helm-repo-operator": {
@@ -155,12 +177,14 @@ var deprecatedServicesMap = map[string][]*Resource{
 			version: "v1alpha1",
 			group:   "operator.ibm.com",
 			kind:    "HelmRepo",
+			scope:   namespaceScope,
 		},
 		{
 			name:    "helm-repo-request",
 			version: "v1alpha1",
 			group:   "operator.ibm.com",
 			kind:    "OperandRequest",
+			scope:   namespaceScope,
 		},
 	},
 }
@@ -169,21 +193,26 @@ var deprecatedServicesMap = map[string][]*Resource{
 func CleanUpDeprecatedServices(bs *bootstrap.Bootstrap) {
 	for {
 		for service, resourcesList := range deprecatedServicesMap {
+			getResourceFailed := false
 			for _, resource := range resourcesList {
 				operatorNs, err := util.GetOperatorNamespace()
 				if err != nil {
+					getResourceFailed = true
 					continue
 				}
 
-				if err := cleanup(bs, resource.name, operatorNs, resource.version, resource.group, resource.kind); err != nil {
+				if err := cleanup(bs, operatorNs, resource); err != nil {
+					getResourceFailed = true
 					continue
 				}
 			}
 
 			// delete sub & csv
-			if err := deleteSubscription(bs, service, MasterNamespace); err != nil {
-				klog.Errorf("Delete subscription failed: %v", err)
-				continue
+			if !getResourceFailed {
+				if err := deleteSubscription(bs, service, MasterNamespace); err != nil {
+					klog.Errorf("Delete subscription failed: %v", err)
+					continue
+				}
 			}
 		}
 
@@ -191,18 +220,20 @@ func CleanUpDeprecatedServices(bs *bootstrap.Bootstrap) {
 	}
 }
 
-func cleanup(bs *bootstrap.Bootstrap, name, operatorNs string, version, group, kind string) error {
-	resource := &unstructured.Unstructured{}
-	resource.SetGroupVersionKind(schema.GroupVersionKind{Group: group, Version: version, Kind: kind})
-	resource.SetName(name)
-	resource.SetNamespace(operatorNs)
-	if err := bs.Client.Delete(context.TODO(), resource); err != nil {
+func cleanup(bs *bootstrap.Bootstrap, operatorNs string, resource *Resource) error {
+	deprecated := &unstructured.Unstructured{}
+	deprecated.SetGroupVersionKind(schema.GroupVersionKind{Group: resource.group, Version: resource.version, Kind: resource.kind})
+	deprecated.SetName(resource.name)
+	if resource.scope == namespaceScope {
+		deprecated.SetNamespace(operatorNs)
+	}
+	if err := bs.Client.Delete(context.TODO(), deprecated); err != nil {
 		if errors.IsNotFound(err) {
 			return nil
 		}
 		return err
 	}
-	klog.Infof("Deleting resource %s/%s", operatorNs, name)
+	klog.Infof("Deleting resource %s/%s", operatorNs, resource.name)
 	return nil
 }
 
