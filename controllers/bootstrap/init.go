@@ -95,6 +95,7 @@ type CSData struct {
 	ICPPKOperator      string
 	ICPPICOperator     string
 	ICPOperator        string
+	IsOCP              bool
 }
 
 type CSOperator struct {
@@ -152,6 +153,7 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		ICPPKOperator:     constant.ICPPKOperator,
 		ICPPICOperator:    constant.ICPPICOperator,
 		ICPOperator:       constant.ICPOperator,
+		IsOCP:             isOCP,
 	}
 
 	bs = &Bootstrap{
