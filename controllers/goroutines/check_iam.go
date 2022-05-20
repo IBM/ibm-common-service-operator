@@ -48,7 +48,7 @@ func CheckIamStatus(bs *bootstrap.Bootstrap) {
 		}
 
 		var deploymentList []string
-		if bs.SaasEnable {
+		if bs.SaasEnable || bs.CSData.IsOCP {
 			deploymentList = IAMSaaSDeployNames
 		} else {
 			deploymentList = IAMDeployNames
