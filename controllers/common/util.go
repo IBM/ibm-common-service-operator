@@ -465,6 +465,11 @@ func GetCatalogSource(packageName, ns string, r client.Reader) (CatalogSourceNam
 	for _, pm := range pmList.Items {
 		if pm.Status.PackageName != packageName {
 			continue
+		} else if pm.Status.PackageName == "redhat-operators" || 
+		pm.Status.PackageName == "redhat-marketplace" || 
+		pm.Status.PackageName == "community-operators" || 
+		pm.Status.PackageName == "certified-operators" {
+			continue
 		}
 		packageManifestList = append(packageManifestList, pm)
 	}
