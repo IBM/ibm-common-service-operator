@@ -527,7 +527,11 @@ spec:
                 activeDeadlineSeconds: 600
                 backoffLimit: 5
                 template:
-                  metadata: null
+                  metadata:
+                    annotations:
+                      productID: 068a62892a1e4db39641342e592daa25
+                      productMetric: FREE
+                      productName: IBM Cloud Platform Common Services
                   spec:
                     affinity:
                       nodeAffinity:
