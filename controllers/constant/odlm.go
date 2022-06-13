@@ -90,11 +90,6 @@ spec:
     spec:
       operandBindInfo: {}
       operandRequest: {}
-  - name: ibm-apicatalog
-    spec:
-      apicatalogmanager: {}
-      operandBindInfo: {}
-      operandRequest: {}
   - name: cloud-native-postgresql
     resources:
       - apiVersion: batch/v1
@@ -405,7 +400,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
-  - channel: v2.0
+  - channel: v1.1
     name: ibm-db2u-operator
     namespace: {{ .MasterNs }}
     packageName: db2u-operator
@@ -415,12 +410,6 @@ spec:
     name: cloud-native-postgresql
     namespace: {{ .MasterNs }}
     packageName: cloud-native-postgresql
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-  - channel: {{ .Channel }}
-    name: ibm-apicatalog
-    namespace: {{ .MasterNs }}
-    packageName: ibm-apicatalog
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
   - channel: alpha
