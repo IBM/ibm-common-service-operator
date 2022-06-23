@@ -393,11 +393,11 @@ spec:
                       - name: OPERATOR_NAME
                         value: ibm-common-service-operator
                       - name: IBM_CS_WEBHOOK_IMAGE
-                        value: icr.io/cpopen/cpfs/ibm-cs-webhook:1.14.0
+                        value: icr.io/cpopen/cpfs/ibm-cs-webhook:1.14.1
                       - name: IBM_SECRETSHARE_OPERATOR_IMAGE
-                        value: icr.io/cpopen/cpfs/ibm-secretshare-operator:1.15.0
+                        value: icr.io/cpopen/cpfs/ibm-secretshare-operator:1.15.1
                       - name: IBM_ZEN_OPERATOR_IMAGE
-                        value: icr.io/cpopen/ibm-zen-operator:1.6.1
+                        value: icr.io/cpopen/ibm-zen-operator:1.6.2
                     image: icr.io/cpopen/common-service-operator:latest
                     imagePullPolicy: Always
                     livenessProbe:
@@ -475,9 +475,9 @@ spec:
   relatedImages:
     - image: icr.io/cpopen/common-service-operator:3.19.1
       name: COMMON_SERVICE_OPERATOR_IMAGE
-    - image: icr.io/cpopen/cpfs/ibm-cs-webhook:1.15.0
+    - image: icr.io/cpopen/cpfs/ibm-cs-webhook:1.15.1
       name: IBM_CS_WEBHOOK_IMAGE
-    - image: icr.io/cpopen/cpfs/ibm-secretshare-operator:1.16.0
+    - image: icr.io/cpopen/cpfs/ibm-secretshare-operator:1.16.1
       name: IBM_SECRETSHARE_OPERATOR_IMAGE
   replaces: ibm-common-service-operator.v3.19.0
   version: 3.19.1
