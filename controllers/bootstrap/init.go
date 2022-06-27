@@ -1395,27 +1395,27 @@ func (b *Bootstrap) updateApprovalMode() error {
 		if !errors.IsNotFound(err) {
 			klog.Errorf("Failed to update %s subscription: %v", constant.ICPOperator, err)
 			return err
-		} else {
-			klog.Infof("%s not installed, skipping", constant.ICPOperator)
 		}
+		klog.Infof("%s not installed, skipping", constant.ICPOperator)
+
 	}
 
 	if err = b.UpdateOpApproval(constant.ICPPICOperator); err != nil {
 		if !errors.IsNotFound(err) {
 			klog.Errorf("Failed to update %s subscription: %v", constant.ICPPICOperator, err)
 			return err
-		} else {
-			klog.Infof("%s not installed, skipping", constant.ICPPICOperator)
 		}
+		klog.Infof("%s not installed, skipping", constant.ICPPICOperator)
+
 	}
 
 	if err = b.UpdateOpApproval(constant.ICPPKOperator); err != nil {
 		if !errors.IsNotFound(err) {
 			klog.Errorf("Failed to update %s subscription: %v", constant.ICPPKOperator, err)
 			return err
-		} else {
-			klog.Infof("%s not installed, skipping", constant.ICPPKOperator)
 		}
+		klog.Infof("%s not installed, skipping", constant.ICPPKOperator)
+
 	}
 
 	return nil
