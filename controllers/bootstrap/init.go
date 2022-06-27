@@ -1316,10 +1316,12 @@ func (b *Bootstrap) GetObjs(objectTemplate string, data interface{}, alwaysUpdat
 // 	return ""
 // }
 
-func (b *Bootstrap) UpdateCsOpApproval() error {
+// update approval mode for the given operator
+// need this function because common service operator, ODLM and namespace operator are not in operandRegistry
+func (b *Bootstrap) UpdateOpApproval(operatorName string) error {
 	sub := &olmv1alpha1.Subscription{}
 	subKey := types.NamespacedName{
-		Name:      "ibm-common-service-operator",
+		Name:      operatorName,
 		Namespace: b.CSData.MasterNs,
 	}
 
@@ -1334,7 +1336,7 @@ func (b *Bootstrap) UpdateCsOpApproval() error {
 		podList := &corev1.PodList{}
 		opts := []client.ListOption{
 			client.InNamespace(b.CSData.MasterNs),
-			client.MatchingLabels(map[string]string{"name": "ibm-common-service-operator"}),
+			client.MatchingLabels(map[string]string{"name": operatorName}),
 		}
 		if err := b.Reader.List(ctx, podList, opts...); err != nil {
 			return err
@@ -1374,9 +1376,46 @@ func (b *Bootstrap) updateApprovalMode() error {
 		return err
 	}
 
-	if err = b.UpdateCsOpApproval(); err != nil {
+	if err = b.UpdateOpApproval("ibm-common-service-operator"); err != nil {
 		klog.Errorf("Failed to update common service operator subscription: %v", err)
 		return err
+	}
+
+	if err = b.UpdateOpApproval("operand-deployment-lifecycle-manager-app"); err != nil {
+		klog.Errorf("Failed to update operand-deployment-lifecycle-manager-app subscription: %v", err)
+		return err
+	}
+
+	if err = b.UpdateOpApproval("ibm-namespace-scope-operator"); err != nil {
+		klog.Errorf("Failed to update namespace-scope-operator subscription: %v", err)
+		return err
+	}
+
+	if err = b.UpdateOpApproval(constant.ICPOperator); err != nil {
+		if !errors.IsNotFound(err) {
+			klog.Errorf("Failed to update %s subscription: %v", constant.ICPOperator, err)
+			return err
+		} else {
+			klog.Infof("%s not installed, skipping", constant.ICPOperator)
+		}
+	}
+
+	if err = b.UpdateOpApproval(constant.ICPPICOperator); err != nil {
+		if !errors.IsNotFound(err) {
+			klog.Errorf("Failed to update %s subscription: %v", constant.ICPPICOperator, err)
+			return err
+		} else {
+			klog.Infof("%s not installed, skipping", constant.ICPPICOperator)
+		}
+	}
+
+	if err = b.UpdateOpApproval(constant.ICPPKOperator); err != nil {
+		if !errors.IsNotFound(err) {
+			klog.Errorf("Failed to update %s subscription: %v", constant.ICPPKOperator, err)
+			return err
+		} else {
+			klog.Infof("%s not installed, skipping", constant.ICPPKOperator)
+		}
 	}
 
 	return nil

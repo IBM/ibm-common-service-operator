@@ -214,7 +214,7 @@ func main() {
 			klog.Errorf("Failed to create common service operator subscription: %v", err)
 			os.Exit(1)
 		}
-		if err = bs.UpdateCsOpApproval(); err != nil {
+		if err = bs.UpdateOpApproval("ibm-common-service-operator"); err != nil {
 			klog.Errorf("Failed to update common service operator subscription: %v", err)
 			os.Exit(1)
 		}
