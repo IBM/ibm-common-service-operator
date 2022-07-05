@@ -1376,17 +1376,17 @@ func (b *Bootstrap) updateApprovalMode() error {
 		return err
 	}
 
-	if err = b.UpdateOpApproval("ibm-common-service-operator"); err != nil {
+	if err = b.UpdateOpApproval(constant.IBMCSPackage); err != nil {
 		klog.Errorf("Failed to update common service operator subscription: %v", err)
 		return err
 	}
 
-	if err = b.UpdateOpApproval("operand-deployment-lifecycle-manager-app"); err != nil {
+	if err = b.UpdateOpApproval(constant.IBMODLMSPackage); err != nil {
 		klog.Errorf("Failed to update operand-deployment-lifecycle-manager-app subscription: %v", err)
 		return err
 	}
 
-	if err = b.UpdateOpApproval("ibm-namespace-scope-operator"); err != nil {
+	if err = b.UpdateOpApproval(constant.IBMNSSPackage); err != nil {
 		klog.Errorf("Failed to update namespace-scope-operator subscription: %v", err)
 		return err
 	}
@@ -1396,7 +1396,7 @@ func (b *Bootstrap) updateApprovalMode() error {
 			klog.Errorf("Failed to update %s subscription: %v", constant.ICPOperator, err)
 			return err
 		}
-		klog.Infof("%s not installed, skipping", constant.ICPOperator)
+		klog.Infof("%s not installed, skipping updating approval strategy", constant.ICPOperator)
 
 	}
 
@@ -1405,7 +1405,7 @@ func (b *Bootstrap) updateApprovalMode() error {
 			klog.Errorf("Failed to update %s subscription: %v", constant.ICPPICOperator, err)
 			return err
 		}
-		klog.Infof("%s not installed, skipping", constant.ICPPICOperator)
+		klog.V(2).Infof("%s not installed, skipping", constant.ICPPICOperator)
 
 	}
 
@@ -1414,7 +1414,7 @@ func (b *Bootstrap) updateApprovalMode() error {
 			klog.Errorf("Failed to update %s subscription: %v", constant.ICPPKOperator, err)
 			return err
 		}
-		klog.Infof("%s not installed, skipping", constant.ICPPKOperator)
+		klog.V(2).Infof("%s not installed, skipping", constant.ICPPKOperator)
 
 	}
 
