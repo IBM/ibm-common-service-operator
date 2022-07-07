@@ -79,8 +79,8 @@ OPERATOR_IMAGE_NAME ?= common-service-operator
 # Current Operator bundle image name
 BUNDLE_IMAGE_NAME ?= dev-common-service-operator-bundle
 
-CHANNELS := v3
-DEFAULT_CHANNEL := v3
+CHANNELS := v3.20
+DEFAULT_CHANNEL := v3.20
 
 # Options for 'bundle-build'
 ifneq ($(origin CHANNELS), undefined)
