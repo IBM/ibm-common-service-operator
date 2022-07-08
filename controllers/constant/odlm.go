@@ -376,7 +376,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
-  - channel: {{ .Channel }}
+  - channel: v3
     name: ibm-events-operator
     namespace: {{ .MasterNs }}
     packageName: ibm-events-operator
@@ -424,7 +424,7 @@ spec:
     packageName: zen-cpp-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
-  - channel: {{ .Channel }}
+  - channel: v3
     name: ibm-bts-operator
     namespace: {{ .MasterNs }}
     packageName: ibm-bts-operator
@@ -639,7 +639,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
-  - channel: {{ .Channel }}
+  - channel: v3
     name: ibm-events-operator
     namespace: {{ .MasterNs }}
     packageName: ibm-events-operator
@@ -655,7 +655,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
-  - channel: {{ .Channel }}
+  - channel: v3
     name: ibm-bts-operator
     namespace: {{ .MasterNs }}
     packageName: ibm-bts-operator
