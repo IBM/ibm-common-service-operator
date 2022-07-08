@@ -244,7 +244,7 @@ bundle-manifests: clis
 
 generate-all: generate manifests ## Generate bundle manifests, metadata and package manifests
 	$(OPERATOR_SDK) generate kustomize manifests -q
-	- make bundle-manifests CHANNELS=v3 DEFAULT_CHANNEL=v3
+	- make bundle-manifests CHANNELS=v3.20 DEFAULT_CHANNEL=v3.20
 
 ##@ Test
 

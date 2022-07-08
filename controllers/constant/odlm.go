@@ -418,7 +418,7 @@ spec:
     packageName: ibm-user-data-services-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
-  - channel: {{ .Channel }}
+  - channel: v3
     name: ibm-zen-cpp-operator
     namespace: {{ .MasterNs }}
     packageName: zen-cpp-operator
