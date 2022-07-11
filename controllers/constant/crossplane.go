@@ -35,6 +35,19 @@ spec:
   source: {{ .CatalogSourceName }}
   sourceNamespace: {{ .CatalogSourceNs }}
 `
+const CrossSubscriptionMulti = `
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: {{ .ICPOperator }}
+  namespace: {{ .ControlNs }}
+spec:
+  channel: {{ .Channel }}
+  installPlanApproval: Automatic
+  name: {{ .ICPOperator }}
+  source: {{ .CatalogSourceName }}
+  sourceNamespace: {{ .CatalogSourceNs }}
+`
 
 const CrossConfiguration = `
 apiVersion: pkg.ibm.crossplane.io/v1
@@ -73,6 +86,20 @@ spec:
   sourceNamespace: {{ .CatalogSourceNs }}
 `
 
+const CrossKubernetesProviderSubscriptionMulti = `
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: {{ .ICPPKOperator}}
+  namespace: {{ .ControlNs }}
+spec:
+  channel: {{ .Channel }}
+  installPlanApproval: Automatic
+  name: {{ .ICPPKOperator }}
+  source: {{ .CatalogSourceName }}
+  sourceNamespace: {{ .CatalogSourceNs }}
+`
+
 const CrossKubernetesProviderConfig = `
 apiVersion: kubernetes.crossplane.io/v1alpha1
 kind: ProviderConfig
@@ -98,6 +125,19 @@ spec:
   source: {{ .CatalogSourceName }}
   sourceNamespace: {{ .CatalogSourceNs }}
 `
+const CrossIBMCloudProviderSubscriptionMulti = `
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: {{ .ICPPICOperator }}
+  namespace: {{ .ControlNs }}
+spec:
+  channel: {{ .Channel }}
+  installPlanApproval: Automatic
+  name: {{ .ICPPICOperator }}
+  source: {{ .CatalogSourceName }}
+  sourceNamespace: {{ .CatalogSourceNs }}
+`
 
 const CrossIBMCloudProviderConfig = `
 apiVersion: ibmcloud.crossplane.io/v1beta1
@@ -109,6 +149,21 @@ spec:
     source: Secret
     secretRef:
       namespace: {{ .MasterNs }}
+      name: provider-ibm-cloud-secret
+      key: credentials
+  region: us-south
+`
+
+const CrossIBMCloudProviderConfigMulti = `
+apiVersion: ibmcloud.crossplane.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: ibm-crossplane-provider-ibm-cloud
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: {{ .ControlNs }}
       name: provider-ibm-cloud-secret
       key: credentials
   region: us-south
