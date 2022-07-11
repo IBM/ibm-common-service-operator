@@ -67,7 +67,7 @@ const (
 	//IBMCSPackage is the package name of the ibm common service operator
 	IBMCSPackage = "ibm-common-service-operator"
 	//IBMODLMSPackage is the package name of the ODLM operator
-	IBMODLMSPackage = "operand-deployment-lifecycle-manager-app"
+	IBMODLMPackage = "operand-deployment-lifecycle-manager-app"
 	//IBMNSSPackage is the package name of the namespace scope operator
 	IBMNSSPackage = "ibm-namespace-scope-operator"
 	// NamespaceScopeConfigmapName is the name of ConfigMap which stores the NamespaceScope Info

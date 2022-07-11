@@ -152,6 +152,18 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(instance *apiv3.CommonServic
 			klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 			return ctrl.Result{}, err
 		}
+		// Update ApprovalMode for Crossplane operators
+		crossplane := false
+		for _, operatorName := range constant.CrossplaneOperators {
+			if operatorName == instance.Name {
+				crossplane = true
+			}
+		}
+		if crossplane {
+			if err := r.updateICPApprovalMode(); err != nil {
+				klog.Errorf("Failed to update approval mode for %s in namespace %s: %v", instance.Name, instance.Namespace, err)
+			}
+		}
 		// Generate Issuer and Certificate CR
 		if err := r.Bootstrap.DeployCertManagerCR(); err != nil {
 			klog.Errorf("Failed to deploy cert manager CRs: %v", err)
@@ -238,6 +250,18 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(instance *apiv3.CommonServi
 			}
 			klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 			return ctrl.Result{}, err
+		}
+		// Update ApprovalMode for Crossplane operators
+		crossplane := false
+		for _, operatorName := range constant.CrossplaneOperators {
+			if operatorName == instance.Name {
+				crossplane = true
+			}
+		}
+		if crossplane {
+			if err := r.updateICPApprovalMode(); err != nil {
+				klog.Errorf("Failed to update approval mode for %s in namespace %s: %v", instance.Name, instance.Namespace, err)
+			}
 		}
 		// Generate Issuer and Certificate CR
 		if err := r.Bootstrap.DeployCertManagerCR(); err != nil {
@@ -360,4 +384,34 @@ func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					return true
 				},
 			})).Complete(r)
+}
+
+func (r *CommonServiceReconciler) updateICPApprovalMode() error {
+	if err := r.Bootstrap.UpdateOpApproval(constant.ICPOperator); err != nil {
+		if !errors.IsNotFound(err) {
+			klog.Errorf("Failed to update %s subscription: %v", constant.ICPOperator, err)
+			return err
+		}
+		klog.V(2).Infof("%s not installed, skipping updating approval strategy", constant.ICPOperator)
+
+	}
+
+	if err := r.Bootstrap.UpdateOpApproval(constant.ICPPICOperator); err != nil {
+		if !errors.IsNotFound(err) {
+			klog.Errorf("Failed to update %s subscription: %v", constant.ICPPICOperator, err)
+			return err
+		}
+		klog.V(2).Infof("%s not installed, skipping updating approval strategy", constant.ICPPICOperator)
+
+	}
+
+	if err := r.Bootstrap.UpdateOpApproval(constant.ICPPKOperator); err != nil {
+		if !errors.IsNotFound(err) {
+			klog.Errorf("Failed to update %s subscription: %v", constant.ICPPKOperator, err)
+			return err
+		}
+		klog.V(2).Infof("%s not installed, skipping updating approval strategy", constant.ICPPKOperator)
+
+	}
+	return nil
 }
