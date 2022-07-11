@@ -1065,6 +1065,9 @@ func (b *Bootstrap) CreateNsScopeConfigmap() error {
 
 func (b *Bootstrap) createCrossplaneSubscription() error {
 	resourceName := constant.CrossSubscription
+	if b.MultiInstancesEnable {
+		resourceName = constant.CrossSubscriptionMulti
+	}
 	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
 		return err
 	}
@@ -1082,6 +1085,9 @@ func (b *Bootstrap) createCrossplaneConfiguration() error {
 
 func (b *Bootstrap) createCrossplaneKubernetesProviderSubscription() error {
 	resourceName := constant.CrossKubernetesProviderSubscription
+	if b.MultiInstancesEnable {
+		resourceName = constant.CrossKubernetesProviderSubscriptionMulti
+	}
 	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
 		return err
 	}
@@ -1098,6 +1104,10 @@ func (b *Bootstrap) createCrossplaneKubernetesProviderConfig() error {
 
 func (b *Bootstrap) createCrossplaneIBMCloudProviderSubscription() error {
 	resourceName := constant.CrossIBMCloudProviderSubscription
+	if b.MultiInstancesEnable {
+		resourceName = constant.CrossIBMCloudProviderSubscriptionMulti
+	}
+
 	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
 		return err
 	}
@@ -1106,6 +1116,9 @@ func (b *Bootstrap) createCrossplaneIBMCloudProviderSubscription() error {
 
 func (b *Bootstrap) createCrossplaneIBMCloudProviderConfig() error {
 	resourceName := constant.CrossIBMCloudProviderConfig
+	if b.MultiInstancesEnable {
+		resourceName = constant.CrossIBMCloudProviderConfigMulti
+	}
 	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
 		return err
 	}
