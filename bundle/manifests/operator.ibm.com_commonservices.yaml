@@ -56,6 +56,7 @@ spec:
                         type: boolean
                     type: object
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               installPlanApproval:
                 description: Approval is the user approval policy for an InstallPlan.
                   It must be one of "Automatic" or "Manual".
