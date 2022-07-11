@@ -1633,7 +1633,6 @@ spec:
                   type: object
                 type: array
             type: object
-            x-kubernetes-preserve-unknown-fields: true
         type: object
     served: true
     storage: true

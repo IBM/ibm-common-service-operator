@@ -231,7 +231,6 @@ spec:
                   type: object
                 type: array
             type: object
-            x-kubernetes-preserve-unknown-fields: true
           status:
             description: SecretShareStatus defines the observed status of SecretShare
             properties:
