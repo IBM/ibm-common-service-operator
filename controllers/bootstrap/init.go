@@ -195,31 +195,41 @@ func (b *Bootstrap) CrossplaneOperatorProviderOperator(instance *apiv3.CommonSer
 			bedrockshim = instance.Spec.Features.Bedrockshim.Enabled
 		}
 	}
-
+	var updateToLaterVersion bool
+	var err error
 	if bedrockshim {
 		b.CSData.CrossplaneProvider = "odlm"
 
 		if b.SaasEnable {
 			b.CSData.CrossplaneProvider = "ibmcloud"
 		}
-
-		if err := b.installCrossplaneOperator(); err != nil {
-			return err
-		}
-
-		switch b.CSData.CrossplaneProvider {
-		case "odlm":
-			if err := b.installKubernetesProvider(); err != nil {
+		if b.MultiInstancesEnable {
+			resourceName := constant.CrossSubscription
+			updateToLaterVersion, err = b.CompareChannel(resourceName)
+			if err != nil{
 				return err
 			}
-		case "ibmcloud":
-			if err := b.installIBMCloudProvider(); err != nil {
+		} else{
+			updateToLaterVersion = true
+		}
+		if updateToLaterVersion{
+			if err := b.installCrossplaneOperator(); err != nil {
 				return err
 			}
+	
+			switch b.CSData.CrossplaneProvider {
+			case "odlm":
+				if err := b.installKubernetesProvider(); err != nil {
+					return err
+				}
+			case "ibmcloud":
+				if err := b.installIBMCloudProvider(); err != nil {
+					return err
+				}
+			}
 		}
-
 	} else {
-		if err := b.DeleteCrossplaneAndProviderSubscription(b.CSData.MasterNs); err != nil {
+		if err := b.DeleteCrossplaneAndProviderSubscription(b.CSData.ControlNs); err != nil {
 			return err
 		}
 	}
@@ -1063,15 +1073,36 @@ func (b *Bootstrap) CreateNsScopeConfigmap() error {
 	return nil
 }
 
+func (b *Bootstrap) CompareChannel(objectTemplate string, alwaysUpdate ...bool) (bool, error){
+	objects, err := b.GetObjs(objectTemplate, b.CSData)
+	if err != nil {
+		return false, err
+	}
+	
+	obj := objects[0]
+
+	_, err = b.GetObject(obj)
+		if errors.IsNotFound(err) {
+			klog.Infof("Creating resource with name: %s, namespace: %s\n", obj.GetName(), obj.GetNamespace())
+			return true, err //TODO may need to return something here
+		} else if err != nil {
+			return true, err
+		}
+	sub, err := b.GetSubscription(ctx, obj.GetName(), b.CSData.ControlNs) //doesn't actually return the subscription, returns an unstructured.Unstructured object
+	if err != nil {
+		klog.Errorf("Failed to get subscription %s/%s", b.CSData.ControlNs, obj.GetName())
+		return true, err
+	}
+	subVersion := fmt.Sprintf("%v",sub.Object["spec.channel"])
+	updateToLaterVersion, convertErr := util.CompareVersion(b.CSData.Channel, subVersion)
+	return updateToLaterVersion, convertErr
+}
+
 func (b *Bootstrap) createCrossplaneSubscription() error {
 	resourceName := constant.CrossSubscription
-	if b.MultiInstancesEnable {
-		resourceName = constant.CrossSubscriptionMulti
-	}
 	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -1085,9 +1116,6 @@ func (b *Bootstrap) createCrossplaneConfiguration() error {
 
 func (b *Bootstrap) createCrossplaneKubernetesProviderSubscription() error {
 	resourceName := constant.CrossKubernetesProviderSubscription
-	if b.MultiInstancesEnable {
-		resourceName = constant.CrossKubernetesProviderSubscriptionMulti
-	}
 	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
 		return err
 	}
@@ -1104,9 +1132,6 @@ func (b *Bootstrap) createCrossplaneKubernetesProviderConfig() error {
 
 func (b *Bootstrap) createCrossplaneIBMCloudProviderSubscription() error {
 	resourceName := constant.CrossIBMCloudProviderSubscription
-	if b.MultiInstancesEnable {
-		resourceName = constant.CrossIBMCloudProviderSubscriptionMulti
-	}
 
 	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
 		return err
@@ -1116,9 +1141,6 @@ func (b *Bootstrap) createCrossplaneIBMCloudProviderSubscription() error {
 
 func (b *Bootstrap) createCrossplaneIBMCloudProviderConfig() error {
 	resourceName := constant.CrossIBMCloudProviderConfig
-	if b.MultiInstancesEnable {
-		resourceName = constant.CrossIBMCloudProviderConfigMulti
-	}
 	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
 		return err
 	}

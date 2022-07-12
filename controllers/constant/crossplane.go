@@ -27,19 +27,6 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
   name: {{ .ICPOperator }}
-  namespace: {{ .MasterNs }}
-spec:
-  channel: {{ .Channel }}
-  installPlanApproval: Automatic
-  name: {{ .ICPOperator }}
-  source: {{ .CatalogSourceName }}
-  sourceNamespace: {{ .CatalogSourceNs }}
-`
-const CrossSubscriptionMulti = `
-apiVersion: operators.coreos.com/v1alpha1
-kind: Subscription
-metadata:
-  name: {{ .ICPOperator }}
   namespace: {{ .ControlNs }}
 spec:
   channel: {{ .Channel }}
@@ -77,20 +64,6 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
   name: {{ .ICPPKOperator}}
-  namespace: {{ .MasterNs }}
-spec:
-  channel: {{ .Channel }}
-  installPlanApproval: Automatic
-  name: {{ .ICPPKOperator }}
-  source: {{ .CatalogSourceName }}
-  sourceNamespace: {{ .CatalogSourceNs }}
-`
-
-const CrossKubernetesProviderSubscriptionMulti = `
-apiVersion: operators.coreos.com/v1alpha1
-kind: Subscription
-metadata:
-  name: {{ .ICPPKOperator}}
   namespace: {{ .ControlNs }}
 spec:
   channel: {{ .Channel }}
@@ -117,19 +90,6 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
   name: {{ .ICPPICOperator }}
-  namespace: {{ .MasterNs }}
-spec:
-  channel: {{ .Channel }}
-  installPlanApproval: Automatic
-  name: {{ .ICPPICOperator }}
-  source: {{ .CatalogSourceName }}
-  sourceNamespace: {{ .CatalogSourceNs }}
-`
-const CrossIBMCloudProviderSubscriptionMulti = `
-apiVersion: operators.coreos.com/v1alpha1
-kind: Subscription
-metadata:
-  name: {{ .ICPPICOperator }}
   namespace: {{ .ControlNs }}
 spec:
   channel: {{ .Channel }}
@@ -140,21 +100,6 @@ spec:
 `
 
 const CrossIBMCloudProviderConfig = `
-apiVersion: ibmcloud.crossplane.io/v1beta1
-kind: ProviderConfig
-metadata:
-  name: ibm-crossplane-provider-ibm-cloud
-spec:
-  credentials:
-    source: Secret
-    secretRef:
-      namespace: {{ .MasterNs }}
-      name: provider-ibm-cloud-secret
-      key: credentials
-  region: us-south
-`
-
-const CrossIBMCloudProviderConfigMulti = `
 apiVersion: ibmcloud.crossplane.io/v1beta1
 kind: ProviderConfig
 metadata:
