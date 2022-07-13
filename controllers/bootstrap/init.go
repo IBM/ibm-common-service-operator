@@ -218,6 +218,14 @@ func (b *Bootstrap) CrossplaneOperatorProviderOperator(instance *apiv3.CommonSer
 			}
 		}
 
+		klog.Info("Updating crossplane operators Approvalmode")
+		installPlanApproval := instance.Spec.InstallPlanApproval
+		if installPlanApproval != "" || b.CSData.ApprovalMode == string(olmv1alpha1.ApprovalManual) {
+			if err := b.updateICPApprovalMode(); err != nil {
+				klog.Errorf("Failed to update approval mode for %s in namespace %s: %v", instance.Name, instance.Namespace, err)
+			}
+		}
+
 	} else {
 		if err := b.DeleteCrossplaneAndProviderSubscription(b.CSData.MasterNs); err != nil {
 			return err
@@ -1341,6 +1349,7 @@ func (b *Bootstrap) UpdateOpApproval(operatorName string) error {
 		if err := b.Reader.List(ctx, podList, opts...); err != nil {
 			return err
 		}
+		// may need logic check, we only need to restart the pod of cs operator
 		for _, pod := range podList.Items {
 			if err := b.Client.Delete(ctx, &pod); err != nil {
 				return err
@@ -1348,6 +1357,36 @@ func (b *Bootstrap) UpdateOpApproval(operatorName string) error {
 		}
 	}
 
+	return nil
+}
+
+func (b *Bootstrap) updateICPApprovalMode() error {
+	if err := b.UpdateOpApproval(constant.ICPOperator); err != nil {
+		if !errors.IsNotFound(err) {
+			klog.Errorf("Failed to update %s subscription: %v", constant.ICPOperator, err)
+			return err
+		}
+		klog.V(2).Infof("%s not installed, skipping updating approval strategy", constant.ICPOperator)
+
+	}
+
+	if err := b.UpdateOpApproval(constant.ICPPICOperator); err != nil {
+		if !errors.IsNotFound(err) {
+			klog.Errorf("Failed to update %s subscription: %v", constant.ICPPICOperator, err)
+			return err
+		}
+		klog.V(2).Infof("%s not installed, skipping updating approval strategy", constant.ICPPICOperator)
+
+	}
+
+	if err := b.UpdateOpApproval(constant.ICPPKOperator); err != nil {
+		if !errors.IsNotFound(err) {
+			klog.Errorf("Failed to update %s subscription: %v", constant.ICPPKOperator, err)
+			return err
+		}
+		klog.V(2).Infof("%s not installed, skipping updating approval strategy", constant.ICPPKOperator)
+
+	}
 	return nil
 }
 
