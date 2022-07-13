@@ -22,8 +22,6 @@ const (
 	ICPOperator    = "ibm-crossplane-operator-app"
 )
 
-var CrossplaneOperators = []string{"ibm-crossplane-provider-kubernetes-operator-app", "ibm-crossplane-provider-ibm-cloud-operator-app", "ibm-crossplane-operator-app"}
-
 const CrossSubscription = `
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription

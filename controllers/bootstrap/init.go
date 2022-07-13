@@ -218,7 +218,6 @@ func (b *Bootstrap) CrossplaneOperatorProviderOperator(instance *apiv3.CommonSer
 			}
 		}
 
-		klog.Info("Updating crossplane operators Approvalmode")
 		installPlanApproval := instance.Spec.InstallPlanApproval
 		if installPlanApproval != "" || b.CSData.ApprovalMode == string(olmv1alpha1.ApprovalManual) {
 			if err := b.updateICPApprovalMode(); err != nil {
@@ -1361,6 +1360,7 @@ func (b *Bootstrap) UpdateOpApproval(operatorName string) error {
 }
 
 func (b *Bootstrap) updateICPApprovalMode() error {
+	klog.Info("Updating crossplane operators Approvalmode")
 	if err := b.UpdateOpApproval(constant.ICPOperator); err != nil {
 		if !errors.IsNotFound(err) {
 			klog.Errorf("Failed to update %s subscription: %v", constant.ICPOperator, err)
