@@ -802,7 +802,7 @@ func (b *Bootstrap) ListSubscriptions(ctx context.Context, namespace string, lis
 
 // GetOperandRegistry returns the OperandRegistry instance of "name" from "namespace" namespace
 func (b *Bootstrap) GetOperandRegistry(ctx context.Context, name, namespace string) *odlm.OperandRegistry {
-	klog.Infof("Fetch OperandRegistry: %v/%v", namespace, name)
+	klog.V(2).Infof("Fetch OperandRegistry: %v/%v", namespace, name)
 	opreg := &odlm.OperandRegistry{}
 	opregKey := types.NamespacedName{
 		Name:      name,
@@ -1212,7 +1212,7 @@ func (b *Bootstrap) waitOperatorReady(name, namespace string) error {
 			if csv.Status.Reason != olmv1alpha1.CSVReasonInstallSuccessful {
 				return false, nil
 			}
-			klog.Infof("Cluster Service Version %s/%s is ready", csv.Namespace, csv.Name)
+			klog.V(2).Infof("Cluster Service Version %s/%s is ready", csv.Namespace, csv.Name)
 			return true, nil
 		}
 		return false, nil
