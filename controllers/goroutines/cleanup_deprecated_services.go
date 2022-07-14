@@ -222,7 +222,6 @@ func CleanUpDeprecatedServices(bs *bootstrap.Bootstrap) {
 				klog.Info("Skipped cleaning deprecated services, wait for latest OperandRegistry common-service ready, retry in 2 minutes.")
 			}
 		}
-		
 		time.Sleep(2 * time.Minute)
 	}
 }
