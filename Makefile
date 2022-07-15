@@ -242,7 +242,7 @@ bundle-manifests: clis
 	$(YQ) eval -i '.metadata.annotations."olm.skipRange" = ">=3.3.0 <${RELEASE_VERSION}"' ${CSV_PATH}
 	$(YQ) eval -i '.spec.replaces = "ibm-common-service-operator.v$(PREVIOUS_VERSION)"' ${CSV_PATH}
 
-generate-all: generate manifests ## Generate bundle manifests, metadata and package manifests
+generate-all: yq kustomize operator-sdk generate manifests ## Generate bundle manifests, metadata and package manifests
 	$(OPERATOR_SDK) generate kustomize manifests -q
 	- make bundle-manifests CHANNELS=v3.20 DEFAULT_CHANNEL=v3.20
 

@@ -28,7 +28,7 @@ metadata:
     olm.skipRange: ">=3.3.0 <3.20.0"
     operatorChannel: v3.20
     operatorVersion: 3.20.0
-    operators.operatorframework.io/builder: operator-sdk-v1.16.0+git
+    operators.operatorframework.io/builder: operator-sdk-v1.7.1+git
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/IBM/ibm-common-service-operator
     support: IBM
@@ -331,6 +331,18 @@ spec:
               resources:
                 - podpresets
                 - podpresets/status
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
+            - apiGroups:
+                - operator.ibm.com
+              resources:
+                - namespacescopes
               verbs:
                 - create
                 - delete

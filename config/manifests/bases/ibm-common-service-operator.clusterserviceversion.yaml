@@ -37,9 +37,9 @@ spec:
         displayName: Accept
         path: license.accept
         value:
-          - false
+        - false
         x-descriptors:
-          - urn:alm:descriptor:com.tectonic.ui:checkbox
+        - urn:alm:descriptor:com.tectonic.ui:checkbox
       - description: The size of deployment profile for IBM Cloud Pak foundational
           services
         displayName: Size
