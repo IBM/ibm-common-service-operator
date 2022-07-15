@@ -192,30 +192,36 @@ var deprecatedServicesMap = map[string][]*Resource{
 // CleanUpDeprecatedServices will clean up deprecated services' CRD, operandBindInfo, operandRequest, subscription, CSV
 func CleanUpDeprecatedServices(bs *bootstrap.Bootstrap) {
 	for {
-		for service, resourcesList := range deprecatedServicesMap {
-			getResourceFailed := false
-			for _, resource := range resourcesList {
-				operatorNs, err := util.GetOperatorNamespace()
-				if err != nil {
-					getResourceFailed = true
-					continue
-				}
+		opreg := bs.GetOperandRegistry(ctx, "common-service", bs.CSData.MasterNs)
+		if opreg != nil {
+			if opreg.GetAnnotations() != nil && opreg.GetAnnotations()["version"] == bs.CSData.Version {
+				for service, resourcesList := range deprecatedServicesMap {
+					getResourceFailed := false
+					for _, resource := range resourcesList {
+						operatorNs, err := util.GetOperatorNamespace()
+						if err != nil {
+							getResourceFailed = true
+							continue
+						}
 
-				if err := cleanup(bs, operatorNs, resource); err != nil {
-					getResourceFailed = true
-					continue
-				}
-			}
+						if err := cleanup(bs, operatorNs, resource); err != nil {
+							getResourceFailed = true
+							continue
+						}
+					}
 
-			// delete sub & csv
-			if !getResourceFailed {
-				if err := deleteSubscription(bs, service, MasterNamespace); err != nil {
-					klog.Errorf("Delete subscription failed: %v", err)
-					continue
+					// delete sub & csv
+					if !getResourceFailed {
+						if err := deleteSubscription(bs, service, MasterNamespace); err != nil {
+							klog.Errorf("Delete subscription failed: %v", err)
+							continue
+						}
+					}
 				}
+			} else {
+				klog.Info("Skipped cleaning deprecated services, wait for latest OperandRegistry common-service ready, retry in 2 minutes.")
 			}
 		}
-
 		time.Sleep(2 * time.Minute)
 	}
 }
