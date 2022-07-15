@@ -195,38 +195,48 @@ func (b *Bootstrap) CrossplaneOperatorProviderOperator(instance *apiv3.CommonSer
 			bedrockshim = instance.Spec.Features.Bedrockshim.Enabled
 		}
 	}
-
+	var updateToLaterVersion bool
+	var err error
 	if bedrockshim {
 		b.CSData.CrossplaneProvider = "odlm"
 
 		if b.SaasEnable {
 			b.CSData.CrossplaneProvider = "ibmcloud"
 		}
-
-		if err := b.installCrossplaneOperator(); err != nil {
-			return err
-		}
-
-		switch b.CSData.CrossplaneProvider {
-		case "odlm":
-			if err := b.installKubernetesProvider(); err != nil {
+		if b.MultiInstancesEnable {
+			resourceName := constant.CrossSubscription
+			updateToLaterVersion, err = b.CompareChannel(resourceName)
+			if err != nil {
 				return err
 			}
-		case "ibmcloud":
-			if err := b.installIBMCloudProvider(); err != nil {
+		} else {
+			updateToLaterVersion = true
+		}
+		if updateToLaterVersion {
+			if err := b.installCrossplaneOperator(); err != nil {
 				return err
 			}
-		}
-
-		installPlanApproval := instance.Spec.InstallPlanApproval
-		if installPlanApproval != "" || b.CSData.ApprovalMode == string(olmv1alpha1.ApprovalManual) {
-			if err := b.updateICPApprovalMode(); err != nil {
-				klog.Errorf("Failed to update approval mode for %s in namespace %s: %v", instance.Name, instance.Namespace, err)
+			switch b.CSData.CrossplaneProvider {
+			case "odlm":
+				if err := b.installKubernetesProvider(); err != nil {
+					return err
+				}
+			case "ibmcloud":
+				if err := b.installIBMCloudProvider(); err != nil {
+					return err
+				}
 			}
+			installPlanApproval := instance.Spec.InstallPlanApproval
+			if installPlanApproval != "" || b.CSData.ApprovalMode == string(olmv1alpha1.ApprovalManual) {
+				if err := b.updateICPApprovalMode(); err != nil {
+					klog.Errorf("Failed to update approval mode for %s in namespace %s: %v", instance.Name, instance.Namespace, err)
+				}
+			}
+		} else {
+			klog.Infof("Crossplane operator already exists at a later version in control namespace. Skipping.")
 		}
-
 	} else {
-		if err := b.DeleteCrossplaneAndProviderSubscription(b.CSData.MasterNs); err != nil {
+		if err := b.DeleteCrossplaneAndProviderSubscription(b.CSData.ControlNs); err != nil {
 			return err
 		}
 	}
@@ -1070,15 +1080,46 @@ func (b *Bootstrap) CreateNsScopeConfigmap() error {
 	return nil
 }
 
+//CompareChannel function sets up the CompareVersion function for When multi instance is enabled.
+//When multi instance is enabled, the crossplane operator will be a singleton service deployed in the control ns.
+//We do not want to overwrite a later version of crossplane operator with an earlier version, this is what CompareChannel checks for.
+func (b *Bootstrap) CompareChannel(objectTemplate string, alwaysUpdate ...bool) (bool, error) {
+	objects, err := b.GetObjs(objectTemplate, b.CSData)
+	if err != nil {
+		return false, err
+	}
+
+	obj := objects[0]
+
+	_, err = b.GetObject(obj)
+	if errors.IsNotFound(err) {
+		klog.Infof("Creating resource with name: %s, namespace: %s\n", obj.GetName(), obj.GetNamespace())
+		return true, nil
+	} else if err != nil {
+		return true, err
+	}
+	sub, err := b.GetSubscription(ctx, obj.GetName(), b.CSData.ControlNs) //doesn't actually return the subscription, returns an unstructured.Unstructured object
+	if errors.IsNotFound(err) {
+		klog.Errorf("Failed to get an existing subscription for %s/%s. Creating new subscription.", b.CSData.ControlNs, obj.GetName())
+		return true, nil
+	} else if err != nil {
+		klog.Errorf("Failed to get an existing subscription for %s/%s because %s", b.CSData.ControlNs, obj.GetName(), err)
+		return true, err
+	}
+	subVersion := fmt.Sprintf("%v", sub.Object["spec"].(map[string]interface{})["channel"])
+	subVersionStr := subVersion[1:]
+	channelStr := b.CSData.Channel[1:]
+	updateToLaterVersion, convertErr := util.CompareVersion(channelStr, subVersionStr)
+	//Return of "true" will mean that the operator will be installed as normal/updated to the new version
+	//Return of "false" means that the existing crossplane operator is at a later version than the cs operator is attempting to install so we leave the existing untouched.
+	return updateToLaterVersion, convertErr
+}
+
 func (b *Bootstrap) createCrossplaneSubscription() error {
 	resourceName := constant.CrossSubscription
-	if b.MultiInstancesEnable {
-		resourceName = constant.CrossSubscriptionMulti
-	}
 	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -1092,9 +1133,6 @@ func (b *Bootstrap) createCrossplaneConfiguration() error {
 
 func (b *Bootstrap) createCrossplaneKubernetesProviderSubscription() error {
 	resourceName := constant.CrossKubernetesProviderSubscription
-	if b.MultiInstancesEnable {
-		resourceName = constant.CrossKubernetesProviderSubscriptionMulti
-	}
 	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
 		return err
 	}
@@ -1111,9 +1149,6 @@ func (b *Bootstrap) createCrossplaneKubernetesProviderConfig() error {
 
 func (b *Bootstrap) createCrossplaneIBMCloudProviderSubscription() error {
 	resourceName := constant.CrossIBMCloudProviderSubscription
-	if b.MultiInstancesEnable {
-		resourceName = constant.CrossIBMCloudProviderSubscriptionMulti
-	}
 
 	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
 		return err
@@ -1123,9 +1158,6 @@ func (b *Bootstrap) createCrossplaneIBMCloudProviderSubscription() error {
 
 func (b *Bootstrap) createCrossplaneIBMCloudProviderConfig() error {
 	resourceName := constant.CrossIBMCloudProviderConfig
-	if b.MultiInstancesEnable {
-		resourceName = constant.CrossIBMCloudProviderConfigMulti
-	}
 	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
 		return err
 	}
