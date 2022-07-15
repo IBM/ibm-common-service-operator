@@ -1107,9 +1107,9 @@ func (b *Bootstrap) CreateNsScopeConfigmap() error {
 	}
 	if b.MultiInstancesEnable {
 		cmRes = constant.NamespaceScopeConfigMapMulti
-	}
-	if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cmRes, placeholder, b.CSData.ControlNs))); err != nil {
-		return err
+		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cmRes, placeholder, b.CSData.ControlNs))); err != nil {
+			return err
+		}
 	}
 	return nil
 }
