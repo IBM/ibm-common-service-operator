@@ -226,12 +226,12 @@ func (b *Bootstrap) CrossplaneOperatorProviderOperator(instance *apiv3.CommonSer
 					return err
 				}
 			}
-      installPlanApproval := instance.Spec.InstallPlanApproval
-      if installPlanApproval != "" || b.CSData.ApprovalMode == string(olmv1alpha1.ApprovalManual) {
-        if err := b.updateICPApprovalMode(); err != nil {
-          klog.Errorf("Failed to update approval mode for %s in namespace %s: %v", instance.Name, instance.Namespace, err)
-        }
-      }
+			installPlanApproval := instance.Spec.InstallPlanApproval
+			if installPlanApproval != "" || b.CSData.ApprovalMode == string(olmv1alpha1.ApprovalManual) {
+				if err := b.updateICPApprovalMode(); err != nil {
+					klog.Errorf("Failed to update approval mode for %s in namespace %s: %v", instance.Name, instance.Namespace, err)
+				}
+			}
 		} else {
 			klog.Infof("Crossplane operator already exists at a later version in control namespace. Skipping.")
 		}
