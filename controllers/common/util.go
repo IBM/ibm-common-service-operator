@@ -374,6 +374,54 @@ func UpdateNSList(r client.Reader, c client.Client, cm *corev1.ConfigMap, nssKey
 	return nil
 }
 
+// UpdateAllNSList updates all adopter and CS namespaces into NSS CR
+func UpdateAllNSList(r client.Reader, c client.Client, cm *corev1.ConfigMap, nssKey, nssNs string) error {
+	nsScope := &nssv1.NamespaceScope{}
+	nsScopeKey := types.NamespacedName{Name: nssKey, Namespace: nssNs}
+	if err := r.Get(context.TODO(), nsScopeKey, nsScope); err != nil {
+		return err
+	}
+	var nsMems []string
+	nsSet := make(map[string]interface{})
+
+	for _, ns := range nsScope.Spec.NamespaceMembers {
+		nsSet[ns] = struct{}{}
+	}
+
+	commonServiceMaps, ok := cm.Data["common-service-maps.yaml"]
+	if !ok {
+		return fmt.Errorf("there is no common-service-maps.yaml in configmap kube-public/common-service-maps")
+	}
+
+	var cmData CsMaps
+	if err := utilyaml.Unmarshal([]byte(commonServiceMaps), &cmData); err != nil {
+		return fmt.Errorf("failed to fetch data of configmap common-service-maps: %v", err)
+	}
+
+	if len(cmData.ControlNs) > 0 {
+		nsSet[cmData.ControlNs] = struct{}{}
+	}
+
+	for _, nsMapping := range cmData.NsMappingList {
+		nsSet[nsMapping.CsNs] = struct{}{}
+		for _, ns := range nsMapping.RequestNs {
+			nsSet[ns] = struct{}{}
+		}
+	}
+
+	for ns := range nsSet {
+		nsMems = append(nsMems, ns)
+	}
+
+	nsScope.Spec.NamespaceMembers = nsMems
+
+	if err := c.Update(context.TODO(), nsScope); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // CheckSaas checks whether it is a SaaS deployment for Common Services
 func CheckSaas(r client.Reader) (enable bool) {
 	cmName := constant.SaasConfigMap
