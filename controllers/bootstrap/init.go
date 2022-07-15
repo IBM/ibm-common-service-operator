@@ -206,17 +206,17 @@ func (b *Bootstrap) CrossplaneOperatorProviderOperator(instance *apiv3.CommonSer
 		if b.MultiInstancesEnable {
 			resourceName := constant.CrossSubscription
 			updateToLaterVersion, err = b.CompareChannel(resourceName)
-			if err != nil{
+			if err != nil {
 				return err
 			}
-		} else{
+		} else {
 			updateToLaterVersion = true
 		}
-		if updateToLaterVersion{
+		if updateToLaterVersion {
 			if err := b.installCrossplaneOperator(); err != nil {
 				return err
 			}
-	
+
 			switch b.CSData.CrossplaneProvider {
 			case "odlm":
 				if err := b.installKubernetesProvider(); err != nil {
@@ -1078,35 +1078,35 @@ func (b *Bootstrap) CreateNsScopeConfigmap() error {
 //CompareChannel function sets up the CompareVersion function for When multi instance is enabled.
 //When multi instance is enabled, the crossplane operator will be a singleton service deployed in the control ns.
 //We do not want to overwrite a later version of crossplane operator with an earlier version, this is what CompareChannel checks for.
-func (b *Bootstrap) CompareChannel(objectTemplate string, alwaysUpdate ...bool) (bool, error){
+func (b *Bootstrap) CompareChannel(objectTemplate string, alwaysUpdate ...bool) (bool, error) {
 	objects, err := b.GetObjs(objectTemplate, b.CSData)
 	if err != nil {
 		return false, err
 	}
-	
+
 	obj := objects[0]
 
 	_, err = b.GetObject(obj)
-		if errors.IsNotFound(err) {
-			klog.Infof("Creating resource with name: %s, namespace: %s\n", obj.GetName(), obj.GetNamespace())
-			return true, nil
-		} else if err != nil {
-			return true, err
-		}
+	if errors.IsNotFound(err) {
+		klog.Infof("Creating resource with name: %s, namespace: %s\n", obj.GetName(), obj.GetNamespace())
+		return true, nil
+	} else if err != nil {
+		return true, err
+	}
 	sub, err := b.GetSubscription(ctx, obj.GetName(), b.CSData.ControlNs) //doesn't actually return the subscription, returns an unstructured.Unstructured object
 	if errors.IsNotFound(err) {
 		klog.Errorf("Failed to get an existing subscription for %s/%s. Creating new subscription.", b.CSData.ControlNs, obj.GetName())
 		return true, nil
-	} else if err != nil{
+	} else if err != nil {
 		klog.Errorf("Failed to get an existing subscription for %s/%s because %s", b.CSData.ControlNs, obj.GetName(), err)
 		return true, err
 	}
-	subVersion := fmt.Sprintf("%v",sub.Object["spec"].(map[string]interface{})["channel"])
+	subVersion := fmt.Sprintf("%v", sub.Object["spec"].(map[string]interface{})["channel"])
 	subVersionStr := subVersion[1:]
 	channelStr := b.CSData.Channel[1:]
 	updateToLaterVersion, convertErr := util.CompareVersion(channelStr, subVersionStr)
 	//Return of "true" will mean that the operator will be installed as normal/updated to the new version
-    //Return of "false" means that the existing crossplane operator is at a later version than the cs operator is attempting to install so we leave the existing untouched.
+	//Return of "false" means that the existing crossplane operator is at a later version than the cs operator is attempting to install so we leave the existing untouched.
 	return updateToLaterVersion, convertErr
 }
 
