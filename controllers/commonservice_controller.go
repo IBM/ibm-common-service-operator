@@ -152,6 +152,7 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(instance *apiv3.CommonServic
 			klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 			return ctrl.Result{}, err
 		}
+
 		// Generate Issuer and Certificate CR
 		if err := r.Bootstrap.DeployCertManagerCR(); err != nil {
 			klog.Errorf("Failed to deploy cert manager CRs: %v", err)
@@ -239,6 +240,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(instance *apiv3.CommonServi
 			klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 			return ctrl.Result{}, err
 		}
+
 		// Generate Issuer and Certificate CR
 		if err := r.Bootstrap.DeployCertManagerCR(); err != nil {
 			klog.Errorf("Failed to deploy cert manager CRs: %v", err)

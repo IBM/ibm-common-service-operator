@@ -216,7 +216,6 @@ func (b *Bootstrap) CrossplaneOperatorProviderOperator(instance *apiv3.CommonSer
 			if err := b.installCrossplaneOperator(); err != nil {
 				return err
 			}
-
 			switch b.CSData.CrossplaneProvider {
 			case "odlm":
 				if err := b.installKubernetesProvider(); err != nil {
@@ -227,6 +226,12 @@ func (b *Bootstrap) CrossplaneOperatorProviderOperator(instance *apiv3.CommonSer
 					return err
 				}
 			}
+      installPlanApproval := instance.Spec.InstallPlanApproval
+      if installPlanApproval != "" || b.CSData.ApprovalMode == string(olmv1alpha1.ApprovalManual) {
+        if err := b.updateICPApprovalMode(); err != nil {
+          klog.Errorf("Failed to update approval mode for %s in namespace %s: %v", instance.Name, instance.Namespace, err)
+        }
+      }
 		} else {
 			klog.Infof("Crossplane operator already exists at a later version in control namespace. Skipping.")
 		}
@@ -814,7 +819,7 @@ func (b *Bootstrap) ListSubscriptions(ctx context.Context, namespace string, lis
 
 // GetOperandRegistry returns the OperandRegistry instance of "name" from "namespace" namespace
 func (b *Bootstrap) GetOperandRegistry(ctx context.Context, name, namespace string) *odlm.OperandRegistry {
-	klog.Infof("Fetch OperandRegistry: %v/%v", namespace, name)
+	klog.V(2).Infof("Fetch OperandRegistry: %v/%v", namespace, name)
 	opreg := &odlm.OperandRegistry{}
 	opregKey := types.NamespacedName{
 		Name:      name,
@@ -1259,7 +1264,7 @@ func (b *Bootstrap) waitOperatorReady(name, namespace string) error {
 			if csv.Status.Reason != olmv1alpha1.CSVReasonInstallSuccessful {
 				return false, nil
 			}
-			klog.Infof("Cluster Service Version %s/%s is ready", csv.Namespace, csv.Name)
+			klog.V(2).Infof("Cluster Service Version %s/%s is ready", csv.Namespace, csv.Name)
 			return true, nil
 		}
 		return false, nil
@@ -1363,10 +1368,12 @@ func (b *Bootstrap) GetObjs(objectTemplate string, data interface{}, alwaysUpdat
 // 	return ""
 // }
 
-func (b *Bootstrap) UpdateCsOpApproval() error {
+// update approval mode for the given operator
+// need this function because common service operator, ODLM and namespace operator are not in operandRegistry
+func (b *Bootstrap) UpdateOpApproval(operatorName string) error {
 	sub := &olmv1alpha1.Subscription{}
 	subKey := types.NamespacedName{
-		Name:      "ibm-common-service-operator",
+		Name:      operatorName,
 		Namespace: b.CSData.MasterNs,
 	}
 
@@ -1381,11 +1388,12 @@ func (b *Bootstrap) UpdateCsOpApproval() error {
 		podList := &corev1.PodList{}
 		opts := []client.ListOption{
 			client.InNamespace(b.CSData.MasterNs),
-			client.MatchingLabels(map[string]string{"name": "ibm-common-service-operator"}),
+			client.MatchingLabels(map[string]string{"name": operatorName}),
 		}
 		if err := b.Reader.List(ctx, podList, opts...); err != nil {
 			return err
 		}
+		// may need logic check, we only need to restart the pod of cs operator
 		for _, pod := range podList.Items {
 			if err := b.Client.Delete(ctx, &pod); err != nil {
 				return err
@@ -1393,6 +1401,37 @@ func (b *Bootstrap) UpdateCsOpApproval() error {
 		}
 	}
 
+	return nil
+}
+
+func (b *Bootstrap) updateICPApprovalMode() error {
+	klog.Info("Updating crossplane operators Approvalmode")
+	if err := b.UpdateOpApproval(constant.ICPOperator); err != nil {
+		if !errors.IsNotFound(err) {
+			klog.Errorf("Failed to update %s subscription: %v", constant.ICPOperator, err)
+			return err
+		}
+		klog.V(2).Infof("%s not installed, skipping updating approval strategy", constant.ICPOperator)
+
+	}
+
+	if err := b.UpdateOpApproval(constant.ICPPICOperator); err != nil {
+		if !errors.IsNotFound(err) {
+			klog.Errorf("Failed to update %s subscription: %v", constant.ICPPICOperator, err)
+			return err
+		}
+		klog.V(2).Infof("%s not installed, skipping updating approval strategy", constant.ICPPICOperator)
+
+	}
+
+	if err := b.UpdateOpApproval(constant.ICPPKOperator); err != nil {
+		if !errors.IsNotFound(err) {
+			klog.Errorf("Failed to update %s subscription: %v", constant.ICPPKOperator, err)
+			return err
+		}
+		klog.V(2).Infof("%s not installed, skipping updating approval strategy", constant.ICPPKOperator)
+
+	}
 	return nil
 }
 
@@ -1421,11 +1460,20 @@ func (b *Bootstrap) updateApprovalMode() error {
 		return err
 	}
 
-	if err = b.UpdateCsOpApproval(); err != nil {
-		klog.Errorf("Failed to update common service operator subscription: %v", err)
+	if err = b.UpdateOpApproval(constant.IBMCSPackage); err != nil {
+		klog.Errorf("Failed to update %s subscription: %v", constant.IBMCSPackage, err)
 		return err
 	}
 
+	if err = b.UpdateOpApproval(constant.IBMODLMPackage); err != nil {
+		klog.Errorf("Failed to update %s subscription: %v", constant.IBMODLMPackage, err)
+		return err
+	}
+
+	if err = b.UpdateOpApproval(constant.IBMNSSPackage); err != nil {
+		klog.Errorf("Failed to update %s subscription: %v", constant.IBMNSSPackage, err)
+		return err
+	}
 	return nil
 }
 
