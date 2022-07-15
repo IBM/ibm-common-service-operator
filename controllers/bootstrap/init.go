@@ -928,8 +928,13 @@ func (b *Bootstrap) installNssOperator(manualManagement bool) error {
 	if err := b.renderTemplate(constant.NamespaceScopeCR, b.CSData); err != nil {
 		return err
 	}
-	// Create NSS CRs managedby ODLM for Single CS instance case
-	if !b.MultiInstancesEnable {
+	// Create NSS CRs in Control Ns for multi instances case
+	if b.MultiInstancesEnable {
+		if err := b.renderTemplate(constant.NamespaceScopeCRMulti, b.CSData); err != nil {
+			return err
+		}
+	} else {
+		// Create NSS CRs managedby ODLM for Single CS instance case
 		if err := b.renderTemplate(constant.NamespaceScopeCRManagedbyODLM, b.CSData); err != nil {
 			return err
 		}
@@ -940,6 +945,12 @@ func (b *Bootstrap) installNssOperator(manualManagement bool) error {
 		err := util.UpdateNSList(b.Reader, b.Client, cm, "common-service", b.CSData.MasterNs, false)
 		if err != nil {
 			return err
+		}
+		if b.MultiInstancesEnable {
+			err := util.UpdateAllNSList(b.Reader, b.Client, cm, "common-service", b.CSData.ControlNs)
+			if err != nil {
+				return err
+			}
 		}
 	} else if !errors.IsNotFound(err) {
 		return err
@@ -1068,6 +1079,23 @@ func (b *Bootstrap) createNsSubscription(manualManagement bool) error {
 		return err
 	}
 
+	if b.MultiInstancesEnable {
+		resourceName = constant.NSSubscriptionMulti
+		subNameToRemove = constant.NsRestrictedSubName
+		if manualManagement {
+			resourceName = constant.NSRestrictedSubscriptionMulti
+			subNameToRemove = constant.NsSubName
+		}
+
+		if err := b.deleteSubscription(subNameToRemove, b.CSData.ControlNs); err != nil {
+			return err
+		}
+
+		if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -1076,6 +1104,12 @@ func (b *Bootstrap) CreateNsScopeConfigmap() error {
 	cmRes := constant.NamespaceScopeConfigMap
 	if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cmRes, placeholder, b.CSData.MasterNs))); err != nil {
 		return err
+	}
+	if b.MultiInstancesEnable {
+		cmRes = constant.NamespaceScopeConfigMapMulti
+		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cmRes, placeholder, b.CSData.ControlNs))); err != nil {
+			return err
+		}
 	}
 	return nil
 }

@@ -63,8 +63,7 @@ spec:
                     description: The license key for this deployment.
                     type: string
                   license:
-                    description: The license being accepted where the component has
-                      multiple.
+                    description: The license being accepted where the component has multiple.
                     type: string
                   use:
                     description: The type of license being accepted.
@@ -85,7 +84,7 @@ spec:
                       type: string
                     spec:
                       additionalProperties:
-                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
                       type: object
                   required:
                   - name

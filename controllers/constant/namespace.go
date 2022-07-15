@@ -44,6 +44,34 @@ spec:
   sourceNamespace: {{ .CatalogSourceNs }}
 `
 
+const NSRestrictedSubscriptionMulti = `
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: ibm-namespace-scope-operator-restricted
+  namespace: {{ .ControlNS }}
+spec:
+  channel: {{ .Channel }}
+  installPlanApproval: Automatic
+  name: ibm-namespace-scope-operator-restricted
+  source: {{ .CatalogSourceName }}
+  sourceNamespace: {{ .CatalogSourceNs }}
+`
+
+const NSSubscriptionMulti = `
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: ibm-namespace-scope-operator
+  namespace: {{ .ControlNs }}
+spec:
+  channel: {{ .Channel }}
+  installPlanApproval: Automatic
+  name: ibm-namespace-scope-operator
+  source: {{ .CatalogSourceName }}
+  sourceNamespace: {{ .CatalogSourceNs }}
+`
+
 // NamespaceScope Operator CR
 const NamespaceScopeCR = `
 apiVersion: operator.ibm.com/v1
@@ -71,6 +99,22 @@ spec:
   configmapName: odlm-scope
   restartLabels:
     intent: projected-odlm
+`
+
+// NamespaceScope Operator CR
+const NamespaceScopeCRMulti = `
+apiVersion: operator.ibm.com/v1
+kind: NamespaceScope
+metadata:
+  name: common-service
+  namespace: {{ .ControlNs }}
+  annotations:
+    version: {{ .Version }}
+spec:
+  csvInjector:
+    enable: true
+  namespaceMembers:
+  - {{ .ControlNs }}
 `
 
 // NamespaceScope Operator CR Managed By ODLM
@@ -113,5 +157,15 @@ data:
 kind: ConfigMap
 metadata:
   name: odlm-scope
+  namespace: placeholder
+`
+
+const NamespaceScopeConfigMapMulti = `
+apiVersion: v1
+data:
+  namespaces: placeholder
+kind: ConfigMap
+metadata:
+  name: namespace-scope
   namespace: placeholder
 `

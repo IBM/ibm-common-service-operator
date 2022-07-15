@@ -33,7 +33,7 @@ rules:
   - catalogsources
   verbs:
   - get
-# delete existing subscriptions in openshift-operators/ibm-common-services
+# delete existing subscriptions in openshift-operators/ibm-common-services and control namespace for crossplane
 - apiGroups:
   - operators.coreos.com
   resources:
@@ -179,6 +179,18 @@ rules:
   - update
   - watch
 - apiGroups:
+    - operator.ibm.com
+  resources:
+    - namespacescopes
+  verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+- apiGroups:
   - storage.k8s.io
   resources:
   - storageclasses
@@ -186,6 +198,13 @@ rules:
   - get
   - list
   - watch
+- apiGroups:
+    - operator.ibm.com
+  resources:
+    - meteringreportservers
+  verbs:
+    - delete
+    - get
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
