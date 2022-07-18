@@ -217,7 +217,7 @@ spec:
             activeDeadlineSeconds: 600
             backoffLimit: 5
             template:
-              metadata: null
+              metadata: notnull
               spec:
                 affinity:
                   nodeAffinity:
