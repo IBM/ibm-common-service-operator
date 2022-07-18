@@ -91,7 +91,7 @@ func (r *CommonServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 			if err := r.handleDelete(); err != nil {
 				return ctrl.Result{}, err
 			}
-			if err := r.Bootstrap.DeleteCrossplaneAndProviderSubscription(r.Bootstrap.CSData.MasterNs); err != nil {
+			if err := r.Bootstrap.DeleteCrossplaneAndProviderSubscription(r.Bootstrap.CSData.ControlNs); err != nil {
 				return ctrl.Result{}, err
 			}
 			// Generate Issuer and Certificate CR
