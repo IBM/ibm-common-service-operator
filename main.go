@@ -162,10 +162,25 @@ func main() {
 			os.Exit(1)
 		}
 
-		klog.Info("Creating OperatorGroup for IBM Common Services")
-		if err := bs.CreateOperatorGroup(); err != nil {
-			klog.Errorf("Failed to create OperatorGroup for IBM Common Services: %v", err)
+		klog.Info("Creating OperatorGroup for IBM Common Services in master namespace")
+		if err := bs.CreateOperatorGroup(bs.CSData.MasterNs); err != nil {
+			klog.Errorf("Failed to create OperatorGroup for IBM Common Services in master namespace: %v", err)
 			os.Exit(1)
+		}
+
+		if bs.MultiInstancesEnable {
+			klog.Infof("Creating IBM Common Services control namespace: %s", bs.CSData.ControlNs)
+			if err := bs.CreateNamespace(bs.CSData.ControlNs); err != nil {
+				klog.Errorf("Failed to create control namespace: %v", err)
+				os.Exit(1)
+			}
+			klog.Info("Creating OperatorGroup for IBM Common Services in control namespace")
+			if err := bs.CreateOperatorGroup(bs.CSData.ControlNs); err != nil {
+				klog.Errorf("Failed to create OperatorGroup for IBM Common Services in control namespace: %v", err)
+				os.Exit(1)
+			}
+		} else {
+			bs.CSData.ControlNs = bs.CSData.MasterNs
 		}
 
 		klog.Info("Creating ConfigMap for operators")

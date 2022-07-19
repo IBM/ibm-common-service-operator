@@ -372,6 +372,11 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 			klog.Errorf("Failed to create control namespace: %v", err)
 			return err
 		}
+		klog.Info("Creating OperatorGroup for IBM Common Services in control namespace")
+		if err := b.CreateOperatorGroup(b.CSData.ControlNs); err != nil {
+			klog.Errorf("Failed to create OperatorGroup for IBM Common Services in control namespace: %v", err)
+			return err
+		}
 	} else {
 		b.CSData.ControlNs = b.CSData.MasterNs
 	}
@@ -638,13 +643,13 @@ func (b *Bootstrap) CreateCsCR() error {
 	return nil
 }
 
-func (b *Bootstrap) CreateOperatorGroup() error {
+func (b *Bootstrap) CreateOperatorGroup(namespace string) error {
 	existOG := &olmv1.OperatorGroupList{}
-	if err := b.Reader.List(context.TODO(), existOG, &client.ListOptions{Namespace: b.CSData.MasterNs}); err != nil {
+	if err := b.Reader.List(context.TODO(), existOG, &client.ListOptions{Namespace: namespace}); err != nil {
 		return err
 	}
 	if len(existOG.Items) == 0 {
-		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsOperatorGroup, placeholder, b.CSData.MasterNs))); err != nil {
+		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsOperatorGroup, placeholder, namespace))); err != nil {
 			return err
 		}
 	}
