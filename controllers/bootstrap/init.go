@@ -1131,7 +1131,7 @@ func (b *Bootstrap) CreateNsScopeConfigmap() error {
 func (b *Bootstrap) CompareChannel(objectTemplate string, alwaysUpdate ...bool) (bool, error) {
 	objects, err := b.GetObjs(objectTemplate, b.CSData)
 	if err != nil {
-		return false, err
+		return true, err
 	}
 
 	obj := objects[0]
@@ -1139,14 +1139,14 @@ func (b *Bootstrap) CompareChannel(objectTemplate string, alwaysUpdate ...bool) 
 	_, err = b.GetObject(obj)
 	if errors.IsNotFound(err) {
 		klog.Infof("Creating resource with name: %s, namespace: %s\n", obj.GetName(), obj.GetNamespace())
-		return true, nil
+		return false, nil
 	} else if err != nil {
 		return true, err
 	}
 	sub, err := b.GetSubscription(ctx, obj.GetName(), b.CSData.ControlNs) //doesn't actually return the subscription, returns an unstructured.Unstructured object
 	if errors.IsNotFound(err) {
 		klog.Errorf("Failed to get an existing subscription for %s/%s. Creating new subscription.", b.CSData.ControlNs, obj.GetName())
-		return true, nil
+		return false, nil
 	} else if err != nil {
 		klog.Errorf("Failed to get an existing subscription for %s/%s because %s", b.CSData.ControlNs, obj.GetName(), err)
 		return true, err
