@@ -107,47 +107,6 @@ func CompareVersion(v1, v2 string) (v1IsLarger bool, err error) {
 	return false, nil
 }
 
-// CompareSubscription is CompareVersion but returns true if >= instead of just >
-func CompareSubscription(v1, v2 string) (v1IsLarger bool, err error) {
-	if v1 == "" {
-		v1 = "0.0.0"
-	}
-	v1Slice := strings.Split(v1, ".")
-	if len(v1Slice) == 1 {
-		v1 = "0.0." + v1
-	}
-
-	if v2 == "" {
-		v2 = "0.0.0"
-	}
-	v2Slice := strings.Split(v2, ".")
-	if len(v2Slice) == 1 {
-		v2 = "0.0." + v2
-	}
-
-	v1Slice = strings.Split(v1, ".")
-	v2Slice = strings.Split(v2, ".")
-	for index := range v1Slice {
-		v1SplitInt, e1 := strconv.Atoi(v1Slice[index])
-		if e1 != nil {
-			return false, e1
-		}
-		v2SplitInt, e2 := strconv.Atoi(v2Slice[index])
-		if e2 != nil {
-			return false, e2
-		}
-
-		if v1SplitInt > v2SplitInt {
-			return true, nil
-		} else if v1SplitInt == v2SplitInt {
-			continue
-		} else {
-			return false, nil
-		}
-	}
-	return true, nil
-}
-
 // YamlToObjects convert YAML content to unstructured objects
 func YamlToObjects(yamlContent []byte) ([]*unstructured.Unstructured, error) {
 	var objects []*unstructured.Unstructured
