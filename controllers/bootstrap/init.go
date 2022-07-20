@@ -719,9 +719,9 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 		if gvk.Kind == "Subscription" {
 			sub, err := b.GetSubscription(ctx, obj.GetName(), obj.GetNamespace())
 			if err != nil {
-				if obj.GetNamespace() == ""  {
+				if obj.GetNamespace() == "" {
 					klog.Errorf("Failed to get subscription for %s. Namespace not found.", obj.GetName())
-				} else{
+				} else {
 					klog.Errorf("Failed to get subscription %s/%s", obj.GetNamespace(), obj.GetName())
 				}
 			}
