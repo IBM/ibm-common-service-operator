@@ -724,6 +724,7 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 				} else {
 					klog.Errorf("Failed to get subscription %s/%s", obj.GetNamespace(), obj.GetName())
 				}
+				return err
 			}
 			update = !equality.Semantic.DeepEqual(sub.Object["spec"], obj.Object["spec"])
 		} else {
