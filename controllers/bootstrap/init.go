@@ -717,9 +717,14 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 
 		// do not compareVersion if the resource is subscription
 		if gvk.Kind == "Subscription" {
-			sub, err := b.GetSubscription(ctx, obj.GetName(), b.CSData.MasterNs)
+			sub, err := b.GetSubscription(ctx, obj.GetName(), obj.GetNamespace())
 			if err != nil {
-				klog.Errorf("Failed to get subscription %s/%s", b.CSData.MasterNs, obj.GetName())
+				if obj.GetNamespace() == "" {
+					klog.Errorf("Failed to get subscription for %s. Namespace not found.", obj.GetName())
+				} else {
+					klog.Errorf("Failed to get subscription %s/%s", obj.GetNamespace(), obj.GetName())
+				}
+				return err
 			}
 			update = !equality.Semantic.DeepEqual(sub.Object["spec"], obj.Object["spec"])
 		} else {
