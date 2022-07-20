@@ -1141,7 +1141,7 @@ func (b *Bootstrap) CompareChannel(objectTemplate string, alwaysUpdate ...bool) 
 		klog.Infof("Creating resource with name: %s, namespace: %s\n", obj.GetName(), obj.GetNamespace())
 		return false, nil
 	} else if err != nil {
-		return false, err
+		return true, err
 	}
 	sub, err := b.GetSubscription(ctx, obj.GetName(), b.CSData.ControlNs) //doesn't actually return the subscription, returns an unstructured.Unstructured object
 	if errors.IsNotFound(err) {
@@ -1149,7 +1149,7 @@ func (b *Bootstrap) CompareChannel(objectTemplate string, alwaysUpdate ...bool) 
 		return false, nil
 	} else if err != nil {
 		klog.Errorf("Failed to get an existing subscription for %s/%s because %s", b.CSData.ControlNs, obj.GetName(), err)
-		return false, err
+		return true, err
 	}
 	subVersion := fmt.Sprintf("%v", sub.Object["spec"].(map[string]interface{})["channel"])
 	subVersionStr := subVersion[1:]
