@@ -195,7 +195,7 @@ func (b *Bootstrap) CrossplaneOperatorProviderOperator(instance *apiv3.CommonSer
 			bedrockshim = instance.Spec.Features.Bedrockshim.Enabled
 		}
 	}
-	var noInstall bool
+	var isLater bool
 	var err error
 	if bedrockshim {
 		b.CSData.CrossplaneProvider = "odlm"
@@ -205,15 +205,15 @@ func (b *Bootstrap) CrossplaneOperatorProviderOperator(instance *apiv3.CommonSer
 		}
 		if b.MultiInstancesEnable {
 			resourceName := constant.CrossSubscription
-			noInstall, err = b.CompareChannel(resourceName)
+			isLater, err = b.CompareChannel(resourceName)
 			if err != nil {
 				return err
 			}
 		} else {
-			noInstall = false
+			isLater = false
 		}
-		//noInstall value of false means we install, true means we do not install
-		if !noInstall {
+		//isLater value of false means we install, true means we do not install
+		if !isLater {
 			if err := b.installCrossplaneOperator(); err != nil {
 				return err
 			}
@@ -1149,10 +1149,10 @@ func (b *Bootstrap) CompareChannel(objectTemplate string, alwaysUpdate ...bool) 
 	subVersion := fmt.Sprintf("%v", sub.Object["spec"].(map[string]interface{})["channel"])
 	subVersionStr := subVersion[1:]
 	channelStr := b.CSData.Channel[1:]
-	noInstall, convertErr := util.CompareVersion(subVersionStr, channelStr)
+	isLater, convertErr := util.CompareVersion(subVersionStr, channelStr)
 	//Return of "false" will mean that the operator will be installed as normal/updated to the new version
 	//Return of "true" means that the existing crossplane operator is at a later version than the cs operator is attempting to install so we leave the existing untouched.
-	return noInstall, convertErr
+	return isLater, convertErr
 }
 
 func (b *Bootstrap) createCrossplaneSubscription() error {
