@@ -25,6 +25,7 @@ import (
 	"sync"
 	"text/template"
 	"time"
+	"reflect"
 
 	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
@@ -717,9 +718,13 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 
 		// do not compareVersion if the resource is subscription
 		if gvk.Kind == "Subscription" {
-			sub, err := b.GetSubscription(ctx, obj.GetName(), b.CSData.MasterNs)
+			sub, err := b.GetSubscription(ctx, obj.GetName(), obj.GetNamespace())
 			if err != nil {
-				klog.Errorf("Failed to get subscription %s/%s", b.CSData.MasterNs, obj.GetName())
+				if objns := obj.GetNamespace(); reflect.TypeOf(objns).String() != "string"  {
+					klog.Errorf("Failed to get subscription for %s. Namespace not found.", obj.GetName())
+				} else{
+					klog.Errorf("Failed to get subscription %s/%s", obj.GetNamespace(), obj.GetName())
+				}
 			}
 			update = !equality.Semantic.DeepEqual(sub.Object["spec"], obj.Object["spec"])
 		} else {
