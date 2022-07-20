@@ -25,7 +25,6 @@ import (
 	"sync"
 	"text/template"
 	"time"
-	"reflect"
 
 	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
@@ -720,7 +719,7 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 		if gvk.Kind == "Subscription" {
 			sub, err := b.GetSubscription(ctx, obj.GetName(), obj.GetNamespace())
 			if err != nil {
-				if objns := obj.GetNamespace(); reflect.TypeOf(objns).String() != "string"  {
+				if obj.GetNamespace() == ""  {
 					klog.Errorf("Failed to get subscription for %s. Namespace not found.", obj.GetName())
 				} else{
 					klog.Errorf("Failed to get subscription %s/%s", obj.GetNamespace(), obj.GetName())
