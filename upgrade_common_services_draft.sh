@@ -21,18 +21,116 @@ STEP=0
 # script base directory
 BASE_DIR=$(dirname "$0")
 
+CS_LIST_CSNS=("operand-deployment-lifecycle-manager-app"
+        "ibm-common-service-operator"
+        "ibm-cert-manager-operator"
+        "ibm-mongodb-operator"
+        "ibm-iam-operator"
+        "ibm-monitoring-grafana-operator"
+        "ibm-healthcheck-operator"
+        "ibm-management-ingress-operator"
+        "ibm-licensing-operator"
+        "ibm-commonui-operator"
+        "ibm-ingress-nginx-operator"
+        "ibm-auditlogging-operator"
+        "ibm-platform-api-operator"
+        "ibm-namespace-scope-operator"
+        "ibm-namespace-scope-operator-restricted"
+        "ibm-zen-operator"
+        "ibm-zen-cpp-operator"
+        "ibm-crossplane-operator-app"
+        "ibm-crossplane-provider-ibm-cloud-operator-app"
+        "ibm-crossplane-provider-kubernetes-operator-app")
+
+CS_LIST_CONTROLNS=(
+        "ibm-cert-manager-operator"
+        "ibm-namespace-scope-operator"
+        "ibm-namespace-scope-operator-restricted"
+        "ibm-crossplane-operator-app"
+        "ibm-crossplane-provider-ibm-cloud-operator-app"
+        "ibm-crossplane-provider-kubernetes-operator-app")
+
 # ---------- Command functions ----------
+# ---------- Command functions ----------
+function usage() {
+	local script="${0##*/}"
 
-function main() {
-    title "Upgrade Common Service Operator to continous delivery channel."
-    msg "-----------------------------------------------------------------------"
+	while read -r ; do echo "${REPLY}" ; done <<-EOF
+	Usage: ${script} [OPTION]...
+	Upgrade Common Services
 
-    check_preqreqs
-    switch_to_continous_delivery
-    check_switch_complete
+	Options:
+	Mandatory arguments to long options are mandatory for short options too.
+      -h, --help                    display this help and exit
+      -csNS                         specify the namespace where common service is installed. By default it is namespace ibm-common-services.
+      -cloudpaksNS                  specify the namespace where cloud paks is installed. By default it would be same as csNS.
+      -controlNS                    specify the namespace where singleton services are installed. By default it it would be same as csNS.
+      -c                            specify the subscription channel where common services switch. By default it is channel v3
+	Note:
+	If there is no namespace defined through arguments, all Common Service in the cluster will be upgraded.
+EOF
 }
 
+function main() {
+    CS_NAMESPACE=${CS_NAMESPACE:-ibm-common-services}
+    DESTINATION_CHANNEL=${DESTINATION_CHANNEL:-v3}
+    ALL_NAMESPACE=${ALL_NAMESPACE:-true}
+    
+    while [ "$#" -gt "0" ]
+    do
+        case "$1" in
+        "-h"|"--help")
+            usage
+            exit 0
+            ;;
+        "-csNS")
+            CS_NAMESPACE=$2
+            ALL_NAMESPACE="false"
+            shift
+            ;;
+        "-cloudpaksNS")
+            cloudpaksNS=$2
+            ALL_NAMESPACE="false"
+            shift
+            ;;
+        "-controlNS")
+            controlNS=$2
+            ALL_NAMESPACE="false"
+            shift
+            ;;
+        "-c")
+            DESTINATION_CHANNEL=$2
+            shift
+            ;;
+        *)
+            warning "invalid option -- \`$1\`"
+            usage
+            exit 1
+            ;;
+        esac
+        shift
+    done
+
+    CLOUDPAKS_NAMESPACE=${CLOUDPAKS_NAMESPACE:-${CS_NAMESPACE}}
+    CONTROL_NAMESPAVE=${CONTROL_NAMESPAVE:-${CS_NAMESPACE}}
+
+    if [[ "${ALL_NAMESPACE}" == "true" ]]; then
+        title "Upgrade Commmon Service Operator in all namespaces."
+    else
+        title "Upgrade Common Service Operator to ${DESTINATION_CHANNEL} channel in ${CS_NAMESPACE} namespace."
+    fi
+    msg "-----------------------------------------------------------------------"
+
+    check_preqreqs "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPAVE}"
+    switch_channel "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPAVE}" "${DESTINATION_CHANNEL}" "${ALL_NAMESPACE}"
+    check_switch_complete "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPAVE}" "${DESTINATION_CHANNEL}" "${ALL_NAMESPACE}"
+}
+
+
 function check_preqreqs() {
+    local csNS=$1
+    local cloudpaksNS=$2
+    local controlNS=$3
     title "[${STEP}] Checking prerequesites ..."
     msg "-----------------------------------------------------------------------"
 
@@ -50,143 +148,183 @@ function check_preqreqs() {
     else
         success "oc command logged in as ${user}"
     fi
+
+    # checking namespace if it is specified
+    if [[ -z "$(oc get namespace ${csNS})" ]]; then
+        error "Namespace ${csNS} for Common Service Operator is not found."
+    fi
+
+    # checking namespace if it is specified
+    if [[ -z "$(oc get namespace ${cloudpaksNS})" ]]; then
+        error "Namespace ${cloudpaksNS} for Cloud Paks is not found."
+    fi
+
+    # checking namespace if it is specified
+    if [[ -z "$(oc get namespace ${controlNS})" ]]; then
+        error "Namespace ${controlNS} for singleton services is not found."
+    fi
+
 }
 
-function deprecated_operator() {
-    case $1 in
-        "ibm-metering-operator") return 0;;
-        "ibm-monitoring-exporters-operator") return 0;;
-        "ibm-monitoring-prometheusext-operator") return 0;;
-        *) return 1;;
-    esac
+function containsElement () {
+  local e match="$1"
+  shift
+  for e; do 
+    [[ "$e" == "$match" ]] && return 0; 
+  done
+  return 1
 }
 
-function non_switching_operator() {
-    case $1 in
-        "ibm-events-operator") return 0;;
-        *) return 1;;
-    esac
+function switch_channel_operator() {
+    local subName=$1
+    local namespace=$2
+    local channel=$3
+    local allNamespace=$4
+
+    if [[ "${allNamespace}" == "true" ]]; then
+        while read -r ns cssub; do
+            msg "Updating subscription ${cssub} in namespace ${ns}..."
+            msg "-----------------------------------------------------------------------"
+            
+            in_step=1
+            msg "[${in_step}] Removing the startingCSV ..."
+            oc patch sub ${cssub} -n ${ns} --type="json" -p '[{"op": "remove", "path":"/spec/startingCSV"}]' 2> /dev/null
+
+            in_step=$((in_step + 1))
+            msg "[${in_step}] Switching channel to ${channel} ..."
+            
+            cat <<EOF | oc patch sub ${cssub} -n ${ns} --type="json" -p '[{"op": "replace", "path":"/spec/channel", "value":"'"${channel}"'"}]' | 2> /dev/null
+EOF
+
+            msg ""
+        done < <(oc get sub --all-namespaces --ignore-not-found | grep ${subName} | awk '{print $1" "$2}')
+    else
+        while read -r cssub; do
+            msg "Updating subscription ${cssub} in namespace ${namespace}..."
+            msg "-----------------------------------------------------------------------"
+            
+            in_step=1
+            msg "[${in_step}] Removing the startingCSV ..."
+            oc patch sub ${cssub} -n ${namespace} --type="json" -p '[{"op": "remove", "path":"/spec/startingCSV"}]' 2> /dev/null
+
+            in_step=$((in_step + 1))
+            msg "[${in_step}] Switching channel to ${channel} ..."
+            
+            cat <<EOF | oc patch sub ${cssub} -n ${namespace} --type="json" -p '[{"op": "replace", "path":"/spec/channel", "value":"'"${channel}"'"}]' | 2> /dev/null
+EOF
+
+            msg ""
+        done < <(oc get sub -n ${csNS} --ignore-not-found | grep ${subName} | awk '{print $1}')
+    fi
 }
 
-function switch_to_continous_delivery() {
+function switch_channel() {
+    local csNS=$1
+    local cloudpaksNS=$2
+    local controlNS=$3
+    local channel=$4
+    local allNamespace=$5
+
     STEP=$((STEP + 1 ))
 
-    title "[${STEP}] Switching to Continous Delivery Version (switching into v3.20 channel)..."
+    title "[${STEP}] Switching channel into ${channel}..."
     msg "-----------------------------------------------------------------------"
 
     # msg "Updating OperandRegistry common-service in namespace ibm-common-services..."
     # msg "-----------------------------------------------------------------------"
     # oc -n ibm-common-services get operandregistry common-service -o yaml | sed 's/stable-v1/v3.20/g' | oc -n ibm-common-services apply -f -
 
-    while read -r ns cssub; do
+    if [[ "${allNamespace}" == "true" ]]; then
+        switch_channel_operator "ibm-common-service-operator" "${csNS}" "${channel}" "${allNamespace}"
+    else
+        if [[ "$cloudpaksNS" != "$csNS" ]]; then
+            switch_channel_operator "ibm-common-service-operator" "${cloudpaksNS}" "${channel}" "${allNamespace}"
+        fi
+        switch_channel_operator "ibm-common-service-operator" "${csNS}" "${channel}" "${allNamespace}"
+    fi
 
-        msg "Updating subscription ${cssub} in namespace ${ns}..."
-        msg "-----------------------------------------------------------------------"
-        
-        in_step=1
-        msg "[${in_step}] Removing the startingCSV ..."
-        oc patch sub ${cssub} -n ${ns} --type="json" -p '[{"op": "remove", "path":"/spec/startingCSV"}]' 2> /dev/null
-
-        in_step=$((in_step + 1))
-        msg "[${in_step}] Switching channel from stable-v1 to v3.20 ..."
-        oc patch sub ${cssub} -n ${ns} --type="json" -p '[{"op": "replace", "path":"/spec/channel", "value":"v3.20"}]' 2> /dev/null
-
-        msg ""
-    done < <(oc get sub --all-namespaces | grep ibm-common-service-operator | awk '{print $1" "$2}')
-
-    success "Updated all ibm-common-service-operator subscriptions successfully."
+    success "Updated ibm-common-service-operator subscriptions successfully."
     msg ""
 
-    delete_operator "operand-deployment-lifecycle-manager-app ibm-namespace-scope-operator-restricted ibm-namespace-scope-operator ibm-cert-manager-operator" "ibm-common-services"
-
-    while read -r sub; do
-        if [[ ${sub} == "NAME" ]]; then
-            continue
-        fi
-
-        if deprecated_operator ${sub} || non_switching_operator ${sub}; then
-            msg "Skipped subscription ${sub} in namespace ibm-common-services..."
-            msg "-----------------------------------------------------------------------"
-            continue
-        fi
-
-        msg "Updating subscription ${sub} in namespace ibm-common-services..."
-        msg "-----------------------------------------------------------------------"
-        
-        in_step=1
-        msg "[${in_step}] Removing the startingCSV ..."
-        oc patch sub ${sub} -n ibm-common-services --type="json" -p '[{"op": "remove", "path":"/spec/startingCSV"}]' 2> /dev/null
-
-        in_step=$((in_step + 1))
-        msg "[${in_step}] Switching channel from stable-v1 to v3.20 ..."
-        oc patch sub ${sub} -n ibm-common-services --type="json" -p '[{"op": "replace", "path":"/spec/channel", "value":"v3.20"}]' 2> /dev/null
-
-        msg ""
-    done < <(oc get sub -n ibm-common-services | awk '{print $1}')
+    # clean some operators due to historical reason
+    delete_operator "operand-deployment-lifecycle-manager-app ibm-namespace-scope-operator-restricted ibm-namespace-scope-operator" "${csNS}"
+    delete_operator "ibm-namespace-scope-operator-restricted ibm-namespace-scope-operator ibm-cert-manager-operator" "${controlNS}"
 
 
-    msg "Creating namespace scope config in namespace ibm-common-services..."
+    # switch channel for remaining CS components
+    for sub_name in "${CS_LIST_CSNS[@]}"; do
+        switch_channel_operator "${sub_name}" "${csNS}" "${channel}" "false"
+    done
+
+    for sub_name in "${CS_LIST_CONTROLNS[@]}"; do
+        switch_channel_operator "${sub_name}" "${csNS}" "${channel}" "false"
+    done
+
+
+    msg "Creating namespace scope config in namespace ${csNS}..."
     msg "-----------------------------------------------------------------------"
     cat <<EOF | kubectl apply -f -
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: namespace-scope
-  namespace: ibm-common-services
+  namespace: ${csNS}
 data:
-  namespaces: ibm-common-services
+  namespaces: ${csNS}
 EOF
     msg ""
-    success "Created namespace scope config in namespace ibm-common-services."
+    success "Created namespace scope config in namespace ${csNS}."
 }
 
 function check_switch_complete() {
+    local csNS=$1
+    local cloudpaksNS=$2
+    local controlNS=$3
+    local destChannel=$4
+    local allNamespace=$5
+
     STEP=$((STEP + 1 ))
 
     title "[${STEP}] Checking whether the channel switch is completed..."
     msg "-----------------------------------------------------------------------"
 
-    while read -r sub; do
-        if [[ ${sub} == "NAME" ]]; then
-            continue
+    for sub_name in "${CS_LIST_CSNS[@]}"; do
+        channel=$(oc get sub ${sub_name} -n ${csNS} -o jsonpath='{.spec.channel}' --ignore-not-found)
+        if [[ "X${channel}" != "X" ]] && [[ "$channel" != "${destChannel}" ]]; then
+            error "the channel of subscription ${sub_name} in namespace ${csNS} is not ${destChannel}, please try to re-run the script"
         fi
+    done
 
-        if deprecated_operator ${sub} || non_switching_operator ${sub} ; then
-            msg "Skipped subscription ${sub} in namespace ibm-common-services..."
-            msg "-----------------------------------------------------------------------"
-            continue
+    for sub_name in "${CS_LIST_CONTROLNS[@]}"; do
+        channel=$(oc get sub ${sub_name} -n ${controlNS} -o jsonpath='{.spec.channel}' --ignore-not-found)
+        if [[ "X${channel}" != "X" ]] && [[ "$channel" != "${destChannel}" ]]; then
+            error "the channel of subscription ${sub_name} in namespace ${controlNS} is not ${destChannel}, please try to re-run the script"
         fi
+    done
 
-        msg "Checking subscription ${sub} in namespace ibm-common-services..."
-        msg "-----------------------------------------------------------------------"
-        
-        channel=$(oc get sub ${sub} -n ibm-common-services -o jsonpath='{.spec.channel}')
-        if [[ "$channel" != "v3.20" ]]; then
-            error "the channel of subscription ${sub} in namespace ibm-common-services is not v3.20, please try to re-run the script"
-        fi
-
-    done < <(oc get sub -n ibm-common-services | awk '{print $1}')
-
-    success "Updated all operator subscriptions in namespace ibm-common-services successfully."
+    success "Updated all Common Service components' subscriptions successfully."
 }
 
 function delete_operator() {
     subs=$1
     ns=$2
     for sub in ${subs}; do
-        msg "Deleting ${sub} in namesapce ${ns}, it will be re-installed after the upgrade is successful ..."
-        msg "-----------------------------------------------------------------------"
-        csv=$(oc get sub ${sub} -n ${ns} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
-        in_step=1
-        msg "[${in_step}] Removing the subscription of ${sub} in namesapce ${ns} ..."
-        oc delete sub ${sub} -n ${ns} --ignore-not-found
-        in_step=$((in_step + 1))
-        msg "[${in_step}] Removing the csv of ${sub} in namesapce ${ns} ..."
-        [[ "X${csv}" != "X" ]] && oc delete csv ${csv}  -n ${ns} --ignore-not-found
-        msg ""
+        exist=$(oc get sub ${sub} -n ${ns} --ignore-not-found)
+        if [[ "X${exist}" != "X" ]]; then
+            msg "Deleting ${sub} in namesapce ${ns}, it will be re-installed after the upgrade is successful ..."
+            msg "-----------------------------------------------------------------------"
+            csv=$(oc get sub ${sub} -n ${ns} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
+            in_step=1
+            msg "[${in_step}] Removing the subscription of ${sub} in namesapce ${ns} ..."
+            oc delete sub ${sub} -n ${ns} --ignore-not-found
+            in_step=$((in_step + 1))
+            msg "[${in_step}] Removing the csv of ${sub} in namesapce ${ns} ..."
+            [[ "X${csv}" != "X" ]] && oc delete csv ${csv}  -n ${ns} --ignore-not-found
+            msg ""
 
-        success "Remove $sub successfully."
-        msg ""
+            success "Remove $sub successfully."
+            msg ""
+        fi
     done
 }
 
@@ -210,6 +348,35 @@ function title() {
 function info() {
     msg "[INFO] ${1}"
 }
+
+function warning() {
+  msg "\33[33m[✗] ${1}\33[0m"
+}
+
+# function cs_upgrade_list() {
+#     case $1 in
+#         "operand-deployment-lifecycle-manager-app") eval "$2='1.4.0'";;
+#         "ibm-common-service-operator") eval "$2='3.6.0'";;
+#         "ibm-cert-manager-operator") eval "$2='3.8.0'";;
+#         "ibm-mongodb-operator") eval "$2='1.2.0'";;
+#         "ibm-iam-operator") eval "$2='3.8.0'";;
+#         "ibm-monitoring-grafana-operator") eval "$2='1.10.0'";;
+#         "ibm-healthcheck-operator") eval "$2='3.8.0'";;
+#         "ibm-management-ingress-operator") eval "$2='1.4.0'";;
+#         "ibm-licensing-operator") eval "$2='1.3.0'";;
+#         "ibm-commonui-operator") eval "$2='1.4.0'";;
+#         "ibm-ingress-nginx-operator") eval "$2='1.4.0'";;
+#         "ibm-auditlogging-operator") eval "$2='3.8.0'";;
+#         "ibm-platform-api-operator") eval "$2='3.8.0'";;
+#         "ibm-namespace-scope-operator") eval "$2='1.0.0'";;
+#         "ibm-zen-operator") eval "$2='1.0.0'";;
+#         "ibm-zen-cpp-operator") eval "$2='1.0.0'";;
+#         "ibm-crossplane-operator-app") eval "$2='1.0.0'";;
+#         "ibm-crossplane-provider-ibm-cloud-operator-app") eval "$2='1.0.0'";;
+#         "ibm-crossplane-provider-kubernetes-operator-app") eval "$2='1.0.0'";;
+#         *)  eval "$2='0.0.0'";;
+#     esac
+# }
 
 # --- Run ---
 
