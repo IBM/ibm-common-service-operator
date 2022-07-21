@@ -246,6 +246,10 @@ function switch_channel() {
     success "Updated ibm-common-service-operator subscriptions successfully."
     msg ""
 
+    # scale down ibm-common-service-operator deployment
+    msg "scaling down ibm-common-service-operator deployment in ${csNS} namespace"
+    oc scale deployment -n "${csNS}" "ibm-common-service-operator" --replicas=0
+    
     # clean some operators due to historical reason
     delete_operator "operand-deployment-lifecycle-manager-app ibm-namespace-scope-operator-restricted ibm-namespace-scope-operator" "${csNS}"
     delete_operator "ibm-namespace-scope-operator-restricted ibm-namespace-scope-operator ibm-cert-manager-operator" "${controlNS}"
