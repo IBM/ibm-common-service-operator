@@ -21,6 +21,36 @@ STEP=0
 # script base directory
 BASE_DIR=$(dirname "$0")
 
+CS_LIST_CSNS=("operand-deployment-lifecycle-manager-app"
+        "ibm-common-service-operator"
+        "ibm-cert-manager-operator"
+        "ibm-mongodb-operator"
+        "ibm-iam-operator"
+        "ibm-monitoring-grafana-operator"
+        "ibm-healthcheck-operator"
+        "ibm-management-ingress-operator"
+        "ibm-licensing-operator"
+        "ibm-commonui-operator"
+        "ibm-ingress-nginx-operator"
+        "ibm-auditlogging-operator"
+        "ibm-platform-api-operator"
+        "ibm-namespace-scope-operator"
+        "ibm-namespace-scope-operator-restricted"
+        "ibm-zen-operator"
+        "ibm-zen-cpp-operator"
+        "ibm-crossplane-operator-app"
+        "ibm-crossplane-provider-ibm-cloud-operator-app"
+        "ibm-crossplane-provider-kubernetes-operator-app")
+
+CS_LIST_CONTROLNS=(
+        "ibm-cert-manager-operator"
+        "ibm-namespace-scope-operator"
+        "ibm-namespace-scope-operator-restricted"
+        "ibm-crossplane-operator-app"
+        "ibm-crossplane-provider-ibm-cloud-operator-app"
+        "ibm-crossplane-provider-kubernetes-operator-app")
+
+# ---------- Command functions ----------
 # ---------- Command functions ----------
 function usage() {
 	local script="${0##*/}"
@@ -93,6 +123,7 @@ function main() {
 
     check_preqreqs "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPAVE}"
     switch_channel "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPAVE}" "${DESTINATION_CHANNEL}" "${ALL_NAMESPACE}"
+    check_switch_complete "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPAVE}" "${DESTINATION_CHANNEL}" "${ALL_NAMESPACE}"
 }
 
 
@@ -133,6 +164,15 @@ function check_preqreqs() {
         error "Namespace ${controlNS} for singleton services is not found."
     fi
 
+}
+
+function containsElement () {
+  local e match="$1"
+  shift
+  for e; do 
+    [[ "$e" == "$match" ]] && return 0; 
+  done
+  return 1
 }
 
 function switch_channel_operator() {
@@ -205,7 +245,91 @@ function switch_channel() {
 
     success "Updated ibm-common-service-operator subscriptions successfully."
     msg ""
-    info "Please wait a moment for ibm-common-service-operator to upgrade all foundational services."
+
+    # scale down ibm-common-service-operator deployment
+    msg "scaling down ibm-common-service-operator deployment in ${csNS} namespace"
+    oc scale deployment -n "${csNS}" "ibm-common-service-operator" --replicas=0
+    
+    # clean some operators due to historical reason
+    delete_operator "operand-deployment-lifecycle-manager-app ibm-namespace-scope-operator-restricted ibm-namespace-scope-operator" "${csNS}"
+    delete_operator "ibm-namespace-scope-operator-restricted ibm-namespace-scope-operator ibm-cert-manager-operator" "${controlNS}"
+
+
+    # switch channel for remaining CS components
+    for sub_name in "${CS_LIST_CSNS[@]}"; do
+        switch_channel_operator "${sub_name}" "${csNS}" "${channel}" "false"
+    done
+
+    for sub_name in "${CS_LIST_CONTROLNS[@]}"; do
+        switch_channel_operator "${sub_name}" "${csNS}" "${channel}" "false"
+    done
+
+
+    msg "Creating namespace scope config in namespace ${csNS}..."
+    msg "-----------------------------------------------------------------------"
+    cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: namespace-scope
+  namespace: ${csNS}
+data:
+  namespaces: ${csNS}
+EOF
+    msg ""
+    success "Created namespace scope config in namespace ${csNS}."
+}
+
+function check_switch_complete() {
+    local csNS=$1
+    local cloudpaksNS=$2
+    local controlNS=$3
+    local destChannel=$4
+    local allNamespace=$5
+
+    STEP=$((STEP + 1 ))
+
+    title "[${STEP}] Checking whether the channel switch is completed..."
+    msg "-----------------------------------------------------------------------"
+
+    for sub_name in "${CS_LIST_CSNS[@]}"; do
+        channel=$(oc get sub ${sub_name} -n ${csNS} -o jsonpath='{.spec.channel}' --ignore-not-found)
+        if [[ "X${channel}" != "X" ]] && [[ "$channel" != "${destChannel}" ]]; then
+            error "the channel of subscription ${sub_name} in namespace ${csNS} is not ${destChannel}, please try to re-run the script"
+        fi
+    done
+
+    for sub_name in "${CS_LIST_CONTROLNS[@]}"; do
+        channel=$(oc get sub ${sub_name} -n ${controlNS} -o jsonpath='{.spec.channel}' --ignore-not-found)
+        if [[ "X${channel}" != "X" ]] && [[ "$channel" != "${destChannel}" ]]; then
+            error "the channel of subscription ${sub_name} in namespace ${controlNS} is not ${destChannel}, please try to re-run the script"
+        fi
+    done
+
+    success "Updated all Common Service components' subscriptions successfully."
+}
+
+function delete_operator() {
+    subs=$1
+    ns=$2
+    for sub in ${subs}; do
+        exist=$(oc get sub ${sub} -n ${ns} --ignore-not-found)
+        if [[ "X${exist}" != "X" ]]; then
+            msg "Deleting ${sub} in namesapce ${ns}, it will be re-installed after the upgrade is successful ..."
+            msg "-----------------------------------------------------------------------"
+            csv=$(oc get sub ${sub} -n ${ns} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
+            in_step=1
+            msg "[${in_step}] Removing the subscription of ${sub} in namesapce ${ns} ..."
+            oc delete sub ${sub} -n ${ns} --ignore-not-found
+            in_step=$((in_step + 1))
+            msg "[${in_step}] Removing the csv of ${sub} in namesapce ${ns} ..."
+            [[ "X${csv}" != "X" ]] && oc delete csv ${csv}  -n ${ns} --ignore-not-found
+            msg ""
+
+            success "Remove $sub successfully."
+            msg ""
+        fi
+    done
 }
 
 function msg() {
@@ -233,6 +357,32 @@ function warning() {
   msg "\33[33m[✗] ${1}\33[0m"
 }
 
+# function cs_upgrade_list() {
+#     case $1 in
+#         "operand-deployment-lifecycle-manager-app") eval "$2='1.4.0'";;
+#         "ibm-common-service-operator") eval "$2='3.6.0'";;
+#         "ibm-cert-manager-operator") eval "$2='3.8.0'";;
+#         "ibm-mongodb-operator") eval "$2='1.2.0'";;
+#         "ibm-iam-operator") eval "$2='3.8.0'";;
+#         "ibm-monitoring-grafana-operator") eval "$2='1.10.0'";;
+#         "ibm-healthcheck-operator") eval "$2='3.8.0'";;
+#         "ibm-management-ingress-operator") eval "$2='1.4.0'";;
+#         "ibm-licensing-operator") eval "$2='1.3.0'";;
+#         "ibm-commonui-operator") eval "$2='1.4.0'";;
+#         "ibm-ingress-nginx-operator") eval "$2='1.4.0'";;
+#         "ibm-auditlogging-operator") eval "$2='3.8.0'";;
+#         "ibm-platform-api-operator") eval "$2='3.8.0'";;
+#         "ibm-namespace-scope-operator") eval "$2='1.0.0'";;
+#         "ibm-zen-operator") eval "$2='1.0.0'";;
+#         "ibm-zen-cpp-operator") eval "$2='1.0.0'";;
+#         "ibm-crossplane-operator-app") eval "$2='1.0.0'";;
+#         "ibm-crossplane-provider-ibm-cloud-operator-app") eval "$2='1.0.0'";;
+#         "ibm-crossplane-provider-kubernetes-operator-app") eval "$2='1.0.0'";;
+#         *)  eval "$2='0.0.0'";;
+#     esac
+# }
+
 # --- Run ---
 
 main $*
+
