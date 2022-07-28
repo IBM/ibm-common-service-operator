@@ -16,6 +16,7 @@
 #
 
 # counter to keep track of installation steps
+# set -x
 STEP=0
 
 # script base directory
@@ -36,6 +37,7 @@ function usage() {
       -cloudpaksNS                  specify the namespace where cloud paks is installed. By default it would be same as csNS.
       -controlNS                    specify the namespace where singleton services are installed. By default it it would be same as csNS.
       -c                            specify the subscription channel where common services switch. By default it is channel v3
+      -sub                          specify the subscription name if it is not ibm-common-service-operator
 	Note:
 	If there is no namespace defined through arguments, all Common Service in the cluster will be upgraded.
 EOF
@@ -44,7 +46,7 @@ EOF
 function main() {
     CS_NAMESPACE=${CS_NAMESPACE:-ibm-common-services}
     DESTINATION_CHANNEL=${DESTINATION_CHANNEL:-v3}
-    ALL_NAMESPACE=${ALL_NAMESPACE:-true}
+    ALL_NAMESPACE=${ALL_NAMESPACE:-false}
     
     while [ "$#" -gt "0" ]
     do
@@ -55,22 +57,26 @@ function main() {
             ;;
         "-csNS")
             CS_NAMESPACE=$2
-            ALL_NAMESPACE="false"
             shift
             ;;
         "-cloudpaksNS")
             cloudpaksNS=$2
-            ALL_NAMESPACE="false"
             shift
             ;;
         "-controlNS")
             controlNS=$2
-            ALL_NAMESPACE="false"
+            shift
+            ;;
+        "-sub")
+            subName=$2
             shift
             ;;
         "-c")
             DESTINATION_CHANNEL=$2
             shift
+            ;;
+        "-a")
+            ALL_NAMESPACE="true"
             ;;
         *)
             warning "invalid option -- \`$1\`"
@@ -80,9 +86,9 @@ function main() {
         esac
         shift
     done
-
-    CLOUDPAKS_NAMESPACE=${CLOUDPAKS_NAMESPACE:-${CS_NAMESPACE}}
-    CONTROL_NAMESPAVE=${CONTROL_NAMESPAVE:-${CS_NAMESPACE}}
+    CLOUDPAKS_NAMESPACE=${cloudpaksNS:-${CS_NAMESPACE}}
+    CONTROL_NAMESPAVE=${controlNS:-${CS_NAMESPACE}}
+    subName=${subName:-"ibm-common-service-operator"}
 
     if [[ "${ALL_NAMESPACE}" == "true" ]]; then
         title "Upgrade Commmon Service Operator in all namespaces."
@@ -92,7 +98,7 @@ function main() {
     msg "-----------------------------------------------------------------------"
 
     check_preqreqs "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPAVE}"
-    switch_channel "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPAVE}" "${DESTINATION_CHANNEL}" "${ALL_NAMESPACE}"
+    switch_channel "${subName}" "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPAVE}" "${DESTINATION_CHANNEL}" "${ALL_NAMESPACE}"
 }
 
 
@@ -174,16 +180,17 @@ EOF
 EOF
 
             msg ""
-        done < <(oc get sub -n ${csNS} --ignore-not-found | grep ${subName} | awk '{print $1}')
+        done < <(oc get sub -n ${namespace} --ignore-not-found | grep ${subName} | awk '{print $1}')
     fi
 }
 
 function switch_channel() {
-    local csNS=$1
-    local cloudpaksNS=$2
-    local controlNS=$3
-    local channel=$4
-    local allNamespace=$5
+    local subName=$1
+    local csNS=$2
+    local cloudpaksNS=$3
+    local controlNS=$4
+    local channel=$5
+    local allNamespace=$6
 
     STEP=$((STEP + 1 ))
 
@@ -195,17 +202,27 @@ function switch_channel() {
     # oc -n ibm-common-services get operandregistry common-service -o yaml | sed 's/stable-v1/v3.20/g' | oc -n ibm-common-services apply -f -
 
     if [[ "${allNamespace}" == "true" ]]; then
-        switch_channel_operator "ibm-common-service-operator" "${csNS}" "${channel}" "${allNamespace}"
+        switch_channel_operator "${subName}" "${csNS}" "${channel}" "${allNamespace}"
     else
         if [[ "$cloudpaksNS" != "$csNS" ]]; then
-            switch_channel_operator "ibm-common-service-operator" "${cloudpaksNS}" "${channel}" "${allNamespace}"
+            switch_channel_operator "${subName}" "${cloudpaksNS}" "${channel}" "${allNamespace}"
         fi
-        switch_channel_operator "ibm-common-service-operator" "${csNS}" "${channel}" "${allNamespace}"
+        switch_channel_operator "${subName}" "${csNS}" "${channel}" "${allNamespace}"
     fi
 
-    success "Updated ibm-common-service-operator subscriptions successfully."
+    success "Updated ${subName} subscriptions successfully."
     msg ""
-    info "Please wait a moment for ibm-common-service-operator to upgrade all foundational services."
+
+    # scale down ODLM to prevent reconciliation
+    msg "scaling down operand-deployment-lifecycle-manager deployment in ${csNS} namespace"
+    oc scale deployment -n "${csNS}" "operand-deployment-lifecycle-manager" --replicas=0
+
+    msg "Updating OperandRegistry common-service in ${csNS} namespace..."
+    oc -n ${csNS} get operandregistry common-service -o yaml | sed 's/ibm-zen-operator/dummy-ibm-zen-operator/g' | oc -n ${csNS} apply -f -
+
+    switch_channel_operator "ibm-zen-operator" "${csNS}" "${channel}" "false"
+
+    info "Please wait a moment for ${subName} to upgrade all foundational services."
 }
 
 function msg() {
