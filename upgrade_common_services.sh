@@ -33,13 +33,12 @@ function usage() {
 	Options:
 	Mandatory arguments to long options are mandatory for short options too.
       -h, --help                    display this help and exit
+      -a                            Upgrade all Common Service instances in the cluster. By default it only uprades the common service in ibm-common-services namespace
       -csNS                         specify the namespace where common service is installed. By default it is namespace ibm-common-services.
       -cloudpaksNS                  specify the namespace where cloud paks is installed. By default it would be same as csNS.
       -controlNS                    specify the namespace where singleton services are installed. By default it it would be same as csNS.
       -c                            specify the subscription channel where common services switch. By default it is channel v3
       -sub                          specify the subscription name if it is not ibm-common-service-operator
-	Note:
-	If there is no namespace defined through arguments, all Common Service in the cluster will be upgraded.
 EOF
 }
 
