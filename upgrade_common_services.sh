@@ -60,11 +60,11 @@ function main() {
             shift
             ;;
         "-cloudpaksNS")
-            cloudpaksNS=$2
+            CLOUDPAKS_NAMESPACE=$2
             shift
             ;;
         "-controlNS")
-            controlNS=$2
+            CONTROL_NAMESPACE=$2
             shift
             ;;
         "-sub")
@@ -86,8 +86,9 @@ function main() {
         esac
         shift
     done
-    CLOUDPAKS_NAMESPACE=${cloudpaksNS:-${CS_NAMESPACE}}
-    CONTROL_NAMESPAVE=${controlNS:-${CS_NAMESPACE}}
+
+    CLOUDPAKS_NAMESPACE=${CLOUDPAKS_NAMESPACE:-${CS_NAMESPACE}}
+    CONTROL_NAMESPACE=${CONTROL_NAMESPACE:-${CS_NAMESPACE}}
     subName=${subName:-"ibm-common-service-operator"}
 
     if [[ "${ALL_NAMESPACE}" == "true" ]]; then
@@ -97,8 +98,8 @@ function main() {
     fi
     msg "-----------------------------------------------------------------------"
 
-    check_preqreqs "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPAVE}"
-    switch_channel "${subName}" "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPAVE}" "${DESTINATION_CHANNEL}" "${ALL_NAMESPACE}"
+    check_preqreqs "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPACE}"
+    switch_channel "${subName}" "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPACE}" "${DESTINATION_CHANNEL}" "${ALL_NAMESPACE}"
 }
 
 
