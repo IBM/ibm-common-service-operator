@@ -1327,33 +1327,28 @@ func (b *Bootstrap) GetObjs(objectTemplate string, data interface{}, alwaysUpdat
 // use label to find the subscription
 // need this function because common service operator is not in operandRegistry
 func (b *Bootstrap) UpdateCsOpApproval() error {
+	var commonserviceNS string
 	operatorNs, err := util.GetOperatorNamespace()
 	if err != nil {
 		klog.Errorf("Getting operator namespace failed: %v", err)
 		return err
 	}
 
-	subList := &olmv1alpha1.SubscriptionList{}
-
 	if operatorNs == constant.ClusterOperatorNamespace {
-		opts := []client.ListOption{
-			client.InNamespace(constant.ClusterOperatorNamespace),
-			client.MatchingLabels(
-				map[string]string{"operators.coreos.com/ibm-common-service-operator." + constant.ClusterOperatorNamespace: ""}),
-		}
-		if err := b.Reader.List(ctx, subList, opts...); err != nil {
-			return err
-		}
-
+		commonserviceNS = constant.ClusterOperatorNamespace
 	} else {
-		opts := []client.ListOption{
-			client.InNamespace(b.CSData.MasterNs),
-			client.MatchingLabels(
-				map[string]string{"operators.coreos.com/ibm-common-service-operator." + b.CSData.MasterNs: ""}),
-		}
-		if err := b.Reader.List(ctx, subList, opts...); err != nil {
-			return err
-		}
+		commonserviceNS = b.CSData.MasterNs
+	}
+
+	subList := &olmv1alpha1.SubscriptionList{}
+	opts := []client.ListOption{
+		client.InNamespace(commonserviceNS),
+		client.MatchingLabels(
+			map[string]string{"operators.coreos.com/ibm-common-service-operator." + commonserviceNS: ""}),
+	}
+
+	if err := b.Reader.List(ctx, subList, opts...); err != nil {
+		return err
 	}
 
 	if len(subList.Items) == 0 {
@@ -1371,36 +1366,21 @@ func (b *Bootstrap) UpdateCsOpApproval() error {
 				return err
 			}
 			podList := &corev1.PodList{}
-			if operatorNs == constant.ClusterOperatorNamespace {
-				opts := []client.ListOption{
-					client.InNamespace(constant.ClusterOperatorNamespace),
-					client.MatchingLabels(map[string]string{"name": "ibm-common-service-operator"}),
-				}
-				if err := b.Reader.List(ctx, podList, opts...); err != nil {
+			opts := []client.ListOption{
+				client.InNamespace(commonserviceNS),
+				client.MatchingLabels(map[string]string{"name": "ibm-common-service-operator"}),
+			}
+			if err := b.Reader.List(ctx, podList, opts...); err != nil {
+				return err
+			}
+			for _, pod := range podList.Items {
+				if err := b.Client.Delete(ctx, &pod); err != nil {
 					return err
-				}
-				for _, pod := range podList.Items {
-					if err := b.Client.Delete(ctx, &pod); err != nil {
-						return err
-					}
-				}
-			} else {
-				opts := []client.ListOption{
-					client.InNamespace(b.CSData.MasterNs),
-					client.MatchingLabels(map[string]string{"name": "ibm-common-service-operator"}),
-				}
-				if err := b.Reader.List(ctx, podList, opts...); err != nil {
-					return err
-				}
-				for _, pod := range podList.Items {
-					if err := b.Client.Delete(ctx, &pod); err != nil {
-						return err
-					}
 				}
 			}
+
 		}
 	}
-
 	return nil
 }
 
