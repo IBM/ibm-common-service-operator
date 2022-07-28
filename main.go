@@ -205,17 +205,17 @@ func main() {
 		}
 		// +kubebuilder:scaffold:builder
 	} else {
-		klog.Infof("Creating common service operator subscription in namespace %s", bs.CSData.MasterNs)
+		klog.Infof("Creating %s subscription in namespace %s", constant.IBMCSPackage, bs.CSData.MasterNs)
 		if err = bs.CheckCsSubscription(); err != nil {
-			klog.Errorf("Failed to check common service operator subscription: %v", err)
+			klog.Errorf("Failed to check %s subscription: %v", constant.IBMCSPackage, err)
 			os.Exit(1)
 		}
 		if err = bs.CreateCsSubscription(); err != nil {
-			klog.Errorf("Failed to create common service operator subscription: %v", err)
+			klog.Errorf("Failed to create %s subscription: %v", constant.IBMCSPackage, err)
 			os.Exit(1)
 		}
 		if err = bs.UpdateCsOpApproval(); err != nil {
-			klog.Errorf("Failed to update common service operator subscription: %v", err)
+			klog.Errorf("Failed to update %s subscription: %v", constant.IBMCSPackage, err)
 			os.Exit(1)
 		}
 	}
