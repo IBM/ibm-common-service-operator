@@ -29,8 +29,6 @@ function main() {
     prereq
 
     prepare_cluster
-
-    echo hello
 }
 
 # verify that all pre-requisite CLI tools exist
@@ -41,9 +39,9 @@ function prereq() {
 function prepare_cluster() {
     local cm_name="common-service-maps"
     return_value=$("${OC}" get -n kube-public configmap ${cm_name} || echo failed)
-    # if [[ $return_value == "failed" ]]; then
-        # error "Missing configmap: ${cm_name}. This must be configured before proceeding"
-    # fi
+    if [[ $return_value == "failed" ]]; then
+        error "Missing configmap: ${cm_name}. This must be configured before proceeding"
+    fi
 
     # configmap should have control namespace specified
 
