@@ -392,7 +392,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: certified-operators
     sourceNamespace: {{ .CatalogSourceNs }}
-  - channel: {{ .Channel }}
+  - channel: v3.20
     name: ibm-zen-operator
     namespace: {{ .MasterNs }}
     packageName: ibm-zen-operator
@@ -418,7 +418,7 @@ spec:
     packageName: ibm-user-data-services-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
-  - channel: {{ .Channel }}
+  - channel: v3.20
     name: ibm-zen-cpp-operator
     namespace: {{ .MasterNs }}
     packageName: zen-cpp-operator

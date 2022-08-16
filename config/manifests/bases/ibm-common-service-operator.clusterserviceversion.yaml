@@ -9,7 +9,7 @@ metadata:
     description: The IBM Common Service Operator is used to deploy IBM Common Services
     nss.operator.ibm.com/managed-operators: cloud-native-postgresql
     olm.skipRange: ""
-    operatorChannel: v3.20
+    operatorChannel: v3.21
     operatorVersion: 3.21.0
     operators.operatorframework.io/builder: operator-sdk-v1.2.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
