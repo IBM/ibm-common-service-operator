@@ -229,7 +229,7 @@ func main() {
 			klog.Errorf("Failed to create %s subscription: %v", constant.IBMCSPackage, err)
 			os.Exit(1)
 		}
-		if err = bs.UpdateOpApproval(constant.IBMCSPackage); err != nil {
+		if err = bs.UpdateCsOpApproval(); err != nil {
 			klog.Errorf("Failed to update %s subscription: %v", constant.IBMCSPackage, err)
 			os.Exit(1)
 		}
