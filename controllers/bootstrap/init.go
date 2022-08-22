@@ -1552,11 +1552,6 @@ func (b *Bootstrap) updateApprovalMode() error {
 		return err
 	}
 
-	if err = b.UpdateCsOpApproval(); err != nil {
-		klog.Errorf("Failed to update %s subscription: %v", constant.IBMCSPackage, err)
-		return err
-	}
-
 	if err = b.UpdateOpApproval(constant.IBMODLMPackage); err != nil {
 		klog.Errorf("Failed to update %s subscription: %v", constant.IBMODLMPackage, err)
 		return err
@@ -1566,6 +1561,12 @@ func (b *Bootstrap) updateApprovalMode() error {
 		klog.Errorf("Failed to update %s subscription: %v", constant.IBMNSSPackage, err)
 		return err
 	}
+
+	if err = b.UpdateCsOpApproval(); err != nil {
+		klog.Errorf("Failed to update %s subscription: %v", constant.IBMCSPackage, err)
+		return err
+	}
+
 	return nil
 }
 
