@@ -184,6 +184,47 @@ EOF
     fi
 }
 
+function compare_channel() {
+    local subName=$1
+    local namespace=$2
+    local channel=$3
+    local cur_channel=$4
+    
+    # remove first char "v"
+    channel="${channel:1}"
+    cur_channel="${cur_channel:1}"
+
+    msg "Comparing channels in ${namespace} namespace ..."
+    msg "-----------------------------------------------------------------------"
+
+    # compare channel before channel switching
+    IFS='.' read -ra base_channel <<< "${cur_channel}"
+    IFS='.' read -ra post_channel <<< "${channel}"
+
+    # fill empty fields in base version with zeros
+    for ((i=${#base_channel[@]}; i<${#post_channel[@]}; i++)); do
+        base_channel[i]=0
+    done
+
+    for index in ${!base_channel[@]}; do
+
+        # fill empty fields in post version with zeros
+        if [[ -z ${post_channel[index]} ]]; then
+            post_channel[index]=0
+        fi
+                
+        if [[ ${base_channel[index]} -gt ${post_channel[index]} ]]; then
+            error "Post channel v${channel} is lower than base channel v${cur_channel}, skip channel switching."
+            
+        elif [[ ${base_channel[index]} -lt ${post_channel[index]} ]]; then
+            success "Post channel v${channel} is greater than base channel v${cur_channel}."
+            return 0
+        fi
+    done
+    error "Post channel v${channel} is equal base channel v${cur_channel}, skip channel switching."
+}
+
+
 function switch_channel() {
     local subName=$1
     local csNS=$2
@@ -194,7 +235,7 @@ function switch_channel() {
 
     STEP=$((STEP + 1 ))
 
-    title "[${STEP}] Switching channel into ${channel}..."
+    title "[${STEP}] Compareing given channel ${channel} version with current one ..."
     msg "-----------------------------------------------------------------------"
 
     # msg "Updating OperandRegistry common-service in namespace ibm-common-services..."
@@ -202,12 +243,40 @@ function switch_channel() {
     # oc -n ibm-common-services get operandregistry common-service -o yaml | sed 's/stable-v1/v3.20/g' | oc -n ibm-common-services apply -f -
 
     if [[ "${allNamespace}" == "true" ]]; then
-        switch_channel_operator "${subName}" "${csNS}" "${channel}" "${allNamespace}"
+        while read -r ns cur_channel; do
+            compare_channel "${subname}" "${ns}" "${channel}" "${cur_channel}"
+        done < <(oc get sub --all-namespaces --ignore-not-found | grep ${subName}  | awk '{print $1" "$5}')
+        if [[ $? == 0 ]]; then
+            STEP=$((STEP + 1 ))
+            title "[${STEP}] Switching channel into ${channel}..."
+            msg "-----------------------------------------------------------------------"
+            switch_channel_operator "${subName}" "${csNS}" "${channel}" "${allNamespace}"
+        fi   
     else
         if [[ "$cloudpaksNS" != "$csNS" ]]; then
-            switch_channel_operator "${subName}" "${cloudpaksNS}" "${channel}" "${allNamespace}"
+            
+            while read -r cur_channel; do
+                compare_channel "${subName}" "${cloudpaksNS}" "${channel}" "${cur_channel}"
+            done < <(oc get sub -n ${cloudpaksNS} --ignore-not-found | grep ${subName}  | awk '{print $4}')
+
+            if [[ $? == 0 ]]; then
+                STEP=$((STEP + 1 ))
+                title "[${STEP}] Switching channel into ${channel}..."
+                msg "-----------------------------------------------------------------------"
+                switch_channel_operator "${subName}" "${cloudpaksNS}" "${channel}" "${allNamespace}"
+            fi
         fi
-        switch_channel_operator "${subName}" "${csNS}" "${channel}" "${allNamespace}"
+        
+        while read -r cur_channel; do
+            compare_channel "${subname}" "${csNS}" "${channel}" "${cur_channel}"
+        done < <(oc get sub -n ${csNS} --ignore-not-found | grep ${subName}  | awk '{print $4}')
+        
+        if [[ $? == 0 ]]; then
+            STEP=$((STEP + 1 ))
+            title "[${STEP}] Switching channel into ${channel}..."
+            msg "-----------------------------------------------------------------------"
+            switch_channel_operator "${subName}" "${csNS}" "${channel}" "${allNamespace}"
+        fi
     fi
 
     success "Updated ${subName} subscriptions successfully."
