@@ -138,6 +138,8 @@ function check_preqreqs() {
     local csNS=$1
     local cloudpaksNS=$2
     local controlNS=$3
+
+    msg ""
     title "[${STEP}] Checking prerequesites ..."
     msg "-----------------------------------------------------------------------"
 
@@ -216,6 +218,45 @@ EOF
     fi
 }
 
+function compare_channel() {
+    local subName=$1
+    local namespace=$2
+    local channel=$3
+    local cur_channel=$4
+    
+    # remove first char "v"
+    channel="${channel:1}"
+    cur_channel="${cur_channel:1}"
+
+    msg "Comparing channels in ${namespace} namespace ..."
+    msg "-----------------------------------------------------------------------"
+
+    # compare channel before channel switching
+    IFS='.' read -ra current_channel <<< "${cur_channel}"
+    IFS='.' read -ra upgrade_channel <<< "${channel}"
+
+    # fill empty fields in current base version with zeros
+    for ((i=${#current_channel[@]}; i<${#upgrade_channel[@]}; i++)); do
+        current_channel[i]=0
+    done
+
+    for index in ${!current_channel[@]}; do
+
+        # fill empty fields in upgrade version with zeros
+        if [[ -z ${upgrade_channel[index]} ]]; then
+            upgrade_channel[index]=0
+        fi
+
+        if [[ ${current_channel[index]} -gt ${upgrade_channel[index]} ]]; then
+            error "Upgrade channel v${channel} is lower than current channel v${cur_channel}, abort the upgrade procedure."
+        elif [[ ${current_channel[index]} -lt ${upgrade_channel[index]} ]]; then
+            success "Upgrade channel v${channel} is greater than current channel v${cur_channel}, ready for channel switch"
+            return 0
+        fi
+    done
+    success "Upgrade channel v${channel} is equal to current channel v${cur_channel}, ready for channel switch."
+}
+
 function switch_channel() {
     local subName=$1
     local csNS=$2
@@ -225,17 +266,46 @@ function switch_channel() {
     local allNamespace=$6
 
     STEP=$((STEP + 1 ))
-
-    title "[${STEP}] Switching channel into ${channel}..."
+    msg ""
+    title "[${STEP}] Compareing given upgrade channel version ${channel} with current one ..."
     msg "-----------------------------------------------------------------------"
 
     if [[ "${allNamespace}" == "true" ]]; then
-        switch_channel_operator "${subName}" "${csNS}" "${channel}" "${allNamespace}"
+        while read -r ns cur_channel; do
+            compare_channel "${subname}" "${ns}" "${channel}" "${cur_channel}"
+        done < <(oc get sub --all-namespaces --ignore-not-found | grep ${subName}  | awk '{print $1" "$5}')
+        if [[ $? == 0 ]]; then
+            STEP=$((STEP + 1 ))
+            msg ""
+            title "[${STEP}] Switching channel into ${channel}..."
+            msg "-----------------------------------------------------------------------"
+            switch_channel_operator "${subName}" "${csNS}" "${channel}" "${allNamespace}"
+        fi  
     else
         if [[ "$cloudpaksNS" != "$csNS" ]]; then
-            switch_channel_operator "${subName}" "${cloudpaksNS}" "${channel}" "${allNamespace}"
+            while read -r cur_channel; do
+                compare_channel "${subName}" "${cloudpaksNS}" "${channel}" "${cur_channel}"
+            done < <(oc get sub -n ${cloudpaksNS} --ignore-not-found | grep ${subName}  | awk '{print $4}')
+
+            if [[ $? == 0 ]]; then
+                STEP=$((STEP + 1 ))
+                msg ""
+                title "[${STEP}] Switching channel into ${channel}..."
+                msg "-----------------------------------------------------------------------"
+                switch_channel_operator "${subName}" "${cloudpaksNS}" "${channel}" "${allNamespace}"
+            fi
         fi
-        switch_channel_operator "${subName}" "${csNS}" "${channel}" "${allNamespace}"
+        while read -r cur_channel; do
+            compare_channel "${subname}" "${csNS}" "${channel}" "${cur_channel}"
+        done < <(oc get sub -n ${csNS} --ignore-not-found | grep ${subName}  | awk '{print $4}')
+        
+        if [[ $? == 0 ]]; then
+            STEP=$((STEP + 1 ))
+            msg ""
+            title "[${STEP}] Switching channel into ${channel}..."
+            msg "-----------------------------------------------------------------------"
+            switch_channel_operator "${subName}" "${csNS}" "${channel}" "${allNamespace}"
+        fi
     fi
 
     success "Updated ${subName} subscriptions successfully."
@@ -268,7 +338,7 @@ function check_switch_complete() {
     local allNamespace=$5
 
     STEP=$((STEP + 1 ))
-
+    
     title "[${STEP}] Checking whether the channel switch is completed..."
     msg "-----------------------------------------------------------------------"
 
