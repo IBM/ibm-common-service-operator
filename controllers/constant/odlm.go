@@ -516,66 +516,66 @@ spec:
   - name: ibm-bts-operator
     spec:
       operandRequest: {}
-      - name: ibm-zen-operator
-        resources:
-          - apiVersion: batch/v1
-            data:
+  - name: ibm-zen-operator
+    resources:
+      - apiVersion: batch/v1
+        data:
+          spec:
+            activeDeadlineSeconds: 600
+            backoffLimit: 5
+            template:
+              metadata:
+                annotations:
+                  productID: 068a62892a1e4db39641342e592daa25
+                  productMetric: FREE
+                  productName: IBM Cloud Platform Common Services
               spec:
-                activeDeadlineSeconds: 600
-                backoffLimit: 5
-                template:
-                  metadata:
-                    annotations:
-                      productID: 068a62892a1e4db39641342e592daa25
-                      productMetric: FREE
-                      productName: IBM Cloud Platform Common Services
-                  spec:
-                    affinity:
-                      nodeAffinity:
-                        requiredDuringSchedulingIgnoredDuringExecution:
-                          nodeSelectorTerms:
-                            - matchExpressions:
-                                - key: kubernetes.io/arch
-                                  operator: In
-                                  values:
-                                    - amd64
-                                    - ppc64le
-                                    - s390x
-                    containers:
-                      - command:
-                          - bash
-                          - '-c'
-                          - bash /setup/pre-zen.sh
-                        env:
-                          - name: common_services_namespace
-                            valueFrom:
-                              fieldRef:
-                                fieldPath: metadata.namespace
-                        image: {{ .ZenOperatorImage }}
-                        name: pre-zen-job
-                        resources:
-                          limits:
-                            cpu: 500m
-                            memory: 512Mi
-                          requests:
-                            cpu: 100m
-                            memory: 50Mi
-                        securityContext:
-                          allowPrivilegeEscalation: false
-                          capabilities:
-                            drop:
-                              - ALL
-                          privileged: false
-                          readOnlyRootFilesystem: false
-                    restartPolicy: OnFailure
+                affinity:
+                  nodeAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                      nodeSelectorTerms:
+                        - matchExpressions:
+                            - key: kubernetes.io/arch
+                              operator: In
+                              values:
+                                - amd64
+                                - ppc64le
+                                - s390x
+                containers:
+                  - command:
+                      - bash
+                      - '-c'
+                      - bash /setup/pre-zen.sh
+                    env:
+                      - name: common_services_namespace
+                        valueFrom:
+                          fieldRef:
+                            fieldPath: metadata.namespace
+                    image: {{ .ZenOperatorImage }}
+                    name: pre-zen-job
+                    resources:
+                      limits:
+                        cpu: 500m
+                        memory: 512Mi
+                      requests:
+                        cpu: 100m
+                        memory: 50Mi
                     securityContext:
-                      runAsNonRoot: true
-                    serviceAccount: operand-deployment-lifecycle-manager
-                    serviceAccountName: operand-deployment-lifecycle-manager
-                    terminationGracePeriodSeconds: 30
-          force: true
-          kind: Job
-          name: pre-zen-operand-config-job 
+                      allowPrivilegeEscalation: false
+                      capabilities:
+                        drop:
+                          - ALL
+                      privileged: false
+                      readOnlyRootFilesystem: false
+                restartPolicy: OnFailure
+                securityContext:
+                  runAsNonRoot: true
+                serviceAccount: operand-deployment-lifecycle-manager
+                serviceAccountName: operand-deployment-lifecycle-manager
+                terminationGracePeriodSeconds: 30
+        force: true
+        kind: Job
+        name: pre-zen-operand-config-job
   - name: redhat-marketplace-operator
     resources:
       - apiVersion: ibmcpcs.ibm.com/v1
