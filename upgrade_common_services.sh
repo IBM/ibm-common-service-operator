@@ -234,7 +234,7 @@ function switch_channel() {
 
     STEP=$((STEP + 1 ))
 
-    title "[${STEP}] Compareing given channel ${channel} version with current one ..."
+    title "[${STEP}] Compareing given upgrade channel version ${channel} with current one ..."
     msg "-----------------------------------------------------------------------"
 
     # msg "Updating OperandRegistry common-service in namespace ibm-common-services..."
