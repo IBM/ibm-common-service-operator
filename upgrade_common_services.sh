@@ -106,6 +106,8 @@ function check_preqreqs() {
     local csNS=$1
     local cloudpaksNS=$2
     local controlNS=$3
+
+    msg ""
     title "[${STEP}] Checking prerequesites ..."
     msg "-----------------------------------------------------------------------"
 
@@ -234,6 +236,7 @@ function switch_channel() {
 
     STEP=$((STEP + 1 ))
 
+    msg ""
     title "[${STEP}] Compareing given upgrade channel version ${channel} with current one ..."
     msg "-----------------------------------------------------------------------"
 
@@ -247,6 +250,7 @@ function switch_channel() {
         done < <(oc get sub --all-namespaces --ignore-not-found | grep ${subName}  | awk '{print $1" "$5}')
         if [[ $? == 0 ]]; then
             STEP=$((STEP + 1 ))
+            msg ""
             title "[${STEP}] Switching channel into ${channel}..."
             msg "-----------------------------------------------------------------------"
             switch_channel_operator "${subName}" "${csNS}" "${channel}" "${allNamespace}"
@@ -260,6 +264,7 @@ function switch_channel() {
 
             if [[ $? == 0 ]]; then
                 STEP=$((STEP + 1 ))
+                msg ""
                 title "[${STEP}] Switching channel into ${channel}..."
                 msg "-----------------------------------------------------------------------"
                 switch_channel_operator "${subName}" "${cloudpaksNS}" "${channel}" "${allNamespace}"
@@ -272,6 +277,7 @@ function switch_channel() {
         
         if [[ $? == 0 ]]; then
             STEP=$((STEP + 1 ))
+            msg ""
             title "[${STEP}] Switching channel into ${channel}..."
             msg "-----------------------------------------------------------------------"
             switch_channel_operator "${subName}" "${csNS}" "${channel}" "${allNamespace}"
