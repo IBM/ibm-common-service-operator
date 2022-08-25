@@ -198,30 +198,29 @@ function compare_channel() {
     msg "-----------------------------------------------------------------------"
 
     # compare channel before channel switching
-    IFS='.' read -ra base_channel <<< "${cur_channel}"
-    IFS='.' read -ra post_channel <<< "${channel}"
+    IFS='.' read -ra current_channel <<< "${cur_channel}"
+    IFS='.' read -ra upgrade_channel <<< "${channel}"
 
-    # fill empty fields in base version with zeros
-    for ((i=${#base_channel[@]}; i<${#post_channel[@]}; i++)); do
-        base_channel[i]=0
+    # fill empty fields in current base version with zeros
+    for ((i=${#current_channel[@]}; i<${#upgrade_channel[@]}; i++)); do
+        current_channel[i]=0
     done
 
-    for index in ${!base_channel[@]}; do
+    for index in ${!current_channel[@]}; do
 
-        # fill empty fields in post version with zeros
-        if [[ -z ${post_channel[index]} ]]; then
-            post_channel[index]=0
+        # fill empty fields in upgrade version with zeros
+        if [[ -z ${upgrade_channel[index]} ]]; then
+            upgrade_channel[index]=0
         fi
-                
-        if [[ ${base_channel[index]} -gt ${post_channel[index]} ]]; then
-            error "Post channel v${channel} is lower than base channel v${cur_channel}, skip channel switching."
-            
-        elif [[ ${base_channel[index]} -lt ${post_channel[index]} ]]; then
-            success "Post channel v${channel} is greater than base channel v${cur_channel}."
+
+        if [[ ${current_channel[index]} -gt ${upgrade_channel[index]} ]]; then
+            error "Upgrade channel v${channel} is lower than current channel v${cur_channel}, abort the upgrade procedure."
+        elif [[ ${current_channel[index]} -lt ${upgrade_channel[index]} ]]; then
+            success "Upgrade channel v${channel} is greater than current channel v${cur_channel}, ready for channel switch"
             return 0
         fi
     done
-    error "Post channel v${channel} is equal base channel v${cur_channel}, skip channel switching."
+    success "Upgrade channel v${channel} is equal to current channel v${cur_channel}, ready for channel switch."
 }
 
 
