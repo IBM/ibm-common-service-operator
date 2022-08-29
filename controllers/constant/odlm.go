@@ -295,6 +295,7 @@ metadata:
   namespace: {{ .MasterNs }}
   annotations:
     version: {{ .Version }}
+    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
 spec:
   operators:
   - name: ibm-licensing-operator
@@ -598,6 +599,7 @@ metadata:
   namespace: {{ .MasterNs }}
   annotations:
     version: {{ .Version }}
+    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
 spec:
   operators:
   - name: ibm-licensing-operator
