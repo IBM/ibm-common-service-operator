@@ -45,14 +45,6 @@ const ConfigurationRules = `
           requests:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
-      configMapWatcher:
-        resources:
-          limits:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-          requests:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
 - name: ibm-mongodb-operator
   spec:
     mongoDB:
