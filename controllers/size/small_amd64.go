@@ -44,14 +44,6 @@ const Small = `
           requests:
             cpu: 30m
             memory: 40Mi
-      configMapWatcher:
-        resources:
-          limits:
-            cpu: 30m
-            memory: 60Mi
-          requests:
-            cpu: 30m
-            memory: 30Mi
 - name: ibm-mongodb-operator
   spec:
     mongoDB:

@@ -44,14 +44,6 @@ const Medium = `
           requests:
             cpu: 50m
             memory: 90Mi
-      configMapWatcher:
-        resources:
-          limits:
-            cpu: 10m
-            memory: 150Mi
-          requests:
-            cpu: 10m
-            memory: 80Mi
 - name: ibm-mongodb-operator
   spec:
     mongoDB:

@@ -44,14 +44,6 @@ const StarterSet = `
           requests:
             cpu: 50m
             memory: 90Mi
-      configMapWatcher:
-        resources:
-          limits:
-            cpu: 10m
-            memory: 60Mi
-          requests:
-            cpu: 10m
-            memory: 60Mi
 - name: ibm-mongodb-operator
   spec:
     mongoDB:
