@@ -463,21 +463,18 @@ func GetCatalogSource(packageName, ns string, r client.Reader) (CatalogSourceNam
 
 	var subscriptionList []olmv1alpha1.SubscriptionList
 	for _, sub := range subList.Items {
-		if sub.Spec.name != packageName {
-			continue
-		} else if sub.Spec.name == "ibm-namespace-scope-operator" ||
-			sub.Spec.name == "ibm-odlm" {
-			continue
+		if sub.Spec.name == packageName {
+			subscriptionList = append(subscriptionList, sub)
 		}
-		subscriptionList = append(subscriptionList, sub)
 	}
 
 	if len(subscriptionList) == 0 {
+		klog.Errorf("no %v subscription in namespace: %v ", packageName, ns)
 		return  "", ""
 	}
 
 	if len(subscriptionList) > 1 {
-		klog.Infof("found more than one ibm-common-service-operator subscription in namespace: %v ", ns)
+		klog.Errorf("found more than one %v subscription in namespace: %v ", packageName, ns)
 		return "", ""
 	}
 
