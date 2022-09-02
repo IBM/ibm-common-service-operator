@@ -24,15 +24,12 @@ import (
 	"io/ioutil"
 	"os"
 	"reflect"
-	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	utilyaml "github.com/ghodss/yaml"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
-	operatorsv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/package-server/apis/operators/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -509,24 +506,24 @@ func GetCatalogSource(packageName, ns string, r client.Reader) (CatalogSourceNam
 		klog.Info(err)
 	}
 
-	var subscriptionList []olmv1alpha1.SubscriptionList
+	var csSub []olmv1alpha1.Subscription
 	for _, sub := range subList.Items {
-		if sub.Spec.name == packageName {
-			subscriptionList = append(subscriptionList, sub)
+		if sub.Spec.Package == packageName {
+			csSub = append(csSub, sub)
 		}
 	}
 
-	if len(subscriptionList) == 0 {
+	if len(csSub) == 0 {
 		klog.Errorf("no %v subscription in namespace: %v ", packageName, ns)
 		return  "", ""
 	}
 
-	if len(subscriptionList) > 1 {
+	if len(csSub) > 1 {
 		klog.Errorf("found more than one %v subscription in namespace: %v ", packageName, ns)
 		return "", ""
 	}
 
-	return subscriptionList[0].Spec.source, subscriptionList[0].Spec.sourceNamespace
+	return csSub[0].Spec.CatalogSource, csSub[0].Spec.CatalogSourceNamespace
 }
 
 
