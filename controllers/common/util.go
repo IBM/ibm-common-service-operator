@@ -503,141 +503,35 @@ func GetApprovalModeinNs(r client.Reader, ns string) (approvalMode string, err e
 
 // GetCatalogSource gets CatalogSource will be used by operators
 func GetCatalogSource(packageName, ns string, r client.Reader) (CatalogSourceName, CatalogSourceNS string) {
-	pmList := &operatorsv1.PackageManifestList{}
-
-	if err := r.List(context.TODO(), pmList, &client.ListOptions{Namespace: ns}); err != nil {
+	
+	subList := &olmv1alpha1.SubscriptionList{}
+	if err := r.List(context.TODO(), subList, &client.ListOptions{Namespace: ns}); err != nil {
 		klog.Info(err)
 	}
 
-	var packageManifestList []operatorsv1.PackageManifest
-	for _, pm := range pmList.Items {
-		if pm.Status.PackageName != packageName {
+	var subscriptionList []olmv1alpha1.SubscriptionList
+	for _, sub := range subList.Items {
+		if sub.Spec.name != packageName {
 			continue
-		} else if pm.Status.CatalogSource == "redhat-operators" ||
-			pm.Status.CatalogSource == "redhat-marketplace" ||
-			pm.Status.CatalogSource == "community-operators" ||
-			pm.Status.CatalogSource == "certified-operators" {
+		} else if sub.Spec.name == "ibm-namespace-scope-operator" ||
+			sub.Spec.name == "ibm-odlm" {
 			continue
 		}
-		packageManifestList = append(packageManifestList, pm)
-	}
-	sort.Sort(sortablePM{
-		r:                   r,
-		PackageManifestList: packageManifestList,
-	})
-
-	var packageManifestStringList []string
-
-	for _, packageManifest := range packageManifestList {
-		packageManifestStringList = append(packageManifestStringList, packageManifest.Status.CatalogSourceNamespace+"/"+packageManifest.Status.CatalogSource)
+		subscriptionList = append(subscriptionList, sub)
 	}
 
-	klog.Infof("Available catalogsource for operator %v: %v", packageName, strings.Join(packageManifestStringList, ","))
+	if len(subscriptionList) == 0 {
+		return  "", ""
+	}
 
-	if len(packageManifestList) == 0 {
+	if len(subscriptionList) > 1 {
+		klog.Infof("found more than one ibm-common-service-operator subscription in namespace: %v ", ns)
 		return "", ""
 	}
 
-	return packageManifestList[0].Status.CatalogSource, packageManifestList[0].Status.CatalogSourceNamespace
+	return subscriptionList[0].Spec.source, subscriptionList[0].Spec.sourceNamespace
 }
 
-type sortablePM struct {
-	r                   client.Reader
-	PackageManifestList []operatorsv1.PackageManifest
-}
-
-func (s sortablePM) Len() int { return len(s.PackageManifestList) }
-func (s sortablePM) Swap(i, j int) {
-	s.PackageManifestList[i], s.PackageManifestList[j] = s.PackageManifestList[j], s.PackageManifestList[i]
-}
-func (s sortablePM) Less(i, j int) bool {
-	idevEnabled := false
-	iCSCatalogsource := &olmv1alpha1.CatalogSource{}
-	iPriority := "0"
-	jPriority := "0"
-	if err := s.r.Get(context.TODO(), types.NamespacedName{Name: s.PackageManifestList[i].Status.CatalogSource, Namespace: s.PackageManifestList[i].Status.CatalogSourceNamespace}, iCSCatalogsource); err != nil {
-		if !errors.IsNotFound(err) {
-			klog.Info(err)
-		}
-	} else {
-		reg, _ := regexp.Compile(constant.DevBuildImage)
-		if reg.MatchString(iCSCatalogsource.Spec.Image) {
-			idevEnabled = true
-		}
-		if iCSCatalogsource.GetAnnotations() != nil && iCSCatalogsource.GetAnnotations()[constant.BedrockCatalogsourcePriority] != "" {
-			iPriority = iCSCatalogsource.GetAnnotations()[constant.BedrockCatalogsourcePriority]
-		}
-	}
-	jdevEnabled := false
-	jCSCatalogsource := &olmv1alpha1.CatalogSource{}
-	if err := s.r.Get(context.TODO(), types.NamespacedName{Name: s.PackageManifestList[j].Status.CatalogSource, Namespace: s.PackageManifestList[j].Status.CatalogSourceNamespace}, jCSCatalogsource); err != nil {
-		if !errors.IsNotFound(err) {
-			klog.Info(err)
-		}
-	} else {
-		reg, _ := regexp.Compile(constant.DevBuildImage)
-		if reg.MatchString(jCSCatalogsource.Spec.Image) {
-			jdevEnabled = true
-		}
-		if jCSCatalogsource.GetAnnotations() != nil && jCSCatalogsource.GetAnnotations()[constant.BedrockCatalogsourcePriority] != "" {
-			jPriority = jCSCatalogsource.GetAnnotations()[constant.BedrockCatalogsourcePriority]
-		}
-	}
-	iPriorityInt, _ := strconv.Atoi(iPriority)
-	jPriorityInt, _ := strconv.Atoi(jPriority)
-	if iPriorityInt > jPriorityInt {
-		return true
-	} else if iPriorityInt < jPriorityInt {
-		return false
-	}
-
-	if idevEnabled && !jdevEnabled {
-		return true
-	} else if !idevEnabled && jdevEnabled {
-		return false
-	}
-
-	//IBMCatalogsource has the highest priority
-	if s.PackageManifestList[i].Status.CatalogSource == constant.IBMCatalogsource && s.PackageManifestList[i].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
-		return true
-	}
-	if s.PackageManifestList[j].Status.CatalogSource == constant.IBMCatalogsource && s.PackageManifestList[j].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
-		return false
-	}
-	//CSCatalogsource has the second highest priority
-	if s.PackageManifestList[i].Status.CatalogSource == constant.CSCatalogsource && s.PackageManifestList[i].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
-		return true
-	}
-	if s.PackageManifestList[j].Status.CatalogSource == constant.CSCatalogsource && s.PackageManifestList[j].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
-		return false
-	}
-	//priority of CertifiedCatalogsource, CommunityCatalogsource, RedhatMarketplaceCatalogsource and RedhatCatalogsource are lower than others
-	if s.PackageManifestList[i].Status.CatalogSource == constant.CertifiedCatalogsource && s.PackageManifestList[i].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
-		return false
-	}
-	if s.PackageManifestList[j].Status.CatalogSource == constant.CertifiedCatalogsource && s.PackageManifestList[j].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
-		return true
-	}
-	if s.PackageManifestList[i].Status.CatalogSource == constant.CommunityCatalogsource && s.PackageManifestList[i].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
-		return false
-	}
-	if s.PackageManifestList[j].Status.CatalogSource == constant.CommunityCatalogsource && s.PackageManifestList[j].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
-		return true
-	}
-	if s.PackageManifestList[i].Status.CatalogSource == constant.RedhatMarketplaceCatalogsource && s.PackageManifestList[i].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
-		return false
-	}
-	if s.PackageManifestList[j].Status.CatalogSource == constant.RedhatMarketplaceCatalogsource && s.PackageManifestList[j].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
-		return true
-	}
-	if s.PackageManifestList[i].Status.CatalogSource == constant.RedhatCatalogsource && s.PackageManifestList[i].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
-		return false
-	}
-	if s.PackageManifestList[j].Status.CatalogSource == constant.RedhatCatalogsource && s.PackageManifestList[j].Status.CatalogSourceNamespace == constant.CatalogsourceNs {
-		return true
-	}
-	return true
-}
 
 // ValidateCsMaps checks common-service-maps has no scope overlapping
 func ValidateCsMaps(cm *corev1.ConfigMap) error {

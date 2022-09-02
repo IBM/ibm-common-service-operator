@@ -168,6 +168,7 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		CSData:               csData,
 	}
 
+
 	// Get all the resources from the deployment annotations
 	annotations, err := bs.GetAnnotations()
 	if err != nil {
@@ -474,15 +475,6 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 		if err != nil {
 			return err
 		}
-		for i := range obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{}) {
-			if obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{})[i].(map[string]interface{})["sourceName"] != nil {
-				continue
-			}
-			catalogsource, catalogsourceNs := util.GetCatalogSource(obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{})[i].(map[string]interface{})["packageName"].(string), b.CSData.MasterNs, b.Reader)
-			if catalogsource != "" || catalogsourceNs != "" {
-				obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{})[i].(map[string]interface{})["sourceName"], obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{})[i].(map[string]interface{})["sourceNamespace"] = catalogsource, catalogsourceNs
-			}
-		}
 		objInCluster, err := b.GetObject(obj[0])
 		if errors.IsNotFound(err) {
 			klog.Infof("Creating resource with name: %s, namespace: %s, kind: %s, apiversion: %s\n", obj[0].GetName(), obj[0].GetNamespace(), obj[0].GetKind(), obj[0].GetAPIVersion())
@@ -511,15 +503,6 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 		if err != nil {
 			klog.Error(err)
 			return err
-		}
-		for i := range obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{}) {
-			if obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{})[i].(map[string]interface{})["sourceName"] != nil {
-				continue
-			}
-			catalogsource, catalogsourceNs := util.GetCatalogSource(obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{})[i].(map[string]interface{})["packageName"].(string), b.CSData.MasterNs, b.Reader)
-			if catalogsource != "" || catalogsourceNs != "" {
-				obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{})[i].(map[string]interface{})["sourceName"], obj[0].Object["spec"].(map[string]interface{})["operators"].([]interface{})[i].(map[string]interface{})["sourceNamespace"] = catalogsource, catalogsourceNs
-			}
 		}
 		objInCluster, err := b.GetObject(obj[0])
 		if errors.IsNotFound(err) {
