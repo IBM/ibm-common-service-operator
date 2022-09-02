@@ -32,6 +32,7 @@ function main() {
     #prereq
     #prepare_cluster
     collect_data
+    scale_up_pod
     restart_CS_pods
     install_new_CS
 }
@@ -58,6 +59,13 @@ function prepare_cluster() {
     # each namespace should be in configmap
 
     # uninstall singleton services
+}
+
+# scale back cs pod 
+function scale_up_pod() {
+    msg "scaling back ibm-common-service-operator deployment in ${master_ns} namespace"
+    ${OC} scale deployment -n ${master_ns} ibm-common-service-operator --replicas=1
+    check_healthy "${master_ns}"
 }
 
 function collect_data() {
@@ -134,6 +142,7 @@ function install_new_CS() {
                 if [[ $get_sub == "failed" ]]; then
                     create_operator_group "${namespace}"
                     install_common_service_operator_sub "${namespace}"
+                    check_CSCR "${namespace}"
                 fi
             fi  
         fi
