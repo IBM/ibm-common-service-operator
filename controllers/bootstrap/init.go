@@ -168,7 +168,6 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		CSData:               csData,
 	}
 
-
 	// Get all the resources from the deployment annotations
 	annotations, err := bs.GetAnnotations()
 	if err != nil {

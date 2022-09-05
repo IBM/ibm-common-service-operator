@@ -452,30 +452,29 @@ func GetApprovalModeinNs(r client.Reader, ns string) (approvalMode string, err e
 
 // GetCatalogSource gets CatalogSource will be used by operators
 func GetCatalogSource(packageName, ns string, r client.Reader) (CatalogSourceName, CatalogSourceNS string) {
-	
 	subList := &olmv1alpha1.SubscriptionList{}
 	if err := r.List(context.TODO(), subList, &client.ListOptions{Namespace: ns}); err != nil {
 		klog.Info(err)
 	}
 
-	var csSub []olmv1alpha1.Subscription
+	var subscriptions []olmv1alpha1.Subscription
 	for _, sub := range subList.Items {
 		if sub.Spec.Package == packageName {
-			csSub = append(csSub, sub)
+			subscriptions = append(subscriptions, sub)
 		}
 	}
 
-	if len(csSub) == 0 {
-		klog.Errorf("no %v subscription in namespace: %v ", packageName, ns)
+	if len(subscriptions) == 0 {
+		klog.Errorf("not found %v subscription in namespace: %v", packageName, ns)
 		return  "", ""
 	}
 
-	if len(csSub) > 1 {
-		klog.Errorf("found more than one %v subscription in namespace: %v ", packageName, ns)
+	if len(subscriptions) > 1 {
+		klog.Errorf("found more than one %v subscription in namespace: %v", packageName, ns)
 		return "", ""
 	}
 
-	return csSub[0].Spec.CatalogSource, csSub[0].Spec.CatalogSourceNamespace
+	return subscriptions[0].Spec.CatalogSource, subscriptions[0].Spec.CatalogSourceNamespace
 }
 
 
