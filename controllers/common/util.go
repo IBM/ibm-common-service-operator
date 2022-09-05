@@ -525,7 +525,6 @@ func GetCatalogSource(packageName, ns string, r client.Reader) (CatalogSourceNam
 	return subscriptions[0].Spec.CatalogSource, subscriptions[0].Spec.CatalogSourceNamespace
 }
 
-
 // ValidateCsMaps checks common-service-maps has no scope overlapping
 func ValidateCsMaps(cm *corev1.ConfigMap) error {
 	commonServiceMaps, ok := cm.Data["common-service-maps.yaml"]
