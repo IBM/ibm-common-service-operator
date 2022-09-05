@@ -514,7 +514,7 @@ func GetCatalogSource(packageName, ns string, r client.Reader) (CatalogSourceNam
 
 	if len(subscriptions) == 0 {
 		klog.Errorf("not found %v subscription in namespace: %v", packageName, ns)
-		return  "", ""
+		return "", ""
 	}
 
 	if len(subscriptions) > 1 {
