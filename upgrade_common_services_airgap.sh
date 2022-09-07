@@ -224,16 +224,16 @@ function compare_channel() {
     local channel=$3
     local cur_channel=$4
     
-    # remove first char "v"
-    channel="${channel:1}"
-    cur_channel="${cur_channel:1}"
+    # remove all chars before "v"
+    trimmed_channel="$(echo $channel | awk -Fv '{print $NF}')"
+    trimmed_cur_channel="$(echo $cur_channel | awk -Fv '{print $NF}')"
 
     msg "Comparing channels in ${namespace} namespace ..."
     msg "-----------------------------------------------------------------------"
 
     # compare channel before channel switching
-    IFS='.' read -ra current_channel <<< "${cur_channel}"
-    IFS='.' read -ra upgrade_channel <<< "${channel}"
+    IFS='.' read -ra current_channel <<< "${trimmed_cur_channel}"
+    IFS='.' read -ra upgrade_channel <<< "${trimmed_channel}"
 
     # fill empty fields in current base version with zeros
     for ((i=${#current_channel[@]}; i<${#upgrade_channel[@]}; i++)); do
@@ -248,13 +248,13 @@ function compare_channel() {
         fi
 
         if [[ ${current_channel[index]} -gt ${upgrade_channel[index]} ]]; then
-            error "Upgrade channel v${channel} is lower than current channel v${cur_channel}, abort the upgrade procedure."
+            error "Upgrade channel ${channel} is lower than current channel ${cur_channel}, abort the upgrade procedure."
         elif [[ ${current_channel[index]} -lt ${upgrade_channel[index]} ]]; then
-            success "Upgrade channel v${channel} is greater than current channel v${cur_channel}, ready for channel switch"
+            success "Upgrade channel ${channel} is greater than current channel ${cur_channel}, ready for channel switch"
             return 0
         fi
     done
-    success "Upgrade channel v${channel} is equal to current channel v${cur_channel}, ready for channel switch."
+    success "Upgrade channel ${channel} is equal to current channel ${cur_channel}, ready for channel switch."
 }
 
 function switch_channel() {
