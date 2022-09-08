@@ -57,18 +57,6 @@
               "memory": "40Mi"
             }
           }
-        },
-        "configMapWatcher": {
-          "resources": {
-            "limits": {
-              "cpu": "20m",
-              "memory": "60Mi"
-            },
-            "requests": {
-              "cpu": "20m",
-              "memory": "30Mi"
-            }
-          }
         }
       }
     }
