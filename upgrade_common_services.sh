@@ -108,7 +108,7 @@ function check_preqreqs() {
     local controlNS=$3
 
     msg ""
-    title "[${STEP}] Checking prerequesites ..."
+    title "[${STEP}] Checking prerequisites..."
     msg "-----------------------------------------------------------------------"
 
     # checking oc command
@@ -155,11 +155,11 @@ function switch_channel_operator() {
             msg "-----------------------------------------------------------------------"
             
             in_step=1
-            msg "[${in_step}] Removing the startingCSV ..."
+            msg "[${in_step}] Removing the startingCSV..."
             oc patch sub ${cssub} -n ${ns} --type="json" -p '[{"op": "remove", "path":"/spec/startingCSV"}]' 2> /dev/null
 
             in_step=$((in_step + 1))
-            msg "[${in_step}] Switching channel to ${channel} ..."
+            msg "[${in_step}] Switching channel to ${channel}..."
             
             cat <<EOF | oc patch sub ${cssub} -n ${ns} --type="json" -p '[{"op": "replace", "path":"/spec/channel", "value":"'"${channel}"'"}]' | 2> /dev/null
 EOF
@@ -172,11 +172,11 @@ EOF
             msg "-----------------------------------------------------------------------"
             
             in_step=1
-            msg "[${in_step}] Removing the startingCSV ..."
+            msg "[${in_step}] Removing the startingCSV..."
             oc patch sub ${cssub} -n ${namespace} --type="json" -p '[{"op": "remove", "path":"/spec/startingCSV"}]' 2> /dev/null
 
             in_step=$((in_step + 1))
-            msg "[${in_step}] Switching channel to ${channel} ..."
+            msg "[${in_step}] Switching channel to ${channel}..."
             
             cat <<EOF | oc patch sub ${cssub} -n ${namespace} --type="json" -p '[{"op": "replace", "path":"/spec/channel", "value":"'"${channel}"'"}]' | 2> /dev/null
 EOF
@@ -186,6 +186,10 @@ EOF
     fi
 }
 
+# This function checks the current version of the installed bedrock instance automatically
+# so that the user doesn't have to do so manually. If the current version on-cluster 
+# is already higher than the desired one the user indicates, the script will indicate this
+# to the user and abort the script since bedrock is already above the desired version.
 function compare_channel() {
     local subName=$1
     local namespace=$2
@@ -196,7 +200,7 @@ function compare_channel() {
     trimmed_channel="$(echo $channel | awk -Fv '{print $NF}')"
     trimmed_cur_channel="$(echo $cur_channel | awk -Fv '{print $NF}')"
 
-    msg "Comparing channels in ${namespace} namespace ..."
+    msg "Comparing channels in ${namespace} namespace..."
     msg "-----------------------------------------------------------------------"
 
     # compare channel before channel switching
@@ -237,7 +241,7 @@ function switch_channel() {
     STEP=$((STEP + 1 ))
 
     msg ""
-    title "[${STEP}] Compareing given upgrade channel version ${channel} with current one ..."
+    title "[${STEP}] Comparing given upgrade channel version ${channel} with current one..."
     msg "-----------------------------------------------------------------------"
 
     # msg "Updating OperandRegistry common-service in namespace ibm-common-services..."
