@@ -28,6 +28,7 @@ import (
 
 	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+	operatorsv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/package-server/apis/operators/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -1084,9 +1085,20 @@ func (b *Bootstrap) createNsSubscription(manualManagement bool) error {
 			return err
 		}
 
+		nssPackageManifest := &operatorsv1.PackageManifest{}
+		if err := b.Reader.Get(context.TODO(), types.NamespacedName{Name: constant.IBMNSSPackage, Namespace: b.CSData.ControlNs}, nssPackageManifest); err != nil {
+			return fmt.Errorf("failed to find package %s availabe in namespace %s, err=%v", constant.IBMNSSPackage, b.CSData.ControlNs, err)
+		}
+		catsrc_ns := nssPackageManifest.GetLabels()["catalog-namespace"]
+		if catsrc_ns == "" {
+			return fmt.Errorf("could not get catalog source namespace from packagemanifest for package %s in %s namespace", constant.IBMNSSPackage, b.CSData.ControlNs)
+		}
+		savedBsCatsrcNs := b.CSData.CatalogSourceNs
+		b.CSData.CatalogSourceNs = catsrc_ns
 		if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
 			return err
 		}
+		b.CSData.CatalogSourceNs = savedBsCatsrcNs
 	}
 
 	return nil

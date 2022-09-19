@@ -208,6 +208,12 @@ spec:
                 - get
                 - list
             - apiGroups:
+                - packages.operators.coreos.com
+              resources:
+                - packagemanifests
+              verbs:
+                - get
+            - apiGroups:
                 - operator.ibm.com
               resources:
                 - commonservices
