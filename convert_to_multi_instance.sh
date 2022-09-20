@@ -28,10 +28,9 @@ cs_operator_channel=
 catalog_source=
 
 function main() {
-    "${OC}" get nodes
-    #prereq
-    #prepare_cluster
+    prereq
     collect_data
+    prepare_cluster
     scale_up_pod
     restart_CS_pods
     install_new_CS
@@ -46,25 +45,67 @@ function prereq() {
 
 function prepare_cluster() {
     local cm_name="common-service-maps"
-    return_value=$("${OC}" get -n kube-public configmap ${cm_name} || echo failed)
+    return_value=$("${OC}" get -n kube-public configmap ${cm_name} > /dev/null || echo failed)
     if [[ $return_value == "failed" ]]; then
         error "Missing configmap: ${cm_name}. This must be configured before proceeding"
     fi
+    return_value="pass"
 
     # configmap should have control namespace specified
+    return_value=$("${OC}" get configmap -n kube-public -o yaml common-service-maps | yq '.data' | grep controlNamespace: > /dev/null || echo failed)
+    if [[ $return_value == "failed" ]]; then
+        error "Configmap: ${cm_name} did not specify 'controlNamespace' field. This must be configured before proceeding"
+    fi
+    return_value="pass"
+
+    controlNs=$("${OC}" get configmap -n kube-public -o yaml common-service-maps | yq '.data' | grep controlNamespace: | awk '{print $2}')
+    return_value=$("${OC}" get ns "${controlNs}" > /dev/null || echo failed)
+    if [[ $return_value == "failed" ]]; then
+        error "The namespace specified in controlNamespace does not exist"
+    fi
+    return_value="pass"
+
+    # LicenseServiceReporter should not be installed because it does not support multi-instance mode
+    return_value=$("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists)
+    if [[ $return_value == "exists" ]]; then
+        return_value=$("${OC}" get ibmlicenseservicereporters -A | wc -l)
+        if [[ $return_value -gt 0 ]]; then
+            error "LicenseServiceReporter does not support multi-instance mode. Remove before proceeding"
+        fi
+    fi
+    return_value="pass"
 
     # ensure cs-operator is not installed in all namespace mode
+    return_value=$("${OC}" get csv -n openshift-operators | grep ibm-common-service-operator > /dev/null || echo pass)
+    if [[ $return_value != "pass" ]]; then
+        error "The ibm-common-service-operator must not be installed in AllNamespaces mode"
+    fi
 
+    # TODO for more advanced checking
     # find all namespaces with cs-operator running
     # each namespace should be in configmap
 
+    ${OC} scale deployment -n ${master_ns} ibm-common-service-operator --replicas=0
+    ${OC} scale deployment -n ${master_ns} operand-deployment-lifecycle-manager --replicas=0
+    ${OC} delete operandregistry -n ${master_ns} common-service
+    ${OC} delete operandconfig -n ${master_ns} common-service
+
     # uninstall singleton services
+    "${OC}" delete -n "${master_ns}" --ignore-not-found certmanager default
+    "${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-cert-manager-operator
+    csv=$("${OC}" get -n "${master_ns}" csv | (grep ibm-cert-manager-operator || echo "fail") | awk '{print $1}')
+    "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
+
+    "${OC}" delete -n "${master_ns}" --ignore-not-found certmanager instance
+    csv=$("${OC}" get -n "${master_ns}" csv | (grep ibm-licensing-operator || echo "fail") | awk '{print $1}')
+    "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
 }
 
 # scale back cs pod 
 function scale_up_pod() {
     msg "scaling back ibm-common-service-operator deployment in ${master_ns} namespace"
     ${OC} scale deployment -n ${master_ns} ibm-common-service-operator --replicas=1
+    ${OC} scale deployment -n ${master_ns} operand-deployment-lifecycle-manager --replicas=1
     check_healthy "${master_ns}"
 }
 
@@ -72,7 +113,7 @@ function collect_data() {
     title "collecting data"
     msg "-----------------------------------------------------------------------"
 
-    master_ns=$(${OC} get pod --all-namespaces | grep operand-deployment-lifecycle-manager | awk '{print $1}')
+    master_ns=$(${OC} get deployment --all-namespaces | grep operand-deployment-lifecycle-manager | awk '{print $1}')
     echo MasterNS:${master_ns}
     cs_operator_channel=$(${OC} get sub ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.channel") 
     echo channel:${cs_operator_channel}   
@@ -123,7 +164,7 @@ function install_new_CS() {
                     return_value=$("${OC}" get namespace ${namespace} || echo failed)
                     if [[ $return_value != "failed" ]]; then
                         echo In_CloudpakNS:${namespace}
-                        get_sub=$("${OC}" get sub ibm-common-service-operator -n ${namespace} || echo failed)
+                        get_sub=$("${OC}" get sub ibm-common-service-operator -n ${namespace} > /dev/null || echo failed)
                         if [[ $get_sub == "failed" ]]; then
                             create_operator_group "${namespace}"
                             install_common_service_operator_sub "${namespace}"
@@ -138,7 +179,7 @@ function install_new_CS() {
             if [[ $return_value != "failed" ]]; then
                 namespace=$(echo $line | awk '{print $2}')
                 echo In_MasterNS:${namespace}
-                get_sub=$("${OC}" get sub ibm-common-service-operator -n ${namespace} || echo failed)
+                get_sub=$("${OC}" get sub ibm-common-service-operator -n ${namespace} > /dev/null || echo failed)
                 if [[ $get_sub == "failed" ]]; then
                     create_operator_group "${namespace}"
                     install_common_service_operator_sub "${namespace}"
@@ -210,6 +251,7 @@ function check_healthy() {
     sleep_time=15
     total_time_mins=$(( sleep_time * retries / 60))
     info "Waiting for IBM Common Services CR is Succeeded"
+    sleep 10
     pod=$(oc get pods -n ${CS_NAMESPACE} | grep ibm-common-service-operator | awk '{print $1}')
     
     while true; do
@@ -240,6 +282,7 @@ function check_CSCR() {
     sleep_time=15
     total_time_mins=$(( sleep_time * retries / 60))
     info "Waiting for IBM Common Services CR is Succeeded"
+    sleep 10
 
     while true; do
         if [[ ${retries} -eq 0 ]]; then
