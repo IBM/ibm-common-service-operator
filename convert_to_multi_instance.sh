@@ -96,8 +96,16 @@ function prepare_cluster() {
     csv=$("${OC}" get -n "${master_ns}" csv | (grep ibm-cert-manager-operator || echo "fail") | awk '{print $1}')
     "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
 
-    "${OC}" delete -n "${master_ns}" --ignore-not-found certmanager instance
+    "${OC}" delete -n "${master_ns}" --ignore-not-found ibmlicensing instance
+    "${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-licensing-operator
     csv=$("${OC}" get -n "${master_ns}" csv | (grep ibm-licensing-operator || echo "fail") | awk '{print $1}')
+    "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
+
+    "${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-crossplane-operator-app
+    "${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-crossplane-provider-kubernetes-operator-app
+    csv=$("${OC}" get -n "${master_ns}" csv | (grep ibm-crossplane-operator || echo "fail") | awk '{print $1}')
+    "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
+    csv=$("${OC}" get -n "${master_ns}" csv | (grep ibm-crossplane-provider-kubernetes-operator || echo "fail") | awk '{print $1}')
     "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
 }
 
@@ -119,7 +127,6 @@ function collect_data() {
     echo channel:${cs_operator_channel}   
     catalog_source=$(${OC} get sub ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.source")
     echo catalog_source:${catalog_source}   
-    
 }
 
 # delete all CS pod and read configmap
@@ -135,19 +142,6 @@ function restart_CS_pods() {
     done
     success "All ibm-common-service-operator pod is deleted"
 }
-
-# # re-install singleton service
-# function re-install_singleton() {
-#     title "restarting operand-deployment-lifecycle-manager pod"
-#     msg "-----------------------------------------------------------------------"
-
-#     local pod=$(oc get pods -n ${master_ns} | grep operand-deployment-lifecycle-manager | awk '{print $1}')
-#     ${OC} delete pod ${pod} -n ${master_ns} 
-#     if [[ $? -ne 0 ]]; then
-#         error "Error deleting pod ${pod} in namespace ${master_ns}"
-#     fi
-
-# }
 
 #  install new instances of CS based on cs mapping configmap
 function install_new_CS() {
@@ -193,21 +187,31 @@ function install_new_CS() {
 }
 
 function create_operator_group() {
-    local CS_NAMESPACE=$1
+    local cs_namespace=$1
+
+    title "Checking if OperatorGroup exists in ${cs_namespace}"
+    msg "-----------------------------------------------------------------------"
+
+    exists=$("${OC}" get operatorgroups -n "${cs_namespace}" | wc -l)
+    if [[ "$exists" -ne 0 ]]; then
+        msg "Already an OperatorGroup in ${cs_namespace}, skip creating OperatorGroup"
+        exit 0
+    fi
+
 
     title "Creating operator group ..."
     msg "-----------------------------------------------------------------------"
 
 
-    cat <<EOF | tee >(oc apply -f -) | cat
+    cat <<EOF | tee >("${OC}" apply -f -) | cat
 apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
 metadata:
   name: common-service
-  namespace: ${CS_NAMESPACE}
+  namespace: ${cs_namespace}
 spec:
   targetNamespaces:
-  - ${CS_NAMESPACE}
+  - ${cs_namespace}
 EOF
 
     # error handle
