@@ -573,11 +573,69 @@ func (b *Bootstrap) CreateNamespace(name string) error {
 	return nil
 }
 
+func (b *Bootstrap) findAvailableCatalog(namespace string) (string, error) {
+	csPackageList := &operatorsv1.PackageManifestList{}
+	if err := b.Reader.List(context.TODO(), csPackageList, &client.ListOptions{Namespace: namespace}); err != nil {
+		return "", fmt.Errorf("failed to list package %s for namespace %s", constant.IBMCSPackage, namespace)
+	}
+
+	type CatSrcInfo struct {
+		namespace string
+		name      string
+	}
+
+	var catsrcs []CatSrcInfo
+	for _, pkg := range csPackageList.Items {
+		if pkg.ObjectMeta.Name == constant.IBMCSPackage {
+			catsrc_ns := pkg.GetLabels()["catalog-namespace"]
+			catsrc_name := pkg.GetLabels()["catalog"]
+			catsrcs = append(catsrcs, CatSrcInfo{namespace: catsrc_ns, name: catsrc_name})
+		}
+	}
+
+	// use bootstrapping catalog, could be global catalog
+	for _, catsrc := range catsrcs {
+		if catsrc.name == b.CSData.CatalogSourceName && catsrc.namespace == b.CSData.CatalogSourceNs {
+			klog.Infof("package %s is availabe in namespace %s, catalog: %s, catalog-namespace: %s", constant.IBMCSPackage, namespace, catsrc.name, catsrc.namespace)
+			return catsrc.namespace, nil
+		}
+	}
+
+	// use namespaced catalog
+	for _, catsrc := range catsrcs {
+		if catsrc.name == b.CSData.CatalogSourceName && catsrc.namespace == namespace {
+			klog.Infof("package %s is availabe in namespace %s, catalog: %s, catalog-namespace: %s", constant.IBMCSPackage, namespace, catsrc.name, catsrc.namespace)
+			return catsrc.namespace, nil
+		}
+	}
+
+	// use global catalog
+	for _, catsrc := range catsrcs {
+		if catsrc.name == b.CSData.CatalogSourceName {
+			klog.Infof("package %s is availabe in namespace %s, catalog: %s, catalog-namespace: %s", constant.IBMCSPackage, namespace, catsrc.name, catsrc.namespace)
+			return catsrc.namespace, nil
+		}
+	}
+
+	return "", fmt.Errorf("no catalog source available for package %s in namespace %s", constant.IBMCSPackage, namespace)
+}
+
 func (b *Bootstrap) CreateCsSubscription() error {
 	// Get all the resources from the deployment annotations
-	if err := b.renderTemplate(constant.CSSubscription, b.CSData); err != nil {
+	catsrc_ns, err := b.findAvailableCatalog(b.CSData.MasterNs)
+	if err != nil {
 		return err
 	}
+
+	savedBsCatsrcNs := b.CSData.CatalogSourceNs
+	b.CSData.CatalogSourceNs = catsrc_ns
+
+	if err := b.renderTemplate(constant.CSSubscription, b.CSData, true); err != nil {
+		return err
+	}
+
+	b.CSData.CatalogSourceNs = savedBsCatsrcNs
+
 	return nil
 }
 
@@ -1085,14 +1143,11 @@ func (b *Bootstrap) createNsSubscription(manualManagement bool) error {
 			return err
 		}
 
-		nssPackageManifest := &operatorsv1.PackageManifest{}
-		if err := b.Reader.Get(context.TODO(), types.NamespacedName{Name: constant.IBMNSSPackage, Namespace: b.CSData.ControlNs}, nssPackageManifest); err != nil {
-			return fmt.Errorf("failed to find package %s availabe in namespace %s, err=%v", constant.IBMNSSPackage, b.CSData.ControlNs, err)
+		catsrc_ns, err := b.findAvailableCatalog(b.CSData.ControlNs)
+		if err != nil {
+			return err
 		}
-		catsrc_ns := nssPackageManifest.GetLabels()["catalog-namespace"]
-		if catsrc_ns == "" {
-			return fmt.Errorf("could not get catalog source namespace from packagemanifest for package %s in %s namespace", constant.IBMNSSPackage, b.CSData.ControlNs)
-		}
+
 		savedBsCatsrcNs := b.CSData.CatalogSourceNs
 		b.CSData.CatalogSourceNs = catsrc_ns
 		if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
@@ -1119,9 +1174,9 @@ func (b *Bootstrap) CreateNsScopeConfigmap() error {
 	return nil
 }
 
-//CompareChannel function sets up the CompareVersion function for When multi instance is enabled.
-//When multi instance is enabled, the crossplane operator will be a singleton service deployed in the control ns.
-//We do not want to overwrite a later version of crossplane operator with an earlier version, this is what CompareChannel checks for.
+// CompareChannel function sets up the CompareVersion function for When multi instance is enabled.
+// When multi instance is enabled, the crossplane operator will be a singleton service deployed in the control ns.
+// We do not want to overwrite a later version of crossplane operator with an earlier version, this is what CompareChannel checks for.
 func (b *Bootstrap) CompareChannel(objectTemplate string, alwaysUpdate ...bool) (bool, error) {
 	objects, err := b.GetObjs(objectTemplate, b.CSData)
 	if err != nil {
