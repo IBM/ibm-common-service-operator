@@ -179,8 +179,6 @@ func main() {
 				klog.Errorf("Failed to create OperatorGroup for IBM Common Services in control namespace: %v", err)
 				os.Exit(1)
 			}
-		} else {
-			bs.CSData.ControlNs = bs.CSData.MasterNs
 		}
 
 		klog.Info("Creating ConfigMap for operators")
