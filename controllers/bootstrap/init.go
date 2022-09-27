@@ -1080,12 +1080,28 @@ func (b *Bootstrap) createNsSubscription(manualManagement bool) error {
 			subNameToRemove = constant.NsSubName
 		}
 
-		if err := b.deleteSubscription(subNameToRemove, b.CSData.ControlNs); err != nil {
-			return err
+		var isLater bool
+		var channelerr error
+
+		if isLater, channelerr = b.CompareChannel(resourceName); channelerr != nil {
+			if errors.IsNotFound(channelerr) {
+				if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
+					return err
+				}
+			} else {
+				return channelerr
+			}
 		}
 
-		if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
-			return err
+		if isLater {
+			klog.Infof("Namespace Scope operator already exists at a later version in control namespace. Skipping.")
+		} else {
+			if err := b.deleteSubscription(subNameToRemove, b.CSData.ControlNs); err != nil {
+				return err
+			}
+			if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -1107,9 +1123,9 @@ func (b *Bootstrap) CreateNsScopeConfigmap() error {
 	return nil
 }
 
-//CompareChannel function sets up the CompareVersion function for When multi instance is enabled.
-//When multi instance is enabled, the crossplane operator will be a singleton service deployed in the control ns.
-//We do not want to overwrite a later version of crossplane operator with an earlier version, this is what CompareChannel checks for.
+// CompareChannel function sets up the CompareVersion function for When multi instance is enabled.
+// When multi instance is enabled, the crossplane operator will be a singleton service deployed in the control ns.
+// We do not want to overwrite a later version of crossplane operator with an earlier version, this is what CompareChannel checks for.
 func (b *Bootstrap) CompareChannel(objectTemplate string, alwaysUpdate ...bool) (bool, error) {
 	objects, err := b.GetObjs(objectTemplate, b.CSData)
 	if err != nil {
