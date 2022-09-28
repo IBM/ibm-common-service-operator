@@ -87,8 +87,8 @@ function prepare_cluster() {
 
     ${OC} scale deployment -n ${master_ns} ibm-common-service-operator --replicas=0
     ${OC} scale deployment -n ${master_ns} operand-deployment-lifecycle-manager --replicas=0
-    ${OC} delete operandregistry -n ${master_ns} common-service
-    ${OC} delete operandconfig -n ${master_ns} common-service
+    ${OC} delete operandregistry -n ${master_ns} --ignore-not-found common-service 
+    ${OC} delete operandconfig -n ${master_ns} --ignore-not-found common-service
 
     # uninstall singleton services
     "${OC}" delete -n "${master_ns}" --ignore-not-found certmanager default
