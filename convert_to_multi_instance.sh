@@ -66,7 +66,7 @@ function prepare_cluster() {
     return_value="pass"
 
     # LicenseServiceReporter should not be installed because it does not support multi-instance mode
-    return_value=$("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists)
+    return_value=$(("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
     if [[ $return_value == "exists" ]]; then
         return_value=$("${OC}" get ibmlicenseservicereporters -A | wc -l)
         if [[ $return_value -gt 0 ]]; then
@@ -96,7 +96,13 @@ function prepare_cluster() {
     csv=$("${OC}" get -n "${master_ns}" csv | (grep ibm-cert-manager-operator || echo "fail") | awk '{print $1}')
     "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
 
-    "${OC}" delete -n "${master_ns}" --ignore-not-found ibmlicensing instance
+    # reason for checking again instead of simply deleting the CR when checking
+    # for LSR is to avoid deleting anything until the last possible moment.
+    # This makes recovery from simple pre-requisite errors easier.
+    return_value=$(("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
+    if [[ $return_value == "exists" ]]; then
+        "${OC}" delete -n "${master_ns}" --ignore-not-found ibmlicensing instance
+    fi
     "${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-licensing-operator
     csv=$("${OC}" get -n "${master_ns}" csv | (grep ibm-licensing-operator || echo "fail") | awk '{print $1}')
     "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
