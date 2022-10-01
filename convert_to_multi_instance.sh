@@ -49,31 +49,31 @@ function prepare_cluster() {
     if [[ $return_value == "failed" ]]; then
         error "Missing configmap: ${cm_name}. This must be configured before proceeding"
     fi
-    return_value="pass"
+    return_value="reset"
 
     # configmap should have control namespace specified
     return_value=$("${OC}" get configmap -n kube-public -o yaml common-service-maps | yq '.data' | grep controlNamespace: > /dev/null || echo failed)
     if [[ $return_value == "failed" ]]; then
         error "Configmap: ${cm_name} did not specify 'controlNamespace' field. This must be configured before proceeding"
     fi
-    return_value="pass"
+    return_value="reset"
 
     controlNs=$("${OC}" get configmap -n kube-public -o yaml common-service-maps | yq '.data' | grep controlNamespace: | awk '{print $2}')
     return_value=$("${OC}" get ns "${controlNs}" > /dev/null || echo failed)
     if [[ $return_value == "failed" ]]; then
         error "The namespace specified in controlNamespace does not exist"
     fi
-    return_value="pass"
+    return_value="reset"
 
     # LicenseServiceReporter should not be installed because it does not support multi-instance mode
-    return_value=$("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists)
+    return_value=$(("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
     if [[ $return_value == "exists" ]]; then
         return_value=$("${OC}" get ibmlicenseservicereporters -A | wc -l)
         if [[ $return_value -gt 0 ]]; then
             error "LicenseServiceReporter does not support multi-instance mode. Remove before proceeding"
         fi
     fi
-    return_value="pass"
+    return_value="reset"
 
     # ensure cs-operator is not installed in all namespace mode
     return_value=$("${OC}" get csv -n openshift-operators | grep ibm-common-service-operator > /dev/null || echo pass)
@@ -96,7 +96,14 @@ function prepare_cluster() {
     csv=$("${OC}" get -n "${master_ns}" csv | (grep ibm-cert-manager-operator || echo "fail") | awk '{print $1}')
     "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
 
-    "${OC}" delete -n "${master_ns}" --ignore-not-found ibmlicensing instance
+    # reason for checking again instead of simply deleting the CR when checking
+    # for LSR is to avoid deleting anything until the last possible moment.
+    # This makes recovery from simple pre-requisite errors easier.
+    return_value=$(("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
+    if [[ $return_value == "exists" ]]; then
+        "${OC}" delete -n "${master_ns}" --ignore-not-found ibmlicensing instance
+    fi
+    return_value="reset"
     "${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-licensing-operator
     csv=$("${OC}" get -n "${master_ns}" csv | (grep ibm-licensing-operator || echo "fail") | awk '{print $1}')
     "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
