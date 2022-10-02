@@ -28,6 +28,7 @@ import (
 
 	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+	operatorsv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/package-server/apis/operators/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -572,11 +573,69 @@ func (b *Bootstrap) CreateNamespace(name string) error {
 	return nil
 }
 
+func (b *Bootstrap) findAvailableCatalog(namespace string) (string, error) {
+	csPackageList := &operatorsv1.PackageManifestList{}
+	if err := b.Reader.List(context.TODO(), csPackageList, &client.ListOptions{Namespace: namespace}); err != nil {
+		return "", fmt.Errorf("failed to list package %s for namespace %s", constant.IBMCSPackage, namespace)
+	}
+
+	type CatSrcInfo struct {
+		namespace string
+		name      string
+	}
+
+	var catsrcs []CatSrcInfo
+	for _, pkg := range csPackageList.Items {
+		if pkg.ObjectMeta.Name == constant.IBMCSPackage {
+			catsrc_ns := pkg.GetLabels()["catalog-namespace"]
+			catsrc_name := pkg.GetLabels()["catalog"]
+			catsrcs = append(catsrcs, CatSrcInfo{namespace: catsrc_ns, name: catsrc_name})
+		}
+	}
+
+	// use bootstrapping catalog, could be global catalog
+	for _, catsrc := range catsrcs {
+		if catsrc.name == b.CSData.CatalogSourceName && catsrc.namespace == b.CSData.CatalogSourceNs {
+			klog.Infof("package %s is availabe in namespace %s, catalog: %s, catalog-namespace: %s", constant.IBMCSPackage, namespace, catsrc.name, catsrc.namespace)
+			return catsrc.namespace, nil
+		}
+	}
+
+	// use namespaced catalog
+	for _, catsrc := range catsrcs {
+		if catsrc.name == b.CSData.CatalogSourceName && catsrc.namespace == namespace {
+			klog.Infof("package %s is availabe in namespace %s, catalog: %s, catalog-namespace: %s", constant.IBMCSPackage, namespace, catsrc.name, catsrc.namespace)
+			return catsrc.namespace, nil
+		}
+	}
+
+	// use global catalog
+	for _, catsrc := range catsrcs {
+		if catsrc.name == b.CSData.CatalogSourceName {
+			klog.Infof("package %s is availabe in namespace %s, catalog: %s, catalog-namespace: %s", constant.IBMCSPackage, namespace, catsrc.name, catsrc.namespace)
+			return catsrc.namespace, nil
+		}
+	}
+
+	return "", fmt.Errorf("no catalog source available for package %s in namespace %s", constant.IBMCSPackage, namespace)
+}
+
 func (b *Bootstrap) CreateCsSubscription() error {
 	// Get all the resources from the deployment annotations
-	if err := b.renderTemplate(constant.CSSubscription, b.CSData); err != nil {
+	catsrc_ns, err := b.findAvailableCatalog(b.CSData.MasterNs)
+	if err != nil {
 		return err
 	}
+
+	savedBsCatsrcNs := b.CSData.CatalogSourceNs
+	b.CSData.CatalogSourceNs = catsrc_ns
+
+	if err := b.renderTemplate(constant.CSSubscription, b.CSData, true); err != nil {
+		return err
+	}
+
+	b.CSData.CatalogSourceNs = savedBsCatsrcNs
+
 	return nil
 }
 
@@ -1084,9 +1143,17 @@ func (b *Bootstrap) createNsSubscription(manualManagement bool) error {
 			return err
 		}
 
+		catsrc_ns, err := b.findAvailableCatalog(b.CSData.ControlNs)
+		if err != nil {
+			return err
+		}
+
+		savedBsCatsrcNs := b.CSData.CatalogSourceNs
+		b.CSData.CatalogSourceNs = catsrc_ns
 		if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
 			return err
 		}
+		b.CSData.CatalogSourceNs = savedBsCatsrcNs
 	}
 
 	return nil
@@ -1107,9 +1174,9 @@ func (b *Bootstrap) CreateNsScopeConfigmap() error {
 	return nil
 }
 
-//CompareChannel function sets up the CompareVersion function for When multi instance is enabled.
-//When multi instance is enabled, the crossplane operator will be a singleton service deployed in the control ns.
-//We do not want to overwrite a later version of crossplane operator with an earlier version, this is what CompareChannel checks for.
+// CompareChannel function sets up the CompareVersion function for When multi instance is enabled.
+// When multi instance is enabled, the crossplane operator will be a singleton service deployed in the control ns.
+// We do not want to overwrite a later version of crossplane operator with an earlier version, this is what CompareChannel checks for.
 func (b *Bootstrap) CompareChannel(objectTemplate string, alwaysUpdate ...bool) (bool, error) {
 	objects, err := b.GetObjs(objectTemplate, b.CSData)
 	if err != nil {
