@@ -39,10 +39,12 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilwait "k8s.io/apimachinery/pkg/util/wait"
 	discovery "k8s.io/client-go/discovery"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
@@ -271,6 +273,42 @@ func (b *Bootstrap) DeleteCrossplaneAndProviderSubscription(namespace string) er
 	}
 
 	if uninstallCrossplane {
+		cfg, err := config.GetConfig()
+		if err != nil {
+			klog.Errorf("Failed to get config: %v", err)
+			return err
+		}
+		dynamic := dynamic.NewForConfigOrDie(cfg)
+
+		// uninstall xrd
+		compositeResourceDefinitions, err := util.GetResourcesDynamically(ctx, dynamic, "apiextensions.ibm.crossplane.io", "v1", "compositeresourcedefinitions")
+		if err != nil {
+			klog.Errorf("error getting resource: %v\n", err)
+			return err
+		}
+		for _, item := range compositeResourceDefinitions {
+			klog.Infof("Deleting CompositeResourceDefinition with name: %s, kind: %s\n", item.GetName(), item.GetKind())
+			deleteErr := b.DeleteObject(&item)
+			if deleteErr != nil {
+				klog.Errorf("Failed to delete CompositeResourceDefinition: %v", err)
+				return err
+			}
+		}
+
+		// uninstall compositions
+		compositions, err := util.GetResourcesDynamically(ctx, dynamic, "apiextensions.ibm.crossplane.io", "v1", "compositions")
+		if err != nil {
+			klog.Errorf("error getting resource: %v\n", err)
+		}
+		for _, item := range compositions {
+			klog.Infof("Deleting composition with name: %s, kind: %s\n", item.GetName(), item.GetKind())
+			deleteErr := b.DeleteObject(&item)
+			if deleteErr != nil {
+				klog.Errorf("Failed to delete composition: %v", err)
+				return err
+			}
+		}
+
 		_, providerErr := b.GetSubscription(ctx, constant.ICPPKOperator, namespace)
 		if errors.IsNotFound(providerErr) {
 			klog.Infof("%s not installed, skipping", constant.ICPPKOperator)

@@ -43,6 +43,17 @@ rules:
   - delete
   - get
   - list
+# delete existing CR in openshift-operators/ibm-common-services and control namespace for crossplane
+- apiGroups:
+  - apiextensions.ibm.crossplane.io
+  resources:
+  - compositeresourcedefinitions
+  - compositions
+  verbs:
+  - delete
+  - get
+  - list
+  - watch
 # cluster watch CommonService
 - apiGroups:
   - operator.ibm.com
