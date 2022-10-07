@@ -168,6 +168,10 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		CSData:               csData,
 	}
 
+	if !bs.MultiInstancesEnable {
+		bs.CSData.ControlNs = bs.CSData.MasterNs
+	}
+
 	// Get all the resources from the deployment annotations
 	annotations, err := bs.GetAnnotations()
 	if err != nil {
@@ -378,8 +382,6 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 			klog.Errorf("Failed to create OperatorGroup for IBM Common Services in control namespace: %v", err)
 			return err
 		}
-	} else {
-		b.CSData.ControlNs = b.CSData.MasterNs
 	}
 
 	operatorNs, err := util.GetOperatorNamespace()
@@ -1107,9 +1109,9 @@ func (b *Bootstrap) CreateNsScopeConfigmap() error {
 	return nil
 }
 
-//CompareChannel function sets up the CompareVersion function for When multi instance is enabled.
-//When multi instance is enabled, the crossplane operator will be a singleton service deployed in the control ns.
-//We do not want to overwrite a later version of crossplane operator with an earlier version, this is what CompareChannel checks for.
+// CompareChannel function sets up the CompareVersion function for When multi instance is enabled.
+// When multi instance is enabled, the crossplane operator will be a singleton service deployed in the control ns.
+// We do not want to overwrite a later version of crossplane operator with an earlier version, this is what CompareChannel checks for.
 func (b *Bootstrap) CompareChannel(objectTemplate string, alwaysUpdate ...bool) (bool, error) {
 	objects, err := b.GetObjs(objectTemplate, b.CSData)
 	if err != nil {
@@ -1458,11 +1460,12 @@ func (b *Bootstrap) UpdateCsOpApproval() error {
 
 // update approval mode for the given operator
 // need this function because ODLM and namespace operator are not in operandRegistry
-func (b *Bootstrap) UpdateOpApproval(operatorName string) error {
+// if it is NSS or Crossplane operator and it is in Multi-instance mode, we will update it in control NameSpace
+func (b *Bootstrap) UpdateOpApproval(operatorName string, namespace string) error {
 	sub := &olmv1alpha1.Subscription{}
 	subKey := types.NamespacedName{
 		Name:      operatorName,
-		Namespace: b.CSData.MasterNs,
+		Namespace: namespace,
 	}
 
 	if err := b.Reader.Get(ctx, subKey, sub); err != nil {
@@ -1480,7 +1483,8 @@ func (b *Bootstrap) UpdateOpApproval(operatorName string) error {
 
 func (b *Bootstrap) updateICPApprovalMode() error {
 	klog.Info("Updating crossplane operators Approvalmode")
-	if err := b.UpdateOpApproval(constant.ICPOperator); err != nil {
+
+	if err := b.UpdateOpApproval(constant.ICPOperator, b.CSData.ControlNs); err != nil {
 		if !errors.IsNotFound(err) {
 			klog.Errorf("Failed to update %s subscription: %v", constant.ICPOperator, err)
 			return err
@@ -1489,7 +1493,7 @@ func (b *Bootstrap) updateICPApprovalMode() error {
 
 	}
 
-	if err := b.UpdateOpApproval(constant.ICPPICOperator); err != nil {
+	if err := b.UpdateOpApproval(constant.ICPPICOperator, b.CSData.ControlNs); err != nil {
 		if !errors.IsNotFound(err) {
 			klog.Errorf("Failed to update %s subscription: %v", constant.ICPPICOperator, err)
 			return err
@@ -1498,7 +1502,7 @@ func (b *Bootstrap) updateICPApprovalMode() error {
 
 	}
 
-	if err := b.UpdateOpApproval(constant.ICPPKOperator); err != nil {
+	if err := b.UpdateOpApproval(constant.ICPPKOperator, b.CSData.ControlNs); err != nil {
 		if !errors.IsNotFound(err) {
 			klog.Errorf("Failed to update %s subscription: %v", constant.ICPPKOperator, err)
 			return err
@@ -1534,14 +1538,21 @@ func (b *Bootstrap) updateApprovalMode() error {
 		return err
 	}
 
-	if err = b.UpdateOpApproval(constant.IBMODLMPackage); err != nil {
+	if err = b.UpdateOpApproval(constant.IBMODLMPackage, b.CSData.MasterNs); err != nil {
 		klog.Errorf("Failed to update %s subscription: %v", constant.IBMODLMPackage, err)
 		return err
 	}
 
-	if err = b.UpdateOpApproval(constant.IBMNSSPackage); err != nil {
+	if err = b.UpdateOpApproval(constant.IBMNSSPackage, b.CSData.MasterNs); err != nil {
 		klog.Errorf("Failed to update %s subscription: %v", constant.IBMNSSPackage, err)
 		return err
+	}
+
+	if b.MultiInstancesEnable {
+		if err = b.UpdateOpApproval(constant.IBMNSSPackage, b.CSData.ControlNs); err != nil {
+			klog.Errorf("Failed to update %s subscription: %v", constant.IBMNSSPackage, err)
+			return err
+		}
 	}
 
 	if err = b.UpdateCsOpApproval(); err != nil {
