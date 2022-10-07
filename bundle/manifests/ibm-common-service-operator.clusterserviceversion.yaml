@@ -356,7 +356,11 @@ spec:
                 - get
           serviceAccountName: ibm-common-service-operator
       deployments:
-        - name: ibm-common-service-operator
+        - label:
+            app.kubernetes.io/instance: ibm-common-service-operator
+            app.kubernetes.io/managed-by: ibm-common-service-operator
+            app.kubernetes.io/name: ibm-common-service-operator
+          name: ibm-common-service-operator
           spec:
             replicas: 1
             selector:

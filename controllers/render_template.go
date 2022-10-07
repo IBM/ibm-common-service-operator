@@ -17,6 +17,7 @@
 package controllers
 
 import (
+	"strconv"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -61,6 +62,26 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 			return nil, nil, err
 		}
 		newConfigs = append(newConfigs, multipleinstancesenabledConfig...)
+	}
+
+	// update fipsEnabled
+	if enabled := cs.Object["spec"].(map[string]interface{})["fipsEnabled"]; enabled != nil {
+		if enabled.(bool) {
+			klog.Info("Applying fipsDisable configuration")
+			fipsEnabledConfig, err := convertStringToSlice(strings.ReplaceAll(constant.FipsEnabledTemplate, "placeholder", strconv.FormatBool(enabled.(bool))))
+			if err != nil {
+				return nil, nil, err
+			}
+			newConfigs = append(newConfigs, fipsEnabledConfig...)
+		} else {
+			klog.Info("Please input an boolean for fipsEnabled field")
+		}
+	} else {
+		fipsEnabledConfig, err := convertStringToSlice(strings.ReplaceAll(constant.FipsEnabledTemplate, "placeholder", "true"))
+		if err != nil {
+			return nil, nil, err
+		}
+		newConfigs = append(newConfigs, fipsEnabledConfig...)
 	}
 
 	// Update storageclass for API Catalog

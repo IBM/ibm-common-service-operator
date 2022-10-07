@@ -39,6 +39,7 @@ type CommonServiceSpec struct {
 	Features            *Features            `json:"features,omitempty"`
 	InstallPlanApproval olmv1alpha1.Approval `json:"installPlanApproval,omitempty"`
 	ManualManagement    bool                 `json:"manualManagement,omitempty"`
+	fipsEnabled         bool                 `json:"fipsEnabled,omitempty"`
 	RouteHost           string               `json:"routeHost,omitempty"`
 	Size                string               `json:"size,omitempty"`
 	Services            []ServiceConfig      `json:"services,omitempty"`
