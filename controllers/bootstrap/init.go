@@ -1082,12 +1082,28 @@ func (b *Bootstrap) createNsSubscription(manualManagement bool) error {
 			subNameToRemove = constant.NsSubName
 		}
 
-		if err := b.deleteSubscription(subNameToRemove, b.CSData.ControlNs); err != nil {
-			return err
+		var isLater bool
+		var channelerr error
+
+		if isLater, channelerr = b.CompareChannel(resourceName); channelerr != nil {
+			if errors.IsNotFound(channelerr) {
+				if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
+					return err
+				}
+			} else {
+				return channelerr
+			}
 		}
 
-		if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
-			return err
+		if isLater {
+			klog.Infof("Namespace Scope operator already exists at a later version in control namespace. Skipping.")
+		} else {
+			if err := b.deleteSubscription(subNameToRemove, b.CSData.ControlNs); err != nil {
+				return err
+			}
+			if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
+				return err
+			}
 		}
 	}
 
