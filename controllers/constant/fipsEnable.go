@@ -16,23 +16,16 @@
 
 package constant
 
-const IAMFipsEnabledTemplate = `
+const FipsEnabledTemplate = `
 - name: ibm-iam-operator
   spec:
     authentication:
       config:
         fipsEnabled: placeholder
-`
-
-const IngressNginxFipsEnabledTemplate = `
 - name: ibm-ingress-nginx-operator
   spec:
     nginxIngress:
       fipsEnabled: placeholder
-
-`
-
-const ManagementIngressFipsEnabledTemplate = `
 - name: ibm-management-ingress-operator
   spec:
     managementIngress:

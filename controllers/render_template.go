@@ -64,70 +64,19 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 		newConfigs = append(newConfigs, multipleinstancesenabledConfig...)
 	}
 
-	// update fipsEnabled
-	IAMfipsEnabled := true
-	ManagementIngressFipsEnabled := true
-	IngressNginxFipsEnabled := true
-
+	// set fipsEnabled to true by default
+	fipsEnabled := true
 	// if there is a fipsEnabled field for overall
 	if enabled := cs.Object["spec"].(map[string]interface{})["fipsEnabled"]; enabled != nil {
-		IAMfipsEnabled = enabled.(bool)
-		ManagementIngressFipsEnabled = enabled.(bool)
-		IngressNginxFipsEnabled = enabled.(bool)
+		klog.Info("Applying fipsEnabled")
+		fipsEnabled = enabled.(bool)
 	}
-
-	// if there is a fipsEnabled field for individual Bedrock services
-	if services := cs.Object["spec"].(map[string]interface{})["services"]; services != nil {
-		for _, service := range services.([]interface{}) {
-			klog.Info("Applying fips for ", service.(map[string]interface{})["name"])
-			// for IAM
-			// if there is a fipsEnabled field in IAM
-			if service.(map[string]interface{})["spec"] != nil &&
-				service.(map[string]interface{})["spec"].(map[string]interface{})["authentication"] != nil &&
-				service.(map[string]interface{})["spec"].(map[string]interface{})["authentication"].(map[string]interface{})["config"] != nil &&
-				service.(map[string]interface{})["spec"].(map[string]interface{})["authentication"].(map[string]interface{})["config"].(map[string]interface{})["fipsEnabled"] != nil {
-				enabled := service.(map[string]interface{})["spec"].(map[string]interface{})["authentication"].(map[string]interface{})["config"].(map[string]interface{})["fipsEnabled"]
-				IAMfipsEnabled = enabled.(bool)
-			}
-
-			// for management Ingress
-			// if there is a fipsEnabled field in management Ingress
-			if service.(map[string]interface{})["spec"] != nil &&
-				service.(map[string]interface{})["spec"].(map[string]interface{})["managementIngress"] != nil &&
-				service.(map[string]interface{})["spec"].(map[string]interface{})["managementIngress"].(map[string]interface{})["fipsEnabled"] != nil {
-				enabled := service.(map[string]interface{})["spec"].(map[string]interface{})["managementIngress"].(map[string]interface{})["fipsEnabled"]
-				ManagementIngressFipsEnabled = enabled.(bool)
-			}
-
-			// for Ingress nginx
-			// if there is a fipsEnabled field in Ingress Nginx
-			if service.(map[string]interface{})["spec"] != nil &&
-				service.(map[string]interface{})["spec"].(map[string]interface{})["nginxIngress"] != nil &&
-				service.(map[string]interface{})["spec"].(map[string]interface{})["nginxIngress"].(map[string]interface{})["fips_enabled"] != nil {
-				enabled := service.(map[string]interface{})["spec"].(map[string]interface{})["nginxIngress"].(map[string]interface{})["fips_enabled"]
-				IngressNginxFipsEnabled = enabled.(bool)
-			}
-		}
-	}
-
-	// update config for IAM
-	IAMfipsEnabledConfig, err := convertStringToSlice(strings.ReplaceAll(constant.IAMFipsEnabledTemplate, "placeholder", strconv.FormatBool(IAMfipsEnabled)))
+	// update config for all three services
+	fipsEnabledConfig, err := convertStringToSlice(strings.ReplaceAll(constant.FipsEnabledTemplate, "placeholder", strconv.FormatBool(fipsEnabled)))
 	if err != nil {
 		return nil, nil, err
 	}
-	newConfigs = append(newConfigs, IAMfipsEnabledConfig...)
-	// update config for management Ingress
-	ManagementIngressfipsEnabledConfig, err := convertStringToSlice(strings.ReplaceAll(constant.ManagementIngressFipsEnabledTemplate, "placeholder", strconv.FormatBool(ManagementIngressFipsEnabled)))
-	if err != nil {
-		return nil, nil, err
-	}
-	newConfigs = append(newConfigs, ManagementIngressfipsEnabledConfig...)
-	// update config for Ingress nginx
-	IngressNginxfipsEnabledConfig, err := convertStringToSlice(strings.ReplaceAll(constant.IngressNginxFipsEnabledTemplate, "placeholder", strconv.FormatBool(IngressNginxFipsEnabled)))
-	if err != nil {
-		return nil, nil, err
-	}
-	newConfigs = append(newConfigs, IngressNginxfipsEnabledConfig...)
+	newConfigs = append(newConfigs, fipsEnabledConfig...)
 
 	// Update storageclass for API Catalog
 	if features := cs.Object["spec"].(map[string]interface{})["features"]; features != nil {
