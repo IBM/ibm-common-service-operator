@@ -33,6 +33,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
@@ -40,12 +41,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/apimachinery/pkg/types"
 	utilwait "k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	nssv1 "github.com/IBM/ibm-namespace-scope-operator/api/v1"
-
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
+	nssv1 "github.com/IBM/ibm-namespace-scope-operator/api/v1"
 )
 
 type CsMaps struct {
@@ -632,4 +633,22 @@ func GetCmOfNss(r client.Reader, operatorNs string) *corev1.ConfigMap {
 	}
 
 	return nssConfigmap
+}
+
+func GetResourcesDynamically(ctx context.Context, dynamic dynamic.Interface, group string, version string, resource string) (
+	[]unstructured.Unstructured, error) {
+
+	resourceID := schema.GroupVersionResource{
+		Group:    group,
+		Version:  version,
+		Resource: resource,
+	}
+	// Namespace is empty refer to all namespace
+	list, err := dynamic.Resource(resourceID).Namespace("").List(ctx, metav1.ListOptions{})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return list.Items, nil
 }

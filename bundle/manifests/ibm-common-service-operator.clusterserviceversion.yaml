@@ -208,6 +208,16 @@ spec:
                 - get
                 - list
             - apiGroups:
+                - apiextensions.ibm.crossplane.io
+              resources:
+                - compositeresourcedefinitions
+                - compositions
+              verbs:
+                - delete
+                - get
+                - list
+                - watch
+            - apiGroups:
                 - operator.ibm.com
               resources:
                 - commonservices

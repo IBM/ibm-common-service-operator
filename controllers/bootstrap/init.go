@@ -39,10 +39,12 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilwait "k8s.io/apimachinery/pkg/util/wait"
 	discovery "k8s.io/client-go/discovery"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
@@ -271,6 +273,26 @@ func (b *Bootstrap) DeleteCrossplaneAndProviderSubscription(namespace string) er
 	}
 
 	if uninstallCrossplane {
+		crossplaneInstalled := false
+		_, crossplaneErr := b.GetSubscription(ctx, constant.ICPOperator, namespace)
+		if errors.IsNotFound(crossplaneErr) {
+			klog.Infof("Skipped the uninstallation, %s not installed", constant.ICPOperator)
+		} else if crossplaneErr != nil {
+			klog.Errorf("Failed to get subscription %s/%s", namespace, constant.ICPOperator)
+		} else {
+			crossplaneInstalled = true
+			// delete crossplane cr
+			klog.Infof("Trying to delete %s CR in %s", constant.ICPOperator, namespace)
+			resourceCrossConfiguration := constant.CrossConfiguration
+			if err := b.DeleteFromYaml(resourceCrossConfiguration, b.CSData); err != nil {
+				return err
+			}
+			resourceCrossLock := constant.CrossLock
+			if err := b.DeleteFromYaml(resourceCrossLock, b.CSData); err != nil {
+				return err
+			}
+		}
+
 		_, providerErr := b.GetSubscription(ctx, constant.ICPPKOperator, namespace)
 		if errors.IsNotFound(providerErr) {
 			klog.Infof("%s not installed, skipping", constant.ICPPKOperator)
@@ -313,21 +335,14 @@ func (b *Bootstrap) DeleteCrossplaneAndProviderSubscription(namespace string) er
 			}
 		}
 
-		_, crossplaneErr := b.GetSubscription(ctx, constant.ICPOperator, namespace)
-		if errors.IsNotFound(crossplaneErr) {
-			klog.Infof("Skipped the uninstallation, %s not installed", constant.ICPOperator)
-		} else if crossplaneErr != nil {
-			klog.Errorf("Failed to get subscription %s/%s", namespace, constant.ICPOperator)
-		} else {
-			// delete crossplane cr
-			klog.Infof("Trying to delete %s CR in %s", constant.ICPOperator, namespace)
-			resourceCrossConfiguration := constant.CrossConfiguration
-			if err := b.DeleteFromYaml(resourceCrossConfiguration, b.CSData); err != nil {
-				return err
+		if crossplaneInstalled {
+			// wait compositeresourcedefinitions to be deleted
+			if deleteErr := b.WaitForCRDeletion("apiextensions.ibm.crossplane.io", "v1", "compositeresourcedefinitions"); deleteErr != nil {
+				return deleteErr
 			}
-			resourceCrossLock := constant.CrossLock
-			if err := b.DeleteFromYaml(resourceCrossLock, b.CSData); err != nil {
-				return err
+			// wait compositions to be deleted
+			if deleteErr := b.WaitForCRDeletion("apiextensions.ibm.crossplane.io", "v1", "compositions"); deleteErr != nil {
+				return deleteErr
 			}
 
 			// delete crossplane operator subscription
@@ -337,9 +352,38 @@ func (b *Bootstrap) DeleteCrossplaneAndProviderSubscription(namespace string) er
 				return err
 			}
 		}
+	}
+	return nil
+}
 
+// wait for CR to be deleted from the cluster
+func (b *Bootstrap) WaitForCRDeletion(APIGroup string, APIVersion string, kind string) error {
+	cfg, err := config.GetConfig()
+	if err != nil {
+		klog.Errorf("Failed to get config: %v", err)
+		return err
+	}
+	dynamic := dynamic.NewForConfigOrDie(cfg)
+
+	resourceList, err := util.GetResourcesDynamically(ctx, dynamic, APIGroup, APIVersion, kind)
+	if err != nil {
+		klog.Errorf("error getting resource: %v\n", err)
+		return err
 	}
 
+	for _, item := range resourceList {
+		// waiting for the object be deleted
+		if err := utilwait.PollImmediate(time.Second*10, time.Minute*5, func() (done bool, err error) {
+			_, errNotFound := b.GetObject(&item)
+			if errors.IsNotFound(errNotFound) {
+				return true, nil
+			}
+			klog.Infof("waiting for %s with name: %s to delete\n", item.GetKind(), item.GetName())
+			return false, nil
+		}); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
