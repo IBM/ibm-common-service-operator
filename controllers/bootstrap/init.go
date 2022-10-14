@@ -336,51 +336,13 @@ func (b *Bootstrap) DeleteCrossplaneAndProviderSubscription(namespace string) er
 		}
 
 		if crossplaneInstalled {
-
-			cfg, err := config.GetConfig()
-			if err != nil {
-				klog.Errorf("Failed to get config: %v", err)
-				return err
-			}
-			dynamic := dynamic.NewForConfigOrDie(cfg)
-
 			// wait compositeresourcedefinitions to be deleted
-			compositeResourceDefinitions, err := util.GetResourcesDynamically(ctx, dynamic, "apiextensions.ibm.crossplane.io", "v1", "compositeresourcedefinitions")
-			if err != nil {
-				klog.Errorf("error getting resource: %v\n", err)
-				return err
+			if deleteErr := b.WaitForCRDeletion("apiextensions.ibm.crossplane.io", "v1", "compositeresourcedefinitions"); deleteErr != nil {
+				return deleteErr
 			}
-			for _, item := range compositeResourceDefinitions {
-				// waiting for the object be deleted
-				if err := utilwait.PollImmediate(time.Second*10, time.Minute*5, func() (done bool, err error) {
-					_, errNotFound := b.GetObject(&item)
-					if errors.IsNotFound(errNotFound) {
-						return true, nil
-					}
-					klog.Infof("waiting for compositeresourcedefinitions with name: %s to delete\n", item.GetName())
-					return false, nil
-				}); err != nil {
-					return err
-				}
-			}
-
 			// wait compositions to be deleted
-			compositions, err := util.GetResourcesDynamically(ctx, dynamic, "apiextensions.ibm.crossplane.io", "v1", "compositions")
-			if err != nil {
-				klog.Errorf("error getting resource: %v\n", err)
-			}
-			for _, item := range compositions {
-				// waiting for the object be deleted
-				if err := utilwait.PollImmediate(time.Second*10, time.Minute*5, func() (done bool, err error) {
-					_, errNotFound := b.GetObject(&item)
-					if errors.IsNotFound(errNotFound) {
-						return true, nil
-					}
-					klog.Infof("waiting for compositions with name: %s to delete\n", item.GetName())
-					return false, nil
-				}); err != nil {
-					return err
-				}
+			if deleteErr := b.WaitForCRDeletion("apiextensions.ibm.crossplane.io", "v1", "compositions"); deleteErr != nil {
+				return deleteErr
 			}
 
 			// delete crossplane operator subscription
@@ -390,9 +352,38 @@ func (b *Bootstrap) DeleteCrossplaneAndProviderSubscription(namespace string) er
 				return err
 			}
 		}
+	}
+	return nil
+}
 
+// wait for CR to be deleted from the cluster
+func (b *Bootstrap) WaitForCRDeletion(APIGroup string, APIVersion string, kind string) error {
+	cfg, err := config.GetConfig()
+	if err != nil {
+		klog.Errorf("Failed to get config: %v", err)
+		return err
+	}
+	dynamic := dynamic.NewForConfigOrDie(cfg)
+
+	resourceList, err := util.GetResourcesDynamically(ctx, dynamic, APIGroup, APIVersion, kind)
+	if err != nil {
+		klog.Errorf("error getting resource: %v\n", err)
+		return err
 	}
 
+	for _, item := range resourceList {
+		// waiting for the object be deleted
+		if err := utilwait.PollImmediate(time.Second*10, time.Minute*5, func() (done bool, err error) {
+			_, errNotFound := b.GetObject(&item)
+			if errors.IsNotFound(errNotFound) {
+				return true, nil
+			}
+			klog.Infof("waiting for %s with name: %s to delete\n", item.GetKind(), item.GetName())
+			return false, nil
+		}); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
