@@ -184,13 +184,14 @@ func mergeChangedMap(key string, defaultMap interface{}, changedMap interface{},
 				finalMap[key] = defaultMap
 			} else {
 				var comparableKeys = map[string]bool{
-					"replicas": true,
-					"cpu":      true,
-					"memory":   true,
-					"profile":  true,
+					"replicas":    true,
+					"cpu":         true,
+					"memory":      true,
+					"profile":     true,
+					"fipsEnabled": true,
 				}
 				if _, ok := comparableKeys[key]; ok {
-					if directAssign {
+					if directAssign || key == "fipsEnabled" {
 						// Merge current CS CR into OperandConfig
 						finalMap[key] = changedMap
 					} else {
