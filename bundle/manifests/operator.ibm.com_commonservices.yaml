@@ -54,6 +54,8 @@ spec:
                     properties:
                       enabled:
                         type: boolean
+                      crossplaneProviderRemoval:
+                        type: boolean
                     type: object
                 type: object
               installPlanApproval:

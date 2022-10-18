@@ -196,54 +196,66 @@ func (b *Bootstrap) CrossplaneOperatorProviderOperator(instance *apiv3.CommonSer
 
 	// Install Crossplane Operator & Provider Operator
 	bedrockshim := false
+	removeCrossplane := false
 	if instance.Spec.Features != nil {
 		if instance.Spec.Features.Bedrockshim != nil {
 			bedrockshim = instance.Spec.Features.Bedrockshim.Enabled
+			removeCrossplane = instance.Spec.Features.Bedrockshim.CrossplaneProviderRemoval
 		}
 	}
+
 	var isLater bool
 	var err error
-	if bedrockshim {
-		b.CSData.CrossplaneProvider = "odlm"
 
-		if b.SaasEnable {
-			b.CSData.CrossplaneProvider = "ibmcloud"
-		}
-		if b.MultiInstancesEnable {
-			resourceName := constant.CrossSubscription
-			isLater, err = b.CompareChannel(resourceName)
-			if err != nil {
-				return err
+	if !removeCrossplane {
+		if bedrockshim {
+			b.CSData.CrossplaneProvider = "odlm"
+
+			if b.SaasEnable {
+				b.CSData.CrossplaneProvider = "ibmcloud"
 			}
-		} else {
-			isLater = false
-		}
-		//isLater value of false means we install, true means we do not install
-		if !isLater {
-			if err := b.installCrossplaneOperator(); err != nil {
-				return err
-			}
-			switch b.CSData.CrossplaneProvider {
-			case "odlm":
-				if err := b.installKubernetesProvider(); err != nil {
+			if b.MultiInstancesEnable {
+				resourceName := constant.CrossSubscription
+				isLater, err = b.CompareChannel(resourceName)
+				if err != nil {
 					return err
 				}
-			case "ibmcloud":
-				if err := b.installIBMCloudProvider(); err != nil {
+			} else {
+				isLater = false
+			}
+			//isLater value of false means we install, true means we do not install
+			if !isLater {
+				if err := b.installCrossplaneOperator(); err != nil {
 					return err
 				}
-			}
-			installPlanApproval := instance.Spec.InstallPlanApproval
-			if installPlanApproval != "" || b.CSData.ApprovalMode == string(olmv1alpha1.ApprovalManual) {
-				if err := b.updateICPApprovalMode(); err != nil {
-					klog.Errorf("Failed to update approval mode for %s in namespace %s: %v", instance.Name, instance.Namespace, err)
+				switch b.CSData.CrossplaneProvider {
+				case "odlm":
+					if err := b.installKubernetesProvider(); err != nil {
+						return err
+					}
+				case "ibmcloud":
+					if err := b.installIBMCloudProvider(); err != nil {
+						return err
+					}
 				}
+				installPlanApproval := instance.Spec.InstallPlanApproval
+				if installPlanApproval != "" || b.CSData.ApprovalMode == string(olmv1alpha1.ApprovalManual) {
+					if err := b.updateICPApprovalMode(); err != nil {
+						klog.Errorf("Failed to update approval mode for %s in namespace %s: %v", instance.Name, instance.Namespace, err)
+					}
+				}
+			} else {
+				klog.Infof("Crossplane operator already exists at a later version in control namespace. Skipping.")
 			}
 		} else {
-			klog.Infof("Crossplane operator already exists at a later version in control namespace. Skipping.")
+			if err := b.DeleteCrossplaneAndProviderSubscription(b.CSData.ControlNs); err != nil {
+				return err
+			}
 		}
-	} else {
-		if err := b.DeleteCrossplaneAndProviderSubscription(b.CSData.ControlNs); err != nil {
+	}
+
+	if removeCrossplane {
+		if err := b.DeleteCrossplaneProviderSubscription(b.CSData.ControlNs); err != nil {
 			return err
 		}
 	}
@@ -367,6 +379,57 @@ func (b *Bootstrap) DeleteCrossplaneAndProviderSubscription(namespace string) er
 				return err
 			}
 		}
+		CFCrossplaneConfigmap := constant.CFCrossplaneConfigMap
+		if err := b.DeleteFromYaml(CFCrossplaneConfigmap, b.CSData); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// decoupling Crossplane from Kafka resources and keep Kafka resources left untouched
+func (b *Bootstrap) DeleteCrossplaneProviderSubscription(namespace string) error {
+
+	// uninstall ibm-crossplane-provider-kubernetes-operator
+	_, providerErr := b.GetSubscription(ctx, constant.ICPPKOperator, namespace)
+	if errors.IsNotFound(providerErr) {
+		klog.Infof("%s not installed, skipping", constant.ICPPKOperator)
+	} else if providerErr != nil {
+		klog.Errorf("Failed to get subscription %s/%s", namespace, constant.ICPPKOperator)
+	} else {
+		// delete Kubernetes Provider subscription
+		klog.Infof("Trying to delete %s in %s", constant.ICPPKOperator, namespace)
+		if err := b.deleteSubscription(constant.ICPPKOperator, namespace); err != nil {
+			klog.Errorf("Failed to delete %s in %s: %v", constant.ICPPKOperator, namespace, err)
+			return err
+		}
+	}
+
+	// ibm-crossplane-provider-ibm-cloud-operator
+	_, providerErr = b.GetSubscription(ctx, constant.ICPPICOperator, namespace)
+	if errors.IsNotFound(providerErr) {
+		klog.Infof("Skipped the uninstallation, %s not installed", constant.ICPPICOperator)
+	} else if providerErr != nil {
+		klog.Errorf("Failed to get subscription %s/%s", namespace, constant.ICPPICOperator)
+	} else {
+		// delete IBM Cloud Provider subscription
+		klog.Infof("Trying to delete %s in %s", constant.ICPPICOperator, namespace)
+		if err := b.deleteSubscription(constant.ICPPICOperator, namespace); err != nil {
+			klog.Errorf("Failed to delete %s in %s: %v", constant.ICPPICOperator, namespace, err)
+			return err
+		}
+	}
+	if err := b.CreateCFCrossplaneConfigMap(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// create or update configmap cf-crossplane
+func (b *Bootstrap) CreateCFCrossplaneConfigMap() error {
+	resourceName := constant.CFCrossplaneConfigMap
+	if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(resourceName, placeholder, b.CSData.MasterNs))); err != nil {
+		return err
 	}
 	return nil
 }
