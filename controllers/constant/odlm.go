@@ -409,7 +409,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
-  - channel: {{ .Channel }}
+  - channel: v2.2
     name: ibm-db2u-operator
     namespace: {{ .MasterNs }}
     packageName: db2u-operator
@@ -669,12 +669,6 @@ spec:
     name: ibm-bts-operator
     namespace: {{ .MasterNs }}
     packageName: ibm-bts-operator
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-- channel: {{ .Channel }}
-    name: ibm-db2u-operator
-    namespace: {{ .MasterNs }}
-    packageName: db2u-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
 `
