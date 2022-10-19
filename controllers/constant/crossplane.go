@@ -117,7 +117,7 @@ spec:
 const CFCrossplaneConfigMap = `
 apiVersion: v1
 data:
-  removeFinalizersFromObjects: 'true'
+  removeFinalizersFromObjects: REMOVAL
 kind: ConfigMap
 metadata:
   name: cf-crossplane
