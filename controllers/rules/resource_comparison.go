@@ -80,6 +80,17 @@ func ResourceComparison(resourceA, resourceB interface{}) (interface{}, interfac
 			return resourceA, resourceB
 		}
 		return resourceB, resourceA
+	case bool:
+		boolA := resourceA.(bool)
+		boolB := resourceB.(bool)
+		var boolMap = map[bool]int{
+			false: 1,
+			true:  0,
+		}
+		if boolMap[boolA] > boolMap[boolB] {
+			return resourceA, resourceB
+		}
+		return resourceB, resourceA
 	default:
 		// result won't change for other types
 		return resourceA, resourceA

@@ -191,7 +191,7 @@ func mergeChangedMap(key string, defaultMap interface{}, changedMap interface{},
 					"fipsEnabled": true,
 				}
 				if _, ok := comparableKeys[key]; ok {
-					if directAssign || key == "fipsEnabled" {
+					if directAssign {
 						// Merge current CS CR into OperandConfig
 						finalMap[key] = changedMap
 					} else {
