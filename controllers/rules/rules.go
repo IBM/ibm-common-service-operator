@@ -67,6 +67,8 @@ const ConfigurationRules = `
 - name: ibm-iam-operator
   spec:
     authentication:
+      config:
+        fipsEnabled: LARGEST_VALUE
       replicas: LARGEST_VALUE
       auditService:
         resources:
@@ -190,6 +192,7 @@ const ConfigurationRules = `
 - name: ibm-management-ingress-operator
   spec:
     managementIngress:
+      fipsEnabled: LARGEST_VALUE
       replicas: LARGEST_VALUE
       resources:
         requests:
@@ -201,6 +204,7 @@ const ConfigurationRules = `
 - name: ibm-ingress-nginx-operator
   spec:
     nginxIngress:
+      fips_enabled: LARGEST_VALUE
       ingress:
         replicas: LARGEST_VALUE
         resources:
