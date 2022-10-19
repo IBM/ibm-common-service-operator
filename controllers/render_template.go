@@ -68,7 +68,7 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 	fipsEnabled := false
 	// if there is a fipsEnabled field for overall
 	if enabled := cs.Object["spec"].(map[string]interface{})["fipsEnabled"]; enabled != nil {
-		klog.Info("Applying fipsEnabled")
+		klog.Info("Applying fips configuration")
 		fipsEnabled = enabled.(bool)
 	}
 	// update config for all three services
