@@ -184,11 +184,12 @@ func mergeChangedMap(key string, defaultMap interface{}, changedMap interface{},
 				finalMap[key] = defaultMap
 			} else {
 				var comparableKeys = map[string]bool{
-					"replicas":    true,
-					"cpu":         true,
-					"memory":      true,
-					"profile":     true,
-					"fipsEnabled": true,
+					"replicas":     true,
+					"cpu":          true,
+					"memory":       true,
+					"profile":      true,
+					"fipsEnabled":  true,
+					"fips_enabled": true,
 				}
 				if _, ok := comparableKeys[key]; ok {
 					if directAssign {
