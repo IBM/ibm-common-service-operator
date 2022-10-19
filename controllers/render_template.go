@@ -64,8 +64,8 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 		newConfigs = append(newConfigs, multipleinstancesenabledConfig...)
 	}
 
-	// set fipsEnabled to true by default
-	fipsEnabled := true
+	// set fipsEnabled to false by default
+	fipsEnabled := false
 	// if there is a fipsEnabled field for overall
 	if enabled := cs.Object["spec"].(map[string]interface{})["fipsEnabled"]; enabled != nil {
 		klog.Info("Applying fipsEnabled")
