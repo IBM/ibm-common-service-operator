@@ -204,7 +204,7 @@ const ConfigurationRules = `
 - name: ibm-ingress-nginx-operator
   spec:
     nginxIngress:
-      fipsEnabled: LARGEST_VALUE
+      fips_enabled: LARGEST_VALUE
       ingress:
         replicas: LARGEST_VALUE
         resources:
