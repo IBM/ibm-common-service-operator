@@ -681,7 +681,7 @@ metadata:
   namespace: {{ .MasterNs }}
 spec:
   channel: {{ .Channel }}
-  installPlanApproval: Automatic
+  installPlanApproval: {{ .ApprovalMode }}
   name: ibm-odlm
   source: {{ .CatalogSourceName }}
   sourceNamespace: {{ .CatalogSourceNs }}
@@ -695,7 +695,7 @@ metadata:
   namespace: {{ .MasterNs }}
 spec:
   channel: {{ .Channel }}
-  installPlanApproval: Automatic
+  installPlanApproval: {{ .ApprovalMode }}
   name: ibm-odlm
   source: {{ .CatalogSourceName }}
   sourceNamespace: {{ .CatalogSourceNs }}

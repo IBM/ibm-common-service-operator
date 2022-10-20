@@ -24,7 +24,7 @@ metadata:
   namespace: {{ .MasterNs }}
 spec:
   channel: stable
-  installPlanApproval: Automatic
+  installPlanApproval: {{ .ApprovalMode }}
   name: ibmcloud-operator
   source: community-operators
   sourceNamespace: {{ .CatalogSourceNs }}
