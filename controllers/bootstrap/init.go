@@ -220,11 +220,8 @@ func (b *Bootstrap) CrossplaneOperatorProviderOperator(instance *apiv3.CommonSer
 			}
 		}
 
-		installPlanApproval := instance.Spec.InstallPlanApproval
-		if installPlanApproval != "" || b.CSData.ApprovalMode == string(olmv1alpha1.ApprovalManual) {
-			if err := b.updateICPApprovalMode(); err != nil {
-				klog.Errorf("Failed to update approval mode for %s in namespace %s: %v", instance.Name, instance.Namespace, err)
-			}
+		if err := b.updateICPApprovalMode(); err != nil {
+			klog.Errorf("Failed to update approval mode for %s in namespace %s: %v", instance.Name, instance.Namespace, err)
 		}
 
 	} else {
@@ -1424,6 +1421,11 @@ func (b *Bootstrap) UpdateOpApproval(operatorName string) error {
 	}
 	if b.CSData.ApprovalMode == string(olmv1alpha1.ApprovalManual) && sub.Spec.InstallPlanApproval != olmv1alpha1.ApprovalManual {
 		sub.Spec.InstallPlanApproval = olmv1alpha1.ApprovalManual
+		if err := b.Client.Update(ctx, sub); err != nil {
+			return err
+		}
+	} else if b.CSData.ApprovalMode == string(olmv1alpha1.ApprovalAutomatic) && sub.Spec.InstallPlanApproval != olmv1alpha1.ApprovalAutomatic {
+		sub.Spec.InstallPlanApproval = olmv1alpha1.ApprovalAutomatic
 		if err := b.Client.Update(ctx, sub); err != nil {
 			return err
 		}
