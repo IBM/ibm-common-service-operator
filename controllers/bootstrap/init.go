@@ -210,13 +210,14 @@ func (b *Bootstrap) CrossplaneOperatorProviderOperator(instance *apiv3.CommonSer
 	if bedrockshim {
 		if removeCrossplaneProvider {
 			//delete Crossplane Provider Subscription
+			klog.Info("try to delete CrossplaneProvider")
 			if DeleteErr := b.DeleteCrossplaneProviderSubscription(b.CSData.ControlNs); DeleteErr != nil {
 				return DeleteErr
 			}
 		}
 
 		if !removeCrossplaneProvider {
-			if updateErr := b.CreateorUpdateCFCrossplaneConfigMap("false"); updateErr != nil {
+			if updateErr := b.CreateorUpdateCFCrossplaneConfigMap("'false'"); updateErr != nil {
 				return updateErr
 			}
 		}
@@ -269,7 +270,8 @@ func (b *Bootstrap) CrossplaneOperatorProviderOperator(instance *apiv3.CommonSer
 		if err := b.DeleteCrossplaneAndProviderSubscription(b.CSData.ControlNs); err != nil {
 			return err
 		}
-		if updateErr := b.CreateorUpdateCFCrossplaneConfigMap(strconv.FormatBool(removeCrossplaneProvider)); updateErr != nil {
+		value := "'" + strconv.FormatBool(removeCrossplaneProvider) + "'"
+		if updateErr := b.CreateorUpdateCFCrossplaneConfigMap(value); updateErr != nil {
 			return updateErr
 		}
 	}
@@ -406,6 +408,7 @@ func (b *Bootstrap) DeleteCrossplaneProviderSubscription(namespace string) error
 		return err
 	}
 	uninstallProvider := false
+	// make sure all the cs instance need to uninstall provider
 	for _, cs := range csList.Items {
 		if cs.GetDeletionTimestamp() != nil {
 			continue
@@ -413,8 +416,11 @@ func (b *Bootstrap) DeleteCrossplaneProviderSubscription(namespace string) error
 		if cs.Object["spec"].(map[string]interface{})["features"] != nil &&
 			cs.Object["spec"].(map[string]interface{})["features"].(map[string]interface{})["bedrockshim"] != nil &&
 			cs.Object["spec"].(map[string]interface{})["features"].(map[string]interface{})["bedrockshim"].(map[string]interface{})["crossplaneProviderRemoval"] != nil {
-			if !cs.Object["spec"].(map[string]interface{})["features"].(map[string]interface{})["bedrockshim"].(map[string]interface{})["crossplaneProviderRemoval"].(bool) {
+			if cs.Object["spec"].(map[string]interface{})["features"].(map[string]interface{})["bedrockshim"].(map[string]interface{})["crossplaneProviderRemoval"].(bool) {
 				uninstallProvider = true
+			} else {
+				uninstallProvider = false
+				break
 			}
 		} else {
 			uninstallProvider = false
@@ -451,7 +457,7 @@ func (b *Bootstrap) DeleteCrossplaneProviderSubscription(namespace string) error
 				return err
 			}
 		}
-		if updateErr := b.CreateorUpdateCFCrossplaneConfigMap("true"); updateErr != nil {
+		if updateErr := b.CreateorUpdateCFCrossplaneConfigMap("'true'"); updateErr != nil {
 			return updateErr
 		}
 	}
