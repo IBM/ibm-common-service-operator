@@ -152,14 +152,13 @@ function switch_channel_operator() {
     if [[ "${allNamespace}" == "true" ]]; then
         while read -r ns cssub; do
             msg "Updating subscription ${cssub} in namespace ${ns}..."
-            msg "-----------------------------------------------------------------------"
             
             in_step=1
             msg "[${in_step}] Removing the startingCSV..."
             oc patch sub ${cssub} -n ${ns} --type="json" -p '[{"op": "remove", "path":"/spec/startingCSV"}]' 2> /dev/null
 
             in_step=$((in_step + 1))
-            msg "[${in_step}] Switching channel to ${channel}..."
+            msg "[${in_step}] Upgrading channel to ${channel}..."
             
             cat <<EOF | oc patch sub ${cssub} -n ${ns} --type="json" -p '[{"op": "replace", "path":"/spec/channel", "value":"'"${channel}"'"}]' | 2> /dev/null
 EOF
@@ -169,14 +168,13 @@ EOF
     else
         while read -r cssub; do
             msg "Updating subscription ${cssub} in namespace ${namespace}..."
-            msg "-----------------------------------------------------------------------"
             
             in_step=1
             msg "[${in_step}] Removing the startingCSV..."
             oc patch sub ${cssub} -n ${namespace} --type="json" -p '[{"op": "remove", "path":"/spec/startingCSV"}]' 2> /dev/null
 
             in_step=$((in_step + 1))
-            msg "[${in_step}] Switching channel to ${channel}..."
+            msg "[${in_step}] Upgrading channel to ${channel}..."
             
             cat <<EOF | oc patch sub ${cssub} -n ${namespace} --type="json" -p '[{"op": "replace", "path":"/spec/channel", "value":"'"${channel}"'"}]' | 2> /dev/null
 EOF
@@ -201,20 +199,19 @@ function compare_channel() {
     trimmed_cur_channel="$(echo $cur_channel | awk -Fv '{print $NF}')"
 
     msg "Comparing channels in ${namespace} namespace..."
-    msg "-----------------------------------------------------------------------"
 
     # compare channel before channel switching
     IFS='.' read -ra current_channel <<< "${trimmed_cur_channel}"
     IFS='.' read -ra upgrade_channel <<< "${trimmed_channel}"
 
-    # fill empty fields in current base version with zeros
+    # fill empty fields in current channel version with zeros
     for ((i=${#current_channel[@]}; i<${#upgrade_channel[@]}; i++)); do
         current_channel[i]=0
     done
 
     for index in ${!current_channel[@]}; do
 
-        # fill empty fields in upgrade version with zeros
+        # fill empty fields in upgrade channel version with zeros
         if [[ -z ${upgrade_channel[index]} ]]; then
             upgrade_channel[index]=0
         fi
@@ -243,10 +240,6 @@ function switch_channel() {
     msg ""
     title "[${STEP}] Comparing given upgrade channel version ${channel} with current one..."
     msg "-----------------------------------------------------------------------"
-
-    # msg "Updating OperandRegistry common-service in namespace ibm-common-services..."
-    # msg "-----------------------------------------------------------------------"
-    # oc -n ibm-common-services get operandregistry common-service -o yaml | sed 's/stable-v1/v3.20/g' | oc -n ibm-common-services apply -f -
 
     if [[ "${allNamespace}" == "true" ]]; then
         while read -r ns cur_channel; do
@@ -289,14 +282,56 @@ function switch_channel() {
     fi
 
     success "Updated ${subName} subscriptions successfully."
+
+    STEP=$((STEP + 1 ))
     msg ""
+    title "[${STEP}] Checking operand-deployment-lifecycle-manager deployment in ${csNS} namespace..."
+    msg "-----------------------------------------------------------------------"
 
-    # scale down ODLM to prevent reconciliation
-    msg "scaling down operand-deployment-lifecycle-manager deployment in ${csNS} namespace"
-    oc scale deployment -n "${csNS}" "operand-deployment-lifecycle-manager" --replicas=0
+    # remove all chars before "v"
+    trimmed_channel="$(echo $channel | awk -Fv '{print $NF}')"
+    opreg_version=$(oc get opreg common-service -n ${csNS} -o jsonpath='{.metadata.annotations.version}')
+    msg "existing OperandRegistry version is ${opreg_version}"
 
-    msg "Updating OperandRegistry common-service in ${csNS} namespace..."
-    oc -n ${csNS} get operandregistry common-service -o yaml | sed 's/ibm-zen-operator/dummy-ibm-zen-operator/g' | oc -n ${csNS} apply -f -
+    # get odlm replicas number
+    odlm_replica=$(oc get deployment operand-deployment-lifecycle-manager -n ${csNS} -o jsonpath='{.spec.replicas}')
+    msg "existing number of replicas in ODLM is ${odlm_replica}"
+    msg ""
+    
+    if [[ $odlm_replica == "0" ]]; then
+        if [[ "$opreg_version" == *"$trimmed_channel"* ]]; then
+            # scale up ODLM back to 1
+            msg "scaling up operand-deployment-lifecycle-manager deployment in ${csNS} namespace to 1"
+            oc scale deployment -n "${csNS}" "operand-deployment-lifecycle-manager" --replicas=1
+        fi
+    elif [[ $odlm_replica == "1" ]]; then
+        IFS='.' read -ra upgrade_version <<< "${trimmed_channel}"
+        IFS='.' read -ra current_version <<< "${opreg_version}"
+
+        # fill empty fields in current version with zeros
+        for ((i=${#current_version[@]}; i<${#upgrade_version[@]}; i++)); do
+            current_version[i]=0
+        done
+
+        for index in ${!current_version[@]}; do
+            # fill empty fields in upgrade channel version with zeros
+            if [[ -z ${upgrade_version[index]} ]]; then
+                upgrade_version[index]=0
+            fi
+            if [[ ${current_version[index]} -lt ${upgrade_version[index]} ]]; then
+                # scale down ODLM to prevent reconciliation
+                msg "scaling down operand-deployment-lifecycle-manager deployment in ${csNS} namespace to 0"
+                oc scale deployment -n "${csNS}" "operand-deployment-lifecycle-manager" --replicas=0
+
+                STEP=$((STEP + 1 ))
+                msg ""
+                title "[${STEP}] Updating OperandRegistry common-service in ${csNS} namespace..."
+                msg "-----------------------------------------------------------------------"
+                oc -n ${csNS} get operandregistry common-service -o yaml | sed 's/ibm-zen-operator/dummy-ibm-zen-operator/g' | oc -n ${csNS} apply -f -
+                return 0
+            fi
+        done
+    fi
 
     switch_channel_operator "ibm-zen-operator" "${csNS}" "${channel}" "false"
 
