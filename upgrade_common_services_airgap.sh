@@ -320,6 +320,7 @@ function switch_channel() {
     trimmed_channel="$(echo $channel | awk -Fv '{print $NF}')"
     sub_channel=$(oc get sub ${subName} -n ${csNS} -o jsonpath='{.spec.channel}')
     msg "existing channel version in cs operator subscription is ${sub_channel}"
+    trimmed_cur_channel="$(echo $sub_channel | awk -Fv '{print $NF}')"
 
     # get ibm-common-service-operator replicas number
     cs_replica=$(oc get deployment ibm-common-service-operator -n ${csNS} -o jsonpath='{.spec.replicas}')
@@ -327,14 +328,14 @@ function switch_channel() {
     msg ""
 
     if [[ $cs_replica == "0" ]]; then
-        if [[ "$sub_channel" == "$trimmed_channel" ]]; then
+        if [[ "$trimmed_cur_channel" == "$trimmed_channel" ]]; then
             # scale up ibm-common-service-operator deployment back to 1
             msg "scaling up ibm-common-service-operator deployment in ${csNS} namespace to 1"
             oc scale deployment -n "${csNS}" "ibm-common-service-operator" --replicas=1
         fi
     elif [[ $cs_replica == "1" ]]; then
         IFS='.' read -ra upgrade_version <<< "${trimmed_channel}"
-        IFS='.' read -ra current_version <<< "${sub_channel}"
+        IFS='.' read -ra current_version <<< "${trimmed_cur_channel}"
 
         # fill empty fields in current version with zeros
         for ((i=${#current_version[@]}; i<${#upgrade_version[@]}; i++)); do
