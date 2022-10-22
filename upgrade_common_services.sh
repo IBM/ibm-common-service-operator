@@ -328,7 +328,6 @@ function switch_channel() {
                 title "[${STEP}] Updating OperandRegistry common-service in ${csNS} namespace..."
                 msg "-----------------------------------------------------------------------"
                 oc -n ${csNS} get operandregistry common-service -o yaml | sed 's/ibm-zen-operator/dummy-ibm-zen-operator/g' | oc -n ${csNS} apply -f -
-                return 0
             fi
         done
     fi
