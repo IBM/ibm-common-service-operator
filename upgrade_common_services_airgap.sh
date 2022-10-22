@@ -18,6 +18,7 @@
 # counter to keep track of installation steps
 # set -x
 STEP=0
+NOTMATCH=false
 
 # script base directory
 BASE_DIR=$(dirname "$0")
@@ -252,6 +253,7 @@ function compare_channel() {
             error "Upgrade channel ${channel} is lower than current channel ${cur_channel}, abort the upgrade procedure."
         elif [[ ${current_channel[index]} -lt ${upgrade_channel[index]} ]]; then
             success "Upgrade channel ${channel} is greater than current channel ${cur_channel}, ready for channel switch"
+            NOTMATCH=true
             return 0
         fi
     done
@@ -316,12 +318,6 @@ function switch_channel() {
     title "[${STEP}] Checking ibm-common-service-operator deployment in ${csNS} namespace..."
     msg "-----------------------------------------------------------------------"
 
-    # remove all chars before "v"
-    trimmed_channel="$(echo $channel | awk -Fv '{print $NF}')"
-    sub_channel=$(oc get sub ${subName} -n ${csNS} -o jsonpath='{.spec.channel}')
-    msg "existing channel version in cs operator subscription is ${sub_channel}"
-    trimmed_cur_channel="$(echo $sub_channel | awk -Fv '{print $NF}')"
-
     # get ibm-common-service-operator replicas number
     cs_replica=$(oc get deployment ibm-common-service-operator -n ${csNS} -o jsonpath='{.spec.replicas}')
     msg "existing number of replicas in cs operator is ${cs_replica}"
@@ -334,31 +330,17 @@ function switch_channel() {
             oc scale deployment -n "${csNS}" "ibm-common-service-operator" --replicas=1
         fi
     elif [[ $cs_replica == "1" ]]; then
-        IFS='.' read -ra upgrade_version <<< "${trimmed_channel}"
-        IFS='.' read -ra current_version <<< "${trimmed_cur_channel}"
+        if [[ ${NOTMATCH} == true ]]; then
+            # scale down ibm-common-service-operator deployment to avoid ODLM re-installation
+            msg "scaling down ibm-common-service-operator deployment in ${csNS} namespace to 0"
+            oc scale deployment -n "${csNS}" "ibm-common-service-operator" --replicas=0
 
-        # fill empty fields in current version with zeros
-        for ((i=${#current_version[@]}; i<${#upgrade_version[@]}; i++)); do
-            current_version[i]=0
-        done
-
-        for index in ${!current_version[@]}; do
-            # fill empty fields in upgrade channel version with zeros
-            if [[ -z ${upgrade_version[index]} ]]; then
-                upgrade_version[index]=0
-            fi
-            if [[ ${current_version[index]} -lt ${upgrade_version[index]} ]]; then
-                # scale down ibm-common-service-operator deployment to avoid ODLM re-installation
-                msg "scaling down ibm-common-service-operator deployment in ${csNS} namespace to 0"
-                oc scale deployment -n "${csNS}" "ibm-common-service-operator" --replicas=0
-
-                STEP=$((STEP + 1 ))
-                msg ""
-                title "[${STEP}] Deleting ODLM to avoid reverting the channel changes for other operators."
-                msg "-----------------------------------------------------------------------"
-                delete_operator "operand-deployment-lifecycle-manager-app" "${csNS}"
-                return 0
-            fi
+            STEP=$((STEP + 1 ))
+            msg ""
+            title "[${STEP}] Deleting ODLM to avoid reverting the channel changes for other operators."
+            msg "-----------------------------------------------------------------------"
+            delete_operator "operand-deployment-lifecycle-manager-app" "${csNS}"
+        fi
         done
     fi
     
