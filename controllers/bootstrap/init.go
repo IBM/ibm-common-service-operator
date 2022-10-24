@@ -1429,28 +1429,6 @@ func (b *Bootstrap) GetObjs(objectTemplate string, data interface{}, alwaysUpdat
 	return objects, nil
 }
 
-// func (b *Bootstrap) getResFromAnnotations(annotations map[string]string, resName string, resNs string) (*unstructured.Unstructured, error) {
-// 	if r, ok := annotations[resName]; ok {
-// 		yamlContent := util.Namespacelize(r, placeholder, resNs)
-// 		obj, err := util.YamlToObject([]byte(yamlContent))
-// 		if err != nil {
-// 			return obj, err
-// 		}
-// 		return obj, nil
-// 	} else {
-// 		klog.Warningf("No resource %s found in annotations", resName)
-// 	}
-// 	return nil, nil
-// }
-
-// func (b *Bootstrap) getYamlFromAnnotations(annotations map[string]string, resName string) string {
-// 	if r, ok := annotations[resName]; ok {
-// 		return r
-// 	}
-// 	klog.Warningf("No yaml %s found in annotations", resName)
-// 	return ""
-// }
-
 // update approval mode for the common service operator
 // use label to find the subscription
 // need this function because common service operator is not in operandRegistry
