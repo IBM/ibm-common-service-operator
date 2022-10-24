@@ -341,7 +341,6 @@ function switch_channel() {
             msg "-----------------------------------------------------------------------"
             delete_operator "operand-deployment-lifecycle-manager-app" "${csNS}"
         fi
-        done
     fi
     
     # switch channel for remaining CS components
