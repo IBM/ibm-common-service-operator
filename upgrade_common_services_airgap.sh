@@ -18,6 +18,7 @@
 # counter to keep track of installation steps
 # set -x
 STEP=0
+NOTMATCH=false
 
 # script base directory
 BASE_DIR=$(dirname "$0")
@@ -184,14 +185,13 @@ function switch_channel_operator() {
     if [[ "${allNamespace}" == "true" ]]; then
         while read -r ns cssub; do
             msg "Updating subscription ${cssub} in namespace ${ns}..."
-            msg "-----------------------------------------------------------------------"
             
             in_step=1
             msg "[${in_step}] Removing the startingCSV..."
             oc patch sub ${cssub} -n ${ns} --type="json" -p '[{"op": "remove", "path":"/spec/startingCSV"}]' 2> /dev/null
 
             in_step=$((in_step + 1))
-            msg "[${in_step}] Switching channel to ${channel}..."
+            msg "[${in_step}] Upgrading channel to ${channel}..."
             
             cat <<EOF | oc patch sub ${cssub} -n ${ns} --type="json" -p '[{"op": "replace", "path":"/spec/channel", "value":"'"${channel}"'"}]' | 2> /dev/null
 EOF
@@ -201,14 +201,13 @@ EOF
     else
         while read -r cssub; do
             msg "Updating subscription ${cssub} in namespace ${namespace}..."
-            msg "-----------------------------------------------------------------------"
             
             in_step=1
             msg "[${in_step}] Removing the startingCSV..."
             oc patch sub ${cssub} -n ${namespace} --type="json" -p '[{"op": "remove", "path":"/spec/startingCSV"}]' 2> /dev/null
 
             in_step=$((in_step + 1))
-            msg "[${in_step}] Switching channel to ${channel}..."
+            msg "[${in_step}] Upgrading channel to ${channel}..."
             
             cat <<EOF | oc patch sub ${cssub} -n ${namespace} --type="json" -p '[{"op": "replace", "path":"/spec/channel", "value":"'"${channel}"'"}]' | 2> /dev/null
 EOF
@@ -233,20 +232,19 @@ function compare_channel() {
     trimmed_cur_channel="$(echo $cur_channel | awk -Fv '{print $NF}')"
 
     msg "Comparing channels in ${namespace} namespace..."
-    msg "-----------------------------------------------------------------------"
 
     # compare channel before channel switching
     IFS='.' read -ra current_channel <<< "${trimmed_cur_channel}"
     IFS='.' read -ra upgrade_channel <<< "${trimmed_channel}"
 
-    # fill empty fields in current base version with zeros
+    # fill empty fields in current channel version with zeros
     for ((i=${#current_channel[@]}; i<${#upgrade_channel[@]}; i++)); do
         current_channel[i]=0
     done
 
     for index in ${!current_channel[@]}; do
 
-        # fill empty fields in upgrade version with zeros
+        # fill empty fields in upgrade channel version with zeros
         if [[ -z ${upgrade_channel[index]} ]]; then
             upgrade_channel[index]=0
         fi
@@ -255,6 +253,7 @@ function compare_channel() {
             error "Upgrade channel ${channel} is lower than current channel ${cur_channel}, abort the upgrade procedure."
         elif [[ ${current_channel[index]} -lt ${upgrade_channel[index]} ]]; then
             success "Upgrade channel ${channel} is greater than current channel ${cur_channel}, ready for channel switch"
+            NOTMATCH=true
             return 0
         fi
     done
@@ -313,16 +312,38 @@ function switch_channel() {
     fi
 
     success "Updated ${subName} subscriptions successfully."
+
+    STEP=$((STEP + 1 ))
+    msg ""
+    title "[${STEP}] Checking ibm-common-service-operator deployment in ${csNS} namespace..."
+    msg "-----------------------------------------------------------------------"
+
+    # get ibm-common-service-operator replicas number
+    cs_replica=$(oc get deployment ibm-common-service-operator -n ${csNS} -o jsonpath='{.spec.replicas}')
+    msg "existing number of replicas in cs operator is ${cs_replica}"
     msg ""
 
-    # scale down ibm-common-service-operator deployment to avoid ODLM re-installation
-    msg "scaling down ibm-common-service-operator deployment in ${csNS} namespace"
-    oc scale deployment -n "${csNS}" "ibm-common-service-operator" --replicas=0
+    if [[ $cs_replica == "0" ]]; then
+        if [[ "$trimmed_cur_channel" == "$trimmed_channel" ]]; then
+            # scale up ibm-common-service-operator deployment back to 1
+            msg "scaling up ibm-common-service-operator deployment in ${csNS} namespace to 1"
+            oc scale deployment -n "${csNS}" "ibm-common-service-operator" --replicas=1
+        fi
+    elif [[ $cs_replica == "1" ]]; then
+        if [[ ${NOTMATCH} == true ]]; then
+            # scale down ibm-common-service-operator deployment to avoid ODLM re-installation
+            msg "scaling down ibm-common-service-operator deployment in ${csNS} namespace to 0"
+            oc scale deployment -n "${csNS}" "ibm-common-service-operator" --replicas=0
 
-    # delete ODLM to avoid reverting the channel changes for other operators.
-    delete_operator "operand-deployment-lifecycle-manager-app" "${csNS}"
-    # delete_operator "ibm-namespace-scope-operator-restricted ibm-namespace-scope-operator ibm-cert-manager-operator" "${controlNS}"
-
+            STEP=$((STEP + 1 ))
+            msg ""
+            title "[${STEP}] Deleting ODLM to avoid reverting the channel changes for other operators."
+            msg "-----------------------------------------------------------------------"
+            delete_operator "operand-deployment-lifecycle-manager-app" "${csNS}"
+        fi
+        done
+    fi
+    
     # switch channel for remaining CS components
     for sub_name in "${CS_LIST_CSNS[@]}"; do
         switch_channel_operator "${sub_name}" "${csNS}" "${channel}" "false"
@@ -370,7 +391,6 @@ function delete_operator() {
         exist=$(oc get sub ${sub} -n ${ns} --ignore-not-found)
         if [[ "X${exist}" != "X" ]]; then
             msg "Deleting ${sub} in namespace ${ns}, it will be re-installed after the upgrade is successful..."
-            msg "-----------------------------------------------------------------------"
             csv=$(oc get sub ${sub} -n ${ns} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
             in_step=1
             msg "[${in_step}] Removing the subscription of ${sub} in namespace ${ns}..."
