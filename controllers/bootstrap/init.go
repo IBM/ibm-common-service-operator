@@ -484,6 +484,11 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 	}
 
 	klog.Info("Installing/Updating OperandRegistry")
+	if installPlanApproval != "" || b.CSData.ApprovalMode == string(olmv1alpha1.ApprovalManual) {
+		if err := b.updateApprovalMode(); err != nil {
+			return err
+		}
+	}
 	if b.SaasEnable {
 		// OperandRegistry for SaaS deployment
 		obj, err := b.GetObjs(constant.CSV3SaasOperandRegistry, b.CSData)
@@ -1313,6 +1318,100 @@ func (b *Bootstrap) GetObjs(objectTemplate string, data interface{}, alwaysUpdat
 		return nil, err
 	}
 	return objects, nil
+}
+
+// update approval mode for the common service operator
+// use label to find the subscription
+// need this function because common service operator is not in operandRegistry
+func (b *Bootstrap) UpdateCsOpApproval() error {
+	var commonserviceNS string
+	operatorNs, err := util.GetOperatorNamespace()
+	if err != nil {
+		klog.Errorf("Getting operator namespace failed: %v", err)
+		return err
+	}
+
+	if operatorNs == constant.ClusterOperatorNamespace {
+		commonserviceNS = constant.ClusterOperatorNamespace
+	} else {
+		commonserviceNS = b.CSData.MasterNs
+	}
+
+	subList := &olmv1alpha1.SubscriptionList{}
+	opts := []client.ListOption{
+		client.InNamespace(commonserviceNS),
+		client.MatchingLabels(
+			map[string]string{"operators.coreos.com/ibm-common-service-operator." + commonserviceNS: ""}),
+	}
+
+	if err := b.Reader.List(ctx, subList, opts...); err != nil {
+		return err
+	}
+
+	if len(subList.Items) == 0 {
+		return fmt.Errorf("not found ibm-common-service-operator subscription in namespace: %v or %v", b.CSData.MasterNs, constant.ClusterOperatorNamespace)
+	}
+
+	if len(subList.Items) > 1 {
+		return fmt.Errorf("found more than one ibm-common-service-operator subscription in namespace: %v or %v, skip this", b.CSData.MasterNs, constant.ClusterOperatorNamespace)
+	}
+
+	for _, sub := range subList.Items {
+		if b.CSData.ApprovalMode == string(olmv1alpha1.ApprovalManual) && sub.Spec.InstallPlanApproval != olmv1alpha1.ApprovalManual {
+			sub.Spec.InstallPlanApproval = olmv1alpha1.ApprovalManual
+			if err := b.Client.Update(ctx, &sub); err != nil {
+				return err
+			}
+			podList := &corev1.PodList{}
+			opts := []client.ListOption{
+				client.InNamespace(commonserviceNS),
+				client.MatchingLabels(map[string]string{"name": "ibm-common-service-operator"}),
+			}
+			if err := b.Reader.List(ctx, podList, opts...); err != nil {
+				return err
+			}
+			for _, pod := range podList.Items {
+				if err := b.Client.Delete(ctx, &pod); err != nil {
+					return err
+				}
+			}
+
+		}
+	}
+	return nil
+}
+
+func (b *Bootstrap) updateApprovalMode() error {
+	opreg := &odlm.OperandRegistry{}
+	opregKey := types.NamespacedName{
+		Name:      "common-service",
+		Namespace: b.CSData.MasterNs,
+	}
+
+	err := b.Reader.Get(ctx, opregKey, opreg)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		klog.Errorf("failed to get OperandRegistry %s: %v", opregKey.String(), err)
+		return err
+
+	}
+
+	for i := range opreg.Spec.Operators {
+		opreg.Spec.Operators[i].InstallPlanApproval = olmv1alpha1.Approval(b.CSData.ApprovalMode)
+	}
+	if err := b.Update(ctx, opreg); err != nil {
+		klog.Errorf("failed to update OperandRegistry %s: %v", opregKey.String(), err)
+		return err
+	}
+
+	if err = b.UpdateCsOpApproval(); err != nil {
+		klog.Errorf("Failed to update %s subscription: %v", constant.IBMCSPackage, err)
+		return err
+	}
+
+	return nil
 }
 
 // WaitResourceReady returns true only when the specific resource CRD is created and wait for infinite time
