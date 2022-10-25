@@ -287,11 +287,16 @@ function switch_channel() {
 
     STEP=$((STEP + 1 ))
     msg ""
-    title "[${STEP}] Checking operand-deployment-lifecycle-manager deployment in ${csNS} namespace..."
+    title "[${STEP}] Checking operand-deployment-lifecycle-manager channel version in ${csNS} namespace..."
     msg "-----------------------------------------------------------------------"
 
+    # get current odlm channel version
+    odlm_channel=$(oc get sub -n ${csNS} | grep operand-deployment-lifecycle-manager-app | awk '{print $4}')
+    compare_channel "operand-deployment-lifecycle-manager-app" "${csNS}" "${channel}" "${odlm_channel}"
     if [[ ${NOTMATCH} == true ]]; then
-        msg "ODLM current channel version is less then upgrade channel version"
+        msg "current channel version of ODLM is ${odlm_channel} which is less then upgrade channel version ${channel}"
+        msg ""
+
         # scale down ODLM to prevent reconciliation
         msg "scaling down operand-deployment-lifecycle-manager deployment in ${csNS} namespace to 0"
         oc scale deployment -n "${csNS}" "operand-deployment-lifecycle-manager" --replicas=0
@@ -301,18 +306,23 @@ function switch_channel() {
         title "[${STEP}] Updating OperandRegistry common-service in ${csNS} namespace..."
         msg "-----------------------------------------------------------------------"
         oc -n ${csNS} get operandregistry common-service -o yaml | sed 's/ibm-zen-operator/dummy-ibm-zen-operator/g' | oc -n ${csNS} apply -f -
+        msg ""
     else
-        msg "ODLM current channel version is equal to upgrade channel version"
+        msg "current channel version of ODLM is ${odlm_channel} which is equal to upgrade channel version ${channel}"
+        msg ""
+
         # remove all chars before "v"
         trimmed_channel="$(echo $channel | awk -Fv '{print $NF}')"
         opreg_version=$(oc get opreg common-service -n ${csNS} -o jsonpath='{.metadata.annotations.version}')
         msg "existing OperandRegistry version is ${opreg_version}"
 
         if [[ "$opreg_version" == *"$trimmed_channel"* ]]; then
-            msg "cs operator version in OperandRegistry matches upgrade channel version"
+            msg "cs operator version in OperandRegistry matches upgrade channel version ${channel}"
+            msg ""
             # scale up ODLM back to 1
             msg "scaling up operand-deployment-lifecycle-manager deployment in ${csNS} namespace to 1"
             oc scale deployment -n "${csNS}" "operand-deployment-lifecycle-manager" --replicas=1
+            msg ""
         fi
     fi
 
