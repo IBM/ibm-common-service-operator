@@ -220,13 +220,6 @@ func (b *Bootstrap) CrossplaneOperatorProviderOperator(instance *apiv3.CommonSer
 			}
 		}
 
-		installPlanApproval := instance.Spec.InstallPlanApproval
-		if installPlanApproval != "" || b.CSData.ApprovalMode == string(olmv1alpha1.ApprovalManual) {
-			if err := b.updateICPApprovalMode(); err != nil {
-				klog.Errorf("Failed to update approval mode for %s in namespace %s: %v", instance.Name, instance.Namespace, err)
-			}
-		}
-
 	} else {
 		if err := b.DeleteCrossplaneAndProviderSubscription(b.CSData.MasterNs); err != nil {
 			return err
@@ -1327,28 +1320,6 @@ func (b *Bootstrap) GetObjs(objectTemplate string, data interface{}, alwaysUpdat
 	return objects, nil
 }
 
-// func (b *Bootstrap) getResFromAnnotations(annotations map[string]string, resName string, resNs string) (*unstructured.Unstructured, error) {
-// 	if r, ok := annotations[resName]; ok {
-// 		yamlContent := util.Namespacelize(r, placeholder, resNs)
-// 		obj, err := util.YamlToObject([]byte(yamlContent))
-// 		if err != nil {
-// 			return obj, err
-// 		}
-// 		return obj, nil
-// 	} else {
-// 		klog.Warningf("No resource %s found in annotations", resName)
-// 	}
-// 	return nil, nil
-// }
-
-// func (b *Bootstrap) getYamlFromAnnotations(annotations map[string]string, resName string) string {
-// 	if r, ok := annotations[resName]; ok {
-// 		return r
-// 	}
-// 	klog.Warningf("No yaml %s found in annotations", resName)
-// 	return ""
-// }
-
 // update approval mode for the common service operator
 // use label to find the subscription
 // need this function because common service operator is not in operandRegistry
@@ -1410,59 +1381,6 @@ func (b *Bootstrap) UpdateCsOpApproval() error {
 	return nil
 }
 
-// update approval mode for the given operator
-// need this function because ODLM and namespace operator are not in operandRegistry
-func (b *Bootstrap) UpdateOpApproval(operatorName string) error {
-	sub := &olmv1alpha1.Subscription{}
-	subKey := types.NamespacedName{
-		Name:      operatorName,
-		Namespace: b.CSData.MasterNs,
-	}
-
-	if err := b.Reader.Get(ctx, subKey, sub); err != nil {
-		return err
-	}
-	if b.CSData.ApprovalMode == string(olmv1alpha1.ApprovalManual) && sub.Spec.InstallPlanApproval != olmv1alpha1.ApprovalManual {
-		sub.Spec.InstallPlanApproval = olmv1alpha1.ApprovalManual
-		if err := b.Client.Update(ctx, sub); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (b *Bootstrap) updateICPApprovalMode() error {
-	klog.Info("Updating crossplane operators Approvalmode")
-	if err := b.UpdateOpApproval(constant.ICPOperator); err != nil {
-		if !errors.IsNotFound(err) {
-			klog.Errorf("Failed to update %s subscription: %v", constant.ICPOperator, err)
-			return err
-		}
-		klog.V(2).Infof("%s not installed, skipping updating approval strategy", constant.ICPOperator)
-
-	}
-
-	if err := b.UpdateOpApproval(constant.ICPPICOperator); err != nil {
-		if !errors.IsNotFound(err) {
-			klog.Errorf("Failed to update %s subscription: %v", constant.ICPPICOperator, err)
-			return err
-		}
-		klog.V(2).Infof("%s not installed, skipping updating approval strategy", constant.ICPPICOperator)
-
-	}
-
-	if err := b.UpdateOpApproval(constant.ICPPKOperator); err != nil {
-		if !errors.IsNotFound(err) {
-			klog.Errorf("Failed to update %s subscription: %v", constant.ICPPKOperator, err)
-			return err
-		}
-		klog.V(2).Infof("%s not installed, skipping updating approval strategy", constant.ICPPKOperator)
-
-	}
-	return nil
-}
-
 func (b *Bootstrap) updateApprovalMode() error {
 	opreg := &odlm.OperandRegistry{}
 	opregKey := types.NamespacedName{
@@ -1493,15 +1411,6 @@ func (b *Bootstrap) updateApprovalMode() error {
 		return err
 	}
 
-	if err = b.UpdateOpApproval(constant.IBMODLMPackage); err != nil {
-		klog.Errorf("Failed to update %s subscription: %v", constant.IBMODLMPackage, err)
-		return err
-	}
-
-	if err = b.UpdateOpApproval(constant.IBMNSSPackage); err != nil {
-		klog.Errorf("Failed to update %s subscription: %v", constant.IBMNSSPackage, err)
-		return err
-	}
 	return nil
 }
 

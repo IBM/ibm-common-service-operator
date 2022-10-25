@@ -30,7 +30,7 @@ metadata:
   namespace: {{ .MasterNs }}
 spec:
   channel: {{ .Channel }}
-  installPlanApproval: Automatic
+  installPlanApproval: {{ .ApprovalMode }}
   name: {{ .ICPOperator }}
   source: {{ .CatalogSourceName }}
   sourceNamespace: {{ .CatalogSourceNs }}
@@ -67,7 +67,7 @@ metadata:
   namespace: {{ .MasterNs }}
 spec:
   channel: {{ .Channel }}
-  installPlanApproval: Automatic
+  installPlanApproval: {{ .ApprovalMode }}
   name: {{ .ICPPKOperator }}
   source: {{ .CatalogSourceName }}
   sourceNamespace: {{ .CatalogSourceNs }}
@@ -93,7 +93,7 @@ metadata:
   namespace: {{ .MasterNs }}
 spec:
   channel: {{ .Channel }}
-  installPlanApproval: Automatic
+  installPlanApproval: {{ .ApprovalMode }}
   name: {{ .ICPPICOperator }}
   source: {{ .CatalogSourceName }}
   sourceNamespace: {{ .CatalogSourceNs }}
