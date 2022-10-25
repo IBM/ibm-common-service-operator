@@ -24,7 +24,7 @@ metadata:
   namespace: {{ .MasterNs }}
 spec:
   channel: {{ .Channel }}
-  installPlanApproval: Automatic
+  installPlanApproval: {{ .ApprovalMode }}
   name: ibm-namespace-scope-operator-restricted
   source: {{ .CatalogSourceName }}
   sourceNamespace: {{ .CatalogSourceNs }}
@@ -38,7 +38,7 @@ metadata:
   namespace: {{ .MasterNs }}
 spec:
   channel: {{ .Channel }}
-  installPlanApproval: Automatic
+  installPlanApproval: {{ .ApprovalMode }}
   name: ibm-namespace-scope-operator
   source: {{ .CatalogSourceName }}
   sourceNamespace: {{ .CatalogSourceNs }}
@@ -52,7 +52,7 @@ metadata:
   namespace: {{ .ControlNS }}
 spec:
   channel: {{ .Channel }}
-  installPlanApproval: Automatic
+  installPlanApproval: {{ .ApprovalMode }}
   name: ibm-namespace-scope-operator-restricted
   source: {{ .CatalogSourceName }}
   sourceNamespace: {{ .CatalogSourceNs }}
@@ -66,7 +66,7 @@ metadata:
   namespace: {{ .ControlNs }}
 spec:
   channel: {{ .Channel }}
-  installPlanApproval: Automatic
+  installPlanApproval: {{ .ApprovalMode }}
   name: ibm-namespace-scope-operator
   source: {{ .CatalogSourceName }}
   sourceNamespace: {{ .CatalogSourceNs }}
