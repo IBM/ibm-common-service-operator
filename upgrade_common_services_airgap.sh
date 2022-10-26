@@ -318,29 +318,23 @@ function switch_channel() {
     title "[${STEP}] Checking ibm-common-service-operator deployment in ${csNS} namespace..."
     msg "-----------------------------------------------------------------------"
 
-    # get ibm-common-service-operator replicas number
-    cs_replica=$(oc get deployment ibm-common-service-operator -n ${csNS} -o jsonpath='{.spec.replicas}')
-    msg "existing number of replicas in cs operator is ${cs_replica}"
-    msg ""
+    if [[ ${NOTMATCH} == true ]]; then
+        msg "current channel version of cs operator is less then upgrade channel version"
+        # scale down ibm-common-service-operator deployment to avoid ODLM re-installation
+        msg "scaling down ibm-common-service-operator deployment in ${csNS} namespace to 0"
+        oc scale deployment -n "${csNS}" "ibm-common-service-operator" --replicas=0
 
-    if [[ $cs_replica == "0" ]]; then
-        if [[ "$trimmed_cur_channel" == "$trimmed_channel" ]]; then
-            # scale up ibm-common-service-operator deployment back to 1
-            msg "scaling up ibm-common-service-operator deployment in ${csNS} namespace to 1"
-            oc scale deployment -n "${csNS}" "ibm-common-service-operator" --replicas=1
-        fi
-    elif [[ $cs_replica == "1" ]]; then
-        if [[ ${NOTMATCH} == true ]]; then
-            # scale down ibm-common-service-operator deployment to avoid ODLM re-installation
-            msg "scaling down ibm-common-service-operator deployment in ${csNS} namespace to 0"
-            oc scale deployment -n "${csNS}" "ibm-common-service-operator" --replicas=0
-
-            STEP=$((STEP + 1 ))
-            msg ""
-            title "[${STEP}] Deleting ODLM to avoid reverting the channel changes for other operators."
-            msg "-----------------------------------------------------------------------"
-            delete_operator "operand-deployment-lifecycle-manager-app" "${csNS}"
-        fi
+        STEP=$((STEP + 1 ))
+        msg ""
+        title "[${STEP}] Deleting ODLM to avoid reverting the channel changes for other operators."
+        msg "-----------------------------------------------------------------------"
+        delete_operator "operand-deployment-lifecycle-manager-app" "${csNS}"
+    else
+        msg "current channel version of cs operator is equal to upgrade channel version"
+        # get ibm-common-service-operator replicas number
+        cs_replica=$(oc get deployment ibm-common-service-operator -n ${csNS} -o jsonpath='{.spec.replicas}')
+        msg "existing number of replicas in cs operator is ${cs_replica}, continue to switch rest operators..."
+        msg ""
     fi
     
     # switch channel for remaining CS components
