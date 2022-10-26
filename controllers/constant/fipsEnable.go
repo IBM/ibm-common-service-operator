@@ -16,16 +16,18 @@
 
 package constant
 
-const IbmCloudSubscription = `
-apiVersion: operators.coreos.com/v1alpha1
-kind: Subscription
-metadata:
-  name: ibmcloud-operator
-  namespace: {{ .MasterNs }}
-spec:
-  channel: stable
-  installPlanApproval: {{ .ApprovalMode }}
-  name: ibmcloud-operator
-  source: community-operators
-  sourceNamespace: {{ .CatalogSourceNs }}
+const FipsEnabledTemplate = `
+- name: ibm-iam-operator
+  spec:
+    authentication:
+      config:
+        fipsEnabled: placeholder
+- name: ibm-ingress-nginx-operator
+  spec:
+    nginxIngress:
+      fipsEnabled: placeholder
+- name: ibm-management-ingress-operator
+  spec:
+    managementIngress:
+      fipsEnabled: placeholder
 `

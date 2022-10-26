@@ -409,7 +409,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
-  - channel: v2.0
+  - channel: v2.2
     name: ibm-db2u-operator
     namespace: {{ .MasterNs }}
     packageName: db2u-operator
@@ -681,7 +681,7 @@ metadata:
   namespace: {{ .MasterNs }}
 spec:
   channel: {{ .Channel }}
-  installPlanApproval: Automatic
+  installPlanApproval: {{ .ApprovalMode }}
   name: ibm-odlm
   source: {{ .CatalogSourceName }}
   sourceNamespace: {{ .CatalogSourceNs }}
@@ -695,7 +695,7 @@ metadata:
   namespace: {{ .MasterNs }}
 spec:
   channel: {{ .Channel }}
-  installPlanApproval: Automatic
+  installPlanApproval: {{ .ApprovalMode }}
   name: ibm-odlm
   source: {{ .CatalogSourceName }}
   sourceNamespace: {{ .CatalogSourceNs }}
