@@ -319,5 +319,7 @@ spec:
           requests:
             cpu: 200m
             memory: 200Mi
+        securityContext:
+          runAsNonRoot: true
       terminationGracePeriodSeconds: 10
 `
