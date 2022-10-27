@@ -1690,6 +1690,8 @@ spec:
             requests:
               cpu: 200m
               memory: 256Mi
+          securityContext:
+            runAsNonRoot: true
           volumeMounts:
           - name: webhook-certs
             mountPath: "/etc/ssl/certs/webhook"
