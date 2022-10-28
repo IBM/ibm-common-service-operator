@@ -59,6 +59,15 @@ spec:
         imagePullPolicy: Always
         name: ibm-common-service-operator
         env:
+        - name: OPERATOR_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: WATCH_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['olm.targetNamespaces']
         - name: OPERATOR_NAME
           value: "ibm-common-service-operator"
         - name: IBM_CS_WEBHOOK_IMAGE

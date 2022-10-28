@@ -20,23 +20,22 @@ import (
 	"context"
 	"flag"
 	"os"
+	"strings"
 	"time"
 
 	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	operatorsv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/package-server/apis/operators/v1"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
+	cache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
-	cache "github.com/IBM/controller-filtered-cache/filteredcache"
 	nssv1 "github.com/IBM/ibm-namespace-scope-operator/api/v1"
 	ssv1 "github.com/IBM/ibm-secretshare-operator/api/v1"
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/api/v1alpha1"
@@ -81,11 +80,7 @@ func main() {
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.Parse()
 
-	gvkLabelMap := map[schema.GroupVersionKind]cache.Selector{
-		corev1.SchemeGroupVersion.WithKind("ConfigMap"): {
-			LabelSelector: constant.CsManagedLabel,
-		},
-	}
+	watchNamespace := util.GetWatchNamespace()
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
@@ -94,7 +89,7 @@ func main() {
 		Port:                   9443,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "be598e12.ibm.com",
-		NewCache:               cache.NewFilteredCacheBuilder(gvkLabelMap),
+		NewCache:               cache.MultiNamespacedCacheBuilder(strings.Split(watchNamespace, ",")),
 	})
 	if err != nil {
 		klog.Errorf("Unable to start manager: %v", err)
@@ -143,94 +138,27 @@ func main() {
 		klog.Errorf("Bootstrap failed: %v", err)
 		os.Exit(1)
 	}
-	operatorNs, err := util.GetOperatorNamespace()
-	if err != nil {
-		klog.Errorf("Getting operator namespace failed: %v", err)
+
+	klog.Infof("Creating CommonService CR in the namespace %s", bs.CSData.MasterNs)
+	if err = bs.CreateCsCR(); err != nil {
+		klog.Errorf("Failed to create CommonService CR: %v", err)
 		os.Exit(1)
 	}
 
-	if err := bs.CheckOperatorCatalog(operatorNs); err != nil {
-		klog.Errorf("Checking operator catalog failed: %v", err)
+	// Check IAM pods status
+	go goroutines.CheckIamStatus(bs)
+	// Create or Update CPP configuration
+	go goroutines.CreateUpdateConfig(bs)
+	// Update CS CR Status
+	go goroutines.UpdateCsCrStatus(bs)
+
+	if err = (&controllers.CommonServiceReconciler{
+		Bootstrap: bs,
+		Scheme:    mgr.GetScheme(),
+		Recorder:  mgr.GetEventRecorderFor("commonservice-controller"),
+	}).SetupWithManager(mgr); err != nil {
+		klog.Errorf("Unable to create controller CommonService: %v", err)
 		os.Exit(1)
-	}
-
-	// Create master namespace
-	if operatorNs != bs.CSData.MasterNs {
-		klog.Infof("Creating IBM Common Services master namespace: %s", bs.CSData.MasterNs)
-		if err := bs.CreateNamespace(bs.CSData.MasterNs); err != nil {
-			klog.Errorf("Failed to create master namespace: %v", err)
-			os.Exit(1)
-		}
-
-		klog.Info("Creating OperatorGroup for IBM Common Services in master namespace")
-		if err := bs.CreateOperatorGroup(bs.CSData.MasterNs); err != nil {
-			klog.Errorf("Failed to create OperatorGroup for IBM Common Services in master namespace: %v", err)
-			os.Exit(1)
-		}
-
-		if bs.MultiInstancesEnable {
-			klog.Infof("Creating IBM Common Services control namespace: %s", bs.CSData.ControlNs)
-			if err := bs.CreateNamespace(bs.CSData.ControlNs); err != nil {
-				klog.Errorf("Failed to create control namespace: %v", err)
-				os.Exit(1)
-			}
-			klog.Info("Creating OperatorGroup for IBM Common Services in control namespace")
-			if err := bs.CreateOperatorGroup(bs.CSData.ControlNs); err != nil {
-				klog.Errorf("Failed to create OperatorGroup for IBM Common Services in control namespace: %v", err)
-				os.Exit(1)
-			}
-		}
-
-		klog.Info("Creating ConfigMap for operators")
-		if err := bs.CreateNsScopeConfigmap(); err != nil {
-			klog.Errorf("Failed to create Namespace Scope ConfigMap: %v", err)
-			os.Exit(1)
-		}
-	}
-
-	if operatorNs == bs.CSData.MasterNs || operatorNs == constant.ClusterOperatorNamespace {
-		klog.Infof("Creating CommonService CR in the namespace %s", bs.CSData.MasterNs)
-		if err = bs.CreateCsCR(); err != nil {
-			klog.Errorf("Failed to create CommonService CR: %v", err)
-			os.Exit(1)
-		}
-
-		// Generate Issuer and Certificate CR, integrated into Controller logic
-		// go goroutines.DeployCertManagerCR(bs)
-		// Check IAM pods status
-		go goroutines.CheckIamStatus(bs)
-		// Sync up NSS CR
-		go goroutines.SyncUpNSSCR(bs)
-		// Update CS CR Status
-		go goroutines.UpdateCsCrStatus(bs)
-		// Create or Update CPP configuration
-		go goroutines.CreateUpdateConfig(bs)
-		// Clean up decprecated services
-		go goroutines.CleanUpDeprecatedServices(bs)
-
-		if err = (&controllers.CommonServiceReconciler{
-			Bootstrap: bs,
-			Scheme:    mgr.GetScheme(),
-			Recorder:  mgr.GetEventRecorderFor("commonservice-controller"),
-		}).SetupWithManager(mgr); err != nil {
-			klog.Errorf("Unable to create controller CommonService: %v", err)
-			os.Exit(1)
-		}
-		// +kubebuilder:scaffold:builder
-	} else {
-		klog.Infof("Creating %s subscription in namespace %s", constant.IBMCSPackage, bs.CSData.MasterNs)
-		if err = bs.CheckCsSubscription(); err != nil {
-			klog.Errorf("Failed to check %s subscription: %v", constant.IBMCSPackage, err)
-			os.Exit(1)
-		}
-		if err = bs.CreateCsSubscription(); err != nil {
-			klog.Errorf("Failed to create %s subscription: %v", constant.IBMCSPackage, err)
-			os.Exit(1)
-		}
-		if err = bs.UpdateCsOpApproval(); err != nil {
-			klog.Errorf("Failed to update %s subscription: %v", constant.IBMCSPackage, err)
-			os.Exit(1)
-		}
 	}
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
