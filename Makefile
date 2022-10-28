@@ -35,7 +35,7 @@ VCS_REF ?= $(shell git rev-parse HEAD)
 VERSION ?= $(shell git describe --exact-match 2> /dev/null || \
                 git describe --match=$(git rev-parse --short=8 HEAD) --always --dirty --abbrev=8)
 RELEASE_VERSION ?= $(shell cat ./version/version.go | grep "Version =" | awk '{ print $$3}' | tr -d '"')
-PREVIOUS_VERSION := 3.10.0
+PREVIOUS_VERSION := 3.21.0
 LATEST_VERSION ?= latest
 
 LOCAL_OS := $(shell uname)
@@ -79,8 +79,8 @@ OPERATOR_IMAGE_NAME ?= common-service-operator
 # Current Operator bundle image name
 BUNDLE_IMAGE_NAME ?= dev-common-service-operator-bundle
 
-CHANNELS := v3.22
-DEFAULT_CHANNEL := v3.22
+CHANNELS := v4.0
+DEFAULT_CHANNEL := v4.0
 
 # Options for 'bundle-build'
 ifneq ($(origin CHANNELS), undefined)
@@ -244,7 +244,7 @@ bundle-manifests: clis
 
 generate-all: yq kustomize operator-sdk generate manifests ## Generate bundle manifests, metadata and package manifests
 	$(OPERATOR_SDK) generate kustomize manifests -q
-	- make bundle-manifests CHANNELS=v3.22 DEFAULT_CHANNEL=v3.22
+	- make bundle-manifests CHANNELS=v4.0 DEFAULT_CHANNEL=v4.0
 
 ##@ Test
 

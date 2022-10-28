@@ -211,6 +211,19 @@ func GetOperatorNamespace() (string, error) {
 	return ns, nil
 }
 
+// GetWatchNamespace returns the Namespace of the operator
+func GetWatchNamespace() string {
+	ns, found := os.LookupEnv("WATCH_NAMESPACE")
+	if !found {
+		ns, err := GetOperatorNamespace()
+		if err != nil {
+			return ""
+		}
+		return ns
+	}
+	return ns
+}
+
 // Contains returns whether the sub-string is contained
 func Contains(list []string, s string) bool {
 	for _, v := range list {
@@ -280,44 +293,12 @@ func CheckStorageClass(r client.Reader) error {
 // GetMasterNs gets MasterNamespaces of deploying Common Services
 func GetMasterNs(r client.Reader) (masterNs string) {
 
-	// default master namespace
-	masterNs = constant.MasterNamespace
-
 	operatorNs, err := GetOperatorNamespace()
 	if err != nil {
 		klog.Errorf("Getting operator namespace failed: %v", err)
 		return
 	}
-
-	csConfigmap, err := GetCmOfMapCs(r)
-	if err != nil {
-		klog.V(2).Infof("Could not find configmap kube-public/common-service-maps: %v", err)
-		return
-	}
-
-	commonServiceMaps, ok := csConfigmap.Data["common-service-maps.yaml"]
-	if !ok {
-		klog.Infof("There is no common-service-maps.yaml in configmap kube-public/common-service-maps")
-		return
-	}
-
-	var cmData CsMaps
-	if err := utilyaml.Unmarshal([]byte(commonServiceMaps), &cmData); err != nil {
-		klog.Errorf("Failed to fetch data of configmap common-service-maps: %v", err)
-		return
-	}
-
-	for _, nsMapping := range cmData.NsMappingList {
-		if Contains(nsMapping.RequestNs, operatorNs) {
-			masterNs = nsMapping.CsNs
-			break
-		}
-		if nsMapping.CsNs == operatorNs {
-			masterNs = operatorNs
-			break
-		}
-	}
-
+	masterNs = operatorNs
 	return
 }
 
@@ -457,30 +438,12 @@ func CheckMultiInstances(r client.Reader) (enable bool) {
 
 // GetControlNs gets control namespace of deploying cluster scope services
 func GetControlNs(r client.Reader) (controlNs string) {
-	controlNs = ""
-
-	csConfigmap, err := GetCmOfMapCs(r)
+	operatorNs, err := GetOperatorNamespace()
 	if err != nil {
-		klog.V(2).Info("There is no configmap kube-public/common-service-maps: Installing common services into ibm-common-services namespace")
+		klog.Errorf("Getting operator namespace failed: %v", err)
 		return
 	}
-
-	commonServiceMaps, ok := csConfigmap.Data["common-service-maps.yaml"]
-	if !ok {
-		klog.Infof("There is no common-service-maps.yaml in configmap kube-public/common-service-maps: Installing common services into ibm-common-services namespace")
-		return
-	}
-
-	var cmData CsMaps
-	if err := utilyaml.Unmarshal([]byte(commonServiceMaps), &cmData); err != nil {
-		klog.Errorf("Failed to fetch data of configmap common-service-maps: %v", err)
-		return
-	}
-
-	if len(cmData.ControlNs) > 0 {
-		controlNs = cmData.ControlNs
-	}
-
+	controlNs = operatorNs
 	return
 }
 
