@@ -333,13 +333,16 @@ function switch_channel() {
             fi
         done < <(oc get sub -n ${csNS} --ignore-not-found | grep ${subName}  | awk '{print $4}')       
     fi
+    msg ""
     success "Updated ${subName} subscriptions successfully."
 
     STEP=$((STEP + 1 ))
     msg ""
     title "[${STEP}] Switching Zen operator channel in ${csNS} namespace..."
     msg "-----------------------------------------------------------------------"
-    compare_channel "ibm-zen-operator" "${csNS}" "${channel}" "${cur_channel}"
+
+    zen_current=$(oc get sub -n ${csNS} --ignore-not-found | grep ibm-zen-operator | awk '{print $4}')
+    compare_channel "ibm-zen-operator" "${csNS}" "${channel}" "${zen_current}"
     if [[ $CHANNEL_COMP == 1 ]]; then
         msg ""
         msg "Switching channel into ${channel}..."
