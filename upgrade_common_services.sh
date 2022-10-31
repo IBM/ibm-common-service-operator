@@ -273,7 +273,6 @@ function pre-zen(){
     local csNS=$1
 
     STEP=$((STEP + 1 ))
-
     msg ""
     title "[${STEP}] Detecting Operator Condition of zen operator v1.4.2 in ${csNS} namespace..."
     msg "-----------------------------------------------------------------------"
@@ -300,7 +299,6 @@ function switch_channel() {
     local allNamespace=$6
 
     STEP=$((STEP + 1 ))
-
     msg ""
     title "[${STEP}] Comparing and switching given upgrade channel version ${channel} with current one..."
     msg "-----------------------------------------------------------------------"
@@ -338,6 +336,17 @@ function switch_channel() {
     fi
     success "Updated ${subName} subscriptions successfully."
 
+    STEP=$((STEP + 1 ))
+    msg ""
+    title "[${STEP}] Switching Zen operator channel in ${csNS} namespace..."
+    msg "-----------------------------------------------------------------------"
+    compare_channel "ibm-zen-operator" "${csNS}" "${channel}" "${cur_channel}"
+    if [[ $CHANNEL_COMP == 1 ]]; then
+        msg ""
+        msg "Switching channel into ${channel}..."
+        switch_channel_operator "ibm-zen-operator" "${csNS}" "${channel}"
+    fi  
+    
     info "Please wait a moment for ${subName} to upgrade all foundational services."
 }
 
