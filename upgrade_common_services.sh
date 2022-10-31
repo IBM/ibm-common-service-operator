@@ -18,7 +18,10 @@
 # counter to keep track of installation steps
 # set -x
 STEP=0
-NOTMATCH=false
+
+# set flag for channel comparing, default value is 2
+# 0: current channel is equal to upgrade; 1: current is less; 2: current is greater
+CHANNEL_COMP=2
 
 # script base directory
 BASE_DIR=$(dirname "$0")
@@ -99,6 +102,8 @@ function main() {
     msg "-----------------------------------------------------------------------"
 
     check_preqreqs "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPACE}"
+    deployment_check "${subName}" "${CS_NAMESPACE}" "${DESTINATION_CHANNEL}"
+    pre-zen "${CS_NAMESPACE}"
     switch_channel "${subName}" "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPACE}" "${DESTINATION_CHANNEL}" "${ALL_NAMESPACE}"
 }
 
@@ -148,41 +153,22 @@ function switch_channel_operator() {
     local subName=$1
     local namespace=$2
     local channel=$3
-    local allNamespace=$4
 
-    if [[ "${allNamespace}" == "true" ]]; then
-        while read -r ns cssub; do
-            msg "Updating subscription ${cssub} in namespace ${ns}..."
-            
-            in_step=1
-            msg "[${in_step}] Removing the startingCSV..."
-            oc patch sub ${cssub} -n ${ns} --type="json" -p '[{"op": "remove", "path":"/spec/startingCSV"}]' 2> /dev/null
+    while read -r cssub; do
+        msg "Updating subscription ${cssub} in namespace ${namespace}..."
+        
+        in_step=1
+        msg "[${in_step}] Removing the startingCSV..."
+        oc patch sub ${cssub} -n ${namespace} --type="json" -p '[{"op": "remove", "path":"/spec/startingCSV"}]' 2> /dev/null
 
-            in_step=$((in_step + 1))
-            msg "[${in_step}] Upgrading channel to ${channel}..."
-            
-            cat <<EOF | oc patch sub ${cssub} -n ${ns} --type="json" -p '[{"op": "replace", "path":"/spec/channel", "value":"'"${channel}"'"}]' | 2> /dev/null
+        in_step=$((in_step + 1))
+        msg "[${in_step}] Upgrading channel to ${channel}..."
+        
+        cat <<EOF | oc patch sub ${cssub} -n ${namespace} --type="json" -p '[{"op": "replace", "path":"/spec/channel", "value":"'"${channel}"'"}]' | 2> /dev/null
 EOF
 
-            msg ""
-        done < <(oc get sub --all-namespaces --ignore-not-found | grep ${subName} | awk '{print $1" "$2}')
-    else
-        while read -r cssub; do
-            msg "Updating subscription ${cssub} in namespace ${namespace}..."
-            
-            in_step=1
-            msg "[${in_step}] Removing the startingCSV..."
-            oc patch sub ${cssub} -n ${namespace} --type="json" -p '[{"op": "remove", "path":"/spec/startingCSV"}]' 2> /dev/null
-
-            in_step=$((in_step + 1))
-            msg "[${in_step}] Upgrading channel to ${channel}..."
-            
-            cat <<EOF | oc patch sub ${cssub} -n ${namespace} --type="json" -p '[{"op": "replace", "path":"/spec/channel", "value":"'"${channel}"'"}]' | 2> /dev/null
-EOF
-
-            msg ""
-        done < <(oc get sub -n ${namespace} --ignore-not-found | grep ${subName} | awk '{print $1}')
-    fi
+        msg ""
+    done < <(oc get sub -n ${namespace} --ignore-not-found | grep ${subName} | awk '{print $1}')
 }
 
 # This function checks the current version of the installed bedrock instance automatically
@@ -218,16 +204,99 @@ function compare_channel() {
         fi
 
         if [[ ${current_channel[index]} -gt ${upgrade_channel[index]} ]]; then
-            error "Upgrade channel ${channel} is lower than current channel ${cur_channel}, abort the upgrade procedure."
+            CHANNEL_COMP=2
+            error "current channel ${cur_channel} is greater than upgrade channel ${channel}, abort the upgrade procedure"
+            
         elif [[ ${current_channel[index]} -lt ${upgrade_channel[index]} ]]; then
-            success "Upgrade channel ${channel} is greater than current channel ${cur_channel}, ready for channel switch"
-            NOTMATCH=true
+            CHANNEL_COMP=1
+            success "current channel ${cur_channel} is less than upgrade channel ${channel}, ready for channel switch"
             return 0
         fi
     done
-    success "Upgrade channel ${channel} is equal to current channel ${cur_channel}, ready for channel switch."
+    CHANNEL_COMP=0
+    success "current channel ${cur_channel} is equal to upgrade channel ${channel}, do not need channel switch"
+    
 }
 
+function deployment_check(){
+    local subName=$1
+    local csNS=$2
+    local channel=$3
+
+    STEP=$((STEP + 1 ))
+    msg ""
+    title "[${STEP}] Checking ${subName} deployment in ${csNS} namespace..."
+    msg "-----------------------------------------------------------------------"
+
+    # get current cs opertor channel version 
+    csoperator_channel=$(oc get sub -n ${csNS} | grep ${subName} | awk '{print $4}')
+    echo "cs operator channel:" ${csoperator_channel}
+    compare_channel "${subName}" "${csNS}" "${channel}" "${csoperator_channel}"
+    
+
+    if [[ $CHANNEL_COMP == 1 ]]; then
+        echo "channel comp:" ${CHANNEL_COMP}
+        msg "current channel version of ${subName} ${csoperator_channel} is less then upgrade channel version ${channel}"
+        msg ""
+
+        in_step=1
+        # scale down cs operator to prevent reconciliation
+        msg "[${in_step}] Scaling down ${subName} deployment in ${csNS} namespace to 0"
+        oc scale deployment -n "${csNS}" "${subName}" --replicas=0
+
+        # delete OperandRegistry
+        in_step=$((in_step + 1))
+        msg "[${in_step}] Deleting OperandRegistry common-service in ${csNS} namespace..."
+        oc delete opreg common-service -n ${csNS} --ignore-not-found
+        
+    elif [[ $CHANNEL_COMP != 1 ]]; then
+        echo "less"
+        echo "channel comp:" ${CHANNEL_COMP}
+        msg "current channel version of ${subName} ${csoperator_channel} is not greater than upgrade channel version ${channel}"
+        msg ""
+
+        # get installedCSV from subscription
+        csv=$(oc get sub ${subName} -n ${csNS} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
+        msg "existing installedCSV is ${csv}"
+
+        # remove all chars before "v"
+        trimmed_csv="$(echo $csv | awk -Fv '{print $NF}')"
+        trimmed_channel="$(echo $channel | awk -Fv '{print $NF}')"
+        echo "trimmed csv:" ${trimmed_csv}
+        echo "trimmed channel:" ${trimmed_channel}
+
+        if [[ "$trimmed_csv" == *"$trimmed_channel"* ]]; then
+            in_step=1
+            msg "installedCSV ${csv} matches upgrade channel version ${channel}"
+            msg ""
+            # scale up cs operator back to 1
+            msg "[${in_step}] Scaling up ${subName} deployment in ${csNS} namespace to 1"
+            oc scale deployment -n "${csNS}" "${subName}" --replicas=1
+        fi
+    fi
+}
+
+function pre-zen(){
+    local csNS=$1
+
+    STEP=$((STEP + 1 ))
+
+    msg ""
+    title "[${STEP}] Detecting Operator Condition of zen operator v1.4.2 in ${csNS} namespace..."
+    msg "-----------------------------------------------------------------------"
+
+    if oc get operatorcondition -n ${csNS} 2>/dev/null | grep ibm-zen-operator ; then
+        msg "Removing Operator Condition of zen operator v1.4.2..."
+        list=$(oc get operatorcondition -o custom-columns=operatorcondition:.metadata.name --no-headers -n ${csNS} | grep ibm-zen-operator 2>/dev/null)
+        for name in ${list};do
+            if [ ! -z "${name}" ] && [[ "${name}" =~ ibm-zen-operator.v1.4.2 ]]; then
+                oc delete operatorcondition ${name} -n ${csNS} || true
+            fi
+        done
+    else
+        msg "Operator Condition in namespace ${csNS} not found, skipping..."
+    fi
+}
 
 function switch_channel() {
     local subName=$1
@@ -240,93 +309,49 @@ function switch_channel() {
     STEP=$((STEP + 1 ))
 
     msg ""
-    title "[${STEP}] Comparing given upgrade channel version ${channel} with current one..."
+    title "[${STEP}] Comparing and switching given upgrade channel version ${channel} with current one..."
     msg "-----------------------------------------------------------------------"
 
     if [[ "${allNamespace}" == "true" ]]; then
         while read -r ns cur_channel; do
+            echo "ns:" ${ns}
             compare_channel "${subname}" "${ns}" "${channel}" "${cur_channel}"
+            echo "CHANNEL_COMP:" $CHANNEL_COMP
+            # switch channel only happens when current channel is less than upgrade 
+            if [[ $CHANNEL_COMP == 1 ]]; then
+                msg ""
+                msg "Switching channel into ${channel}..."
+                switch_channel_operator "${subName}" "${ns}" "${channel}"
+            fi 
         done < <(oc get sub --all-namespaces --ignore-not-found | grep ${subName}  | awk '{print $1" "$5}')
-        if [[ $? == 0 ]]; then
-            STEP=$((STEP + 1 ))
-            msg ""
-            title "[${STEP}] Switching channel into ${channel}..."
-            msg "-----------------------------------------------------------------------"
-            switch_channel_operator "${subName}" "${csNS}" "${channel}" "${allNamespace}"
-        fi   
     else
         if [[ "$cloudpaksNS" != "$csNS" ]]; then
-            
             while read -r cur_channel; do
+                echo "check cloudpak:" ${cloudpaksNS}
                 compare_channel "${subName}" "${cloudpaksNS}" "${channel}" "${cur_channel}"
+                echo "compare:" $CHANNEL_COMP
+                if [[ $CHANNEL_COMP == 1 ]]; then
+                    msg ""
+                    msg "Switching channel into ${channel}..."
+                    switch_channel_operator "${subName}" "${cloudpaksNS}" "${channel}"
+                fi
             done < <(oc get sub -n ${cloudpaksNS} --ignore-not-found | grep ${subName}  | awk '{print $4}')
-
-            if [[ $? == 0 ]]; then
-                STEP=$((STEP + 1 ))
-                msg ""
-                title "[${STEP}] Switching channel into ${channel}..."
-                msg "-----------------------------------------------------------------------"
-                switch_channel_operator "${subName}" "${cloudpaksNS}" "${channel}" "${allNamespace}"
-            fi
+            
         fi
-        
+        echo "next"
         while read -r cur_channel; do
+            echo "check csns:" ${csNS}
             compare_channel "${subname}" "${csNS}" "${channel}" "${cur_channel}"
+            echo "compare:" $CHANNEL_COMP
+            if [[ $CHANNEL_COMP == 1 ]]; then
+                msg ""
+                msg "Switching channel into ${channel}..."
+                switch_channel_operator "${subName}" "${csNS}" "${channel}"
+            fi
         done < <(oc get sub -n ${csNS} --ignore-not-found | grep ${subName}  | awk '{print $4}')
         
-        if [[ $? == 0 ]]; then
-            STEP=$((STEP + 1 ))
-            msg ""
-            title "[${STEP}] Switching channel into ${channel}..."
-            msg "-----------------------------------------------------------------------"
-            switch_channel_operator "${subName}" "${csNS}" "${channel}" "${allNamespace}"
-        fi
     fi
-
     success "Updated ${subName} subscriptions successfully."
-
-    STEP=$((STEP + 1 ))
-    msg ""
-    title "[${STEP}] Checking operand-deployment-lifecycle-manager channel version in ${csNS} namespace..."
-    msg "-----------------------------------------------------------------------"
-
-    # get current odlm channel version
-    odlm_channel=$(oc get sub -n ${csNS} | grep operand-deployment-lifecycle-manager-app | awk '{print $4}')
-    compare_channel "operand-deployment-lifecycle-manager-app" "${csNS}" "${channel}" "${odlm_channel}"
-    if [[ ${NOTMATCH} == true ]]; then
-        msg "current channel version of ODLM is ${odlm_channel} which is less then upgrade channel version ${channel}"
-        msg ""
-
-        # scale down ODLM to prevent reconciliation
-        msg "scaling down operand-deployment-lifecycle-manager deployment in ${csNS} namespace to 0"
-        oc scale deployment -n "${csNS}" "operand-deployment-lifecycle-manager" --replicas=0
-
-        STEP=$((STEP + 1 ))
-        msg ""
-        title "[${STEP}] Updating OperandRegistry common-service in ${csNS} namespace..."
-        msg "-----------------------------------------------------------------------"
-        oc -n ${csNS} get operandregistry common-service -o yaml | sed 's/ibm-zen-operator/dummy-ibm-zen-operator/g' | oc -n ${csNS} apply -f -
-        msg ""
-    else
-        msg "current channel version of ODLM is ${odlm_channel} which is equal to upgrade channel version ${channel}"
-        msg ""
-
-        # remove all chars before "v"
-        trimmed_channel="$(echo $channel | awk -Fv '{print $NF}')"
-        opreg_version=$(oc get opreg common-service -n ${csNS} -o jsonpath='{.metadata.annotations.version}')
-        msg "existing OperandRegistry version is ${opreg_version}"
-
-        if [[ "$opreg_version" == *"$trimmed_channel"* ]]; then
-            msg "cs operator version in OperandRegistry matches upgrade channel version ${channel}"
-            msg ""
-            # scale up ODLM back to 1
-            msg "scaling up operand-deployment-lifecycle-manager deployment in ${csNS} namespace to 1"
-            oc scale deployment -n "${csNS}" "operand-deployment-lifecycle-manager" --replicas=1
-            msg ""
-        fi
-    fi
-
-    switch_channel_operator "ibm-zen-operator" "${csNS}" "${channel}" "false"
 
     info "Please wait a moment for ${subName} to upgrade all foundational services."
 }
