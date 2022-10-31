@@ -146,7 +146,6 @@ function check_preqreqs() {
     if [[ -z "$(oc get namespace ${controlNS})" ]]; then
         error "Namespace ${controlNS} for singleton services is not found."
     fi
-
 }
 
 function switch_channel_operator() {
@@ -247,7 +246,7 @@ function deployment_check(){
         oc delete opreg common-service -n ${csNS} --ignore-not-found
         
     elif [[ $CHANNEL_COMP != 1 ]]; then
-        msg "current channel version of ${subName} ${csoperator_channel} is not greater than upgrade channel version ${channel}"
+        msg "current channel version of ${subName} ${csoperator_channel} is not less than upgrade channel version ${channel}"
         msg ""
 
         # get installedCSV from subscription
@@ -346,7 +345,7 @@ function switch_channel() {
         msg "Switching channel into ${channel}..."
         switch_channel_operator "ibm-zen-operator" "${csNS}" "${channel}"
     fi  
-    
+
     info "Please wait a moment for ${subName} to upgrade all foundational services."
 }
 
