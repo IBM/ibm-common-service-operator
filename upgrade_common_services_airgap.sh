@@ -391,16 +391,16 @@ function switch_channel() {
     done
     for sub_name in "${CS_LIST_CONTROLNS[@]}"; do
         msg "Starting with ${sub_name}..."
-        current_control=$(oc get sub -n ${csNS} --ignore-not-found | grep ${sub_name} | awk '{print $4}')
+        current_control=$(oc get sub -n ${controlNS} --ignore-not-found | grep ${sub_name} | awk '{print $4}')
         if [[ ! -z "${current_control}" ]]; then
-            compare_channel "${sub_name}" "${csNS}" "${channel}" "${current_control}"
+            compare_channel "${sub_name}" "${controlNS}" "${channel}" "${current_control}"
             if [[ $CHANNEL_COMP == 1 ]]; then
                 msg ""
                 msg "Switching channel into ${channel}..."
-                switch_channel_operator "${sub_name}" "${csNS}" "${channel}"
+                switch_channel_operator "${sub_name}" "${controlNS}" "${channel}"
             fi
         else
-            msg "${sub_name} in namespace ${csNS} not found, skipping..."
+            msg "${sub_name} in namespace ${controlNS} not found, skipping..."
             msg ""
         fi
     done
