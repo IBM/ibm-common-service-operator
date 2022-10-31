@@ -278,7 +278,7 @@ function deployment_check(){
         oc delete opreg common-service -n ${csNS} --ignore-not-found
         
     elif [[ $CHANNEL_COMP != 1 ]]; then
-        msg "current channel version of ${subName} ${csoperator_channel} is not greater than upgrade channel version ${channel}"
+        msg "current channel version of ${subName} ${csoperator_channel} is not less than upgrade channel version ${channel}"
         msg ""
 
         # get installedCSV from subscription
@@ -304,7 +304,6 @@ function pre-zen(){
     local csNS=$1
 
     STEP=$((STEP + 1 ))
-
     msg ""
     title "[${STEP}] Detecting Operator Condition of zen operator v1.4.2 in ${csNS} namespace..."
     msg "-----------------------------------------------------------------------"
@@ -332,7 +331,7 @@ function switch_channel() {
 
     STEP=$((STEP + 1 ))
     msg ""
-    title "[${STEP}] Comparing and switching given upgrade channel version ${channel} with current one..."
+    title "[${STEP}] Comparing and switching given upgrade channel version ${channel} of ${subName} with current one..."
     msg "-----------------------------------------------------------------------"
 
     if [[ "${allNamespace}" == "true" ]]; then
@@ -367,18 +366,44 @@ function switch_channel() {
             fi
         done < <(oc get sub -n ${csNS} --ignore-not-found | grep ${subName}  | awk '{print $4}')
     fi
-
     success "Updated ${subName} subscriptions successfully."
     
     # switch channel for remaining CS components
+    STEP=$((STEP + 1 ))
+    msg ""
+    title "[${STEP}] Switching channel version for remaining CS components in ${csNS} namespace..."
+    msg "-----------------------------------------------------------------------"
+
     for sub_name in "${CS_LIST_CSNS[@]}"; do
-        switch_channel_operator "${sub_name}" "${csNS}" "${channel}" "false"
+        msg "Starting with ${sub_name}..."
+        current=$(oc get sub -n ${csNS} --ignore-not-found | grep ${sub_name} | awk '{print $4}')
+        if [[ ! -z "${current}" ]]; then 
+            compare_channel "${sub_name}" "${csNS}" "${channel}" "${current}"
+            if [[ $CHANNEL_COMP == 1 ]]; then
+                msg ""
+                msg "Switching channel into ${channel}..."
+                switch_channel_operator "${sub_name}" "${csNS}" "${channel}"
+            fi
+        else
+            msg "${sub_name} in namespace ${csNS} not found, skipping..."
+            msg ""
+        fi
     done
-
     for sub_name in "${CS_LIST_CONTROLNS[@]}"; do
-        switch_channel_operator "${sub_name}" "${csNS}" "${channel}" "false"
+        msg "Starting with ${sub_name}..."
+        current_control=$(oc get sub -n ${csNS} --ignore-not-found | grep ${sub_name} | awk '{print $4}')
+        if [[ ! -z "${current_control}" ]]; then
+            compare_channel "${sub_name}" "${csNS}" "${channel}" "${current_control}"
+            if [[ $CHANNEL_COMP == 1 ]]; then
+                msg ""
+                msg "Switching channel into ${channel}..."
+                switch_channel_operator "${sub_name}" "${csNS}" "${channel}"
+            fi
+        else
+            msg "${sub_name} in namespace ${csNS} not found, skipping..."
+            msg ""
+        fi
     done
-
 }
 
 function check_switch_complete() {
@@ -389,7 +414,6 @@ function check_switch_complete() {
     local allNamespace=$5
 
     STEP=$((STEP + 1 ))
-    
     title "[${STEP}] Checking whether the channel switch is completed..."
     msg "-----------------------------------------------------------------------"
 
