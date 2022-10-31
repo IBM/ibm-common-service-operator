@@ -214,8 +214,7 @@ function compare_channel() {
         fi
     done
     CHANNEL_COMP=0
-    success "current channel ${cur_channel} is equal to upgrade channel ${channel}, do not need channel switch"
-    
+    success "current channel ${cur_channel} is equal to upgrade channel ${channel}, do not need channel switch"  
 }
 
 function deployment_check(){
@@ -230,12 +229,10 @@ function deployment_check(){
 
     # get current cs opertor channel version 
     csoperator_channel=$(oc get sub -n ${csNS} | grep ${subName} | awk '{print $4}')
-    echo "cs operator channel:" ${csoperator_channel}
     compare_channel "${subName}" "${csNS}" "${channel}" "${csoperator_channel}"
     
 
     if [[ $CHANNEL_COMP == 1 ]]; then
-        echo "channel comp:" ${CHANNEL_COMP}
         msg "current channel version of ${subName} ${csoperator_channel} is less then upgrade channel version ${channel}"
         msg ""
 
@@ -250,8 +247,6 @@ function deployment_check(){
         oc delete opreg common-service -n ${csNS} --ignore-not-found
         
     elif [[ $CHANNEL_COMP != 1 ]]; then
-        echo "less"
-        echo "channel comp:" ${CHANNEL_COMP}
         msg "current channel version of ${subName} ${csoperator_channel} is not greater than upgrade channel version ${channel}"
         msg ""
 
@@ -262,8 +257,6 @@ function deployment_check(){
         # remove all chars before "v"
         trimmed_csv="$(echo $csv | awk -Fv '{print $NF}')"
         trimmed_channel="$(echo $channel | awk -Fv '{print $NF}')"
-        echo "trimmed csv:" ${trimmed_csv}
-        echo "trimmed channel:" ${trimmed_channel}
 
         if [[ "$trimmed_csv" == *"$trimmed_channel"* ]]; then
             in_step=1
@@ -314,9 +307,7 @@ function switch_channel() {
 
     if [[ "${allNamespace}" == "true" ]]; then
         while read -r ns cur_channel; do
-            echo "ns:" ${ns}
             compare_channel "${subname}" "${ns}" "${channel}" "${cur_channel}"
-            echo "CHANNEL_COMP:" $CHANNEL_COMP
             # switch channel only happens when current channel is less than upgrade 
             if [[ $CHANNEL_COMP == 1 ]]; then
                 msg ""
@@ -327,9 +318,7 @@ function switch_channel() {
     else
         if [[ "$cloudpaksNS" != "$csNS" ]]; then
             while read -r cur_channel; do
-                echo "check cloudpak:" ${cloudpaksNS}
                 compare_channel "${subName}" "${cloudpaksNS}" "${channel}" "${cur_channel}"
-                echo "compare:" $CHANNEL_COMP
                 if [[ $CHANNEL_COMP == 1 ]]; then
                     msg ""
                     msg "Switching channel into ${channel}..."
@@ -338,18 +327,14 @@ function switch_channel() {
             done < <(oc get sub -n ${cloudpaksNS} --ignore-not-found | grep ${subName}  | awk '{print $4}')
             
         fi
-        echo "next"
         while read -r cur_channel; do
-            echo "check csns:" ${csNS}
             compare_channel "${subname}" "${csNS}" "${channel}" "${cur_channel}"
-            echo "compare:" $CHANNEL_COMP
             if [[ $CHANNEL_COMP == 1 ]]; then
                 msg ""
                 msg "Switching channel into ${channel}..."
                 switch_channel_operator "${subName}" "${csNS}" "${channel}"
             fi
-        done < <(oc get sub -n ${csNS} --ignore-not-found | grep ${subName}  | awk '{print $4}')
-        
+        done < <(oc get sub -n ${csNS} --ignore-not-found | grep ${subName}  | awk '{print $4}')       
     fi
     success "Updated ${subName} subscriptions successfully."
 
