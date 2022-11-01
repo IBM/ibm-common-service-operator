@@ -230,19 +230,12 @@ func (b *Bootstrap) CrossplaneOperatorProviderOperator(instance *apiv3.CommonSer
 				if updateErr := b.CreateorUpdateCFCrossplaneConfigMap("'false'"); updateErr != nil {
 					return updateErr
 				}
-			}
 
-			b.CSData.CrossplaneProvider = "odlm"
-			if b.SaasEnable {
-				b.CSData.CrossplaneProvider = "ibmcloud"
-			}
+				b.CSData.CrossplaneProvider = "odlm"
+				if b.SaasEnable {
+					b.CSData.CrossplaneProvider = "ibmcloud"
+				}
 
-			// install crossplane operator
-			if err := b.installCrossplaneOperator(); err != nil {
-				return err
-			}
-			// we install provider only if we don't need to delete it
-			if !removeCrossplaneProvider {
 				switch b.CSData.CrossplaneProvider {
 				case "odlm":
 					if err := b.installKubernetesProvider(); err != nil {
@@ -254,14 +247,14 @@ func (b *Bootstrap) CrossplaneOperatorProviderOperator(instance *apiv3.CommonSer
 					}
 				}
 			}
+			// install crossplane operator
+			if err := b.installCrossplaneOperator(); err != nil {
+				return err
+			}
 		} else {
 			// delete crossplane and provider operator if exist
 			if err := b.DeleteCrossplaneAndProviderSubscription(b.CSData.ControlNs); err != nil {
 				return err
-			}
-			value := "'" + strconv.FormatBool(removeCrossplaneProvider) + "'"
-			if updateErr := b.CreateorUpdateCFCrossplaneConfigMap(value); updateErr != nil {
-				return updateErr
 			}
 		}
 	} else {
@@ -386,6 +379,10 @@ func (b *Bootstrap) DeleteCrossplaneAndProviderSubscription(namespace string) er
 				klog.Errorf("Failed to delete %s in %s: %v", constant.ICPOperator, namespace, err)
 				return err
 			}
+		}
+
+		if updateErr := b.CreateorUpdateCFCrossplaneConfigMap("'true'"); updateErr != nil {
+			return updateErr
 		}
 	}
 	return nil
