@@ -84,7 +84,7 @@ function prepare_cluster() {
     # TODO for more advanced checking
     # find all namespaces with cs-operator running
     # each namespace should be in configmap
-    # all namesapces in configmap should exist
+    # all namespaces in configmap should exist
     check_cm_ns_exist $cm_name
 
     ${OC} scale deployment -n ${master_ns} ibm-common-service-operator --replicas=0
@@ -323,21 +323,26 @@ function check_CSCR() {
 function check_cm_ns_exist(){
     local cm_name=$1
    
-    #this command gets all of the ns listed in requested from namesapce fields
-    requestedNSArray=($("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].requested-from-namespace' | awk '{print $2}'))
-    
-    #this command gets all of the ns listed in map-to-common-service-namespace
-    mapToCSNSArray=($("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].map-to-common-service-namespace' | awk '{print}'))
-    
-    for ns in "${requestedNSArray[@]}"
-    do
-        echo "creating $ns"
-        ${OC} create namespace $ns || info "$ns already exists, skipping..."
-    done
-    for ns in "${mapToCSNSArray[@]}"
-    do
-        echo "creating $ns"
-        ${OC} create namespace $ns || info "$ns already exists, skipping..."
+    ${OC} get configmap ${cm_name} -n kube-public -o yaml | while read -r line; do
+        first_element=$(echo $line | awk '{print $1}')
+        
+        if [[ "${first_element}" == "-" ]]; then
+            namespace=$(echo $line | awk '{print $2}')
+            if [[ "${namespace}" != "requested-from-namespace:" ]]; then
+                if [[ "${namespace}" != "${master_ns}" ]]; then
+                    echo "creating namespace ${namespace}"
+                    ${OC} create namespace ${namespace} || info "$namespace already exists, skipping..."
+                fi
+            fi
+        fi
+        if [[ "${first_element}" == "map-to-common-service-namespace:" ]]; then
+            return_value=$("${OC}" get namespace ${namespace} || echo failed)
+            if [[ $return_value != "failed" ]]; then
+                namespace=$(echo $line | awk '{print $2}')
+                echo "creating namespace ${namespace}"
+                ${OC} create namespace ${namespace} || info "$namespace already exists, skipping..."
+            fi  
+        fi
     done
     echo "all namespaces in $cm_name exist"
 }
