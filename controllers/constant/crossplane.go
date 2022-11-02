@@ -113,3 +113,13 @@ spec:
       key: credentials
   region: us-south
 `
+
+const CFCrossplaneConfigMap = `
+apiVersion: v1
+data:
+  removeFinalizersFromObjects: REMOVAL
+kind: ConfigMap
+metadata:
+  name: cf-crossplane
+  namespace: placeholder
+`

@@ -196,50 +196,69 @@ func (b *Bootstrap) CrossplaneOperatorProviderOperator(instance *apiv3.CommonSer
 
 	// Install Crossplane Operator & Provider Operator
 	bedrockshim := false
+	removeCrossplaneProvider := false
 	if instance.Spec.Features != nil {
 		if instance.Spec.Features.Bedrockshim != nil {
 			bedrockshim = instance.Spec.Features.Bedrockshim.Enabled
+			removeCrossplaneProvider = instance.Spec.Features.Bedrockshim.CrossplaneProviderRemoval
 		}
 	}
+
 	var isLater bool
 	var err error
-	if bedrockshim {
-		b.CSData.CrossplaneProvider = "odlm"
 
-		if b.SaasEnable {
-			b.CSData.CrossplaneProvider = "ibmcloud"
+	if b.MultiInstancesEnable {
+		resourceName := constant.CrossSubscription
+		isLater, err = b.CompareChannel(resourceName)
+		if err != nil {
+			return err
 		}
-		if b.MultiInstancesEnable {
-			resourceName := constant.CrossSubscription
-			isLater, err = b.CompareChannel(resourceName)
-			if err != nil {
-				return err
+	} else {
+		isLater = false
+	}
+
+	//isLater value of false means we install, true means we do not install
+	if !isLater {
+		if bedrockshim {
+			if removeCrossplaneProvider {
+				//delete Crossplane Provider Subscription
+				klog.Info("try to delete CrossplaneProvider")
+				if DeleteErr := b.DeleteCrossplaneProviderSubscription(b.CSData.ControlNs); DeleteErr != nil {
+					return DeleteErr
+				}
+			} else {
+				if updateErr := b.CreateorUpdateCFCrossplaneConfigMap("'false'"); updateErr != nil {
+					return updateErr
+				}
+
+				b.CSData.CrossplaneProvider = "odlm"
+				if b.SaasEnable {
+					b.CSData.CrossplaneProvider = "ibmcloud"
+				}
+
+				switch b.CSData.CrossplaneProvider {
+				case "odlm":
+					if err := b.installKubernetesProvider(); err != nil {
+						return err
+					}
+				case "ibmcloud":
+					if err := b.installIBMCloudProvider(); err != nil {
+						return err
+					}
+				}
 			}
-		} else {
-			isLater = false
-		}
-		//isLater value of false means we install, true means we do not install
-		if !isLater {
+			// install crossplane operator
 			if err := b.installCrossplaneOperator(); err != nil {
 				return err
 			}
-			switch b.CSData.CrossplaneProvider {
-			case "odlm":
-				if err := b.installKubernetesProvider(); err != nil {
-					return err
-				}
-			case "ibmcloud":
-				if err := b.installIBMCloudProvider(); err != nil {
-					return err
-				}
-			}
 		} else {
-			klog.Infof("Crossplane operator already exists at a later version in control namespace. Skipping.")
+			// delete crossplane and provider operator if exist
+			if err := b.DeleteCrossplaneAndProviderSubscription(b.CSData.ControlNs); err != nil {
+				return err
+			}
 		}
 	} else {
-		if err := b.DeleteCrossplaneAndProviderSubscription(b.CSData.ControlNs); err != nil {
-			return err
-		}
+		klog.Infof("Crossplane operator already exists at a later version in control namespace. Skipping.")
 	}
 
 	return nil
@@ -361,6 +380,93 @@ func (b *Bootstrap) DeleteCrossplaneAndProviderSubscription(namespace string) er
 				return err
 			}
 		}
+
+		if updateErr := b.CreateorUpdateCFCrossplaneConfigMap("'true'"); updateErr != nil {
+			return updateErr
+		}
+	}
+	return nil
+}
+
+// decoupling Crossplane from Kafka resources and keep Kafka resources left untouched
+func (b *Bootstrap) DeleteCrossplaneProviderSubscription(namespace string) error {
+	// Fetch all the CommonService instances
+	klog.V(2).Info("Fetch all the CommonService instances")
+	csList := util.NewUnstructuredList("operator.ibm.com", "CommonService", "v3")
+	if err := b.Client.List(ctx, csList); err != nil {
+		return err
+	}
+	uninstallProvider := false
+	// make sure all the cs instance need to uninstall provider
+	for _, cs := range csList.Items {
+		if cs.GetDeletionTimestamp() != nil {
+			continue
+		}
+		// if this cs cr has bedrockshim
+		if cs.Object["spec"].(map[string]interface{})["features"] != nil &&
+			cs.Object["spec"].(map[string]interface{})["features"].(map[string]interface{})["bedrockshim"] != nil &&
+			cs.Object["spec"].(map[string]interface{})["features"].(map[string]interface{})["bedrockshim"].(map[string]interface{})["enabled"] != nil {
+			// if this cs cr enabled bedrockshim
+			if cs.Object["spec"].(map[string]interface{})["features"].(map[string]interface{})["bedrockshim"].(map[string]interface{})["enabled"].(bool) {
+				// if this cs cr has providerRemoval
+				if cs.Object["spec"].(map[string]interface{})["features"].(map[string]interface{})["bedrockshim"].(map[string]interface{})["crossplaneProviderRemoval"] != nil {
+					// if this cs cr request to remove provider
+					if cs.Object["spec"].(map[string]interface{})["features"].(map[string]interface{})["bedrockshim"].(map[string]interface{})["crossplaneProviderRemoval"].(bool) {
+						uninstallProvider = true
+					} else {
+						uninstallProvider = false
+						break
+					}
+				} else {
+					uninstallProvider = false
+					break
+				}
+			}
+		}
+	}
+	if uninstallProvider {
+		// uninstall ibm-crossplane-provider-kubernetes-operator
+		_, providerErr := b.GetSubscription(ctx, constant.ICPPKOperator, namespace)
+		if errors.IsNotFound(providerErr) {
+			klog.Infof("%s not installed, skipping", constant.ICPPKOperator)
+		} else if providerErr != nil {
+			klog.Errorf("Failed to get subscription %s/%s", namespace, constant.ICPPKOperator)
+		} else {
+			// delete Kubernetes Provider subscription
+			klog.Infof("Trying to delete %s in %s", constant.ICPPKOperator, namespace)
+			if err := b.deleteSubscription(constant.ICPPKOperator, namespace); err != nil {
+				klog.Errorf("Failed to delete %s in %s: %v", constant.ICPPKOperator, namespace, err)
+				return err
+			}
+		}
+
+		// ibm-crossplane-provider-ibm-cloud-operator
+		_, providerErr = b.GetSubscription(ctx, constant.ICPPICOperator, namespace)
+		if errors.IsNotFound(providerErr) {
+			klog.Infof("Skipped the uninstallation, %s not installed", constant.ICPPICOperator)
+		} else if providerErr != nil {
+			klog.Errorf("Failed to get subscription %s/%s", namespace, constant.ICPPICOperator)
+		} else {
+			// delete IBM Cloud Provider subscription
+			klog.Infof("Trying to delete %s in %s", constant.ICPPICOperator, namespace)
+			if err := b.deleteSubscription(constant.ICPPICOperator, namespace); err != nil {
+				klog.Errorf("Failed to delete %s in %s: %v", constant.ICPPICOperator, namespace, err)
+				return err
+			}
+		}
+		if updateErr := b.CreateorUpdateCFCrossplaneConfigMap("'true'"); updateErr != nil {
+			return updateErr
+		}
+	}
+	return nil
+}
+
+// create or update configmap cf-crossplane
+func (b *Bootstrap) CreateorUpdateCFCrossplaneConfigMap(value string) error {
+	resourceName := constant.CFCrossplaneConfigMap
+	resource := strings.ReplaceAll(resourceName, "REMOVAL", value)
+	if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(resource, placeholder, b.CSData.MasterNs))); err != nil {
+		return err
 	}
 	return nil
 }

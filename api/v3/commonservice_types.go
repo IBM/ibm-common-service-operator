@@ -78,7 +78,8 @@ type APICatalog struct {
 
 // Bedrockshim defines the configuration of Bedrockshim
 type Bedrockshim struct {
-	Enabled bool `json:"enabled,omitempty"`
+	Enabled                   bool `json:"enabled,omitempty"`
+	CrossplaneProviderRemoval bool `json:"crossplaneProviderRemoval,omitempty"`
 }
 
 // BedrockOperator maintains a list of bedrock operators
