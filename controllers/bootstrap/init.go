@@ -1740,6 +1740,19 @@ func (b *Bootstrap) DeployCertManagerCR() error {
 				klog.Errorf("Failed to wait for resource ready with kind: %s, apiGroupVersion: %s", kind, constant.CertManagerAPIGroupVersion)
 			}
 		}
+		// will use v1 cert instead of v1alpha cert
+		// delete v1alpha1 cert if it exist
+		if err := b.deletev1alpha1Resource("certificate", constant.CSCACertificate); err != nil {
+			return err
+		}
+
+		if err := b.deletev1alpha1Resource("issuer", "cs-ca-issuer"); err != nil {
+			return err
+		}
+
+		if err := b.deletev1alpha1Resource("issuer", "cs-ss-issuer"); err != nil {
+			return err
+		}
 
 		for _, cr := range constant.CertManagerIssuers {
 			if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.MasterNs))); err != nil {
@@ -1756,5 +1769,25 @@ func (b *Bootstrap) DeployCertManagerCR() error {
 			klog.Infof("Skipped deploying %s, BYOCertififcate feature is enabled in %s", constant.CSCACertificate, crWithBYOCert)
 		}
 	}
+	return nil
+}
+
+// delete cs certmanager resource in v1alpha1 version
+func (b *Bootstrap) deletev1alpha1Resource(kind string, name string) error {
+	klog.Infof("Deleting kind: %s name: %s in namespace: %s", kind, name, b.CSData.MasterNs)
+	v1alpha1Resource := util.NewUnstructured("certmanager.k8s.io", kind, "v1alpha1")
+	if err := b.Client.Get(ctx, types.NamespacedName{Name: name, Namespace: b.CSData.MasterNs}, v1alpha1Resource); err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+		klog.V(2).Infof("There is no v1alpha1 cs-ca-certificate in the cluster")
+	}
+
+	if err := b.Client.Delete(context.TODO(), v1alpha1Resource); err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+	}
+
 	return nil
 }
