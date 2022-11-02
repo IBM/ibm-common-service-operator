@@ -285,9 +285,6 @@ spec:
               - configmapname: namespace-scope
                 sharewith:
                   - namespace: openshift-redhat-marketplace
-  - name: ibm-automation-flink
-    spec:
-      flink: {}
 `
 
 const CSV3OperandRegistry = `
@@ -532,9 +529,6 @@ spec:
   - name: ibm-bts-operator
     spec:
       operandRequest: {}
-  - name: ibm-automation-flink
-    spec:
-      flink: {}
   - name: ibm-zen-operator
     resources:
       - apiVersion: batch/v1
