@@ -36,8 +36,7 @@ spec:
       mongoDB: {}
       operandRequest: {}
   - name: ibm-cert-manager-operator
-    spec:
-      certManager: {}
+    spec: {}
   - name: ibm-iam-operator
     spec:
       authentication:
@@ -463,8 +462,7 @@ spec:
       mongoDB: {}
       operandRequest: {}
   - name: ibm-cert-manager-operator
-    spec:
-      certManager: {}
+    spec: {}
   - name: ibm-iam-operator
     spec:
       authentication:
