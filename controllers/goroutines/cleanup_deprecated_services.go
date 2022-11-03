@@ -23,8 +23,6 @@ import (
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -38,153 +36,145 @@ const (
 	clusterScope   = "clusterScope"
 )
 
-type Resource struct {
-	name    string
-	version string
-	group   string
-	kind    string
-	scope   string
-}
-
-var deprecatedServicesMap = map[string][]*Resource{
+var deprecatedServicesMap = map[string][]*bootstrap.Resource{
 	"ibm-monitoring-exporters-operator": {
 		{
-			name:    "ibm-monitoring",
-			version: "v1alpha1",
-			group:   "monitoring.operator.ibm.com",
-			kind:    "Exporter",
-			scope:   namespaceScope,
+			Name:    "ibm-monitoring",
+			Version: "v1alpha1",
+			Group:   "monitoring.operator.ibm.com",
+			Kind:    "Exporter",
+			Scope:   namespaceScope,
 		},
 		{
-			name:    "monitoring-exporters-operator-request",
-			version: "v1alpha1",
-			group:   "operator.ibm.com",
-			kind:    "OperandRequest",
-			scope:   namespaceScope,
+			Name:    "monitoring-exporters-operator-request",
+			Version: "v1alpha1",
+			Group:   "operator.ibm.com",
+			Kind:    "OperandRequest",
+			Scope:   namespaceScope,
 		},
 	},
 	"ibm-monitoring-prometheusext-operator": {
 		{
-			name:    "ibm-monitoring",
-			version: "v1alpha1",
-			group:   "monitoring.operator.ibm.com",
-			kind:    "PrometheusExt",
-			scope:   namespaceScope,
+			Name:    "ibm-monitoring",
+			Version: "v1alpha1",
+			Group:   "monitoring.operator.ibm.com",
+			Kind:    "PrometheusExt",
+			Scope:   namespaceScope,
 		},
 		{
-			name:    "monitoring-prometheus-ext-operator-request",
-			version: "v1alpha1",
-			group:   "operator.ibm.com",
-			kind:    "OperandRequest",
-			scope:   namespaceScope,
+			Name:    "monitoring-prometheus-ext-operator-request",
+			Version: "v1alpha1",
+			Group:   "operator.ibm.com",
+			Kind:    "OperandRequest",
+			Scope:   namespaceScope,
 		},
 	},
 	"ibm-metering-operator": {
 		{
-			name:    "metering",
-			version: "v1alpha1",
-			group:   "operator.ibm.com",
-			kind:    "Metering",
-			scope:   namespaceScope,
+			Name:    "metering",
+			Version: "v1alpha1",
+			Group:   "operator.ibm.com",
+			Kind:    "Metering",
+			Scope:   namespaceScope,
 		},
 		{
-			name:    "meteringui",
-			version: "v1alpha1",
-			group:   "operator.ibm.com",
-			kind:    "MeteringUI",
-			scope:   namespaceScope,
+			Name:    "meteringui",
+			Version: "v1alpha1",
+			Group:   "operator.ibm.com",
+			Kind:    "MeteringUI",
+			Scope:   namespaceScope,
 		},
 		{
-			name:    "meteringreportserver",
-			version: "v1alpha1",
-			group:   "operator.ibm.com",
-			kind:    "MeteringReportServer",
-			scope:   clusterScope,
+			Name:    "meteringreportserver",
+			Version: "v1alpha1",
+			Group:   "operator.ibm.com",
+			Kind:    "MeteringReportServer",
+			Scope:   clusterScope,
 		},
 		{
-			name:    "ibm-metering-bindinfo",
-			version: "v1alpha1",
-			group:   "operator.ibm.com",
-			kind:    "OperandBindInfo",
-			scope:   namespaceScope,
+			Name:    "ibm-metering-bindinfo",
+			Version: "v1alpha1",
+			Group:   "operator.ibm.com",
+			Kind:    "OperandBindInfo",
+			Scope:   namespaceScope,
 		},
 		{
-			name:    "ibm-metering-request",
-			version: "v1alpha1",
-			group:   "operator.ibm.com",
-			kind:    "OperandRequest",
-			scope:   namespaceScope,
+			Name:    "ibm-metering-request",
+			Version: "v1alpha1",
+			Group:   "operator.ibm.com",
+			Kind:    "OperandRequest",
+			Scope:   namespaceScope,
 		},
 	},
 	"ibm-elastic-stack-operator": {
 		{
-			name:    "logging",
-			version: "v1alpha1",
-			group:   "elasticstack.ibm.com",
-			kind:    "ElasticStack",
-			scope:   namespaceScope,
+			Name:    "logging",
+			Version: "v1alpha1",
+			Group:   "elasticstack.ibm.com",
+			Kind:    "ElasticStack",
+			Scope:   namespaceScope,
 		},
 		{
-			name:    "ibm-elastic-stack-bindinfo",
-			version: "v1alpha1",
-			group:   "operator.ibm.com",
-			kind:    "OperandBindInfo",
-			scope:   namespaceScope,
+			Name:    "ibm-elastic-stack-bindinfo",
+			Version: "v1alpha1",
+			Group:   "operator.ibm.com",
+			Kind:    "OperandBindInfo",
+			Scope:   namespaceScope,
 		},
 		{
-			name:    "ibm-elastic-stack-request",
-			version: "v1alpha1",
-			group:   "operator.ibm.com",
-			kind:    "OperandRequest",
-			scope:   namespaceScope,
+			Name:    "ibm-elastic-stack-request",
+			Version: "v1alpha1",
+			Group:   "operator.ibm.com",
+			Kind:    "OperandRequest",
+			Scope:   namespaceScope,
 		},
 	},
 	"ibm-catalog-ui-operator": {
 		{
-			name:    "catalog-ui",
-			version: "v1alpha1",
-			group:   "operator.ibm.com",
-			kind:    "CatalogUI",
-			scope:   namespaceScope,
+			Name:    "catalog-ui",
+			Version: "v1alpha1",
+			Group:   "operator.ibm.com",
+			Kind:    "CatalogUI",
+			Scope:   namespaceScope,
 		},
 		{
-			name:    "catalog-ui-request",
-			version: "v1alpha1",
-			group:   "operator.ibm.com",
-			kind:    "OperandRequest",
-			scope:   namespaceScope,
+			Name:    "catalog-ui-request",
+			Version: "v1alpha1",
+			Group:   "operator.ibm.com",
+			Kind:    "OperandRequest",
+			Scope:   namespaceScope,
 		},
 	},
 	"ibm-helm-api-operator": {
 		{
-			name:    "helm-api",
-			version: "v1alpha1",
-			group:   "operator.ibm.com",
-			kind:    "HelmAPI",
-			scope:   namespaceScope,
+			Name:    "helm-api",
+			Version: "v1alpha1",
+			Group:   "operator.ibm.com",
+			Kind:    "HelmAPI",
+			Scope:   namespaceScope,
 		},
 		{
-			name:    "helm-api-request",
-			version: "v1alpha1",
-			group:   "operator.ibm.com",
-			kind:    "OperandRequest",
-			scope:   namespaceScope,
+			Name:    "helm-api-request",
+			Version: "v1alpha1",
+			Group:   "operator.ibm.com",
+			Kind:    "OperandRequest",
+			Scope:   namespaceScope,
 		},
 	},
 	"ibm-helm-repo-operator": {
 		{
-			name:    "helm-repo",
-			version: "v1alpha1",
-			group:   "operator.ibm.com",
-			kind:    "HelmRepo",
-			scope:   namespaceScope,
+			Name:    "helm-repo",
+			Version: "v1alpha1",
+			Group:   "operator.ibm.com",
+			Kind:    "HelmRepo",
+			Scope:   namespaceScope,
 		},
 		{
-			name:    "helm-repo-request",
-			version: "v1alpha1",
-			group:   "operator.ibm.com",
-			kind:    "OperandRequest",
-			scope:   namespaceScope,
+			Name:    "helm-repo-request",
+			Version: "v1alpha1",
+			Group:   "operator.ibm.com",
+			Kind:    "OperandRequest",
+			Scope:   namespaceScope,
 		},
 	},
 }
@@ -204,7 +194,7 @@ func CleanUpDeprecatedServices(bs *bootstrap.Bootstrap) {
 							continue
 						}
 
-						if err := cleanup(bs, operatorNs, resource); err != nil {
+						if err := bs.Cleanup(operatorNs, resource); err != nil {
 							getResourceFailed = true
 							continue
 						}
@@ -224,23 +214,6 @@ func CleanUpDeprecatedServices(bs *bootstrap.Bootstrap) {
 		}
 		time.Sleep(2 * time.Minute)
 	}
-}
-
-func cleanup(bs *bootstrap.Bootstrap, operatorNs string, resource *Resource) error {
-	deprecated := &unstructured.Unstructured{}
-	deprecated.SetGroupVersionKind(schema.GroupVersionKind{Group: resource.group, Version: resource.version, Kind: resource.kind})
-	deprecated.SetName(resource.name)
-	if resource.scope == namespaceScope {
-		deprecated.SetNamespace(operatorNs)
-	}
-	if err := bs.Client.Delete(context.TODO(), deprecated); err != nil {
-		if errors.IsNotFound(err) {
-			return nil
-		}
-		return err
-	}
-	klog.Infof("Deleting resource %s/%s", operatorNs, resource.name)
-	return nil
 }
 
 func deleteSubscription(bs *bootstrap.Bootstrap, name, namespace string) error {
