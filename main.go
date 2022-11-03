@@ -26,16 +26,18 @@ import (
 	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	operatorsv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/package-server/apis/operators/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
-	cache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
+	"github.com/IBM/controller-filtered-cache/filteredcache"
 	nssv1 "github.com/IBM/ibm-namespace-scope-operator/api/v1"
 	ssv1 "github.com/IBM/ibm-secretshare-operator/api/v1"
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/api/v1alpha1"
@@ -81,6 +83,13 @@ func main() {
 	flag.Parse()
 
 	watchNamespace := util.GetWatchNamespace()
+	gvkLabelMap := map[schema.GroupVersionKind]filteredcache.Selector{
+		corev1.SchemeGroupVersion.WithKind("ConfigMap"): {
+			LabelSelector: constant.CsManagedLabel,
+		},
+	}
+	watchNamespaceList := strings.Split(watchNamespace, ",")
+	watchNamespaceList = append(watchNamespaceList, "kube-public")
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
@@ -89,7 +98,7 @@ func main() {
 		Port:                   9443,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "be598e12.ibm.com",
-		NewCache:               cache.MultiNamespacedCacheBuilder(strings.Split(watchNamespace, ",")),
+		NewCache:               filteredcache.MultiNamespacedFilteredCacheBuilder(gvkLabelMap, watchNamespaceList),
 	})
 	if err != nil {
 		klog.Errorf("Unable to start manager: %v", err)
