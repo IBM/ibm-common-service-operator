@@ -84,6 +84,8 @@ function prepare_cluster() {
     # TODO for more advanced checking
     # find all namespaces with cs-operator running
     # each namespace should be in configmap
+    
+    cleanupZenService $cm_name
 
     ${OC} scale deployment -n ${master_ns} ibm-common-service-operator --replicas=0
     ${OC} scale deployment -n ${master_ns} operand-deployment-lifecycle-manager --replicas=0
@@ -284,7 +286,26 @@ function check_healthy() {
     done
 }
 
-
+function cleanupZenService(){
+    local cm_name=$1
+    ${OC} get configmap ${cm_name} -n kube-public -o yaml | while read -r line; do
+        first_element=$(echo $line | awk '{print $1}')
+        if [[ "${first_element}" == "-" ]]; then
+            namespace=$(echo $line | awk '{print $2}')
+            if [[ "${namespace}" != "requested-from-namespace:" ]]; then
+                zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
+                ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type json -p '[{ "op": "remove", "path": "/spec/csNamespace" }]' || info "CS Namespace not defined in ${zenServiceCR} in ${namespace}. Moving on..."
+                ${OC} delete job iam-config-job -n ${namespace} --ignore-not-found || info "iam-config-job already deleted in namespace ${namespace}. Moving on..."
+                zenClient=$(${OC} get client -n ${namespace} --ignore-not-found | awk '{if (NR!=1) {print $1}}')
+                if [[ "${zenClient}" != '' ]]; then
+                    ${OC} delete client ${zenClient} -n ${namespace} --ignore-not-found
+                else
+                    echo "No zen client in ${namespace}. Moving on..."
+                fi
+            fi
+        fi
+    done
+}
 
 function check_CSCR() {
     local CS_NAMESPACE=$1
