@@ -110,6 +110,14 @@ type CSOperator struct {
 	APIVersion string
 }
 
+type Resource struct {
+	Name    string
+	Version string
+	Group   string
+	Kind    string
+	Scope   string
+}
+
 // NewBootstrap is the way to create a NewBootstrap struct
 func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 	csWebhookDeployment := constant.CsWebhookOperator
@@ -591,8 +599,16 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 		return err
 	}
 
+	var commonuiBindInfo = &Resource{
+		Name:    "ibm-commonui-bindinfo",
+		Version: "v1alpha1",
+		Group:   "operator.ibm.com",
+		Kind:    "OperandBindInfo",
+		Scope:   "namespaceScope",
+	}
+
 	// Clean up deprecated resource
-	if err := b.cleanup(operatorNs); err != nil {
+	if err := b.Cleanup(operatorNs, commonuiBindInfo); err != nil {
 		return err
 	}
 
@@ -1150,17 +1166,6 @@ func (b *Bootstrap) installIBMCloudProvider() error {
 	klog.Info("Creating Crossplane IBM Cloud ProviderConfig")
 	if err := b.createCrossplaneIBMCloudProviderConfig(); err != nil {
 		klog.Errorf("Failed to create or update Crossplane IBM Cloud ProviderConfig: %v", err)
-		return err
-	}
-	return nil
-}
-
-func (b *Bootstrap) cleanup(operatorNs string) error {
-	bindinfo := &unstructured.Unstructured{}
-	bindinfo.SetGroupVersionKind(schema.GroupVersionKind{Group: "operator.ibm.com", Version: "v1alpha1", Kind: "OperandBindInfo"})
-	bindinfo.SetName("ibm-commonui-bindinfo")
-	bindinfo.SetNamespace(operatorNs)
-	if err := b.Client.Delete(context.TODO(), bindinfo); err != nil && !errors.IsNotFound(err) {
 		return err
 	}
 	return nil
@@ -1740,6 +1745,37 @@ func (b *Bootstrap) DeployCertManagerCR() error {
 				klog.Errorf("Failed to wait for resource ready with kind: %s, apiGroupVersion: %s", kind, constant.CertManagerAPIGroupVersion)
 			}
 		}
+		// will use v1 cert instead of v1alpha cert
+		// delete v1alpha1 cert if it exist
+		var resourceList = []*Resource{
+			{
+				Name:    "cs-ca-issuer",
+				Version: "v1alpha1",
+				Group:   "certmanager.k8s.io",
+				Kind:    "issuer",
+				Scope:   "namespaceScope",
+			},
+			{
+				Name:    "cs-ss-issuer",
+				Version: "v1alpha1",
+				Group:   "certmanager.k8s.io",
+				Kind:    "issuer",
+				Scope:   "namespaceScope",
+			},
+			{
+				Name:    "cs-ca-certificate",
+				Version: "v1alpha1",
+				Group:   "certmanager.k8s.io",
+				Kind:    "certificate",
+				Scope:   "namespaceScope",
+			},
+		}
+
+		for _, resource := range resourceList {
+			if err := b.Cleanup(b.CSData.MasterNs, resource); err != nil {
+				return err
+			}
+		}
 
 		for _, cr := range constant.CertManagerIssuers {
 			if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.MasterNs))); err != nil {
@@ -1756,5 +1792,22 @@ func (b *Bootstrap) DeployCertManagerCR() error {
 			klog.Infof("Skipped deploying %s, BYOCertififcate feature is enabled in %s", constant.CSCACertificate, crWithBYOCert)
 		}
 	}
+	return nil
+}
+
+func (b *Bootstrap) Cleanup(operatorNs string, resource *Resource) error {
+	deprecated := &unstructured.Unstructured{}
+	deprecated.SetGroupVersionKind(schema.GroupVersionKind{Group: resource.Group, Version: resource.Version, Kind: resource.Kind})
+	deprecated.SetName(resource.Name)
+	if resource.Scope == "namespaceScope" {
+		deprecated.SetNamespace(operatorNs)
+	}
+	if err := b.Client.Delete(context.TODO(), deprecated); err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	klog.Infof("Deleting resource %s/%s", operatorNs, resource.Name)
 	return nil
 }

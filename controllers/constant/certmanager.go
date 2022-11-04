@@ -25,7 +25,7 @@ var (
 
 // CSCAIssuer is the CR of cs-ca-issuer
 const CSCAIssuer = `
-apiVersion: certmanager.k8s.io/v1alpha1
+apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   labels:
@@ -41,7 +41,7 @@ spec:
 
 // CSSSIsuuer is the CR of cs-ss-issuer
 const CSSSIssuer = `
-apiVersion: certmanager.k8s.io/v1alpha1
+apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   labels:
@@ -56,13 +56,14 @@ spec:
 
 // CSCACert is the CR of cs-ca-certificate
 const CSCACert = `
-apiVersion: certmanager.k8s.io/v1alpha1
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   labels:
     app.kubernetes.io/instance: cs-ca-certificate
     app.kubernetes.io/managed-by: cert-manager-controller
     app.kubernetes.io/name: Certificate
+    ibm-cert-manager-operator/refresh-ca-chain: 'true'
   name: cs-ca-certificate
   namespace: placeholder
 spec:
