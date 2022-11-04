@@ -25,7 +25,7 @@ const FipsEnabledTemplate = `
 - name: ibm-ingress-nginx-operator
   spec:
     nginxIngress:
-      fipsEnabled: placeholder
+      fips_enabled: placeholder
 - name: ibm-management-ingress-operator
   spec:
     managementIngress:
