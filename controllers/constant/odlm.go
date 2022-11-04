@@ -439,6 +439,18 @@ spec:
     packageName: ibm-bts-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+  - channel: v1.3
+    name: ibm-automation-flink
+    namespace: {{ .MasterNs }}
+    packageName: ibm-automation-flink
+    scope: public
+    installPlanApproval: {{ .ApprovalMode}}
+  - channel: v1.3
+    name: ibm-automation-elastic
+    namespace: {{ .MasterNs }}
+    packageName: ibm-automation-elastic
+    scope: public
+    installPlanApproval: {{ .ApprovalMode}}
 `
 
 const CSV3SaasOperandConfig = `
@@ -671,6 +683,18 @@ spec:
     packageName: ibm-bts-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+  - channel: v1.3
+    name: ibm-automation-flink
+    namespace: {{ .MasterNs }}
+    packageName: ibm-automation-flink
+    scope: public
+    installPlanApproval: {{ .ApprovalMode}}
+  - channel: v1.3
+    name: ibm-automation-elastic
+    namespace: {{ .MasterNs }}
+    packageName: ibm-automation-elastic
+    scope: public
+    installPlanApproval: {{ .ApprovalMode}}
 `
 
 const ODLMClusterSubscription = `
