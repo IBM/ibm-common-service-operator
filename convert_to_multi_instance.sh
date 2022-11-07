@@ -321,14 +321,12 @@ function check_CSCR() {
 function removeNSS(){
     ${OC} get nss --all-namespaces | grep nss-managedby-odlm | while read -r line; do
         local namespace=$(echo $line | awk '{print $1}')
-        info "patching and deleting namespace scope nss-managedby-odlm in namespace $namespace"
-        ${OC} patch nss nss-managedby-odlm -n ${namespace} --type=merge -p '{"metadata": {"finalizers":null}}'
+        info "deleting namespace scope nss-managedby-odlm in namespace $namespace"
         ${OC} delete nss nss-managedby-odlm -n ${namespace} || error "unable to delete namespace scope nss-managedby-odlm in ${namespace}"
     done
     ${OC} get nss --all-namespaces | grep odlm-scope-managedby-odlm | while read -r line; do
         local namespace=$(echo $line | awk '{print $1}')
-        info "patching and deleting namespace scope odlm-scope-managedby-odlm in namespace $namespace"
-        ${OC} patch nss odlm-scope-managedby-odlm -n ${namespace} --type=merge -p '{"metadata": {"finalizers":null}}'
+        info "deleting namespace scope odlm-scope-managedby-odlm in namespace $namespace"
         ${OC} delete nss odlm-scope-managedby-odlm -n ${namespace} || error "unable to delete namespace scope odlm-scope-managedby-odlm in ${namespace}"
     done
 }
