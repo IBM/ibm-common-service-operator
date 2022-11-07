@@ -339,12 +339,19 @@ function switch_channel() {
     msg ""
     title "[${STEP}] Switching Zen operator channel in ${csNS} namespace..."
     msg "-----------------------------------------------------------------------"
-    compare_channel "ibm-zen-operator" "${csNS}" "${channel}" "${cur_channel}"
-    if [[ $CHANNEL_COMP == 1 ]]; then
+
+    zen_current=$(oc get sub -n ${csNS} --ignore-not-found | grep ibm-zen-operator | awk '{print $4}')
+    if [[ ! -z "${zen_current}" ]]; then
+        compare_channel "ibm-zen-operator" "${csNS}" "${channel}" "${zen_current}"
+        if [[ $CHANNEL_COMP == 1 ]]; then
+            msg ""
+            msg "Switching channel into ${channel}..."
+            switch_channel_operator "ibm-zen-operator" "${csNS}" "${channel}"
+        fi
+    else
+        msg "ibm-zen-operator in namespace ${csNS} not found, skipping..."
         msg ""
-        msg "Switching channel into ${channel}..."
-        switch_channel_operator "ibm-zen-operator" "${csNS}" "${channel}"
-    fi  
+    fi 
 
     info "Please wait a moment for ${subName} to upgrade all foundational services."
 }
