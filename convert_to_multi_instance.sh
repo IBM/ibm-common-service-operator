@@ -52,13 +52,13 @@ function prepare_cluster() {
     return_value="reset"
 
     # configmap should have control namespace specified
-    return_value=$("${OC}" get configmap -n kube-public -o yaml common-service-maps | yq '.data' | grep controlNamespace: > /dev/null || echo failed)
+    return_value=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data' | grep controlNamespace: > /dev/null || echo failed)
     if [[ $return_value == "failed" ]]; then
         error "Configmap: ${cm_name} did not specify 'controlNamespace' field. This must be configured before proceeding"
     fi
     return_value="reset"
 
-    controlNs=$("${OC}" get configmap -n kube-public -o yaml common-service-maps | yq '.data' | grep controlNamespace: | awk '{print $2}')
+    controlNs=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data' | grep controlNamespace: | awk '{print $2}')
     return_value=$("${OC}" get ns "${controlNs}" > /dev/null || echo failed)
     if [[ $return_value == "failed" ]]; then
         error "The namespace specified in controlNamespace does not exist"
@@ -84,6 +84,8 @@ function prepare_cluster() {
     # TODO for more advanced checking
     # find all namespaces with cs-operator running
     # each namespace should be in configmap
+    # all namespaces in configmap should exist
+    check_cm_ns_exist $cm_name
 
     ${OC} scale deployment -n ${master_ns} ibm-common-service-operator --replicas=0
     ${OC} scale deployment -n ${master_ns} operand-deployment-lifecycle-manager --replicas=0
@@ -317,6 +319,31 @@ function check_CSCR() {
     done
 
 }
+
+
+# check that all namespaces in common-service-maps cm exist. 
+# Create them if not already present 
+# Does not create cs-control namespace
+function check_cm_ns_exist(){
+    local cm_name=$1
+
+    #this command gets all of the ns listed in requested from namesapce fields
+    requestedNS=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].requested-from-namespace' | awk '{print $2}')
+
+    #this command gets all of the ns listed in map-to-common-service-namespace
+    mapToCSNS=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].map-to-common-service-namespace' | awk '{print}')
+
+    for ns in $requestedNS
+    do
+        echo "creating $ns"
+        ${OC} create namespace $ns || info "$ns already exists, skipping..."
+    done
+    for ns in $mapToCSNS
+    do
+        echo "creating $ns"
+        ${OC} create namespace $ns || info "$ns already exists, skipping..."
+    done
+    echo "all namespaces in $cm_name exist"
 
 function removeNSS(){
     ${OC} get nss --all-namespaces | grep nss-managedby-odlm | while read -r line; do
