@@ -324,17 +324,17 @@ function check_cm_ns_exist(){
     local cm_name=$1
 
     #this command gets all of the ns listed in requested from namesapce fields
-    requestedNSArray=($("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].requested-from-namespace' | awk '{print $2}'))
+    requestedNS=($("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].requested-from-namespace' | awk '{print $2}'))
 
     #this command gets all of the ns listed in map-to-common-service-namespace
-    mapToCSNSArray=($("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].map-to-common-service-namespace' | awk '{print}'))
+    mapToCSNS=($("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].map-to-common-service-namespace' | awk '{print}'))
 
-    for ns in "${requestedNSArray[@]}"
+    for ns in $requestedNS
     do
         echo "creating $ns"
         ${OC} create namespace $ns || info "$ns already exists, skipping..."
     done
-    for ns in "${mapToCSNSArray[@]}"
+    for ns in $mapToCSNS
     do
         echo "creating $ns"
         ${OC} create namespace $ns || info "$ns already exists, skipping..."
