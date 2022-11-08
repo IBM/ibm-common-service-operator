@@ -207,15 +207,12 @@ function create_operator_group() {
     exists=$("${OC}" get operatorgroups -n "${cs_namespace}" | wc -l)
     if [[ "$exists" -ne 0 ]]; then
         msg "Already an OperatorGroup in ${cs_namespace}, skip creating OperatorGroup"
-        exit 0
-    fi
+    else
+        title "Creating operator group ..."
+        msg "-----------------------------------------------------------------------"
 
 
-    title "Creating operator group ..."
-    msg "-----------------------------------------------------------------------"
-
-
-    cat <<EOF | tee >("${OC}" apply -f -) | cat
+        cat <<EOF | tee >("${OC}" apply -f -) | cat
 apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
 metadata:
@@ -226,7 +223,7 @@ spec:
   - ${cs_namespace}
 EOF
 
-    # error handle
+    fi
 }
 
 function install_common_service_operator_sub() {
@@ -289,8 +286,6 @@ function check_healthy() {
     done
 }
 
-
-
 function check_CSCR() {
     local CS_NAMESPACE=$1
 
@@ -344,6 +339,7 @@ function check_cm_ns_exist(){
         ${OC} create namespace $ns || info "$ns already exists, skipping..."
     done
     echo "all namespaces in $cm_name exist"
+}
 
 function removeNSS(){
     ${OC} get nss --all-namespaces | grep nss-managedby-odlm | while read -r line; do
