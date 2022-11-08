@@ -208,15 +208,12 @@ function create_operator_group() {
     exists=$("${OC}" get operatorgroups -n "${cs_namespace}" | wc -l)
     if [[ "$exists" -ne 0 ]]; then
         msg "Already an OperatorGroup in ${cs_namespace}, skip creating OperatorGroup"
-        exit 0
-    fi
+    else
+        title "Creating operator group ..."
+        msg "-----------------------------------------------------------------------"
 
 
-    title "Creating operator group ..."
-    msg "-----------------------------------------------------------------------"
-
-
-    cat <<EOF | tee >("${OC}" apply -f -) | cat
+        cat <<EOF | tee >("${OC}" apply -f -) | cat
 apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
 metadata:
@@ -227,7 +224,7 @@ spec:
   - ${cs_namespace}
 EOF
 
-    # error handle
+    fi
 }
 
 function install_common_service_operator_sub() {
