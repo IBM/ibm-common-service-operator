@@ -344,6 +344,7 @@ function check_cm_ns_exist(){
         ${OC} create namespace $ns || info "$ns already exists, skipping..."
     done
     echo "all namespaces in $cm_name exist"
+}
 
 function removeNSS(){
     failcheck=$(${OC} get nss --all-namespaces | grep nss-managedby-odlm || echo "failed")
