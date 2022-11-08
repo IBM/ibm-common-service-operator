@@ -208,15 +208,12 @@ function create_operator_group() {
     exists=$("${OC}" get operatorgroups -n "${cs_namespace}" | wc -l)
     if [[ "$exists" -ne 0 ]]; then
         msg "Already an OperatorGroup in ${cs_namespace}, skip creating OperatorGroup"
-        exit 0
-    fi
+    else
+        title "Creating operator group ..."
+        msg "-----------------------------------------------------------------------"
 
 
-    title "Creating operator group ..."
-    msg "-----------------------------------------------------------------------"
-
-
-    cat <<EOF | tee >("${OC}" apply -f -) | cat
+        cat <<EOF | tee >("${OC}" apply -f -) | cat
 apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
 metadata:
@@ -227,7 +224,7 @@ spec:
   - ${cs_namespace}
 EOF
 
-    # error handle
+    fi
 }
 
 function install_common_service_operator_sub() {
@@ -300,6 +297,7 @@ function cleanupZenService(){
                 zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
                 ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type json -p '[{ "op": "remove", "path": "/spec/csNamespace" }]' || info "CS Namespace not defined in ${zenServiceCR} in ${namespace}. Moving on..."
                 ${OC} delete job iam-config-job -n ${namespace} --ignore-not-found || info "iam-config-job already deleted in namespace ${namespace}. Moving on..."
+                #TODO may need to patch out finializers in zen client
                 zenClient=$(${OC} get client -n ${namespace} --ignore-not-found | awk '{if (NR!=1) {print $1}}')
                 if [[ "${zenClient}" != '' ]]; then
                     ${OC} delete client ${zenClient} -n ${namespace} --ignore-not-found
@@ -367,16 +365,26 @@ function check_cm_ns_exist(){
 }
 
 function removeNSS(){
-    ${OC} get nss --all-namespaces | grep nss-managedby-odlm | while read -r line; do
-        local namespace=$(echo $line | awk '{print $1}')
-        info "deleting namespace scope nss-managedby-odlm in namespace $namespace"
-        ${OC} delete nss nss-managedby-odlm -n ${namespace} || error "unable to delete namespace scope nss-managedby-odlm in ${namespace}"
-    done
-    ${OC} get nss --all-namespaces | grep odlm-scope-managedby-odlm | while read -r line; do
-        local namespace=$(echo $line | awk '{print $1}')
-        info "deleting namespace scope odlm-scope-managedby-odlm in namespace $namespace"
-        ${OC} delete nss odlm-scope-managedby-odlm -n ${namespace} || error "unable to delete namespace scope odlm-scope-managedby-odlm in ${namespace}"
-    done
+    failcheck=$(${OC} get nss --all-namespaces | grep nss-managedby-odlm || echo "failed")
+    if [[ $failcheck != "failed" ]]; then
+        ${OC} get nss --all-namespaces | grep nss-managedby-odlm | while read -r line; do
+            local namespace=$(echo $line | awk '{print $1}')
+            info "deleting namespace scope nss-managedby-odlm in namespace $namespace"
+            ${OC} delete nss nss-managedby-odlm -n ${namespace} || error "unable to delete namespace scope nss-managedby-odlm in ${namespace}"
+        done
+    else
+        info "Namespace Scope CR \"nss-managedby-odlm\" not present. Moving on..."
+    fi
+    failcheck=$(${OC} get nss --all-namespaces | grep odlm-scope-managedby-odlm || echo "failed")
+    if [[ $failcheck != "failed" ]]; then
+        ${OC} get nss --all-namespaces | grep odlm-scope-managedby-odlm | while read -r line; do
+            local namespace=$(echo $line | awk '{print $1}')
+            info "deleting namespace scope odlm-scope-managedby-odlm in namespace $namespace"
+            ${OC} delete nss odlm-scope-managedby-odlm -n ${namespace} || error "unable to delete namespace scope odlm-scope-managedby-odlm in ${namespace}"
+        done
+    else
+        info "Namespace Scope CR \"odlm-scope-managedby-odlm\" not present. Moving on..."
+    fi
 }
 
 function msg() {
