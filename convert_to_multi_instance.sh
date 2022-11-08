@@ -342,16 +342,26 @@ function check_cm_ns_exist(){
 }
 
 function removeNSS(){
-    ${OC} get nss --all-namespaces | grep nss-managedby-odlm | while read -r line; do
-        local namespace=$(echo $line | awk '{print $1}')
-        info "deleting namespace scope nss-managedby-odlm in namespace $namespace"
-        ${OC} delete nss nss-managedby-odlm -n ${namespace} || error "unable to delete namespace scope nss-managedby-odlm in ${namespace}"
-    done
-    ${OC} get nss --all-namespaces | grep odlm-scope-managedby-odlm | while read -r line; do
-        local namespace=$(echo $line | awk '{print $1}')
-        info "deleting namespace scope odlm-scope-managedby-odlm in namespace $namespace"
-        ${OC} delete nss odlm-scope-managedby-odlm -n ${namespace} || error "unable to delete namespace scope odlm-scope-managedby-odlm in ${namespace}"
-    done
+    failcheck=$(${OC} get nss --all-namespaces | grep nss-managedby-odlm || echo "failed")
+    if [[ $failcheck != "failed" ]]; then
+        ${OC} get nss --all-namespaces | grep nss-managedby-odlm | while read -r line; do
+            local namespace=$(echo $line | awk '{print $1}')
+            info "deleting namespace scope nss-managedby-odlm in namespace $namespace"
+            ${OC} delete nss nss-managedby-odlm -n ${namespace} || error "unable to delete namespace scope nss-managedby-odlm in ${namespace}"
+        done
+    else
+        info "Namespace Scope CR \"nss-managedby-odlm\" not present. Moving on..."
+    fi
+    failcheck=$(${OC} get nss --all-namespaces | grep odlm-scope-managedby-odlm || echo "failed")
+    if [[ $failcheck != "failed" ]]; then
+        ${OC} get nss --all-namespaces | grep odlm-scope-managedby-odlm | while read -r line; do
+            local namespace=$(echo $line | awk '{print $1}')
+            info "deleting namespace scope odlm-scope-managedby-odlm in namespace $namespace"
+            ${OC} delete nss odlm-scope-managedby-odlm -n ${namespace} || error "unable to delete namespace scope odlm-scope-managedby-odlm in ${namespace}"
+        done
+    else
+        info "Namespace Scope CR \"odlm-scope-managedby-odlm\" not present. Moving on..."
+    fi
 }
 
 function msg() {
