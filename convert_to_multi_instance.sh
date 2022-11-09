@@ -299,26 +299,59 @@ function cleanupZenService(){
     
     for namespace in $requestedNS
     do
-        zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
-        ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type json -p '[{ "op": "remove", "path": "/spec/csNamespace" }]' || info "CS Namespace not defined in ${zenServiceCR} in ${namespace}. Moving on..."
-        ${OC} delete job iam-config-job -n ${namespace} --ignore-not-found || info "iam-config-job already deleted in namespace ${namespace}. Moving on..."
+        # remove cs namespace from zen service cr
+        return_value=$(${OC} get zenservice -n ${namespace} || echo "failed")
+        if [[ $return_value != "failed" ]]; then
+            zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
+            ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type json -p '[{ "op": "remove", "path": "/spec/csNamespace" }]' || info "CS Namespace not defined in ${zenServiceCR} in ${namespace}. Moving on..."
+        else
+            info "No zen service in namespace ${namespace}. Moving on..."
+        fi
+
+        # delete iam config job
+        return_value=$(${OC} get job -n ${namespace} | grep iam-config-job || echo "failed")
+        if [[ $return_value != "failed" ]]; then
+            ${OC} delete job iam-config-job -n ${namespace}
+        else
+            info "iam-config-job not present in namespace ${namespace}. Moving on..."
+        fi
+
         #TODO may need to patch out finalizers in zen client
-        zenClient=$(${OC} get client -n ${namespace} --ignore-not-found | awk '{if (NR!=1) {print $1}}')
-        if [[ "${zenClient}" != '' ]]; then
-            ${OC} delete client ${zenClient} -n ${namespace} --ignore-not-found
+        # delete zen client
+        return_value=$(${OC} get client -n ${namespace} || echo "failed")
+        if [[ $return_value != "failed" ]]; then
+            zenClient=$(${OC} get client -n ${namespace} | awk '{if (NR!=1) {print $1}}')
+            ${OC} delete client ${zenClient} -n ${namespace}
         else
             info "No zen client in ${namespace}. Moving on..."
         fi
     done
+    
     for namespace in $mapToCSNS
     do
-        zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
-        ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type json -p '[{ "op": "remove", "path": "/spec/csNamespace" }]' || info "CS Namespace not defined in ${zenServiceCR} in ${namespace}. Moving on..."
-        ${OC} delete job iam-config-job -n ${namespace} --ignore-not-found || info "iam-config-job already deleted in namespace ${namespace}. Moving on..."
+        # remove cs namespace from zen service cr
+        return_value=$(${OC} get zenservice -n ${namespace} || echo "failed")
+        if [[ $return_value != "failed" ]]; then
+            zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
+            ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type json -p '[{ "op": "remove", "path": "/spec/csNamespace" }]' || info "CS Namespace not defined in ${zenServiceCR} in ${namespace}. Moving on..."
+        else
+            info "No zen service in namespace ${namespace}. Moving on..."
+        fi
+
+        # delete iam config job
+        return_value=$(${OC} get job -n ${namespace} | grep iam-config-job || echo "failed")
+        if [[ $return_value != "failed" ]]; then
+            ${OC} delete job iam-config-job -n ${namespace}
+        else
+            info "iam-config-job not present in namespace ${namespace}. Moving on..."
+        fi
+
         #TODO may need to patch out finalizers in zen client
-        zenClient=$(${OC} get client -n ${namespace} --ignore-not-found | awk '{if (NR!=1) {print $1}}')
-        if [[ "${zenClient}" != '' ]]; then
-            ${OC} delete client ${zenClient} -n ${namespace} --ignore-not-found
+        # delete zen client
+        return_value=$(${OC} get client -n ${namespace} || echo "failed")
+        if [[ $return_value != "failed" ]]; then
+            zenClient=$(${OC} get client -n ${namespace} | awk '{if (NR!=1) {print $1}}')
+            ${OC} delete client ${zenClient} -n ${namespace}
         else
             info "No zen client in ${namespace}. Moving on..."
         fi
