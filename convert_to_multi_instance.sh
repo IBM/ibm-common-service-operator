@@ -316,11 +316,11 @@ function cleanupZenService(){
             info "iam-config-job not present in namespace ${namespace}. Moving on..."
         fi
 
-        #TODO may need to patch out finalizers in zen client
         # delete zen client
         return_value=$(${OC} get client -n ${namespace} || echo "failed")
         if [[ $return_value != "failed" ]]; then
             zenClient=$(${OC} get client -n ${namespace} | awk '{if (NR!=1) {print $1}}')
+            ${OC} patch client ${zenClient} -n ${namespace} --type=merge -p '{"metadata": {"finalizers":null}}'
             ${OC} delete client ${zenClient} -n ${namespace}
         else
             info "No zen client in ${namespace}. Moving on..."
@@ -351,6 +351,7 @@ function cleanupZenService(){
         return_value=$(${OC} get client -n ${namespace} || echo "failed")
         if [[ $return_value != "failed" ]]; then
             zenClient=$(${OC} get client -n ${namespace} | awk '{if (NR!=1) {print $1}}')
+            ${OC} patch client ${zenClient} -n ${namespace} --type=merge -p '{"metadata": {"finalizers":null}}'
             ${OC} delete client ${zenClient} -n ${namespace}
         else
             info "No zen client in ${namespace}. Moving on..."
