@@ -23,6 +23,7 @@ import (
 	"time"
 
 	gset "github.com/deckarep/golang-set"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	utilwait "k8s.io/apimachinery/pkg/util/wait"
@@ -30,7 +31,6 @@ import (
 
 	nssv1 "github.com/IBM/ibm-namespace-scope-operator/api/v1"
 	ssv1 "github.com/IBM/ibm-secretshare-operator/api/v1"
-	corev1 "k8s.io/api/core/v1"
 
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 )
