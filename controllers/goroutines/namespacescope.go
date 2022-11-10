@@ -132,7 +132,7 @@ func SyncUpNSSCR(bs *bootstrap.Bootstrap) {
 						time.Sleep(10 * time.Second)
 						continue
 					}
-					klog.Errorf("Failed to get configmap %s: %v, retry in seconds", namespaceScopeKey.String(), err)
+					klog.Errorf("Failed to get configmap %s: %v, retry in 10 seconds", namespaceScopeKey.String(), err)
 					time.Sleep(10 * time.Second)
 					continue
 				} else {
