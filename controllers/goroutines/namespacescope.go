@@ -112,24 +112,24 @@ func SyncUpNSSCR(bs *bootstrap.Bootstrap) {
 		var targertnsList []string
 		nsList := []ssv1.TargetNamespace{}
 
-		//check if make use of an existing CNCF cert-manager
+		//check if need to deploy cert manager operand
 		if err := bs.Reader.Get(ctx, types.NamespacedName{Name: "ibm-cpp-config", Namespace: bs.CSData.MasterNs}, cppConfigmap); err != nil {
 			if errors.IsNotFound(err) {
 				klog.Infof("waiting for configmap ibm-cpp-config: %v, retry in 1 minute", err)
-				time.Sleep(1 * time.Minute)
+				time.Sleep(10 * time.Second)
 				continue
 			}
 		} else {
 
 			if cppConfigmap.Data["deployCSCertManagerOperands"] == "false" {
-				klog.Info("CNCF cert-manager exists")
+				klog.Info("cert-manager operand deployment is turned off in ibm-cpp-configmap")
 
 				//get ConfigMap of odlm-scope
 				namespaceScopeKey := types.NamespacedName{Name: "odlm-scope", Namespace: bs.CSData.MasterNs}
 				if err := bs.Reader.Get(ctx, namespaceScopeKey, nssConfigmap); err != nil {
 					if errors.IsNotFound(err) {
 						klog.Infof("waiting for configmap %s: %v, retry in 1 minute", namespaceScopeKey.String(), err)
-						time.Sleep(1 * time.Minute)
+						time.Sleep(10 * time.Second)
 						continue
 					}
 					klog.Errorf("Failed to get configmap %s: %v, retry in seconds", namespaceScopeKey.String(), err)
@@ -144,14 +144,12 @@ func SyncUpNSSCR(bs *bootstrap.Bootstrap) {
 					targertnsList = strings.Split(nssnsmems, ",")
 				}
 			} else {
-				klog.Info("CNCF cert-manager does not exist")
-
 				//get ConfigMap of namespace-scope
 				namespaceScopeKey := types.NamespacedName{Name: "namespace-scope", Namespace: bs.CSData.MasterNs}
 				if err := bs.Reader.Get(ctx, namespaceScopeKey, nssConfigmap); err != nil {
 					if errors.IsNotFound(err) {
 						klog.Infof("waiting for configmap %s: %v, retry in 1 minute", namespaceScopeKey.String(), err)
-						time.Sleep(1 * time.Minute)
+						time.Sleep(10 * time.Second)
 						continue
 					}
 					klog.Errorf("Failed to get configmap %s: %v, retry in seconds", namespaceScopeKey.String(), err)
