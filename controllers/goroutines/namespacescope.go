@@ -115,7 +115,7 @@ func SyncUpNSSCR(bs *bootstrap.Bootstrap) {
 		//check if need to deploy cert manager operand
 		if err := bs.Reader.Get(ctx, types.NamespacedName{Name: "ibm-cpp-config", Namespace: bs.CSData.MasterNs}, cppConfigmap); err != nil {
 			if errors.IsNotFound(err) {
-				klog.Infof("waiting for configmap ibm-cpp-config: %v, retry in 1 minute", err)
+				klog.Infof("waiting for configmap ibm-cpp-config: %v, retry in 10 seconds", err)
 				time.Sleep(10 * time.Second)
 				continue
 			}
@@ -128,7 +128,7 @@ func SyncUpNSSCR(bs *bootstrap.Bootstrap) {
 				namespaceScopeKey := types.NamespacedName{Name: "odlm-scope", Namespace: bs.CSData.MasterNs}
 				if err := bs.Reader.Get(ctx, namespaceScopeKey, nssConfigmap); err != nil {
 					if errors.IsNotFound(err) {
-						klog.Infof("waiting for configmap %s: %v, retry in 1 minute", namespaceScopeKey.String(), err)
+						klog.Infof("waiting for configmap %s: %v, retry in 10 seconds", namespaceScopeKey.String(), err)
 						time.Sleep(10 * time.Second)
 						continue
 					}
@@ -148,11 +148,11 @@ func SyncUpNSSCR(bs *bootstrap.Bootstrap) {
 				namespaceScopeKey := types.NamespacedName{Name: "namespace-scope", Namespace: bs.CSData.MasterNs}
 				if err := bs.Reader.Get(ctx, namespaceScopeKey, nssConfigmap); err != nil {
 					if errors.IsNotFound(err) {
-						klog.Infof("waiting for configmap %s: %v, retry in 1 minute", namespaceScopeKey.String(), err)
+						klog.Infof("waiting for configmap %s: %v, retry in 10 seconds", namespaceScopeKey.String(), err)
 						time.Sleep(10 * time.Second)
 						continue
 					}
-					klog.Errorf("Failed to get configmap %s: %v, retry in seconds", namespaceScopeKey.String(), err)
+					klog.Errorf("Failed to get configmap %s: %v, retry in 10 seconds", namespaceScopeKey.String(), err)
 					time.Sleep(10 * time.Second)
 					continue
 				} else {
