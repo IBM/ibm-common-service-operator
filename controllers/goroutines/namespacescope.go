@@ -19,9 +19,11 @@ package goroutines
 import (
 	"context"
 	"reflect"
+	"strings"
 	"time"
 
 	gset "github.com/deckarep/golang-set"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	utilwait "k8s.io/apimachinery/pkg/util/wait"
@@ -105,21 +107,70 @@ func SyncUpNSSCR(bs *bootstrap.Bootstrap) {
 
 		secretshare := &ssv1.SecretShare{}
 		secretshareKey := types.NamespacedName{Name: SecretShareCppName, Namespace: bs.CSData.MasterNs}
+		nssConfigmap := &corev1.ConfigMap{}
+		cppConfigmap := &corev1.ConfigMap{}
+		var targertnsList []string
 		nsList := []ssv1.TargetNamespace{}
-		scopeCR := &nssv1.NamespaceScope{}
-		odlmNsScopeKey := types.NamespacedName{Name: "odlm-scope-managedby-odlm", Namespace: bs.CSData.MasterNs}
-		if err := bs.Reader.Get(ctx, odlmNsScopeKey, scopeCR); err != nil {
+
+		//check if need to deploy cert manager operand
+		if err := bs.Reader.Get(ctx, types.NamespacedName{Name: "ibm-cpp-config", Namespace: bs.CSData.MasterNs}, cppConfigmap); err != nil {
 			if errors.IsNotFound(err) {
-				klog.Warningf("Not found NSS resource %s: %v, retry in 1 minute", targetNsScopeKey.String(), err)
-				time.Sleep(1 * time.Minute)
+				klog.Infof("waiting for configmap ibm-cpp-config: %v, retry in 10 seconds", err)
+				time.Sleep(10 * time.Second)
 				continue
 			}
-			klog.Errorf("Failed to get NSS resource %s: %v, retry again", targetNsScopeKey.String(), err)
-			continue
+		} else {
+
+			if cppConfigmap.Data["deployCSCertManagerOperands"] == "false" {
+				klog.Info("cert-manager operand deployment is turned off in ibm-cpp-configmap")
+
+				//get ConfigMap of odlm-scope
+				namespaceScopeKey := types.NamespacedName{Name: "odlm-scope", Namespace: bs.CSData.MasterNs}
+				if err := bs.Reader.Get(ctx, namespaceScopeKey, nssConfigmap); err != nil {
+					if errors.IsNotFound(err) {
+						klog.Infof("waiting for configmap %s: %v, retry in 10 seconds", namespaceScopeKey.String(), err)
+						time.Sleep(10 * time.Second)
+						continue
+					}
+					klog.Errorf("Failed to get configmap %s: %v, retry in 10 seconds", namespaceScopeKey.String(), err)
+					time.Sleep(10 * time.Second)
+					continue
+				} else {
+					//get namespaces from ConfigMap
+					nssnsmems, ok := nssConfigmap.Data["namespaces"]
+					if !ok {
+						klog.Infof("There is no namespace in configmap %v", namespaceScopeKey.String())
+					}
+					targertnsList = strings.Split(nssnsmems, ",")
+				}
+			} else {
+				//get ConfigMap of namespace-scope
+				namespaceScopeKey := types.NamespacedName{Name: "namespace-scope", Namespace: bs.CSData.MasterNs}
+				if err := bs.Reader.Get(ctx, namespaceScopeKey, nssConfigmap); err != nil {
+					if errors.IsNotFound(err) {
+						klog.Infof("waiting for configmap %s: %v, retry in 10 seconds", namespaceScopeKey.String(), err)
+						time.Sleep(10 * time.Second)
+						continue
+					}
+					klog.Errorf("Failed to get configmap %s: %v, retry in 10 seconds", namespaceScopeKey.String(), err)
+					time.Sleep(10 * time.Second)
+					continue
+				} else {
+					//get namespaces from ConfigMap
+					nssNsMems, ok := nssConfigmap.Data["namespaces"]
+					if !ok {
+						klog.Infof("There is no namespace in configmap %v", namespaceScopeKey.String())
+					}
+					targertnsList = strings.Split(nssNsMems, ",")
+				}
+			}
 		}
-		for _, ns := range scopeCR.Status.ValidatedMembers {
+
+		for _, ns := range targertnsList {
 			nsList = append(nsList, ssv1.TargetNamespace{Namespace: ns})
 		}
+
+		//create/update secretshare to share the ibm-cpp-config configmap in cp namespaces
 		if err := bs.Reader.Get(ctx, secretshareKey, secretshare); err != nil && !errors.IsNotFound(err) {
 			klog.Errorf("Failed to get SecretShare CR %s: %v, retry again", secretshareKey.String(), err)
 			continue
