@@ -28,6 +28,7 @@ cs_operator_channel=
 catalog_source=
 
 function main() {
+    msg "Conversion Script Version 1.0.0"
     prereq
     collect_data
     prepare_cluster
@@ -130,15 +131,15 @@ function scale_up_pod() {
 }
 
 function collect_data() {
-    title "collecting data"
+    title "Collecting data"
     msg "-----------------------------------------------------------------------"
 
     master_ns=$(${OC} get deployment --all-namespaces | grep operand-deployment-lifecycle-manager | awk '{print $1}')
-    echo MasterNS:${master_ns}
+    info "MasterNS:${master_ns}"
     cs_operator_channel=$(${OC} get sub ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.channel") 
-    echo channel:${cs_operator_channel}   
+    info "channel:${cs_operator_channel}"   
     catalog_source=$(${OC} get sub ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.source")
-    echo catalog_source:${catalog_source}   
+    info "catalog_source:${catalog_source}"   
 }
 
 # delete all CS pod and read configmap
@@ -169,7 +170,7 @@ function install_new_CS() {
                 if [[ "${namespace}" != "${master_ns}" ]]; then
                     return_value=$("${OC}" get namespace ${namespace} || echo failed)
                     if [[ $return_value != "failed" ]]; then
-                        echo In_CloudpakNS:${namespace}
+                        info "In_CloudpakNS:${namespace}"
                         get_sub=$("${OC}" get sub ibm-common-service-operator -n ${namespace} > /dev/null || echo failed)
                         if [[ $get_sub == "failed" ]]; then
                             create_operator_group "${namespace}"
@@ -184,7 +185,7 @@ function install_new_CS() {
             return_value=$("${OC}" get namespace ${namespace} || echo failed)
             if [[ $return_value != "failed" ]]; then
                 namespace=$(echo $line | awk '{print $2}')
-                echo In_MasterNS:${namespace}
+                info "In_MasterNS:${namespace}"
                 get_sub=$("${OC}" get sub ibm-common-service-operator -n ${namespace} > /dev/null || echo failed)
                 if [[ $get_sub == "failed" ]]; then
                     create_operator_group "${namespace}"
@@ -206,7 +207,7 @@ function create_operator_group() {
 
     exists=$("${OC}" get operatorgroups -n "${cs_namespace}" | wc -l)
     if [[ "$exists" -ne 0 ]]; then
-        msg "Already an OperatorGroup in ${cs_namespace}, skip creating OperatorGroup"
+        info "Already an OperatorGroup in ${cs_namespace}, skip creating OperatorGroup"
     else
         title "Creating operator group ..."
         msg "-----------------------------------------------------------------------"
@@ -321,6 +322,9 @@ function check_CSCR() {
 # Does not create cs-control namespace
 function check_cm_ns_exist(){
     local cm_name=$1
+    
+    title " Verify all namespaces exist "
+    msg "-----------------------------------------------------------------------"
 
     #this command gets all of the ns listed in requested from namesapce fields
     requestedNS=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].requested-from-namespace' | awk '{print $2}')
@@ -330,18 +334,22 @@ function check_cm_ns_exist(){
 
     for ns in $requestedNS
     do
-        echo "creating $ns"
+        info "Creating namespace $ns"
         ${OC} create namespace $ns || info "$ns already exists, skipping..."
     done
     for ns in $mapToCSNS
     do
-        echo "creating $ns"
+        info "Creating namespace $ns"
         ${OC} create namespace $ns || info "$ns already exists, skipping..."
     done
-    echo "all namespaces in $cm_name exist"
+    success "All namespaces in $cm_name exist"
 }
 
 function removeNSS(){
+    
+    title " Removing ODLM managed Namespace Scope CRs "
+    msg "-----------------------------------------------------------------------"
+
     failcheck=$(${OC} get nss --all-namespaces | grep nss-managedby-odlm || echo "failed")
     if [[ $failcheck != "failed" ]]; then
         ${OC} get nss --all-namespaces | grep nss-managedby-odlm | while read -r line; do
@@ -362,6 +370,8 @@ function removeNSS(){
     else
         info "Namespace Scope CR \"odlm-scope-managedby-odlm\" not present. Moving on..."
     fi
+
+    success "Namespace Scope CRs cleaned up"
 }
 
 function msg() {
