@@ -1,0 +1,29 @@
+apiVersion: velero.io/v1
+kind: Backup
+metadata:
+  name: __BACKUP_NAME__
+  namespace: velero
+spec:
+  ttl: 720h0m0s
+  defaultVolumesToRestic: true
+  storageLocation: bcdr-s3-location
+  includeClusterResources: true
+  includedNamespaces:
+  - ibm-common-services
+  - openshift-marketplace
+  - openshift-config
+  includedResources:
+  - '*'
+  orLabelSelectors:
+  - matchExpressions:
+    - key: foundationservices.cloudpak.ibm.com
+      operator: In
+      values:
+      - catalog
+      - subscription
+      - operand
+      - iam
+      - entitlementkey
+      - commonservice
+      - pull-secret
+      - operatorgroup

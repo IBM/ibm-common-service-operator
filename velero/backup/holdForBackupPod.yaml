@@ -1,0 +1,23 @@
+kind: Pod
+apiVersion: v1
+metadata:
+  annotations:
+    backup.velero.io/backup-volumes: mongodump
+  name: hold-for-backup
+  namespace: ibm-common-services
+  labels:
+    foundationservices.cloudpak.ibm.com: iam
+spec:
+  containers:
+  - name: hold-for-backup
+    image: registry.access.redhat.com/ubi8/ubi:latest
+    command: ["bash", "-c", "sleep infinity"]
+    volumeMounts:
+    - mountPath: "/dump"
+      subpath: dump
+      name: mongodump
+  volumes:
+  - name: mongodump
+    persistentVolumeClaim:
+      claimName: cs-mongodump
+  restartPolicy: Never
