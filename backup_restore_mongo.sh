@@ -23,7 +23,7 @@ set -o nounset
 OC=${3:-oc}
 YQ=${3:-yq}
 CS_NAMESPACE=$1
-#TARGET_NAMESPACE=$2
+TARGET_NAMESPACE=$2
 function main() {
     msg "MongoDB Backup and Restore v1.0.0"
     prereq
@@ -38,16 +38,17 @@ function prereq() {
     if [[ -z $CS_NAMESPACE ]]; then
         export CS_NAMESPACE=ibm-common-services
     fi
-    # if [[ -z $TARGET_NAMESPACE ]]; then
-    #     error "TARGET_NAMESPACE not specified, please specify target namespace parameter and trty again."
-    # else
-    #     ${OC} create namespace $ns || info "Target namespace $ns already exists. Moving on..."
-    # fi
+    if [[ -z $TARGET_NAMESPACE ]]; then
+        error "TARGET_NAMESPACE not specified, please specify target namespace parameter and trty again."
+    else
+        ${OC} create namespace $ns || info "Target namespace $ns already exists. Moving on..."
+    fi
 }
 
 function prep_backup() {
     title " Preparing for Mongo backup "
     msg "-----------------------------------------------------------------------"
+    
     pvx=$(${OC} get pv | grep mongodbdir | awk 'FNR==1 {print $1}')
     storageClassName=$("${OC}" get pv -o yaml ${pvx} | yq '.spec.storageClassName' | awk '{print}')
     
@@ -55,7 +56,7 @@ function prep_backup() {
     ${YQ} -i '.metadata.name="backup-sc" | .reclaimPolicy = "Retain"' sc.yaml || error "Error changing the name or retentionPolicy for StorageClass"
     
     info "Creating Storage Class for backup"
-    #TODO check if sc already exists in case customer has to run more than once
+    #TODO check if sc already exists in case customer has to run more than once, otherwise will fail
     ${OC} apply -f sc.yaml || error "Error creating StorageClass backup-sc"
     
     info "Creating RBAC for backup"
