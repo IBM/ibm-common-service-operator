@@ -81,8 +81,8 @@ function backup() {
     title " Backing up MongoDB "
     msg "-----------------------------------------------------------------------"
 
-    wget https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongodb/mongodbbackup.yaml
-    wget https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongodb/mongo-backup.sh
+    wget https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongoDB/mongodbbackup.yaml
+    wget https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongoDB/mongo-backup.sh
     chmod +x mongo-backup.sh
     ./mongo-backup.sh
 
