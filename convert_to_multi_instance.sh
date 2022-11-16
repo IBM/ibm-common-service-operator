@@ -28,7 +28,7 @@ cs_operator_channel=
 catalog_source=
 
 function main() {
-    msg "Conversion Script Version 1.0.0"
+    msg "Conversion Script Version v1.0.0"
     prereq
     collect_data
     prepare_cluster
@@ -372,46 +372,6 @@ function removeNSS(){
     fi
 
     success "Namespace Scope CRs cleaned up"
-}
-
-function prepBackup() {
-    title " Preparing for Mongo backup "
-    msg "-----------------------------------------------------------------------"
-    CS_NAMESPACE=$master_ns
-    pvx=$(${OC} get pv | grep mongodbdir | awk 'FNR==1 {print $1}')
-    storage=$("${OC}" get pv -o yaml ${pvx} | yq '.spec.capacity.storage' | awk '{print}')
-    storageClassName=$("${OC}" get pv -o yaml ${pvx} | yq '.spec.storageClassName' | awk '{print}')
-    volumeMode=$("${OC}" get pv -o yaml ${pvx} | yq '.spec.volumeMode' | awk '{print}')
-    provisioner=$("${OC}" get sc -o yaml ${storageClassName} | yq '.provisioner' | awk '{print}')
-    
-    info "Creating Storage Class for backup"
-    cat <<EOF | tee >(oc apply -f -) | cat
-allowVolumeExpansion: true
-apiVersion: storage.k8s.io/v1
-kind: StorageClass
-metadata:
-  name: backup-sc
-provisioner: $provisioner
-reclaimPolicy: Retain
-volumeBindingMode: Immediate
-EOF
-    
-    info "Creating RBAC for backup"
-    cat <<EOF | tee >(oc apply -f -) | cat
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: cs-br
-subjects:
-- kind: ServiceAccount
-  name: default
-  namespace: $CS_NAMESPACE
-roleRef:
-  kind: ClusterRole
-  name: cluster-admin
-  apiGroup: rbac.authorization.k8s.io
-EOF
-    success "Backup prep complete"
 }
 
 function msg() {
