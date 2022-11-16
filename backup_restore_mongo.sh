@@ -29,6 +29,7 @@ function main() {
     prereq
     prep_backup
     backup
+    prep_restore
 }
 
 # verify that all pre-requisite CLI tools exist and parameters set
@@ -41,16 +42,16 @@ function prereq() {
     if [[ -z $TARGET_NAMESPACE ]]; then
         error "TARGET_NAMESPACE not specified, please specify target namespace parameter and trty again."
     else
-        ${OC} create namespace $ns || info "Target namespace $ns already exists. Moving on..."
+        ${OC} create namespace $TARGET_NAMESPACE || info "Target namespace ${TARGET_NAMESPACE} already exists. Moving on..."
     fi
 }
 
 function prep_backup() {
-    title " Preparing for Mongo backup "
+    title " Preparing for Mongo backup in namespace $CS_NAMESPACE "
     msg "-----------------------------------------------------------------------"
     
-    pvx=$(${OC} get pv | grep mongodbdir | awk 'FNR==1 {print $1}')
-    storageClassName=$("${OC}" get pv -o yaml ${pvx} | yq '.spec.storageClassName' | awk '{print}')
+    local pvx=$(${OC} get pv | grep mongodbdir | awk 'FNR==1 {print $1}')
+    local storageClassName=$("${OC}" get pv -o yaml ${pvx} | yq '.spec.storageClassName' | awk '{print}')
     
     ${OC} get sc -o yaml ${storageClassName} > sc.yaml
     ${YQ} -i '.metadata.name="backup-sc" | .reclaimPolicy = "Retain"' sc.yaml || error "Error changing the name or retentionPolicy for StorageClass"
@@ -78,7 +79,7 @@ EOF
 }
 
 function backup() {
-    title " Backing up MongoDB "
+    title " Backing up MongoDB in namespace $CS_NAMESPACE "
     msg "-----------------------------------------------------------------------"
 
     wget https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongoDB/mongodbbackup.yaml
@@ -94,7 +95,7 @@ function backup() {
         return_value="reset"
         info "Backup PVC cs-mongodump found"
         return_value=$("${OC}" get pvc cs-mongodump -n $CS_NAMESPACE -o yaml | yq '.spec.storageClassName' | awk '{print}')
-        if [[ return_value != "backup-sc" ]]; then
+        if [[ "$return_value" != "backup-sc" ]]; then
             error "Backup PVC cs-mongodump not bound to persistent volume provisioned by correct storage class. Provisioned by \"${return_value}\" instead of \"backup-sc\""
         else
             info "Backup PVC cs-mongodump successfully bound to persistent volume provisioned by backup-sc storrage class."
@@ -102,6 +103,69 @@ function backup() {
     fi
 
     success "MongoDB successfully backed up"
+}
+
+function prep_restore() {
+    title " Pepare for restore in namespace $TARGET_NAMESPACE "
+    msg "-----------------------------------------------------------------------"
+    ${OC} get pvc -n ${CS_NAMESPACE} cs-mongodump -o yaml > cs-mongodump-copy.yaml
+    local pvx=$(${OC} get pv | grep cs-mongodump | awk '{print $1}')
+    export PVX=${pvx}
+    ${OC} delete job mongodb-backup -n ${CS_NAMESPACE}
+    ${OC} patch pvc -n ${CS_NAMESPACE} cs-mongodump --type=merge -p '{"metadata": {"finalizers":null}}'
+    ${OC} delete pvc -n ${CS_NAMESPACE} cs-mongodump
+    ${OC} patch pv -n ${CS_NAMESPACE} ${pvx} --type=merge -p '{"spec": {"claimRef":null}}'
+    
+    #Check if the backup PV has come available yet
+    #A lot of problems with the pv checks right now
+    local pvStatus=$("${OC}" get pv | grep "${pvx}" | awk '{print $5}')
+    local retries=6
+    echo "PV status: ${pvStatus}"
+    while [ $retries != 0 ]
+    do
+        if [[ $("${OC}" get pv | grep "${pvx}" | awk '{print $5}') != "Available" ]]; then
+            retries=$(( $retries - 1 ))
+            #this info message is not printing properly in tests
+            info "Persitent Volume ${pvx} not available yet. Retries left: ${retries}. Waiting 30 seconds..."
+            sleep 30s
+            pvStatus=$("${OC}" get pv | grep "${pvx}" | awk '{print $5}')
+        else
+            info "Persitent Volume ${pvx} available. Moving on..."
+            break
+        fi
+    done
+
+    #edit the cs-mongodump-copy.yaml pvc file and apply it in the target namespace
+    export TARGET_NAMESPACE=$TARGET_NAMESPACE
+    ${YQ} -i '.metadata.namespace=strenv(TARGET_NAMESPACE)' cs-mongodump-copy.yaml
+    ${OC} apply -f cs-mongodump-copy.yaml
+    
+    #Check PV status to make sure it binds to the right PVC
+    #pvStatus=$("${OC}" get pv | grep ${pvx} | awk '{print $5}')
+    retries=6
+    while [ $retries != 0 ]
+    do
+        if [[ $("${OC}" get pv | grep ${pvx} | awk '{print $5}') != "Bound" ]]; then
+            retries=$(( $retries - 1 ))
+            info "Persitent Volume ${pvx} not bound yet. Retries left: ${retries}. Waiting 30 seconds..."
+            sleep 30s
+            pvStatus=$("${OC}" get pv | grep ${pvx} | awk '{print $5}')
+        else
+            info "Persitent Volume ${pvx} bound. Checking PVC..."
+            boundPV=$("${OC}" get pvc cs-mongodump -n ${TARGET_NAMESPACE} | yq '.spec.volumeName' | awk '{print}')
+            if [[ "${boundPV}" != "${pvx}" ]]; then
+                error "Error binding cs-mongodump PVC to backup PV ${pvx}. Bound to ${boundPV} instead."
+            else
+                info "PVC cs-mongodump successfully bound to backup PV ${pvx}"
+                break
+            fi
+        fi
+    done
+
+    export CS_NAMESPACE=$CS_NAMESPACE
+
+    success "Preparation for Restore completed successfully."
+    
 }
 
 function msg() {
