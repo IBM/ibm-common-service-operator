@@ -86,7 +86,7 @@ function backup() {
     wget https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongoDB/mongodbbackup.yaml
     wget https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongoDB/mongo-backup.sh
     chmod +x mongo-backup.sh
-    ./mongo-backup.sh
+    ./mongo-backup.sh true
 
     info "Verify cs-mongodump PVC exists..."
     local return_value=$("${OC}" get pvc -n $CS_NAMESPACE | grep cs-mongodump || echo failed)
