@@ -300,8 +300,8 @@ function cleanupZenService(){
     for namespace in $requestedNS
     do
         # remove cs namespace from zen service cr
-        return_value=$(${OC} get zenservice -n ${namespace} || echo "failed")
-        if [[ $return_value != "failed" ]]; then
+        return_value=$(${OC} get zenservice -n ${namespace})
+        if [[ $return_value != "" ]]; then
             zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
             ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type json -p '[{ "op": "remove", "path": "/spec/csNamespace" }]' || info "CS Namespace not defined in ${zenServiceCR} in ${namespace}. Moving on..."
         else
@@ -317,8 +317,8 @@ function cleanupZenService(){
         fi
 
         # delete zen client
-        return_value=$(${OC} get client -n ${namespace} || echo "failed")
-        if [[ $return_value != "failed" ]]; then
+        return_value=$(${OC} get client -n ${namespace})
+        if [[ $return_value != "" ]]; then
             zenClient=$(${OC} get client -n ${namespace} | awk '{if (NR!=1) {print $1}}')
             ${OC} patch client ${zenClient} -n ${namespace} --type=merge -p '{"metadata": {"finalizers":null}}'
             ${OC} delete client ${zenClient} -n ${namespace}
@@ -330,8 +330,8 @@ function cleanupZenService(){
     for namespace in $mapToCSNS
     do
         # remove cs namespace from zen service cr
-        return_value=$(${OC} get zenservice -n ${namespace} || echo "failed")
-        if [[ $return_value != "failed" ]]; then
+        return_value=$(${OC} get zenservice -n ${namespace})
+        if [[ $return_value != "" ]]; then
             zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
             ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type json -p '[{ "op": "remove", "path": "/spec/csNamespace" }]' || info "CS Namespace not defined in ${zenServiceCR} in ${namespace}. Moving on..."
         else
@@ -346,10 +346,9 @@ function cleanupZenService(){
             info "iam-config-job not present in namespace ${namespace}. Moving on..."
         fi
 
-        #TODO may need to patch out finalizers in zen client
         # delete zen client
-        return_value=$(${OC} get client -n ${namespace} || echo "failed")
-        if [[ $return_value != "failed" ]]; then
+        return_value=$(${OC} get client -n ${namespace})
+        if [[ $return_value != "" ]]; then
             zenClient=$(${OC} get client -n ${namespace} | awk '{if (NR!=1) {print $1}}')
             ${OC} patch client ${zenClient} -n ${namespace} --type=merge -p '{"metadata": {"finalizers":null}}'
             ${OC} delete client ${zenClient} -n ${namespace}
