@@ -30,6 +30,7 @@ function main() {
     prep_backup
     backup
     prep_restore
+    restore
 }
 
 # verify that all pre-requisite CLI tools exist and parameters set
@@ -117,18 +118,21 @@ function prep_restore() {
     ${OC} patch pv -n ${CS_NAMESPACE} ${pvx} --type=merge -p '{"spec": {"claimRef":null}}'
     
     #Check if the backup PV has come available yet
-    #A lot of problems with the pv checks right now
-    local pvStatus=$("${OC}" get pv | grep "${pvx}" | awk '{print $5}')
+    #need to error handle, if a pv/pvc from a previous attempt exists in any ns it will mess this up
+    #if cs-mongdump pvc already exists in the target namespace, it will break
+    #Not sure if these checks are something to incorporate into the script or include in a troubleshooting section of the doc
+    #On a fresh run where you don't have to worry about any existing pv or pvc, it works perfectly
+    local pvStatus=$("${OC}" get pv -o yaml ${pvx}| yq '.status.phase' | awk '{print}')
     local retries=6
-    echo "PV status: ${pvStatus}"
+    echo "PVX: ${pvx} PV status: ${pvStatus}"
     while [ $retries != 0 ]
     do
-        if [[ $("${OC}" get pv | grep "${pvx}" | awk '{print $5}') != "Available" ]]; then
+        if [[ "${pvStatus}" != "Available" ]]; then
             retries=$(( $retries - 1 ))
-            #this info message is not printing properly in tests
             info "Persitent Volume ${pvx} not available yet. Retries left: ${retries}. Waiting 30 seconds..."
             sleep 30s
-            pvStatus=$("${OC}" get pv | grep "${pvx}" | awk '{print $5}')
+            pvStatus=$("${OC}" get pv -o yaml ${pvx}| yq '.status.phase' | awk '{print}')
+            echo "PVX: ${pvx} PV status: ${pvStatus}"
         else
             info "Persitent Volume ${pvx} available. Moving on..."
             break
@@ -141,18 +145,18 @@ function prep_restore() {
     ${OC} apply -f cs-mongodump-copy.yaml
     
     #Check PV status to make sure it binds to the right PVC
-    #pvStatus=$("${OC}" get pv | grep ${pvx} | awk '{print $5}')
+    pvStatus=$("${OC}" get pv -o yaml ${pvx}| yq '.status.phase' | awk '{print}')
     retries=6
     while [ $retries != 0 ]
     do
-        if [[ $("${OC}" get pv | grep ${pvx} | awk '{print $5}') != "Bound" ]]; then
+        if [[ "${pvStatus}" != "Bound" ]]; then
             retries=$(( $retries - 1 ))
             info "Persitent Volume ${pvx} not bound yet. Retries left: ${retries}. Waiting 30 seconds..."
             sleep 30s
-            pvStatus=$("${OC}" get pv | grep ${pvx} | awk '{print $5}')
+            pvStatus=$("${OC}" get pv -o yaml ${pvx}| yq '.status.phase' | awk '{print}')
         else
             info "Persitent Volume ${pvx} bound. Checking PVC..."
-            boundPV=$("${OC}" get pvc cs-mongodump -n ${TARGET_NAMESPACE} | yq '.spec.volumeName' | awk '{print}')
+            boundPV=$("${OC}" get pvc cs-mongodump -n ${TARGET_NAMESPACE} -o yaml | yq '.spec.volumeName' | awk '{print}')
             if [[ "${boundPV}" != "${pvx}" ]]; then
                 error "Error binding cs-mongodump PVC to backup PV ${pvx}. Bound to ${boundPV} instead."
             else
@@ -162,10 +166,24 @@ function prep_restore() {
         fi
     done
 
-    export CS_NAMESPACE=$CS_NAMESPACE
-
     success "Preparation for Restore completed successfully."
     
+}
+
+function restore () {
+    title " Restore copy of backup in namespace $TARGET_NAMESPACE "
+    msg "-----------------------------------------------------------------------"
+    #change csnamespace to reflect the new target namespace
+    #restore script is setup to look for CS_NAMESPACE and is used elsewhere
+    export CS_NAMESPACE=$TARGET_NAMESPACE
+    wget https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongodbrestore.yaml
+    wget https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/set_access.js
+    wget https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongo-restore.sh
+    chmod +x mongo-restore.sh
+    ./mongo-restore.sh
+
+    success "Restore completed successfully in namespace $TARGET_NAMESPACE"
+
 }
 
 function msg() {
