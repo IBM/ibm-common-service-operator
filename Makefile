@@ -22,6 +22,7 @@ KUSTOMIZE ?= $(shell which kustomize)
 YQ_VERSION=v4.3.1
 KUSTOMIZE_VERSION=v3.8.7
 OPERATOR_SDK_VERSION=v1.8.0
+CONTROLLER_TOOLS_VERSION ?= v0.6.1
 
 CSV_PATH=bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
 
@@ -77,7 +78,7 @@ REGISTRY ?= "hyc-cloud-private-scratch-docker-local.artifactory.swg-devops.com/i
 # Current Operator image name
 OPERATOR_IMAGE_NAME ?= common-service-operator
 # Current Operator bundle image name
-BUNDLE_IMAGE_NAME ?= dev-common-service-operator-bundle
+BUNDLE_IMAGE_NAME ?= common-service-operator-bundle
 
 CHANNELS := v4.0
 DEFAULT_CHANNEL := v4.0
@@ -185,11 +186,11 @@ build-dev-image:
 	--build-arg GOARCH=$(LOCAL_ARCH) -f Dockerfile .
 	@docker push $(REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):dev
 
-build-bundle-image:
+build-bundle-image: yq
 	@cp -f bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml /tmp/ibm-common-service-operator.clusterserviceversion.yaml
-	yq eval -i 'del(.spec.replaces)' bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
-	docker build -f bundle.Dockerfile -t $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(RELEASE_VERSION) .
-	docker push $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(RELEASE_VERSION)
+	$(YQ) eval -i 'del(.spec.replaces)' bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
+	docker build -f bundle.Dockerfile -t $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):dev .
+	docker push $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):dev
 	@mv /tmp/ibm-common-service-operator.clusterserviceversion.yaml bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
 
 run-bundle:
@@ -229,10 +230,10 @@ test-profile: yq
 
 ##@ Generate code and manifests
 
-manifests: ## Generate manifests e.g. CRD, RBAC etc.
+manifests: controller-gen ## Generate manifests e.g. CRD, RBAC etc.
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=ibm-common-service-operator webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
-generate: ## Generate code e.g. API etc.
+generate: controller-gen ## Generate code e.g. API etc.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 bundle-manifests: clis

@@ -52,21 +52,21 @@ var _ = Describe("CommonService controller", func() {
 
 	Context("Common service operator bootstrap", func() {
 		It("Should be ready", func() {
-			Expect(createNamespace(CloudPakNamespace)).Should(Succeed())
+			Expect(createNamespace(ctx, CloudPakNamespace)).Should(Succeed())
 			Expect(createOperatorGroup(CloudpakOgYamlObj)).Should(Succeed())
 			Expect(createSubscription(CloudpakCsSubYamlObj)).Should(Succeed())
 
 			By("Checking common service operator deployment status")
-			Eventually(waitForDeploymentReady(CommonServiceOperatorName, CommonServiceOperatorNamespace), timeout, interval).Should(BeTrue())
+			Eventually(waitForDeploymentReady(ctx, CommonServiceOperatorName, CommonServiceOperatorNamespace), timeout, interval).Should(BeTrue())
 
 			By("Checking ODLM status")
-			Eventually(waitForDeploymentReady(OdlmOperatorName, constant.ClusterOperatorNamespace),
+			Eventually(waitForDeploymentReady(ctx, OdlmOperatorName, constant.ClusterOperatorNamespace),
 				timeout, interval).Should(BeTrue())
 			By("Checking secretshare status")
-			Eventually(waitForDeploymentReady("secretshare", CommonServiceOperatorNamespace), timeout, interval).Should(BeTrue())
+			Eventually(waitForDeploymentReady(ctx, "secretshare", CommonServiceOperatorNamespace), timeout, interval).Should(BeTrue())
 
 			By("Checking common service webhook status")
-			Eventually(waitForDeploymentReady("ibm-common-service-webhook", CommonServiceOperatorNamespace), timeout, interval).Should(BeTrue())
+			Eventually(waitForDeploymentReady(ctx, "ibm-common-service-webhook", CommonServiceOperatorNamespace), timeout, interval).Should(BeTrue())
 		})
 	})
 
@@ -119,12 +119,12 @@ var _ = Describe("CommonService controller", func() {
 			}, timeout, interval).Should(BeTrue())
 
 			By("Delete cloudpak-ns namespace")
-			Expect(deleteNamespace(CloudPakNamespace)).Should(Succeed())
+			Expect(deleteNamespace(ctx, CloudPakNamespace)).Should(Succeed())
 		})
 	})
 })
 
-func waitForDeploymentReady(name, namespace string) bool {
+func waitForDeploymentReady(ctx context.Context, name, namespace string) bool {
 	klog.Infof("Waiting for deployment %s/%s ready.", namespace, name)
 	deployKey := types.NamespacedName{Name: name, Namespace: namespace}
 	deploy := &appsv1.Deployment{}
@@ -143,7 +143,7 @@ func waitForDeploymentReady(name, namespace string) bool {
 }
 
 // Create namespace resource obj
-func createNamespace(name string) error {
+func createNamespace(ctx context.Context, name string) error {
 	nsObj := &corev1.Namespace{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Namespace",
@@ -160,7 +160,7 @@ func createNamespace(name string) error {
 }
 
 // Delete namespace resource obj
-func deleteNamespace(name string) error {
+func deleteNamespace(ctx context.Context, name string) error {
 	nsObj := &corev1.Namespace{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Namespace",

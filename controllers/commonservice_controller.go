@@ -57,9 +57,9 @@ const (
 	CRFailed       string = "Failed"
 )
 
-var ctx = context.Background()
+// var ctx = context.Background()
 
-func (r *CommonServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 
 	klog.Infof("Reconciling CommonService: %s", req.NamespacedName)
 
@@ -68,7 +68,7 @@ func (r *CommonServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 
 	if err := r.Bootstrap.Client.Get(ctx, req.NamespacedName, instance); err != nil {
 		if errors.IsNotFound(err) {
-			if err := r.handleDelete(); err != nil {
+			if err := r.handleDelete(ctx); err != nil {
 				return ctrl.Result{}, err
 			}
 			// Generate Issuer and Certificate CR
@@ -81,20 +81,20 @@ func (r *CommonServiceReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 	}
 
 	if r.checkNamespace(req.NamespacedName.String()) {
-		return r.ReconcileMasterCR(instance)
+		return r.ReconcileMasterCR(ctx, instance)
 	}
-	return r.ReconcileGeneralCR(instance)
+	return r.ReconcileGeneralCR(ctx, instance)
 }
 
-func (r *CommonServiceReconciler) ReconcileMasterCR(instance *apiv3.CommonService) (ctrl.Result, error) {
+func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instance *apiv3.CommonService) (ctrl.Result, error) {
 
 	if instance.Status.Phase == "" {
-		if err := r.updatePhase(instance, CRInitializing); err != nil {
+		if err := r.updatePhase(ctx, instance, CRInitializing); err != nil {
 			klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 			return ctrl.Result{}, err
 		}
 	} else {
-		if err := r.updatePhase(instance, CRUpdating); err != nil {
+		if err := r.updatePhase(ctx, instance, CRUpdating); err != nil {
 			klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 			return ctrl.Result{}, err
 		}
@@ -107,7 +107,7 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(instance *apiv3.CommonServic
 	// Deploy OperandConfig and OperandRegistry
 	if err := r.Bootstrap.InitResources(instance); err != nil {
 		klog.Errorf("Failed to initialize resources: %v", err)
-		if err := r.updatePhase(instance, CRFailed); err != nil {
+		if err := r.updatePhase(ctx, instance, CRFailed); err != nil {
 			klog.Error(err)
 		}
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
@@ -123,7 +123,7 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(instance *apiv3.CommonServic
 	// Generate Issuer and Certificate CR
 	if err := r.Bootstrap.DeployCertManagerCR(); err != nil {
 		klog.Errorf("Failed to deploy cert manager CRs: %v", err)
-		if err := r.updatePhase(instance, CRFailed); err != nil {
+		if err := r.updatePhase(ctx, instance, CRFailed); err != nil {
 			klog.Error(err)
 		}
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
@@ -131,16 +131,16 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(instance *apiv3.CommonServic
 	}
 	newConfigs, serviceControllerMapping, err := r.getNewConfigs(cs, true)
 	if err != nil {
-		if err := r.updatePhase(instance, CRFailed); err != nil {
+		if err := r.updatePhase(ctx, instance, CRFailed); err != nil {
 			klog.Error(err)
 		}
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	isEqual, err := r.updateOperandConfig(newConfigs, serviceControllerMapping)
+	isEqual, err := r.updateOperandConfig(ctx, newConfigs, serviceControllerMapping)
 	if err != nil {
-		if err := r.updatePhase(instance, CRFailed); err != nil {
+		if err := r.updatePhase(ctx, instance, CRFailed); err != nil {
 			klog.Error(err)
 		}
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
@@ -152,7 +152,7 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(instance *apiv3.CommonServic
 		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.MasterNs, "common-service", instance.Namespace, instance.Name))
 	}
 
-	if err := r.updatePhase(instance, CRSucceeded); err != nil {
+	if err := r.updatePhase(ctx, instance, CRSucceeded); err != nil {
 		klog.Error(err)
 		return ctrl.Result{}, err
 	}
@@ -162,15 +162,15 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(instance *apiv3.CommonServic
 }
 
 // ReconcileGeneralCR is for setting the OperandConfig
-func (r *CommonServiceReconciler) ReconcileGeneralCR(instance *apiv3.CommonService) (ctrl.Result, error) {
+func (r *CommonServiceReconciler) ReconcileGeneralCR(ctx context.Context, instance *apiv3.CommonService) (ctrl.Result, error) {
 
 	if instance.Status.Phase == "" {
-		if err := r.updatePhase(instance, CRInitializing); err != nil {
+		if err := r.updatePhase(ctx, instance, CRInitializing); err != nil {
 			klog.Error(err)
 			return ctrl.Result{}, err
 		}
 	} else {
-		if err := r.updatePhase(instance, CRUpdating); err != nil {
+		if err := r.updatePhase(ctx, instance, CRUpdating); err != nil {
 			klog.Error(err)
 			return ctrl.Result{}, err
 		}
@@ -183,7 +183,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(instance *apiv3.CommonServi
 	}
 	if err := r.Reader.Get(ctx, opconKey, opcon); err != nil {
 		klog.Errorf("failed to get OperandConfig %s: %v", opconKey.String(), err)
-		if err := r.updatePhase(instance, CRFailed); err != nil {
+		if err := r.updatePhase(ctx, instance, CRFailed); err != nil {
 			klog.Error(err)
 		}
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
@@ -199,7 +199,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(instance *apiv3.CommonServi
 	// Generate Issuer and Certificate CR
 	if err := r.Bootstrap.DeployCertManagerCR(); err != nil {
 		klog.Errorf("Failed to deploy cert manager CRs: %v", err)
-		if err := r.updatePhase(instance, CRFailed); err != nil {
+		if err := r.updatePhase(ctx, instance, CRFailed); err != nil {
 			klog.Error(err)
 		}
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
@@ -208,16 +208,16 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(instance *apiv3.CommonServi
 
 	newConfigs, serviceControllerMapping, err := r.getNewConfigs(cs, true)
 	if err != nil {
-		if err := r.updatePhase(instance, CRFailed); err != nil {
+		if err := r.updatePhase(ctx, instance, CRFailed); err != nil {
 			klog.Error(err)
 		}
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 		return ctrl.Result{}, err
 	}
 
-	isEqual, err := r.updateOperandConfig(newConfigs, serviceControllerMapping)
+	isEqual, err := r.updateOperandConfig(ctx, newConfigs, serviceControllerMapping)
 	if err != nil {
-		if err := r.updatePhase(instance, CRFailed); err != nil {
+		if err := r.updatePhase(ctx, instance, CRFailed); err != nil {
 			klog.Error(err)
 		}
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
@@ -229,7 +229,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(instance *apiv3.CommonServi
 		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.MasterNs, "common-service", instance.Namespace, instance.Name))
 	}
 
-	if err := r.updatePhase(instance, CRSucceeded); err != nil {
+	if err := r.updatePhase(ctx, instance, CRSucceeded); err != nil {
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 		return ctrl.Result{}, err
 	}
@@ -238,11 +238,11 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(instance *apiv3.CommonServi
 	return ctrl.Result{}, nil
 }
 
-func (r *CommonServiceReconciler) mappingToCsRequest() handler.ToRequestsFunc {
-	return func(object handler.MapObject) []reconcile.Request {
+func (r *CommonServiceReconciler) mappingToCsRequest() handler.MapFunc {
+	return func(object client.Object) []reconcile.Request {
 		CsInstance := []reconcile.Request{}
-		cmName := object.Meta.GetName()
-		cmNs := object.Meta.GetNamespace()
+		cmName := object.GetName()
+		cmNs := object.GetNamespace()
 		if cmName == constant.CsMapConfigMap && cmNs == "kube-public" {
 			CsInstance = append(CsInstance, reconcile.Request{NamespacedName: types.NamespacedName{Name: "common-service", Namespace: r.Bootstrap.CSData.MasterNs}})
 		}
@@ -250,11 +250,11 @@ func (r *CommonServiceReconciler) mappingToCsRequest() handler.ToRequestsFunc {
 	}
 }
 
-func (r *CommonServiceReconciler) certSubToCsRequest() handler.ToRequestsFunc {
-	return func(object handler.MapObject) []reconcile.Request {
+func (r *CommonServiceReconciler) certSubToCsRequest() handler.MapFunc {
+	return func(object client.Object) []reconcile.Request {
 		CsInstance := []reconcile.Request{}
-		certSubName := object.Meta.GetName()
-		certSubNs := object.Meta.GetNamespace()
+		certSubName := object.GetName()
+		certSubNs := object.GetNamespace()
 		if certSubName == constant.CertManagerSub && certSubNs == r.Bootstrap.CSData.ControlNs {
 			CsInstance = append(CsInstance, reconcile.Request{NamespacedName: types.NamespacedName{Name: "common-service", Namespace: r.Bootstrap.CSData.MasterNs}})
 		}
@@ -267,7 +267,7 @@ func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&apiv3.CommonService{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Watches(
 			&source.Kind{Type: &corev1.ConfigMap{}},
-			&handler.EnqueueRequestsFromMapFunc{ToRequests: r.mappingToCsRequest()},
+			handler.EnqueueRequestsFromMapFunc(r.mappingToCsRequest()),
 			builder.WithPredicates(predicate.Funcs{
 				CreateFunc: func(e event.CreateEvent) bool {
 					return true
@@ -281,7 +281,7 @@ func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			})).
 		Watches(
 			&source.Kind{Type: &olmv1alpha1.Subscription{}},
-			&handler.EnqueueRequestsFromMapFunc{ToRequests: r.certSubToCsRequest()},
+			handler.EnqueueRequestsFromMapFunc(r.certSubToCsRequest()),
 			builder.WithPredicates(predicate.Funcs{
 				CreateFunc: func(e event.CreateEvent) bool {
 					return true
