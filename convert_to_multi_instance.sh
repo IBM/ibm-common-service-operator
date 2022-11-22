@@ -28,7 +28,7 @@ cs_operator_channel=
 catalog_source=
 
 function main() {
-    msg "Conversion Script Version 1.0.0"
+    msg "Conversion Script Version v1.0.0"
     prereq
     collect_data
     prepare_cluster
