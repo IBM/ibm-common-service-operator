@@ -186,7 +186,7 @@ spec:
     name: IBM_CS_WEBHOOK_IMAGE
   - image: icr.io/cpopen/cpfs/ibm-secretshare-operator:1.19.0
     name: IBM_SECRETSHARE_OPERATOR_IMAGE
-  - name: IBM_ZEN_OPERATOR_IMAGE
-    value: icr.io/cpopen/ibm-zen-operator:1.5.0
+  - image: icr.io/cpopen/ibm-zen-operator:1.7.0
+    name: IBM_ZEN_OPERATOR_IMAGE
   replaces: ibm-common-service-operator.v0.0.0
   version: 0.0.0

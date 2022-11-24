@@ -48,6 +48,7 @@ import (
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/controllers/goroutines"
+	operandrequestwebhook "github.com/IBM/ibm-common-service-operator/controllers/webhook/operandrequest"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -167,6 +168,10 @@ func main() {
 		Recorder:  mgr.GetEventRecorderFor("commonservice-controller"),
 	}).SetupWithManager(mgr); err != nil {
 		klog.Errorf("Unable to create controller CommonService: %v", err)
+		os.Exit(1)
+	}
+	if err = (&operandrequestwebhook.Defaulter{}).SetupWebhookWithManager(mgr); err != nil {
+		klog.Errorf("Unable to create OperandRequest webhook: %v", err)
 		os.Exit(1)
 	}
 

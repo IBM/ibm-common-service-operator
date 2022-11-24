@@ -46,13 +46,16 @@ type CommonServiceSpec struct {
 	StorageClass        string               `json:"storageClass,omitempty"`
 	BYOCACertificate    bool                 `json:"BYOCACertificate,omitempty"`
 	ProfileController   string               `json:"profileController,omitempty"`
-	License             LicenseList          `json:"license"`
+
+	// +optional
+	License LicenseList `json:"license"`
 }
 
 // LicenseList defines the license specification in CSV
 type LicenseList struct {
 	// Accepting the license - URL: https://ibm.biz/integration-licenses
 	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:hidden"
+	// +optional
 	Accept bool `json:"accept"`
 	// The type of license being accepted.
 	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:hidden"
@@ -108,6 +111,7 @@ type CommonService struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
+	// +kubebuilder:pruning:PreserveUnknownFields
 	Spec   CommonServiceSpec   `json:"spec,omitempty"`
 	Status CommonServiceStatus `json:"status,omitempty"`
 }

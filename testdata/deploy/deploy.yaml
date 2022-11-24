@@ -40,7 +40,7 @@ spec:
         - name: IBM_SECRETSHARE_OPERATOR_IMAGE
           value: icr.io/cpopen/cpfs/ibm-secretshare-operator:1.19.0
         - name: IBM_ZEN_OPERATOR_IMAGE
-          value: icr.io/cpopen/cpfs/ibm-zen-operator:1.5.0
+          value: icr.io/cpopen/ibm-zen-operator:1.7.0
         image: siji/operator:cs
         imagePullPolicy: Always
         name: ibm-common-service-operator
