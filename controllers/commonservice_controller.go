@@ -71,6 +71,9 @@ func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			if err := r.handleDelete(ctx); err != nil {
 				return ctrl.Result{}, err
 			}
+			if err := r.Bootstrap.DeleteCrossplaneAndProviderSubscription(r.Bootstrap.CSData.ControlNs); err != nil {
+				return ctrl.Result{}, err
+			}
 			// Generate Issuer and Certificate CR
 			if err := r.Bootstrap.DeployCertManagerCR(); err != nil {
 				return ctrl.Result{}, err
@@ -116,6 +119,15 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 
 	cs := util.NewUnstructured("operator.ibm.com", "CommonService", "v3")
 	if err := r.Bootstrap.Client.Get(ctx, types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}, cs); err != nil {
+		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
+		return ctrl.Result{}, err
+	}
+
+	if err := r.Bootstrap.CrossplaneOperatorProviderOperator(instance); err != nil {
+		klog.Errorf("Failed to install crossplane or provider operator: %v", err)
+		if err := r.updatePhase(ctx, instance, CRFailed); err != nil {
+			klog.Error(err)
+		}
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 		return ctrl.Result{}, err
 	}
@@ -192,6 +204,15 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(ctx context.Context, instan
 
 	cs := util.NewUnstructured("operator.ibm.com", "CommonService", "v3")
 	if err := r.Bootstrap.Client.Get(ctx, types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}, cs); err != nil {
+		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
+		return ctrl.Result{}, err
+	}
+
+	if err := r.Bootstrap.CrossplaneOperatorProviderOperator(instance); err != nil {
+		klog.Errorf("Failed to install crossplane or provider operator: %v", err)
+		if err := r.updatePhase(ctx, instance, CRFailed); err != nil {
+			klog.Error(err)
+		}
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 		return ctrl.Result{}, err
 	}
