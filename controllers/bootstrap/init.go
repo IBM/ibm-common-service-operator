@@ -668,17 +668,17 @@ func (b *Bootstrap) ResourceExists(dc discovery.DiscoveryInterface, apiGroupVers
 	return false, nil
 }
 
-func (b *Bootstrap) installNssOperator(manualManagement bool) error {
-	// Install Namespace Scope Operator
-	klog.Info("Creating namespace-scope configmap")
-	// Backward compatible upgrade from version 3.4.x
-	if err := b.CreateNsScopeConfigmap(); err != nil {
-		klog.Errorf("Failed to create Namespace Scope ConfigMap: %v", err)
-		return err
-	}
+// func (b *Bootstrap) installNssOperator() error {
+// 	// Install Namespace Scope Operator
+// 	klog.Info("Creating namespace-scope configmap")
+// 	// Backward compatible upgrade from version 3.4.x
+// 	if err := b.CreateNsScopeConfigmap(); err != nil {
+// 		klog.Errorf("Failed to create Namespace Scope ConfigMap: %v", err)
+// 		return err
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 // CreateNsScopeConfigmap creates nss configmap for operators
 func (b *Bootstrap) CreateNsScopeConfigmap() error {

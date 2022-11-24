@@ -40,13 +40,13 @@ import (
 // +kubebuilder:webhook:path=/mutate-operator-ibm-com-v1alpha1-operandrequest,mutating=true,failurePolicy=fail,sideEffects=None,groups=operator.ibm.com,resources=operandrequests,verbs=create;update,versions=v1alpha1,name=moperandrequest.kb.io,admissionReviewVersions=v1
 
 // OperandRequestDefaulter points to correct RegistryNamespace
-type OperandRequestDefaulter struct {
+type Defaulter struct {
 	Client  client.Client
 	decoder *admission.Decoder
 }
 
 // podAnnotator adds an annotation to every incoming pods.
-func (r *OperandRequestDefaulter) Handle(ctx context.Context, req admission.Request) admission.Response {
+func (r *Defaulter) Handle(ctx context.Context, req admission.Request) admission.Response {
 	klog.Infof("Webhook is invoked by OperandRequest %s/%s", req.AdmissionRequest.Namespace, req.AdmissionRequest.Name)
 
 	opreq := &odlm.OperandRequest{}
@@ -73,7 +73,7 @@ func (r *OperandRequestDefaulter) Handle(ctx context.Context, req admission.Requ
 }
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
-func (r *OperandRequestDefaulter) Default(instance *odlm.OperandRequest) {
+func (r *Defaulter) Default(instance *odlm.OperandRequest) {
 	for i, req := range instance.Spec.Requests {
 		regNs := req.RegistryNamespace
 		if regNs == "" {
@@ -110,7 +110,7 @@ func (r *OperandRequestDefaulter) Default(instance *odlm.OperandRequest) {
 	}
 }
 
-func (r *OperandRequestDefaulter) SetupWebhookWithManager(mgr ctrl.Manager) error {
+func (r *Defaulter) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 	mgr.GetWebhookServer().
 		Register("/mutate-operator-ibm-com-v1alpha1-operandrequest",
@@ -119,7 +119,7 @@ func (r *OperandRequestDefaulter) SetupWebhookWithManager(mgr ctrl.Manager) erro
 	return nil
 }
 
-func (r *OperandRequestDefaulter) InjectDecoder(decoder *admission.Decoder) error {
+func (r *Defaulter) InjectDecoder(decoder *admission.Decoder) error {
 	r.decoder = decoder
 	return nil
 }
