@@ -37,6 +37,45 @@ import (
 
 var ctx = context.Background()
 
+func SyncUpNSSConfigMap(bs *bootstrap.Bootstrap) {
+	for {
+		// Backward compatible upgrade from version 3.4.x
+		if err := bs.CreateNsScopeConfigmap(); err != nil {
+			klog.Errorf("Failed to create Namespace Scope ConfigMap: %v, retry in 5 seconds", err)
+			time.Sleep(5 * time.Second)
+			continue
+		}
+
+		//get ConfigMap of namespace-scope
+		nssConfigMap := &corev1.ConfigMap{}
+		namespaceScopeKey := types.NamespacedName{Name: "namespace-scope", Namespace: bs.CSData.MasterNs}
+		if err := bs.Reader.Get(ctx, namespaceScopeKey, nssConfigMap); err != nil {
+			if errors.IsNotFound(err) {
+				klog.Infof("waiting for configmap %s: %v, retry in 10 seconds", namespaceScopeKey.String(), err)
+				time.Sleep(10 * time.Second)
+				continue
+			}
+			klog.Errorf("Failed to get configmap %s: %v, retry in 10 seconds", namespaceScopeKey.String(), err)
+			time.Sleep(10 * time.Second)
+			continue
+		} else {
+			originalNSSConfigMap := nssConfigMap.DeepCopy()
+			nssConfigMap.Data["namespaces"] = bs.CSData.WatchNamespaces
+
+			if !reflect.DeepEqual(originalNSSConfigMap, nssConfigMap) {
+				if err := bs.Client.Update(ctx, nssConfigMap); err != nil {
+					klog.Errorf("Failed to update ConfigMap %s: %v, retry again in 10 seconds", namespaceScopeKey.String(), err)
+					time.Sleep(10 * time.Second)
+					continue
+				}
+				// Consider restart the pod if it is necessary
+			}
+		}
+
+	}
+
+}
+
 // SyncUpNSSCR syncs up the namespace members in source CR and target CR
 func SyncUpNSSCR(bs *bootstrap.Bootstrap) {
 	for {

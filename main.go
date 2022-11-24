@@ -161,6 +161,8 @@ func main() {
 	go goroutines.CreateUpdateConfig(bs)
 	// Update CS CR Status
 	go goroutines.UpdateCsCrStatus(bs)
+	// Sync up NSS ConfigMap
+	go goroutines.SyncUpNSSConfigMap(bs)
 
 	if err = (&controllers.CommonServiceReconciler{
 		Bootstrap: bs,
