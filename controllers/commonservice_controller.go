@@ -21,7 +21,7 @@ import (
 	"fmt"
 
 	// certmanagerv1alpha1 "github.com/ibm/ibm-cert-manager-operator/apis/certmanager/v1alpha1"
-	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -271,17 +271,17 @@ func (r *CommonServiceReconciler) mappingToCsRequest() handler.MapFunc {
 	}
 }
 
-func (r *CommonServiceReconciler) certSubToCsRequest() handler.MapFunc {
-	return func(object client.Object) []reconcile.Request {
-		CsInstance := []reconcile.Request{}
-		certSubName := object.GetName()
-		certSubNs := object.GetNamespace()
-		if certSubName == constant.CertManagerSub && certSubNs == r.Bootstrap.CSData.ControlNs {
-			CsInstance = append(CsInstance, reconcile.Request{NamespacedName: types.NamespacedName{Name: "common-service", Namespace: r.Bootstrap.CSData.MasterNs}})
-		}
-		return CsInstance
-	}
-}
+// func (r *CommonServiceReconciler) certSubToCsRequest() handler.MapFunc {
+// 	return func(object client.Object) []reconcile.Request {
+// 		CsInstance := []reconcile.Request{}
+// 		certSubName := object.GetName()
+// 		certSubNs := object.GetNamespace()
+// 		if certSubName == constant.CertManagerSub && certSubNs == r.Bootstrap.CSData.ControlNs {
+// 			CsInstance = append(CsInstance, reconcile.Request{NamespacedName: types.NamespacedName{Name: "common-service", Namespace: r.Bootstrap.CSData.MasterNs}})
+// 		}
+// 		return CsInstance
+// 	}
+// }
 
 func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
@@ -289,20 +289,6 @@ func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(
 			&source.Kind{Type: &corev1.ConfigMap{}},
 			handler.EnqueueRequestsFromMapFunc(r.mappingToCsRequest()),
-			builder.WithPredicates(predicate.Funcs{
-				CreateFunc: func(e event.CreateEvent) bool {
-					return true
-				},
-				DeleteFunc: func(e event.DeleteEvent) bool {
-					return !e.DeleteStateUnknown
-				},
-				UpdateFunc: func(e event.UpdateEvent) bool {
-					return true
-				},
-			})).
-		Watches(
-			&source.Kind{Type: &olmv1alpha1.Subscription{}},
-			handler.EnqueueRequestsFromMapFunc(r.certSubToCsRequest()),
 			builder.WithPredicates(predicate.Funcs{
 				CreateFunc: func(e event.CreateEvent) bool {
 					return true

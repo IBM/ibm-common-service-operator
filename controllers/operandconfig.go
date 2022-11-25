@@ -395,7 +395,7 @@ func (r *CommonServiceReconciler) getExtremeizes(ctx context.Context, opconServi
 		}
 
 		inScope := true
-		cm, err := util.GetCmOfMapCs(r.Client)
+		cm, err := util.GetCmOfMapCs(r.Reader)
 		if err == nil {
 			csScope, err := util.GetCsScope(cm, r.Bootstrap.CSData.MasterNs)
 			if err != nil {
