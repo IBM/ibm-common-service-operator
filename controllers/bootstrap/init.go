@@ -26,7 +26,6 @@ import (
 	"text/template"
 	"time"
 
-	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -724,18 +723,18 @@ func (b *Bootstrap) CreateCsCR() error {
 	return nil
 }
 
-func (b *Bootstrap) CreateOperatorGroup(namespace string) error {
-	existOG := &olmv1.OperatorGroupList{}
-	if err := b.Reader.List(context.TODO(), existOG, &client.ListOptions{Namespace: namespace}); err != nil {
-		return err
-	}
-	if len(existOG.Items) == 0 {
-		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsOperatorGroup, placeholder, namespace))); err != nil {
-			return err
-		}
-	}
-	return nil
-}
+// func (b *Bootstrap) CreateOperatorGroup(namespace string) error {
+// 	existOG := &olmv1.OperatorGroupList{}
+// 	if err := b.Reader.List(context.TODO(), existOG, &client.ListOptions{Namespace: namespace}); err != nil {
+// 		return err
+// 	}
+// 	if len(existOG.Items) == 0 {
+// 		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsOperatorGroup, placeholder, namespace))); err != nil {
+// 			return err
+// 		}
+// 	}
+// 	return nil
+// }
 
 func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...bool) error {
 	objects, err := util.YamlToObjects(yamlContent)
