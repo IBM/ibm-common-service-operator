@@ -3,38 +3,6 @@ kind: ClusterRole
 metadata:
   name: ibm-common-service-operator
 rules:
-# delete existing subscriptions in openshift-operators/ibm-common-services and control namespace for crossplane
-- apiGroups:
-  - operators.coreos.com
-  resources:
-  - subscriptions
-  - clusterserviceversions
-  verbs:
-  - delete
-  - get
-  - list
-# delete existing CR in openshift-operators/ibm-common-services and control namespace for crossplane
-- apiGroups:
-  - apiextensions.ibm.crossplane.io
-  resources:
-  - compositeresourcedefinitions
-  - compositions
-  verbs:
-  - delete
-  - get
-  - list
-  - watch
-# cluster watch CommonService for crossplane operators
-- apiGroups:
-  - operator.ibm.com
-  resources:
-  - commonservices
-  - commonservices/status
-  verbs:
-  - get
-  - list
-  - watch
-  - update
 # create rbac for ibmcloud-cluster-info & ibmcloud-cluster-ca-cert in kube-public
 - apiGroups:
   - rbac.authorization.k8s.io
@@ -66,42 +34,6 @@ rules:
   - ''
   resources:
   - configmaps
-- apiGroups:
-  - ""
-  resources:
-  - serviceaccounts
-  - events
-  verbs:
-  - create
-  - get
-  - update
-# Create and Delete Crossplane CRs
-- apiGroups:
-  - pkg.ibm.crossplane.io
-  resources:
-  - locks
-  - configurations
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - kubernetes.crossplane.io
-  - ibmcloud.crossplane.io
-  resources:
-  - providerconfigs
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
 # Get StorageClass from cluster
 - apiGroups:
   - storage.k8s.io
@@ -111,13 +43,6 @@ rules:
   - get
   - list
   - watch
-- apiGroups:
-    - operator.ibm.com
-  resources:
-    - meteringreportservers
-  verbs:
-    - delete
-    - get
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
