@@ -90,7 +90,6 @@ func main() {
 		},
 	}
 	watchNamespaceList := strings.Split(watchNamespace, ",")
-	// watchNamespaceList = append(watchNamespaceList, "kube-public")
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
