@@ -322,7 +322,7 @@ spec:
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-iam-operator
     namespace: {{ .MasterNs }}
-    channel: v3.22
+    channel: v4.0
     packageName: ibm-iam-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
