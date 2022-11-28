@@ -34,6 +34,12 @@ rules:
   - ''
   resources:
   - configmaps
+- verbs:
+  - get
+  apiGroups:
+  - ''
+  resources:
+  - secrets
 # Get StorageClass from cluster
 - apiGroups:
   - storage.k8s.io

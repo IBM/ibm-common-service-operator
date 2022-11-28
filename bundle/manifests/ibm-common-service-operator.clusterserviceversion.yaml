@@ -201,6 +201,12 @@ spec:
                 - list
                 - watch
             - apiGroups:
+                - ""
+              resources:
+                - secrets
+              verbs:
+                - get
+            - apiGroups:
                 - storage.k8s.io
               resources:
                 - storageclasses
