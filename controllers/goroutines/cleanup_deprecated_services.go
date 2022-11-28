@@ -33,7 +33,7 @@ import (
 
 const (
 	namespaceScope = "namespaceScope"
-	clusterScope   = "clusterScope"
+	// clusterScope   = "clusterScope"
 )
 
 var deprecatedServicesMap = map[string][]*bootstrap.Resource{
