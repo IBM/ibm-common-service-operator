@@ -33,7 +33,7 @@ import (
 
 const (
 	namespaceScope = "namespaceScope"
-	clusterScope   = "clusterScope"
+	// clusterScope   = "clusterScope"
 )
 
 var deprecatedServicesMap = map[string][]*bootstrap.Resource{
@@ -69,43 +69,43 @@ var deprecatedServicesMap = map[string][]*bootstrap.Resource{
 			Scope:   namespaceScope,
 		},
 	},
-	"ibm-metering-operator": {
-		{
-			Name:    "metering",
-			Version: "v1alpha1",
-			Group:   "operator.ibm.com",
-			Kind:    "Metering",
-			Scope:   namespaceScope,
-		},
-		{
-			Name:    "meteringui",
-			Version: "v1alpha1",
-			Group:   "operator.ibm.com",
-			Kind:    "MeteringUI",
-			Scope:   namespaceScope,
-		},
-		{
-			Name:    "meteringreportserver",
-			Version: "v1alpha1",
-			Group:   "operator.ibm.com",
-			Kind:    "MeteringReportServer",
-			Scope:   clusterScope,
-		},
-		{
-			Name:    "ibm-metering-bindinfo",
-			Version: "v1alpha1",
-			Group:   "operator.ibm.com",
-			Kind:    "OperandBindInfo",
-			Scope:   namespaceScope,
-		},
-		{
-			Name:    "ibm-metering-request",
-			Version: "v1alpha1",
-			Group:   "operator.ibm.com",
-			Kind:    "OperandRequest",
-			Scope:   namespaceScope,
-		},
-	},
+	// "ibm-metering-operator": {
+	// 	{
+	// 		Name:    "metering",
+	// 		Version: "v1alpha1",
+	// 		Group:   "operator.ibm.com",
+	// 		Kind:    "Metering",
+	// 		Scope:   namespaceScope,
+	// 	},
+	// 	{
+	// 		Name:    "meteringui",
+	// 		Version: "v1alpha1",
+	// 		Group:   "operator.ibm.com",
+	// 		Kind:    "MeteringUI",
+	// 		Scope:   namespaceScope,
+	// 	},
+	// 	{
+	// 		Name:    "meteringreportserver",
+	// 		Version: "v1alpha1",
+	// 		Group:   "operator.ibm.com",
+	// 		Kind:    "MeteringReportServer",
+	// 		Scope:   clusterScope,
+	// 	},
+	// 	{
+	// 		Name:    "ibm-metering-bindinfo",
+	// 		Version: "v1alpha1",
+	// 		Group:   "operator.ibm.com",
+	// 		Kind:    "OperandBindInfo",
+	// 		Scope:   namespaceScope,
+	// 	},
+	// 	{
+	// 		Name:    "ibm-metering-request",
+	// 		Version: "v1alpha1",
+	// 		Group:   "operator.ibm.com",
+	// 		Kind:    "OperandRequest",
+	// 		Scope:   namespaceScope,
+	// 	},
+	// },
 	"ibm-elastic-stack-operator": {
 		{
 			Name:    "logging",
