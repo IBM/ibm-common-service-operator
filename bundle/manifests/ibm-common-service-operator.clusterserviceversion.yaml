@@ -214,6 +214,16 @@ spec:
                 - get
                 - list
                 - watch
+            - apiGroups:
+                - operator.ibm.com
+              resources:
+                - commonservices
+                - commonservices/status
+              verbs:
+                - get
+                - list
+                - watch
+                - update
           serviceAccountName: ibm-common-service-operator
       deployments:
         - label:
