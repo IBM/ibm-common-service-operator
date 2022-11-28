@@ -17,7 +17,7 @@
 package constant
 
 var (
-	CertManagerAPIGroupVersion = "certmanager.k8s.io/v1alpha1"
+	CertManagerAPIGroupVersion = "cert-manager.io/v1"
 	CertManagerKinds           = []string{"Issuer", "Certificate"}
 	CertManagerIssuers         = []string{CSSSIssuer, CSCAIssuer}
 	CertManagerCerts           = []string{CSCACert}

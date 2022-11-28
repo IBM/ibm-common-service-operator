@@ -1477,86 +1477,76 @@ func CheckClusterType(mgr manager.Manager, ns string) (bool, error) {
 }
 
 func (b *Bootstrap) DeployCertManagerCR() error {
-	deployedNs := b.CSData.MasterNs
-	if b.MultiInstancesEnable {
-		deployedNs = b.CSData.ControlNs
+	klog.V(2).Info("Fetch all the CommonService instances")
+	csList := util.NewUnstructuredList("operator.ibm.com", "CommonService", "v3")
+	if err := b.Client.List(ctx, csList); err != nil {
+		return err
 	}
-	_, err := b.GetSubscription(ctx, constant.CertManagerSub, deployedNs)
-	if errors.IsNotFound(err) {
-		klog.Infof("Skipped deploying cert manager CRs, %s not installed yet.", constant.CertManagerSub)
-	} else if err != nil {
-		klog.Errorf("Failed to get subscription %s/%s", deployedNs, constant.CertManagerSub)
-	} else {
-		klog.V(2).Info("Fetch all the CommonService instances")
-		csList := util.NewUnstructuredList("operator.ibm.com", "CommonService", "v3")
-		if err := b.Client.List(ctx, csList); err != nil {
+	deployRootCert := true
+	var crWithBYOCert string
+	for _, cs := range csList.Items {
+		if cs.GetDeletionTimestamp() != nil {
+			continue
+		}
+		if cs.Object["spec"].(map[string]interface{})["BYOCACertificate"] == true {
+			deployRootCert = false
+			crWithBYOCert = cs.GetNamespace() + "/" + cs.GetName()
+			break
+		}
+	}
+	klog.Info("Deploying Cert Manager CRs")
+	for _, kind := range constant.CertManagerKinds {
+		if err := b.waitResourceReady(constant.CertManagerAPIGroupVersion, kind); err != nil {
+			klog.Errorf("Failed to wait for resource ready with kind: %s, apiGroupVersion: %s", kind, constant.CertManagerAPIGroupVersion)
+		}
+	}
+	// will use v1 cert instead of v1alpha cert
+	// delete v1alpha1 cert if it exist
+	var resourceList = []*Resource{
+		{
+			Name:    "cs-ca-issuer",
+			Version: "v1alpha1",
+			Group:   "certmanager.k8s.io",
+			Kind:    "issuer",
+			Scope:   "namespaceScope",
+		},
+		{
+			Name:    "cs-ss-issuer",
+			Version: "v1alpha1",
+			Group:   "certmanager.k8s.io",
+			Kind:    "issuer",
+			Scope:   "namespaceScope",
+		},
+		{
+			Name:    "cs-ca-certificate",
+			Version: "v1alpha1",
+			Group:   "certmanager.k8s.io",
+			Kind:    "certificate",
+			Scope:   "namespaceScope",
+		},
+	}
+
+	for _, resource := range resourceList {
+		if err := b.Cleanup(b.CSData.MasterNs, resource); err != nil {
 			return err
 		}
-		deployRootCert := true
-		var crWithBYOCert string
-		for _, cs := range csList.Items {
-			if cs.GetDeletionTimestamp() != nil {
-				continue
-			}
-			if cs.Object["spec"].(map[string]interface{})["BYOCACertificate"] == true {
-				deployRootCert = false
-				crWithBYOCert = cs.GetNamespace() + "/" + cs.GetName()
-				break
-			}
-		}
-		klog.Info("Deploying Cert Manager CRs")
-		for _, kind := range constant.CertManagerKinds {
-			if err := b.waitResourceReady(constant.CertManagerAPIGroupVersion, kind); err != nil {
-				klog.Errorf("Failed to wait for resource ready with kind: %s, apiGroupVersion: %s", kind, constant.CertManagerAPIGroupVersion)
-			}
-		}
-		// will use v1 cert instead of v1alpha cert
-		// delete v1alpha1 cert if it exist
-		var resourceList = []*Resource{
-			{
-				Name:    "cs-ca-issuer",
-				Version: "v1alpha1",
-				Group:   "certmanager.k8s.io",
-				Kind:    "issuer",
-				Scope:   "namespaceScope",
-			},
-			{
-				Name:    "cs-ss-issuer",
-				Version: "v1alpha1",
-				Group:   "certmanager.k8s.io",
-				Kind:    "issuer",
-				Scope:   "namespaceScope",
-			},
-			{
-				Name:    "cs-ca-certificate",
-				Version: "v1alpha1",
-				Group:   "certmanager.k8s.io",
-				Kind:    "certificate",
-				Scope:   "namespaceScope",
-			},
-		}
+	}
 
-		for _, resource := range resourceList {
-			if err := b.Cleanup(b.CSData.MasterNs, resource); err != nil {
-				return err
-			}
+	for _, cr := range constant.CertManagerIssuers {
+		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.MasterNs))); err != nil {
+			return err
 		}
-
-		for _, cr := range constant.CertManagerIssuers {
+	}
+	if deployRootCert {
+		for _, cr := range constant.CertManagerCerts {
 			if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.MasterNs))); err != nil {
 				return err
 			}
 		}
-		if deployRootCert {
-			for _, cr := range constant.CertManagerCerts {
-				if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.MasterNs))); err != nil {
-					return err
-				}
-			}
-		} else {
-			klog.Infof("Skipped deploying %s, BYOCertififcate feature is enabled in %s", constant.CSCACertificate, crWithBYOCert)
-		}
+	} else {
+		klog.Infof("Skipped deploying %s, BYOCertififcate feature is enabled in %s", constant.CSCACertificate, crWithBYOCert)
 	}
+
 	return nil
 }
 
