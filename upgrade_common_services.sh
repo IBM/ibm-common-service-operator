@@ -101,12 +101,12 @@ function main() {
     fi
     msg "-----------------------------------------------------------------------"
     
-    check_preqreqs "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPACE}"
-    pre_zen "${CS_NAMESPACE}"
+    #check_preqreqs "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPACE}"
+    #pre_zen "${CS_NAMESPACE}"
     zenopr_check "${CS_NAMESPACE}"
     zensvc_check "${CS_NAMESPACE}"
-    deployment_check "${subName}" "${CS_NAMESPACE}" "${DESTINATION_CHANNEL}"
-    switch_channel "${subName}" "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPACE}" "${DESTINATION_CHANNEL}" "${ALL_NAMESPACE}"
+    #deployment_check "${subName}" "${CS_NAMESPACE}" "${DESTINATION_CHANNEL}"
+    #switch_channel "${subName}" "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPACE}" "${DESTINATION_CHANNEL}" "${ALL_NAMESPACE}"
 }
 
 
@@ -179,13 +179,14 @@ function zenopr_check() {
     title "[${STEP}] Checking if Zen Operator has been upgraded to the middle version..."
     msg "-----------------------------------------------------------------------"
 
+    sleep 60
     while true; do
         # check if installedCSV is the same as currentCSV
         installedCSV=$(oc get subscription.operators.coreos.com ibm-zen-operator -n ${csNS} --ignore-not-found -o jsonpath={.status.installedCSV})
         currentCSV=$(oc get subscription.operators.coreos.com ibm-zen-operator -n ${csNS} --ignore-not-found -o jsonpath={.status.currentCSV})
 
         if [[ $installedCSV != $currentCSV ]]; then
-            install_plan=$(oc get subscription.operators.coreos.com -n ${csNS} --ignore-not-found -o jsonpath={.spec.installPlanApproval})
+            install_plan=$(oc get subscription.operators.coreos.com ibm-zen-operator -n ${csNS} --ignore-not-found -o jsonpath={.spec.installPlanApproval})
             echo "install plan" $install_plan
             if [[ $install_plan == "Manual" ]]; then
                 error "install plan is on Manual mode, need to approve it manually to upgrade Zen operator"
@@ -217,28 +218,30 @@ function zensvc_check() {
     title "[${STEP}] Checking each ZenService CR status..."
     msg "-----------------------------------------------------------------------"
 
-    index=0
     while read -r cr; do
-        zenProgress=$(oc get zenservice ${cr} -n ${CS_NAMESPACE} -ojsonpath={.status.Progress})
-        zenMSG=$(oc get zenservice ${cr} -n ${CS_NAMESPACE} -ojsonpath={.status.ProgressMessage})
-        zenStatus=$(oc get zenservice ${cr} -n ${CS_NAMESPACE} -ojsonpath={.status.zenStatus})
-        if [[ "$zenStatus" == "Completed" ]]; then
-            success "ZenService CR ${cr} progress is ${zenProgress}."
-            success "ZenService CR ${cr} message: ${zenMSG}."
-            success "ZenService CR ${cr} status is ${zenStatus}."
-            break
-        fi
+        index=0
+        while true; do
+            zenProgress=$(oc get zenservice ${cr} -n ${CS_NAMESPACE} -ojsonpath={.status.Progress})
+            zenMSG=$(oc get zenservice ${cr} -n ${CS_NAMESPACE} -ojsonpath={.status.ProgressMessage})
+            zenStatus=$(oc get zenservice ${cr} -n ${CS_NAMESPACE} -ojsonpath={.status.zenStatus})
+            if [[ "$zenStatus" == "Completed" ]]; then
+                success "ZenService CR ${cr} progress is ${zenProgress}."
+                success "ZenService CR ${cr} message: ${zenMSG}."
+                success "ZenService CR ${cr} status is ${zenStatus}."
+                break
+            fi
 
-        msg "Waiting for ZenService CR ready..."
-        sleep 20
-        # wait an hour
-        index=$(( index + 1 ))
-        if [[ $index -eq 180 ]]; then
-            warning "ZenService CR ${cr} progress is ${zenProgress}."
-            warning "ZenService CR ${cr} message: ${zenMSG}."
-            warning "ZenService CR ${cr} status is ${zenStatus}."
-            error "Fail to upgrade ZenService ${cr},abort the upgrade procedure."
-        fi
+            msg "Waiting for ZenService CR ready..."
+            sleep 20
+            # wait an hour
+            index=$(( index + 1 ))
+            if [[ $index -eq 180 ]]; then
+                warning "ZenService CR ${cr} progress is ${zenProgress}."
+                warning "ZenService CR ${cr} message: ${zenMSG}."
+                warning "ZenService CR ${cr} status is ${zenStatus}."
+                error "Fail to upgrade ZenService ${cr}, time out and abort the upgrade procedure."
+            fi
+        done
     done < <(oc get zenservice -n ${csNS} --ignore-not-found --no-headers | awk '{print $1}')
 }
 
