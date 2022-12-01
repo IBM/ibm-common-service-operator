@@ -101,12 +101,12 @@ function main() {
     fi
     msg "-----------------------------------------------------------------------"
     
-    #check_preqreqs "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPACE}"
-    #pre_zen "${CS_NAMESPACE}"
+    check_preqreqs "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPACE}"
+    pre_zen "${CS_NAMESPACE}"
     zenopr_check "${CS_NAMESPACE}" "${subName}"
     zensvc_check "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${ALL_NAMESPACE}"
-    #deployment_check "${subName}" "${CS_NAMESPACE}" "${DESTINATION_CHANNEL}"
-    #switch_channel "${subName}" "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPACE}" "${DESTINATION_CHANNEL}" "${ALL_NAMESPACE}"
+    deployment_check "${subName}" "${CS_NAMESPACE}" "${DESTINATION_CHANNEL}"
+    switch_channel "${subName}" "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPACE}" "${DESTINATION_CHANNEL}" "${ALL_NAMESPACE}"
 }
 
 
@@ -181,7 +181,7 @@ function zenopr_check() {
     title "[${STEP}] Waiting for IBM Zen Operator upgrading to latest version in the ${currentChannel} channel..."
     msg "-----------------------------------------------------------------------"
 
-    #sleep 60
+    sleep 60
     while true; do
         # check if installedCSV is the same as currentCSV
         installedCSV=$(oc get subscription.operators.coreos.com ibm-zen-operator -n ${csNS} --ignore-not-found -o jsonpath={.status.installedCSV})
