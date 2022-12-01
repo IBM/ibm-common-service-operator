@@ -101,12 +101,12 @@ function main() {
     fi
     msg "-----------------------------------------------------------------------"
     
-    #check_preqreqs "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPACE}"
-    #pre_zen "${CS_NAMESPACE}"
-    zenopr_check "${CS_NAMESPACE}"
+    check_preqreqs "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPACE}"
+    pre_zen "${CS_NAMESPACE}"
+    zenopr_check "${CS_NAMESPACE}" "${subName}"
     zensvc_check "${CS_NAMESPACE}"
-    #deployment_check "${subName}" "${CS_NAMESPACE}" "${DESTINATION_CHANNEL}"
-    #switch_channel "${subName}" "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPACE}" "${DESTINATION_CHANNEL}" "${ALL_NAMESPACE}"
+    deployment_check "${subName}" "${CS_NAMESPACE}" "${DESTINATION_CHANNEL}"
+    switch_channel "${subName}" "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPACE}" "${DESTINATION_CHANNEL}" "${ALL_NAMESPACE}"
 }
 
 
@@ -173,10 +173,12 @@ function pre_zen(){
 
 function zenopr_check() {
     local csNS=$1
+    local subName=$2
 
+    currentChannel=$(oc get sub -n ${csNS} | grep ${subName} | awk '{print $4}')
     STEP=$((STEP + 1 ))
     msg ""
-    title "[${STEP}] Checking if Zen Operator has been upgraded to the middle version..."
+    title "[${STEP}] Waiting for IBM Zen Operator upgrading to latest version in the ${currentChannel} channel..."
     msg "-----------------------------------------------------------------------"
 
     sleep 60
@@ -186,15 +188,14 @@ function zenopr_check() {
         currentCSV=$(oc get subscription.operators.coreos.com ibm-zen-operator -n ${csNS} --ignore-not-found -o jsonpath={.status.currentCSV})
 
         if [[ $installedCSV != $currentCSV ]]; then
-            install_plan=$(oc get subscription.operators.coreos.com ibm-zen-operator -n ${csNS} --ignore-not-found -o jsonpath={.spec.installPlanApproval})
-            echo "install plan" $install_plan
-            if [[ $install_plan == "Manual" ]]; then
-                error "install plan is on Manual mode, need to approve it manually to upgrade Zen operator"
+            approval_mode=$(oc get subscription.operators.coreos.com ibm-zen-operator -n ${csNS} --ignore-not-found -o jsonpath={.spec.installPlanApproval})
+            if [[ $approval_mode == "Manual" ]]; then
+                error "ibm-zen-operator subscription is set to Manual Approval mode, please approve installPlan to upgrade Zen operator."
             fi
-            warning "install plan is on Automatic mode, waiting for installedCSV ${installedCSV} upgrade to currentCSV ${currentCSV}..."
+            warning "ibm-zen-operator subscription is set to Automatic Approval mode, waiting for the upgrade from ${installedCSV} to ${currentCSV}..."
             sleep 5
         else
-            success "installedCSV ${installedCSV} is the same as currentCSV ${currentCSV}."
+            success "${installedCSV} is now the latest available version in ${currentChannel} channel."
             break
         fi
     done
@@ -203,7 +204,7 @@ function zenopr_check() {
         # check Zen operator CSV status
         csv_status=$(oc get csv ${currentCSV} -n ${csNS} -o jsonpath={.status.phase})
         if [[ $csv_status == "Succeeded" ]]; then
-            success "Zen operator csv ${currentCSV} status is ${csv_status}."
+            success "${currentCSV} phase is ${csv_status}."
             break
         fi
         sleep 10
