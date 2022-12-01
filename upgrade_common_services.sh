@@ -187,6 +187,9 @@ function zenopr_check() {
         installedCSV=$(oc get subscription.operators.coreos.com ibm-zen-operator -n ${csNS} --ignore-not-found -o jsonpath={.status.installedCSV})
         currentCSV=$(oc get subscription.operators.coreos.com ibm-zen-operator -n ${csNS} --ignore-not-found -o jsonpath={.status.currentCSV})
 
+        if [[ -z $installedCSV || -z $currentCSV ]]; then
+            error "fail to get installed or current CSV, abort the upgrade procedure."
+        fi
         if [[ $installedCSV != $currentCSV ]]; then
             approval_mode=$(oc get subscription.operators.coreos.com ibm-zen-operator -n ${csNS} --ignore-not-found -o jsonpath={.spec.installPlanApproval})
             if [[ $approval_mode == "Manual" ]]; then
@@ -200,6 +203,7 @@ function zenopr_check() {
         fi
     done
 
+    index=0
     while true; do
         # check Zen operator CSV status
         csv_status=$(oc get csv ${currentCSV} -n ${csNS} -o jsonpath={.status.phase})
@@ -208,6 +212,11 @@ function zenopr_check() {
             break
         fi
         sleep 10
+        # wait 10 mins
+        index=$(( index + 1 ))
+        if [[ $index -eq 60 ]]; then
+            error "${currentCSV} phase is ${csv_status}, abort the upgrade procedure."
+        fi
     done
 }
 
