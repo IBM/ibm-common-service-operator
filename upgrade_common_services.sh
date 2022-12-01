@@ -101,12 +101,12 @@ function main() {
     fi
     msg "-----------------------------------------------------------------------"
     
-    check_preqreqs "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPACE}"
-    pre_zen "${CS_NAMESPACE}"
+    #check_preqreqs "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPACE}"
+    #pre_zen "${CS_NAMESPACE}"
     zenopr_check "${CS_NAMESPACE}" "${subName}"
-    zensvc_check "${CS_NAMESPACE}"
-    deployment_check "${subName}" "${CS_NAMESPACE}" "${DESTINATION_CHANNEL}"
-    switch_channel "${subName}" "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPACE}" "${DESTINATION_CHANNEL}" "${ALL_NAMESPACE}"
+    zensvc_check "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${ALL_NAMESPACE}"
+    #deployment_check "${subName}" "${CS_NAMESPACE}" "${DESTINATION_CHANNEL}"
+    #switch_channel "${subName}" "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPACE}" "${DESTINATION_CHANNEL}" "${ALL_NAMESPACE}"
 }
 
 
@@ -181,7 +181,7 @@ function zenopr_check() {
     title "[${STEP}] Waiting for IBM Zen Operator upgrading to latest version in the ${currentChannel} channel..."
     msg "-----------------------------------------------------------------------"
 
-    sleep 60
+    #sleep 60
     while true; do
         # check if installedCSV is the same as currentCSV
         installedCSV=$(oc get subscription.operators.coreos.com ibm-zen-operator -n ${csNS} --ignore-not-found -o jsonpath={.status.installedCSV})
@@ -220,39 +220,63 @@ function zenopr_check() {
     done
 }
 
+function single_zensvc() {
+    local ns=$1
+    local cr=$2
+
+    msg "Checking ZenService ${cr} status in ${ns}..."
+
+    index=0
+    while true; do
+        zenProgress=$(oc get zenservice ${cr} -n ${ns} -ojsonpath={.status.Progress})
+        zenMSG=$(oc get zenservice ${cr} -n ${ns} -ojsonpath={.status.ProgressMessage})
+        zenStatus=$(oc get zenservice ${cr} -n ${ns} -ojsonpath={.status.zenStatus})
+        if [[ "$zenStatus" == "Completed" ]]; then
+            success "ZenService CR ${cr} progress is ${zenProgress}."
+            success "ZenService CR ${cr} message: ${zenMSG}."
+            success "ZenService CR ${cr} status is ${zenStatus}."
+            msg "-----------------------------------------------------------------------"
+            break
+        fi
+
+        msg "Waiting for ZenService CR ready..."
+        sleep 20
+        # wait an hour
+        index=$(( index + 1 ))
+        if [[ $index -eq 180 ]]; then
+            warning "ZenService CR ${cr} progress is ${zenProgress}."
+            warning "ZenService CR ${cr} message: ${zenMSG}."
+            warning "ZenService CR ${cr} status is ${zenStatus}."
+            error "Fail to upgrade ZenService ${cr}, time out and abort the upgrade procedure."
+        fi
+    done
+}
+
 function zensvc_check() {
     local csNS=$1
+    local cloudpaksNS=$2
+    local allNamespace=$3
 
     STEP=$((STEP + 1 ))
     msg ""
-    title "[${STEP}] Checking each ZenService CR status..."
+    title "[${STEP}] Checking ZenService in every namespace..."
     msg "-----------------------------------------------------------------------"
 
-    while read -r cr; do
-        index=0
-        while true; do
-            zenProgress=$(oc get zenservice ${cr} -n ${CS_NAMESPACE} -ojsonpath={.status.Progress})
-            zenMSG=$(oc get zenservice ${cr} -n ${CS_NAMESPACE} -ojsonpath={.status.ProgressMessage})
-            zenStatus=$(oc get zenservice ${cr} -n ${CS_NAMESPACE} -ojsonpath={.status.zenStatus})
-            if [[ "$zenStatus" == "Completed" ]]; then
-                success "ZenService CR ${cr} progress is ${zenProgress}."
-                success "ZenService CR ${cr} message: ${zenMSG}."
-                success "ZenService CR ${cr} status is ${zenStatus}."
-                break
-            fi
-
-            msg "Waiting for ZenService CR ready..."
-            sleep 20
-            # wait an hour
-            index=$(( index + 1 ))
-            if [[ $index -eq 180 ]]; then
-                warning "ZenService CR ${cr} progress is ${zenProgress}."
-                warning "ZenService CR ${cr} message: ${zenMSG}."
-                warning "ZenService CR ${cr} status is ${zenStatus}."
-                error "Fail to upgrade ZenService ${cr}, time out and abort the upgrade procedure."
-            fi
-        done
-    done < <(oc get zenservice -n ${csNS} --ignore-not-found --no-headers | awk '{print $1}')
+    if [[ "${allNamespace}" == "true" ]]; then
+        while read -r ns zencr; do
+            single_zensvc  "${ns}" "${zencr}" 
+        done < <(oc get zenservice --all-namespaces --ignore-not-found --no-headers | awk '{print $1" "$2}')
+    else
+        if [[ "$cloudpaksNS" != "$csNS" ]]; then
+            while read -r zencr; do
+                single_zensvc  "${cloudpaksNS}" "${zencr}" 
+            done < <(oc get zenservice -n ${cloudpaksNS} --ignore-not-found --no-headers | awk '{print $1}')  
+        fi
+        while read -r zencr; do
+            single_zensvc  "${csNS}" "${zencr}" 
+        done < <(oc get zenservice -n ${csNS} --ignore-not-found --no-headers | awk '{print $1}')       
+    fi
+    success "All ZenService CRs have been upgraded to latest version."
 }
 
 function switch_channel_operator() {
