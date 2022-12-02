@@ -159,15 +159,12 @@ function pre_zen(){
     msg "-----------------------------------------------------------------------"
 
     if oc get operatorcondition -n ${csNS} 2>/dev/null | grep ibm-zen-operator ; then
-        msg "Removing Operator Condition of zen operator v1.4.2..."
         list=$(oc get operatorcondition -o custom-columns=operatorcondition:.metadata.name --no-headers -n ${csNS} | grep ibm-zen-operator 2>/dev/null)
         for name in ${list};do
             if [ ! -z "${name}" ] && [[ "${name}" =~ ibm-zen-operator.v1.4.2 ]]; then
                 oc delete operatorcondition ${name} -n ${csNS} || true
             fi
         done
-    else
-        msg "Operator Condition in namespace ${csNS} not found, skipping..."
     fi
 }
 
@@ -188,7 +185,7 @@ function zenopr_check() {
         currentCSV=$(oc get subscription.operators.coreos.com ibm-zen-operator -n ${csNS} --ignore-not-found -o jsonpath={.status.currentCSV})
 
         if [[ -z $installedCSV || -z $currentCSV ]]; then
-            error "fail to get installed or current CSV, abort the upgrade procedure."
+            error "fail to get installed or current CSV, abort the upgrade procedure. Please check ibm-zen-operator subscription status."
         fi
         if [[ $installedCSV != $currentCSV ]]; then
             approval_mode=$(oc get subscription.operators.coreos.com ibm-zen-operator -n ${csNS} --ignore-not-found -o jsonpath={.spec.installPlanApproval})
@@ -215,7 +212,7 @@ function zenopr_check() {
         # wait 10 mins
         index=$(( index + 1 ))
         if [[ $index -eq 60 ]]; then
-            error "${currentCSV} phase is ${csv_status}, abort the upgrade procedure."
+            error "${currentCSV} phase is ${csv_status}, abort the upgrade procedure. Please check ${currentCSV} CSV status."
         fi
     done
 }
