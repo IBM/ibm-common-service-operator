@@ -79,8 +79,8 @@ OPERATOR_IMAGE_NAME ?= common-service-operator
 # Current Operator bundle image name
 BUNDLE_IMAGE_NAME ?= dev-common-service-operator-bundle
 
-CHANNELS := v3.22
-DEFAULT_CHANNEL := v3.22
+CHANNELS := v3.23
+DEFAULT_CHANNEL := v3.23
 
 # Options for 'bundle-build'
 ifneq ($(origin CHANNELS), undefined)
@@ -244,7 +244,7 @@ bundle-manifests: clis
 
 generate-all: yq kustomize operator-sdk generate manifests ## Generate bundle manifests, metadata and package manifests
 	$(OPERATOR_SDK) generate kustomize manifests -q
-	- make bundle-manifests CHANNELS=v3.22 DEFAULT_CHANNEL=v3.22
+	- make bundle-manifests CHANNELS=v3.23 DEFAULT_CHANNEL=v3.23
 
 ##@ Test
 
