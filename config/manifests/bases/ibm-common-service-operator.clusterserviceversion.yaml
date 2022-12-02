@@ -9,8 +9,8 @@ metadata:
     description: The IBM Common Service Operator is used to deploy IBM Common Services
     nss.operator.ibm.com/managed-operators: cloud-native-postgresql
     olm.skipRange: ""
-    operatorChannel: v3.22
-    operatorVersion: 3.22.0
+    operatorChannel: v3.23
+    operatorVersion: 3.23.0
     operators.operatorframework.io/builder: operator-sdk-v1.2.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
     repository: https://github.com/IBM/ibm-common-service-operator
@@ -108,7 +108,7 @@ spec:
 
     ## Operator versions
 
-     - 3.22.0
+     - 3.23.0
 
     ## Prerequisites
 
@@ -182,11 +182,11 @@ spec:
   relatedImages:
   - image: icr.io/cpopen/common-service-operator
     name: COMMON_SERVICE_OPERATOR_IMAGE
-  - image: icr.io/cpopen/cpfs/ibm-cs-webhook:1.18.0
+  - image: icr.io/cpopen/cpfs/ibm-cs-webhook:1.19.0
     name: IBM_CS_WEBHOOK_IMAGE
-  - image: icr.io/cpopen/cpfs/ibm-secretshare-operator:1.19.0
+  - image: icr.io/cpopen/cpfs/ibm-secretshare-operator:1.20.0
     name: IBM_SECRETSHARE_OPERATOR_IMAGE
   - name: IBM_ZEN_OPERATOR_IMAGE
-    value: icr.io/cpopen/ibm-zen-operator:1.5.0
+    value: icr.io/cpopen/ibm-zen-operator:1.8.1
   replaces: ibm-common-service-operator.v0.0.0
   version: 0.0.0
