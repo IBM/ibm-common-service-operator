@@ -29,7 +29,7 @@ metadata:
   name: {{ .ICPOperator }}
   namespace: {{ .ControlNs }}
 spec:
-  channel: {{ .Channel }}
+  channel: v3.22
   installPlanApproval: {{ .ApprovalMode }}
   name: {{ .ICPOperator }}
   source: {{ .CatalogSourceName }}
@@ -66,7 +66,7 @@ metadata:
   name: {{ .ICPPKOperator}}
   namespace: {{ .ControlNs }}
 spec:
-  channel: {{ .Channel }}
+  channel: v3.22
   installPlanApproval: {{ .ApprovalMode }}
   name: {{ .ICPPKOperator }}
   source: {{ .CatalogSourceName }}
@@ -92,7 +92,7 @@ metadata:
   name: {{ .ICPPICOperator }}
   namespace: {{ .ControlNs }}
 spec:
-  channel: {{ .Channel }}
+  channel: v3.22
   installPlanApproval: {{ .ApprovalMode }}
   name: {{ .ICPPICOperator }}
   source: {{ .CatalogSourceName }}
