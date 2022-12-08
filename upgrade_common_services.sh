@@ -100,10 +100,12 @@ function main() {
         title "Upgrade Common Service Operator to ${DESTINATION_CHANNEL} channel in ${CS_NAMESPACE} namespace."
     fi
     msg "-----------------------------------------------------------------------"
-
+    
     check_preqreqs "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPACE}"
+    pre_zen "${CS_NAMESPACE}"
+    zenopr_check "${CS_NAMESPACE}" "${subName}"
+    zensvc_check "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${ALL_NAMESPACE}"
     deployment_check "${subName}" "${CS_NAMESPACE}" "${DESTINATION_CHANNEL}"
-    pre-zen "${CS_NAMESPACE}"
     switch_channel "${subName}" "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPACE}" "${DESTINATION_CHANNEL}" "${ALL_NAMESPACE}"
 }
 
@@ -146,6 +148,132 @@ function check_preqreqs() {
     if [[ -z "$(oc get namespace ${controlNS})" ]]; then
         error "Namespace ${controlNS} for singleton services is not found."
     fi
+}
+
+function pre_zen(){
+    local csNS=$1
+
+    STEP=$((STEP + 1 ))
+    msg ""
+    title "[${STEP}] Detecting Operator Condition of zen operator v1.4.2 in ${csNS} namespace..."
+    msg "-----------------------------------------------------------------------"
+
+    if oc get operatorcondition -n ${csNS} 2>/dev/null | grep ibm-zen-operator ; then
+        list=$(oc get operatorcondition -o custom-columns=operatorcondition:.metadata.name --no-headers -n ${csNS} | grep ibm-zen-operator 2>/dev/null)
+        for name in ${list};do
+            if [ ! -z "${name}" ] && [[ "${name}" =~ ibm-zen-operator.v1.4.2 ]]; then
+                oc delete operatorcondition ${name} -n ${csNS} || true
+            fi
+        done
+    fi
+}
+
+function zenopr_check() {
+    local csNS=$1
+    local subName=$2
+
+    currentChannel=$(oc get sub -n ${csNS} | grep ${subName} | awk '{print $4}')
+    STEP=$((STEP + 1 ))
+    msg ""
+    title "[${STEP}] Waiting for IBM Zen Operator upgrading to latest version in the ${currentChannel} channel..."
+    msg "-----------------------------------------------------------------------"
+
+    sleep 60
+    while true; do
+        # check if installedCSV is the same as currentCSV
+        installedCSV=$(oc get subscription.operators.coreos.com ibm-zen-operator -n ${csNS} --ignore-not-found -o jsonpath={.status.installedCSV})
+        currentCSV=$(oc get subscription.operators.coreos.com ibm-zen-operator -n ${csNS} --ignore-not-found -o jsonpath={.status.currentCSV})
+
+        if [[ -z $installedCSV || -z $currentCSV ]]; then
+            error "fail to get installed or current CSV, abort the upgrade procedure. Please check ibm-zen-operator subscription status."
+        fi
+        if [[ $installedCSV != $currentCSV ]]; then
+            approval_mode=$(oc get subscription.operators.coreos.com ibm-zen-operator -n ${csNS} --ignore-not-found -o jsonpath={.spec.installPlanApproval})
+            if [[ $approval_mode == "Manual" ]]; then
+                error "ibm-zen-operator subscription is set to Manual Approval mode, please approve installPlan to upgrade Zen operator."
+            fi
+            warning "ibm-zen-operator subscription is set to Automatic Approval mode, waiting for the upgrade from ${installedCSV} to ${currentCSV}..."
+            sleep 5
+        else
+            success "${installedCSV} is now the latest available version in ${currentChannel} channel."
+            break
+        fi
+    done
+
+    index=0
+    while true; do
+        # check Zen operator CSV status
+        csv_status=$(oc get csv ${currentCSV} -n ${csNS} -o jsonpath={.status.phase})
+        if [[ $csv_status == "Succeeded" ]]; then
+            success "${currentCSV} phase is ${csv_status}."
+            break
+        fi
+        sleep 10
+        # wait 10 mins
+        index=$(( index + 1 ))
+        if [[ $index -eq 60 ]]; then
+            error "${currentCSV} phase is ${csv_status}, abort the upgrade procedure. Please check ${currentCSV} CSV status."
+        fi
+    done
+}
+
+function single_zensvc() {
+    local ns=$1
+    local cr=$2
+
+    msg "Checking ZenService ${cr} status in ${ns}..."
+
+    index=0
+    while true; do
+        zenProgress=$(oc get zenservice ${cr} -n ${ns} -ojsonpath={.status.Progress})
+        zenMSG=$(oc get zenservice ${cr} -n ${ns} -ojsonpath={.status.ProgressMessage})
+        zenStatus=$(oc get zenservice ${cr} -n ${ns} -ojsonpath={.status.zenStatus})
+        if [[ "$zenStatus" == "Completed" ]]; then
+            success "ZenService CR ${cr} progress is ${zenProgress}."
+            success "ZenService CR ${cr} message: ${zenMSG}."
+            success "ZenService CR ${cr} status is ${zenStatus}."
+            msg "-----------------------------------------------------------------------"
+            break
+        fi
+
+        msg "Waiting for ZenService CR ready..."
+        sleep 20
+        # wait an hour
+        index=$(( index + 1 ))
+        if [[ $index -eq 180 ]]; then
+            warning "ZenService CR ${cr} progress is ${zenProgress}."
+            warning "ZenService CR ${cr} message: ${zenMSG}."
+            warning "ZenService CR ${cr} status is ${zenStatus}."
+            error "Fail to upgrade ZenService ${cr}, time out and abort the upgrade procedure."
+        fi
+    done
+}
+
+function zensvc_check() {
+    local csNS=$1
+    local cloudpaksNS=$2
+    local allNamespace=$3
+
+    STEP=$((STEP + 1 ))
+    msg ""
+    title "[${STEP}] Checking ZenService in every namespace..."
+    msg "-----------------------------------------------------------------------"
+
+    if [[ "${allNamespace}" == "true" ]]; then
+        while read -r ns zencr; do
+            single_zensvc  "${ns}" "${zencr}" 
+        done < <(oc get zenservice --all-namespaces --ignore-not-found --no-headers | awk '{print $1" "$2}')
+    else
+        if [[ "$cloudpaksNS" != "$csNS" ]]; then
+            while read -r zencr; do
+                single_zensvc  "${cloudpaksNS}" "${zencr}" 
+            done < <(oc get zenservice -n ${cloudpaksNS} --ignore-not-found --no-headers | awk '{print $1}')  
+        fi
+        while read -r zencr; do
+            single_zensvc  "${csNS}" "${zencr}" 
+        done < <(oc get zenservice -n ${csNS} --ignore-not-found --no-headers | awk '{print $1}')       
+    fi
+    success "All ZenService CRs have been upgraded to latest version."
 }
 
 function switch_channel_operator() {
@@ -268,27 +396,6 @@ function deployment_check(){
     fi
 }
 
-function pre-zen(){
-    local csNS=$1
-
-    STEP=$((STEP + 1 ))
-    msg ""
-    title "[${STEP}] Detecting Operator Condition of zen operator v1.4.2 in ${csNS} namespace..."
-    msg "-----------------------------------------------------------------------"
-
-    if oc get operatorcondition -n ${csNS} 2>/dev/null | grep ibm-zen-operator ; then
-        msg "Removing Operator Condition of zen operator v1.4.2..."
-        list=$(oc get operatorcondition -o custom-columns=operatorcondition:.metadata.name --no-headers -n ${csNS} | grep ibm-zen-operator 2>/dev/null)
-        for name in ${list};do
-            if [ ! -z "${name}" ] && [[ "${name}" =~ ibm-zen-operator.v1.4.2 ]]; then
-                oc delete operatorcondition ${name} -n ${csNS} || true
-            fi
-        done
-    else
-        msg "Operator Condition in namespace ${csNS} not found, skipping..."
-    fi
-}
-
 function switch_channel() {
     local subName=$1
     local csNS=$2
@@ -378,7 +485,7 @@ function info() {
 }
 
 function warning() {
-  msg "\33[33m[✗] ${1}\33[0m"
+    msg "\33[33m[✗] ${1}\33[0m"
 }
 
 # --- Run ---
