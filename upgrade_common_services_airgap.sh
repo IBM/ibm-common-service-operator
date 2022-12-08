@@ -135,7 +135,7 @@ function main() {
     deployment_check "${subName}" "${CS_NAMESPACE}" "${DESTINATION_CHANNEL}"
     pre-zen "${CS_NAMESPACE}"
     switch_channel "${subName}" "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPACE}" "${DESTINATION_CHANNEL}" "${ALL_NAMESPACE}"
-    check_switch_complete "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPAVE}" "${DESTINATION_CHANNEL}" "${ALL_NAMESPACE}"
+    check_switch_complete "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPACE}" "${DESTINATION_CHANNEL}" "${ALL_NAMESPACE}"
 
 }
 
@@ -203,10 +203,10 @@ EOF
     done < <(oc get sub -n ${namespace} --ignore-not-found | grep ${subName} | awk '{print $1}')
 }
 
-# This function checks the current version of the installed bedrock instance automatically
+# This function checks the current version of the installed foundational services instance automatically
 # so that the user doesn't have to do so manually. If the current version on-cluster 
 # is already higher than the desired one the user indicates, the script will indicate this
-# to the user and abort the script since bedrock is already above the desired version. 
+# to the user and abort the script since foundational services is already above the desired version. 
 function compare_channel() {
     local subName=$1
     local namespace=$2
@@ -432,28 +432,6 @@ function check_switch_complete() {
     done
 
     success "Updated all Common Service components' subscriptions successfully."
-}
-
-function delete_operator() {
-    subs=$1
-    ns=$2
-    for sub in ${subs}; do
-        exist=$(oc get sub ${sub} -n ${ns} --ignore-not-found)
-        if [[ "X${exist}" != "X" ]]; then
-            msg "Deleting ${sub} in namespace ${ns}, it will be re-installed after the upgrade is successful..."
-            csv=$(oc get sub ${sub} -n ${ns} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
-            in_step=1
-            msg "[${in_step}] Removing the subscription of ${sub} in namespace ${ns}..."
-            oc delete sub ${sub} -n ${ns} --ignore-not-found
-            in_step=$((in_step + 1))
-            msg "[${in_step}] Removing the csv of ${sub} in namespace ${ns}..."
-            [[ "X${csv}" != "X" ]] && oc delete csv ${csv}  -n ${ns} --ignore-not-found
-            msg ""
-
-            success "Remove $sub successfully."
-            msg ""
-        fi
-    done
 }
 
 function msg() {
