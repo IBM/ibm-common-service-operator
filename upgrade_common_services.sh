@@ -178,6 +178,13 @@ function zenopr_check() {
     title "[${STEP}] Waiting for IBM Zen Operator upgrading to latest version in the ${currentChannel} channel..."
     msg "-----------------------------------------------------------------------"
 
+    # check if zen operator is installed or not
+    sub=$(oc get subscription.operators.coreos.com ibm-zen-operator --ignore-not-found)
+    if [[ "X${sub}" == "X" ]]; then
+        msg "ibm-zen-operator in namespace ${csNS} not found, skipping..."
+        return 0
+    fi
+
     sleep 60
     while true; do
         # check if installedCSV is the same as currentCSV
