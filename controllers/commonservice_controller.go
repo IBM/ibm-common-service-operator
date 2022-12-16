@@ -350,7 +350,7 @@ func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		// 	})).
 		Watches(
 			&source.Kind{Type: &olmv1alpha1.Subscription{}},
-			handler.EnqueueRequestsFromMapFunc(r.mappingToCsRequest()),
+			handler.EnqueueRequestsFromMapFunc(r.certSubToCsRequest()),
 			builder.WithPredicates(predicate.Funcs{
 				CreateFunc: func(e event.CreateEvent) bool {
 					return true
