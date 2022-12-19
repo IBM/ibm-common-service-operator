@@ -7,7 +7,7 @@ metadata:
     containerImage: icr.io/cpopen/common-service-operator:latest
     createdAt: "2020-10-19T21:38:33Z"
     description: The IBM Common Service Operator is used to deploy IBM Common Services
-    nss.operator.ibm.com/managed-operators: cloud-native-postgresql
+    nss.operator.ibm.com/managed-operators: cloud-native-postgresql, ibm-bts-operator
     olm.skipRange: ""
     operatorChannel: v3
     operatorVersion: 3.19.7
