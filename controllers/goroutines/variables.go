@@ -23,8 +23,8 @@ var (
 	SecretShareKind            = "SecretShare"
 	SecretShareCppName         = "ibm-cpp-config"
 
-	IAMSaaSDeployNames = []string{"ibm-iam-operator", "auth-idp", "auth-pap", "auth-pdp"}
-	IAMDeployNames     = []string{"ibm-iam-operator", "auth-idp", "auth-pap", "auth-pdp", "secret-watcher"}
+	IAMSaaSDeployNames = []string{"ibm-iam-operator", "platform-auth-service", "auth-pap", "auth-pdp"}
+	IAMDeployNames     = []string{"ibm-iam-operator", "platform-auth-service", "auth-pap", "auth-pdp", "secret-watcher"}
 	IAMJobNames        = []string{"iam-onboarding", "security-onboarding", "oidc-client-registration"}
 
 	NSSKinds    = []string{"NamespaceScope"}
