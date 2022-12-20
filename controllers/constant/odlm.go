@@ -30,7 +30,8 @@ spec:
     spec:
       IBMLicensing:
         datasource: datacollector
-      operandBindInfo: {}
+      operandBindInfo:
+        registryNamespace: {{ .MasterNs }}
   - name: ibm-mongodb-operator
     spec:
       mongoDB: {}
