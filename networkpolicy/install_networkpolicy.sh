@@ -92,6 +92,7 @@ function print_usage() {
     echo "   -n, --namespace string       IBM Common Services namespace. Default is same namespace as IBM Common Services"
     echo "   -z, --zen-namespace string   Zen namespace. Default is same namespace as IBM Common Services"
     echo "   -u, --uninstall              Uninstall IBM Common Services Network Policies"
+    echo "   -e, --egress                 Deploy egress NetworkPolicies"
     echo "   -h, --help                   Print usage information"
     echo ""
 }
@@ -111,6 +112,10 @@ function parse_arguments() {
         -u | --uninstall)
             shift
             UNINSTALL=true
+            ;;
+        -e | --egress)
+            shift
+            EGRESS=true
             ;;
         -h | --help)
             print_usage
@@ -189,6 +194,10 @@ function install_networkpolicy() {
     info "Using IBM Common Services namespace: ${CS_NAMESPACE}"
     info "Using Zen namespace: ${ZEN_NAMESPACE}"
 
+    if [[ ${EGRESS} == "true" ]]; then
+        BASE_DIR="${BASE_DIR}/egress"
+    fi
+    
     for policyfile in `ls -1 ${BASE_DIR}/*.yaml`; do
         info "Installing `basename ${policyfile}` ..."
         cat ${policyfile} | sed -e "s/csNamespace/${CS_NAMESPACE}/g" | sed -e "s/zenNamespace/${ZEN_NAMESPACE}/g" | oc apply -f -
