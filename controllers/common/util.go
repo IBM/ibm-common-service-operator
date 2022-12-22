@@ -235,6 +235,15 @@ func GetWatchNamespace() string {
 	return ns
 }
 
+// GetNSSCMSynchronization returns whether NSS ConfigMap shchronization with OperatorGroup is enabled
+func GetNSSCMSynchronization() bool {
+	isEnable, found := os.LookupEnv("NSSCM_SYNC_MODE")
+	if !found || isEnable == "true" {
+		return true
+	}
+	return false
+}
+
 // Contains returns whether the sub-string is contained
 func Contains(list []string, s string) bool {
 	for _, v := range list {
