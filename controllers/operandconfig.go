@@ -382,8 +382,12 @@ func checkCRFromOperandConfig(serviceStatus map[string]interface{}, operatorName
 
 func (r *CommonServiceReconciler) getExtremeizes(ctx context.Context, opconServices, ruleSlice []interface{}, extreme Extreme) ([]interface{}, error) {
 	// Fetch all the CommonService instances
-	csList := util.NewUnstructuredList("operator.ibm.com", "CommonService", "v3")
-	if err := r.Client.List(ctx, csList); err != nil {
+	csObjectList := &apiv3.CommonServiceList{}
+	if err := r.Client.List(ctx, csObjectList); err != nil {
+		return []interface{}{}, err
+	}
+	csList, err := util.ObjectListToNewUnstructuredList(csObjectList)
+	if err != nil {
 		return []interface{}{}, err
 	}
 	var configSummary []interface{}

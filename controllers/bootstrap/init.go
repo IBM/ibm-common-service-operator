@@ -1058,8 +1058,12 @@ func CheckClusterType(mgr manager.Manager, ns string) (bool, error) {
 
 func (b *Bootstrap) DeployCertManagerCR() error {
 	klog.V(2).Info("Fetch all the CommonService instances")
-	csList := util.NewUnstructuredList("operator.ibm.com", "CommonService", "v3")
-	if err := b.Client.List(ctx, csList); err != nil {
+	csObjectList := &apiv3.CommonServiceList{}
+	if err := b.Client.List(ctx, csObjectList); err != nil {
+		return err
+	}
+	csList, err := util.ObjectListToNewUnstructuredList(csObjectList)
+	if err != nil {
 		return err
 	}
 	deployRootCert := true

@@ -49,16 +49,6 @@ rules:
   - get
   - list
   - watch
-- apiGroups:
-  - operator.ibm.com
-  resources:
-    - commonservices
-    - commonservices/status
-  verbs:
-    - get
-    - list
-    - watch
-    - update
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role

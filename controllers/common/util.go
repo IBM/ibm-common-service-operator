@@ -35,6 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/runtime/serializer/streaming"
@@ -177,6 +178,16 @@ func NewUnstructuredList(group, kind, version string) *unstructured.Unstructured
 		Kind:    kind,
 		Version: version})
 	return ul
+}
+
+func ObjectListToNewUnstructuredList(objs interface{}) (*unstructured.UnstructuredList, error) {
+	contents, err := runtime.DefaultUnstructuredConverter.ToUnstructured(objs)
+	if err != nil {
+		return nil, fmt.Errorf("could not convert Object to Unstructured resource: %v", err)
+	}
+	newUnstrList := &unstructured.UnstructuredList{}
+	newUnstrList.SetUnstructuredContent(contents)
+	return newUnstrList, nil
 }
 
 // GetOperatorName return the operator name
