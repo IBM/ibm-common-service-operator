@@ -46,6 +46,10 @@ type CommonServiceSpec struct {
 	StorageClass        string               `json:"storageClass,omitempty"`
 	BYOCACertificate    bool                 `json:"BYOCACertificate,omitempty"`
 	ProfileController   string               `json:"profileController,omitempty"`
+	ServicesNamespace   string               `json:"servicesNamespace,omitempty"`
+	OperatorNamespace   string               `json:"operatorNamespace,omitempty"`
+	CatalogName         string               `json:"catalogName,omitempty"`
+	CatalogNamespace    string               `json:"catalogNamespace,omitempty"`
 
 	// +optional
 	License LicenseList `json:"license"`
@@ -95,11 +99,42 @@ type BedrockOperator struct {
 	Troubleshooting    string `json:"troubleshooting,omitempty"`
 }
 
+type ServicesNamespace string
+
+type OperatorNamespace string
+
+type CatalogName string
+
+type CatalogNamespace string
+
+type ConfigStatus struct {
+	ServicesPlane ServicesPlane `json:"servicesPlane,omitempty"`
+	OperatorPlane OperatorPlane `json:"operatorPlane,omitempty"`
+	CatalogPlane  CatalogPlane  `json:"catalogPlane,omitempty"`
+}
+
+type ServicesPlane struct {
+	ServicesNamespace  ServicesNamespace            `json:"servicesNamespace,omitempty"`
+	NonDefaultCRstatus map[string]ServicesNamespace `json:"nonDefaultCRstatus,omitempty"`
+}
+
+type OperatorPlane struct {
+	OperatorNamespace  OperatorNamespace            `json:"operatorNamespace,omitempty"`
+	NonDefaultCRstatus map[string]OperatorNamespace `json:"nonDefaultCRstatus,omitempty"`
+}
+
+type CatalogPlane struct {
+	CatalogName        CatalogName       `json:"catalogName,omitempty"`
+	CatalogNamespace   CatalogNamespace  `json:"catalogNamespace,omitempty"`
+	NonDefaultCRstatus map[string]string `json:"nonDefaultCRstatus,omitempty"`
+}
+
 // CommonServiceStatus defines the observed state of CommonService
 type CommonServiceStatus struct {
 	Phase            string            `json:"phase,omitempty"`
 	BedrockOperators []BedrockOperator `json:"bedrockOperators,omitempty"`
 	OverallStatus    string            `json:"overallStatus,omitempty"`
+	ConfigStatus     ConfigStatus      `json:"configStatus,omitempty"`
 }
 
 // +kubebuilder:object:root=true
