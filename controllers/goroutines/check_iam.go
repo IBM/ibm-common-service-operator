@@ -36,7 +36,7 @@ import (
 
 // CheckIamStatus check IAM status if ready
 func CheckIamStatus(bs *bootstrap.Bootstrap) {
-	MasterNamespace = bs.CSData.MasterNs
+	MasterNamespace = bs.CSData.CPFSNs
 
 	for {
 		if !getIamSubscription(bs.Reader) {
@@ -128,7 +128,7 @@ func createUpdateConfigmap(bs *bootstrap.Bootstrap, status string) error {
 		klog.Info("IAM status is NotReady, waiting some minutes...")
 	}
 
-	nssNsSlice := util.GetNssCmNs(bs.Reader, bs.CSData.MasterNs)
+	nssNsSlice := util.GetNssCmNs(bs.Reader, bs.CSData.CPFSNs)
 	err := bs.Reader.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: cmNs}, cm)
 	if err != nil {
 		// create the iam-status configMap
@@ -221,7 +221,7 @@ func cleanUpConfigmap(bs *bootstrap.Bootstrap) error {
 			return err
 		}
 	} else {
-		nsMems, err := util.GetCsScope(cmOfMapCs, bs.CSData.MasterNs)
+		nsMems, err := util.GetCsScope(cmOfMapCs, bs.CSData.CPFSNs)
 		if err != nil {
 			return err
 		}

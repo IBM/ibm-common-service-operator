@@ -158,6 +158,8 @@ spec:
                         additionalProperties:
                           type: string
                         type: object
+                      operatorDeployed:
+                        type: boolean
                       operatorNamespace:
                         type: string
                     type: object
@@ -167,6 +169,8 @@ spec:
                         additionalProperties:
                           type: string
                         type: object
+                      servicesDeployed:
+                        type: boolean
                       servicesNamespace:
                         type: string
                     type: object

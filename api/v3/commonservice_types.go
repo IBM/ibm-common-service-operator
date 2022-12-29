@@ -115,11 +115,13 @@ type ConfigStatus struct {
 
 type ServicesPlane struct {
 	ServicesNamespace  ServicesNamespace            `json:"servicesNamespace,omitempty"`
+	ServicesDeployed   bool                         `json:"servicesDeployed,omitempty"`
 	NonDefaultCRstatus map[string]ServicesNamespace `json:"nonDefaultCRstatus,omitempty"`
 }
 
 type OperatorPlane struct {
 	OperatorNamespace  OperatorNamespace            `json:"operatorNamespace,omitempty"`
+	OperatorDeployed   bool                         `json:"operatorDeployed,omitempty"`
 	NonDefaultCRstatus map[string]OperatorNamespace `json:"nonDefaultCRstatus,omitempty"`
 }
 

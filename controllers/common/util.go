@@ -46,6 +46,7 @@ import (
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	nssv1 "github.com/IBM/ibm-namespace-scope-operator/api/v1"
 )
@@ -222,6 +223,48 @@ func GetOperatorNamespace() (string, error) {
 	return ns, nil
 }
 
+// GetCPFSNamespace returns the namespace where foundational services operator should be running
+func GetCPFSNamespace(r client.Reader) (cpfsNamespace string) {
+	ns, err := GetOperatorNamespace()
+	if err != nil {
+		return
+	} else {
+		cpfsNamespace = ns
+	}
+
+	defaultCsCR := &apiv3.CommonService{}
+	csName := "common-service"
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: csName, Namespace: ns}, defaultCsCR); err != nil {
+		return
+	}
+
+	if string(defaultCsCR.Status.ConfigStatus.OperatorPlane.OperatorNamespace) != "" {
+		cpfsNamespace = string(defaultCsCR.Status.ConfigStatus.OperatorPlane.OperatorNamespace)
+	}
+	return
+}
+
+// GetServiceNamespace returns the namespace where foundational services CRs should be running
+func GetServiceNamespace(r client.Reader) (cpfsNamespace string) {
+	ns, err := GetOperatorNamespace()
+	if err != nil {
+		return
+	} else {
+		cpfsNamespace = ns
+	}
+
+	defaultCsCR := &apiv3.CommonService{}
+	csName := "common-service"
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: csName, Namespace: ns}, defaultCsCR); err != nil {
+		return
+	}
+
+	if string(defaultCsCR.Status.ConfigStatus.ServicesPlane.ServicesNamespace) != "" {
+		cpfsNamespace = string(defaultCsCR.Status.ConfigStatus.ServicesPlane.ServicesNamespace)
+	}
+	return
+}
+
 // GetWatchNamespace returns the Namespace of the operator
 func GetWatchNamespace() string {
 	ns, found := os.LookupEnv("WATCH_NAMESPACE")
@@ -310,22 +353,10 @@ func CheckStorageClass(r client.Reader) error {
 	return nil
 }
 
-// GetMasterNs gets MasterNamespaces of deploying Common Services
-func GetMasterNs(r client.Reader) (masterNs string) {
-
-	operatorNs, err := GetOperatorNamespace()
-	if err != nil {
-		klog.Errorf("Getting operator namespace failed: %v", err)
-		return
-	}
-	masterNs = operatorNs
-	return
-}
-
 // UpdateNSList updates adopter namespaces of Common Services
-func UpdateNSList(r client.Reader, c client.Client, cm *corev1.ConfigMap, nssKey, masterNs string, addControlNs bool) error {
+func UpdateNSList(r client.Reader, c client.Client, cm *corev1.ConfigMap, nssKey, cpfsNamespace string, addControlNs bool) error {
 	nsScope := &nssv1.NamespaceScope{}
-	nsScopeKey := types.NamespacedName{Name: nssKey, Namespace: masterNs}
+	nsScopeKey := types.NamespacedName{Name: nssKey, Namespace: cpfsNamespace}
 	if err := r.Get(context.TODO(), nsScopeKey, nsScope); err != nil {
 		return err
 	}
@@ -353,7 +384,7 @@ func UpdateNSList(r client.Reader, c client.Client, cm *corev1.ConfigMap, nssKey
 	}
 
 	for _, nsMapping := range cmData.NsMappingList {
-		if masterNs == nsMapping.CsNs {
+		if cpfsNamespace == nsMapping.CsNs {
 			for _, ns := range nsMapping.RequestNs {
 				nsSet[ns] = struct{}{}
 			}
@@ -548,7 +579,7 @@ func ValidateCsMaps(cm *corev1.ConfigMap) error {
 }
 
 // GetCsScope fetchs the namespaces from its own requested-from-namespace and map-to-common-service-namespace
-func GetCsScope(cm *corev1.ConfigMap, masterNs string) ([]string, error) {
+func GetCsScope(cm *corev1.ConfigMap, cpfsNamespace string) ([]string, error) {
 	var nsMems []string
 	nsSet := make(map[string]interface{})
 
@@ -563,8 +594,8 @@ func GetCsScope(cm *corev1.ConfigMap, masterNs string) ([]string, error) {
 	}
 
 	for _, nsMapping := range cmData.NsMappingList {
-		if masterNs == nsMapping.CsNs {
-			nsSet[masterNs] = struct{}{}
+		if cpfsNamespace == nsMapping.CsNs {
+			nsSet[cpfsNamespace] = struct{}{}
 			for _, ns := range nsMapping.RequestNs {
 				nsSet[ns] = struct{}{}
 			}
@@ -625,12 +656,12 @@ func GetRequestNs(r client.Reader) (requestNs []string) {
 }
 
 // GetNssCmNs gets namespaces from namespace-scope ConfigMap
-func GetNssCmNs(r client.Reader, masterNs string) (nssCmNs []string) {
-	nssConfigMap := GetCmOfNss(r, masterNs)
+func GetNssCmNs(r client.Reader, cpfsNamespace string) (nssCmNs []string) {
+	nssConfigMap := GetCmOfNss(r, cpfsNamespace)
 
 	nssNsMems, ok := nssConfigMap.Data["namespaces"]
 	if !ok {
-		klog.Infof("There is no namespace in configmap %v/%v", masterNs, constant.NamespaceScopeConfigmapName)
+		klog.Infof("There is no namespace in configmap %v/%v", cpfsNamespace, constant.NamespaceScopeConfigmapName)
 		return
 	}
 	nssCmNs = strings.Split(nssNsMems, ",")

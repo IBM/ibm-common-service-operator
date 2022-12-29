@@ -21,7 +21,7 @@ apiVersion: operator.ibm.com/v1alpha1
 kind: OperandConfig
 metadata:
   name: common-service
-  namespace: {{ .MasterNs }}
+  namespace: {{ .ServiceNs }}
   annotations:
     version: {{ .Version }}
 spec:
@@ -35,8 +35,6 @@ spec:
     spec:
       mongoDB: {}
       operandRequest: {}
-  - name: ibm-cert-manager-operator
-    spec: {}
   - name: ibm-iam-operator
     spec:
       authentication:
@@ -277,7 +275,7 @@ spec:
       - apiVersion: ibmcpcs.ibm.com/v1
         kind: SecretShare
         name: redhat-marketplace-operator
-        namespace: {{ .MasterNs }}
+        namespace: {{ .CPFSNs }}
         data:
           spec:
             configmapshares:
@@ -291,14 +289,14 @@ apiVersion: operator.ibm.com/v1alpha1
 kind: OperandRegistry
 metadata:
   name: common-service
-  namespace: {{ .MasterNs }}
+  namespace: {{ .ServiceNs }}
   annotations:
     version: {{ .Version }}
     excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
 spec:
   operators:
   - name: ibm-licensing-operator
-    namespace: {{ .ControlNs }}
+    namespace: {{ .CPFSNs }}
     channel: v3.23
     packageName: ibm-licensing-operator-app
     scope: public
@@ -306,14 +304,14 @@ spec:
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-mongodb-operator
-    namespace: {{ .MasterNs }}
+    namespace: {{ .CPFSNs }}
     channel: v3.23
     packageName: ibm-mongodb-operator-app
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-cert-manager-operator
-    namespace: {{ .ControlNs }}
+    namespace: {{ .CPFSNs }}
     channel: v3.23
     packageName: ibm-cert-manager-operator
     scope: public
@@ -321,7 +319,7 @@ spec:
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-iam-operator
-    namespace: {{ .MasterNs }}
+    namespace: {{ .CPFSNs }}
     channel: v4.0
     packageName: ibm-iam-operator
     scope: public
@@ -329,7 +327,7 @@ spec:
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-healthcheck-operator
-    namespace: {{ .MasterNs }}
+    namespace: {{ .CPFSNs }}
     channel: v3.23
     packageName: ibm-healthcheck-operator-app
     scope: public
@@ -337,7 +335,7 @@ spec:
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-commonui-operator
-    namespace: {{ .MasterNs }}
+    namespace: {{ .CPFSNs }}
     channel: v4.0
     packageName: ibm-commonui-operator-app
     scope: public
@@ -345,7 +343,7 @@ spec:
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-management-ingress-operator
-    namespace: {{ .MasterNs }}
+    namespace: {{ .CPFSNs }}
     channel: v3.23
     packageName: ibm-management-ingress-operator-app
     scope: public
@@ -353,7 +351,7 @@ spec:
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-ingress-nginx-operator
-    namespace: {{ .MasterNs }}
+    namespace: {{ .CPFSNs }}
     channel: v3.23
     packageName: ibm-ingress-nginx-operator-app
     scope: public
@@ -361,7 +359,7 @@ spec:
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-auditlogging-operator
-    namespace: {{ .MasterNs }}
+    namespace: {{ .CPFSNs }}
     channel: v3.23
     packageName: ibm-auditlogging-operator-app
     scope: public
@@ -369,7 +367,7 @@ spec:
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-platform-api-operator
-    namespace: {{ .MasterNs }}
+    namespace: {{ .CPFSNs }}
     channel: v3.23
     packageName: ibm-platform-api-operator-app
     scope: public
@@ -378,7 +376,7 @@ spec:
     sourceNamespace: {{ .CatalogSourceNs }}
   - channel: v3.23
     name: ibm-monitoring-grafana-operator
-    namespace: {{ .MasterNs }}
+    namespace: {{ .CPFSNs }}
     packageName: ibm-monitoring-grafana-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -386,7 +384,7 @@ spec:
     sourceNamespace: {{ .CatalogSourceNs }}
   - channel: v3
     name: ibm-events-operator
-    namespace: {{ .MasterNs }}
+    namespace: {{ .CPFSNs }}
     packageName: ibm-events-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -402,7 +400,7 @@ spec:
     sourceNamespace: {{ .CatalogSourceNs }}
   - channel: v3.23
     name: ibm-zen-operator
-    namespace: {{ .MasterNs }}
+    namespace: {{ .CPFSNs }}
     packageName: ibm-zen-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -410,43 +408,43 @@ spec:
     sourceNamespace: {{ .CatalogSourceNs }}
   - channel: v2.2
     name: ibm-db2u-operator
-    namespace: {{ .MasterNs }}
+    namespace: {{ .CPFSNs }}
     packageName: db2u-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
   - channel: stable
     name: cloud-native-postgresql
-    namespace: {{ .MasterNs }}
+    namespace: {{ .CPFSNs }}
     packageName: cloud-native-postgresql
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
   - channel: alpha
     name: ibm-user-data-services-operator
-    namespace: {{ .MasterNs }}
+    namespace: {{ .CPFSNs }}
     packageName: ibm-user-data-services-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
   - channel: v3.23
     name: ibm-zen-cpp-operator
-    namespace: {{ .MasterNs }}
+    namespace: {{ .CPFSNs }}
     packageName: zen-cpp-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
   - channel: v3
     name: ibm-bts-operator
-    namespace: {{ .MasterNs }}
+    namespace: {{ .CPFSNs }}
     packageName: ibm-bts-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
   - channel: v1.3
     name: ibm-automation-flink
-    namespace: {{ .MasterNs }}
+    namespace: {{ .CPFSNs }}
     packageName: ibm-automation-flink
     scope: public
     installPlanApproval: {{ .ApprovalMode}}
   - channel: v1.3
     name: ibm-automation-elastic
-    namespace: {{ .MasterNs }}
+    namespace: {{ .CPFSNs }}
     packageName: ibm-automation-elastic
     scope: public
     installPlanApproval: {{ .ApprovalMode}}
@@ -457,7 +455,7 @@ apiVersion: operator.ibm.com/v1alpha1
 kind: OperandConfig
 metadata:
   name: common-service
-  namespace: {{ .MasterNs }}
+  namespace: {{ .ServiceNs }}
   annotations:
     version: {{ .Version }}
 spec:
@@ -473,8 +471,6 @@ spec:
     spec:
       mongoDB: {}
       operandRequest: {}
-  - name: ibm-cert-manager-operator
-    spec: {}
   - name: ibm-iam-operator
     spec:
       authentication:
@@ -592,7 +588,7 @@ spec:
       - apiVersion: ibmcpcs.ibm.com/v1
         kind: SecretShare
         name: redhat-marketplace-operator
-        namespace: {{ .MasterNs }}
+        namespace: {{ .CPFSNs }}
         data:
           spec:
             configmapshares:
@@ -606,14 +602,14 @@ apiVersion: operator.ibm.com/v1alpha1
 kind: OperandRegistry
 metadata:
   name: common-service
-  namespace: {{ .MasterNs }}
+  namespace: {{ .ServiceNs }}
   annotations:
     version: {{ .Version }}
     excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
 spec:
   operators:
   - name: ibm-licensing-operator
-    namespace: {{ .ControlNs }}
+    namespace: {{ .CPFSNs }}
     channel: v3.23
     packageName: ibm-licensing-operator-app
     scope: public
@@ -621,14 +617,14 @@ spec:
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-mongodb-operator
-    namespace: {{ .MasterNs }}
+    namespace: {{ .CPFSNs }}
     channel: v3.23
     packageName: ibm-mongodb-operator-app
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-cert-manager-operator
-    namespace: {{ .ControlNs }}
+    namespace: {{ .CPFSNs }}
     channel: v3.23
     packageName: ibm-cert-manager-operator
     scope: public
@@ -636,7 +632,7 @@ spec:
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-iam-operator
-    namespace: {{ .MasterNs }}
+    namespace: {{ .CPFSNs }}
     channel: v4.0
     packageName: ibm-iam-operator
     scope: public
@@ -644,7 +640,7 @@ spec:
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-management-ingress-operator
-    namespace: {{ .MasterNs }}
+    namespace: {{ .CPFSNs }}
     channel: v3.23
     packageName: ibm-management-ingress-operator-app
     scope: public
@@ -652,7 +648,7 @@ spec:
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-ingress-nginx-operator
-    namespace: {{ .MasterNs }}
+    namespace: {{ .CPFSNs }}
     channel: v3.23
     packageName: ibm-ingress-nginx-operator-app
     scope: public
@@ -661,7 +657,7 @@ spec:
     sourceNamespace: {{ .CatalogSourceNs }}
   - channel: v3
     name: ibm-events-operator
-    namespace: {{ .MasterNs }}
+    namespace: {{ .CPFSNs }}
     packageName: ibm-events-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -669,7 +665,7 @@ spec:
     sourceNamespace: {{ .CatalogSourceNs }}
   - channel: v3.23
     name: ibm-zen-operator
-    namespace: {{ .MasterNs }}
+    namespace: {{ .CPFSNs }}
     packageName: ibm-zen-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -677,56 +673,20 @@ spec:
     sourceNamespace: {{ .CatalogSourceNs }}
   - channel: v3
     name: ibm-bts-operator
-    namespace: {{ .MasterNs }}
+    namespace: {{ .CPFSNs }}
     packageName: ibm-bts-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
   - channel: v1.3
     name: ibm-automation-flink
-    namespace: {{ .MasterNs }}
+    namespace: {{ .CPFSNs }}
     packageName: ibm-automation-flink
     scope: public
     installPlanApproval: {{ .ApprovalMode}}
   - channel: v1.3
     name: ibm-automation-elastic
-    namespace: {{ .MasterNs }}
+    namespace: {{ .CPFSNs }}
     packageName: ibm-automation-elastic
     scope: public
     installPlanApproval: {{ .ApprovalMode}}
-`
-
-const ODLMClusterSubscription = `
-apiVersion: operators.coreos.com/v1alpha1
-kind: Subscription
-metadata:
-  name: operand-deployment-lifecycle-manager-app
-  namespace: {{ .MasterNs }}
-spec:
-  channel: {{ .Channel }}
-  installPlanApproval: {{ .ApprovalMode }}
-  name: ibm-odlm
-  source: {{ .CatalogSourceName }}
-  sourceNamespace: {{ .CatalogSourceNs }}
-`
-
-const ODLMNamespacedSubscription = `
-apiVersion: operators.coreos.com/v1alpha1
-kind: Subscription
-metadata:
-  name: operand-deployment-lifecycle-manager-app
-  namespace: {{ .MasterNs }}
-spec:
-  channel: {{ .Channel }}
-  installPlanApproval: {{ .ApprovalMode }}
-  name: ibm-odlm
-  source: {{ .CatalogSourceName }}
-  sourceNamespace: {{ .CatalogSourceNs }}
-  config:
-    env:
-    - name: INSTALL_SCOPE
-      value: namespaced
-    - name: ISOLATED_MODE
-      value: "{{ .IsolatedModeEnable }}"
-    - name: OPERATORCHECKER_MODE
-      value: "true"
 `

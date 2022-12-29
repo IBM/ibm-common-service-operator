@@ -82,8 +82,9 @@ type Bootstrap struct {
 type CSData struct {
 	Channel            string
 	Version            string
-	MasterNs           string
-	ControlNs          string
+	CPFSNs             string
+	ServiceNs          string
+	OperatorNs         string
 	CatalogSourceName  string
 	CatalogSourceNs    string
 	IsolatedModeEnable string
@@ -127,12 +128,12 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		{"Webhook Operator", constant.WebhookCRD, constant.WebhookRBAC, constant.WebhookCR, csWebhookDeployment, constant.WebhookKind, constant.WebhookAPIVersion},
 		{"Secretshare Operator", constant.SecretshareCRD, constant.SecretshareRBAC, constant.SecretshareCR, csSecretShareDeployment, constant.SecretshareKind, constant.SecretshareAPIVersion},
 	}
-	masterNs := util.GetMasterNs(mgr.GetAPIReader())
+	cpfsNs := util.GetCPFSNamespace(mgr.GetAPIReader())
 	operatorNs, err := util.GetOperatorNamespace()
 	if err != nil {
 		return
 	}
-	isOCP, err := isOCP(mgr, masterNs)
+	isOCP, err := isOCP(mgr, cpfsNs)
 	if err != nil {
 		return
 	}
@@ -152,8 +153,9 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		return
 	}
 	csData := CSData{
-		MasterNs:          masterNs,
-		ControlNs:         util.GetControlNs(mgr.GetAPIReader()),
+		CPFSNs:            cpfsNs,
+		ServiceNs:         util.GetServiceNamespace(mgr.GetAPIReader()),
+		OperatorNs:        operatorNs,
 		CatalogSourceName: catalogSourceName,
 		CatalogSourceNs:   catalogSourceNs,
 		ApprovalMode:      approvalMode,
@@ -172,10 +174,6 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		MultiInstancesEnable: util.CheckMultiInstances(mgr.GetAPIReader()),
 		CSOperators:          csOperators,
 		CSData:               csData,
-	}
-
-	if !bs.MultiInstancesEnable {
-		bs.CSData.ControlNs = bs.CSData.MasterNs
 	}
 
 	// Get all the resources from the deployment annotations
@@ -328,7 +326,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 		}
 	}
 
-	if err := b.waitALLOperatorReady(b.CSData.MasterNs); err != nil {
+	if err := b.waitALLOperatorReady(b.CSData.CPFSNs); err != nil {
 		return err
 	}
 
@@ -367,17 +365,9 @@ func (b *Bootstrap) CreateNamespace(name string) error {
 	return nil
 }
 
-func (b *Bootstrap) CreateCsSubscription() error {
-	// Get all the resources from the deployment annotations
-	if err := b.renderTemplate(constant.CSSubscription, b.CSData); err != nil {
-		return err
-	}
-	return nil
-}
-
 func (b *Bootstrap) CheckCsSubscription() error {
-	subs, err := b.ListSubscriptions(ctx, b.CSData.MasterNs, client.ListOptions{Namespace: b.CSData.MasterNs, LabelSelector: labels.SelectorFromSet(map[string]string{
-		"operators.coreos.com/ibm-common-service-operator." + b.CSData.MasterNs: "",
+	subs, err := b.ListSubscriptions(ctx, b.CSData.OperatorNs, client.ListOptions{Namespace: b.CSData.OperatorNs, LabelSelector: labels.SelectorFromSet(map[string]string{
+		"operators.coreos.com/ibm-common-service-operator." + b.CSData.OperatorNs: "",
 	})})
 
 	if err != nil {
@@ -398,11 +388,11 @@ func (b *Bootstrap) CheckCsSubscription() error {
 func (b *Bootstrap) CreateCsCR() error {
 	cs := util.NewUnstructured("operator.ibm.com", "CommonService", "v3")
 	cs.SetName("common-service")
-	cs.SetNamespace(b.CSData.MasterNs)
+	cs.SetNamespace(b.CSData.OperatorNs)
 	_, err := b.GetObject(cs)
 	if errors.IsNotFound(err) { // Only if it's a fresh install
 		// Fresh Intall: No ODLM and NO CR
-		return b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsCR, placeholder, b.CSData.MasterNs)))
+		return b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsCR, placeholder, b.CSData.OperatorNs)))
 	} else if err != nil {
 		return err
 	}
@@ -662,45 +652,10 @@ func (b *Bootstrap) ResourceExists(dc discovery.DiscoveryInterface, apiGroupVers
 // CreateNsScopeConfigmap creates nss configmap for operators
 func (b *Bootstrap) CreateNsScopeConfigmap() error {
 	cmRes := constant.NamespaceScopeConfigMap
-	if err := b.renderTemplate(cmRes, b.CSData, false); err != nil {
+	if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cmRes, placeholder, b.CSData.CPFSNs))); err != nil {
 		return err
 	}
 	return nil
-}
-
-// CompareChannel function sets up the CompareVersion function for When multi instance is enabled.
-// When multi instance is enabled, the crossplane operator will be a singleton service deployed in the control ns.
-// We do not want to overwrite a later version of crossplane operator with an earlier version, this is what CompareChannel checks for.
-func (b *Bootstrap) CompareChannel(objectTemplate string, alwaysUpdate ...bool) (bool, error) {
-	objects, err := b.GetObjs(objectTemplate, b.CSData)
-	if err != nil {
-		return true, err
-	}
-
-	obj := objects[0]
-
-	_, err = b.GetObject(obj)
-	if errors.IsNotFound(err) {
-		klog.Infof("Creating resource with name: %s, namespace: %s\n", obj.GetName(), obj.GetNamespace())
-		return false, nil
-	} else if err != nil {
-		return true, err
-	}
-	sub, err := b.GetSubscription(ctx, obj.GetName(), b.CSData.ControlNs) //doesn't actually return the subscription, returns an unstructured.Unstructured object
-	if errors.IsNotFound(err) {
-		klog.Errorf("Failed to get an existing subscription for %s/%s. Creating new subscription.", b.CSData.ControlNs, obj.GetName())
-		return false, nil
-	} else if err != nil {
-		klog.Errorf("Failed to get an existing subscription for %s/%s because %s", b.CSData.ControlNs, obj.GetName(), err)
-		return true, err
-	}
-	subVersion := fmt.Sprintf("%v", sub.Object["spec"].(map[string]interface{})["channel"])
-	subVersionStr := subVersion[1:]
-	channelStr := b.CSData.Channel[1:]
-	isLater, convertErr := util.CompareVersion(subVersionStr, channelStr)
-	//Return of "false" will mean that the operator will be installed as normal/updated to the new version
-	//Return of "true" means that the existing crossplane operator is at a later version than the cs operator is attempting to install so we leave the existing untouched.
-	return isLater, convertErr
 }
 
 func (b *Bootstrap) deleteSubscription(name, namespace string) error {
@@ -899,7 +854,7 @@ func (b *Bootstrap) UpdateCsOpApproval() error {
 	if operatorNs == constant.ClusterOperatorNamespace {
 		commonserviceNS = constant.ClusterOperatorNamespace
 	} else {
-		commonserviceNS = b.CSData.MasterNs
+		commonserviceNS = b.CSData.OperatorNs
 	}
 
 	subList := &olmv1alpha1.SubscriptionList{}
@@ -914,11 +869,11 @@ func (b *Bootstrap) UpdateCsOpApproval() error {
 	}
 
 	if len(subList.Items) == 0 {
-		return fmt.Errorf("not found ibm-common-service-operator subscription in namespace: %v or %v", b.CSData.MasterNs, constant.ClusterOperatorNamespace)
+		return fmt.Errorf("not found ibm-common-service-operator subscription in namespace: %v or %v", b.CSData.OperatorNs, constant.ClusterOperatorNamespace)
 	}
 
 	if len(subList.Items) > 1 {
-		return fmt.Errorf("found more than one ibm-common-service-operator subscription in namespace: %v or %v, skip this", b.CSData.MasterNs, constant.ClusterOperatorNamespace)
+		return fmt.Errorf("found more than one ibm-common-service-operator subscription in namespace: %v or %v, skip this", b.CSData.OperatorNs, constant.ClusterOperatorNamespace)
 	}
 
 	for _, sub := range subList.Items {
@@ -950,7 +905,7 @@ func (b *Bootstrap) updateApprovalMode() error {
 	opreg := &odlm.OperandRegistry{}
 	opregKey := types.NamespacedName{
 		Name:      "common-service",
-		Namespace: b.CSData.MasterNs,
+		Namespace: b.CSData.ServiceNs,
 	}
 
 	err := b.Reader.Get(ctx, opregKey, opreg)
@@ -1000,7 +955,7 @@ func (b *Bootstrap) WaitResourceReady(apiGroupVersion string, kind string) error
 // deployResource deploys the given resource CR
 func (b *Bootstrap) DeployResource(cr, placeholder string) bool {
 	if err := utilwait.PollImmediateInfinite(time.Second*10, func() (done bool, err error) {
-		err = b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.MasterNs)))
+		err = b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.ServiceNs)))
 		if err != nil {
 			return false, err
 		}
@@ -1111,19 +1066,19 @@ func (b *Bootstrap) DeployCertManagerCR() error {
 	}
 
 	for _, resource := range resourceList {
-		if err := b.Cleanup(b.CSData.MasterNs, resource); err != nil {
+		if err := b.Cleanup(b.CSData.ServiceNs, resource); err != nil {
 			return err
 		}
 	}
 
 	for _, cr := range constant.CertManagerIssuers {
-		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.MasterNs))); err != nil {
+		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.ServiceNs))); err != nil {
 			return err
 		}
 	}
 	if deployRootCert {
 		for _, cr := range constant.CertManagerCerts {
-			if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.MasterNs))); err != nil {
+			if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.ServiceNs))); err != nil {
 				return err
 			}
 		}

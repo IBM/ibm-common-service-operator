@@ -182,7 +182,7 @@ var deprecatedServicesMap = map[string][]*bootstrap.Resource{
 // CleanUpDeprecatedServices will clean up deprecated services' CRD, operandBindInfo, operandRequest, subscription, CSV
 func CleanUpDeprecatedServices(bs *bootstrap.Bootstrap) {
 	for {
-		opreg := bs.GetOperandRegistry(ctx, "common-service", bs.CSData.MasterNs)
+		opreg := bs.GetOperandRegistry(ctx, "common-service", bs.CSData.CPFSNs)
 		if opreg != nil {
 			if opreg.GetAnnotations() != nil && opreg.GetAnnotations()["version"] == bs.CSData.Version {
 				for service, resourcesList := range deprecatedServicesMap {
