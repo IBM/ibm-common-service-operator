@@ -1091,14 +1091,14 @@ func (b *Bootstrap) CheckDeployStatus(ctx context.Context) (operatorDeployed boo
 	opreg, err := b.GetOperandRegistry(ctx, "common-service", b.CSData.ServicesNs)
 	if err != nil {
 		return true, true, err
-	} else if opreg != nil && opreg.Status.Phase == odlm.RegistryPhase(odlm.RegistryRunning) {
+	} else if opreg != nil && opreg.Status.Phase == odlm.RegistryRunning {
 		operatorDeployed = true
 	}
 
 	opconfig, err := b.GetOperandConfig(ctx, "common-service", b.CSData.ServicesNs)
 	if err != nil {
 		return true, true, err
-	} else if opreg != nil && opconfig.Status.Phase == odlm.ServicePhase(odlm.ServiceRunning) {
+	} else if opreg != nil && opconfig.Status.Phase == odlm.ServiceRunning {
 		servicesDeployed = true
 	}
 	return
@@ -1114,13 +1114,13 @@ func (b *Bootstrap) ConfigODLMOperandManagedByOperator(ctx context.Context) erro
 	opregList := b.ListOperandRegistry(ctx, opts...)
 	if opregList != nil {
 		for _, opreg := range opregList.Items {
-			if opreg.Namespace != b.CSData.ServicesNs && opreg.Status.Phase == odlm.RegistryPhase(odlm.RegistryReady) {
+			if opreg.Namespace != b.CSData.ServicesNs && opreg.Status.Phase == odlm.RegistryReady {
 				if err := b.Client.Delete(ctx, &opreg); err != nil {
 					klog.Errorf("Failed to delete idle OperandRegistry %s/%s which is managed by CS operator, but not in ServicesNamespace %s", opreg.GetNamespace(), opreg.GetName(), b.CSData.ServicesNs)
 					return err
 				}
 				klog.Infof("Delete idle OperandRegistry %s/%s which is managed by CS operator, but not in ServicesNamespace %s", opreg.GetNamespace(), opreg.GetName(), b.CSData.ServicesNs)
-			} else if opreg.Namespace != b.CSData.ServicesNs && opreg.Status.Phase != odlm.RegistryPhase(odlm.RegistryReady) {
+			} else if opreg.Namespace != b.CSData.ServicesNs && opreg.Status.Phase != odlm.RegistryReady {
 				klog.Warningf("Skipped deleting OperandRegistry %s/%s, its status is %s", opreg.GetNamespace(), opreg.GetName(), opreg.Status.Phase)
 				return fmt.Errorf("please configure the correct ServicesNamespace or uninstall the existing foundational services to configure the correct OperandRegistry")
 			}
@@ -1130,13 +1130,13 @@ func (b *Bootstrap) ConfigODLMOperandManagedByOperator(ctx context.Context) erro
 	opconfigList := b.ListOperandConfig(ctx, opts...)
 	if opconfigList != nil {
 		for _, opconfig := range opconfigList.Items {
-			if opconfig.Namespace != b.CSData.ServicesNs && opconfig.Status.Phase == odlm.ServicePhase(odlm.ServiceInit) {
+			if opconfig.Namespace != b.CSData.ServicesNs && opconfig.Status.Phase == odlm.ServiceInit {
 				if err := b.Client.Delete(ctx, &opconfig); err != nil {
 					klog.Errorf("Failed to delete idle OperandConfig %s/%s which is managed by CS operator, but not in ServicesNamespace %s", opconfig.GetNamespace(), opconfig.GetName(), b.CSData.ServicesNs)
 					return err
 				}
 				klog.Infof("Delete idle OperandConfig %s/%s which is managed by CS operator, but not in ServicesNamespace %s", opconfig.GetNamespace(), opconfig.GetName(), b.CSData.ServicesNs)
-			} else if opconfig.Namespace != b.CSData.ServicesNs && opconfig.Status.Phase != odlm.ServicePhase(odlm.ServiceInit) {
+			} else if opconfig.Namespace != b.CSData.ServicesNs && opconfig.Status.Phase != odlm.ServiceInit {
 				klog.Warningf("Skipped deleting OperandConfig %s/%s, its status is %s", opconfig.GetNamespace(), opconfig.GetName(), opconfig.Status.Phase)
 				return fmt.Errorf("please configure the correct ServicesNamespace or uninstall the existing foundational services to configure the correct OperandConfig")
 			}

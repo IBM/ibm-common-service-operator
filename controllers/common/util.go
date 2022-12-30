@@ -225,16 +225,14 @@ func GetOperatorNamespace() (string, error) {
 
 // GetCPFSNamespace returns the namespace where foundational services operator should be running
 func GetCPFSNamespace(r client.Reader) (cpfsNamespace string) {
-	ns, err := GetOperatorNamespace()
+	cpfsNamespace, err := GetOperatorNamespace()
 	if err != nil {
 		return
-	} else {
-		cpfsNamespace = ns
 	}
 
 	defaultCsCR := &apiv3.CommonService{}
 	csName := "common-service"
-	if err := r.Get(context.TODO(), types.NamespacedName{Name: csName, Namespace: ns}, defaultCsCR); err != nil {
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: csName, Namespace: cpfsNamespace}, defaultCsCR); err != nil {
 		return
 	}
 
@@ -245,22 +243,20 @@ func GetCPFSNamespace(r client.Reader) (cpfsNamespace string) {
 }
 
 // GetServicesNamespace returns the namespace where foundational services CRs should be running
-func GetServicesNamespace(r client.Reader) (cpfsNamespace string) {
-	ns, err := GetOperatorNamespace()
+func GetServicesNamespace(r client.Reader) (servicesNamespace string) {
+	servicesNamespace, err := GetOperatorNamespace()
 	if err != nil {
 		return
-	} else {
-		cpfsNamespace = ns
 	}
 
 	defaultCsCR := &apiv3.CommonService{}
 	csName := "common-service"
-	if err := r.Get(context.TODO(), types.NamespacedName{Name: csName, Namespace: ns}, defaultCsCR); err != nil {
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: csName, Namespace: servicesNamespace}, defaultCsCR); err != nil {
 		return
 	}
 
 	if string(defaultCsCR.Status.ConfigStatus.ServicesPlane.ServicesNamespace) != "" {
-		cpfsNamespace = string(defaultCsCR.Status.ConfigStatus.ServicesPlane.ServicesNamespace)
+		servicesNamespace = string(defaultCsCR.Status.ConfigStatus.ServicesPlane.ServicesNamespace)
 	}
 	return
 }
