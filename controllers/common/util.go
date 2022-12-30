@@ -244,8 +244,8 @@ func GetCPFSNamespace(r client.Reader) (cpfsNamespace string) {
 	return
 }
 
-// GetServiceNamespace returns the namespace where foundational services CRs should be running
-func GetServiceNamespace(r client.Reader) (cpfsNamespace string) {
+// GetServicesNamespace returns the namespace where foundational services CRs should be running
+func GetServicesNamespace(r client.Reader) (cpfsNamespace string) {
 	ns, err := GetOperatorNamespace()
 	if err != nil {
 		return
@@ -479,12 +479,7 @@ func CheckSaas(r client.Reader) (enable bool) {
 
 // CheckMultiInstance checks whether it is a MultiInstances including SaaS and on-prem MultiInstances
 func CheckMultiInstances(r client.Reader) (enable bool) {
-	controlNs := GetControlNs(r)
-	operatorNs, err := GetOperatorNamespace()
-	if err != nil {
-		klog.Errorf("Getting operator namespace failed: %v", err)
-	}
-	return len(controlNs) > 0 && operatorNs != constant.ClusterOperatorNamespace
+	return true
 }
 
 // GetControlNs gets control namespace of deploying cluster scope services

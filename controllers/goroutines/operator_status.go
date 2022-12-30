@@ -51,8 +51,8 @@ func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 			continue
 		}
 
-		opreg := bs.GetOperandRegistry(ctx, "common-service", bs.CSData.ServiceNs)
-		if opreg == nil {
+		opreg, err := bs.GetOperandRegistry(ctx, "common-service", bs.CSData.ServicesNs)
+		if err != nil || opreg == nil {
 			klog.Warning("OperandRegistry common-service is not ready, retry in 5 seconds")
 			time.Sleep(5 * time.Second)
 			continue

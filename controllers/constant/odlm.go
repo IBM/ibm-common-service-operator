@@ -21,7 +21,9 @@ apiVersion: operator.ibm.com/v1alpha1
 kind: OperandConfig
 metadata:
   name: common-service
-  namespace: {{ .ServiceNs }}
+  namespace: {{ .ServicesNs }}
+  labels:
+    operator.ibm.com/managedByCsOperator: "true"
   annotations:
     version: {{ .Version }}
 spec:
@@ -289,7 +291,9 @@ apiVersion: operator.ibm.com/v1alpha1
 kind: OperandRegistry
 metadata:
   name: common-service
-  namespace: {{ .ServiceNs }}
+  namespace: {{ .ServicesNs }}
+  labels:
+    operator.ibm.com/managedByCsOperator: "true"
   annotations:
     version: {{ .Version }}
     excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
@@ -455,7 +459,9 @@ apiVersion: operator.ibm.com/v1alpha1
 kind: OperandConfig
 metadata:
   name: common-service
-  namespace: {{ .ServiceNs }}
+  namespace: {{ .ServicesNs }}
+  labels:
+    operator.ibm.com/managedByCsOperator: "true"
   annotations:
     version: {{ .Version }}
 spec:
@@ -602,7 +608,9 @@ apiVersion: operator.ibm.com/v1alpha1
 kind: OperandRegistry
 metadata:
   name: common-service
-  namespace: {{ .ServiceNs }}
+  namespace: {{ .ServicesNs }}
+  labels:
+    operator.ibm.com/managedByCsOperator: "true"
   annotations:
     version: {{ .Version }}
     excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators

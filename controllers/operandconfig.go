@@ -268,7 +268,7 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 	opcon := util.NewUnstructured("operator.ibm.com", "OperandConfig", "v1alpha1")
 	opconKey := types.NamespacedName{
 		Name:      "common-service",
-		Namespace: r.Bootstrap.CSData.ServiceNs,
+		Namespace: r.Bootstrap.CSData.ServicesNs,
 	}
 	if err := r.Reader.Get(ctx, opconKey, opcon); err != nil {
 		klog.Errorf("failed to get OperandConfig %s: %v", opconKey.String(), err)
@@ -453,7 +453,7 @@ func (r *CommonServiceReconciler) handleDelete(ctx context.Context) error {
 	opcon := util.NewUnstructured("operator.ibm.com", "OperandConfig", "v1alpha1")
 	opconKey := types.NamespacedName{
 		Name:      "common-service",
-		Namespace: r.Bootstrap.CSData.ServiceNs,
+		Namespace: r.Bootstrap.CSData.ServicesNs,
 	}
 	if err := r.Reader.Get(ctx, opconKey, opcon); err != nil {
 		klog.Errorf("failed to get OperandConfig %s: %v", opconKey.String(), err)
