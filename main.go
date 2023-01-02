@@ -174,7 +174,9 @@ func main() {
 		klog.Errorf("Unable to create controller CommonService: %v", err)
 		os.Exit(1)
 	}
-	if err = (&operandrequestwebhook.Defaulter{}).SetupWebhookWithManager(mgr); err != nil {
+	if err = (&operandrequestwebhook.Defaulter{
+		Bootstrap: bs,
+	}).SetupWebhookWithManager(mgr); err != nil {
 		klog.Errorf("Unable to create OperandRequest webhook: %v", err)
 		os.Exit(1)
 	}

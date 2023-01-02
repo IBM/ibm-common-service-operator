@@ -29,10 +29,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/api/v1alpha1"
 )
@@ -41,7 +41,7 @@ import (
 
 // OperandRequestDefaulter points to correct RegistryNamespace
 type Defaulter struct {
-	Client  client.Client
+	*bootstrap.Bootstrap
 	decoder *admission.Decoder
 }
 
@@ -79,10 +79,9 @@ func (r *Defaulter) Default(instance *odlm.OperandRequest) {
 		if regNs == "" {
 			regNs = instance.Namespace
 		}
-		watchNamespace := util.GetWatchNamespace()
 		isDefaulting := false
 		// watchNamespace is empty in All namespace mode
-		if len(watchNamespace) == 0 {
+		if len(r.Bootstrap.CSData.WatchNamespaces) == 0 {
 			ctx := context.Background()
 			ns := &corev1.Namespace{}
 			nsKey := types.NamespacedName{
@@ -96,16 +95,12 @@ func (r *Defaulter) Default(instance *odlm.OperandRequest) {
 					klog.Errorf("Failed to get namespace %v: %v", regNs, err)
 				}
 			}
-		} else if len(watchNamespace) != 0 && !util.Contains(strings.Split(watchNamespace, ","), regNs) {
+		} else if len(r.Bootstrap.CSData.WatchNamespaces) != 0 && !util.Contains(strings.Split(r.Bootstrap.CSData.WatchNamespaces, ","), regNs) {
 			isDefaulting = true
 		}
 		if isDefaulting {
-			operatorNamespace, err := util.GetOperatorNamespace()
-			if err != nil {
-				klog.Errorf("Failed to get operator namespace: %v", err)
-			}
-			instance.Spec.Requests[i].RegistryNamespace = operatorNamespace
-			klog.V(2).Infof("Setting %vth RegistryNamespace for OperandRequest %v/%v to %v", i, instance.Namespace, instance.Name, operatorNamespace)
+			instance.Spec.Requests[i].RegistryNamespace = r.Bootstrap.CSData.ServicesNs
+			klog.V(2).Infof("Setting %vth RegistryNamespace for OperandRequest %v/%v to %v", i, instance.Namespace, instance.Name, r.Bootstrap.CSData.ServicesNs)
 		}
 	}
 }
