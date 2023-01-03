@@ -1741,8 +1741,11 @@ func (b *Bootstrap) DeployCertManagerCR() error {
 		}
 		klog.Info("Deploying Cert Manager CRs")
 		for _, kind := range constant.CertManagerKinds {
-			if err := b.waitResourceReady(constant.CertManagerAPIGroupVersion, kind); err != nil {
-				klog.Errorf("Failed to wait for resource ready with kind: %s, apiGroupVersion: %s", kind, constant.CertManagerAPIGroupVersion)
+			if err := b.waitResourceReady(constant.CertManagerAPIGroupVersionV1Alpha1, kind); err != nil {
+				klog.Errorf("Failed to wait for resource ready with kind: %s, apiGroupVersion: %s", kind, constant.CertManagerAPIGroupVersionV1Alpha1)
+			}
+			if err := b.waitResourceReady(constant.CertManagerAPIGroupVersionV1, kind); err != nil {
+				klog.Errorf("Failed to wait for resource ready with kind: %s, apiGroupVersion: %s", kind, constant.CertManagerAPIGroupVersionV1)
 			}
 		}
 		// will use v1 cert instead of v1alpha cert
