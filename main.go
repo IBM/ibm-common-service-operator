@@ -128,7 +128,7 @@ func main() {
 	}
 
 	for {
-		typeCorrect, err := bootstrap.CheckClusterType(mgr, util.GetMasterNs(mgr.GetAPIReader()))
+		typeCorrect, err := bootstrap.CheckClusterType(mgr, util.GetCPFSNamespace(mgr.GetAPIReader()))
 		if err != nil {
 			klog.Errorf("Failed to verify cluster type  %v", err)
 			continue
@@ -149,7 +149,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	klog.Infof("Creating CommonService CR in the namespace %s", bs.CSData.MasterNs)
+	klog.Infof("Creating CommonService CR in the namespace %s", bs.CSData.OperatorNs)
 	if err = bs.CreateCsCR(); err != nil {
 		klog.Errorf("Failed to create CommonService CR: %v", err)
 		os.Exit(1)
@@ -174,7 +174,9 @@ func main() {
 		klog.Errorf("Unable to create controller CommonService: %v", err)
 		os.Exit(1)
 	}
-	if err = (&operandrequestwebhook.Defaulter{}).SetupWebhookWithManager(mgr); err != nil {
+	if err = (&operandrequestwebhook.Defaulter{
+		Bootstrap: bs,
+	}).SetupWebhookWithManager(mgr); err != nil {
 		klog.Errorf("Unable to create OperandRequest webhook: %v", err)
 		os.Exit(1)
 	}

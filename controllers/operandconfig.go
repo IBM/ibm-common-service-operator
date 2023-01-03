@@ -268,7 +268,7 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 	opcon := util.NewUnstructured("operator.ibm.com", "OperandConfig", "v1alpha1")
 	opconKey := types.NamespacedName{
 		Name:      "common-service",
-		Namespace: r.Bootstrap.CSData.MasterNs,
+		Namespace: r.Bootstrap.CSData.ServicesNs,
 	}
 	if err := r.Reader.Get(ctx, opconKey, opcon); err != nil {
 		klog.Errorf("failed to get OperandConfig %s: %v", opconKey.String(), err)
@@ -401,7 +401,7 @@ func (r *CommonServiceReconciler) getExtremeizes(ctx context.Context, opconServi
 		inScope := true
 		cm, err := util.GetCmOfMapCs(r.Reader)
 		if err == nil {
-			csScope, err := util.GetCsScope(cm, r.Bootstrap.CSData.MasterNs)
+			csScope, err := util.GetCsScope(cm, r.Bootstrap.CSData.CPFSNs)
 			if err != nil {
 				return configSummary, err
 			}
@@ -453,7 +453,7 @@ func (r *CommonServiceReconciler) handleDelete(ctx context.Context) error {
 	opcon := util.NewUnstructured("operator.ibm.com", "OperandConfig", "v1alpha1")
 	opconKey := types.NamespacedName{
 		Name:      "common-service",
-		Namespace: r.Bootstrap.CSData.MasterNs,
+		Namespace: r.Bootstrap.CSData.ServicesNs,
 	}
 	if err := r.Reader.Get(ctx, opconKey, opcon); err != nil {
 		klog.Errorf("failed to get OperandConfig %s: %v", opconKey.String(), err)
@@ -525,7 +525,7 @@ func setSpecByName(slice []interface{}, name string, spec interface{}) []interfa
 
 // Check if the request's NamespacedName is the "master" CR
 func (r *CommonServiceReconciler) checkNamespace(key string) bool {
-	return key == r.Bootstrap.CSData.MasterNs+"/common-service"
+	return key == r.Bootstrap.CSData.OperatorNs+"/common-service"
 }
 
 // updatePhase sets the current Phase status.

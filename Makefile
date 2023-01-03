@@ -36,7 +36,7 @@ VCS_REF ?= $(shell git rev-parse HEAD)
 VERSION ?= $(shell git describe --exact-match 2> /dev/null || \
                 git describe --match=$(git rev-parse --short=8 HEAD) --always --dirty --abbrev=8)
 RELEASE_VERSION ?= $(shell cat ./version/version.go | grep "Version =" | awk '{ print $$3}' | tr -d '"')
-PREVIOUS_VERSION := 3.21.0
+PREVIOUS_VERSION := 3.23.0
 LATEST_VERSION ?= latest
 
 LOCAL_OS := $(shell uname)

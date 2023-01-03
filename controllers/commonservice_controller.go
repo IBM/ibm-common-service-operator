@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	// certmanagerv1alpha1 "github.com/ibm/ibm-cert-manager-operator/apis/certmanager/v1alpha1"
 
@@ -87,6 +88,26 @@ func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 }
 
 func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instance *apiv3.CommonService) (ctrl.Result, error) {
+	originalInstance := instance.DeepCopy()
+
+	operatorDeployed, servicesDeployed, err := r.Bootstrap.CheckDeployStatus(ctx)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	instance.UpdateConfigStatus(&r.Bootstrap.CSData, operatorDeployed, servicesDeployed)
+
+	var forceUpdateODLMCRs bool
+	if !reflect.DeepEqual(originalInstance.Status, instance.Status) {
+		r.Bootstrap.CSData.CPFSNs = string(instance.Status.ConfigStatus.OperatorPlane.OperatorNamespace)
+		r.Bootstrap.CSData.ServicesNs = string(instance.Status.ConfigStatus.ServicesPlane.ServicesNamespace)
+		r.Bootstrap.CSData.CatalogSourceName = string(instance.Status.ConfigStatus.CatalogPlane.CatalogName)
+		r.Bootstrap.CSData.CatalogSourceNs = string(instance.Status.ConfigStatus.CatalogPlane.CatalogNamespace)
+		forceUpdateODLMCRs = true
+	}
+
+	if err := r.Client.Status().Patch(ctx, instance, client.MergeFrom(originalInstance)); err != nil {
+		return ctrl.Result{}, fmt.Errorf("error while patching CommonService.Status: %v", err)
+	}
 
 	if instance.Status.Phase == "" {
 		if err := r.updatePhase(ctx, instance, CRInitializing); err != nil {
@@ -101,11 +122,9 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 	}
 
 	// Init common service bootstrap resource
-	// Including namespace-scope configmap, nss operator, nss CR
-	// Webhook Operator and Secretshare
-	// Delete ODLM from openshift-operators and deploy it in the masterNamespaces
+	// Including namespace-scope configmap
 	// Deploy OperandConfig and OperandRegistry
-	if err := r.Bootstrap.InitResources(instance); err != nil {
+	if err := r.Bootstrap.InitResources(instance, forceUpdateODLMCRs); err != nil {
 		klog.Errorf("Failed to initialize resources: %v", err)
 		if err := r.updatePhase(ctx, instance, CRFailed); err != nil {
 			klog.Error(err)
@@ -149,7 +168,7 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 
 	// Create Event if there is no update in OperandConfig after applying current CR
 	if isEqual {
-		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.MasterNs, "common-service", instance.Namespace, instance.Name))
+		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.OperatorNs, "common-service", instance.Namespace, instance.Name))
 	}
 
 	if err := r.updatePhase(ctx, instance, CRSucceeded); err != nil {
@@ -179,7 +198,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(ctx context.Context, instan
 	opcon := util.NewUnstructured("operator.ibm.com", "OperandConfig", "v1alpha1")
 	opconKey := types.NamespacedName{
 		Name:      "common-service",
-		Namespace: r.Bootstrap.CSData.MasterNs,
+		Namespace: r.Bootstrap.CSData.ServicesNs,
 	}
 	if err := r.Reader.Get(ctx, opconKey, opcon); err != nil {
 		klog.Errorf("failed to get OperandConfig %s: %v", opconKey.String(), err)
@@ -226,7 +245,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(ctx context.Context, instan
 
 	// Create Event if there is no update in OperandConfig after applying current CR
 	if isEqual {
-		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.MasterNs, "common-service", instance.Namespace, instance.Name))
+		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.OperatorNs, "common-service", instance.Namespace, instance.Name))
 	}
 
 	if err := r.updatePhase(ctx, instance, CRSucceeded); err != nil {
@@ -244,7 +263,7 @@ func (r *CommonServiceReconciler) mappingToCsRequest() handler.MapFunc {
 		cmName := object.GetName()
 		cmNs := object.GetNamespace()
 		if cmName == constant.CsMapConfigMap && cmNs == "kube-public" {
-			CsInstance = append(CsInstance, reconcile.Request{NamespacedName: types.NamespacedName{Name: "common-service", Namespace: r.Bootstrap.CSData.MasterNs}})
+			CsInstance = append(CsInstance, reconcile.Request{NamespacedName: types.NamespacedName{Name: "common-service", Namespace: r.Bootstrap.CSData.OperatorNs}})
 		}
 		return CsInstance
 	}

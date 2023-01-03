@@ -51,8 +51,8 @@ func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 			continue
 		}
 
-		opreg := bs.GetOperandRegistry(ctx, "common-service", bs.CSData.MasterNs)
-		if opreg == nil {
+		opreg, err := bs.GetOperandRegistry(ctx, "common-service", bs.CSData.ServicesNs)
+		if err != nil || opreg == nil {
 			klog.Warning("OperandRegistry common-service is not ready, retry in 5 seconds")
 			time.Sleep(5 * time.Second)
 			continue
@@ -72,11 +72,7 @@ func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 			var opt apiv3.BedrockOperator
 			var err error
 
-			if bs.MultiInstancesEnable && (name == "ibm-cert-manager-operator" || name == "ibm-licensing-operator") {
-				opt, err = getBedrockOperator(bs, name, bs.CSData.ControlNs, instance)
-			} else {
-				opt, err = getBedrockOperator(bs, name, bs.CSData.MasterNs, instance)
-			}
+			opt, err = getBedrockOperator(bs, name, bs.CSData.CPFSNs, instance)
 
 			if err == nil {
 				operatorSlice = append(operatorSlice, opt)

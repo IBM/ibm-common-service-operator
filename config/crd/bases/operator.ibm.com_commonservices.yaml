@@ -38,6 +38,10 @@ spec:
             properties:
               BYOCACertificate:
                 type: boolean
+              catalogName:
+                type: string
+              catalogNamespace:
+                type: string
               features:
                 description: Features defines the configurations of Cloud Pak Services
                 properties:
@@ -81,6 +85,8 @@ spec:
                 type: object
               manualManagement:
                 type: boolean
+              operatorNamespace:
+                type: string
               profileController:
                 type: string
               routeHost:
@@ -101,6 +107,8 @@ spec:
                   - spec
                   type: object
                 type: array
+              servicesNamespace:
+                type: string
               size:
                 type: string
               storageClass:
@@ -128,6 +136,42 @@ spec:
                       type: string
                   type: object
                 type: array
+              configStatus:
+                properties:
+                  catalogPlane:
+                    properties:
+                      catalogName:
+                        type: string
+                      catalogNamespace:
+                        type: string
+                      nonDefaultCRstatus:
+                        additionalProperties:
+                          type: string
+                        type: object
+                    type: object
+                  operatorPlane:
+                    properties:
+                      nonDefaultCRstatus:
+                        additionalProperties:
+                          type: string
+                        type: object
+                      operatorDeployed:
+                        type: boolean
+                      operatorNamespace:
+                        type: string
+                    type: object
+                  servicesPlane:
+                    properties:
+                      nonDefaultCRstatus:
+                        additionalProperties:
+                          type: string
+                        type: object
+                      servicesDeployed:
+                        type: boolean
+                      servicesNamespace:
+                        type: string
+                    type: object
+                type: object
               overallStatus:
                 type: string
               phase:

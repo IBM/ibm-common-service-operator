@@ -25,6 +25,26 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+type CSData struct {
+	Channel            string
+	Version            string
+	CPFSNs             string
+	ServicesNs         string
+	OperatorNs         string
+	CatalogSourceName  string
+	CatalogSourceNs    string
+	IsolatedModeEnable string
+	ApprovalMode       string
+	OnPremMultiEnable  string
+	CrossplaneProvider string
+	ZenOperatorImage   string
+	ICPPKOperator      string
+	ICPPICOperator     string
+	ICPOperator        string
+	IsOCP              bool
+	WatchNamespaces    string
+}
+
 type ServiceConfig struct {
 	Name               string                          `json:"name"`
 	Spec               map[string]runtime.RawExtension `json:"spec"`
@@ -46,6 +66,10 @@ type CommonServiceSpec struct {
 	StorageClass        string               `json:"storageClass,omitempty"`
 	BYOCACertificate    bool                 `json:"BYOCACertificate,omitempty"`
 	ProfileController   string               `json:"profileController,omitempty"`
+	ServicesNamespace   ServicesNamespace    `json:"servicesNamespace,omitempty"`
+	OperatorNamespace   OperatorNamespace    `json:"operatorNamespace,omitempty"`
+	CatalogName         CatalogName          `json:"catalogName,omitempty"`
+	CatalogNamespace    CatalogNamespace     `json:"catalogNamespace,omitempty"`
 
 	// +optional
 	License LicenseList `json:"license"`
@@ -95,11 +119,44 @@ type BedrockOperator struct {
 	Troubleshooting    string `json:"troubleshooting,omitempty"`
 }
 
+type ServicesNamespace string
+
+type OperatorNamespace string
+
+type CatalogName string
+
+type CatalogNamespace string
+
+type ConfigStatus struct {
+	ServicesPlane ServicesPlane `json:"servicesPlane,omitempty"`
+	OperatorPlane OperatorPlane `json:"operatorPlane,omitempty"`
+	CatalogPlane  CatalogPlane  `json:"catalogPlane,omitempty"`
+}
+
+type ServicesPlane struct {
+	ServicesNamespace  ServicesNamespace            `json:"servicesNamespace,omitempty"`
+	ServicesDeployed   bool                         `json:"servicesDeployed,omitempty"`
+	NonDefaultCRstatus map[string]ServicesNamespace `json:"nonDefaultCRstatus,omitempty"`
+}
+
+type OperatorPlane struct {
+	OperatorNamespace  OperatorNamespace            `json:"operatorNamespace,omitempty"`
+	OperatorDeployed   bool                         `json:"operatorDeployed,omitempty"`
+	NonDefaultCRstatus map[string]OperatorNamespace `json:"nonDefaultCRstatus,omitempty"`
+}
+
+type CatalogPlane struct {
+	CatalogName        CatalogName       `json:"catalogName,omitempty"`
+	CatalogNamespace   CatalogNamespace  `json:"catalogNamespace,omitempty"`
+	NonDefaultCRstatus map[string]string `json:"nonDefaultCRstatus,omitempty"`
+}
+
 // CommonServiceStatus defines the observed state of CommonService
 type CommonServiceStatus struct {
 	Phase            string            `json:"phase,omitempty"`
 	BedrockOperators []BedrockOperator `json:"bedrockOperators,omitempty"`
 	OverallStatus    string            `json:"overallStatus,omitempty"`
+	ConfigStatus     ConfigStatus      `json:"configStatus,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -123,6 +180,35 @@ type CommonServiceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []CommonService `json:"items"`
+}
+
+func (r *CommonService) UpdateConfigStatus(CSData *CSData, operatorDeployed, serviceDeployed bool) {
+	r.Status.ConfigStatus.OperatorPlane.OperatorDeployed = operatorDeployed
+	if r.Spec.OperatorNamespace != "" && !operatorDeployed {
+		r.Status.ConfigStatus.OperatorPlane.OperatorNamespace = r.Spec.OperatorNamespace
+	} else {
+		r.Status.ConfigStatus.OperatorPlane.OperatorNamespace = OperatorNamespace(CSData.CPFSNs)
+	}
+
+	r.Status.ConfigStatus.ServicesPlane.ServicesDeployed = serviceDeployed
+	if r.Spec.ServicesNamespace != "" && !serviceDeployed {
+		r.Status.ConfigStatus.ServicesPlane.ServicesNamespace = r.Spec.ServicesNamespace
+	} else {
+		r.Status.ConfigStatus.ServicesPlane.ServicesNamespace = ServicesNamespace(CSData.ServicesNs)
+	}
+
+	if r.Spec.CatalogName != "" {
+		r.Status.ConfigStatus.CatalogPlane.CatalogName = r.Spec.CatalogName
+	} else {
+		r.Status.ConfigStatus.CatalogPlane.CatalogName = CatalogName(CSData.CatalogSourceName)
+	}
+
+	if r.Spec.CatalogNamespace != "" {
+		r.Status.ConfigStatus.CatalogPlane.CatalogNamespace = r.Spec.CatalogNamespace
+	} else {
+		r.Status.ConfigStatus.CatalogPlane.CatalogNamespace = CatalogNamespace(CSData.CatalogSourceNs)
+	}
+
 }
 
 func init() {

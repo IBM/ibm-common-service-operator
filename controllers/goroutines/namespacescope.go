@@ -39,7 +39,7 @@ func SyncUpNSSConfigMap(bs *bootstrap.Bootstrap) {
 	for {
 		//get ConfigMap of namespace-scope
 		nssConfigMap := &corev1.ConfigMap{}
-		namespaceScopeKey := types.NamespacedName{Name: "namespace-scope", Namespace: bs.CSData.MasterNs}
+		namespaceScopeKey := types.NamespacedName{Name: "namespace-scope", Namespace: bs.CSData.CPFSNs}
 		if err := bs.Reader.Get(ctx, namespaceScopeKey, nssConfigMap); err != nil {
 			if errors.IsNotFound(err) {
 				// Backward compatible upgrade from version 3.4.x and fresh installation in CP 3.0
@@ -56,13 +56,13 @@ func SyncUpNSSConfigMap(bs *bootstrap.Bootstrap) {
 		} else {
 			// get targetNamespace from OperatorGroup
 			existOG := &olmv1.OperatorGroupList{}
-			if err := bs.Reader.List(context.TODO(), existOG, &client.ListOptions{Namespace: bs.CSData.MasterNs}); err != nil {
-				klog.Errorf("Failed to get OperatorGroup in %s namespace: %v, retry in 10 seconds", bs.CSData.MasterNs, err)
+			if err := bs.Reader.List(context.TODO(), existOG, &client.ListOptions{Namespace: bs.CSData.CPFSNs}); err != nil {
+				klog.Errorf("Failed to get OperatorGroup in %s namespace: %v, retry in 10 seconds", bs.CSData.CPFSNs, err)
 				time.Sleep(10 * time.Second)
 				continue
 			}
 			if len(existOG.Items) != 1 {
-				klog.Errorf("The number of OperatorGroup in %s namespace is incorrect, Only one OperatorGroup is allowed in one namespace", bs.CSData.MasterNs)
+				klog.Errorf("The number of OperatorGroup in %s namespace is incorrect, Only one OperatorGroup is allowed in one namespace", bs.CSData.CPFSNs)
 				time.Sleep(10 * time.Second)
 				continue
 			}

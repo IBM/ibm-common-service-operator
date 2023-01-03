@@ -53,7 +53,6 @@ import (
 
 var (
 	placeholder               = "placeholder"
-	CsSubResource             = "csOperatorSubscription"
 	OdlmNamespacedSubResource = "odlmNamespacedSubscription"
 	OdlmClusterSubResource    = "odlmClusterSubscription"
 	RegistryCrResources       = "csV3OperandRegistry"
@@ -77,25 +76,7 @@ type Bootstrap struct {
 	SaasEnable           bool
 	MultiInstancesEnable bool
 	CSOperators          []CSOperator
-	CSData               CSData
-}
-type CSData struct {
-	Channel            string
-	Version            string
-	MasterNs           string
-	ControlNs          string
-	CatalogSourceName  string
-	CatalogSourceNs    string
-	IsolatedModeEnable string
-	ApprovalMode       string
-	OnPremMultiEnable  string
-	CrossplaneProvider string
-	ZenOperatorImage   string
-	ICPPKOperator      string
-	ICPPICOperator     string
-	ICPOperator        string
-	IsOCP              bool
-	WatchNamespaces    string
+	CSData               apiv3.CSData
 }
 
 type CSOperator struct {
@@ -118,30 +99,16 @@ type Resource struct {
 
 // NewBootstrap is the way to create a NewBootstrap struct
 func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
-	csWebhookDeployment := constant.CsWebhookOperator
-	csSecretShareDeployment := constant.CsSecretshareOperator
-	if _, err := util.GetCmOfMapCs(mgr.GetAPIReader()); err == nil {
-		csWebhookDeployment = constant.CsWebhookOperatorEnableOpreqWebhook
-	}
-	var csOperators = []CSOperator{
-		{"Webhook Operator", constant.WebhookCRD, constant.WebhookRBAC, constant.WebhookCR, csWebhookDeployment, constant.WebhookKind, constant.WebhookAPIVersion},
-		{"Secretshare Operator", constant.SecretshareCRD, constant.SecretshareRBAC, constant.SecretshareCR, csSecretShareDeployment, constant.SecretshareKind, constant.SecretshareAPIVersion},
-	}
-	masterNs := util.GetMasterNs(mgr.GetAPIReader())
+	cpfsNs := util.GetCPFSNamespace(mgr.GetAPIReader())
 	operatorNs, err := util.GetOperatorNamespace()
 	if err != nil {
 		return
 	}
-	isOCP, err := isOCP(mgr, masterNs)
+	isOCP, err := isOCP(mgr, cpfsNs)
 	if err != nil {
 		return
 	}
 
-	if !isOCP {
-		csOperators = []CSOperator{
-			{"Secretshare Operator", constant.SecretshareCRD, constant.SecretshareRBAC, constant.SecretshareCR, csSecretShareDeployment, constant.SecretshareKind, constant.SecretshareAPIVersion},
-		}
-	}
 	catalogSourceName, catalogSourceNs := util.GetCatalogSource(constant.IBMCSPackage, operatorNs, mgr.GetAPIReader())
 	if catalogSourceName == "" || catalogSourceNs == "" {
 		err = fmt.Errorf("failed to get catalogsource")
@@ -151,9 +118,10 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 	if err != nil {
 		return
 	}
-	csData := CSData{
-		MasterNs:          masterNs,
-		ControlNs:         util.GetControlNs(mgr.GetAPIReader()),
+	csData := apiv3.CSData{
+		CPFSNs:            cpfsNs,
+		ServicesNs:        util.GetServicesNamespace(mgr.GetAPIReader()),
+		OperatorNs:        operatorNs,
 		CatalogSourceName: catalogSourceName,
 		CatalogSourceNs:   catalogSourceNs,
 		ApprovalMode:      approvalMode,
@@ -170,12 +138,7 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		Manager:              deploy.NewDeployManager(mgr),
 		SaasEnable:           util.CheckSaas(mgr.GetAPIReader()),
 		MultiInstancesEnable: util.CheckMultiInstances(mgr.GetAPIReader()),
-		CSOperators:          csOperators,
 		CSData:               csData,
-	}
-
-	if !bs.MultiInstancesEnable {
-		bs.CSData.ControlNs = bs.CSData.MasterNs
 	}
 
 	// Get all the resources from the deployment annotations
@@ -210,7 +173,7 @@ func isOCP(mgr manager.Manager, ns string) (bool, error) {
 }
 
 // InitResources initialize resources at the bootstrap of operator
-func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
+func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLMCRs bool) error {
 	installPlanApproval := instance.Spec.InstallPlanApproval
 
 	if installPlanApproval != "" {
@@ -220,11 +183,6 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 		b.CSData.ApprovalMode = string(installPlanApproval)
 	}
 
-	operatorNs, err := util.GetOperatorNamespace()
-	if err != nil {
-		klog.Errorf("Getting operator namespace failed: %v", err)
-		return err
-	}
 	// Check storageClass
 	if err := util.CheckStorageClass(b.Reader); err != nil {
 		return err
@@ -245,7 +203,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 	}
 
 	// Clean up deprecated resource
-	if err := b.Cleanup(operatorNs, commonuiBindInfo); err != nil {
+	if err := b.Cleanup(b.CSData.OperatorNs, commonuiBindInfo); err != nil {
 		return err
 	}
 
@@ -257,91 +215,75 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService) error {
 		return err
 	}
 
+	klog.Info("Checking OperandRegistry and OperandConfig deployment status")
+	if err := b.ConfigODLMOperandManagedByOperator(ctx); err != nil {
+		return err
+	}
+
 	klog.Info("Installing/Updating OperandRegistry")
 	if installPlanApproval != "" || b.CSData.ApprovalMode == string(olmv1alpha1.ApprovalManual) {
 		if err := b.updateApprovalMode(); err != nil {
 			return err
 		}
 	}
+
+	var obj []*unstructured.Unstructured
+	var err error
 	if b.SaasEnable {
 		// OperandRegistry for SaaS deployment
-		obj, err := b.GetObjs(constant.CSV3SaasOperandRegistry, b.CSData)
-		if err != nil {
-			return err
-		}
-		objInCluster, err := b.GetObject(obj[0])
-		if errors.IsNotFound(err) {
-			klog.Infof("Creating resource with name: %s, namespace: %s, kind: %s, apiversion: %s\n", obj[0].GetName(), obj[0].GetNamespace(), obj[0].GetKind(), obj[0].GetAPIVersion())
-			if err := b.CreateObject(obj[0]); err != nil {
-				return err
-			}
-		} else if err != nil {
-			return err
-		} else {
-			klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s\n", obj[0].GetName(), obj[0].GetNamespace(), obj[0].GetKind(), obj[0].GetAPIVersion())
-			resourceVersion := objInCluster.GetResourceVersion()
-			obj[0].SetResourceVersion(resourceVersion)
-			v1IsLarger, convertErr := util.CompareVersion(obj[0].GetAnnotations()["version"], objInCluster.GetAnnotations()["version"])
-			if convertErr != nil {
-				return convertErr
-			}
-			if v1IsLarger {
-				if err := b.UpdateObject(obj[0]); err != nil {
-					return err
-				}
-			}
-		}
+		obj, err = b.GetObjs(constant.CSV3SaasOperandRegistry, b.CSData)
 	} else {
 		// OperandRegistry for on-prem deployment
-		obj, err := b.GetObjs(constant.CSV3OperandRegistry, b.CSData)
-		if err != nil {
+		obj, err = b.GetObjs(constant.CSV3OperandRegistry, b.CSData)
+	}
+	if err != nil {
+		klog.Error(err)
+		return err
+	}
+
+	objInCluster, err := b.GetObject(obj[0])
+	if errors.IsNotFound(err) {
+		klog.Infof("Creating resource with name: %s, namespace: %s, kind: %s, apiversion: %s\n", obj[0].GetName(), obj[0].GetNamespace(), obj[0].GetKind(), obj[0].GetAPIVersion())
+		if err := b.CreateObject(obj[0]); err != nil {
 			klog.Error(err)
 			return err
+
 		}
-		objInCluster, err := b.GetObject(obj[0])
-		if errors.IsNotFound(err) {
-			klog.Infof("Creating resource with name: %s, namespace: %s, kind: %s, apiversion: %s\n", obj[0].GetName(), obj[0].GetNamespace(), obj[0].GetKind(), obj[0].GetAPIVersion())
-			if err := b.CreateObject(obj[0]); err != nil {
+	} else if err != nil {
+		klog.Error(err)
+
+		return err
+	} else {
+		klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s\n", obj[0].GetName(), obj[0].GetNamespace(), obj[0].GetKind(), obj[0].GetAPIVersion())
+		resourceVersion := objInCluster.GetResourceVersion()
+		obj[0].SetResourceVersion(resourceVersion)
+		v1IsLarger, convertErr := util.CompareVersion(obj[0].GetAnnotations()["version"], objInCluster.GetAnnotations()["version"])
+		if convertErr != nil {
+			return convertErr
+		}
+		if v1IsLarger || forceUpdateODLMCRs {
+			if err := b.UpdateObject(obj[0]); err != nil {
 				klog.Error(err)
+
 				return err
-
-			}
-		} else if err != nil {
-			klog.Error(err)
-
-			return err
-		} else {
-			klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s\n", obj[0].GetName(), obj[0].GetNamespace(), obj[0].GetKind(), obj[0].GetAPIVersion())
-			resourceVersion := objInCluster.GetResourceVersion()
-			obj[0].SetResourceVersion(resourceVersion)
-			v1IsLarger, convertErr := util.CompareVersion(obj[0].GetAnnotations()["version"], objInCluster.GetAnnotations()["version"])
-			if convertErr != nil {
-				return convertErr
-			}
-			if v1IsLarger {
-				if err := b.UpdateObject(obj[0]); err != nil {
-					klog.Error(err)
-
-					return err
-				}
 			}
 		}
 	}
 
-	if err := b.waitALLOperatorReady(b.CSData.MasterNs); err != nil {
+	if err := b.waitALLOperatorReady(b.CSData.CPFSNs); err != nil {
 		return err
 	}
 
 	klog.Info("Installing/Updating OperandConfig")
 	if b.SaasEnable {
 		// OperandConfig for SaaS deployment
-		if err := b.renderTemplate(constant.CSV3SaasOperandConfig, b.CSData); err != nil {
+		if err := b.renderTemplate(constant.CSV3SaasOperandConfig, b.CSData, forceUpdateODLMCRs); err != nil {
 			return err
 		}
 	} else {
 		// OperandConfig for on-prem deployment
 		b.CSData.OnPremMultiEnable = strconv.FormatBool(b.MultiInstancesEnable)
-		if err := b.renderTemplate(constant.CSV3OperandConfig, b.CSData); err != nil {
+		if err := b.renderTemplate(constant.CSV3OperandConfig, b.CSData, forceUpdateODLMCRs); err != nil {
 			return err
 		}
 	}
@@ -367,17 +309,9 @@ func (b *Bootstrap) CreateNamespace(name string) error {
 	return nil
 }
 
-func (b *Bootstrap) CreateCsSubscription() error {
-	// Get all the resources from the deployment annotations
-	if err := b.renderTemplate(constant.CSSubscription, b.CSData); err != nil {
-		return err
-	}
-	return nil
-}
-
 func (b *Bootstrap) CheckCsSubscription() error {
-	subs, err := b.ListSubscriptions(ctx, b.CSData.MasterNs, client.ListOptions{Namespace: b.CSData.MasterNs, LabelSelector: labels.SelectorFromSet(map[string]string{
-		"operators.coreos.com/ibm-common-service-operator." + b.CSData.MasterNs: "",
+	subs, err := b.ListSubscriptions(ctx, b.CSData.OperatorNs, client.ListOptions{Namespace: b.CSData.OperatorNs, LabelSelector: labels.SelectorFromSet(map[string]string{
+		"operators.coreos.com/ibm-common-service-operator." + b.CSData.OperatorNs: "",
 	})})
 
 	if err != nil {
@@ -398,11 +332,11 @@ func (b *Bootstrap) CheckCsSubscription() error {
 func (b *Bootstrap) CreateCsCR() error {
 	cs := util.NewUnstructured("operator.ibm.com", "CommonService", "v3")
 	cs.SetName("common-service")
-	cs.SetNamespace(b.CSData.MasterNs)
+	cs.SetNamespace(b.CSData.OperatorNs)
 	_, err := b.GetObject(cs)
 	if errors.IsNotFound(err) { // Only if it's a fresh install
 		// Fresh Intall: No ODLM and NO CR
-		return b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsCR, placeholder, b.CSData.MasterNs)))
+		return b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsCR, placeholder, b.CSData.OperatorNs)))
 	} else if err != nil {
 		return err
 	}
@@ -572,7 +506,7 @@ func (b *Bootstrap) ListSubscriptions(ctx context.Context, namespace string, lis
 }
 
 // GetOperandRegistry returns the OperandRegistry instance of "name" from "namespace" namespace
-func (b *Bootstrap) GetOperandRegistry(ctx context.Context, name, namespace string) *odlm.OperandRegistry {
+func (b *Bootstrap) GetOperandRegistry(ctx context.Context, name, namespace string) (*odlm.OperandRegistry, error) {
 	klog.V(2).Infof("Fetch OperandRegistry: %v/%v", namespace, name)
 	opreg := &odlm.OperandRegistry{}
 	opregKey := types.NamespacedName{
@@ -580,12 +514,49 @@ func (b *Bootstrap) GetOperandRegistry(ctx context.Context, name, namespace stri
 		Namespace: namespace,
 	}
 
-	if err := b.Reader.Get(ctx, opregKey, opreg); err != nil {
-		klog.Errorf("failed to get OperandRegistry %s: %v", opregKey.String(), err)
+	if err := b.Reader.Get(ctx, opregKey, opreg); err != nil && !errors.IsNotFound(err) {
+		return nil, err
+	}
+
+	return opreg, nil
+}
+
+// GetOperandConfig returns the OperandConfig instance of "name" from "namespace" namespace
+func (b *Bootstrap) GetOperandConfig(ctx context.Context, name, namespace string) (*odlm.OperandConfig, error) {
+	klog.V(2).Infof("Fetch OperandConfig: %v/%v", namespace, name)
+	opconfig := &odlm.OperandConfig{}
+	opconfigKey := types.NamespacedName{
+		Name:      name,
+		Namespace: namespace,
+	}
+
+	if err := b.Reader.Get(ctx, opconfigKey, opconfig); err != nil && !errors.IsNotFound(err) {
+		return nil, err
+	}
+
+	return opconfig, nil
+}
+
+// ListOperandRegistry returns the OperandRegistry instance with "options"
+func (b *Bootstrap) ListOperandRegistry(ctx context.Context, opts ...client.ListOption) *odlm.OperandRegistryList {
+	opregList := &odlm.OperandRegistryList{}
+	if err := b.Client.List(ctx, opregList, opts...); err != nil {
+		klog.Errorf("failed to List OperandRegistry: %v", err)
 		return nil
 	}
 
-	return opreg
+	return opregList
+}
+
+// ListOperandConfig returns the OperandConfig instance with "options"
+func (b *Bootstrap) ListOperandConfig(ctx context.Context, opts ...client.ListOption) *odlm.OperandConfigList {
+	opconfigList := &odlm.OperandConfigList{}
+	if err := b.Client.List(ctx, opconfigList, opts...); err != nil {
+		klog.Errorf("failed to List OperandConfig: %v", err)
+		return nil
+	}
+
+	return opconfigList
 }
 
 func (b *Bootstrap) CheckOperatorCatalog(ns string) error {
@@ -662,45 +633,10 @@ func (b *Bootstrap) ResourceExists(dc discovery.DiscoveryInterface, apiGroupVers
 // CreateNsScopeConfigmap creates nss configmap for operators
 func (b *Bootstrap) CreateNsScopeConfigmap() error {
 	cmRes := constant.NamespaceScopeConfigMap
-	if err := b.renderTemplate(cmRes, b.CSData, false); err != nil {
+	if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cmRes, placeholder, b.CSData.CPFSNs))); err != nil {
 		return err
 	}
 	return nil
-}
-
-// CompareChannel function sets up the CompareVersion function for When multi instance is enabled.
-// When multi instance is enabled, the crossplane operator will be a singleton service deployed in the control ns.
-// We do not want to overwrite a later version of crossplane operator with an earlier version, this is what CompareChannel checks for.
-func (b *Bootstrap) CompareChannel(objectTemplate string, alwaysUpdate ...bool) (bool, error) {
-	objects, err := b.GetObjs(objectTemplate, b.CSData)
-	if err != nil {
-		return true, err
-	}
-
-	obj := objects[0]
-
-	_, err = b.GetObject(obj)
-	if errors.IsNotFound(err) {
-		klog.Infof("Creating resource with name: %s, namespace: %s\n", obj.GetName(), obj.GetNamespace())
-		return false, nil
-	} else if err != nil {
-		return true, err
-	}
-	sub, err := b.GetSubscription(ctx, obj.GetName(), b.CSData.ControlNs) //doesn't actually return the subscription, returns an unstructured.Unstructured object
-	if errors.IsNotFound(err) {
-		klog.Errorf("Failed to get an existing subscription for %s/%s. Creating new subscription.", b.CSData.ControlNs, obj.GetName())
-		return false, nil
-	} else if err != nil {
-		klog.Errorf("Failed to get an existing subscription for %s/%s because %s", b.CSData.ControlNs, obj.GetName(), err)
-		return true, err
-	}
-	subVersion := fmt.Sprintf("%v", sub.Object["spec"].(map[string]interface{})["channel"])
-	subVersionStr := subVersion[1:]
-	channelStr := b.CSData.Channel[1:]
-	isLater, convertErr := util.CompareVersion(subVersionStr, channelStr)
-	//Return of "false" will mean that the operator will be installed as normal/updated to the new version
-	//Return of "true" means that the existing crossplane operator is at a later version than the cs operator is attempting to install so we leave the existing untouched.
-	return isLater, convertErr
 }
 
 func (b *Bootstrap) deleteSubscription(name, namespace string) error {
@@ -899,7 +835,7 @@ func (b *Bootstrap) UpdateCsOpApproval() error {
 	if operatorNs == constant.ClusterOperatorNamespace {
 		commonserviceNS = constant.ClusterOperatorNamespace
 	} else {
-		commonserviceNS = b.CSData.MasterNs
+		commonserviceNS = b.CSData.OperatorNs
 	}
 
 	subList := &olmv1alpha1.SubscriptionList{}
@@ -914,11 +850,11 @@ func (b *Bootstrap) UpdateCsOpApproval() error {
 	}
 
 	if len(subList.Items) == 0 {
-		return fmt.Errorf("not found ibm-common-service-operator subscription in namespace: %v or %v", b.CSData.MasterNs, constant.ClusterOperatorNamespace)
+		return fmt.Errorf("not found ibm-common-service-operator subscription in namespace: %v or %v", b.CSData.OperatorNs, constant.ClusterOperatorNamespace)
 	}
 
 	if len(subList.Items) > 1 {
-		return fmt.Errorf("found more than one ibm-common-service-operator subscription in namespace: %v or %v, skip this", b.CSData.MasterNs, constant.ClusterOperatorNamespace)
+		return fmt.Errorf("found more than one ibm-common-service-operator subscription in namespace: %v or %v, skip this", b.CSData.OperatorNs, constant.ClusterOperatorNamespace)
 	}
 
 	for _, sub := range subList.Items {
@@ -950,7 +886,7 @@ func (b *Bootstrap) updateApprovalMode() error {
 	opreg := &odlm.OperandRegistry{}
 	opregKey := types.NamespacedName{
 		Name:      "common-service",
-		Namespace: b.CSData.MasterNs,
+		Namespace: b.CSData.ServicesNs,
 	}
 
 	err := b.Reader.Get(ctx, opregKey, opreg)
@@ -1000,7 +936,7 @@ func (b *Bootstrap) WaitResourceReady(apiGroupVersion string, kind string) error
 // deployResource deploys the given resource CR
 func (b *Bootstrap) DeployResource(cr, placeholder string) bool {
 	if err := utilwait.PollImmediateInfinite(time.Second*10, func() (done bool, err error) {
-		err = b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.MasterNs)))
+		err = b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.ServicesNs)))
 		if err != nil {
 			return false, err
 		}
@@ -1111,19 +1047,19 @@ func (b *Bootstrap) DeployCertManagerCR() error {
 	}
 
 	for _, resource := range resourceList {
-		if err := b.Cleanup(b.CSData.MasterNs, resource); err != nil {
+		if err := b.Cleanup(b.CSData.ServicesNs, resource); err != nil {
 			return err
 		}
 	}
 
 	for _, cr := range constant.CertManagerIssuers {
-		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.MasterNs))); err != nil {
+		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.ServicesNs))); err != nil {
 			return err
 		}
 	}
 	if deployRootCert {
 		for _, cr := range constant.CertManagerCerts {
-			if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.MasterNs))); err != nil {
+			if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.ServicesNs))); err != nil {
 				return err
 			}
 		}
@@ -1148,5 +1084,64 @@ func (b *Bootstrap) Cleanup(operatorNs string, resource *Resource) error {
 		return err
 	}
 	klog.Infof("Deleting resource %s/%s", operatorNs, resource.Name)
+	return nil
+}
+
+func (b *Bootstrap) CheckDeployStatus(ctx context.Context) (operatorDeployed bool, servicesDeployed bool, err error) {
+	opreg, err := b.GetOperandRegistry(ctx, "common-service", b.CSData.ServicesNs)
+	if err != nil {
+		return true, true, err
+	} else if opreg != nil && opreg.Status.Phase == odlm.RegistryRunning {
+		operatorDeployed = true
+	}
+
+	opconfig, err := b.GetOperandConfig(ctx, "common-service", b.CSData.ServicesNs)
+	if err != nil {
+		return true, true, err
+	} else if opreg != nil && opconfig.Status.Phase == odlm.ServiceRunning {
+		servicesDeployed = true
+	}
+	return
+}
+
+// ConfigODLMOperandManagedByOperator gets all OperandRegistry and OperandConfig which are managed by CS operator
+// To confirm that the deployment of CRs are in the correct ServicesNamespace
+func (b *Bootstrap) ConfigODLMOperandManagedByOperator(ctx context.Context) error {
+	opts := []client.ListOption{
+		client.MatchingLabels(
+			map[string]string{constant.CsManagedLabel: "true"}),
+	}
+	opregList := b.ListOperandRegistry(ctx, opts...)
+	if opregList != nil {
+		for _, opreg := range opregList.Items {
+			if opreg.Namespace != b.CSData.ServicesNs && opreg.Status.Phase == odlm.RegistryReady {
+				if err := b.Client.Delete(ctx, &opreg); err != nil {
+					klog.Errorf("Failed to delete idle OperandRegistry %s/%s which is managed by CS operator, but not in ServicesNamespace %s", opreg.GetNamespace(), opreg.GetName(), b.CSData.ServicesNs)
+					return err
+				}
+				klog.Infof("Delete idle OperandRegistry %s/%s which is managed by CS operator, but not in ServicesNamespace %s", opreg.GetNamespace(), opreg.GetName(), b.CSData.ServicesNs)
+			} else if opreg.Namespace != b.CSData.ServicesNs && opreg.Status.Phase != odlm.RegistryReady {
+				klog.Warningf("Skipped deleting OperandRegistry %s/%s, its status is %s", opreg.GetNamespace(), opreg.GetName(), opreg.Status.Phase)
+				return fmt.Errorf("please configure the correct ServicesNamespace or uninstall the existing foundational services to configure the correct OperandRegistry")
+			}
+		}
+	}
+
+	opconfigList := b.ListOperandConfig(ctx, opts...)
+	if opconfigList != nil {
+		for _, opconfig := range opconfigList.Items {
+			if opconfig.Namespace != b.CSData.ServicesNs && opconfig.Status.Phase == odlm.ServiceInit {
+				if err := b.Client.Delete(ctx, &opconfig); err != nil {
+					klog.Errorf("Failed to delete idle OperandConfig %s/%s which is managed by CS operator, but not in ServicesNamespace %s", opconfig.GetNamespace(), opconfig.GetName(), b.CSData.ServicesNs)
+					return err
+				}
+				klog.Infof("Delete idle OperandConfig %s/%s which is managed by CS operator, but not in ServicesNamespace %s", opconfig.GetNamespace(), opconfig.GetName(), b.CSData.ServicesNs)
+			} else if opconfig.Namespace != b.CSData.ServicesNs && opconfig.Status.Phase != odlm.ServiceInit {
+				klog.Warningf("Skipped deleting OperandConfig %s/%s, its status is %s", opconfig.GetNamespace(), opconfig.GetName(), opconfig.Status.Phase)
+				return fmt.Errorf("please configure the correct ServicesNamespace or uninstall the existing foundational services to configure the correct OperandConfig")
+			}
+		}
+	}
+
 	return nil
 }
