@@ -21,8 +21,6 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"strings"
-	"sync"
 	"text/template"
 	"time"
 
@@ -35,7 +33,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilwait "k8s.io/apimachinery/pkg/util/wait"
 	discovery "k8s.io/client-go/discovery"
 	"k8s.io/client-go/rest"
@@ -268,10 +265,6 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 				return err
 			}
 		}
-	}
-
-	if err := b.waitALLOperatorReady(b.CSData.CPFSNs); err != nil {
-		return err
 	}
 
 	klog.Info("Installing/Updating OperandConfig")
@@ -675,118 +668,6 @@ func (b *Bootstrap) deleteSubscription(name, namespace string) error {
 	}
 
 	return nil
-}
-
-func (b *Bootstrap) waitOperatorReady(name, namespace string) error {
-	time.Sleep(time.Second * 5)
-	if err := utilwait.PollImmediate(time.Second*10, time.Minute*10, func() (done bool, err error) {
-		klog.Infof("Waiting for Operator %s is ready...", name)
-		key := types.NamespacedName{Name: name, Namespace: namespace}
-		sub := &olmv1alpha1.Subscription{}
-		if err := b.Reader.Get(context.TODO(), key, sub); err != nil {
-			if errors.IsNotFound(err) {
-				klog.V(3).Infof("NotFound subscription %s/%s", namespace, name)
-			} else {
-				klog.Errorf("Failed to get subscription %s/%s", namespace, name)
-			}
-			return false, client.IgnoreNotFound(err)
-		}
-
-		if version, ok := CSOperatorVersions[sub.Name]; ok {
-			if sub.Status.InstalledCSV == "" {
-				return false, nil
-			}
-			csvList := strings.Split(sub.Status.InstalledCSV, ".v")
-			if len(csvList) != 2 {
-				return false, nil
-			}
-			csvVersion := csvList[1]
-			csvVersionSlice := strings.Split(csvVersion, ".")
-			VersionSlice := strings.Split(version, ".")
-			for index := range csvVersionSlice {
-				csvVersion, err := strconv.Atoi(csvVersionSlice[index])
-				if err != nil {
-					return false, err
-				}
-				templateVersion, err := strconv.Atoi(VersionSlice[index])
-				if err != nil {
-					return false, err
-				}
-				if csvVersion > templateVersion {
-					break
-				} else if csvVersion == templateVersion {
-					continue
-				} else {
-					return false, nil
-				}
-			}
-		}
-
-		// check csv
-		csvName := sub.Status.InstalledCSV
-		if csvName != "" {
-			csv := &olmv1alpha1.ClusterServiceVersion{}
-			if err := b.Reader.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: csvName}, csv); errors.IsNotFound(err) {
-				klog.Errorf("Notfound Cluster Service Version: %v", err)
-				return false, nil
-			} else if err != nil {
-				klog.Errorf("Failed to get Cluster Service Version: %v", err)
-				return false, err
-			}
-			if csv.Status.Phase != olmv1alpha1.CSVPhaseSucceeded {
-				return false, nil
-			}
-			if csv.Status.Reason != olmv1alpha1.CSVReasonInstallSuccessful {
-				return false, nil
-			}
-			klog.V(2).Infof("Cluster Service Version %s/%s is ready", csv.Namespace, csv.Name)
-			return true, nil
-		}
-		return false, nil
-	}); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (b *Bootstrap) waitALLOperatorReady(namespace string) error {
-	subList := &olmv1alpha1.SubscriptionList{}
-
-	if err := b.Reader.List(context.TODO(), subList, &client.ListOptions{Namespace: namespace, LabelSelector: labels.SelectorFromSet(map[string]string{
-		"operator.ibm.com/opreq-control": "true",
-	})}); err != nil {
-		return err
-	}
-
-	var (
-		errs []error
-		mu   sync.Mutex
-		wg   sync.WaitGroup
-	)
-
-	for _, sub := range subList.Items {
-		if sub.Name == "ibm-zen-operator" {
-			continue
-		}
-		var (
-			// Copy variables into iteration scope
-			name = sub.Name
-			ns   = sub.Namespace
-		)
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			if err := b.waitOperatorReady(name, ns); err != nil {
-				mu.Lock()
-				defer mu.Unlock()
-				errs = append(errs, err)
-			}
-		}()
-	}
-	wg.Wait()
-
-	return utilerrors.NewAggregate(errs)
-
 }
 
 func (b *Bootstrap) renderTemplate(objectTemplate string, data interface{}, alwaysUpdate ...bool) error {
