@@ -1016,21 +1016,10 @@ func (b *Bootstrap) DeployCertManagerCR() error {
 	}
 	klog.Info("Deploying Cert Manager CRs")
 
-	dc := discovery.NewDiscoveryClientForConfigOrDie(b.Config)
-	v1alpha1Exist := true
-
 	for _, kind := range constant.CertManagerKinds {
 		// wait for v1 crd ready
 		if err := b.waitResourceReady(constant.CertManagerAPIGroupVersionV1, kind); err != nil {
 			klog.Errorf("Failed to wait for resource ready with kind: %s, apiGroupVersion: %s", kind, constant.CertManagerAPIGroupVersionV1)
-		}
-		// check if v1alpha1 crd exist
-		kindExist, err := b.ResourceExists(dc, constant.CertManagerAPIGroupVersionV1Alpha1, kind)
-		if err != nil {
-			klog.Errorf("Failed to check resource with kind: %s, apiGroupVersion: %s", kind, constant.CertManagerAPIGroupVersionV1Alpha1)
-		}
-		if !kindExist {
-			v1alpha1Exist = kindExist
 		}
 	}
 	// will use v1 cert instead of v1alpha cert
@@ -1059,11 +1048,9 @@ func (b *Bootstrap) DeployCertManagerCR() error {
 		},
 	}
 
-	if v1alpha1Exist {
-		for _, resource := range resourceList {
-			if err := b.Cleanup(b.CSData.ServicesNs, resource); err != nil {
-				return err
-			}
+	for _, resource := range resourceList {
+		if err := b.Cleanup(b.CSData.ServicesNs, resource); err != nil {
+			return err
 		}
 	}
 
@@ -1086,6 +1073,17 @@ func (b *Bootstrap) DeployCertManagerCR() error {
 }
 
 func (b *Bootstrap) Cleanup(operatorNs string, resource *Resource) error {
+	// check if crd exist
+	dc := discovery.NewDiscoveryClientForConfigOrDie(b.Config)
+	APIGroupVersion := resource.Group + "/" + resource.Version
+	exist, err := b.ResourceExists(dc, APIGroupVersion, resource.Kind)
+	if err != nil {
+		klog.Errorf("Failed to check resource with kind: %s, apiGroupVersion: %s", resource.Kind, APIGroupVersion)
+	}
+	if !exist {
+		return nil
+	}
+
 	deprecated := &unstructured.Unstructured{}
 	deprecated.SetGroupVersionKind(schema.GroupVersionKind{Group: resource.Group, Version: resource.Version, Kind: resource.Kind})
 	deprecated.SetName(resource.Name)
