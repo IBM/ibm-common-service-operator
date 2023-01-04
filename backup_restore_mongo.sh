@@ -63,11 +63,10 @@ function prep_backup() {
     local scExist=$(${OC} get storageclass backup-sc -o yaml || echo "failed")
 
     if [[ $scExist == "failed" ]]; then
-
         info "Creating Storage Class for backup"
         ${OC} apply -f sc.yaml || error "Error creating StorageClass backup-sc"
     else
-        info "Storage Class backup-sc present from previous attempt. Continuing..."
+        info "Storage Class backup-sc present from previous attempt. Moving on..."
     fi
     
     info "Creating RBAC for backup"
@@ -242,7 +241,6 @@ function cleanup(){
     msg "-----------------------------------------------------------------------"
     
     info "Deleting pvc and pv used in backup restore process"
-    info "ORIGINAL_NAMESPACE=$ORIGINAL_NAMESPACE"
     
     #clean up backup resources
     local return_value=$("${OC}" get pvc -n $ORIGINAL_NAMESPACE | grep cs-mongodump || echo failed)
