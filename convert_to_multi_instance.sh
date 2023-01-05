@@ -62,7 +62,7 @@ function prepare_cluster() {
     controlNs=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data' | grep controlNamespace: | awk '{print $2}')
     return_value=$("${OC}" get ns "${controlNs}" > /dev/null || echo failed)
     if [[ $return_value == "failed" ]]; then
-        error "The namespace specified in controlNamespace does not exist"
+        error "The namespace specified in controlNamespace does not exist. This namespace must be created before proceeding."
     fi
     return_value="reset"
 
@@ -428,7 +428,7 @@ function removeNSS(){
         ${OC} get nss --all-namespaces | grep nss-managedby-odlm | while read -r line; do
             local namespace=$(echo $line | awk '{print $1}')
             info "deleting namespace scope nss-managedby-odlm in namespace $namespace"
-            ${OC} delete nss nss-managedby-odlm -n ${namespace} || error "unable to delete namespace scope nss-managedby-odlm in ${namespace}"
+            ${OC} delete nss nss-managedby-odlm -n ${namespace} || (reset && error "unable to delete namespace scope nss-managedby-odlm in ${namespace}")
         done
     else
         info "Namespace Scope CR \"nss-managedby-odlm\" not present. Moving on..."
@@ -438,13 +438,18 @@ function removeNSS(){
         ${OC} get nss --all-namespaces | grep odlm-scope-managedby-odlm | while read -r line; do
             local namespace=$(echo $line | awk '{print $1}')
             info "deleting namespace scope odlm-scope-managedby-odlm in namespace $namespace"
-            ${OC} delete nss odlm-scope-managedby-odlm -n ${namespace} || error "unable to delete namespace scope odlm-scope-managedby-odlm in ${namespace}"
+            ${OC} delete nss odlm-scope-managedby-odlm -n ${namespace} || (reset && error "unable to delete namespace scope odlm-scope-managedby-odlm in ${namespace}")
         done
     else
         info "Namespace Scope CR \"odlm-scope-managedby-odlm\" not present. Moving on..."
     fi
 
     success "Namespace Scope CRs cleaned up"
+}
+
+function reset() {
+    info "reseting environment"
+    scale_up_pod
 }
 
 function msg() {
