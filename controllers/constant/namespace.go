@@ -24,7 +24,7 @@ data:
 kind: ConfigMap
 metadata:
   name: namespace-scope
-  namespace: {{ .MasterNs }}
+  namespace: {{ .CPFSNs }}
   annotations:
     version: {{ .Version }}
 `
