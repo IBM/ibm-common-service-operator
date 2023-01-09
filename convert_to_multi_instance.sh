@@ -29,6 +29,7 @@ catalog_source=
 
 function main() {
     msg "Conversion Script Version v1.0.0"
+    #TODO run reset/cleanup function here
     prereq
     collect_data
     prepare_cluster
@@ -448,6 +449,9 @@ function removeNSS(){
 }
 
 function reset() {
+    #check environment status
+    #check to see if odlm/cs operator are scaled to 1
+    #if not, scale back up to one and give a few minutes to reset before continuing
     info "reseting environment"
     scale_up_pod
 }
