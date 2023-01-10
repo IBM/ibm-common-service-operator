@@ -724,6 +724,9 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 			if err != nil {
 				klog.Errorf("Failed to get subscription %s/%s", b.CSData.MasterNs, obj.GetName())
 			}
+			if sub.Object["spec"].(map[string]interface{})["config"] != nil {
+				obj.Object["spec"].(map[string]interface{})["config"] = sub.Object["spec"].(map[string]interface{})["config"]
+			}
 			update = !equality.Semantic.DeepEqual(sub.Object["spec"], obj.Object["spec"])
 		} else {
 			v1IsLarger, convertErr := util.CompareVersion(obj.GetAnnotations()["version"], objInCluster.GetAnnotations()["version"])
