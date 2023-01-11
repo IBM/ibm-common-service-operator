@@ -26,10 +26,10 @@ YQ=${1:-yq}
 master_ns=
 cs_operator_channel=
 catalog_source=
+controlNs=
 
 function main() {
     msg "Conversion Script Version v1.0.0"
-    #TODO run reset/cleanup function here
     prereq
     collect_data
     prepare_cluster
@@ -448,12 +448,96 @@ function removeNSS(){
     success "Namespace Scope CRs cleaned up"
 }
 
-function reset() {
-    #check environment status
-    #check to see if odlm/cs operator are scaled to 1
-    #if not, scale back up to one and give a few minutes to reset before continuing
-    info "reseting environment"
+function rollback() {
+    info "Reverting multi-instance environment to shared instance environment."
+
+    #checking if control namespace removed from common-service-maps
+    local cm_name="common-service-maps"
+    return_value=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data' | grep controlNamespace: > /dev/null || echo passed)
+    if [[ $return_value != "passed" ]]; then
+        error "Configmap: ${cm_name} still has controlNamespace field. This must be removed before proceeding with rollback."
+    fi
+    return_value="reset"
+    #TODO uninstall added instances
+    
+    info "Converting back to shared instance in ${master_ns} namespace."
+    # scale down
+    ${OC} scale deployment -n ${master_ns} ibm-common-service-operator --replicas=0
+    ${OC} scale deployment -n ${master_ns} operand-deployment-lifecycle-manager --replicas=0
+    
+    #delete operand config and operand registry
+    ${OC} delete operandregistry -n ${master_ns} --ignore-not-found common-service 
+    ${OC} delete operandconfig -n ${master_ns} --ignore-not-found common-service
+    
+    # uninstall singleton services
+    "${OC}" delete -n "${controlNs}" --ignore-not-found certmanager default
+    "${OC}" delete -n "${controlNs}" --ignore-not-found sub ibm-cert-manager-operator
+    csv=$("${OC}" get -n "${controlNs}" csv | (grep ibm-cert-manager-operator || echo "fail") | awk '{print $1}')
+    "${OC}" delete -n "${controlNs}" --ignore-not-found csv "${csv}"
+    "${OC}" delete -n "${controlNs}" --ignore-not-found deploy cert-manager-cainjector cert-manager-controller cert-manager-webhook ibm-cert-manager-operator
+
+    return_value=$(("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
+    if [[ $return_value == "exists" ]]; then
+        "${OC}" delete -n "${controlNs}" --ignore-not-found ibmlicensing instance
+    fi
+    return_value="reset"
+    "${OC}" delete -n "${controlNs}" --ignore-not-found sub ibm-licensing-operator
+    csv=$("${OC}" get -n "${controlNs}" csv | (grep ibm-licensing-operator || echo "fail") | awk '{print $1}')
+    "${OC}" delete -n "${controlNs}" --ignore-not-found csv "${csv}"
+    "${OC}" delete -n "${controlNs}" --ignore-not-found deploy ibm-licensing-operator ibm-licensing-service-instance
+    "${OC}" patch -n "${controlNs}" operandbindinfo ibm-licensing-bindinfo --type=merge -p '{"metadata": {"finalizers":null}}' || info "Licensing OperandBindInfo not found in ${controlNs}. Moving on..."
+    "${OC}" delete --ignore-not-found -n "${controlNs}" operandbindinfo ibm-licensing-bindinfo
+    
+    #not sure if there is more to uninstalling crossplane once it is up and running
+    "${OC}" delete -n "${controlNs}" --ignore-not-found sub ibm-crossplane-operator-app
+    "${OC}" delete -n "${controlNs}" --ignore-not-found sub ibm-crossplane-provider-kubernetes-operator-app
+    csv=$("${OC}" get -n "${controlNs}" csv | (grep ibm-crossplane-operator || echo "fail") | awk '{print $1}')
+    "${OC}" delete -n "${controlNs}" --ignore-not-found csv "${csv}"
+    csv=$("${OC}" get -n "${controlNs}" csv | (grep ibm-crossplane-provider-kubernetes-operator || echo "fail") | awk '{print $1}')
+    "${OC}" delete -n "${controlNs}" --ignore-not-found csv "${csv}"
+
+    csv=$("${OC}" get -n "${controlNs}" csv | (grep ibm-namespace-scope-operator || echo "fail") | awk '{print $1}')
+    "${OC}" delete -n "${controlNs}" --ignore-not-found csv "${csv}"
+    "${OC}" patch namespacescope common-service -n "${controlNs}" --type=merge -p '{"metadata": {"finalizers":null}}' || info "Namespacescope resource not found in ${controlNs}. Moving on..."
+    "${OC}" delete namespacescope common-service -n "${controlNs}" --ignore-not-found
+    "${OC}" delete -n "${controlNs}" --ignore-not-found deploy ibm-namespace-scope-operator
+
+    #delete misc items in control namespace
+    "${OC}" delete deploy -n "${controlNs}" --ignore-not-found secretshare ibm-common-service-webhook
+    webhookPod=$("${OC}" get pods -n ${master_ns} | grep ibm-common-service-webhook | awk '{print $1}')
+    ${OC} delete pod ${webhookPod} -n ${master_ns} --ignore-not-found
+
+    # scale back up
     scale_up_pod
+
+    #verify singleton's are installed in master ns
+    retries=10
+    sleep_time=15
+    total_time_mins=$(( sleep_time * retries / 60))
+    info "Waiting for singleton services to deploy to ${master_ns}..."
+    sleep 10
+    
+    while true; do
+        if [[ ${retries} -eq 0 ]]; then
+            error "Timeout after ${total_time_mins} minutes waiting for IBM Common Services is deployed"
+        fi
+
+        certPodCheck=$("${OC}" get pods -n "${master_ns}" | (grep ibm-cert-manager || echo "fail") | awk '{print $1}')
+        licPodCheck=$("${OC}" get pods -n "${master_ns}" | (grep ibm-licensing-service || echo "fail") | awk '{print $1}')
+        if [ $certPodCheck != "fail" ] || [ $licPodCheck != "fail" ]; then
+            info "Singleton services successfully re-deployed in ${master_ns}"
+            break
+        else
+            certPodCheck=$("${OC}" get pods -n "${controlNs}" | (grep ibm-cert-manager || echo "fail") | awk '{print $1}')
+            licPodCheck=$("${OC}" get pods -n "${controlNs}" | (grep ibm-licensing-service || echo "fail") | awk '{print $1}')
+            if [ $certPodCheck != "fail" ] || [ $licPodCheck != "fail" ]; then
+                error "Singleton services re-deployed into control namespace. Verify that the common-services-map configmap in kube-public namespace has had the \"controlNamespace\" field removed and run again."
+            fi
+        fi
+    done
+
+    success "Cluster successfully rolled back. Namespace ${controlNs} can be safely deleted."
+
 }
 
 function msg() {
