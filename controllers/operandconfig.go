@@ -17,6 +17,7 @@
 package controllers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -263,7 +264,7 @@ func deepMergeTwoMaps(key string, defaultMap interface{}, changedMap interface{}
 	}
 }
 
-func (r *CommonServiceReconciler) updateOperandConfig(newConfigs []interface{}, serviceControllerMapping map[string]string) (bool, error) {
+func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newConfigs []interface{}, serviceControllerMapping map[string]string) (bool, error) {
 	opcon := util.NewUnstructured("operator.ibm.com", "OperandConfig", "v1alpha1")
 	opconKey := types.NamespacedName{
 		Name:      "common-service",
@@ -328,7 +329,7 @@ func (r *CommonServiceReconciler) updateOperandConfig(newConfigs []interface{}, 
 	}
 
 	// Checking all the common service CRs to get the minimal(unique largest) size
-	opconServices, err = r.getExtremeizes(opconServices, ruleSlice, Max)
+	opconServices, err = r.getExtremeizes(ctx, opconServices, ruleSlice, Max)
 	if err != nil {
 		return true, err
 	}
@@ -379,7 +380,7 @@ func checkCRFromOperandConfig(serviceStatus map[string]interface{}, operatorName
 	return true
 }
 
-func (r *CommonServiceReconciler) getExtremeizes(opconServices, ruleSlice []interface{}, extreme Extreme) ([]interface{}, error) {
+func (r *CommonServiceReconciler) getExtremeizes(ctx context.Context, opconServices, ruleSlice []interface{}, extreme Extreme) ([]interface{}, error) {
 	// Fetch all the CommonService instances
 	csList := util.NewUnstructuredList("operator.ibm.com", "CommonService", "v3")
 	if err := r.Client.List(ctx, csList); err != nil {
@@ -444,7 +445,7 @@ func (r *CommonServiceReconciler) getExtremeizes(opconServices, ruleSlice []inte
 	return opconServices, nil
 }
 
-func (r *CommonServiceReconciler) handleDelete() error {
+func (r *CommonServiceReconciler) handleDelete(ctx context.Context) error {
 	opcon := util.NewUnstructured("operator.ibm.com", "OperandConfig", "v1alpha1")
 	opconKey := types.NamespacedName{
 		Name:      "common-service",
@@ -462,7 +463,7 @@ func (r *CommonServiceReconciler) handleDelete() error {
 	if err != nil {
 		return err
 	}
-	opconServices, err = r.getExtremeizes(opconServices, ruleSlice, Min)
+	opconServices, err = r.getExtremeizes(ctx, opconServices, ruleSlice, Min)
 	if err != nil {
 		return err
 	}
@@ -524,7 +525,7 @@ func (r *CommonServiceReconciler) checkNamespace(key string) bool {
 }
 
 // updatePhase sets the current Phase status.
-func (r *CommonServiceReconciler) updatePhase(instance *apiv3.CommonService, status string) error {
+func (r *CommonServiceReconciler) updatePhase(ctx context.Context, instance *apiv3.CommonService, status string) error {
 	instance.Status.Phase = status
 	return r.Client.Status().Update(ctx, instance)
 }
