@@ -54,7 +54,7 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
 metadata:
   name: cloudpak-operator.v0.0.1
-  namespace: placeholder
+  namespace: "placeholder"
 spec:
   customresourcedefinitions:
     required:
@@ -81,7 +81,7 @@ apiVersion: operator.ibm.com/v1alpha1
 kind: OperandRequest
 metadata:
   name: cloudpak-required-common-service
-  namespace: placeholder
+  namespace: "placeholder"
 spec:
   requests:
     - operands:

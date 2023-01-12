@@ -26,14 +26,14 @@ const CrossSubscription = `
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
-  name: {{ .ICPOperator }}
-  namespace: {{ .MasterNs }}
+  name: "{{ .ICPOperator }}"
+  namespace: "{{ .MasterNs }}"
 spec:
-  channel: {{ .Channel }}
-  installPlanApproval: {{ .ApprovalMode }}
-  name: {{ .ICPOperator }}
-  source: {{ .CatalogSourceName }}
-  sourceNamespace: {{ .CatalogSourceNs }}
+  channel: "{{ .Channel }}"
+  installPlanApproval: "{{ .ApprovalMode }}"
+  name: "{{ .ICPOperator }}"
+  source: "{{ .CatalogSourceName }}"
+  sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
 const CrossConfiguration = `
@@ -42,7 +42,7 @@ kind: Configuration
 metadata:
   name: ibm-crossplane-bedrock-shim-config
   labels:
-    ibm-crossplane-provider: {{ .CrossplaneProvider }}
+    ibm-crossplane-provider: "{{ .CrossplaneProvider }}"
 spec:
   ignoreCrossplaneConstraints: false
   package: ibm-crossplane-bedrock-shim-config
@@ -63,14 +63,14 @@ const CrossKubernetesProviderSubscription = `
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
-  name: {{ .ICPPKOperator}}
-  namespace: {{ .MasterNs }}
+  name: "{{ .ICPPKOperator}}"
+  namespace: "{{ .MasterNs }}"
 spec:
-  channel: {{ .Channel }}
-  installPlanApproval: {{ .ApprovalMode }}
-  name: {{ .ICPPKOperator }}
-  source: {{ .CatalogSourceName }}
-  sourceNamespace: {{ .CatalogSourceNs }}
+  channel: "{{ .Channel }}"
+  installPlanApproval: "{{ .ApprovalMode }}"
+  name: "{{ .ICPPKOperator }}"
+  source: "{{ .CatalogSourceName }}"
+  sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
 const CrossKubernetesProviderConfig = `
@@ -89,14 +89,14 @@ const CrossIBMCloudProviderSubscription = `
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
-  name: {{ .ICPPICOperator }}
-  namespace: {{ .MasterNs }}
+  name: "{{ .ICPPICOperator }}"
+  namespace: "{{ .MasterNs }}"
 spec:
-  channel: {{ .Channel }}
-  installPlanApproval: {{ .ApprovalMode }}
-  name: {{ .ICPPICOperator }}
-  source: {{ .CatalogSourceName }}
-  sourceNamespace: {{ .CatalogSourceNs }}
+  channel: "{{ .Channel }}"
+  installPlanApproval: "{{ .ApprovalMode }}"
+  name: "{{ .ICPPICOperator }}"
+  source: "{{ .CatalogSourceName }}"
+  sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
 const CrossIBMCloudProviderConfig = `
@@ -108,7 +108,7 @@ spec:
   credentials:
     source: Secret
     secretRef:
-      namespace: {{ .MasterNs }}
+      namespace: "{{ .MasterNs }}"
       name: provider-ibm-cloud-secret
       key: credentials
   region: us-south

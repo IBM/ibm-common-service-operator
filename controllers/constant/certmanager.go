@@ -33,7 +33,7 @@ metadata:
     app.kubernetes.io/managed-by: cert-manager-controller
     app.kubernetes.io/name: Issuer
   name: cs-ca-issuer
-  namespace: placeholder
+  namespace: "placeholder"
 spec:
   ca:
     secretName: cs-ca-certificate-secret
@@ -49,7 +49,7 @@ metadata:
     app.kubernetes.io/managed-by: cert-manager-controller
     app.kubernetes.io/name: Issuer
   name: cs-ss-issuer
-  namespace: placeholder
+  namespace: "placeholder"
 spec:
   selfSigned: {}
 `
@@ -64,7 +64,7 @@ metadata:
     app.kubernetes.io/managed-by: cert-manager-controller
     app.kubernetes.io/name: Certificate
   name: cs-ca-certificate
-  namespace: placeholder
+  namespace: "placeholder"
 spec:
   secretName: cs-ca-certificate-secret
   issuerRef:

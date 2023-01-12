@@ -88,10 +88,10 @@ apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
 metadata:
   name: ibm-common-services-operators
-  namespace: placeholder
+  namespace: "placeholder"
 spec:
   targetNamespaces:
-  - placeholder
+  - "placeholder"
 `
 
 // CsCR is the default common service operator CR
@@ -102,7 +102,7 @@ metadata:
   annotations:
     version: "-1"
   name: common-service
-  namespace: placeholder
+  namespace: "placeholder"
 spec:
   size: starterset
 `
@@ -115,7 +115,7 @@ metadata:
   annotations:
     version: "-1"
   name: common-service
-  namespace: placeholder
+  namespace: "placeholder"
 spec:
   size: as-is
 `
@@ -126,7 +126,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   annotations:
-    version: {{ .Version }}
+    version: "{{ .Version }}"
   name: ibm-common-services-cluster-admin
 rules:
 - apiGroups:
@@ -154,5 +154,5 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: operand-deployment-lifecycle-manager
-  namespace: {{ .MasterNs }}
+  namespace: "{{ .MasterNs }}"
 `

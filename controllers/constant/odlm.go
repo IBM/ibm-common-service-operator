@@ -21,9 +21,9 @@ apiVersion: operator.ibm.com/v1alpha1
 kind: OperandConfig
 metadata:
   name: common-service
-  namespace: {{ .MasterNs }}
+  namespace: "{{ .MasterNs }}"
   annotations:
-    version: {{ .Version }}
+    version: "{{ .Version }}"
 spec:
   services:
   - name: ibm-licensing-operator
@@ -42,7 +42,7 @@ spec:
     spec:
       authentication:
         config:
-          onPremMultipleDeploy: {{ .OnPremMultiEnable }}
+          onPremMultipleDeploy: "{{ .OnPremMultiEnable }}"
       oidcclientwatcher: {}
       pap: {}
       policycontroller: {}
@@ -248,7 +248,7 @@ spec:
                         valueFrom:
                           fieldRef:
                             fieldPath: metadata.namespace
-                    image: {{ .ZenOperatorImage }}
+                    image: "{{ .ZenOperatorImage }}"
                     name: pre-zen-job
                     resources:
                       limits:
@@ -278,7 +278,7 @@ spec:
       - apiVersion: ibmcpcs.ibm.com/v1
         kind: SecretShare
         name: redhat-marketplace-operator
-        namespace: {{ .MasterNs }}
+        namespace: "{{ .MasterNs }}"
         data:
           spec:
             configmapshares:
@@ -292,153 +292,153 @@ apiVersion: operator.ibm.com/v1alpha1
 kind: OperandRegistry
 metadata:
   name: common-service
-  namespace: {{ .MasterNs }}
+  namespace: "{{ .MasterNs }}"
   annotations:
-    version: {{ .Version }}
+    version: "{{ .Version }}"
     excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
 spec:
   operators:
   - name: ibm-licensing-operator
-    namespace: {{ .ControlNs }}
-    channel: {{ .Channel }}
+    namespace: "{{ .ControlNs }}"
+    channel: "{{ .Channel }}"
     packageName: ibm-licensing-operator-app
     scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: {{ .CatalogSourceNs }}
+    installPlanApproval: "{{ .ApprovalMode }}"
+    sourceName: "{{ .CatalogSourceName }}"
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-mongodb-operator
-    namespace: {{ .MasterNs }}
-    channel: {{ .Channel }}
+    namespace: "{{ .MasterNs }}"
+    channel: "{{ .Channel }}"
     packageName: ibm-mongodb-operator-app
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: {{ .CatalogSourceNs }}
+    installPlanApproval: "{{ .ApprovalMode }}"
+    sourceName: "{{ .CatalogSourceName }}"
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-cert-manager-operator
-    namespace: {{ .ControlNs }}
-    channel: {{ .Channel }}
+    namespace: "{{ .ControlNs }}"
+    channel: "{{ .Channel }}"
     packageName: ibm-cert-manager-operator
     scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: {{ .CatalogSourceNs }}
+    installPlanApproval: "{{ .ApprovalMode }}"
+    sourceName: "{{ .CatalogSourceName }}"
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-iam-operator
-    namespace: {{ .MasterNs }}
-    channel: {{ .Channel }}
+    namespace: "{{ .MasterNs }}"
+    channel: "{{ .Channel }}"
     packageName: ibm-iam-operator
     scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: {{ .CatalogSourceNs }}
+    installPlanApproval: "{{ .ApprovalMode }}"
+    sourceName: "{{ .CatalogSourceName }}"
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-healthcheck-operator
-    namespace: {{ .MasterNs }}
-    channel: {{ .Channel }}
+    namespace: "{{ .MasterNs }}"
+    channel: "{{ .Channel }}"
     packageName: ibm-healthcheck-operator-app
     scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: {{ .CatalogSourceNs }}
+    installPlanApproval: "{{ .ApprovalMode }}"
+    sourceName: "{{ .CatalogSourceName }}"
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-commonui-operator
-    namespace: {{ .MasterNs }}
-    channel: {{ .Channel }}
+    namespace: "{{ .MasterNs }}"
+    channel: "{{ .Channel }}"
     packageName: ibm-commonui-operator-app
     scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: {{ .CatalogSourceNs }}
+    installPlanApproval: "{{ .ApprovalMode }}"
+    sourceName: "{{ .CatalogSourceName }}"
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-management-ingress-operator
-    namespace: {{ .MasterNs }}
-    channel: {{ .Channel }}
+    namespace: "{{ .MasterNs }}"
+    channel: "{{ .Channel }}"
     packageName: ibm-management-ingress-operator-app
     scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: {{ .CatalogSourceNs }}
+    installPlanApproval: "{{ .ApprovalMode }}"
+    sourceName: "{{ .CatalogSourceName }}"
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-ingress-nginx-operator
-    namespace: {{ .MasterNs }}
-    channel: {{ .Channel }}
+    namespace: "{{ .MasterNs }}"
+    channel: "{{ .Channel }}"
     packageName: ibm-ingress-nginx-operator-app
     scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: {{ .CatalogSourceNs }}
+    installPlanApproval: "{{ .ApprovalMode }}"
+    sourceName: "{{ .CatalogSourceName }}"
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-auditlogging-operator
-    namespace: {{ .MasterNs }}
-    channel: {{ .Channel }}
+    namespace: "{{ .MasterNs }}"
+    channel: "{{ .Channel }}"
     packageName: ibm-auditlogging-operator-app
     scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: {{ .CatalogSourceNs }}
+    installPlanApproval: "{{ .ApprovalMode }}"
+    sourceName: "{{ .CatalogSourceName }}"
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-platform-api-operator
-    namespace: {{ .MasterNs }}
-    channel: {{ .Channel }}
+    namespace: "{{ .MasterNs }}"
+    channel: "{{ .Channel }}"
     packageName: ibm-platform-api-operator-app
     scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: {{ .CatalogSourceNs }}
-  - channel: {{ .Channel }}
+    installPlanApproval: "{{ .ApprovalMode }}"
+    sourceName: "{{ .CatalogSourceName }}"
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+  - channel: "{{ .Channel }}"
     name: ibm-monitoring-grafana-operator
-    namespace: {{ .MasterNs }}
+    namespace: "{{ .MasterNs }}"
     packageName: ibm-monitoring-grafana-operator-app
     scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: {{ .CatalogSourceNs }}
-  - channel: {{ .Channel }}
+    installPlanApproval: "{{ .ApprovalMode }}"
+    sourceName: "{{ .CatalogSourceName }}"
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+  - channel: "{{ .Channel }}"
     name: ibm-events-operator
-    namespace: {{ .MasterNs }}
+    namespace: "{{ .MasterNs }}"
     packageName: ibm-events-operator
     scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: {{ .CatalogSourceNs }}
+    installPlanApproval: "{{ .ApprovalMode }}"
+    sourceName: "{{ .CatalogSourceName }}"
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: stable
     name: redhat-marketplace-operator
     namespace: openshift-redhat-marketplace
     packageName: redhat-marketplace-operator
     scope: public
-    installPlanApproval: {{ .ApprovalMode }}
+    installPlanApproval: "{{ .ApprovalMode }}"
     sourceName: certified-operators
-    sourceNamespace: {{ .CatalogSourceNs }}
-  - channel: {{ .Channel }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+  - channel: "{{ .Channel }}"
     name: ibm-zen-operator
-    namespace: {{ .MasterNs }}
+    namespace: "{{ .MasterNs }}"
     packageName: ibm-zen-operator
     scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: {{ .CatalogSourceNs }}
+    installPlanApproval: "{{ .ApprovalMode }}"
+    sourceName: "{{ .CatalogSourceName }}"
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: v1.1
     name: ibm-db2u-operator
-    namespace: {{ .MasterNs }}
+    namespace: "{{ .MasterNs }}"
     packageName: db2u-operator
     scope: public
-    installPlanApproval: {{ .ApprovalMode }}
+    installPlanApproval: "{{ .ApprovalMode }}"
   - channel: stable
     name: cloud-native-postgresql
-    namespace: {{ .MasterNs }}
+    namespace: "{{ .MasterNs }}"
     packageName: cloud-native-postgresql
     scope: public
-    installPlanApproval: {{ .ApprovalMode }}
+    installPlanApproval: "{{ .ApprovalMode }}"
   - channel: alpha
     name: ibm-user-data-services-operator
-    namespace: {{ .MasterNs }}
+    namespace: "{{ .MasterNs }}"
     packageName: ibm-user-data-services-operator
     scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-  - channel: {{ .Channel }}
+    installPlanApproval: "{{ .ApprovalMode }}"
+  - channel: "{{ .Channel }}"
     name: ibm-zen-cpp-operator
-    namespace: {{ .MasterNs }}
+    namespace: "{{ .MasterNs }}"
     packageName: zen-cpp-operator
     scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-  - channel: {{ .Channel }}
+    installPlanApproval: "{{ .ApprovalMode }}"
+  - channel: "{{ .Channel }}"
     name: ibm-bts-operator
-    namespace: {{ .MasterNs }}
+    namespace: "{{ .MasterNs }}"
     packageName: ibm-bts-operator
     scope: public
-    installPlanApproval: {{ .ApprovalMode }}
+    installPlanApproval: "{{ .ApprovalMode }}"
 `
 
 const CSV3SaasOperandConfig = `
@@ -446,9 +446,9 @@ apiVersion: operator.ibm.com/v1alpha1
 kind: OperandConfig
 metadata:
   name: common-service
-  namespace: {{ .MasterNs }}
+  namespace: "{{ .MasterNs }}"
   annotations:
-    version: {{ .Version }}
+    version: "{{ .Version }}"
 spec:
   services:
   - name: ibm-licensing-operator
@@ -552,7 +552,7 @@ spec:
                         valueFrom:
                           fieldRef:
                             fieldPath: metadata.namespace
-                    image: {{ .ZenOperatorImage }}
+                    image: "{{ .ZenOperatorImage }}"
                     name: pre-zen-job
                     resources:
                       limits:
@@ -582,7 +582,7 @@ spec:
       - apiVersion: ibmcpcs.ibm.com/v1
         kind: SecretShare
         name: redhat-marketplace-operator
-        namespace: {{ .MasterNs }}
+        namespace: "{{ .MasterNs }}"
         data:
           spec:
             configmapshares:
@@ -596,81 +596,81 @@ apiVersion: operator.ibm.com/v1alpha1
 kind: OperandRegistry
 metadata:
   name: common-service
-  namespace: {{ .MasterNs }}
+  namespace: "{{ .MasterNs }}"
   annotations:
-    version: {{ .Version }}
+    version: "{{ .Version }}"
     excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
 spec:
   operators:
   - name: ibm-licensing-operator
-    namespace: {{ .ControlNs }}
-    channel: {{ .Channel }}
+    namespace: "{{ .ControlNs }}"
+    channel: "{{ .Channel }}"
     packageName: ibm-licensing-operator-app
     scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: {{ .CatalogSourceNs }}
+    installPlanApproval: "{{ .ApprovalMode }}"
+    sourceName: "{{ .CatalogSourceName }}"
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-mongodb-operator
-    namespace: {{ .MasterNs }}
-    channel: {{ .Channel }}
+    namespace: "{{ .MasterNs }}"
+    channel: "{{ .Channel }}"
     packageName: ibm-mongodb-operator-app
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: {{ .CatalogSourceNs }}
+    installPlanApproval: "{{ .ApprovalMode }}"
+    sourceName: "{{ .CatalogSourceName }}"
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-cert-manager-operator
-    namespace: {{ .ControlNs }}
-    channel: {{ .Channel }}
+    namespace: "{{ .ControlNs }}"
+    channel: "{{ .Channel }}"
     packageName: ibm-cert-manager-operator
     scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: {{ .CatalogSourceNs }}
+    installPlanApproval: "{{ .ApprovalMode }}"
+    sourceName: "{{ .CatalogSourceName }}"
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-iam-operator
-    namespace: {{ .MasterNs }}
-    channel: {{ .Channel }}
+    namespace: "{{ .MasterNs }}"
+    channel: "{{ .Channel }}"
     packageName: ibm-iam-operator
     scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: {{ .CatalogSourceNs }}
+    installPlanApproval: "{{ .ApprovalMode }}"
+    sourceName: "{{ .CatalogSourceName }}"
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-management-ingress-operator
-    namespace: {{ .MasterNs }}
-    channel: {{ .Channel }}
+    namespace: "{{ .MasterNs }}"
+    channel: "{{ .Channel }}"
     packageName: ibm-management-ingress-operator-app
     scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: {{ .CatalogSourceNs }}
+    installPlanApproval: "{{ .ApprovalMode }}"
+    sourceName: "{{ .CatalogSourceName }}"
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-ingress-nginx-operator
-    namespace: {{ .MasterNs }}
-    channel: {{ .Channel }}
+    namespace: "{{ .MasterNs }}"
+    channel: "{{ .Channel }}"
     packageName: ibm-ingress-nginx-operator-app
     scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: {{ .CatalogSourceNs }}
-  - channel: {{ .Channel }}
+    installPlanApproval: "{{ .ApprovalMode }}"
+    sourceName: "{{ .CatalogSourceName }}"
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+  - channel: "{{ .Channel }}"
     name: ibm-events-operator
-    namespace: {{ .MasterNs }}
+    namespace: "{{ .MasterNs }}"
     packageName: ibm-events-operator
     scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: {{ .CatalogSourceNs }}
-  - channel: {{ .Channel }}
+    installPlanApproval: "{{ .ApprovalMode }}"
+    sourceName: "{{ .CatalogSourceName }}"
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+  - channel: "{{ .Channel }}"
     name: ibm-zen-operator
-    namespace: {{ .MasterNs }}
+    namespace: "{{ .MasterNs }}"
     packageName: ibm-zen-operator
     scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: {{ .CatalogSourceNs }}
-  - channel: {{ .Channel }}
+    installPlanApproval: "{{ .ApprovalMode }}"
+    sourceName: "{{ .CatalogSourceName }}"
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+  - channel: "{{ .Channel }}"
     name: ibm-bts-operator
-    namespace: {{ .MasterNs }}
+    namespace: "{{ .MasterNs }}"
     packageName: ibm-bts-operator
     scope: public
-    installPlanApproval: {{ .ApprovalMode }}
+    installPlanApproval: "{{ .ApprovalMode }}"
 `
 
 const ODLMClusterSubscription = `
@@ -678,13 +678,13 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
   name: operand-deployment-lifecycle-manager-app
-  namespace: {{ .MasterNs }}
+  namespace: "{{ .MasterNs }}"
 spec:
-  channel: {{ .Channel }}
-  installPlanApproval: {{ .ApprovalMode }}
+  channel: "{{ .Channel }}"
+  installPlanApproval: "{{ .ApprovalMode }}"
   name: ibm-odlm
-  source: {{ .CatalogSourceName }}
-  sourceNamespace: {{ .CatalogSourceNs }}
+  source: "{{ .CatalogSourceName }}"
+  sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
 const ODLMNamespacedSubscription = `
@@ -692,13 +692,13 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
   name: operand-deployment-lifecycle-manager-app
-  namespace: {{ .MasterNs }}
+  namespace: "{{ .MasterNs }}"
 spec:
-  channel: {{ .Channel }}
-  installPlanApproval: {{ .ApprovalMode }}
+  channel: "{{ .Channel }}"
+  installPlanApproval: "{{ .ApprovalMode }}"
   name: ibm-odlm
-  source: {{ .CatalogSourceName }}
-  sourceNamespace: {{ .CatalogSourceNs }}
+  source: "{{ .CatalogSourceName }}"
+  sourceNamespace: "{{ .CatalogSourceNs }}"
   config:
     env:
     - name: INSTALL_SCOPE
