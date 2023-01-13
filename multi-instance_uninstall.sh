@@ -24,7 +24,7 @@ function usage() {
 	Mandatory arguments to long options are mandatory for short options too.
 	  -h, --help                    display this help and exit
 	  -n                            specify the namespace where common service is installed
-      -cpn                          specify the cloud pak namespace(s) separated by a comma and space ("cpns1, cpns2")
+      -cpn                          specify the cloud pak namespace
 	  -f                            force delete specified or default ibm-common-services namespace, skip normal uninstall steps
 	EOF
 }
@@ -77,7 +77,7 @@ function update_remaining_resources() {
   local remaining=$2
   local namespace=$1
   local new_remaining=""
-  [[ "X$3" != "X" ]] && ns="-n $3"
+  [[ "X$3" != "X" ]] && ns="-n $3" #no idea what this line does
 #   msg "remaining in update func: ${remaining}"
   for kind in ${remaining}; do
     kindExist=$(${KUBECTL} get ${kind} -n ${namespace} --ignore-not-found || echo "fail")
@@ -89,7 +89,8 @@ function update_remaining_resources() {
         new_remaining="${kind} ${new_remaining}"
         # msg "new remaining: $new_remaining"
       fi
-    # else
+    else
+      new_remaining="${new_remaining//$kind/}"
     #   msg "kind ${kind} not found in namespace ${namespace}"
     fi
     
@@ -102,14 +103,15 @@ function update_remaining_resources() {
 function wait_for_deleted() {
   local remaining=${2}
   local namespace=${1}
-  msg "namespace: $namespace"
-  msg "remaining: $remaining"
+#   msg "namespace: $namespace"
+#   msg "remaining: $remaining"
   retries=${3:-10}
   interval=${4:-30}
   index=0
   while true; do
     remaining=$(update_remaining_resources "$namespace" "$remaining")
-    msg "remaining inside wait loop: $remaining" 
+    remaining=${remaining//[$'\t\r\n']}
+    msg "remaining in wait for delete: $remaining"
     if [[ "X$remaining" != "X" ]]; then
       if [[ ${index} -eq ${retries} ]]; then
         error "Timeout delete resources: $remaining"
@@ -117,7 +119,7 @@ function wait_for_deleted() {
       fi
       sleep $interval
       ((index++))
-      wait_msg "DELETE - Waiting: resource ${remaining} delete complete [$(($retries - $index)) retries left]"
+      wait_msg "DELETE - Waiting: resource "${remaining}" delete complete [$(($retries - $index)) retries left]"
     else
       break
     fi
@@ -129,14 +131,15 @@ function wait_for_namespace_deleted() {
   interval=5
   index=0
   while true; do
-    if ${KUBECTL} get namespace ${namespace} &>/dev/null; then
+    nsExist=$(${KUBECTL} get namespace ${namespace} || echo "fail")
+    if [[ $nsExist != "fail" ]]; then
       if [[ ${index} -eq ${retries} ]]; then
         error "Timeout delete namespace: $namespace"
         return 1
       fi
       sleep $interval
       ((index++))
-      wait_msg "DELETE - Waiting: namespace ${namespace} delete complete [$(($retries - $index)) retries left]"
+      wait_msg "DELETE - Waiting: namespace "${namespace}" delete complete [$(($retries - $index)) retries left]"
     else
       break
     fi
@@ -144,8 +147,8 @@ function wait_for_namespace_deleted() {
   return 0
 }
 function delete_operator() {
-  local subs=$2 #this is a list...
-  local namespace=$1 #so this is not read correctly
+  local subs=$2 
+  local namespace=$1 
   for sub in ${subs}; do
     csv=$(${KUBECTL} get sub ${sub} -n ${namespace} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
     if [[ "X${csv}" != "X" ]]; then
@@ -155,11 +158,9 @@ function delete_operator() {
     fi
   done
 }
-function delete_operand() { #todo change this from all namespaces to specific
-  local crds=$2 #this is a list... 
-  local namespace=$1 #so this is not read correctly
-  echo "namespace: $namespace"
-  echo "crds: $crds"
+function delete_operand() { 
+  local crds=$2  
+  local namespace=$1 
   for crd in ${crds}; do
     if ${KUBECTL} api-resources | grep $crd &>/dev/null; then
       crs=$(${KUBECTL} get ${crd} --no-headers --ignore-not-found -n ${namespace} 2>/dev/null | awk '{print $1}')
@@ -171,8 +172,8 @@ function delete_operand() { #todo change this from all namespaces to specific
   done
 }
 function delete_operand_finalizer() {
-  local crds=$2 #this is a list...
-  local ns=$1 #so this is not read correctly
+  local crds=$2 
+  local ns=$1 
   for crd in ${crds}; do
     crs=$(${KUBECTL} get ${crd} --no-headers --ignore-not-found -n ${ns} 2>/dev/null | awk '{print $1}')
     for cr in ${crs}; do
@@ -181,23 +182,6 @@ function delete_operand_finalizer() {
     done
   done
 }
-# function delete_unavailable_apiservice() {
-#   rc=0
-#   apis=$(${KUBECTL} get apiservice | grep False | awk '{print $1}')
-#   if [ "X${apis}" != "X" ]; then
-#     warning "Found some unavailable apiservices, deleting ..."
-#     for api in ${apis}; do
-#       msg "${KUBECTL} delete apiservice ${api}"
-#       ${KUBECTL} delete apiservice ${api}
-#       if [[ "$?" != "0" ]]; then
-#         error "Delete apiservcie ${api} failed"
-#         rc=$((rc + 1))
-#         continue
-#       fi
-#     done
-#   fi
-#   return $rc
-# }
 
 function cleanup_cluster() {
   title "Deleting webhooks"
@@ -284,6 +268,8 @@ do
 		COMMON_SERVICES_NS=$2
 		shift
 		;;
+    #TODO allow users to specify multiple cloudpak_ns, may need to rethink how this variable is used to do that
+    #could try setting a flag like REMOVE_IAM_CP_NS and some global variables to indicate more than one cpns and iteration over them required instead of if/else based on iam flag as it is now
 	"-cpn")
 		cloudpak_ns=$2
 		REMOVE_IAM_CP_NS=true
@@ -304,12 +290,14 @@ fi
 #check if cs namespace exists (for example on a second or third run)
 csnsExist=$(${KUBECTL} get namespaces | (grep  ${COMMON_SERVICES_NS} || echo "fail") | awk '{print $1}')
 if [[ "$csnsExist" == "fail" ]]; then
-  info "Creating dummy CS namespace for script to run in namespace ${COMMON_SERVICES_NS}"
+  msg "Creating dummy CS namespace for script to run in namespace ${COMMON_SERVICES_NS}"
   ${KUBECTL} create namespace ${COMMON_SERVICES_NS} || error "Failed to create namespace ${COMMON_SERVICES_NS}"
 fi
 if [[ "$FORCE_DELETE" == "false" ]]; then
+
   # Before uninstall common services, we should delete some unavailable apiservice
-#   delete_unavailable_apiservice
+  #not sure this is still necessary
+  #delete_unavailable_apiservice
   title "Deleting ibm-common-service-operator in namespace ${cloudpak_ns}"
   for sub in $(${KUBECTL} get sub --all-namespaces --ignore-not-found | grep ${COMMON_SERVICES_NS} | awk '{if ($3 =="ibm-common-service-operator") print $1"/"$2}'); do
     namespace=$(echo $sub | awk -F'/' '{print $1}')
@@ -325,12 +313,12 @@ if [[ "$FORCE_DELETE" == "false" ]]; then
     done
   fi
   title "Deleting common services operand from $COMMON_SERVICES_NS namespaces"
-  delete_operand "${COMMON_SERVICES_NS}" "OperandRequest" && echo "time to wait 1" && wait_for_deleted "${COMMON_SERVICES_NS}" "OperandRequest" 30 20
+  delete_operand "${COMMON_SERVICES_NS}" "OperandRequest" && wait_for_deleted "${COMMON_SERVICES_NS}" "OperandRequest" 20 10
   delete_operand "${COMMON_SERVICES_NS}" "CommonService OperandRegistry OperandConfig" 
   delete_operand "${COMMON_SERVICES_NS}" "NamespaceScope" && wait_for_deleted "${COMMON_SERVICES_NS}" "NamespaceScope"
   if [[ "$REMOVE_IAM_CP_NS" == "true" ]]; then
     title "Deleting common services operand from $cloudpak_ns namespaces"
-    delete_operand "${cloudpak_ns}" "OperandRequest"  && wait_for_deleted "${cloudpak_ns}" "OperandRequest"  30 20
+    delete_operand "${cloudpak_ns}" "OperandRequest"  && wait_for_deleted "${cloudpak_ns}" "OperandRequest"  20 10
     delete_operand "${cloudpak_ns}" "CommonService OperandRegistry OperandConfig"
     delete_operand "${cloudpak_ns}" "NamespaceScope" && wait_for_deleted "${cloudpak_ns}" "NamespaceScope" 
   fi
