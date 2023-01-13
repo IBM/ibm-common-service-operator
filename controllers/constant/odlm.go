@@ -536,7 +536,7 @@ spec:
     sourceNamespace: {{ .CatalogSourceNs }} 
   - name: ibm-iam-operator
     namespace: {{ .CPFSNs }}
-    channel: v4.0
+    channel: {{ .Channel }}
     packageName: ibm-iam-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -544,7 +544,7 @@ spec:
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-im-operator
     namespace: {{ .CPFSNs }}
-    channel: v4.0
+    channel: {{ .Channel }}
     packageName: ibm-iam-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -552,7 +552,7 @@ spec:
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-im-operator-v4.0
     namespace: {{ .CPFSNs }}
-    channel: v4.0
+    channel: {{ .Channel }}
     packageName: ibm-iam-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -568,7 +568,7 @@ spec:
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-commonui-operator
     namespace: {{ .CPFSNs }}
-    channel: v4.0
+    channel: {{ .Channel }}
     packageName: ibm-commonui-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -646,7 +646,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: certified-operators
     sourceNamespace: {{ .CatalogSourceNs }}
-  - channel: v3.23
+  - channel: {{ .Channel }}
     name: ibm-zen-operator
     namespace: {{ .CPFSNs }}
     packageName: ibm-zen-operator
@@ -1101,7 +1101,7 @@ spec:
     sourceNamespace: {{ .CatalogSourceNs }} 
   - name: ibm-iam-operator
     namespace: {{ .CPFSNs }}
-    channel: v4.0
+    channel: {{ .Channel }}
     packageName: ibm-iam-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -1109,7 +1109,7 @@ spec:
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-im-operator
     namespace: {{ .CPFSNs }}
-    channel: v4.0
+    channel: {{ .Channel }}
     packageName: ibm-iam-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -1117,7 +1117,7 @@ spec:
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-im-operator-v4.0
     namespace: {{ .CPFSNs }}
-    channel: v4.0
+    channel: {{ .Channel }}
     packageName: ibm-iam-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -1147,7 +1147,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
-  - channel: v3.23
+  - channel: {{ .Channel }}
     name: ibm-zen-operator
     namespace: {{ .CPFSNs }}
     packageName: ibm-zen-operator
