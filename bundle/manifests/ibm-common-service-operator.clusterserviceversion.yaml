@@ -505,6 +505,6 @@ spec:
       name: IBM_CS_WEBHOOK_IMAGE
     - image: icr.io/cpopen/cpfs/ibm-secretshare-operator:1.20.0
       name: IBM_SECRETSHARE_OPERATOR_IMAGE
-    - image: icr.io/cpopen/multi-instance-conversion:1.0.2
+    - image: icr.io/cpopen/cpfs/multi-instance-conversion:1.0.2
       name: CS_MULTI_INSTANCE_CONVERSION_IMAGE
   version: 3.23.0
