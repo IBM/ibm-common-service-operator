@@ -302,7 +302,7 @@ function cleanupZenService(){
     for namespace in $requestedNS
     do
         # remove cs namespace from zen service cr
-        return_value=$(${OC} get zenservice -n ${namespace})
+        return_value=$(${OC} get zenservice -n ${namespace} || echo "fail")
         if [[ $return_value != "" ]]; then
             zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
             ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type json -p '[{ "op": "remove", "path": "/spec/csNamespace" }]' || info "CS Namespace not defined in ${zenServiceCR} in ${namespace}. Moving on..."
@@ -319,7 +319,7 @@ function cleanupZenService(){
         fi
 
         # delete zen client
-        return_value=$(${OC} get client -n ${namespace})
+        return_value=$(${OC} get client -n ${namespace} || echo "fail")
         if [[ $return_value != "" ]]; then
             zenClient=$(${OC} get client -n ${namespace} | awk '{if (NR!=1) {print $1}}')
             ${OC} patch client ${zenClient} -n ${namespace} --type=merge -p '{"metadata": {"finalizers":null}}'
