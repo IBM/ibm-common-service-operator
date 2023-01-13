@@ -43,7 +43,7 @@ spec:
     spec:
       authentication:
         config:
-          onPremMultipleDeploy: "{{ .OnPremMultiEnable }}"
+          onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       oidcclientwatcher: {}
       pap: {}
       policycontroller: {}
