@@ -21,7 +21,7 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
   name: ibm-common-service-operator
-  namespace: ""{{ .MasterNs }}"
+  namespace: "{{ .MasterNs }}"
 spec:
   channel: "{{ .Channel }}"
   installPlanApproval: "{{ .ApprovalMode }}"
