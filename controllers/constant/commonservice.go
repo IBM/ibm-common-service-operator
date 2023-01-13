@@ -21,11 +21,11 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
   name: ibm-common-service-operator
-  namespace: {{ .MasterNs }}
+  namespace: "{{ .MasterNs }}"
 spec:
-  channel: {{ .Channel }}
-  installPlanApproval: {{ .ApprovalMode }}
+  channel: "{{ .Channel }}"
+  installPlanApproval: "{{ .ApprovalMode }}"
   name: ibm-common-service-operator
-  source: {{ .CatalogSourceName }}
-  sourceNamespace: {{ .CatalogSourceNs }}
+  source: "{{ .CatalogSourceName }}"
+  sourceNamespace: "{{ .CatalogSourceNs }}"
 `

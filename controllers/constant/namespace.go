@@ -21,13 +21,13 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
   name: ibm-namespace-scope-operator-restricted
-  namespace: {{ .MasterNs }}
+  namespace: "{{ .MasterNs }}"
 spec:
-  channel: {{ .Channel }}
-  installPlanApproval: {{ .ApprovalMode }}
+  channel: "{{ .Channel }}"
+  installPlanApproval: "{{ .ApprovalMode }}"
   name: ibm-namespace-scope-operator-restricted
-  source: {{ .CatalogSourceName }}
-  sourceNamespace: {{ .CatalogSourceNs }}
+  source: "{{ .CatalogSourceName }}"
+  sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
 const NSSubscription = `
@@ -35,13 +35,13 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
   name: ibm-namespace-scope-operator
-  namespace: {{ .MasterNs }}
+  namespace: "{{ .MasterNs }}"
 spec:
-  channel: {{ .Channel }}
-  installPlanApproval: {{ .ApprovalMode }}
+  channel: "{{ .Channel }}"
+  installPlanApproval: "{{ .ApprovalMode }}"
   name: ibm-namespace-scope-operator
-  source: {{ .CatalogSourceName }}
-  sourceNamespace: {{ .CatalogSourceNs }}
+  source: "{{ .CatalogSourceName }}"
+  sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
 const NSRestrictedSubscriptionMulti = `
@@ -49,13 +49,13 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
   name: ibm-namespace-scope-operator-restricted
-  namespace: {{ .ControlNS }}
+  namespace: "{{ .ControlNS }}"
 spec:
-  channel: {{ .Channel }}
-  installPlanApproval: {{ .ApprovalMode }}
+  channel: "{{ .Channel }}"
+  installPlanApproval: "{{ .ApprovalMode }}"
   name: ibm-namespace-scope-operator-restricted
-  source: {{ .CatalogSourceName }}
-  sourceNamespace: {{ .CatalogSourceNs }}
+  source: "{{ .CatalogSourceName }}"
+  sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
 const NSSubscriptionMulti = `
@@ -63,13 +63,13 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
   name: ibm-namespace-scope-operator
-  namespace: {{ .ControlNs }}
+  namespace: "{{ .ControlNs }}"
 spec:
-  channel: {{ .Channel }}
-  installPlanApproval: {{ .ApprovalMode }}
+  channel: "{{ .Channel }}"
+  installPlanApproval: "{{ .ApprovalMode }}"
   name: ibm-namespace-scope-operator
-  source: {{ .CatalogSourceName }}
-  sourceNamespace: {{ .CatalogSourceNs }}
+  source: "{{ .CatalogSourceName }}"
+  sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
 // NamespaceScope Operator CR
@@ -78,24 +78,24 @@ apiVersion: operator.ibm.com/v1
 kind: NamespaceScope
 metadata:
   name: common-service
-  namespace: {{ .MasterNs }}
+  namespace: "{{ .MasterNs }}"
   annotations:
-    version: {{ .Version }}
+    version: "{{ .Version }}"
 spec:
   csvInjector:
     enable: true
   namespaceMembers:
-  - {{ .MasterNs }}
+  - "{{ .MasterNs }}"
   - openshift-redhat-marketplace
 ---
 apiVersion: operator.ibm.com/v1
 kind: NamespaceScope
 metadata:
   name: nss-odlm-scope
-  namespace: {{ .MasterNs }}
+  namespace: "{{ .MasterNs }}"
 spec:
   namespaceMembers:
-  - {{ .MasterNs }}
+  - "{{ .MasterNs }}"
   configmapName: odlm-scope
   restartLabels:
     intent: projected-odlm
@@ -107,14 +107,14 @@ apiVersion: operator.ibm.com/v1
 kind: NamespaceScope
 metadata:
   name: common-service
-  namespace: {{ .ControlNs }}
+  namespace: "{{ .ControlNs }}"
   annotations:
-    version: {{ .Version }}
+    version: "{{ .Version }}"
 spec:
   csvInjector:
     enable: true
   namespaceMembers:
-  - {{ .ControlNs }}
+  - "{{ .ControlNs }}"
 `
 
 // NamespaceScope Operator CR Managed By ODLM
@@ -123,19 +123,19 @@ apiVersion: operator.ibm.com/v1
 kind: NamespaceScope
 metadata:
   name: nss-managedby-odlm
-  namespace: {{ .MasterNs }}
+  namespace: "{{ .MasterNs }}"
 spec:
   namespaceMembers:
-  - {{ .MasterNs }}
+  - "{{ .MasterNs }}"
 ---
 apiVersion: operator.ibm.com/v1
 kind: NamespaceScope
 metadata:
   name: odlm-scope-managedby-odlm
-  namespace: {{ .MasterNs }}
+  namespace: "{{ .MasterNs }}"
 spec:
   namespaceMembers:
-  - {{ .MasterNs }}
+  - "{{ .MasterNs }}"
   configmapName: odlm-scope
   restartLabels:
     intent: projected-odlm
@@ -145,27 +145,27 @@ spec:
 const NamespaceScopeConfigMap = `
 apiVersion: v1
 data:
-  namespaces: placeholder
+  namespaces: "placeholder"
 kind: ConfigMap
 metadata:
   name: namespace-scope
-  namespace: placeholder
+  namespace: "placeholder"
 ---
 apiVersion: v1
 data:
-  namespaces: placeholder
+  namespaces: "placeholder"
 kind: ConfigMap
 metadata:
   name: odlm-scope
-  namespace: placeholder
+  namespace: "placeholder"
 `
 
 const NamespaceScopeConfigMapMulti = `
 apiVersion: v1
 data:
-  namespaces: placeholder
+  namespaces: "placeholder"
 kind: ConfigMap
 metadata:
   name: namespace-scope
-  namespace: placeholder
+  namespace: "placeholder"
 `
