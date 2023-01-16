@@ -188,5 +188,7 @@ spec:
     name: IBM_SECRETSHARE_OPERATOR_IMAGE
   - image: icr.io/cpopen/ibm-zen-operator:1.7.0
     name: IBM_ZEN_OPERATOR_IMAGE
+  - image: icr.io/cpopen/cpfs/multi-instance-conversion:1.0.2
+    name: CS_MULTI_INSTANCE_CONVERSION_IMAGE
   replaces: ibm-common-service-operator.v0.0.0
   version: 0.0.0
