@@ -116,24 +116,6 @@ const Medium = `
         requests:
           cpu: 30m
           memory: 67Mi
-    pap:
-      auditService:
-        resources:
-          limits:
-            cpu: 1000m
-            memory: 50Mi
-          requests:
-            cpu: 50m
-            memory: 50Mi
-      papService:
-        resources:
-          limits:
-            cpu: 1000m
-            memory: 600Mi
-          requests:
-            cpu: 50m
-            memory: 195Mi
-      replicas: 2
     policycontroller:
       replicas: 1
       resources:
@@ -170,14 +152,6 @@ const Medium = `
           cpu: 30m
           memory: 220Mi
     securityonboarding:
-      iamOnboarding:
-        resources:
-          limits:
-            cpu: 1000m
-            memory: 1024Mi
-          requests:
-            cpu: 20m
-            memory: 64Mi
       replicas: 1
       resources:
         limits:

@@ -128,7 +128,6 @@ spec:
     spec:
       authentication: {}
       oidcclientwatcher: {}
-      pap: {}
       policycontroller: {}
       policydecision: {}
       secretwatcher: {}

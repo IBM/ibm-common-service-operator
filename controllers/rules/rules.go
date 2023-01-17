@@ -119,24 +119,6 @@ const ConfigurationRules = `
         requests:
           cpu: LARGEST_VALUE
           memory: LARGEST_VALUE
-    pap:
-      auditService:
-        resources:
-          limits:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-          requests:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-      papService:
-        resources:
-          limits:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-          requests:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-      replicas: LARGEST_VALUE
     policycontroller:
       replicas: LARGEST_VALUE
       resources:
@@ -181,14 +163,6 @@ const ConfigurationRules = `
         requests:
           cpu: LARGEST_VALUE
           memory: LARGEST_VALUE
-      iamOnboarding:
-        resources:
-          limits:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-          requests:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
 - name: ibm-management-ingress-operator
   spec:
     managementIngress:

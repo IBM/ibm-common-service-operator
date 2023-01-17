@@ -75,7 +75,6 @@ spec:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       oidcclientwatcher: {}
-      pap: {}
       policycontroller: {}
       policydecision: {}
       secretwatcher: {}
@@ -91,7 +90,6 @@ spec:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       oidcclientwatcher: {}
-      pap: {}
       policycontroller: {}
       policydecision: {}
       secretwatcher: {}
@@ -107,7 +105,6 @@ spec:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       oidcclientwatcher: {}
-      pap: {}
       policycontroller: {}
       policydecision: {}
       secretwatcher: {}
@@ -775,7 +772,6 @@ spec:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       oidcclientwatcher: {}
-      pap: {}
       policycontroller: {}
       policydecision: {}
       secretwatcher: {}
@@ -791,7 +787,6 @@ spec:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       oidcclientwatcher: {}
-      pap: {}
       policycontroller: {}
       policydecision: {}
       secretwatcher: {}
@@ -807,7 +802,6 @@ spec:
         config:
           ibmCloudSaas: true
       oidcclientwatcher: {}
-      pap: {}
       policycontroller: {}
       policydecision: {}
       secretwatcher: {}

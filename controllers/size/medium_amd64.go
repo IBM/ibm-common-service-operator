@@ -116,24 +116,6 @@ const Medium = `
         requests:
           cpu: 20m
           memory: 40Mi
-    pap:
-      auditService:
-        resources:
-          limits:
-            cpu: 20m
-            memory: 40Mi
-          requests:
-            cpu: 10m
-            memory: 20Mi
-      papService:
-        resources:
-          limits:
-            cpu: 1000m
-            memory: 600Mi
-          requests:
-            cpu: 30m
-            memory: 190Mi
-      replicas: 2
     policycontroller:
       replicas: 1
       resources:
@@ -178,14 +160,6 @@ const Medium = `
         requests:
           cpu: 20m
           memory: 50Mi
-      iamOnboarding:
-        resources:
-          limits:
-            cpu: 1000m
-            memory: 1024Mi
-          requests:
-            cpu: 20m
-            memory: 64Mi
 - name: ibm-management-ingress-operator
   spec:
     managementIngress:
