@@ -23,10 +23,8 @@ set -o nounset
 OC=${1:-oc}
 YQ=${1:-yq}
 
-master_ns=
 cs_operator_channel=
 catalog_source=
-controlNs=
 
 function main() {
     msg "Conversion Script Version v1.0.0"
@@ -126,7 +124,7 @@ function prepare_cluster() {
 
 # scale back cs pod 
 function scale_up_pod() {
-    msg "scaling back ibm-common-service-operator deployment in ${master_ns} namespace"
+    info "scaling back ibm-common-service-operator deployment in ${master_ns} namespace"
     ${OC} scale deployment -n ${master_ns} ibm-common-service-operator --replicas=1
     ${OC} scale deployment -n ${master_ns} operand-deployment-lifecycle-manager --replicas=1
     check_healthy "${master_ns}"
@@ -449,7 +447,7 @@ function removeNSS(){
         ${OC} get nss --all-namespaces | grep nss-managedby-odlm | while read -r line; do
             local namespace=$(echo $line | awk '{print $1}')
             info "deleting namespace scope nss-managedby-odlm in namespace $namespace"
-            ${OC} delete nss nss-managedby-odlm -n ${namespace} || (reset && error "unable to delete namespace scope nss-managedby-odlm in ${namespace}")
+            ${OC} delete nss nss-managedby-odlm -n ${namespace} || (error "unable to delete namespace scope nss-managedby-odlm in ${namespace}")
         done
     else
         info "Namespace Scope CR \"nss-managedby-odlm\" not present. Moving on..."
@@ -459,7 +457,7 @@ function removeNSS(){
         ${OC} get nss --all-namespaces | grep odlm-scope-managedby-odlm | while read -r line; do
             local namespace=$(echo $line | awk '{print $1}')
             info "deleting namespace scope odlm-scope-managedby-odlm in namespace $namespace"
-            ${OC} delete nss odlm-scope-managedby-odlm -n ${namespace} || (reset && error "unable to delete namespace scope odlm-scope-managedby-odlm in ${namespace}")
+            ${OC} delete nss odlm-scope-managedby-odlm -n ${namespace} || (error "unable to delete namespace scope odlm-scope-managedby-odlm in ${namespace}")
         done
     else
         info "Namespace Scope CR \"odlm-scope-managedby-odlm\" not present. Moving on..."
