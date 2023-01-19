@@ -77,7 +77,6 @@ function rollback() {
     "${OC}" patch -n "${CONTROL_NS}" operandbindinfo ibm-licensing-bindinfo --type=merge -p '{"metadata": {"finalizers":null}}' || info "Licensing OperandBindInfo not found in ${CONTROL_NS}. Moving on..."
     "${OC}" delete --ignore-not-found -n "${CONTROL_NS}" operandbindinfo ibm-licensing-bindinfo
     
-    #not sure if there is more to uninstalling crossplane once it is up and running
     "${OC}" delete -n "${CONTROL_NS}" --ignore-not-found sub ibm-crossplane-operator-app
     "${OC}" delete -n "${CONTROL_NS}" --ignore-not-found sub ibm-crossplane-provider-kubernetes-operator-app
     csv=$("${OC}" get -n "${CONTROL_NS}" csv | (grep ibm-crossplane-operator || echo "fail") | awk '{print $1}')
@@ -86,6 +85,7 @@ function rollback() {
     "${OC}" delete -n "${CONTROL_NS}" --ignore-not-found csv "${csv}"
 
     csv=$("${OC}" get -n "${CONTROL_NS}" csv | (grep ibm-namespace-scope-operator || echo "fail") | awk '{print $1}')
+    "${OC}" delete -n "${CONTROL_NS}" --ignore-not-found sub ibm-namespace-scope-operator
     "${OC}" delete -n "${CONTROL_NS}" --ignore-not-found csv "${csv}"
     "${OC}" patch namespacescope common-service -n "${CONTROL_NS}" --type=merge -p '{"metadata": {"finalizers":null}}' || info "Namespacescope resource not found in ${CONTROL_NS}. Moving on..."
     "${OC}" delete namespacescope common-service -n "${CONTROL_NS}" --ignore-not-found
@@ -93,8 +93,14 @@ function rollback() {
 
     #delete misc items in control namespace
     "${OC}" delete deploy -n "${CONTROL_NS}" --ignore-not-found secretshare ibm-common-service-webhook
+    ${OC} delete svc ibm-common-service-webhook -n ${CONTROL_NS} --ignore-not-found
+    #restart pod in cs namespace to update webhook instance
     webhookPod=$("${OC}" get pods -n ${MASTER_NS} | grep ibm-common-service-webhook | awk '{print $1}')
     ${OC} delete pod ${webhookPod} -n ${MASTER_NS} --ignore-not-found
+    ${OC} delete deploy -n ${MASTER_NS} --ignore-not-found ibm-common-service-webhook
+
+    info "Deleting control namespace ${CONTROL_NS}"
+    ${OC} delete namespace ${CONTROL_NS} --ignore-not-found
 
     # scale back up
     scale_up_pod
@@ -117,15 +123,15 @@ function rollback() {
             info "Singleton services successfully re-deployed in ${MASTER_NS}"
             break
         else
-            certPodCheck=$("${OC}" get pods -n "${CONTROL_NS}" | (grep ibm-cert-manager || echo "fail") | awk '{print $1}')
-            licPodCheck=$("${OC}" get pods -n "${CONTROL_NS}" | (grep ibm-licensing-service || echo "fail") | awk '{print $1}')
+            certPodCheck=$("${OC}" get pods -n "${CONTROL_NS}" --ignore-not-found | (grep ibm-cert-manager || echo "fail") | awk '{print $1}')
+            licPodCheck=$("${OC}" get pods -n "${CONTROL_NS}" --ignore-not-found | (grep ibm-licensing-service || echo "fail") | awk '{print $1}')
             if [ $certPodCheck != "fail" ] || [ $licPodCheck != "fail" ]; then
                 error "Singleton services re-deployed into control namespace. Verify that the common-services-map configmap in kube-public namespace has had the \"controlNamespace\" field removed and run again."
             fi
         fi
     done
 
-    success "Cluster successfully rolled back. Namespace ${CONTROL_NS} can be safely deleted."
+    success "Cluster successfully rolled back from multi-instance to shared-instance."
 
 }
 
@@ -161,7 +167,7 @@ function check_healthy() {
 }
 
 function scale_up_pod() {
-    msg "scaling back ibm-common-service-operator deployment in ${MASTER_NS} namespace"
+    info "scaling back ibm-common-service-operator deployment in ${MASTER_NS} namespace"
     ${OC} scale deployment -n ${MASTER_NS} ibm-common-service-operator --replicas=1
     ${OC} scale deployment -n ${MASTER_NS} operand-deployment-lifecycle-manager --replicas=1
     check_healthy "${MASTER_NS}"
