@@ -116,6 +116,24 @@ const Small = `
         requests:
           cpu: 30m
           memory: 50Mi
+    pap:
+      auditService:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 50Mi
+          requests:
+            cpu: 20m
+            memory: 50Mi
+      papService:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 330Mi
+          requests:
+            cpu: 50m
+            memory: 160Mi
+      replicas: 1
     policycontroller:
       replicas: 1
       resources:
@@ -160,6 +178,14 @@ const Small = `
         requests:
           cpu: 20m
           memory: 50Mi
+      iamOnboarding:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1024Mi
+          requests:
+            cpu: 20m
+            memory: 64Mi
 - name: ibm-management-ingress-operator
   spec:
     managementIngress:
