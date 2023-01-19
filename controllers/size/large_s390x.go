@@ -186,6 +186,94 @@ const Large = `
         requests:
           cpu: 20m
           memory: 50Mi
+- name: ibm-im-operator
+  spec:
+    authentication:
+      auditService:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 50Mi
+          requests:
+            cpu: 75m
+            memory: 50Mi
+      authService:
+        resources:
+          limits:
+            cpu: 2000m
+            memory: 745Mi
+          requests:
+            cpu: 725m
+            memory: 695Mi
+      clientRegistration:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 50Mi
+          requests:
+            cpu: 20m
+            memory: 50Mi
+      identityManager:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 530Mi
+          requests:
+            cpu: 340m
+            memory: 385Mi
+      identityProvider:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 480Mi
+          requests:
+            cpu: 410m
+            memory: 335Mi
+      replicas: 3
+    policycontroller:
+      replicas: 1
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 75Mi
+        requests:
+          cpu: 20m
+          memory: 75Mi
+    policydecision:
+      auditService:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 60Mi
+          requests:
+            cpu: 30m
+            memory: 50Mi
+      replicas: 3
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 420Mi
+        requests:
+          cpu: 195m
+          memory: 270Mi
+    secretwatcher:
+      replicas: 1
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 220Mi
+        requests:
+          cpu: 30m
+          memory: 220Mi
+    securityonboarding:
+      replicas: 1
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 50Mi
+        requests:
+          cpu: 20m
+          memory: 50Mi
 - name: ibm-management-ingress-operator
   spec:
     managementIngress:

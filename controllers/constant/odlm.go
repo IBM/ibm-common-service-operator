@@ -42,8 +42,6 @@ spec:
       authentication:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      oidcclientwatcher: {}
-      pap: {}
       policycontroller: {}
       policydecision: {}
       secretwatcher: {}
@@ -58,8 +56,6 @@ spec:
       authentication:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      oidcclientwatcher: {}
-      pap: {}
       policycontroller: {}
       policydecision: {}
       secretwatcher: {}
@@ -742,8 +738,6 @@ spec:
       authentication:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      oidcclientwatcher: {}
-      pap: {}
       policycontroller: {}
       policydecision: {}
       secretwatcher: {}
@@ -758,8 +752,6 @@ spec:
       authentication:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      oidcclientwatcher: {}
-      pap: {}
       policycontroller: {}
       policydecision: {}
       secretwatcher: {}

@@ -186,6 +186,94 @@ const Large = `
           requests:
             cpu: 20m
             memory: 64Mi
+- name: ibm-im-operator
+  spec:
+    authentication:
+      replicas: 3
+      auditService:
+        resources:
+          limits:
+            cpu: 20m
+            memory: 40Mi
+          requests:
+            cpu: 10m
+            memory: 20Mi
+      authService:
+        resources:
+          limits:
+            cpu: 2000m
+            memory: 1090Mi
+          requests:
+            cpu: 600m
+            memory: 540Mi
+      clientRegistration:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 50Mi
+          requests:
+            cpu: 20m
+            memory: 50Mi
+      identityManager:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1270Mi
+          requests:
+            cpu: 260m
+            memory: 240Mi
+      identityProvider:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 920Mi
+          requests:
+            cpu: 570m
+            memory: 250Mi
+    policycontroller:
+      replicas: 1
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 80Mi
+        requests:
+          cpu: 20m
+          memory: 40Mi
+    policydecision:
+      auditService:
+        resources:
+          limits:
+            cpu: 20m
+            memory: 40Mi
+          requests:
+            cpu: 10m
+            memory: 20Mi
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 420Mi
+        requests:
+          cpu: 70m
+          memory: 30Mi
+      replicas: 3
+    secretwatcher:
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 220Mi
+        requests:
+          cpu: 20m
+          memory: 50Mi
+      replicas: 1
+    securityonboarding:
+      replicas: 1
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 50Mi
+        requests:
+          cpu: 20m
+          memory: 50Mi
 - name: ibm-management-ingress-operator
   spec:
     managementIngress:

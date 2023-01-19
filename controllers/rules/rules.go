@@ -189,6 +189,97 @@ const ConfigurationRules = `
           requests:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+- name: ibm-im-operator
+  spec:
+    authentication:
+      config:
+        fipsEnabled: LARGEST_VALUE
+      replicas: LARGEST_VALUE
+      auditService:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      authService:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      clientRegistration:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      identityManager:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      identityProvider:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      replicas: LARGEST_VALUE
+    policycontroller:
+      replicas: LARGEST_VALUE
+      resources:
+        limits:
+          cpu: LARGEST_VALUE
+          memory: LARGEST_VALUE
+        requests:
+          cpu: LARGEST_VALUE
+          memory: LARGEST_VALUE
+    policydecision:
+      auditService:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      resources:
+        limits:
+          cpu: LARGEST_VALUE
+          memory: LARGEST_VALUE
+        requests:
+          cpu: LARGEST_VALUE
+          memory: LARGEST_VALUE
+      replicas: LARGEST_VALUE
+    secretwatcher:
+      resources:
+        limits:
+          cpu: LARGEST_VALUE
+          memory: LARGEST_VALUE
+        requests:
+          cpu: LARGEST_VALUE
+          memory: LARGEST_VALUE
+      replicas: LARGEST_VALUE
+    securityonboarding:
+      replicas: LARGEST_VALUE
+      resources:
+        limits:
+          cpu: LARGEST_VALUE
+          memory: LARGEST_VALUE
+        requests:
+          cpu: LARGEST_VALUE
+          memory: LARGEST_VALUE
 - name: ibm-management-ingress-operator
   spec:
     managementIngress:
