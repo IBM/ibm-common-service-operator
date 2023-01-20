@@ -230,15 +230,6 @@ const StarterSet = `
           requests:
             cpu: 570m
             memory: 250Mi
-    policycontroller:
-      replicas: 1
-      resources:
-        limits:
-          cpu: 1000m
-          memory: 60Mi
-        requests:
-          cpu: 20m
-          memory: 30Mi
     policydecision:
       auditService:
         resources:
@@ -255,15 +246,6 @@ const StarterSet = `
         requests:
           cpu: 70m
           memory: 30Mi
-      replicas: 1
-    secretwatcher:
-      resources:
-        limits:
-          cpu: 1000m
-          memory: 145Mi
-        requests:
-          cpu: 20m
-          memory: 40Mi
       replicas: 1
     securityonboarding:
       replicas: 1

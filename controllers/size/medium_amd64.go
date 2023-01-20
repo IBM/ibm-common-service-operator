@@ -230,15 +230,6 @@ const Medium = `
           requests:
             cpu: 570m
             memory: 250Mi
-    policycontroller:
-      replicas: 1
-      resources:
-        limits:
-          cpu: 1000m
-          memory: 80Mi
-        requests:
-          cpu: 20m
-          memory: 40Mi
     policydecision:
       auditService:
         resources:
@@ -256,15 +247,6 @@ const Medium = `
           cpu: 70m
           memory: 30Mi
       replicas: 2
-    secretwatcher:
-      resources:
-        limits:
-          cpu: 1000m
-          memory: 220Mi
-        requests:
-          cpu: 20m
-          memory: 50Mi
-      replicas: 1
     securityonboarding:
       replicas: 1
       resources:

@@ -230,15 +230,6 @@ const Large = `
             cpu: 410m
             memory: 335Mi
       replicas: 3
-    policycontroller:
-      replicas: 1
-      resources:
-        limits:
-          cpu: 1000m
-          memory: 75Mi
-        requests:
-          cpu: 20m
-          memory: 75Mi
     policydecision:
       auditService:
         resources:
@@ -256,15 +247,6 @@ const Large = `
         requests:
           cpu: 195m
           memory: 270Mi
-    secretwatcher:
-      replicas: 1
-      resources:
-        limits:
-          cpu: 1000m
-          memory: 220Mi
-        requests:
-          cpu: 30m
-          memory: 220Mi
     securityonboarding:
       replicas: 1
       resources:

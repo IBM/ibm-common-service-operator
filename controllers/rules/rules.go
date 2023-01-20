@@ -236,15 +236,6 @@ const ConfigurationRules = `
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
       replicas: LARGEST_VALUE
-    policycontroller:
-      replicas: LARGEST_VALUE
-      resources:
-        limits:
-          cpu: LARGEST_VALUE
-          memory: LARGEST_VALUE
-        requests:
-          cpu: LARGEST_VALUE
-          memory: LARGEST_VALUE
     policydecision:
       auditService:
         resources:
@@ -254,15 +245,6 @@ const ConfigurationRules = `
           requests:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
-      resources:
-        limits:
-          cpu: LARGEST_VALUE
-          memory: LARGEST_VALUE
-        requests:
-          cpu: LARGEST_VALUE
-          memory: LARGEST_VALUE
-      replicas: LARGEST_VALUE
-    secretwatcher:
       resources:
         limits:
           cpu: LARGEST_VALUE

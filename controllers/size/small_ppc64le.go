@@ -230,15 +230,6 @@ const Small = `
           requests:
             cpu: 80m
             memory: 130Mi
-    policycontroller:
-      replicas: 1
-      resources:
-        limits:
-          cpu: 1000m
-          memory: 300Mi
-        requests:
-          cpu: 20m
-          memory: 50Mi
     policydecision:
       auditService:
         resources:
@@ -255,15 +246,6 @@ const Small = `
         requests:
           cpu: 20m
           memory: 50Mi
-      replicas: 1
-    secretwatcher:
-      resources:
-        limits:
-          cpu: 1000m
-          memory: 250Mi
-        requests:
-          cpu: 30m
-          memory: 120Mi
       replicas: 1
     securityonboarding:
       replicas: 1
