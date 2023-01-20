@@ -311,6 +311,138 @@
     }
   },
   {
+    "name": "ibm-im-operator",
+    "spec": {
+      "authentication": {
+        "auditService": {
+          "resources": {
+            "limits": {
+              "cpu": "1000m",
+              "memory": "50Mi"
+            },
+            "requests": {
+              "cpu": "10m",
+              "memory": "40Mi"
+            }
+          }
+        },
+        "authService": {
+          "resources": {
+            "limits": {
+              "cpu": "2000m",
+              "memory": "1090Mi"
+            },
+            "requests": {
+              "cpu": "400m",
+              "memory": "540Mi"
+            }
+          }
+        },
+        "clientRegistration": {
+          "resources": {
+            "limits": {
+              "cpu": "1000m",
+              "memory": "50Mi"
+            },
+            "requests": {
+              "cpu": "20m",
+              "memory": "50Mi"
+            }
+          }
+        },
+        "identityManager": {
+          "resources": {
+            "limits": {
+              "cpu": "1000m",
+              "memory": "1270Mi"
+            },
+            "requests": {
+              "cpu": "260m",
+              "memory": "210Mi"
+            }
+          }
+        },
+        "identityProvider": {
+          "resources": {
+            "limits": {
+              "cpu": "1000m",
+              "memory": "920Mi"
+            },
+            "requests": {
+              "cpu": "570m",
+              "memory": "210Mi"
+            }
+          }
+        },
+        "replicas": 3
+      },
+      "policycontroller": {
+        "replicas": 1,
+        "resources": {
+          "limits": {
+            "cpu": "1000m",
+            "memory": "80Mi"
+          },
+          "requests": {
+            "cpu": "20m",
+            "memory": "40Mi"
+          }
+        }
+      },
+      "policydecision": {
+        "auditService": {
+          "resources": {
+            "limits": {
+              "cpu": "1000m",
+              "memory": "50Mi"
+            },
+            "requests": {
+              "cpu": "10m",
+              "memory": "20Mi"
+            }
+          }
+        },
+        "replicas": 3,
+        "resources": {
+          "limits": {
+            "cpu": "1000m",
+            "memory": "420Mi"
+          },
+          "requests": {
+            "cpu": "70m",
+            "memory": "30Mi"
+          }
+        }
+      },
+      "secretwatcher": {
+        "replicas": 1,
+        "resources": {
+          "limits": {
+            "cpu": "1000m",
+            "memory": "220Mi"
+          },
+          "requests": {
+            "cpu": "20m",
+            "memory": "50Mi"
+          }
+        }
+      },
+      "securityonboarding": {
+        "replicas": 1,
+        "resources": {
+          "limits": {
+            "cpu": "1000m",
+            "memory": "50Mi"
+          },
+          "requests": {
+            "cpu": "20m",
+            "memory": "50Mi"
+          }
+        }
+      }
+    }
+  },
+  {
     "name": "ibm-ingress-nginx-operator",
     "spec": {
       "nginxIngress": {

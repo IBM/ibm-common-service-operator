@@ -133,6 +133,13 @@ spec:
       policydecision: {}
       secretwatcher: {}
       securityonboarding: {}
+  - name: ibm-im-operator
+    spec:
+      authentication: {}
+      policycontroller: {}
+      policydecision: {}
+      secretwatcher: {}
+      securityonboarding: {}
   - name: ibm-healthcheck-operator
     spec:
       healthService: {}
