@@ -42,9 +42,7 @@ spec:
       authentication:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      policycontroller: {}
       policydecision: {}
-      secretwatcher: {}
       securityonboarding: {}
       operandBindInfo:
         bindings:
@@ -56,9 +54,7 @@ spec:
       authentication:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      policycontroller: {}
       policydecision: {}
-      secretwatcher: {}
       securityonboarding: {}
       operandBindInfo:
         bindings:
@@ -738,9 +734,7 @@ spec:
       authentication:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      policycontroller: {}
       policydecision: {}
-      secretwatcher: {}
       securityonboarding: {}
       operandBindInfo:
         bindings:
@@ -752,9 +746,7 @@ spec:
       authentication:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      policycontroller: {}
       policydecision: {}
-      secretwatcher: {}
       securityonboarding: {}
       operandBindInfo:
         bindings:

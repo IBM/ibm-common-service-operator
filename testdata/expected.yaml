@@ -376,19 +376,6 @@
         },
         "replicas": 3
       },
-      "policycontroller": {
-        "replicas": 1,
-        "resources": {
-          "limits": {
-            "cpu": "1000m",
-            "memory": "80Mi"
-          },
-          "requests": {
-            "cpu": "20m",
-            "memory": "40Mi"
-          }
-        }
-      },
       "policydecision": {
         "auditService": {
           "resources": {
@@ -411,19 +398,6 @@
           "requests": {
             "cpu": "70m",
             "memory": "30Mi"
-          }
-        }
-      },
-      "secretwatcher": {
-        "replicas": 1,
-        "resources": {
-          "limits": {
-            "cpu": "1000m",
-            "memory": "220Mi"
-          },
-          "requests": {
-            "cpu": "20m",
-            "memory": "50Mi"
           }
         }
       },
