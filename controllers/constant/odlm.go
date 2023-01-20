@@ -497,14 +497,14 @@ spec:
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-mongodb-operator
     namespace: {{ .CPFSNs }}
-    channel: v3.23
+    channel: {{ .Channel }}
     packageName: ibm-mongodb-operator-app
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-cert-manager-operator
     namespace: {{ .CPFSNs }}
-    channel: v3.23
+    channel: {{ .Channel }}
     packageName: ibm-cert-manager-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -1054,14 +1054,14 @@ spec:
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-mongodb-operator
     namespace: {{ .CPFSNs }}
-    channel: v3.23
+    channel: {{ .Channel }}
     packageName: ibm-mongodb-operator-app
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-cert-manager-operator
     namespace: {{ .CPFSNs }}
-    channel: v3.23
+    channel: {{ .Channel }}
     packageName: ibm-cert-manager-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
