@@ -497,7 +497,7 @@ spec:
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-mongodb-operator
     namespace: {{ .CPFSNs }}
-    channel: {{ .Channel }}
+    channel: v3.23
     packageName: ibm-mongodb-operator-app
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
@@ -1054,7 +1054,7 @@ spec:
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-mongodb-operator
     namespace: {{ .CPFSNs }}
-    channel: {{ .Channel }}
+    channel: v3.23
     packageName: ibm-mongodb-operator-app
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
