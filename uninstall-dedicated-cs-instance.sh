@@ -54,13 +54,111 @@ function title() {
   step=$((step + 1))
 }
 
+function delete_all(){
+  local namespace=$1
+  title "Deleting other common service operators, roles, and rolebindings in namespace ${namespace}"
+  for cs_op in $cs_op_list; do
+    delete_operator "${namespace}" "$cs_op"
+    roles=$(${KUBECTL} get roles -n ${namespace} --ignore-not-found | (grep $cs_op || echo fail) | awk '{print $1}')
+    if [[ $roles != "fail" ]]; then
+      for role in $roles; do
+        ${KUBECTL} delete role $role -n ${namespace} --ignore-not-found || error "could not delete role $role in namesapce ${namespace}"
+      done
+    fi
+    rolebindings=$(${KUBECTL} get rolebindings -n ${namespace} --ignore-not-found | (grep $cs_op || echo fail) | awk '{print $1}')
+    if [[ $rolebindings != "fail" ]]; then
+      for rolebinding in $rolebindings; do
+        ${KUBECTL} delete rolebinding $rolebinding -n ${namespace} --ignore-not-found || error "could not delete role $rolebinding in namesapce ${namespace}"
+      done
+    fi
+  done
+
+  title "Deleting deployments, jobs, service accounts, statefulsets, daemonsets, services, secrets, and routes in ${namespace}"
+  for deploy in $deployments; do
+    ${KUBECTL} delete deploy $deploy -n ${namespace} --ignore-not-found
+  done
+  
+  for sa in $serviceaccounts; do
+    ${KUBECTL} delete sa $sa -n ${namespace} --ignore-not-found
+  done
+  
+  for ss in $statefulsets; do
+    ${KUBECTL} delete statefulset $ss -n ${namespace} --ignore-not-found
+  done
+  
+  for ds in $daemonsets; do
+    ${KUBECTL} delete ds $ds -n ${namespace} --ignore-not-found
+  done
+  
+  for service in $services; do
+    ${KUBECTL} delete service $service -n ${namespace} --ignore-not-found
+  done
+  
+  for route in $routes; do
+    ${KUBECTL} delete route $route -n ${namespace} --ignore-not-found
+  done
+  
+  for package in $packagemanifests; do
+    ${KUBECTL} delete packagemanifest $package -n ${namespace} --ignore-not-found
+  done
+  
+  for ingress in $ingresses; do
+    ${KUBECTL} delete ingress $ingress -n ${namespace} --ignore-not-found
+  done
+  
+  for cm in $configmaps; do
+    ${KUBECTL} delete cm $cm -n ${namespace} --ignore-not-found
+  done
+  zen_cms=$(${KUBECTL} get cm -n ${namespace} --ignore-not-found | (grep zen || echo fail))
+  if [[ $zen_cms != "fail" ]]; then
+    for cm in $zen_cms; do
+      ${KUBECTL} delete cm $cm -n ${namespace} --ignore-not-found
+    done
+  fi
+  
+  for job in $jobs; do
+    ${KUBECTL} delete job $job -n ${namespace} --ignore-not-found
+  done
+  zen_jobs=$(${KUBECTL} get job -n ${namespace} --ignore-not-found | (grep zen || echo fail))
+  if [[ $zen_jobs != "fail" ]]; then
+    for job in $zen_jobs; do
+      ${KUBECTL} delete job $job -n ${namespace} --ignore-not-found
+    done
+  fi
+
+  #delete CRDs and CRs
+  for custom_resource in $custom_resources; do
+    cr_check=$(${KUBECTL} get $custom_resource -n ${namespace} --ignore-not-found || echo fail)
+    if [[ $cr_check != "fail" ]]; then
+      resources=$(${KUBECTL} get $custom_resource -n ${namespace} --ignore-not-found | awk '{print $1}' | awk 'NR!=1 {print}')
+      delete_operand_finalizer "${namespace}" "$custom_resource"
+      for resource in $resources; do
+        ${KUBECTL} delete ${custom_resource} ${resource} -n ${namespace} --ignore-not-found
+      done
+    fi
+  done
+
+  #delete secrets
+  for group in $secrets; do
+    secret_check=$(${KUBECTL} get secrets -n ${namespace} --ignore-not-found | (grep ${group} || echo fail))
+    if [[ $secret_check != "fail" ]]; then
+      secrets_to_remove=$(${KUBECTL} get secrets -n ${namespace} --ignore-not-found | grep ${group} | awk '{print $1}')
+      for secret in $secrets_to_remove; do
+        ${KUBECTL} delete secret -n ${namespace} ${secret} --ignore-not-found
+      done
+    fi
+  done
+}
+
 # Sometime delete namespace stuck due to some reousces remaining, use this method to get these
 # remaining resources to force delete them.
 function get_remaining_resources_from_namespace() {
   local namespace=$1
   local remaining=
   if ${KUBECTL} get namespace ${namespace} &>/dev/null; then
-    message=$(${KUBECTL} get namespace ${namespace} -o=jsonpath='{.status.conditions[?(@.type=="NamespaceContentRemaining")].message}' | awk -F': ' '{print $2}')
+    #the following 'message' line does not output anything unless the namespace is in terminating state...
+    #so this function runs before the namespace is deleted so it will always run into the problem where the first time this is run, the script will hang up on deleting the target namespace but the second time it will work immediately
+    message=$(${KUBECTL} get namespace ${namespace} -o=jsonpath='{.status.conditions[?(@.type=="NamespaceContentRemaining")].message}' | awk -F': ' '{print $2}') 
     [[ "X$message" == "X" ]] && return 0
     remaining=$(echo $message | awk '{len=split($0, a, ", ");for(i=1;i<=len;i++)print a[i]" "}' | while read res; do
       [[ "$res" =~ "pod" ]] && continue
@@ -102,8 +200,6 @@ function update_remaining_resources() {
 function wait_for_deleted() {
   local remaining=${2}
   local namespace=${1}
-#   msg "namespace: $namespace"
-#   msg "remaining: $remaining"
   retries=${3:-10}
   interval=${4:-30}
   index=0
@@ -190,6 +286,7 @@ function cleanup_cluster() {
   fi
 }
 function force_delete() {
+  msg "inside force delete function"
   local namespace=$1
   local remaining=$(get_remaining_resources_from_namespace "$namespace")
   if [[ "X$remaining" != "X" ]]; then
@@ -250,13 +347,28 @@ function wait_for_delete_iamcr_cloudpak_ns(){
 	done
 }
 #-------------------------------------- Clean UP --------------------------------------#
-cs_op_list="nss operand-deployment-lifecycle-manager ibm-auditlogging-operator ibm-commonui-operator ibm-events-operator ibm-healthcheck-operator ibm-iam-operator ibm-ingress-nginx-operator ibm-management-ingress-operator ibm-mongodb-operator ibm-monitoring-grafana-operator ibm-platform-api ibm-zen-operator zen-cpp-operator"  
-deployments="auth-idp auth-pap auth-pdp common-web-ui default-http-backend iam-policy-controller ibm-monitoring-grafana audit-policy-controller icp-memcached management-ingress nginx-ingress-controller oidcclient-watcher platform-api secret-watcher system-healthcheck-service meta-api-deploy"
-serviceaccounts="ibm-auditlogging-operand ibm-mongodb-operand ibm-platform-api-operand ibm-zen-operator-serviceaccount"
-statefulsets="icp-mongodb must-gather-service"
+#Resource Lists
+
+#also used for roles and rolebindings
+cs_op_list="nss operand-deployment-lifecycle-manager ibm-auditlogging-operator ibm-bts-operator ibm-commonui-operator ibm-events-operator ibm-healthcheck-operator ibm-iam-operator ibm-ingress-nginx-operator ibm-management-ingress-operator ibm-mongodb-operator ibm-monitoring-grafana-operator ibm-platform-api-operator ibm-platform-api-operand ibm-zen-operator zen-cpp-operator"  
+deployments="auth-idp auth-pap auth-pdp common-web-ui default-http-backend iam-policy-controller ibm-commonui-operator ibm-content-operator ibm-iam-operator ibm-ingress-nginx-operator ibm-management-ingress-operator ibm-mongodb-operator ibm-nginx ibm-nginx-tester ibm-monitoring-grafana ibm-platform-api-operator ibm-zen-operator audit-policy-controller icp-memcached management-ingress nginx-ingress-controller oidcclient-watcher platform-api secret-watcher secretshare system-healthcheck-service meta-api-deploy usermgmt zen-audit zen-core zen-core-api zen-watcher"
+serviceaccounts="ibm-auditlogging-operand ibm-common-service-operator ibm-commonui-operator ibm-common-service-webhook ibm-events-operator ibm-iam-operand-restricted ibm-iam-operand ibm-iam-operator ibm-ingress-nginx-operator ibm-management-ingress-operator ibm-mongodb-operand ibm-mongodb-operator ibm-platform-api-operand ibm-platform-api-operator ibm-zen-operator-serviceaccount management-ingress nginx-ingress operand-deployment-lifecycle-manager secretshare zen-admin-sa zen-editor-sa zen-norbac-sa zen-runtime-sa zen-viewer-sa"
+statefulsets="icp-mongodb must-gather-service zen-metastoredb"
 daemonsets="audit-logging-fluentd-ds"
-services="common-audit-logging common-web-ui default-http-backend iam-pap iam-pdp iam-token-service ibm-monitoring-grafana icp-management-ingress icp-mongodb memcached meta-api-svc mongodb must-gather-service nginx-ingress-controller platform-api platform-auth-service platform-identity-management platform-identity-provider system-healthcheck-service"
+services="common-audit-logging common-web-ui default-http-backend iam-pap iam-pdp iam-token-service ibm-monitoring-grafana ibm-nginx-svc ibm-nginx-tester-svc icp-management-ingress icp-mongodb internal-nginx-svc memcached meta-api-svc mongodb must-gather-service nginx-ingress-controller platform-api platform-auth-service platform-identity-management platform-identity-provider system-healthcheck-service usermgmt-svc zen-audit-svc zen-core-api-svc zen-core-svc zen-metastoredb zen-metastoredb-public"
 routes="cp-console cp-proxy"
+#grep then delete crds and crs
+custom_resources="authentications.operator.ibm.com clients.oidc.security.ibm.com commonservices.operator.ibm.com commonwebuis.operators.ibm.com iampolicies.iam.policies.ibm.com kafkabridges.ibmevents.ibm.com kafkaclaims.shim.bedrock.ibm.com kafkacomposites.shim.bedrock.ibm.com kafkaconnectors.ibmevents.ibm.com kafkaconnects.ibmevents.ibm.com kafkamirrormaker2s.ibmevents.ibm.com kafkamirrormakers.ibmevents.ibm.com kafkarebalances.ibmevents.ibm.com kafkas.ibmevents.ibm.com kafkatopics.ibmevents.ibm.com kafkausers.ibmevents.ibm.com managementingresses.operator.ibm.com mongodbs.operator.ibm.com namespacescopes.operator.ibm.com nginxingresses.operator.ibm.com oidcclientwatchers.operator.ibm.com operandbindinfos.operator.ibm.com platformapis.operator.ibm.com policycontrollers.operator.ibm.com policydecisions.operator.ibm.com secretwatchers.operator.ibm.com securityonboardings.operator.ibm.com strimzipodsets.core.ibmevents.ibm.com zenservices.zen.cpd.ibm.com zenextensions.zen.cpd.ibm.com"
+#grep then delete secrets
+secrets="admin-user-details auth-pdp-secret common-web-ui-cert ibm-common-service-operator ibm-common-service-webhook ibm-commonui-operator ibm-events-operator ibm-iam ibm-ingress-nginx-operator ibm-licensing-bindinfo-ibm-licensing ibm-management-ingress-operator ibm-mongodb ibm-namespace-scope-operator ibm-nginx-internal-tls-ca ibm-platform-api ibm-zen-operator-serviceaccount ibmcloud-cluster-ca-cert icp-management-ingress-tls-secret icp-mongodb identity-provider-secret internal-nginx-svc-tls internal-tls management-ingress mongodb-root-ca-cert nginx-ingress oauth-client-secret operand-deployment-lifecycle-manager platform-api platform-auth platform-identity-management platform-oidc-credentials route-tls-secret secretshare zen"
+package_manifests="ibm-crossplane-provider-kubernetes-operator-app ibm-healthcheck-operator-app ibm-odlm ibm-zen-operator ibm-metering-operator-app ibm-monitoring-grafana-operator-app ibm-monitoring-grafana-operator-app ibm-auditlogging-operator-app ibm-monitoring-exporters-operator-app ibm-iam-policy-operator-app ibm-mongodb-operator-app ibm-monitoring-prometheusext-operator-app ibm-platform-api-operator-app ibm-ingress-nginx-operator-app operand-deployment-lifecycle-manager-app ibm-namespace-scope-operator ibm-events-operator ibm-namespace-scope-operator-restricted ibm-iam-operator ibm-licensing-operator-app ibm-licensing-operator-app zen-cpp-operator ibm-commonui-operator-app ibm-crossplane-provider-ibm-cloud-operator-app ibm-common-service-operator ibm-crossplane-operator-app ibm-management-ingress-operator-app"
+ingresses="common-web-ui common-web-ui-api common-web-ui-callback iam-pap iam-pdp iam-token iam-token-redirect ibmid-ui-callback id-mgmt idmgmt-v2-api platform-api platform-auth platform-auth-dir platform-id-auth platform-id-auth-block platform-id-provider platform-login platform-oidc platform-oidc-block platform-oidc-introspect platform-oidc-keys platform-oidc-token platform-oidc-token-2 saml-ui-callback version-idmgmt"
+#grep then delete only for zen
+configmaps="ibm-cpp-config ibm-iam-bindinfo-oauth-client-map ibm-iam-bindinfo-platform-auth-idp management-ingress-ibmcloud-cluster-info auth-pap auth-pdp cf-crossplane common-web-ui-config common-web-ui-log4js common-web-ui-zen-card-extensions common-web-ui-zen-quicknav-extensions ibm-iam-operator-lock ibm-licensing-bindinfo-ibm-licensing-info ibm-licensing-bindinfo-ibm-licensing-upload-config ibm-platform-api-operator icp-mongodb icp-mongodb-init icp-mongodb-install icp-oidcclient-watcher-lock ingress-controller-leader-ibm-icp-management ingress-controller-leader-nginx management-ingress-config management-ingress-info monitoring-json namespace-scope nginx-ingress-controller oauth-client-map odlm-scope platform-api platform-auth-idp platform-permission-extensions platform-user-role-extensions postgresql-operator-default-monitoring"
+#grep then delete but only for zen
+jobs="create-secrets-job iam-config-job iam-onboarding oidc-client-registration pre-zen-operand-config-job security-onboarding setup-job setup-nginx-job"
+
+
 COMMON_SERVICES_NS=
 KUBECTL=$(command -v kubectl 2>/dev/null)
 [[ "X$KUBECTL" == "X" ]] && error "kubectl: command not found" && exit 1
@@ -327,45 +439,14 @@ if [[ "$FORCE_DELETE" == "false" ]]; then
     name=$(echo $sub | awk -F'/' '{print $2}')
     delete_operator "${COMMON_SERVICES_NS}" "$name" 
   done
-  title "Deleting other common service operators, roles, and rolebindings in namespace ${COMMON_SERVICES_NS}"
-  for cs_op in $cs_op_list; do
-    delete_operator "${COMMON_SERVICES_NS}" "$cs_op"
-    roles=$(${KUBECTL} get roles -n ${COMMON_SERVICES_NS} --ignore-not-found | (grep $cs_op || echo fail) | awk '{print $1}')
-    if [[ $roles != "fail" ]]; then
-      for role in $roles; do
-        ${KUBECTL} delete role $role -n ${COMMON_SERVICES_NS} --ignore-not-found || error "could not delete role $role in namesapce ${COMMON_SERVICES_NS}"
-      done
-    fi
-    rolebindings=$(${KUBECTL} get rolebindings -n ${COMMON_SERVICES_NS} --ignore-not-found | (grep $cs_op || echo fail) | awk '{print $1}')
-    if [[ $rolebindings != "fail" ]]; then
-      for rolebinding in $rolebindings; do
-        ${KUBECTL} delete rolebinding $rolebinding -n ${COMMON_SERVICES_NS} --ignore-not-found || error "could not delete role $rolebinding in namesapce ${COMMON_SERVICES_NS}"
-      done
-    fi
-  done
-  title "Deleting deployments, service accounts, statefulsets, daemonsets, services, and routes in ${COMMON_SERVICES_NS}"
-  for deploy in $deployments; do
-    ${KUBECTL} delete deploy $deploy -n ${COMMON_SERVICES_NS} --ignore-not-found
-  done
-  for sa in $serviceaccounts; do
-    ${KUBECTL} delete sa $sa -n ${COMMON_SERVICES_NS} --ignore-not-found
-  done
-  for ss in $statefulsets; do
-    ${KUBECTL} delete statefulset $ss -n ${COMMON_SERVICES_NS} --ignore-not-found
-  done
-  for ds in $daemonsets; do
-    ${KUBECTL} delete ds $ds -n ${COMMON_SERVICES_NS} --ignore-not-found
-  done
-  for service in $services; do
-    ${KUBECTL} delete service $service -n ${COMMON_SERVICES_NS} --ignore-not-found
-  done
-  for route in $routes; do
-    ${KUBECTL} delete route $route -n ${COMMON_SERVICES_NS} --ignore-not-found
-  done
+
+  #the meat and potatoes of resource deletion
+  delete_all "${COMMON_SERVICES_NS}"
+  
   delete_iamcr_cloudpak_ns ${COMMON_SERVICES_NS} "client"
   delete_operand_finalizer "${COMMON_SERVICES_NS}" "NamespaceScope"
   delete_operand "${COMMON_SERVICES_NS}" "NamespaceScope"
-  ${KUBECTL} delete pods --all -n ${COMMON_SERVICES_NS} --force
+  ${KUBECTL} delete pods --all -n ${COMMON_SERVICES_NS} #clear old pods
   
 
   #remove from cp namespace as well
@@ -382,44 +463,14 @@ if [[ "$FORCE_DELETE" == "false" ]]; then
       name=$(echo $sub | awk -F'/' '{print $2}')
       delete_operator "${cloudpak_ns}" "$name" 
     done
-    title "Deleting other common service operators and resources in namespace ${cloudpak_ns}"
-    for cs_op in $cs_op_list; do
-      delete_operator "${cloudpak_ns}" "$cs_op"
-      roles=$(${KUBECTL} get roles -n ${cloudpak_ns} --ignore-not-found | (grep $cs_op || echo fail) | awk '{print $1}')
-      if [[ $roles != "fail" ]]; then
-        for role in $roles; do
-          ${KUBECTL} delete role $role -n ${cloudpak_ns} --ignore-not-found || error "could not delete role $role in namesapce ${cloudpak_ns}"
-        done
-      fi
-      rolebindings=$(${KUBECTL} get rolebindings -n ${cloudpak_ns} --ignore-not-found | (grep $cs_op || echo fail) | awk '{print $1}')
-      if [[ $rolebindings != "fail" ]]; then
-        for rolebinding in $rolebindings; do
-          ${KUBECTL} delete rolebinding $rolebinding -n ${cloudpak_ns} --ignore-not-found || error "could not delete role $rolebinding in namesapce ${cloudpak_ns}"
-        done
-      fi
-    done
-    title "Deleting deployments, service accounts, statefulsets, daemonsets, services, and routes in ${COMMON_SERVICES_NS}"
-    for deploy in $deployments; do
-        ${KUBECTL} delete deploy $deploy -n ${COMMON_SERVICES_NS} --ignore-not-found
-    done
-    for sa in $serviceaccounts; do
-        ${KUBECTL} delete sa $sa -n ${COMMON_SERVICES_NS} --ignore-not-found
-    done
-    for ss in $statefulsets; do
-        ${KUBECTL} delete statefulset $ss -n ${COMMON_SERVICES_NS} --ignore-not-found
-    done
-    for ds in $daemonsets; do
-        ${KUBECTL} delete ds $ds -n ${COMMON_SERVICES_NS} --ignore-not-found
-    done
-    for service in $services; do
-        ${KUBECTL} delete service $service -n ${COMMON_SERVICES_NS} --ignore-not-found
-    done
-    for route in $routes; do
-        ${KUBECTL} delete route $route -n ${COMMON_SERVICES_NS} --ignore-not-found
-    done
-    delete_iamcr_cloudpak_ns ${cloudpak_ns} "client"
-    delete_operand_finalizer "${cloudpak_ns}" "NamespaceScope"
-    delete_operand "${cloudpak_ns}" "NamespaceScope"
+  
+  #the meat and potatoes of resource deletion
+  delete_all "${cloudpak_ns}"
+  
+  delete_iamcr_cloudpak_ns ${cloudpak_ns} "client"
+  delete_operand_finalizer "${cloudpak_ns}" "NamespaceScope"
+  delete_operand "${cloudpak_ns}" "NamespaceScope"
+  ${KUBECTL} delete pods --all -n ${cloudpak_ns} #clear old pods
   fi
 fi
 
@@ -429,21 +480,32 @@ if [[ "$FORCE_DELETE" == "true" ]]; then
   title "Deleting common services operand from $COMMON_SERVICES_NS namespaces"
   delete_operand_finalizer "${COMMON_SERVICES_NS}" "OperandRequest"
   delete_operand "${COMMON_SERVICES_NS}" "OperandRequest"
-#   wait_for_deleted "${COMMON_SERVICES_NS}" "OperandRequest" 10 10
   delete_operand_finalizer "${COMMON_SERVICES_NS}" "CommonService OperandRegistry OperandConfig"
   delete_operand "${COMMON_SERVICES_NS}" "CommonService OperandRegistry OperandConfig" 
   delete_operand_finalizer "${COMMON_SERVICES_NS}" "NamespaceScope"
   delete_operand "${COMMON_SERVICES_NS}" "NamespaceScope" 
-#   wait_for_deleted "${COMMON_SERVICES_NS}" "NamespaceScope"
+  
   title "Deleting iam crs in ${COMMON_SERVICES_NS} namespace"
-
   force_delete_iamcr_cloudpak_ns ${COMMON_SERVICES_NS} "client rolebinding"
-#   wait_for_delete_iamcr_cloudpak_ns ${COMMON_SERVICES_NS} "client rolebinding"  5 10
-  title "Force delete remaining resources"
-  force_delete "$COMMON_SERVICES_NS"
+  
+  title "Deleting custom resources in ${COMMON_SERVICES_NS} namespace"
+  for custom_resource in $custom_resources; do
+    cr_check=$(${KUBECTL} get $custom_resource -n ${COMMON_SERVICES_NS} --ignore-not-found || echo fail)
+    if [[ $cr_check != "fail" ]]; then
+      delete_operand_finalizer "${COMMON_SERVICES_NS}" "$custom_resource"
+      resources=$(${KUBECTL} get $custom_resource -n ${COMMON_SERVICES_NS} --ignore-not-found | awk '{print $1}' | awk 'NR!=1 {print}')
+      for resource in $resources; do
+        msg "resource: ${resource}  resources: ${resources} cr: $custom_resource"
+        ${KUBECTL} delete ${custom_resource} ${resource} -n ${COMMON_SERVICES_NS} --ignore-not-found
+      done
+    fi
+  done
   title "Deleting namespace ${COMMON_SERVICES_NS}"
   ${KUBECTL} patch namespace ${COMMON_SERVICES_NS} --type=merge -p '{"spec": {"finalizers":null}}'
-  ${KUBECTL} delete namespace ${COMMON_SERVICES_NS} --ignore-not-found
+  ${KUBECTL} delete namespace ${COMMON_SERVICES_NS} --ignore-not-found 
+  title "Force delete remaining resources"
+  force_delete "$COMMON_SERVICES_NS" 
+  wait $NS
   if wait_for_namespace_deleted ${COMMON_SERVICES_NS}; then
     success "Common Services uninstall finished and successfull from namespace ${COMMON_SERVICES_NS}."
     exit 0
