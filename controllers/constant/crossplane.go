@@ -27,13 +27,13 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
   name: {{ .ICPOperator }}
-  namespace: {{ .MasterNs }}
+  namespace: "{{ .MasterNs }}"
 spec:
   channel: {{ .Channel }}
   installPlanApproval: {{ .ApprovalMode }}
   name: {{ .ICPOperator }}
   source: {{ .CatalogSourceName }}
-  sourceNamespace: {{ .CatalogSourceNs }}
+  sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
 const CrossConfiguration = `
@@ -64,13 +64,13 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
   name: {{ .ICPPKOperator}}
-  namespace: {{ .MasterNs }}
+  namespace: "{{ .MasterNs }}"
 spec:
   channel: {{ .Channel }}
   installPlanApproval: {{ .ApprovalMode }}
   name: {{ .ICPPKOperator }}
   source: {{ .CatalogSourceName }}
-  sourceNamespace: {{ .CatalogSourceNs }}
+  sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
 const CrossKubernetesProviderConfig = `
@@ -90,13 +90,13 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
   name: {{ .ICPPICOperator }}
-  namespace: {{ .MasterNs }}
+  namespace: "{{ .MasterNs }}"
 spec:
   channel: {{ .Channel }}
   installPlanApproval: {{ .ApprovalMode }}
   name: {{ .ICPPICOperator }}
   source: {{ .CatalogSourceName }}
-  sourceNamespace: {{ .CatalogSourceNs }}
+  sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
 const CrossIBMCloudProviderConfig = `
@@ -108,7 +108,7 @@ spec:
   credentials:
     source: Secret
     secretRef:
-      namespace: {{ .MasterNs }}
+      namespace: "{{ .MasterNs }}"
       name: provider-ibm-cloud-secret
       key: credentials
   region: us-south
