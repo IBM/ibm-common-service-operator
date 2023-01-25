@@ -630,14 +630,6 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
-  - channel: stable
-    name: redhat-marketplace-operator
-    namespace: openshift-redhat-marketplace
-    packageName: redhat-marketplace-operator
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: certified-operators
-    sourceNamespace: {{ .CatalogSourceNs }}
   - channel: {{ .Channel }}
     name: ibm-zen-operator
     namespace: {{ .CPFSNs }}
