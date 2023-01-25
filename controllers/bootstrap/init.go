@@ -896,7 +896,6 @@ func (b *Bootstrap) DeployCertManagerCR() error {
 		}
 	}
 	klog.Info("Deploying Cert Manager CRs")
-
 	for _, kind := range constant.CertManagerKinds {
 		// wait for v1 crd ready
 		if err := b.waitResourceReady(constant.CertManagerAPIGroupVersionV1, kind); err != nil {
