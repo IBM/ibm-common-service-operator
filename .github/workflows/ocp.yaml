@@ -25,7 +25,7 @@ env:
   QUAY_USERNAME: ${{ secrets.QUAY_USERNAME }}
   QUAY_PASSWORD: ${{ secrets.QUAY_PASSWORD }}
   QUAY_REGISTRY: quay.io/opencloudio
-  REGISTRY: hyc-cloud-private-scratch-docker-local.artifactory.swg-devops.com/ibmcom
+  REGISTRY: docker-na-public.artifactory.swg-devops.com/hyc-cloud-private-scratch-docker-local/ibmcom
   SCRATCH_USERNAME: ${{ secrets.SCRATCH_USERNAME }}
   SCRATCH_TOKEN: ${{ secrets.SCRATCH_TOKEN}}
 
