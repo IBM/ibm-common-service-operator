@@ -460,18 +460,6 @@ spec:
         force: true
         kind: Job
         name: pre-zen-operand-config-job 
-  - name: redhat-marketplace-operator
-    resources:
-      - apiVersion: ibmcpcs.ibm.com/v1
-        kind: SecretShare
-        name: redhat-marketplace-operator
-        namespace: {{ .CPFSNs }}
-        data:
-          spec:
-            configmapshares:
-              - configmapname: namespace-scope
-                sharewith:
-                  - namespace: openshift-redhat-marketplace
 `
 
 const CSV3OperandRegistry = `
@@ -1009,18 +997,6 @@ spec:
         force: true
         kind: Job
         name: pre-zen-operand-config-job 
-  - name: redhat-marketplace-operator
-    resources:
-      - apiVersion: ibmcpcs.ibm.com/v1
-        kind: SecretShare
-        name: redhat-marketplace-operator
-        namespace: {{ .CPFSNs }}
-        data:
-          spec:
-            configmapshares:
-              - configmapname: namespace-scope
-                sharewith:
-                  - namespace: openshift-redhat-marketplace
 `
 
 const CSV3SaasOperandRegistry = `
