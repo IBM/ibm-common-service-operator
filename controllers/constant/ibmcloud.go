@@ -21,11 +21,11 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
   name: ibmcloud-operator
-  namespace: {{ .MasterNs }}
+  namespace: "{{ .MasterNs }}"
 spec:
   channel: stable
   installPlanApproval: {{ .ApprovalMode }}
   name: ibmcloud-operator
   source: community-operators
-  sourceNamespace: {{ .CatalogSourceNs }}
+  sourceNamespace: "{{ .CatalogSourceNs }}"
 `
