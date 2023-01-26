@@ -253,15 +253,6 @@ const ConfigurationRules = `
           cpu: LARGEST_VALUE
           memory: LARGEST_VALUE
       replicas: LARGEST_VALUE
-    securityonboarding:
-      replicas: LARGEST_VALUE
-      resources:
-        limits:
-          cpu: LARGEST_VALUE
-          memory: LARGEST_VALUE
-        requests:
-          cpu: LARGEST_VALUE
-          memory: LARGEST_VALUE
 - name: ibm-management-ingress-operator
   spec:
     managementIngress:

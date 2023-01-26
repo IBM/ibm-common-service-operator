@@ -43,7 +43,6 @@ spec:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       policydecision: {}
-      securityonboarding: {}
       operandBindInfo:
         bindings:
           protected-zen-serviceid:
@@ -55,7 +54,6 @@ spec:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       policydecision: {}
-      securityonboarding: {}
       operandBindInfo:
         bindings:
           protected-zen-serviceid:
@@ -735,7 +733,6 @@ spec:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       policydecision: {}
-      securityonboarding: {}
       operandBindInfo:
         bindings:
           protected-zen-serviceid:
@@ -747,7 +744,6 @@ spec:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       policydecision: {}
-      securityonboarding: {}
       operandBindInfo:
         bindings:
           protected-zen-serviceid:

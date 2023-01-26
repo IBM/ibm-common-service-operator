@@ -137,7 +137,6 @@ spec:
     spec:
       authentication: {}
       policydecision: {}
-      securityonboarding: {}
   - name: ibm-healthcheck-operator
     spec:
       healthService: {}

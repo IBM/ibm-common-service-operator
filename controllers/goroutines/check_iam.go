@@ -78,12 +78,6 @@ func overallIamStatus(r client.Reader, deploymentList []string) string {
 			return status
 		}
 	}
-	for _, job := range IAMJobNames {
-		status := getJobStatus(r, job)
-		if status == "NotReady" {
-			return status
-		}
-	}
 	return "Ready"
 }
 

@@ -247,15 +247,6 @@ const Large = `
           cpu: 70m
           memory: 30Mi
       replicas: 3
-    securityonboarding:
-      replicas: 1
-      resources:
-        limits:
-          cpu: 1000m
-          memory: 50Mi
-        requests:
-          cpu: 20m
-          memory: 50Mi
 - name: ibm-management-ingress-operator
   spec:
     managementIngress:
