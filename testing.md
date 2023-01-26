@@ -2,7 +2,7 @@
 The testing commands rely on having access to the following registries:
 ```
 quay.io/opencloudio
-hyc-cloud-private-scratch-docker-local.artifactory.swg-devops.com/ibmcom
+docker-na-public.artifactory.swg-devops.com/hyc-cloud-private-scratch-docker-local/ibmcom
 ```
 
 If you do not have access or would prefer to use different registries then you can overwrite them with:
