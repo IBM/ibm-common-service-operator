@@ -66,8 +66,14 @@ func getIamSubscription(r client.Reader) bool {
 	subName := "ibm-iam-operator"
 	subNs := MasterNamespace
 	sub := &olmv1alpha1.Subscription{}
-	err := r.Get(context.TODO(), types.NamespacedName{Name: subName, Namespace: subNs}, sub)
-	return err == nil
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: subName, Namespace: subNs}, sub); err != nil {
+		subName := "ibm-im-operator"
+		if err := r.Get(context.TODO(), types.NamespacedName{Name: subName, Namespace: subNs}, sub); err != nil {
+			klog.Errorf("Failed to get ibm-iam-operator or ibm-im-operator subscription in %s: %v", subNs, err)
+			return err == nil
+		}
+	}
+	return true
 }
 
 func overallIamStatus(r client.Reader, deploymentList []string) string {
