@@ -66,12 +66,9 @@ func getIamSubscription(r client.Reader) bool {
 	subName := "ibm-iam-operator"
 	subNs := MasterNamespace
 	sub := &olmv1alpha1.Subscription{}
-	err := r.Get(context.TODO(), types.NamespacedName{Name: subName, Namespace: subNs}, sub)
-	if err != nil {
-		klog.Infof("There does not exist %s subscription in %s.", subName, subNs)
+	if err := r.Get(context.TODO(), types.NamespacedName{Name: subName, Namespace: subNs}, sub); err != nil {
 		subName := "ibm-im-operator"
-		err := r.Get(context.TODO(), types.NamespacedName{Name: subName, Namespace: subNs}, sub)
-		if err != nil {
+		if err := r.Get(context.TODO(), types.NamespacedName{Name: subName, Namespace: subNs}, sub); err != nil {
 			klog.Errorf("Failed to get ibm-iam-operator or ibm-im-operator subscription in %s: %v", subNs, err)
 			return err == nil
 		}
