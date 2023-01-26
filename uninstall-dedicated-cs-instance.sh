@@ -98,7 +98,7 @@ function delete_all(){
     ${KUBECTL} delete route $route -n ${namespace} --ignore-not-found
   done
   
-  for package in $packagemanifests; do
+  for package in $package_manifests; do
     ${KUBECTL} delete packagemanifest $package -n ${namespace} --ignore-not-found
   done
   
