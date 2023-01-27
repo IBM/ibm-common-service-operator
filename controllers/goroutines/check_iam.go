@@ -37,6 +37,7 @@ import (
 // CheckIamStatus check IAM status if ready
 func CheckIamStatus(bs *bootstrap.Bootstrap) {
 	MasterNamespace = bs.CSData.CPFSNs
+	ServicesNamespace = bs.CSData.ServicesNs
 
 	for {
 		if !getIamSubscription(bs.Reader) {
@@ -96,7 +97,7 @@ func overallIamStatus(r client.Reader, deploymentList []string) string {
 func getJobStatus(r client.Reader, name string) string {
 	job := &batchv1.Job{}
 	jobName := name
-	jobNs := MasterNamespace
+	jobNs := ServicesNamespace
 	err := r.Get(context.TODO(), types.NamespacedName{Name: jobName, Namespace: jobNs}, job)
 	if err != nil {
 		klog.Errorf("Failed to get Job %s: %v", jobName, err)
@@ -112,7 +113,7 @@ func getJobStatus(r client.Reader, name string) string {
 func getDeploymentStatus(r client.Reader, name string) string {
 	deploy := &appsv1.Deployment{}
 	deployName := name
-	deployNs := MasterNamespace
+	deployNs := ServicesNamespace
 
 	err := r.Get(context.TODO(), types.NamespacedName{Name: deployName, Namespace: deployNs}, deploy)
 	if err != nil {

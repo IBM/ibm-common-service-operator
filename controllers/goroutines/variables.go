@@ -32,5 +32,6 @@ var (
 	NSSSourceCR = "common-service"
 	NSSTargetCR = "nss-odlm-scope"
 
-	MasterNamespace string
+	MasterNamespace   string
+	ServicesNamespace string
 )
