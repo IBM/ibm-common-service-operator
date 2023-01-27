@@ -24,7 +24,7 @@ function usage() {
 	Mandatory arguments to long options are mandatory for short options too.
 	  -h, --help                    display this help and exit
 	  -n                            specify the namespace where common service is installed
-      -cpn                          specify the cloud pak namespace
+    -cpn                          specify the cloud pak namespace. Can specify multiple cloudpak namespaces with \"cpns1 cpns2\"
 	  -f                            force delete specified or default ibm-common-services namespace, skip normal uninstall steps
 	EOF
 }
@@ -72,50 +72,120 @@ function delete_all(){
       done
     fi
   done
+  #delete automation foundation subs and csvs
+  auto_ops=$(${KUBECTL} get sub -n ${namespace} --ignore-not-found | (grep automation-foundation || echo fail) | awk '{print $1}')
+  for af_op in $auto_ops; do
+    delete_operator "${namespace}" "$af_op"
+  done
 
-  title "Deleting deployments, jobs, service accounts, statefulsets, daemonsets, services, secrets, and routes in ${namespace}"
+  #delete automation foundation roles and rolebindings
+  local auto_roles=$(${KUBECTL} get roles -n ${namespace} --ignore-not-found | (grep ibm-automation || echo fail) | awk '{print $1}')
+  if [[ "$auto_roles" != "fail" ]]; then
+    for role in $auto_roles; do
+      ${KUBECTL} delete role $role -n ${namespace} --ignore-not-found || error "could not delete role $role in namesapce ${namespace}"
+      ${KUBECTL} delete rolebinding $role -n ${namespace} --ignore-not-found || error "could not delete rolebinding $role in namesapce ${namespace}"
+    done
+  fi
+  local iaf_roles=$(${KUBECTL} get roles -n ${namespace} --ignore-not-found | (grep iaf || echo fail) | awk '{print $1}')
+  if [[ "$iaf_roles" != "fail" ]]; then
+    for role in $iaf_roles; do
+      ${KUBECTL} delete role $role -n ${namespace} --ignore-not-found || error "could not delete role $role in namesapce ${namespace}"
+      ${KUBECTL} delete rolebinding $role -n ${namespace} --ignore-not-found || error "could not delete rolebinding $role in namesapce ${namespace}"
+    done
+  fi
+  #delete flink roles
+  local flink_roles=$(${KUBECTL} get roles -n ${namespace} --ignore-not-found | (grep flink || echo fail) | awk '{print $1}')
+  if [[ "$flink_roles" != "fail" ]]; then
+    for role in $flink_roles; do
+      ${KUBECTL} delete role $role -n ${namespace} --ignore-not-found || error "could not delete role $role in namesapce ${namespace}"
+      ${KUBECTL} delete rolebinding $role -n ${namespace} --ignore-not-found || error "could not delete rolebinding $role in namesapce ${namespace}"
+    done
+  fi
+  #delete automation foundation rolebindings
+  local auto_rolebinds=$(${KUBECTL} get rolebindings -n ${namespace} --ignore-not-found | (grep ibm-automation || echo fail) | awk '{print $1}')
+  if [[ "$auto_rolebinds" != "fail" ]]; then
+    for af_rolebind in $auto_roles; do
+      ${KUBECTL} delete rolebinding $af_rolebind -n ${namespace} --ignore-not-found || error "could not delete rolebinding $af_rolebind in namesapce ${namespace}"
+    done
+  fi
+  #delete bts roles
+  local bts_roles=$(${KUBECTL} get roles -n ${namespace} --ignore-not-found | (grep ibm-bts || echo fail) | awk '{print $1}')
+  if [[ "$bts_roles" != "fail" ]]; then
+    for role in $bts_roles; do
+      ${KUBECTL} delete role $role -n ${namespace} --ignore-not-found || error "could not delete role $role in namesapce ${namespace}"
+    done
+  fi
+  #delete eventprocessing roles
+  local ep_roles=$(${KUBECTL} get roles -n ${namespace} --ignore-not-found | (grep eventprocessing || echo fail) | awk '{print $1}')
+  if [[ "$ep_roles" != "fail" ]]; then
+    for role in $ep_roles; do
+      ${KUBECTL} delete role $role -n ${namespace} --ignore-not-found || error "could not delete role $role in namesapce ${namespace}"
+    done
+  fi
+  title "Deleting deployments in ${namespace}"
   for deploy in $deployments; do
     ${KUBECTL} delete deploy $deploy -n ${namespace} --ignore-not-found
   done
-  
+  title "Deleting service accounts in ${namespace}"
   for sa in $serviceaccounts; do
     ${KUBECTL} delete sa $sa -n ${namespace} --ignore-not-found
   done
-  
+  title "Deleting statefulsets in ${namespace}"
   for ss in $statefulsets; do
     ${KUBECTL} delete statefulset $ss -n ${namespace} --ignore-not-found
   done
-  
+  title "Deleting daemonsets in ${namespace}"
   for ds in $daemonsets; do
     ${KUBECTL} delete ds $ds -n ${namespace} --ignore-not-found
   done
-  
+  title "Deleting services in ${namespace}"
   for service in $services; do
     ${KUBECTL} delete service $service -n ${namespace} --ignore-not-found
   done
-  
+  title "Deleting routes in ${namespace}"
   for route in $routes; do
     ${KUBECTL} delete route $route -n ${namespace} --ignore-not-found
   done
-  
+  title "Deleting package manifests in ${namespace}"
   for package in $package_manifests; do
     ${KUBECTL} delete packagemanifest $package -n ${namespace} --ignore-not-found
   done
-  
+  title "Deleting ingresses in ${namespace}"
   for ingress in $ingresses; do
     ${KUBECTL} delete ingress $ingress -n ${namespace} --ignore-not-found
   done
-  
+  title "Deleting configmaps in ${namespace}"
   for cm in $configmaps; do
     ${KUBECTL} delete cm $cm -n ${namespace} --ignore-not-found
   done
-  zen_cms=$(${KUBECTL} get cm -n ${namespace} --ignore-not-found | (grep zen || echo fail))
+  # delete zen cms
+  zen_cms=$(${KUBECTL} get cm -n ${namespace} --ignore-not-found | (grep zen || echo fail) | awk '{print $1}')
   if [[ $zen_cms != "fail" ]]; then
     for cm in $zen_cms; do
       ${KUBECTL} delete cm $cm -n ${namespace} --ignore-not-found
     done
   fi
-  
+  #delete automation foundation cms
+  autofound_cms=$(${KUBECTL} get cm -n ${namespace} --ignore-not-found | (grep automation.ibm.com || echo fail) | awk '{print $1}')
+  if [[ $autofound_cms != "fail" ]]; then
+    for cm in $autofound_cms; do
+      ${KUBECTL} delete cm $cm -n ${namespace} --ignore-not-found
+    done
+  fi
+  iaf_cms=$(${KUBECTL} get cm -n ${namespace} --ignore-not-found | (grep iaf || echo fail) | awk '{print $1}')
+  if [[ $iaf_cms != "fail" ]]; then
+    for cm in $iaf_cms; do
+      ${KUBECTL} delete cm $cm -n ${namespace} --ignore-not-found
+    done
+  fi
+  #delete bts cms
+  bts_cms=$(${KUBECTL} get cm -n ${namespace} --ignore-not-found | (grep ibm-bts || echo fail) | awk '{print $1}')
+  if [[ $bts_cms != "fail" ]]; then
+    for cm in $bts_cms; do
+      ${KUBECTL} delete cm $cm -n ${namespace} --ignore-not-found
+    done
+  fi
+  title "Deleting jobs in ${namespace}"
   for job in $jobs; do
     ${KUBECTL} delete job $job -n ${namespace} --ignore-not-found
   done
@@ -125,7 +195,7 @@ function delete_all(){
       ${KUBECTL} delete job $job -n ${namespace} --ignore-not-found
     done
   fi
-
+  title "Deleting custom resources in ${namespace}"
   #delete CRDs and CRs
   for custom_resource in $custom_resources; do
     cr_check=$(${KUBECTL} get $custom_resource -n ${namespace} --ignore-not-found || echo fail)
@@ -137,7 +207,7 @@ function delete_all(){
       done
     fi
   done
-
+  title "Deleting secrets in ${namespace}"
   #delete secrets
   for group in $secrets; do
     secret_check=$(${KUBECTL} get secrets -n ${namespace} --ignore-not-found | (grep ${group} || echo fail))
@@ -150,7 +220,7 @@ function delete_all(){
   done
 }
 
-# Sometime delete namespace stuck due to some reousces remaining, use this method to get these
+# Sometime delete namespace stuck due to some resources remaining, use this method to get these
 # remaining resources to force delete them.
 function get_remaining_resources_from_namespace() {
   local namespace=$1
@@ -167,59 +237,7 @@ function get_remaining_resources_from_namespace() {
   fi
   echo $remaining
 }
-# Get remaining resource with kinds
-#this is where the problem is, it keeps adding every word of every message in this function to the new remaining variable. I have no idea why that is
-#this update function only ever adds items, it does not remove them
-#the script works, cs is uninstalled only from the namespaces specified, but each delete function goess through the entire "wait for deleted" and times out even though the item(s) is(are) deleted in seconds
-function update_remaining_resources() { 
-  local remaining=$2
-  local namespace=$1
-  local new_remaining=""
-  [[ "X$3" != "X" ]] && ns="-n $3" #no idea what this line does
-  for kind in ${remaining}; do
-    kindExist=$(${KUBECTL} get ${kind} -n ${namespace} --ignore-not-found || echo "fail")
-    if [[ "$kindExist" != "fail" ]]; then
-      if [[ $new_remaining == "" ]]; then
-        new_remaining="${kind}"
-      else
-        new_remaining="${kind} ${new_remaining}"
-      fi
-    else
-      new_remaining="${new_remaining//$kind/}"
-    fi
-    
-    # if [[ "X$(${KUBECTL} get ${kind} -n ${namespace} --ignore-not-found)" != "X" ]]; then
-    #   new_remaining="${new_remaining} ${kind}"
-    # fi
-  done
-  msg "${new_remaining}"
-}
 
-#instead of updating the list with specific resources that need to be deleted, why don't we pass in the resource type that needs to be deleted and count how many are left in a given namespace?
-#in cases with muliple resource types, we can use a sum total
-function wait_for_deleted() {
-  local remaining=${2}
-  local namespace=${1}
-  retries=${3:-10}
-  interval=${4:-30}
-  index=0
-  while true; do
-    remaining=$(update_remaining_resources "$namespace" "$remaining")
-    remaining=${remaining//[$'\t\r\n']}
-    msg "remaining in wait for delete: $remaining"
-    if [[ "X$remaining" != "X" ]]; then
-      if [[ ${index} -eq ${retries} ]]; then
-        error "Timeout delete resources: $remaining"
-        return 1
-      fi
-      sleep $interval
-      ((index++))
-      wait_msg "DELETE - Waiting: resource "${remaining}" delete complete [$(($retries - $index)) retries left]"
-    else
-      break
-    fi
-  done
-}
 function wait_for_namespace_deleted() {
   local namespace=$1
   retries=30
@@ -282,7 +300,9 @@ function cleanup_cluster() {
   title "Deleting webhooks"
   ${KUBECTL} delete MutatingWebhookConfiguration namespace-admission-config-${COMMON_SERVICES_NS} --ignore-not-found
   if [[ "$REMOVE_IAM_CP_NS" == "true" ]]; then
-    ${KUBECTL} delete MutatingWebhookConfiguration namespace-admission-config-${cloudpak_ns} --ignore-not-found
+    for ns in ${cloudpak_ns}; do
+      ${KUBECTL} delete MutatingWebhookConfiguration namespace-admission-config-${ns} --ignore-not-found
+    done
   fi
 }
 function force_delete() {
@@ -293,7 +313,6 @@ function force_delete() {
     warning "Some resources are remaining: $remaining"
     msg "Deleting finalizer for these resources ..."
     delete_operand_finalizer "${namespace}" "${remaining}" 
-    # wait_for_deleted "${namespace}" "${remaining}"  5 10
   fi
 }
 function delete_iamcr_cloudpak_ns() {
@@ -319,38 +338,12 @@ function force_delete_iamcr_cloudpak_ns() {
 		done
 	done
 }
-function wait_for_delete_iamcr_cloudpak_ns(){
-	local crds=$2
-	local namespace=$1
-	retries=${3:-10}
-	interval=${4:-30}
-	index=0
-	while true; do
-		local new_crds=
-		for crd in ${crds}; do
-			if [[ "X$(${KUBECTL} get ${crd} -n ${namespace} --ignore-not-found)" != "X" ]]; then
-				new_crds="${new_crds} ${crd}"
-			fi
-		done
-		crds=${new_crds}
-		if [[ "X$crds" != "X" ]]; then
-			if [[ ${index} -eq ${retries} ]]; then
-				error "Timeout delete resources: $crds"
-				return 1
-			fi
-			sleep $interval
-			((index++))
-			wait_msg "DELETE - Waiting: resource ${crds} delete complete [$(($retries - $index)) retries left]"
-		else
-			break
-		fi
-	done
-}
+
 #-------------------------------------- Clean UP --------------------------------------#
 #Resource Lists
 
 #also used for roles and rolebindings
-cs_op_list="nss operand-deployment-lifecycle-manager ibm-auditlogging-operator ibm-bts-operator ibm-commonui-operator ibm-events-operator ibm-healthcheck-operator ibm-iam-operator ibm-ingress-nginx-operator ibm-management-ingress-operator ibm-mongodb-operator ibm-monitoring-grafana-operator ibm-platform-api-operator ibm-platform-api-operand ibm-zen-operator zen-cpp-operator"  
+cs_op_list="nss operand-deployment-lifecycle-manager cloud-native-postgresql ibm-auditlogging-operator ibm-bts-operator ibm-commonui-operator ibm-events-operator ibm-healthcheck-operator ibm-iam-operator ibm-ingress-nginx-operator ibm-management-ingress-operator ibm-mongodb-operator ibm-monitoring-grafana-operator ibm-platform-api-operator ibm-platform-api-operand ibm-zen-operator zen-cpp-operator"  
 deployments="auth-idp auth-pap auth-pdp common-web-ui default-http-backend iam-policy-controller ibm-commonui-operator ibm-content-operator ibm-iam-operator ibm-ingress-nginx-operator ibm-management-ingress-operator ibm-mongodb-operator ibm-nginx ibm-nginx-tester ibm-monitoring-grafana ibm-platform-api-operator ibm-zen-operator audit-policy-controller icp-memcached management-ingress nginx-ingress-controller oidcclient-watcher platform-api secret-watcher secretshare system-healthcheck-service meta-api-deploy usermgmt zen-audit zen-core zen-core-api zen-watcher"
 serviceaccounts="ibm-auditlogging-operand ibm-common-service-operator ibm-commonui-operator ibm-common-service-webhook ibm-events-operator ibm-iam-operand-restricted ibm-iam-operand ibm-iam-operator ibm-ingress-nginx-operator ibm-management-ingress-operator ibm-mongodb-operand ibm-mongodb-operator ibm-platform-api-operand ibm-platform-api-operator ibm-zen-operator-serviceaccount management-ingress nginx-ingress operand-deployment-lifecycle-manager secretshare zen-admin-sa zen-editor-sa zen-norbac-sa zen-runtime-sa zen-viewer-sa"
 statefulsets="icp-mongodb must-gather-service zen-metastoredb"
@@ -389,8 +382,6 @@ do
 		COMMON_SERVICES_NS=$2
 		shift
 		;;
-    #TODO allow users to specify multiple cloudpak_ns, may need to rethink how this variable is used to do that
-    #could try setting a flag like REMOVE_IAM_CP_NS and some global variables to indicate more than one cpns and iteration over them required instead of if/else based on iam flag as it is now
 	"-cpn")
 		cloudpak_ns=$2
 		REMOVE_IAM_CP_NS=true
@@ -420,6 +411,11 @@ if [[ "$csnsExist" == "fail" ]]; then
   ${KUBECTL} create namespace ${COMMON_SERVICES_NS} || error "Failed to create namespace ${COMMON_SERVICES_NS}" && exit 1
 fi
 
+msg "Removing common services from namespaces: ${COMMON_SERVICES_NS} ${cloudpak_ns}"
+if [[ "$FORCE_DELETE" == "true" ]]; then
+  msg "-f parameter selected, namespace ${COMMON_SERVICES_NS} will be deleted"
+fi
+
 if [[ "$FORCE_DELETE" == "false" ]]; then
   title "Deleting ibm-common-service-operator in namespace ${COMMON_SERVICES_NS}"
   for sub in $(${KUBECTL} get sub --all-namespaces --ignore-not-found | grep ${COMMON_SERVICES_NS} | awk '{if ($3 =="ibm-common-service-operator") print $1"/"$2}'); do
@@ -443,35 +439,36 @@ if [[ "$FORCE_DELETE" == "false" ]]; then
   #the meat and potatoes of resource deletion
   delete_all "${COMMON_SERVICES_NS}"
   
-  delete_iamcr_cloudpak_ns ${COMMON_SERVICES_NS} "client"
+  delete_iamcr_cloudpak_ns "${COMMON_SERVICES_NS}" "client"
   delete_operand_finalizer "${COMMON_SERVICES_NS}" "NamespaceScope"
   delete_operand "${COMMON_SERVICES_NS}" "NamespaceScope"
   ${KUBECTL} delete pods --all -n ${COMMON_SERVICES_NS} #clear old pods
-  
+fi
 
-  #remove from cp namespace as well
-  if [[ "$REMOVE_IAM_CP_NS" == "true" ]]; then
-    title "Deleting ibm-common-service-operator in namespace ${cloudpak_ns}"
-    for sub in $(${KUBECTL} get sub --all-namespaces --ignore-not-found | grep ${cloudpak_ns} | awk '{if ($3 =="ibm-common-service-operator") print $1"/"$2}'); do
+#remove from cp namespace as well
+if [[ "$REMOVE_IAM_CP_NS" == "true" ]]; then
+  for ns in $cloudpak_ns; do
+    title "Deleting ibm-common-service-operator in namespace ${ns}"
+    for sub in $(${KUBECTL} get sub --all-namespaces --ignore-not-found | grep ${ns} | awk '{if ($3 =="ibm-common-service-operator") print $1"/"$2}'); do
         namespace=$(echo $sub | awk -F'/' '{print $1}')
         name=$(echo $sub | awk -F'/' '{print $2}')
-        delete_operator "${cloudpak_ns}" "$name" 
+        delete_operator "${ns}" "$name" 
     done
-    title "Deleting ibm-namespace-scope-operator in namespace ${cloudpak_ns}"
-    for sub in $(${KUBECTL} get sub --all-namespaces --ignore-not-found | grep ${cloudpak_ns} | awk '{if ($3 =="ibm-namespace-scope-operator") print $1"/"$2}'); do
+    title "Deleting ibm-namespace-scope-operator in namespace ${ns}"
+    for sub in $(${KUBECTL} get sub --all-namespaces --ignore-not-found | grep ${ns} | awk '{if ($3 =="ibm-namespace-scope-operator") print $1"/"$2}'); do
       namespace=$(echo $sub | awk -F'/' '{print $1}')
       name=$(echo $sub | awk -F'/' '{print $2}')
-      delete_operator "${cloudpak_ns}" "$name" 
+      delete_operator "${ns}" "$name" 
     done
-  
-  #the meat and potatoes of resource deletion
-  delete_all "${cloudpak_ns}"
-  
-  delete_iamcr_cloudpak_ns ${cloudpak_ns} "client"
-  delete_operand_finalizer "${cloudpak_ns}" "NamespaceScope"
-  delete_operand "${cloudpak_ns}" "NamespaceScope"
-  ${KUBECTL} delete pods --all -n ${cloudpak_ns} #clear old pods
-  fi
+
+    #the meat and potatoes of resource deletion
+    delete_all "${ns}"
+
+    delete_iamcr_cloudpak_ns ${ns} "client"
+    delete_operand_finalizer "${ns}" "NamespaceScope"
+    delete_operand "${ns}" "NamespaceScope"
+    ${KUBECTL} delete pods --all -n ${ns} #clear old pods
+  done
 fi
 
 cleanup_cluster
@@ -507,14 +504,14 @@ if [[ "$FORCE_DELETE" == "true" ]]; then
   force_delete "$COMMON_SERVICES_NS" 
   wait $NS
   if wait_for_namespace_deleted ${COMMON_SERVICES_NS}; then
-    success "Common Services uninstall finished and successfull from namespace ${COMMON_SERVICES_NS}."
+    success "Common Services uninstall successfull from namespace ${COMMON_SERVICES_NS}."
     exit 0
   fi
 else
   msg "Cloud Pak and Common Services share namespace so it will not be deleted."
-  success "Common Services uninstall finished and successfull from namespace ${COMMON_SERVICES_NS}."
+  success "Common Services uninstall successfull from namespace ${COMMON_SERVICES_NS}."
   exit 0
 fi
-error "Something wrong, check namespace detail:" 
+error "Something's wrong, check namespace details:" 
 ${KUBECTL} get namespace ${COMMON_SERVICES_NS} -oyaml --ignore-not-found
 exit 1
