@@ -23,6 +23,7 @@ import (
 
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -83,7 +84,29 @@ func overallIamStatus(r client.Reader, deploymentList []string) string {
 			return status
 		}
 	}
+	for _, job := range IAMJobNames {
+		status := getJobStatus(r, job)
+		if status == "NotReady" {
+			return status
+		}
+	}
 	return "Ready"
+}
+
+func getJobStatus(r client.Reader, name string) string {
+	job := &batchv1.Job{}
+	jobName := name
+	jobNs := MasterNamespace
+	err := r.Get(context.TODO(), types.NamespacedName{Name: jobName, Namespace: jobNs}, job)
+	if err != nil {
+		klog.Errorf("Failed to get Job %s: %v", jobName, err)
+		return "NotReady"
+	}
+
+	if job.Status.Succeeded >= *job.Spec.Completions {
+		return "Ready"
+	}
+	return "NotReady"
 }
 
 func getDeploymentStatus(r client.Reader, name string) string {
