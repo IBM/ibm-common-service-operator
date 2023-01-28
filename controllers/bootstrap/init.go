@@ -270,13 +270,13 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 	klog.Info("Installing/Updating OperandConfig")
 	if b.SaasEnable {
 		// OperandConfig for SaaS deployment
-		if err := b.renderTemplate(constant.CSV3SaasOperandConfig, b.CSData, forceUpdateODLMCRs); err != nil {
+		if err := b.RenderTemplate(constant.CSV3SaasOperandConfig, b.CSData, forceUpdateODLMCRs); err != nil {
 			return err
 		}
 	} else {
 		// OperandConfig for on-prem deployment
 		b.CSData.OnPremMultiEnable = strconv.FormatBool(b.MultiInstancesEnable)
-		if err := b.renderTemplate(constant.CSV3OperandConfig, b.CSData, forceUpdateODLMCRs); err != nil {
+		if err := b.RenderTemplate(constant.CSV3OperandConfig, b.CSData, forceUpdateODLMCRs); err != nil {
 			return err
 		}
 	}
@@ -657,7 +657,7 @@ func (b *Bootstrap) ResourceExists(dc discovery.DiscoveryInterface, apiGroupVers
 // CreateNsScopeConfigmap creates nss configmap for operators
 func (b *Bootstrap) CreateNsScopeConfigmap() error {
 	cmRes := constant.NamespaceScopeConfigMap
-	if err := b.renderTemplate(cmRes, b.CSData, false); err != nil {
+	if err := b.RenderTemplate(cmRes, b.CSData, false); err != nil {
 		return err
 	}
 	return nil
@@ -701,7 +701,7 @@ func (b *Bootstrap) deleteSubscription(name, namespace string) error {
 	return nil
 }
 
-func (b *Bootstrap) renderTemplate(objectTemplate string, data interface{}, alwaysUpdate ...bool) error {
+func (b *Bootstrap) RenderTemplate(objectTemplate string, data interface{}, alwaysUpdate ...bool) error {
 	var buffer bytes.Buffer
 	t := template.Must(template.New("newTemplate").Parse(objectTemplate))
 	if err := t.Execute(&buffer, data); err != nil {

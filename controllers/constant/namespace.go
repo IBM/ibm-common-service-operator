@@ -28,3 +28,18 @@ metadata:
   annotations:
     version: {{ .Version }}
 `
+
+const NamespaceScopeCR = `
+apiVersion: operator.ibm.com/v1
+kind: NamespaceScope
+metadata:
+  name: common-service
+  namespace: "{{ .CPFSNs }}"
+  annotations:
+    version: "{{ .Version }}"
+spec:
+  csvInjector:
+    enable: true
+  namespaceMembers:
+  - "{{ .CPFSNs }}"
+`
