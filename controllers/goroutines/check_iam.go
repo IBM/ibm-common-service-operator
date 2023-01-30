@@ -71,7 +71,6 @@ func getIamSubscription(r client.Reader) bool {
 	if err := r.Get(context.TODO(), types.NamespacedName{Name: subName, Namespace: subNs}, sub); err != nil {
 		subName := "ibm-im-operator"
 		if err := r.Get(context.TODO(), types.NamespacedName{Name: subName, Namespace: subNs}, sub); err != nil {
-			klog.Errorf("Failed to get ibm-iam-operator or ibm-im-operator subscription in %s: %v", subNs, err)
 			return err == nil
 		}
 	}
