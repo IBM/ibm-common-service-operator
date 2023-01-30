@@ -326,12 +326,43 @@ func (b *Bootstrap) CreateCsCR() error {
 	cs := util.NewUnstructured("operator.ibm.com", "CommonService", "v3")
 	cs.SetName("common-service")
 	cs.SetNamespace(b.CSData.OperatorNs)
-	_, err := b.GetObject(cs)
-	if errors.IsNotFound(err) { // Only if it's a fresh install
-		// Fresh Intall: No ODLM and NO CR
-		return b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsCR, placeholder, b.CSData.OperatorNs)))
-	} else if err != nil {
-		return err
+
+	if len(b.CSData.WatchNamespaces) == 0 {
+		// All Namespaces Mode:
+		// using `ibm-common-services` ns as ServicesNs if it exists
+		// Otherwise, do not create default CR
+		// Tolerate if someone manually create the default CR in operator NS
+		defaultCRReady := false
+		for !defaultCRReady {
+			_, err := b.GetObject(cs)
+			if errors.IsNotFound(err) {
+				ctx := context.Background()
+				ns := &corev1.Namespace{}
+				if err := b.Client.Get(ctx, types.NamespacedName{Name: constant.MasterNamespace}, ns); err != nil {
+					if errors.IsNotFound(err) {
+						klog.Warningf("Not found well-known default namespace %v, please manually create the namespace", constant.MasterNamespace)
+						time.Sleep(10 * time.Second)
+						continue
+					} else if err != nil {
+						return err
+					}
+					b.CSData.ServicesNs = constant.MasterNamespace
+				}
+				defaultCRReady = true
+				return b.renderTemplate(constant.CsCR, b.CSData)
+			} else if err != nil {
+				return err
+			}
+			defaultCRReady = true
+		}
+	} else {
+		_, err := b.GetObject(cs)
+		if errors.IsNotFound(err) { // Only if it's a fresh install
+			// Fresh Intall: No ODLM and NO CR
+			return b.renderTemplate(constant.CsCR, b.CSData)
+		} else if err != nil {
+			return err
+		}
 	}
 
 	// Restart && Upgrade from 3.5+: Found existing CR

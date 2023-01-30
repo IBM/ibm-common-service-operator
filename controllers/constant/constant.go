@@ -102,8 +102,10 @@ metadata:
   annotations:
     version: "-1"
   name: common-service
-  namespace: placeholder
+  namespace: "{{ .OperatorNs }}"
 spec:
+  servicesNamespace:  "{{ .ServicesNs }}"
+  operatorNamespace: "{{ .CPFSNs }}"
   size: starterset
 `
 
