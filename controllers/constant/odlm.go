@@ -475,7 +475,7 @@ spec:
   operators:
   - name: ibm-licensing-operator
     namespace: {{ .CPFSNs }}
-    channel: v3.23
+    channel: {{ .Channel }}
     packageName: ibm-licensing-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -1010,7 +1010,7 @@ spec:
   operators:
   - name: ibm-licensing-operator
     namespace: {{ .CPFSNs }}
-    channel: v3.23
+    channel: {{ .Channel }}
     packageName: ibm-licensing-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
