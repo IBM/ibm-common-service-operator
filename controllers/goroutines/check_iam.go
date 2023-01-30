@@ -74,9 +74,8 @@ func getIamSubscription(r client.Reader) bool {
 			if err := r.Get(context.TODO(), types.NamespacedName{Name: subName, Namespace: subNs}, sub); err != nil {
 				if errors.IsNotFound(err) {
 					return err == nil
-				} else {
-					klog.Errorf(" IAM subscription check failed: %v", err)
 				}
+				klog.Errorf(" IAM subscription check failed: %v", err)
 			}
 		} else {
 			klog.Errorf(" IAM subscription check failed: %v", err)
