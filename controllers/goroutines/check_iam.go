@@ -77,9 +77,8 @@ func getIamSubscription(r client.Reader) bool {
 			if !errors.IsNotFound(err) {
 				klog.Errorf("IAM subscription check failed: %v", err)
 			}
-			return err == nil
+			return false
 		}
-		return err == nil
 	}
 	return true
 }
