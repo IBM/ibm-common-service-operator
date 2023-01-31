@@ -492,13 +492,12 @@ spec:
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-cert-manager-operator
     namespace: {{ .CPFSNs }}
-    channel: {{ .Channel }}
+    channel: v3.23
     packageName: ibm-cert-manager-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
-    supportStatus: maintained
   - name: ibm-iam-operator-v3.22
     namespace: {{ .CPFSNs }}
     channel: v3.22
@@ -1031,13 +1030,12 @@ spec:
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-cert-manager-operator
     namespace: {{ .CPFSNs }}
-    channel: {{ .Channel }}
+    channel: v3.23
     packageName: ibm-cert-manager-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
-    supportStatus: maintained
   - name: ibm-iam-operator-v3.22
     namespace: {{ .CPFSNs }}
     channel: v3.22
