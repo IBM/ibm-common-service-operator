@@ -279,6 +279,8 @@ spec:
     spec:
       operandRequest: {}
   - name: ibm-zen-operator
+    spec:
+      operandBindInfo: {}
     resources:
       - apiVersion: batch/v1
         data:
@@ -816,6 +818,8 @@ spec:
     spec:
       operandRequest: {}
   - name: ibm-zen-operator
+    spec:
+      operandBindInfo: {}
     resources:
       - apiVersion: batch/v1
         data:
