@@ -496,6 +496,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
+    supportStatus: maintained
   - name: ibm-iam-operator-v3.22
     namespace: {{ .CPFSNs }}
     channel: v3.22
@@ -600,6 +601,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
+    supportStatus: maintained
   - channel: v3.23
     name: ibm-monitoring-grafana-operator
     namespace: {{ .CPFSNs }}
@@ -1031,6 +1033,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
+    supportStatus: maintained
   - name: ibm-iam-operator-v3.22
     namespace: {{ .CPFSNs }}
     channel: v3.22
