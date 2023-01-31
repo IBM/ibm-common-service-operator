@@ -72,6 +72,7 @@ type Bootstrap struct {
 	*deploy.Manager
 	SaasEnable           bool
 	MultiInstancesEnable bool
+	DefaultAdminUsername string
 	CSOperators          []CSOperator
 	CSData               apiv3.CSData
 }
