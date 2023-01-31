@@ -341,8 +341,6 @@ spec:
         kind: Job
         name: pre-zen-operand-config-job 
   - name: ibm-zen-operator-v3.22
-    spec:
-      operandBindInfo: {}
     resources:
       - apiVersion: batch/v1
         data:
@@ -403,8 +401,6 @@ spec:
         kind: Job
         name: pre-zen-operand-config-job
   - name: ibm-zen-operator-v3.21
-    spec:
-      operandBindInfo: {}
     resources:
       - apiVersion: batch/v1
         data:
@@ -884,8 +880,6 @@ spec:
         kind: Job
         name: pre-zen-operand-config-job
   - name: ibm-zen-operator-v3.22
-    spec:
-      operandBindInfo: {}
     resources:
       - apiVersion: batch/v1
         data:
@@ -946,8 +940,6 @@ spec:
         kind: Job
         name: pre-zen-operand-config-job
   - name: ibm-zen-operator-v3.21
-    spec:
-      operandBindInfo: {}
     resources:
       - apiVersion: batch/v1
         data:
