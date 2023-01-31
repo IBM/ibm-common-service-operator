@@ -69,6 +69,9 @@ metadata:
   namespace: placeholder
 spec:
   secretName: cs-ca-certificate-secret
+  secretTemplate:
+    labels:
+      ibm-cert-manager-operator/refresh-ca-chain: 'true'
   issuerRef:
     name: cs-ss-issuer
     kind: Issuer
