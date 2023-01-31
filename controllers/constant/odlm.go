@@ -42,6 +42,7 @@ spec:
       authentication:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
+          defaultAdminUser : {{ .defaultAdminUsername }}
       policydecision: {}
       operandBindInfo:
         bindings:
