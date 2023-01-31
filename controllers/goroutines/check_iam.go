@@ -69,17 +69,17 @@ func getIamSubscription(r client.Reader) bool {
 	subNs := MasterNamespace
 	sub := &olmv1alpha1.Subscription{}
 	if err := r.Get(context.TODO(), types.NamespacedName{Name: subName, Namespace: subNs}, sub); err != nil {
-		if errors.IsNotFound(err) {
-			subName := "ibm-im-operator"
-			if err := r.Get(context.TODO(), types.NamespacedName{Name: subName, Namespace: subNs}, sub); err != nil {
-				if errors.IsNotFound(err) {
-					return err == nil
-				}
-				klog.Errorf(" IAM subscription check failed: %v", err)
-			}
-		} else {
-			klog.Errorf(" IAM subscription check failed: %v", err)
+		if !errors.IsNotFound(err) {
+			klog.Errorf("IAM subscription check failed: %v", err)
 		}
+		subName := "ibm-im-operator"
+		if err := r.Get(context.TODO(), types.NamespacedName{Name: subName, Namespace: subNs}, sub); err != nil {
+			if !errors.IsNotFound(err) {
+				klog.Errorf("IAM subscription check failed: %v", err)
+			}
+			return err == nil
+		}
+		return err == nil
 	}
 	return true
 }
