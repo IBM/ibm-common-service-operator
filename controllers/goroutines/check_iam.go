@@ -23,6 +23,7 @@ import (
 
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -36,6 +37,7 @@ import (
 // CheckIamStatus check IAM status if ready
 func CheckIamStatus(bs *bootstrap.Bootstrap) {
 	MasterNamespace = bs.CSData.CPFSNs
+	ServicesNamespace = bs.CSData.ServicesNs
 
 	for {
 		if !getIamSubscription(bs.Reader) {
@@ -67,10 +69,15 @@ func getIamSubscription(r client.Reader) bool {
 	subNs := MasterNamespace
 	sub := &olmv1alpha1.Subscription{}
 	if err := r.Get(context.TODO(), types.NamespacedName{Name: subName, Namespace: subNs}, sub); err != nil {
+		if !errors.IsNotFound(err) {
+			klog.Errorf("IAM subscription check failed: %v", err)
+		}
 		subName := "ibm-im-operator"
 		if err := r.Get(context.TODO(), types.NamespacedName{Name: subName, Namespace: subNs}, sub); err != nil {
-			klog.Errorf("Failed to get ibm-iam-operator or ibm-im-operator subscription in %s: %v", subNs, err)
-			return err == nil
+			if !errors.IsNotFound(err) {
+				klog.Errorf("IAM subscription check failed: %v", err)
+			}
+			return false
 		}
 	}
 	return true
@@ -83,13 +90,35 @@ func overallIamStatus(r client.Reader, deploymentList []string) string {
 			return status
 		}
 	}
+	for _, job := range IAMJobNames {
+		status := getJobStatus(r, job)
+		if status == "NotReady" {
+			return status
+		}
+	}
 	return "Ready"
+}
+
+func getJobStatus(r client.Reader, name string) string {
+	job := &batchv1.Job{}
+	jobName := name
+	jobNs := ServicesNamespace
+	err := r.Get(context.TODO(), types.NamespacedName{Name: jobName, Namespace: jobNs}, job)
+	if err != nil {
+		klog.Errorf("Failed to get Job %s: %v", jobName, err)
+		return "NotReady"
+	}
+
+	if job.Status.Succeeded >= *job.Spec.Completions {
+		return "Ready"
+	}
+	return "NotReady"
 }
 
 func getDeploymentStatus(r client.Reader, name string) string {
 	deploy := &appsv1.Deployment{}
 	deployName := name
-	deployNs := MasterNamespace
+	deployNs := ServicesNamespace
 
 	err := r.Get(context.TODO(), types.NamespacedName{Name: deployName, Namespace: deployNs}, deploy)
 	if err != nil {

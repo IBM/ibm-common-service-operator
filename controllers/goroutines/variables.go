@@ -25,11 +25,13 @@ var (
 
 	IAMSaaSDeployNames = []string{"platform-identity-management", "platform-identity-provider", "platform-auth-service"}
 	IAMDeployNames     = []string{"platform-identity-management", "platform-identity-provider", "platform-auth-service"}
+	IAMJobNames        = []string{"oidc-client-registration"}
 
 	NSSKinds    = []string{"NamespaceScope"}
 	NSSCRList   = []string{"common-service", "nss-odlm-scope"}
 	NSSSourceCR = "common-service"
 	NSSTargetCR = "nss-odlm-scope"
 
-	MasterNamespace string
+	MasterNamespace   string
+	ServicesNamespace string
 )
