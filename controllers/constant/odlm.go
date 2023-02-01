@@ -572,7 +572,7 @@ spec:
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-management-ingress-operator
     namespace: {{ .CPFSNs }}
-    channel: v3.23
+    channel: {{ .Channel }}
     packageName: ibm-management-ingress-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -1078,7 +1078,7 @@ spec:
     sourceNamespace: {{ .CatalogSourceNs }}
   - name: ibm-management-ingress-operator
     namespace: {{ .CPFSNs }}
-    channel: v3.23
+    channel: {{ .Channel }}
     packageName: ibm-management-ingress-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
