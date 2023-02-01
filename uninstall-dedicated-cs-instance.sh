@@ -146,10 +146,11 @@ function delete_all(){
   for route in $routes; do
     ${KUBECTL} delete route $route -n ${namespace} --ignore-not-found
   done
-  title "Deleting package manifests in ${namespace}"
-  for package in $package_manifests; do
-    ${KUBECTL} delete packagemanifest $package -n ${namespace} --ignore-not-found
-  done
+  #may not be able to delete package manifests
+  # title "Deleting package manifests in ${namespace}"
+  # for package in $package_manifests; do
+  #   ${KUBECTL} delete packagemanifest $package -n ${namespace} --ignore-not-found
+  # done
   title "Deleting ingresses in ${namespace}"
   for ingress in $ingresses; do
     ${KUBECTL} delete ingress $ingress -n ${namespace} --ignore-not-found
@@ -191,6 +192,7 @@ function delete_all(){
   done
   zen_jobs=$(${KUBECTL} get job -n ${namespace} --ignore-not-found | (grep zen || echo fail))
   if [[ $zen_jobs != "fail" ]]; then
+    msg "zen jobs list: $zen_jobs"
     for job in $zen_jobs; do
       ${KUBECTL} delete job $job -n ${namespace} --ignore-not-found
     done
@@ -217,6 +219,12 @@ function delete_all(){
         ${KUBECTL} delete secret -n ${namespace} ${secret} --ignore-not-found
       done
     fi
+  done
+  title "Deleting mongodb pvc in ${namespace}"
+  pvcs=$(${KUBECTL} get pvc --ignore-not-found -n ${namespace} | (grep mongodbdir-icp-mongodb || echo fail) | awk '{print $1}')
+  for pvc in $pvcs; do
+    ${KUBECTL} patch pvc ${pvc} -n ${namespace} --type=merge -p '{"spec": {"finalizers":null}}' --ignore-not-found
+    ${KUBECTL} delete pvc ${pvc} -n ${namespace} --ignore-not-found
   done
 }
 
@@ -306,7 +314,6 @@ function cleanup_cluster() {
   fi
 }
 function force_delete() {
-  msg "inside force delete function"
   local namespace=$1
   local remaining=$(get_remaining_resources_from_namespace "$namespace")
   if [[ "X$remaining" != "X" ]]; then
@@ -360,7 +367,6 @@ ingresses="common-web-ui common-web-ui-api common-web-ui-callback iam-pap iam-pd
 configmaps="ibm-cpp-config ibm-iam-bindinfo-oauth-client-map ibm-iam-bindinfo-platform-auth-idp management-ingress-ibmcloud-cluster-info auth-pap auth-pdp cf-crossplane common-web-ui-config common-web-ui-log4js common-web-ui-zen-card-extensions common-web-ui-zen-quicknav-extensions ibm-iam-operator-lock ibm-licensing-bindinfo-ibm-licensing-info ibm-licensing-bindinfo-ibm-licensing-upload-config ibm-platform-api-operator icp-mongodb icp-mongodb-init icp-mongodb-install icp-oidcclient-watcher-lock ingress-controller-leader-ibm-icp-management ingress-controller-leader-nginx management-ingress-config management-ingress-info monitoring-json namespace-scope nginx-ingress-controller oauth-client-map odlm-scope platform-api platform-auth-idp platform-permission-extensions platform-user-role-extensions postgresql-operator-default-monitoring"
 #grep then delete but only for zen
 jobs="create-secrets-job iam-config-job iam-onboarding oidc-client-registration pre-zen-operand-config-job security-onboarding setup-job setup-nginx-job"
-
 
 COMMON_SERVICES_NS=
 KUBECTL=$(command -v kubectl 2>/dev/null)
