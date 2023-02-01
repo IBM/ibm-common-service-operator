@@ -26,14 +26,14 @@ const CrossSubscription = `
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
-  name: {{ .ICPOperator }}
-  namespace: {{ .ControlNs }}
+  name: "{{ .ICPOperator }}"
+  namespace: "{{ .ControlNs }}"
 spec:
-  channel: {{ .Channel }}
+  channel: "{{ .Channel }}"
   installPlanApproval: {{ .ApprovalMode }}
-  name: {{ .ICPOperator }}
+  name: "{{ .ICPOperator }}"
   source: {{ .CatalogSourceName }}
-  sourceNamespace: {{ .CatalogSourceNs }}
+  sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
 const CrossConfiguration = `
@@ -42,7 +42,7 @@ kind: Configuration
 metadata:
   name: ibm-crossplane-bedrock-shim-config
   labels:
-    ibm-crossplane-provider: {{ .CrossplaneProvider }}
+    ibm-crossplane-provider: "{{ .CrossplaneProvider }}"
 spec:
   ignoreCrossplaneConstraints: false
   package: ibm-crossplane-bedrock-shim-config
@@ -63,14 +63,14 @@ const CrossKubernetesProviderSubscription = `
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
-  name: {{ .ICPPKOperator}}
-  namespace: {{ .ControlNs }}
+  name: "{{ .ICPPKOperator}}"
+  namespace: "{{ .ControlNs }}"
 spec:
-  channel: {{ .Channel }}
+  channel: "{{ .Channel }}"
   installPlanApproval: {{ .ApprovalMode }}
-  name: {{ .ICPPKOperator }}
+  name: "{{ .ICPPKOperator }}"
   source: {{ .CatalogSourceName }}
-  sourceNamespace: {{ .CatalogSourceNs }}
+  sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
 const CrossKubernetesProviderConfig = `
@@ -89,14 +89,14 @@ const CrossIBMCloudProviderSubscription = `
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
-  name: {{ .ICPPICOperator }}
-  namespace: {{ .ControlNs }}
+  name: "{{ .ICPPICOperator }}"
+  namespace: "{{ .ControlNs }}"
 spec:
-  channel: {{ .Channel }}
+  channel: "{{ .Channel }}"
   installPlanApproval: {{ .ApprovalMode }}
-  name: {{ .ICPPICOperator }}
+  name: "{{ .ICPPICOperator }}"
   source: {{ .CatalogSourceName }}
-  sourceNamespace: {{ .CatalogSourceNs }}
+  sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
 const CrossIBMCloudProviderConfig = `
@@ -108,7 +108,7 @@ spec:
   credentials:
     source: Secret
     secretRef:
-      namespace: {{ .ControlNs }}
+      namespace: "{{ .ControlNs }}"
       name: provider-ibm-cloud-secret
       key: credentials
   region: us-south
@@ -121,5 +121,5 @@ data:
 kind: ConfigMap
 metadata:
   name: cf-crossplane
-  namespace: placeholder
+  namespace: "placeholder"
 `

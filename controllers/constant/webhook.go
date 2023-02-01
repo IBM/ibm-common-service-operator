@@ -28,7 +28,7 @@ apiVersion: operator.ibm.com/v1alpha1
 kind: PodPreset
 metadata:
   name: ibm-common-service-webhook
-  namespace: placeholder
+  namespace: "placeholder"
 spec: {}
 `
 
@@ -38,13 +38,13 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: ibm-common-service-webhook
-  namespace: placeholder
+  namespace: "placeholder"
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: ibm-common-service-webhook
-  namespace: placeholder
+  namespace: "placeholder"
 rules:
 - apiGroups:
   - ""
@@ -77,7 +77,7 @@ kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: ibm-common-service-webhook
-  namespace: placeholder
+  namespace: "placeholder"
 subjects:
 - kind: ServiceAccount
   name: ibm-common-service-webhook
@@ -157,7 +157,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: ibm-common-service-webhook
-    namespace: placeholder
+    namespace: "placeholder"
 roleRef:
   kind: ClusterRole
   name: ibm-common-service-webhook
@@ -1645,7 +1645,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ibm-common-service-webhook
-  namespace: placeholder
+  namespace: "placeholder"
   annotations:
     version: "4.0.0"
 spec:
@@ -1705,7 +1705,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ibm-common-service-webhook
-  namespace: placeholder
+  namespace: "placeholder"
   annotations:
     version: "4.0.0"
 spec:
