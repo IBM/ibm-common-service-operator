@@ -95,7 +95,7 @@ spec:
     spec:
       authentication:
         config:
-          onPremMultipleDeploy: "{{ .OnPremMultiEnable }}"
+          onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       oidcclientwatcher: {}
       pap: {}
       policycontroller: {}
@@ -315,7 +315,7 @@ spec:
                         valueFrom:
                           fieldRef:
                             fieldPath: metadata.namespace
-                    image: "{{ .ZenOperatorImage }}"
+                    image: {{ .ZenOperatorImage }}
                     name: pre-zen-job
                     resources:
                       limits:
@@ -375,7 +375,7 @@ spec:
                         valueFrom:
                           fieldRef:
                             fieldPath: metadata.namespace
-                    image: "{{ .ZenOperatorImage }}"
+                    image: {{ .ZenOperatorImage }}
                     name: pre-zen-job
                     resources:
                       limits:
@@ -1135,11 +1135,11 @@ spec:
     namespace: "{{ .CPFSNs }}"
     packageName: ibm-automation-flink
     scope: public
-    installPlanApproval: "{{ .ApprovalMode}}"
+    installPlanApproval: {{ .ApprovalMode}}
   - channel: v1.3
     name: ibm-automation-elastic
     namespace: "{{ .CPFSNs }}"
     packageName: ibm-automation-elastic
     scope: public
-    installPlanApproval: "{{ .ApprovalMode}}"
+    installPlanApproval: {{ .ApprovalMode}}
 `

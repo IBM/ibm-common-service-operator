@@ -26,12 +26,12 @@ const CrossSubscription = `
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
-  name: "{{ .ICPOperator }}"
+  name: {{ .ICPOperator }}
   namespace: "{{ .ControlNs }}"
 spec:
-  channel: "{{ .Channel }}"
+  channel: {{ .Channel }}
   installPlanApproval: {{ .ApprovalMode }}
-  name: "{{ .ICPOperator }}"
+  name: {{ .ICPOperator }}
   source: {{ .CatalogSourceName }}
   sourceNamespace: "{{ .CatalogSourceNs }}"
 `
@@ -42,7 +42,7 @@ kind: Configuration
 metadata:
   name: ibm-crossplane-bedrock-shim-config
   labels:
-    ibm-crossplane-provider: "{{ .CrossplaneProvider }}"
+    ibm-crossplane-provider: {{ .CrossplaneProvider }}
 spec:
   ignoreCrossplaneConstraints: false
   package: ibm-crossplane-bedrock-shim-config
@@ -66,7 +66,7 @@ metadata:
   name: "{{ .ICPPKOperator}}"
   namespace: "{{ .ControlNs }}"
 spec:
-  channel: "{{ .Channel }}"
+  channel: {{ .Channel }}
   installPlanApproval: {{ .ApprovalMode }}
   name: "{{ .ICPPKOperator }}"
   source: {{ .CatalogSourceName }}
@@ -92,7 +92,7 @@ metadata:
   name: "{{ .ICPPICOperator }}"
   namespace: "{{ .ControlNs }}"
 spec:
-  channel: "{{ .Channel }}"
+  channel: {{ .Channel }}
   installPlanApproval: {{ .ApprovalMode }}
   name: "{{ .ICPPICOperator }}"
   source: {{ .CatalogSourceName }}
