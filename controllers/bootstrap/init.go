@@ -349,7 +349,7 @@ func (b *Bootstrap) CreateCsCR() error {
 					b.CSData.ServicesNs = constant.MasterNamespace
 				}
 				defaultCRReady = true
-				return b.renderTemplate(constant.CsCR, b.CSData)
+				return b.RenderTemplate(constant.CsCR, b.CSData)
 			} else if err != nil {
 				return err
 			}
@@ -359,7 +359,7 @@ func (b *Bootstrap) CreateCsCR() error {
 		_, err := b.GetObject(cs)
 		if errors.IsNotFound(err) { // Only if it's a fresh install
 			// Fresh Intall: No ODLM and NO CR
-			return b.renderTemplate(constant.CsCR, b.CSData)
+			return b.RenderTemplate(constant.CsCR, b.CSData)
 		} else if err != nil {
 			return err
 		}

@@ -219,11 +219,10 @@ func getNsScopeConfigmap(bs *bootstrap.Bootstrap, namespaceScopeKey types.Namesp
 				return nil, err
 			}
 			return nil, nil
-		} else {
-			klog.Errorf("Failed to get configmap %s: %v, retry in 10 seconds", namespaceScopeKey.String(), err)
-			time.Sleep(10 * time.Second)
-			return nil, err
 		}
+		klog.Errorf("Failed to get configmap %s: %v, retry in 10 seconds", namespaceScopeKey.String(), err)
+		time.Sleep(10 * time.Second)
+		return nil, err
 	}
 	return nssConfigMap, nil
 }
@@ -249,11 +248,10 @@ func getNSSCR(bs *bootstrap.Bootstrap, nssKey types.NamespacedName) (*nssv1.Name
 					return nil, err
 				}
 				return nil, fmt.Errorf("wait for the next iteration")
-			} else {
-				klog.Errorf("Failed to get Namespace Scope CR %s: %v, retry in 10 seconds", nssKey.String(), err)
-				time.Sleep(10 * time.Second)
-				return nil, err
 			}
+			klog.Errorf("Failed to get Namespace Scope CR %s: %v, retry in 10 seconds", nssKey.String(), err)
+			time.Sleep(10 * time.Second)
+			return nil, err
 		}
 		return nssCR, nil
 	}
