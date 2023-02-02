@@ -43,6 +43,9 @@ import (
 	ssv1 "github.com/IBM/ibm-secretshare-operator/api/v1"
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/api/v1alpha1"
 
+	certmanagerv1 "github.com/ibm/ibm-cert-manager-operator/apis/cert-manager/v1"
+	cmconstants "github.com/ibm/ibm-cert-manager-operator/controllers/resources"
+
 	operatorv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	"github.com/IBM/ibm-common-service-operator/controllers"
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
@@ -51,8 +54,6 @@ import (
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/controllers/goroutines"
 	operandrequestwebhook "github.com/IBM/ibm-common-service-operator/controllers/webhook/operandrequest"
-	certmanagerv1 "github.com/ibm/ibm-cert-manager-operator/apis/cert-manager/v1"
-	cmconstants "github.com/ibm/ibm-cert-manager-operator/controllers/resources"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -110,10 +111,10 @@ func main() {
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
 		HealthProbeBindAddress: probeAddr,
-		Port:                   9443,
-		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "be598e12.ibm.com",
-		NewCache:               filteredcache.MultiNamespacedFilteredCacheBuilder(gvkLabelMap, watchNamespaceList),
+		Port:             9443,
+		LeaderElection:   enableLeaderElection,
+		LeaderElectionID: "be598e12.ibm.com",
+		NewCache:         filteredcache.MultiNamespacedFilteredCacheBuilder(gvkLabelMap, watchNamespaceList),
 	})
 	if err != nil {
 		klog.Errorf("Unable to start manager: %v", err)
