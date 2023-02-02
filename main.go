@@ -110,10 +110,10 @@ func main() {
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
 		HealthProbeBindAddress: probeAddr,
-		Port:                   9443,
-		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "be598e12.ibm.com",
-		NewCache:               filteredcache.MultiNamespacedFilteredCacheBuilder(gvkLabelMap, watchNamespaceList),
+		Port:             9443,
+		LeaderElection:   enableLeaderElection,
+		LeaderElectionID: "be598e12.ibm.com",
+		NewCache:         filteredcache.MultiNamespacedFilteredCacheBuilder(gvkLabelMap, watchNamespaceList),
 	})
 	if err != nil {
 		klog.Errorf("Unable to start manager: %v", err)
