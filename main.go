@@ -36,6 +36,7 @@ import (
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/IBM/controller-filtered-cache/filteredcache"
 	nssv1 "github.com/IBM/ibm-namespace-scope-operator/api/v1"
@@ -45,10 +46,13 @@ import (
 	operatorv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	"github.com/IBM/ibm-common-service-operator/controllers"
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
+	certmanagerv1controllers "github.com/IBM/ibm-common-service-operator/controllers/cert-manager"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/controllers/goroutines"
 	operandrequestwebhook "github.com/IBM/ibm-common-service-operator/controllers/webhook/operandrequest"
+	certmanagerv1 "github.com/ibm/ibm-cert-manager-operator/apis/cert-manager/v1"
+	cmconstants "github.com/ibm/ibm-cert-manager-operator/controllers/resources"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -68,6 +72,7 @@ func init() {
 	utilruntime.Must(olmv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(olmv1.AddToScheme(scheme))
 	utilruntime.Must(operatorsv1.AddToScheme(scheme))
+	utilruntime.Must(certmanagerv1.AddToScheme(scheme))
 }
 
 func main() {
@@ -81,13 +86,22 @@ func main() {
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	opts := zap.Options{
+		Development: true,
+	}
+	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
+
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	NSSCMSyncEnabled := util.GetNSSCMSynchronization()
 	watchNamespace := util.GetWatchNamespace()
 	gvkLabelMap := map[schema.GroupVersionKind]filteredcache.Selector{
 		corev1.SchemeGroupVersion.WithKind("ConfigMap"): {
 			LabelSelector: constant.CsManagedLabel,
+		},
+		corev1.SchemeGroupVersion.WithKind("Secret"): {
+			LabelSelector: cmconstants.SecretWatchLabel,
 		},
 	}
 	watchNamespaceList := strings.Split(watchNamespace, ",")
@@ -172,6 +186,27 @@ func main() {
 		Recorder:  mgr.GetEventRecorderFor("commonservice-controller"),
 	}).SetupWithManager(mgr); err != nil {
 		klog.Errorf("Unable to create controller CommonService: %v", err)
+		os.Exit(1)
+	}
+	if err = (&certmanagerv1controllers.CertificateRefreshReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		klog.Error(err, "unable to create controller", "controller", "CertificateRefresh")
+		os.Exit(1)
+	}
+	if err = (&certmanagerv1controllers.PodRefreshReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		klog.Error(err, "unable to create controller", "controller", "PodRefresh")
+		os.Exit(1)
+	}
+	if err = (&certmanagerv1controllers.V1AddLabelReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		klog.Error(err, "unable to create controller", "controller", "V1AddLabel")
 		os.Exit(1)
 	}
 	if err = (&operandrequestwebhook.Defaulter{
