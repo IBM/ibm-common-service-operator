@@ -194,20 +194,13 @@ build-bundle-image: yq
 	@mv /tmp/ibm-common-service-operator.clusterserviceversion.yaml bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
 
 run-bundle:
-	$(OPERATOR_SDK) run bundle $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(RELEASE_VERSION)
-	sleep 30
-	$(KUBECTL) get sub ibm-namespace-scope-operator -o custom-columns=":status.installplan.name" --no-headers \
-		| xargs oc patch installplan --type merge --patch '{"spec":{"approved":true}}'
-	$(KUBECTL) get sub operand-deployment-lifecycle-manager-app -o custom-columns=":status.installplan.name" --no-headers \
-		| xargs oc patch installplan --type merge --patch '{"spec":{"approved":true}}'
+	$(OPERATOR_SDK) run bundle $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):dev
 
 upgrade-bundle:
 	$(OPERATOR_SDK) run bundle-upgrade $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):dev
 
 cleanup-bundle:
 	$(OPERATOR_SDK) cleanup ibm-common-service-operator
-	oc get sub -o custom-columns=":metadata.name" --no-headers | xargs oc delete sub
-	oc get csv -o custom-columns=":metadata.name" --no-headers | xargs oc delete csv
 
 build-catalog-source:
 	opm -u docker index add --bundles $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(VERSION) --tag $(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME)-catalog:$(VERSION)
@@ -241,7 +234,7 @@ bundle-manifests: clis
 	-q --overwrite --version $(RELEASE_VERSION) $(BUNDLE_METADATA_OPTS)
 	$(OPERATOR_SDK) bundle validate ./bundle
 	$(YQ) eval -i '.metadata.annotations."olm.skipRange" = ">=3.3.0 <${RELEASE_VERSION}"' ${CSV_PATH}
-	$(YQ) eval -i '.spec.replaces = "ibm-common-service-operator.v$(PREVIOUS_VERSION)"' ${CSV_PATH}
+	$(YQ) eval -i '.spec.webhookdefinitions[0].deploymentName = "ibm-common-service-operator"' ${CSV_PATH}
 
 generate-all: yq kustomize operator-sdk generate manifests ## Generate bundle manifests, metadata and package manifests
 	$(OPERATOR_SDK) generate kustomize manifests -q
