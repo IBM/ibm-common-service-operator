@@ -569,6 +569,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
+    supportStatus: maintained
   - name: ibm-ingress-nginx-operator
     namespace: {{ .CPFSNs }}
     channel: v3.23
@@ -577,6 +578,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
+    supportStatus: maintained
   - name: ibm-auditlogging-operator
     namespace: {{ .CPFSNs }}
     channel: v3.23
@@ -585,6 +587,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
+    supportStatus: maintained
   - name: ibm-platform-api-operator
     namespace: {{ .CPFSNs }}
     channel: v3.23
@@ -1067,6 +1070,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
+    supportStatus: maintained
   - name: ibm-ingress-nginx-operator
     namespace: {{ .CPFSNs }}
     channel: v3.23
@@ -1075,6 +1079,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: {{ .CatalogSourceNs }}
+    supportStatus: maintained
   - channel: v3
     name: ibm-events-operator
     namespace: {{ .CPFSNs }}
