@@ -43,10 +43,7 @@ spec:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       policydecision: {}
-      operandBindInfo:
-        bindings:
-          protected-zen-serviceid:
-            secret: zen-serviceid-apikey-secret
+      operandBindInfo: {}
       operandRequest: {}
   - name: ibm-im-operator-v4.0
     spec:
@@ -54,10 +51,7 @@ spec:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       policydecision: {}
-      operandBindInfo:
-        bindings:
-          protected-zen-serviceid:
-            secret: zen-serviceid-apikey-secret
+      operandBindInfo: {}
       operandRequest: {}
   - name: ibm-iam-operator-v3.22
     spec:
@@ -102,10 +96,7 @@ spec:
       policydecision: {}
       secretwatcher: {}
       securityonboarding: {}
-      operandBindInfo:
-        bindings:
-          protected-zen-serviceid:
-            secret: zen-serviceid-apikey-secret
+      operandBindInfo: {}
       operandRequest: {}
   - name: ibm-healthcheck-operator
     spec:
@@ -572,12 +563,13 @@ spec:
     sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-management-ingress-operator
     namespace: "{{ .CPFSNs }}"
-    channel: v3.23
+    channel: {{ .Channel }}
     packageName: ibm-management-ingress-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+    supportStatus: maintained
   - name: ibm-ingress-nginx-operator
     namespace: "{{ .CPFSNs }}"
     channel: v3.23
@@ -586,6 +578,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+    supportStatus: maintained
   - name: ibm-auditlogging-operator
     namespace: "{{ .CPFSNs }}"
     channel: v3.23
@@ -594,6 +587,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+    supportStatus: maintained
   - name: ibm-platform-api-operator
     namespace: "{{ .CPFSNs }}"
     channel: v3.23
@@ -717,9 +711,7 @@ spec:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       policydecision: {}
       operandBindInfo:
-        bindings:
-          protected-zen-serviceid:
-            secret: zen-serviceid-apikey-secret
+        bindings: {}
       operandRequest: {}
   - name: ibm-im-operator-v4.0
     spec:
@@ -727,10 +719,7 @@ spec:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       policydecision: {}
-      operandBindInfo:
-        bindings:
-          protected-zen-serviceid:
-            secret: zen-serviceid-apikey-secret
+      operandBindInfo: {}
       operandRequest: {}
   - name: ibm-iam-operator-v3.22
     spec:
@@ -775,10 +764,7 @@ spec:
       policydecision: {}
       secretwatcher: {}
       securityonboarding: {}
-      operandBindInfo:
-        bindings:
-          protected-zen-serviceid:
-            secret: zen-serviceid-apikey-secret
+      operandBindInfo: {}
       operandRequest: {}
   - name: ibm-healthcheck-operator
     spec:
@@ -1078,12 +1064,13 @@ spec:
     sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-management-ingress-operator
     namespace: "{{ .CPFSNs }}"
-    channel: v3.23
+    channel: {{ .Channel }}
     packageName: ibm-management-ingress-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+    supportStatus: maintained
   - name: ibm-ingress-nginx-operator
     namespace: "{{ .CPFSNs }}"
     channel: v3.23
@@ -1092,6 +1079,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+    supportStatus: maintained
   - channel: v3
     name: ibm-events-operator
     namespace: "{{ .CPFSNs }}"
