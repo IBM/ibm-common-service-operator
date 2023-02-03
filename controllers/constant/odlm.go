@@ -23,7 +23,7 @@ metadata:
   name: common-service
   namespace: "{{ .MasterNs }}"
   annotations:
-    version: { .Version }}
+    version: {{ .Version }}
 spec:
   services:
   - name: ibm-licensing-operator
@@ -295,7 +295,7 @@ metadata:
   name: common-service
   namespace: "{{ .MasterNs }}"
   annotations:
-    version: { .Version }}
+    version: {{ .Version }}
     excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
 spec:
   operators:
@@ -461,7 +461,7 @@ metadata:
   name: common-service
   namespace: "{{ .MasterNs }}"
   annotations:
-    version: { .Version }}
+    version: {{ .Version }}
 spec:
   services:
   - name: ibm-licensing-operator
@@ -611,7 +611,7 @@ metadata:
   name: common-service
   namespace: "{{ .MasterNs }}"
   annotations:
-    version: { .Version }}
+    version: {{ .Version }}
     excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
 spec:
   operators:

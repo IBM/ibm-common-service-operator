@@ -80,7 +80,7 @@ metadata:
   name: common-service
   namespace: "{{ .MasterNs }}"
   annotations:
-    version: { .Version }}
+    version: {{ .Version }}
 spec:
   csvInjector:
     enable: true
@@ -109,7 +109,7 @@ metadata:
   name: common-service
   namespace: "{{ .ControlNs }}"
   annotations:
-    version: { .Version }}
+    version: {{ .Version }}
 spec:
   csvInjector:
     enable: true
