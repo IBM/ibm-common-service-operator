@@ -20,11 +20,11 @@ package constant
 const NamespaceScopeConfigMap = `
 apiVersion: v1
 data:
-  namespaces: {{ .WatchNamespaces }}
+  namespaces: "{{ .WatchNamespaces }}"
 kind: ConfigMap
 metadata:
   name: namespace-scope
-  namespace: {{ .CPFSNs }}
+  namespace: "{{ .CPFSNs }}"
   annotations:
     version: {{ .Version }}
 `

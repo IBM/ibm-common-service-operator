@@ -28,7 +28,7 @@ apiVersion: ibmcpcs.ibm.com/v1
 kind: SecretShare
 metadata:
   name: common-services
-  namespace: placeholder
+  namespace: "placeholder"
 spec:
   # Secrets to share for adopter compatibility to Common Services 3.2.4
   secretshares:
@@ -72,7 +72,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: secretshare
-  namespace: placeholder
+  namespace: "placeholder"
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -139,7 +139,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: secretshare
-  namespace: placeholder
+  namespace: "placeholder"
 roleRef:
   kind: ClusterRole
   name: secretshare
@@ -269,7 +269,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: secretshare
-  namespace: placeholder
+  namespace: "placeholder"
   annotations:
     version: "4.0.0"
 spec:
