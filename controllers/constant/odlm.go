@@ -43,10 +43,7 @@ spec:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       policydecision: {}
-      operandBindInfo:
-        bindings:
-          protected-zen-serviceid:
-            secret: zen-serviceid-apikey-secret
+      operandBindInfo: {}
       operandRequest: {}
   - name: ibm-im-operator-v4.0
     spec:
@@ -54,10 +51,7 @@ spec:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       policydecision: {}
-      operandBindInfo:
-        bindings:
-          protected-zen-serviceid:
-            secret: zen-serviceid-apikey-secret
+      operandBindInfo: {}
       operandRequest: {}
   - name: ibm-iam-operator-v3.22
     spec:
@@ -102,10 +96,7 @@ spec:
       policydecision: {}
       secretwatcher: {}
       securityonboarding: {}
-      operandBindInfo:
-        bindings:
-          protected-zen-serviceid:
-            secret: zen-serviceid-apikey-secret
+      operandBindInfo: {}
       operandRequest: {}
   - name: ibm-healthcheck-operator
     spec:
@@ -717,9 +708,7 @@ spec:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       policydecision: {}
       operandBindInfo:
-        bindings:
-          protected-zen-serviceid:
-            secret: zen-serviceid-apikey-secret
+        bindings: {}
       operandRequest: {}
   - name: ibm-im-operator-v4.0
     spec:
@@ -727,10 +716,7 @@ spec:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       policydecision: {}
-      operandBindInfo:
-        bindings:
-          protected-zen-serviceid:
-            secret: zen-serviceid-apikey-secret
+      operandBindInfo: {}
       operandRequest: {}
   - name: ibm-iam-operator-v3.22
     spec:
@@ -775,10 +761,7 @@ spec:
       policydecision: {}
       secretwatcher: {}
       securityonboarding: {}
-      operandBindInfo:
-        bindings:
-          protected-zen-serviceid:
-            secret: zen-serviceid-apikey-secret
+      operandBindInfo: {}
       operandRequest: {}
   - name: ibm-healthcheck-operator
     spec:
