@@ -126,7 +126,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   annotations:
-    version: "{{ .Version }}"
+    version: { .Version }}
   name: ibm-common-services-cluster-admin
 rules:
 - apiGroups:

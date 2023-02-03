@@ -23,9 +23,9 @@ metadata:
   name: ibm-common-service-operator
   namespace: "{{ .MasterNs }}"
 spec:
-  channel: "{{ .Channel }}"
-  installPlanApproval: "{{ .ApprovalMode }}"
+  channel: {{ .Channel }}
+  installPlanApproval: {{ .ApprovalMode }}
   name: ibm-common-service-operator
-  source: "{{ .CatalogSourceName }}"
+  source: {{ .CatalogSourceName }}
   sourceNamespace: "{{ .CatalogSourceNs }}"
 `
