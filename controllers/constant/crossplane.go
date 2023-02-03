@@ -26,13 +26,13 @@ const CrossSubscription = `
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
-  name: "{{ .ICPOperator }}"
+  name: {{ .ICPOperator }}
   namespace: "{{ .ControlNs }}"
 spec:
-  channel: "{{ .Channel }}"
-  installPlanApproval: "{{ .ApprovalMode }}"
-  name: "{{ .ICPOperator }}"
-  source: "{{ .CatalogSourceName }}"
+  channel: {{ .Channel }}
+  installPlanApproval: {{ .ApprovalMode }}
+  name: {{ .ICPOperator }}
+  source: {{ .CatalogSourceName }}
   sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
@@ -42,7 +42,7 @@ kind: Configuration
 metadata:
   name: ibm-crossplane-bedrock-shim-config
   labels:
-    ibm-crossplane-provider: "{{ .CrossplaneProvider }}"
+    ibm-crossplane-provider: {{ .CrossplaneProvider }}
 spec:
   ignoreCrossplaneConstraints: false
   package: ibm-crossplane-bedrock-shim-config
@@ -63,13 +63,13 @@ const CrossKubernetesProviderSubscription = `
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
-  name: "{{ .ICPPKOperator}}"
+  name: {{ .ICPPKOperator }}
   namespace: "{{ .ControlNs }}"
 spec:
-  channel: "{{ .Channel }}"
-  installPlanApproval: "{{ .ApprovalMode }}"
-  name: "{{ .ICPPKOperator }}"
-  source: "{{ .CatalogSourceName }}"
+  channel: {{ .Channel }}
+  installPlanApproval: {{ .ApprovalMode }}
+  name: {{ .ICPPKOperator }}
+  source: {{ .CatalogSourceName }}
   sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
@@ -89,13 +89,13 @@ const CrossIBMCloudProviderSubscription = `
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
-  name: "{{ .ICPPICOperator }}"
+  name: {{ .ICPPICOperator }}
   namespace: "{{ .ControlNs }}"
 spec:
-  channel: "{{ .Channel }}"
-  installPlanApproval: "{{ .ApprovalMode }}"
-  name: "{{ .ICPPICOperator }}"
-  source: "{{ .CatalogSourceName }}"
+  channel: {{ .Channel }}
+  installPlanApproval: {{ .ApprovalMode }}
+  name: {{ .ICPPICOperator }}
+  source: {{ .CatalogSourceName }}
   sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 

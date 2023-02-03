@@ -23,10 +23,10 @@ metadata:
   name: ibm-namespace-scope-operator-restricted
   namespace: "{{ .MasterNs }}"
 spec:
-  channel: "{{ .Channel }}"
-  installPlanApproval: "{{ .ApprovalMode }}"
+  channel: {{ .Channel }}
+  installPlanApproval: {{ .ApprovalMode }}
   name: ibm-namespace-scope-operator-restricted
-  source: "{{ .CatalogSourceName }}"
+  source: {{ .CatalogSourceName }}
   sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
@@ -37,10 +37,10 @@ metadata:
   name: ibm-namespace-scope-operator
   namespace: "{{ .MasterNs }}"
 spec:
-  channel: "{{ .Channel }}"
-  installPlanApproval: "{{ .ApprovalMode }}"
+  channel: {{ .Channel }}
+  installPlanApproval: {{ .ApprovalMode }}
   name: ibm-namespace-scope-operator
-  source: "{{ .CatalogSourceName }}"
+  source: {{ .CatalogSourceName }}
   sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
@@ -51,10 +51,10 @@ metadata:
   name: ibm-namespace-scope-operator-restricted
   namespace: "{{ .ControlNS }}"
 spec:
-  channel: "{{ .Channel }}"
-  installPlanApproval: "{{ .ApprovalMode }}"
+  channel: {{ .Channel }}
+  installPlanApproval: {{ .ApprovalMode }}
   name: ibm-namespace-scope-operator-restricted
-  source: "{{ .CatalogSourceName }}"
+  source: {{ .CatalogSourceName }}
   sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
@@ -65,10 +65,10 @@ metadata:
   name: ibm-namespace-scope-operator
   namespace: "{{ .ControlNs }}"
 spec:
-  channel: "{{ .Channel }}"
-  installPlanApproval: "{{ .ApprovalMode }}"
+  channel: {{ .Channel }}
+  installPlanApproval: {{ .ApprovalMode }}
   name: ibm-namespace-scope-operator
-  source: "{{ .CatalogSourceName }}"
+  source: {{ .CatalogSourceName }}
   sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
@@ -80,7 +80,7 @@ metadata:
   name: common-service
   namespace: "{{ .MasterNs }}"
   annotations:
-    version: "{{ .Version }}"
+    version: {{ .Version }}
 spec:
   csvInjector:
     enable: true
@@ -109,7 +109,7 @@ metadata:
   name: common-service
   namespace: "{{ .ControlNs }}"
   annotations:
-    version: "{{ .Version }}"
+    version: {{ .Version }}
 spec:
   csvInjector:
     enable: true
