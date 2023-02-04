@@ -95,7 +95,6 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	NSSCMSyncEnabled := util.GetNSSCMSynchronization()
 	watchNamespace := util.GetWatchNamespace()
 	gvkLabelMap := map[schema.GroupVersionKind]filteredcache.Selector{
 		corev1.SchemeGroupVersion.WithKind("ConfigMap"): {
@@ -176,10 +175,6 @@ func main() {
 	go goroutines.CreateUpdateConfig(bs)
 	// Update CS CR Status
 	go goroutines.UpdateCsCrStatus(bs)
-	if NSSCMSyncEnabled {
-		// Sync up NSS ConfigMap
-		go goroutines.SyncUpNSSConfigMap(bs)
-	}
 
 	if err = (&controllers.CommonServiceReconciler{
 		Bootstrap: bs,

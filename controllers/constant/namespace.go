@@ -25,6 +25,32 @@ kind: ConfigMap
 metadata:
   name: namespace-scope
   namespace: "{{ .CPFSNs }}"
-  annotations:
-    version: {{ .Version }}
+`
+
+const NSRestrictedSubscription = `
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: ibm-namespace-scope-operator-restricted
+  namespace: "{{ .CPFSNs }}"
+spec:
+  channel: {{ .Channel }}
+  installPlanApproval: {{ .ApprovalMode }}
+  name: ibm-namespace-scope-operator-restricted
+  source: {{ .CatalogSourceName }}
+  sourceNamespace: "{{ .CatalogSourceNs }}"
+`
+
+const NSSubscription = `
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: ibm-namespace-scope-operator
+  namespace: "{{ .CPFSNs }}"
+spec:
+  channel: {{ .Channel }}
+  installPlanApproval: {{ .ApprovalMode }}
+  name: ibm-namespace-scope-operator
+  source: {{ .CatalogSourceName }}
+  sourceNamespace: "{{ .CatalogSourceNs }}"
 `
