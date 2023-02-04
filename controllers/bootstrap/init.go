@@ -191,6 +191,12 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		return err
 	}
 
+	// Backward compatible upgrade from version 3.x.x
+	if err := b.CreateNsScopeConfigmap(); err != nil {
+		klog.Errorf("Failed to create Namespace Scope ConfigMap: %v", err)
+		return err
+	}
+
 	var commonuiBindInfo = &Resource{
 		Name:    "ibm-commonui-bindinfo",
 		Version: "v1alpha1",
@@ -653,6 +659,25 @@ func (b *Bootstrap) ResourceExists(dc discovery.DiscoveryInterface, apiGroupVers
 	}
 	return false, nil
 }
+
+// func (b *Bootstrap) createNsSubscription(manualManagement bool) error {
+// 	resourceName := constant.NSSubscription
+// 	subNameToRemove := constant.NsRestrictedSubName
+// 	if manualManagement {
+// 		resourceName = constant.NSRestrictedSubscription
+// 		subNameToRemove = constant.NsSubName
+// 	}
+
+// 	if err := b.deleteSubscription(subNameToRemove, b.CSData.CPFSNs); err != nil {
+// 		return err
+// 	}
+
+// 	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
+// 		return err
+// 	}
+
+// 	return nil
+// }
 
 // CreateNsScopeConfigmap creates nss configmap for operators
 func (b *Bootstrap) CreateNsScopeConfigmap() error {
