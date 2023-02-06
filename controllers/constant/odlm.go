@@ -489,6 +489,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+    supportStatus: maintained
   - name: ibm-iam-operator-v3.22
     namespace: "{{ .CPFSNs }}"
     channel: v3.22
@@ -1022,6 +1023,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+    supportStatus: maintained
   - name: ibm-iam-operator-v3.22
     namespace: "{{ .CPFSNs }}"
     channel: v3.22
