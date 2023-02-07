@@ -35,6 +35,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -104,7 +105,14 @@ func main() {
 			LabelSelector: cmconstants.SecretWatchLabel,
 		},
 	}
-	watchNamespaceList := strings.Split(watchNamespace, ",")
+
+	var NewCache cache.NewCacheFunc
+	if watchNamespace == "" {
+		NewCache = filteredcache.NewFilteredCacheBuilder(gvkLabelMap)
+	} else {
+		watchNamespaceList := strings.Split(watchNamespace, ",")
+		NewCache = filteredcache.MultiNamespacedFilteredCacheBuilder(gvkLabelMap, watchNamespaceList)
+	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
@@ -113,7 +121,7 @@ func main() {
 		Port:                   9443,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "be598e12.ibm.com",
-		NewCache:               filteredcache.MultiNamespacedFilteredCacheBuilder(gvkLabelMap, watchNamespaceList),
+		NewCache:               NewCache,
 	})
 	if err != nil {
 		klog.Errorf("Unable to start manager: %v", err)
