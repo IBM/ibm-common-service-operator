@@ -172,7 +172,7 @@ function zenopr_check() {
     local csNS=$1
     local subName=$2
 
-    currentChannel=$(oc get sub -n ${csNS} | grep ${subName} | awk '{print $4}')
+    currentChannel=$(oc get subscription.operators.coreos.com -n ${csNS} | grep ${subName} | awk '{print $4}')
     STEP=$((STEP + 1 ))
     msg ""
     title "[${STEP}] Waiting for IBM Zen Operator upgrading to latest version in the ${currentChannel} channel..."
@@ -210,7 +210,7 @@ function zenopr_check() {
     index=0
     while true; do
         # check Zen operator CSV status
-        csv_status=$(oc get csv ${currentCSV} -n ${csNS} -o jsonpath={.status.phase})
+        csv_status=$(oc get clusterserviceversion.operators.coreos.com ${currentCSV} -n ${csNS} -o jsonpath={.status.phase})
         if [[ $csv_status == "Succeeded" ]]; then
             success "${currentCSV} phase is ${csv_status}."
             break
@@ -293,16 +293,16 @@ function switch_channel_operator() {
         
         in_step=1
         msg "[${in_step}] Removing the startingCSV..."
-        oc patch sub ${cssub} -n ${namespace} --type="json" -p '[{"op": "remove", "path":"/spec/startingCSV"}]' 2> /dev/null
+        oc patch subscription.operators.coreos.com ${cssub} -n ${namespace} --type="json" -p '[{"op": "remove", "path":"/spec/startingCSV"}]' 2> /dev/null
 
         in_step=$((in_step + 1))
         msg "[${in_step}] Upgrading channel to ${channel}..."
         
-        cat <<EOF | oc patch sub ${cssub} -n ${namespace} --type="json" -p '[{"op": "replace", "path":"/spec/channel", "value":"'"${channel}"'"}]' | 2> /dev/null
+        cat <<EOF | oc patch subscription.operators.coreos.com ${cssub} -n ${namespace} --type="json" -p '[{"op": "replace", "path":"/spec/channel", "value":"'"${channel}"'"}]' | 2> /dev/null
 EOF
 
         msg ""
-    done < <(oc get sub -n ${namespace} --ignore-not-found | grep ${subName} | awk '{print $1}')
+    done < <(oc get subscription.operators.coreos.com -n ${namespace} --ignore-not-found | grep ${subName} | awk '{print $1}')
 }
 
 # This function checks the current version of the installed bedrock instance automatically
@@ -362,7 +362,7 @@ function deployment_check(){
     msg "-----------------------------------------------------------------------"
 
     # get current cs opertor channel version 
-    csoperator_channel=$(oc get sub -n ${csNS} | grep ${subName} | awk '{print $4}')
+    csoperator_channel=$(oc get subscription.operators.coreos.com -n ${csNS} | grep ${subName} | awk '{print $4}')
     compare_channel "${subName}" "${csNS}" "${channel}" "${csoperator_channel}"
     
 
@@ -378,14 +378,14 @@ function deployment_check(){
         # delete OperandRegistry
         in_step=$((in_step + 1))
         msg "[${in_step}] Deleting OperandRegistry common-service in ${csNS} namespace..."
-        oc delete opreg common-service -n ${csNS} --ignore-not-found
+        oc delete operandregistry common-service -n ${csNS} --ignore-not-found
         
     elif [[ $CHANNEL_COMP != 1 ]]; then
         msg "current channel version of ${subName} ${csoperator_channel} is not less than upgrade channel version ${channel}"
         msg ""
 
         # get installedCSV from subscription
-        csv=$(oc get sub ${subName} -n ${csNS} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
+        csv=$(oc get subscription.operators.coreos.com ${subName} -n ${csNS} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
         msg "existing installedCSV is ${csv}"
 
         # remove all chars before "v"
@@ -425,7 +425,7 @@ function switch_channel() {
                 msg "Switching channel into ${channel}..."
                 switch_channel_operator "${subName}" "${ns}" "${channel}"
             fi 
-        done < <(oc get sub --all-namespaces --ignore-not-found | grep ${subName}  | awk '{print $1" "$5}')
+        done < <(oc get subscription.operators.coreos.com --all-namespaces --ignore-not-found | grep ${subName}  | awk '{print $1" "$5}')
     else
         if [[ "$cloudpaksNS" != "$csNS" ]]; then
             while read -r cur_channel; do
@@ -435,7 +435,7 @@ function switch_channel() {
                     msg "Switching channel into ${channel}..."
                     switch_channel_operator "${subName}" "${cloudpaksNS}" "${channel}"
                 fi
-            done < <(oc get sub -n ${cloudpaksNS} --ignore-not-found | grep ${subName}  | awk '{print $4}')
+            done < <(oc get subscription.operators.coreos.com -n ${cloudpaksNS} --ignore-not-found | grep ${subName}  | awk '{print $4}')
             
         fi
         while read -r cur_channel; do
@@ -445,7 +445,7 @@ function switch_channel() {
                 msg "Switching channel into ${channel}..."
                 switch_channel_operator "${subName}" "${csNS}" "${channel}"
             fi
-        done < <(oc get sub -n ${csNS} --ignore-not-found | grep ${subName}  | awk '{print $4}')       
+        done < <(oc get subscription.operators.coreos.com -n ${csNS} --ignore-not-found | grep ${subName}  | awk '{print $4}')       
     fi
     success "Updated ${subName} subscriptions successfully."
 
@@ -454,7 +454,7 @@ function switch_channel() {
     title "[${STEP}] Switching Zen operator channel in ${csNS} namespace..."
     msg "-----------------------------------------------------------------------"
 
-    zen_current=$(oc get sub -n ${csNS} --ignore-not-found | grep ibm-zen-operator | awk '{print $4}')
+    zen_current=$(oc get subscription.operators.coreos.com -n ${csNS} --ignore-not-found | grep ibm-zen-operator | awk '{print $4}')
     if [[ ! -z "${zen_current}" ]]; then
         compare_channel "ibm-zen-operator" "${csNS}" "${channel}" "${zen_current}"
         if [[ $CHANNEL_COMP == 1 ]]; then
