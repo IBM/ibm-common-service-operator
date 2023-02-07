@@ -344,17 +344,15 @@ func (b *Bootstrap) CreateCsCR() error {
 			if errors.IsNotFound(err) {
 				ctx := context.Background()
 				ns := &corev1.Namespace{}
-				if err := b.Client.Get(ctx, types.NamespacedName{Name: constant.MasterNamespace}, ns); err != nil {
+				if err := b.Reader.Get(ctx, types.NamespacedName{Name: constant.MasterNamespace}, ns); err != nil {
 					if errors.IsNotFound(err) {
 						klog.Warningf("Not found well-known default namespace %v, please manually create the namespace", constant.MasterNamespace)
 						time.Sleep(10 * time.Second)
 						continue
-					} else if err != nil {
-						return err
 					}
-					b.CSData.ServicesNs = constant.MasterNamespace
+					return err
 				}
-				defaultCRReady = true
+				b.CSData.ServicesNs = constant.MasterNamespace
 				return b.renderTemplate(constant.CsCR, b.CSData)
 			} else if err != nil {
 				return err
