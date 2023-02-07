@@ -293,12 +293,12 @@ function switch_channel_operator() {
         
         in_step=1
         msg "[${in_step}] Removing the startingCSV..."
-        oc patch sub ${cssub} -n ${namespace} --type="json" -p '[{"op": "remove", "path":"/spec/startingCSV"}]' 2> /dev/null
+        oc patch subscription.operators.coreos.com ${cssub} -n ${namespace} --type="json" -p '[{"op": "remove", "path":"/spec/startingCSV"}]' 2> /dev/null
 
         in_step=$((in_step + 1))
         msg "[${in_step}] Upgrading channel to ${channel}..."
         
-        cat <<EOF | oc patch sub ${cssub} -n ${namespace} --type="json" -p '[{"op": "replace", "path":"/spec/channel", "value":"'"${channel}"'"}]' | 2> /dev/null
+        cat <<EOF | oc patch subscription.operators.coreos.com ${cssub} -n ${namespace} --type="json" -p '[{"op": "replace", "path":"/spec/channel", "value":"'"${channel}"'"}]' | 2> /dev/null
 EOF
 
         msg ""
@@ -378,7 +378,7 @@ function deployment_check(){
         # delete OperandRegistry
         in_step=$((in_step + 1))
         msg "[${in_step}] Deleting OperandRegistry common-service in ${csNS} namespace..."
-        oc delete opreg common-service -n ${csNS} --ignore-not-found
+        oc delete operandregistry common-service -n ${csNS} --ignore-not-found
         
     elif [[ $CHANNEL_COMP != 1 ]]; then
         msg "current channel version of ${subName} ${csoperator_channel} is not less than upgrade channel version ${channel}"
