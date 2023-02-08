@@ -26,6 +26,35 @@ CHANNEL_COMP=2
 # script base directory
 BASE_DIR=$(dirname "$0")
 
+CS_LIST_CSNS=("operand-deployment-lifecycle-manager-app"
+        "ibm-common-service-operator"
+        "ibm-cert-manager-operator"
+        "ibm-mongodb-operator"
+        "ibm-iam-operator"
+        "ibm-monitoring-grafana-operator"
+        "ibm-healthcheck-operator"
+        "ibm-management-ingress-operator"
+        "ibm-licensing-operator"
+        "ibm-commonui-operator"
+        "ibm-ingress-nginx-operator"
+        "ibm-auditlogging-operator"
+        "ibm-platform-api-operator"
+        "ibm-namespace-scope-operator"
+        "ibm-namespace-scope-operator-restricted"
+        "ibm-zen-operator"
+        "ibm-zen-cpp-operator"
+        "ibm-crossplane-operator-app"
+        "ibm-crossplane-provider-ibm-cloud-operator-app"
+        "ibm-crossplane-provider-kubernetes-operator-app")
+
+CS_LIST_CONTROLNS=(
+        "ibm-cert-manager-operator"
+        "ibm-namespace-scope-operator"
+        "ibm-namespace-scope-operator-restricted"
+        "ibm-crossplane-operator-app"
+        "ibm-crossplane-provider-ibm-cloud-operator-app"
+        "ibm-crossplane-provider-kubernetes-operator-app")
+
 # ---------- Command functions ----------
 function usage() {
 	local script="${0##*/}"
