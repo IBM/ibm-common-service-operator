@@ -705,3 +705,15 @@ func GetResourcesDynamically(ctx context.Context, dynamic dynamic.Interface, gro
 
 	return list.Items, nil
 }
+
+// GetEnableOpreqWebhook check if enable the webhook for the OperandRequest
+func GetEnableOpreqWebhook() bool {
+	enable, ok := os.LookupEnv("ENABLE_OPREQ_WEBHOOK")
+	if !ok {
+		return false
+	}
+	if enable != "TRUE" {
+		return false
+	}
+	return true
+}
