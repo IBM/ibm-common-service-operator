@@ -38,6 +38,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/IBM/controller-filtered-cache/filteredcache"
 	nssv1 "github.com/IBM/ibm-namespace-scope-operator/api/v1"
@@ -54,7 +55,9 @@ import (
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/controllers/goroutines"
-	operandrequestwebhook "github.com/IBM/ibm-common-service-operator/controllers/webhook/operandrequest"
+	"github.com/IBM/ibm-common-service-operator/controllers/webhooks"
+	operandrequestwebhook "github.com/IBM/ibm-common-service-operator/controllers/webhooks/operandrequest"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -222,12 +225,18 @@ func main() {
 		klog.Error(err, "unable to create controller", "controller", "V1AddLabel")
 		os.Exit(1)
 	}
-	if err = (&operandrequestwebhook.Defaulter{
-		Bootstrap: bs,
-	}).SetupWebhookWithManager(mgr); err != nil {
-		klog.Errorf("Unable to create OperandRequest webhook: %v", err)
-		os.Exit(1)
+
+	// Start up the webhook server
+	if err := setupWebhooks(mgr, bs); err != nil {
+		klog.Error(err, "Error setting up webhook server")
 	}
+
+	// if err = (&operandrequestwebhook.Defaulter{
+	// 	Bootstrap: bs,
+	// }).SetupWebhookWithManager(mgr); err != nil {
+	// 	klog.Errorf("Unable to create OperandRequest webhook: %v", err)
+	// 	os.Exit(1)
+	// }
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		klog.Errorf("unable to set up health check: %v", err)
@@ -243,4 +252,39 @@ func main() {
 		klog.Errorf("Problem running manager: %v", err)
 		os.Exit(1)
 	}
+
+}
+
+func setupWebhooks(mgr manager.Manager, bs *bootstrap.Bootstrap) error {
+
+	klog.Info("Creating common service webhook configuration")
+	managedbyCSWebhookLabel := make(map[string]string)
+	managedbyCSWebhookLabel["managed-by-common-service-webhook"] = "true"
+	if util.GetEnableOpreqWebhook() {
+		webhooks.Config.AddWebhook(webhooks.CSWebhook{
+			Name:        "ibm-operandrequest-webhook-configuration",
+			WebhookName: "ibm-cloudpak-operandrequest.operator.ibm.com",
+			Rule: webhooks.NewRule().
+				OneResource("operator.ibm.com", "v1alpha1", "operandrequests").
+				ForUpdate().
+				ForCreate().
+				NamespacedScope(),
+			Register: webhooks.AdmissionWebhookRegister{
+				Type: webhooks.MutatingType,
+				Path: "/mutate-ibm-cp-operandrequest",
+				Hook: &admission.Webhook{
+					Handler: &operandrequestwebhook.Defaulter{
+						Bootstrap: bs,
+					},
+				},
+			},
+		})
+	}
+
+	klog.Info("setting up webhook server")
+	if err := webhooks.Config.SetupServer(mgr, bs.CSData.ServicesNs); err != nil {
+		return err
+	}
+
+	return nil
 }
