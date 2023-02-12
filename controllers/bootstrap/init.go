@@ -210,6 +210,11 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		return err
 	}
 
+	klog.Info("Installing ODLM Operator")
+	if err := b.renderTemplate(constant.ODLMSubscription, b.CSData); err != nil {
+		return err
+	}
+
 	// create and wait ODLM OperandRegistry and OperandConfig CR resources
 	if err := b.waitResourceReady("operator.ibm.com/v1alpha1", "OperandRegistry"); err != nil {
 		return err
@@ -430,6 +435,9 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 					klog.Errorf("Failed to get subscription %s/%s", obj.GetNamespace(), obj.GetName())
 				}
 				return err
+			}
+			if sub.Object["spec"].(map[string]interface{})["config"] != nil {
+				obj.Object["spec"].(map[string]interface{})["config"] = sub.Object["spec"].(map[string]interface{})["config"]
 			}
 			update = !equality.Semantic.DeepEqual(sub.Object["spec"], obj.Object["spec"])
 		} else {

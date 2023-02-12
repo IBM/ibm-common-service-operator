@@ -673,13 +673,13 @@ spec:
     namespace: "{{ .CPFSNs }}"
     packageName: ibm-automation-flink
     scope: public
-    installPlanApproval: {{ .ApprovalMode}}
+    installPlanApproval: {{ .ApprovalMode }}
   - channel: v1.3
     name: ibm-automation-elastic
     namespace: "{{ .CPFSNs }}"
     packageName: ibm-automation-elastic
     scope: public
-    installPlanApproval: {{ .ApprovalMode}}
+    installPlanApproval: {{ .ApprovalMode }}
 `
 
 const CSV3SaasOperandConfig = `
@@ -1125,11 +1125,25 @@ spec:
     namespace: "{{ .CPFSNs }}"
     packageName: ibm-automation-flink
     scope: public
-    installPlanApproval: {{ .ApprovalMode}}
+    installPlanApproval: {{ .ApprovalMode }}
   - channel: v1.3
     name: ibm-automation-elastic
     namespace: "{{ .CPFSNs }}"
     packageName: ibm-automation-elastic
     scope: public
-    installPlanApproval: {{ .ApprovalMode}}
+    installPlanApproval: {{ .ApprovalMode }}
+`
+
+const ODLMSubscription = `
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: operand-deployment-lifecycle-manager-app
+  namespace: "{{ .CPFSNs }}"
+spec:
+  channel: {{ .Channel }}
+  installPlanApproval: {{ .ApprovalMode }}
+  name: ibm-odlm
+  source: {{ .CatalogSourceName }}
+  sourceNamespace: "{{ .CatalogSourceNs }}"
 `
