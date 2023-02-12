@@ -185,28 +185,9 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		return err
 	}
 
-	// Create extra RBAC for ibmcloud-cluster-ca-cert and ibmcloud-cluster-info in kube-public
-	klog.Info("Creating RBAC for ibmcloud-cluster-info & ibmcloud-cluster-ca-cert in kube-public")
-	if err := b.CreateOrUpdateFromYaml([]byte(constant.ExtraRBAC)); err != nil {
-		return err
-	}
-
 	// Backward compatible upgrade from version 3.x.x
 	if err := b.CreateNsScopeConfigmap(); err != nil {
 		klog.Errorf("Failed to create Namespace Scope ConfigMap: %v", err)
-		return err
-	}
-
-	var commonuiBindInfo = &Resource{
-		Name:    "ibm-commonui-bindinfo",
-		Version: "v1alpha1",
-		Group:   "operator.ibm.com",
-		Kind:    "OperandBindInfo",
-		Scope:   "namespaceScope",
-	}
-
-	// Clean up deprecated resource
-	if err := b.Cleanup(b.CSData.OperatorNs, commonuiBindInfo); err != nil {
 		return err
 	}
 
