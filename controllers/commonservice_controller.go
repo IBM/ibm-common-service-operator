@@ -90,10 +90,7 @@ func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instance *apiv3.CommonService) (ctrl.Result, error) {
 	originalInstance := instance.DeepCopy()
 
-	operatorDeployed, servicesDeployed, err := r.Bootstrap.CheckDeployStatus(ctx)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
+	operatorDeployed, servicesDeployed := r.Bootstrap.CheckDeployStatus(ctx)
 	instance.UpdateConfigStatus(&r.Bootstrap.CSData, operatorDeployed, servicesDeployed)
 
 	var forceUpdateODLMCRs bool
