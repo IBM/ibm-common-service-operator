@@ -97,11 +97,12 @@ type Resource struct {
 // NewBootstrap is the way to create a NewBootstrap struct
 func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 	cpfsNs := util.GetCPFSNamespace(mgr.GetAPIReader())
+	servicesNs := util.GetServicesNamespace(mgr.GetAPIReader())
 	operatorNs, err := util.GetOperatorNamespace()
 	if err != nil {
 		return
 	}
-	isOCP, err := isOCP(mgr, cpfsNs)
+	isOCP, err := isOCP(mgr, servicesNs)
 	if err != nil {
 		return
 	}
@@ -117,7 +118,7 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 	}
 	csData := apiv3.CSData{
 		CPFSNs:            cpfsNs,
-		ServicesNs:        util.GetServicesNamespace(mgr.GetAPIReader()),
+		ServicesNs:        servicesNs,
 		OperatorNs:        operatorNs,
 		CatalogSourceName: catalogSourceName,
 		CatalogSourceNs:   catalogSourceNs,

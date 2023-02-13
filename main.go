@@ -150,7 +150,7 @@ func main() {
 	}
 
 	for {
-		typeCorrect, err := bootstrap.CheckClusterType(mgr, util.GetCPFSNamespace(mgr.GetAPIReader()))
+		typeCorrect, err := bootstrap.CheckClusterType(mgr, util.GetServicesNamespace(mgr.GetAPIReader()))
 		if err != nil {
 			klog.Errorf("Failed to verify cluster type  %v", err)
 			continue
