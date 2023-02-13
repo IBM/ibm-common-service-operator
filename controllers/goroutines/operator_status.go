@@ -63,12 +63,6 @@ func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 		for i := range opreg.Spec.Operators {
 			operatorsName = append(operatorsName, opreg.Spec.Operators[i].Name)
 		}
-		operatorsName = append(operatorsName, []string{
-			constant.ICPPKOperator,
-			constant.ICPPICOperator,
-			constant.ICPOperator,
-			"ibm-namespace-scope-operator",
-			"operand-deployment-lifecycle-manager-app"}...)
 
 		for _, name := range operatorsName {
 			var opt apiv3.BedrockOperator

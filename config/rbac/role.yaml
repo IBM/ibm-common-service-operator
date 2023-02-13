@@ -3,17 +3,6 @@ kind: ClusterRole
 metadata:
   name: ibm-common-service-operator
 rules:
-# create rbac for ibmcloud-cluster-info & ibmcloud-cluster-ca-cert in kube-public
-- apiGroups:
-  - rbac.authorization.k8s.io
-  resources:
-  - roles
-  - rolebindings
-  verbs:
-  - create
-  - get
-  - list
-  - update
 # Manipulate ConfigMap in kube-public namespace
 - verbs:
   - delete
