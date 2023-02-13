@@ -35,18 +35,18 @@ func CreateUpdateConfig(bs *bootstrap.Bootstrap) {
 
 	for {
 		config := &corev1.ConfigMap{}
-		if err := bs.Client.Get(context.TODO(), types.NamespacedName{Name: "ibm-cpp-config", Namespace: bs.CSData.CPFSNs}, config); err != nil && !errors.IsNotFound(err) {
+		if err := bs.Client.Get(context.TODO(), types.NamespacedName{Name: "ibm-cpp-config", Namespace: bs.CSData.ServicesNs}, config); err != nil && !errors.IsNotFound(err) {
 			continue
 		} else if errors.IsNotFound(err) {
 			config.ObjectMeta.Name = "ibm-cpp-config"
-			config.ObjectMeta.Namespace = bs.CSData.CPFSNs
+			config.ObjectMeta.Namespace = bs.CSData.ServicesNs
 			config.Data = make(map[string]string)
 			config.Data = collector.Buildconfig(config.Data, bs)
 			if err := bs.Client.Create(context.TODO(), config); err != nil {
 				time.Sleep(1 * time.Second)
 				continue
 			}
-			klog.Infof("Global CPP config %s/%s is created", "ibm-cpp-config", bs.CSData.CPFSNs)
+			klog.Infof("Global CPP config %s/%s is created", "ibm-cpp-config", bs.CSData.ServicesNs)
 		} else {
 			orgConfig := config.DeepCopy()
 			config.Data = collector.Buildconfig(config.Data, bs)
@@ -55,7 +55,7 @@ func CreateUpdateConfig(bs *bootstrap.Bootstrap) {
 					time.Sleep(1 * time.Second)
 					continue
 				}
-				klog.Infof("Global CPP config %s/%s is updated", "ibm-cpp-config", bs.CSData.CPFSNs)
+				klog.Infof("Global CPP config %s/%s is updated", "ibm-cpp-config", bs.CSData.ServicesNs)
 			}
 
 		}
