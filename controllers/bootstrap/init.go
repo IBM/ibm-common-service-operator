@@ -1024,18 +1024,12 @@ func (b *Bootstrap) Cleanup(operatorNs string, resource *Resource) error {
 	return nil
 }
 
-func (b *Bootstrap) CheckDeployStatus(ctx context.Context) (operatorDeployed bool, servicesDeployed bool, err error) {
-	opreg, err := b.GetOperandRegistry(ctx, "common-service", b.CSData.ServicesNs)
-	if err != nil {
-		return true, true, err
-	} else if opreg != nil && opreg.Status.Phase == odlm.RegistryRunning {
+func (b *Bootstrap) CheckDeployStatus(ctx context.Context) (operatorDeployed bool, servicesDeployed bool) {
+	if opreg, err := b.GetOperandRegistry(ctx, "common-service", b.CSData.ServicesNs); err == nil && opreg != nil && opreg.Status.Phase == odlm.RegistryRunning {
 		operatorDeployed = true
 	}
 
-	opconfig, err := b.GetOperandConfig(ctx, "common-service", b.CSData.ServicesNs)
-	if err != nil {
-		return true, true, err
-	} else if opreg != nil && opconfig.Status.Phase == odlm.ServiceRunning {
+	if opconfig, err := b.GetOperandConfig(ctx, "common-service", b.CSData.ServicesNs); err == nil && opconfig != nil && opconfig.Status.Phase == odlm.ServiceRunning {
 		servicesDeployed = true
 	}
 	return
