@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/IBM/ibm-common-service-operator/controllers/common"
+
 	"github.com/operator-framework/operator-lifecycle-manager/pkg/lib/ownerutil"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -130,10 +131,14 @@ func (webhookConfig *CSWebhookConfig) SetupServer(mgr manager.Manager, namespace
 
 	for _, webhook := range webhookConfig.Webhooks {
 		bldr = webhook.Register.RegisterToBuilder(bldr)
-		webhook.Register.RegisterToServer(webhookConfig.scheme, webhookServer)
+		if err := webhook.Register.RegisterToServer(webhookConfig.scheme, webhookServer); err != nil {
+			return err
+		}
 	}
 
-	bldr.Complete()
+	if err := bldr.Complete(); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -332,7 +337,7 @@ func (webhookConfig *CSWebhookConfig) AddWebhook(webhook CSWebhook) {
 func (webhookConfig *CSWebhookConfig) saveCertFromSecret(secretData map[string][]byte, fileName string) error {
 	value, ok := secretData[fileName]
 	if !ok {
-		return fmt.Errorf("Secret does not contain key %s", fileName)
+		return fmt.Errorf("secret does not contain key %s", fileName)
 	}
 
 	// Save the key

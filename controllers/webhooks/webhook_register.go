@@ -32,7 +32,7 @@ import (
 // regstering to the WebhookBuilder or directly to the webhook server.
 type WebhookRegister interface {
 	RegisterToBuilder(blrd *builder.WebhookBuilder) *builder.WebhookBuilder
-	RegisterToServer(scheme *runtime.Scheme, srv *webhook.Server)
+	RegisterToServer(scheme *runtime.Scheme, srv *webhook.Server) error
 
 	GetReconciler(scheme *runtime.Scheme) (WebhookReconciler, error)
 }
@@ -59,7 +59,7 @@ func WebhookRegisterFor(object runtime.Object) (*ObjectWebhookRegister, error) {
 		return &ObjectWebhookRegister{object}, nil
 	}
 
-	return nil, fmt.Errorf("Object %v does not implement Defaulter or Validator interface", object)
+	return nil, fmt.Errorf("object %v does not implement Defaulter or Validator interface", object)
 }
 
 // RegisterToBuilder adds the object into the builder, which registers the webhook
@@ -156,9 +156,13 @@ func (awr AdmissionWebhookRegister) RegisterToBuilder(bldr *builder.WebhookBuild
 }
 
 // RegisterToServer regsiters the webhook to the path of `awr`
-func (awr AdmissionWebhookRegister) RegisterToServer(scheme *runtime.Scheme, srv *webhook.Server) {
-	awr.Hook.InjectScheme(scheme)
+func (awr AdmissionWebhookRegister) RegisterToServer(scheme *runtime.Scheme, srv *webhook.Server) error {
+	err := awr.Hook.InjectScheme(scheme)
+	if err != nil {
+		return err
+	}
 	srv.Register(awr.Path, awr.Hook)
+	return nil
 }
 
 // GetReconciler creates a reconciler for awr's given Path and Type
@@ -174,5 +178,5 @@ func (awr AdmissionWebhookRegister) GetReconciler(_ *runtime.Scheme) (WebhookRec
 		}, nil
 	}
 
-	return nil, fmt.Errorf("Unsupported type for AdmissionWebhookRegister: %s", awr.Type)
+	return nil, fmt.Errorf("unsupported type for AdmissionWebhookRegister: %s", awr.Type)
 }

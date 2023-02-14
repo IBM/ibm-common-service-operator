@@ -18,9 +18,9 @@ package webhooks
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/IBM/ibm-common-service-operator/controllers/common"
+
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
@@ -105,18 +105,18 @@ func (reconciler *MutatingWebhookReconciler) Reconcile(ctx context.Context, clie
 
 	cr := &admissionregistrationv1.MutatingWebhookConfiguration{
 		ObjectMeta: v1.ObjectMeta{
-			Name: fmt.Sprintf("%s", reconciler.name),
+			Name: reconciler.name,
 		},
 	}
 
 	webhookLabel := make(map[string]string)
 	webhookLabel["managed-by-common-service-webhook"] = "true"
 
-	klog.Infof("Creating/Updating MutatingWebhook %s", fmt.Sprintf("%s", reconciler.name))
+	klog.Infof("Creating/Updating MutatingWebhook %s", reconciler.name)
 	_, err := controllerutil.CreateOrUpdate(ctx, client, cr, func() error {
 		cr.Webhooks = []admissionregistrationv1.MutatingWebhook{
 			{
-				Name:        fmt.Sprintf("%s", reconciler.webhookName),
+				Name:        reconciler.webhookName,
 				SideEffects: &sideEffects,
 				ClientConfig: admissionregistrationv1.WebhookClientConfig{
 					CABundle: caBundle,
@@ -169,18 +169,18 @@ func (reconciler *ValidatingWebhookReconciler) Reconcile(ctx context.Context, cl
 
 	cr := &admissionregistrationv1.ValidatingWebhookConfiguration{
 		ObjectMeta: v1.ObjectMeta{
-			Name: fmt.Sprintf("%s", reconciler.name),
+			Name: reconciler.name,
 		},
 	}
 
 	webhookLabel := make(map[string]string)
 	webhookLabel["managed-by-common-service-webhook"] = "true"
 
-	klog.Infof("Creating/Updating ValidatingWebhook %s", fmt.Sprintf("%s", reconciler.name))
+	klog.Infof("Creating/Updating ValidatingWebhook %s", reconciler.name)
 	_, err := controllerutil.CreateOrUpdate(ctx, client, cr, func() error {
 		cr.Webhooks = []admissionregistrationv1.ValidatingWebhook{
 			{
-				Name:        fmt.Sprintf("%s", reconciler.webhookName),
+				Name:        reconciler.webhookName,
 				SideEffects: &sideEffects,
 				ClientConfig: admissionregistrationv1.WebhookClientConfig{
 					CABundle: caBundle,

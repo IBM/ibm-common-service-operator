@@ -39,6 +39,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/IBM/controller-filtered-cache/filteredcache"
 	nssv1 "github.com/IBM/ibm-namespace-scope-operator/api/v1"
@@ -57,7 +58,6 @@ import (
 	"github.com/IBM/ibm-common-service-operator/controllers/goroutines"
 	"github.com/IBM/ibm-common-service-operator/controllers/webhooks"
 	operandrequestwebhook "github.com/IBM/ibm-common-service-operator/controllers/webhooks/operandrequest"
-	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	// +kubebuilder:scaffold:imports
 )
 
