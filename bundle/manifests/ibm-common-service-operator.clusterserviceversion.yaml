@@ -296,13 +296,13 @@ spec:
                       readOnlyRootFilesystem: true
                       runAsNonRoot: true
                     volumeMounts:
-                    - name: webhook-certs
-                      mountPath: "/etc/ssl/certs/webhook"
+                      - mountPath: /etc/ssl/certs/webhook
+                        name: webhook-certs
                 serviceAccountName: ibm-common-service-operator
                 terminationGracePeriodSeconds: 10
                 volumes:
-                - emptyDir: {}
-                  name: webhook-certs
+                  - emptyDir: {}
+                    name: webhook-certs
       permissions:
         - rules:
             - apiGroups:
