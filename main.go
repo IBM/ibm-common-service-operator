@@ -231,13 +231,6 @@ func main() {
 		klog.Error(err, "Error setting up webhook server")
 	}
 
-	// if err = (&operandrequestwebhook.Defaulter{
-	// 	Bootstrap: bs,
-	// }).SetupWebhookWithManager(mgr); err != nil {
-	// 	klog.Errorf("Unable to create OperandRequest webhook: %v", err)
-	// 	os.Exit(1)
-	// }
-
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		klog.Errorf("unable to set up health check: %v", err)
 		os.Exit(1)
