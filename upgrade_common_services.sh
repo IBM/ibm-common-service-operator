@@ -26,6 +26,35 @@ CHANNEL_COMP=2
 # script base directory
 BASE_DIR=$(dirname "$0")
 
+CS_LIST_CSNS=("operand-deployment-lifecycle-manager-app"
+        "ibm-common-service-operator"
+        "ibm-cert-manager-operator"
+        "ibm-mongodb-operator"
+        "ibm-iam-operator"
+        "ibm-monitoring-grafana-operator"
+        "ibm-healthcheck-operator"
+        "ibm-management-ingress-operator"
+        "ibm-licensing-operator"
+        "ibm-commonui-operator"
+        "ibm-ingress-nginx-operator"
+        "ibm-auditlogging-operator"
+        "ibm-platform-api-operator"
+        "ibm-namespace-scope-operator"
+        "ibm-namespace-scope-operator-restricted"
+        "ibm-zen-operator"
+        "ibm-zen-cpp-operator"
+        "ibm-crossplane-operator-app"
+        "ibm-crossplane-provider-ibm-cloud-operator-app"
+        "ibm-crossplane-provider-kubernetes-operator-app")
+
+CS_LIST_CONTROLNS=(
+        "ibm-cert-manager-operator"
+        "ibm-namespace-scope-operator"
+        "ibm-namespace-scope-operator-restricted"
+        "ibm-crossplane-operator-app"
+        "ibm-crossplane-provider-ibm-cloud-operator-app"
+        "ibm-crossplane-provider-kubernetes-operator-app")
+
 # ---------- Command functions ----------
 function usage() {
 	local script="${0##*/}"
@@ -107,8 +136,8 @@ function main() {
     zensvc_check "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${ALL_NAMESPACE}"
     deployment_check "${subName}" "${CS_NAMESPACE}" "${DESTINATION_CHANNEL}"
     switch_channel "${subName}" "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPACE}" "${DESTINATION_CHANNEL}" "${ALL_NAMESPACE}"
+    check_switch_complete "${CS_NAMESPACE}" "${CLOUDPAKS_NAMESPACE}" "${CONTROL_NAMESPACE}" "${DESTINATION_CHANNEL}" "${ALL_NAMESPACE}"
 }
-
 
 function check_preqreqs() {
     local csNS=$1
@@ -365,7 +394,6 @@ function deployment_check(){
     csoperator_channel=$(oc get subscription.operators.coreos.com -n ${csNS} | grep ${subName} | awk '{print $4}')
     compare_channel "${subName}" "${csNS}" "${channel}" "${csoperator_channel}"
     
-
     if [[ $CHANNEL_COMP == 1 ]]; then
         msg "current channel version of ${subName} ${csoperator_channel} is less then upgrade channel version ${channel}"
         msg ""
@@ -413,12 +441,13 @@ function switch_channel() {
 
     STEP=$((STEP + 1 ))
     msg ""
-    title "[${STEP}] Comparing and switching given upgrade channel version ${channel} with current one..."
+    title "[${STEP}] Comparing and switching given upgrade channel version ${channel} of ${subName} with current one..."
     msg "-----------------------------------------------------------------------"
 
     if [[ "${allNamespace}" == "true" ]]; then
         while read -r ns cur_channel; do
             compare_channel "${subname}" "${ns}" "${channel}" "${cur_channel}"
+
             # switch channel only happens when current channel is less than upgrade 
             if [[ $CHANNEL_COMP == 1 ]]; then
                 msg ""
@@ -445,29 +474,74 @@ function switch_channel() {
                 msg "Switching channel into ${channel}..."
                 switch_channel_operator "${subName}" "${csNS}" "${channel}"
             fi
-        done < <(oc get subscription.operators.coreos.com -n ${csNS} --ignore-not-found | grep ${subName}  | awk '{print $4}')       
+        done < <(oc get subscription.operators.coreos.com -n ${csNS} --ignore-not-found | grep ${subName}  | awk '{print $4}')
     fi
     success "Updated ${subName} subscriptions successfully."
-
+    
+    # switch channel for remaining CS components
     STEP=$((STEP + 1 ))
     msg ""
-    title "[${STEP}] Switching Zen operator channel in ${csNS} namespace..."
+    title "[${STEP}] Switching channel version for remaining CS components in ${csNS} namespace..."
     msg "-----------------------------------------------------------------------"
 
-    zen_current=$(oc get subscription.operators.coreos.com -n ${csNS} --ignore-not-found | grep ibm-zen-operator | awk '{print $4}')
-    if [[ ! -z "${zen_current}" ]]; then
-        compare_channel "ibm-zen-operator" "${csNS}" "${channel}" "${zen_current}"
-        if [[ $CHANNEL_COMP == 1 ]]; then
+    for sub_name in "${CS_LIST_CSNS[@]}"; do
+        msg "Starting with ${sub_name}..."
+        current=$(oc get subscription.operators.coreos.com -n ${csNS} --ignore-not-found | grep ${sub_name} | awk '{print $4}')
+        if [[ ! -z "${current}" ]]; then 
+            compare_channel "${sub_name}" "${csNS}" "${channel}" "${current}"
+            if [[ $CHANNEL_COMP == 1 ]]; then
+                msg ""
+                msg "Switching channel into ${channel}..."
+                switch_channel_operator "${sub_name}" "${csNS}" "${channel}"
+            fi
+        else
+            msg "${sub_name} in namespace ${csNS} not found, skipping..."
             msg ""
-            msg "Switching channel into ${channel}..."
-            switch_channel_operator "ibm-zen-operator" "${csNS}" "${channel}"
         fi
-    else
-        msg "ibm-zen-operator in namespace ${csNS} not found, skipping..."
-        msg ""
-    fi 
+    done
+    for sub_name in "${CS_LIST_CONTROLNS[@]}"; do
+        msg "Starting with ${sub_name}..."
+        current_control=$(oc get subscription.operators.coreos.com -n ${controlNS} --ignore-not-found | grep ${sub_name} | awk '{print $4}')
+        if [[ ! -z "${current_control}" ]]; then
+            compare_channel "${sub_name}" "${controlNS}" "${channel}" "${current_control}"
+            if [[ $CHANNEL_COMP == 1 ]]; then
+                msg ""
+                msg "Switching channel into ${channel}..."
+                switch_channel_operator "${sub_name}" "${controlNS}" "${channel}"
+            fi
+        else
+            msg "${sub_name} in namespace ${controlNS} not found, skipping..."
+            msg ""
+        fi
+    done
+}
 
-    info "Please wait a moment for ${subName} to upgrade all foundational services."
+function check_switch_complete() {
+    local csNS=$1
+    local cloudpaksNS=$2
+    local controlNS=$3
+    local destChannel=$4
+    local allNamespace=$5
+
+    STEP=$((STEP + 1 ))
+    title "[${STEP}] Checking whether the channel switch is completed..."
+    msg "-----------------------------------------------------------------------"
+
+    for sub_name in "${CS_LIST_CSNS[@]}"; do
+        channel=$(oc get subscription.operators.coreos.com ${sub_name} -n ${csNS} -o jsonpath='{.spec.channel}' --ignore-not-found)
+        if [[ "X${channel}" != "X" ]] && [[ "$channel" != "${destChannel}" ]]; then
+            error "the channel of subscription ${sub_name} in namespace ${csNS} is not ${destChannel}, please try to re-run the script"
+        fi
+    done
+
+    for sub_name in "${CS_LIST_CONTROLNS[@]}"; do
+        channel=$(oc get subscription.operators.coreos.com ${sub_name} -n ${controlNS} -o jsonpath='{.spec.channel}' --ignore-not-found)
+        if [[ "X${channel}" != "X" ]] && [[ "$channel" != "${destChannel}" ]]; then
+            error "the channel of subscription ${sub_name} in namespace ${controlNS} is not ${destChannel}, please try to re-run the script"
+        fi
+    done
+
+    success "Updated all Common Service components' subscriptions successfully."
 }
 
 function msg() {
