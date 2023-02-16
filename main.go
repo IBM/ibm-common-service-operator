@@ -253,24 +253,26 @@ func setupWebhooks(mgr manager.Manager, bs *bootstrap.Bootstrap) error {
 	klog.Info("Creating common service webhook configuration")
 	managedbyCSWebhookLabel := make(map[string]string)
 	managedbyCSWebhookLabel["managed-by-common-service-webhook"] = "true"
-	webhooks.Config.AddWebhook(webhooks.CSWebhook{
-		Name:        "ibm-operandrequest-webhook-configuration",
-		WebhookName: "ibm-cloudpak-operandrequest.operator.ibm.com",
-		Rule: webhooks.NewRule().
-			OneResource("operator.ibm.com", "v1alpha1", "operandrequests").
-			ForUpdate().
-			ForCreate().
-			NamespacedScope(),
-		Register: webhooks.AdmissionWebhookRegister{
-			Type: webhooks.MutatingType,
-			Path: "/mutate-ibm-cp-operandrequest",
-			Hook: &admission.Webhook{
-				Handler: &operandrequestwebhook.Defaulter{
-					Bootstrap: bs,
+	if util.GetEnableOpreqWebhook() {
+		webhooks.Config.AddWebhook(webhooks.CSWebhook{
+			Name:        "ibm-operandrequest-webhook-configuration",
+			WebhookName: "ibm-cloudpak-operandrequest.operator.ibm.com",
+			Rule: webhooks.NewRule().
+				OneResource("operator.ibm.com", "v1alpha1", "operandrequests").
+				ForUpdate().
+				ForCreate().
+				NamespacedScope(),
+			Register: webhooks.AdmissionWebhookRegister{
+				Type: webhooks.MutatingType,
+				Path: "/mutate-ibm-cp-operandrequest",
+				Hook: &admission.Webhook{
+					Handler: &operandrequestwebhook.Defaulter{
+						Bootstrap: bs,
+					},
 				},
 			},
-		},
-	})
+		})
+	}
 
 	klog.Info("setting up webhook server")
 	if err := webhooks.Config.SetupServer(mgr, bs.CSData.ServicesNs); err != nil {
