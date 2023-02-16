@@ -151,7 +151,10 @@ func (webhookConfig *CSWebhookConfig) SetupServer(mgr manager.Manager, namespace
 // parameter is optional, if `nil` is passed, no ownerReference will be set
 func (webhookConfig *CSWebhookConfig) Reconcile(ctx context.Context, client k8sclient.Client, owner ownerutil.Owner) error {
 
-	namespace := common.GetWatchNamespace()
+	namespace, err := common.GetOperatorNamespace()
+	if err != nil {
+		return err
+	}
 
 	// Reconcile the Service
 	if err := webhookConfig.ReconcileService(ctx, client, owner, namespace); err != nil {
@@ -171,7 +174,7 @@ func (webhookConfig *CSWebhookConfig) Reconcile(ctx context.Context, client k8sc
 	}
 
 	klog.Info("Creating common service webhook CA ConfigMap")
-	err := client.Create(ctx, caConfigMap)
+	err = client.Create(ctx, caConfigMap)
 	if err != nil && !errors.IsAlreadyExists(err) {
 		klog.Error(err)
 		return err

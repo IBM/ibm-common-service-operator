@@ -42,6 +42,7 @@ import (
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
+	"github.com/IBM/ibm-common-service-operator/controllers/webhooks"
 )
 
 // CommonServiceReconciler reconciles a CommonService object
@@ -79,6 +80,11 @@ func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			klog.Infof("Finished reconciling to delete CommonService: %s/%s", req.NamespacedName.Namespace, req.NamespacedName.Name)
 		}
 		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	// Reconcile the webhooks
+	if err := webhooks.Config.Reconcile(context.TODO(), r.Client, instance); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	if r.checkNamespace(req.NamespacedName.String()) {
