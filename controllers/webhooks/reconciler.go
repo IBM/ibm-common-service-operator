@@ -101,7 +101,10 @@ func (reconciler *MutatingWebhookReconciler) Reconcile(ctx context.Context, clie
 		timeoutSeconds = int32(10)
 	)
 
-	namespace := common.GetWatchNamespace()
+	namespace, err := common.GetOperatorNamespace()
+	if err != nil {
+		return err
+	}
 
 	cr := &admissionregistrationv1.MutatingWebhookConfiguration{
 		ObjectMeta: v1.ObjectMeta{
@@ -113,7 +116,7 @@ func (reconciler *MutatingWebhookReconciler) Reconcile(ctx context.Context, clie
 	webhookLabel["managed-by-common-service-webhook"] = "true"
 
 	klog.Infof("Creating/Updating MutatingWebhook %s", reconciler.name)
-	_, err := controllerutil.CreateOrUpdate(ctx, client, cr, func() error {
+	_, err = controllerutil.CreateOrUpdate(ctx, client, cr, func() error {
 		cr.Webhooks = []admissionregistrationv1.MutatingWebhook{
 			{
 				Name:        reconciler.webhookName,
@@ -122,7 +125,7 @@ func (reconciler *MutatingWebhookReconciler) Reconcile(ctx context.Context, clie
 					CABundle: caBundle,
 					Service: &admissionregistrationv1.ServiceReference{
 						Namespace: namespace,
-						Name:      operatorPodServiceName,
+						Name:      "ibm-common-service-webhook",
 						Path:      &reconciler.Path,
 						Port:      &port,
 					},
