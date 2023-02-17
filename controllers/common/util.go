@@ -261,7 +261,7 @@ func GetServicesNamespace(r client.Reader) (servicesNamespace string) {
 	return
 }
 
-// GetWatchNamespace returns the Namespace of the operator
+// GetWatchNamespace returns the list of namespaces that the operator watches
 func GetWatchNamespace() string {
 	ns, found := os.LookupEnv("WATCH_NAMESPACE")
 	if !found {

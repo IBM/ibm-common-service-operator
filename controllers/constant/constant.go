@@ -121,3 +121,18 @@ metadata:
 spec:
   size: as-is
 `
+
+// CommonServiceMaps is the default common service maps ConfigMap
+const CommonServiceMaps = `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: common-service-maps
+  namespace: kube-public
+data:
+  common-service-maps.yaml: |
+    namespaceMapping:
+    - requested-from-namespace:
+      - "{{ .OperatorNs }}"
+      map-to-common-service-namespace: "{{ .ServicesNs }}"
+`
