@@ -252,11 +252,12 @@ func main() {
 func setupWebhooks(mgr manager.Manager, bs *bootstrap.Bootstrap) error {
 
 	klog.Info("Creating common service webhook configuration")
+	opreqMutatingWebhookConfigurationName := "ibm-operandrequest-webhook-configuration-" + bs.CSData.OperatorNs
 	managedbyCSWebhookLabel := make(map[string]string)
 	managedbyCSWebhookLabel["managed-by-common-service-webhook"] = "true"
 	if util.GetEnableOpreqWebhook() {
 		webhooks.Config.AddWebhook(webhooks.CSWebhook{
-			Name:        "ibm-operandrequest-webhook-configuration",
+			Name:        opreqMutatingWebhookConfigurationName,
 			WebhookName: "ibm-cloudpak-operandrequest.operator.ibm.com",
 			Rule: webhooks.NewRule().
 				OneResource("operator.ibm.com", "v1alpha1", "operandrequests").

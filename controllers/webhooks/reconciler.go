@@ -168,7 +168,10 @@ func (reconciler *ValidatingWebhookReconciler) Reconcile(ctx context.Context, cl
 		timeoutSeconds = int32(10)
 	)
 
-	namespace := common.GetWatchNamespace()
+	namespace, err := common.GetOperatorNamespace()
+	if err != nil {
+		return err
+	}
 
 	cr := &admissionregistrationv1.ValidatingWebhookConfiguration{
 		ObjectMeta: v1.ObjectMeta{
@@ -180,7 +183,7 @@ func (reconciler *ValidatingWebhookReconciler) Reconcile(ctx context.Context, cl
 	webhookLabel["managed-by-common-service-webhook"] = "true"
 
 	klog.Infof("Creating/Updating ValidatingWebhook %s", reconciler.name)
-	_, err := controllerutil.CreateOrUpdate(ctx, client, cr, func() error {
+	_, err = controllerutil.CreateOrUpdate(ctx, client, cr, func() error {
 		cr.Webhooks = []admissionregistrationv1.ValidatingWebhook{
 			{
 				Name:        reconciler.webhookName,
