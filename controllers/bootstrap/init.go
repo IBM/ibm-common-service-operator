@@ -676,6 +676,15 @@ func (b *Bootstrap) CreateNsScopeConfigmap() error {
 	return nil
 }
 
+// CreateCsMaps will create a new common-service-maps configmap if not exists
+func (b *Bootstrap) CreateCsMaps() error {
+	cmRes := constant.CommonServiceMaps
+	if err := b.renderTemplate(cmRes, b.CSData, false); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (b *Bootstrap) deleteSubscription(name, namespace string) error {
 	key := types.NamespacedName{Name: name, Namespace: namespace}
 	sub := &olmv1alpha1.Subscription{}

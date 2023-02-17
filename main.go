@@ -128,27 +128,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Validate common-service-maps
-	cm, err := util.GetCmOfMapCs(mgr.GetAPIReader())
-	if err == nil {
-		if err := util.ValidateCsMaps(cm); err != nil {
-			klog.Errorf("Unsupported common-service-maps: %v", err)
-			os.Exit(1)
-		}
-		if !(cm.Labels != nil && cm.Labels[constant.CsManagedLabel] == "true") {
-			util.EnsureLabelsForConfigMap(cm, map[string]string{
-				constant.CsManagedLabel: "true",
-			})
-			if err := mgr.GetClient().Update(context.TODO(), cm); err != nil {
-				klog.Errorf("Failed to update labels for common-service-maps: %v", err)
-				os.Exit(1)
-			}
-		}
-	} else if !errors.IsNotFound(err) {
-		klog.Errorf("Failed to get common-service-maps: %v", err)
-		os.Exit(1)
-	}
-
 	for {
 		typeCorrect, err := bootstrap.CheckClusterType(mgr, util.GetServicesNamespace(mgr.GetAPIReader()))
 		if err != nil {
@@ -169,6 +148,36 @@ func main() {
 	if err != nil {
 		klog.Errorf("Bootstrap failed: %v", err)
 		os.Exit(1)
+	}
+
+	cm, err := util.GetCmOfMapCs(mgr.GetAPIReader())
+	if err != nil {
+		// Create new common-service-maps
+		if errors.IsNotFound(err) {
+			klog.Infof("Creating common-service-maps ConfigMap in kube-public")
+			if err = bs.CreateCsMaps(); err != nil {
+				klog.Errorf("Failed to create common-service-maps ConfigMap: %v", err)
+				os.Exit(1)
+			}
+		} else if !errors.IsNotFound(err) {
+			klog.Errorf("Failed to get common-service-maps: %v", err)
+			os.Exit(1)
+		}
+	} else {
+		// Validate common-service-maps
+		if err := util.ValidateCsMaps(cm); err != nil {
+			klog.Errorf("Unsupported common-service-maps: %v", err)
+			os.Exit(1)
+		}
+		if !(cm.Labels != nil && cm.Labels[constant.CsManagedLabel] == "true") {
+			util.EnsureLabelsForConfigMap(cm, map[string]string{
+				constant.CsManagedLabel: "true",
+			})
+			if err := mgr.GetClient().Update(context.TODO(), cm); err != nil {
+				klog.Errorf("Failed to update labels for common-service-maps: %v", err)
+				os.Exit(1)
+			}
+		}
 	}
 
 	klog.Infof("Creating CommonService CR in the namespace %s", bs.CSData.OperatorNs)
