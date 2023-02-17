@@ -30,8 +30,6 @@ spec:
   services:
   - name: ibm-licensing-operator
     spec:
-      IBMLicensing:
-        datasource: datacollector
       operandBindInfo: {}
   - name: ibm-mongodb-operator
     spec:
@@ -474,6 +472,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+    supportStatus: maintained
   - name: ibm-mongodb-operator
     namespace: "{{ .CPFSNs }}"
     channel: {{ .Channel }}
@@ -696,10 +695,6 @@ spec:
   services:
   - name: ibm-licensing-operator
     spec:
-      IBMLicensing:
-        datasource: datacollector
-        routeEnabled: false
-        logLevel: VERBOSE
       operandBindInfo: {}
   - name: ibm-mongodb-operator
     spec:
@@ -1008,6 +1003,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+    supportStatus: maintained
   - name: ibm-mongodb-operator
     namespace: "{{ .CPFSNs }}"
     channel: {{ .Channel }}
