@@ -28,6 +28,7 @@ import (
 	operatorsv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/package-server/apis/operators/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -108,14 +109,14 @@ func main() {
 			LabelSelector: cmconstants.SecretWatchLabel,
 		},
 	}
+	clusterGVKList := []schema.GroupVersionKind{
+		{Group: "admissionregistration.k8s.io", Kind: "MutatingWebhookConfiguration", Version: "v1"},
+		{Group: "admissionregistration.k8s.io", Kind: "ValidatingWebhookConfiguration", Version: "v1"},
+	}
 
 	var NewCache cache.NewCacheFunc
-	if watchNamespace == "" {
-		NewCache = filteredcache.NewFilteredCacheBuilder(gvkLabelMap)
-	} else {
-		watchNamespaceList := strings.Split(watchNamespace, ",")
-		NewCache = filteredcache.MultiNamespacedFilteredCacheBuilder(gvkLabelMap, watchNamespaceList)
-	}
+	watchNamespaceList := strings.Split(watchNamespace, ",")
+	NewCache = util.NewCSCache(clusterGVKList, gvkLabelMap, watchNamespaceList)
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
@@ -268,6 +269,15 @@ func setupWebhooks(mgr manager.Manager, bs *bootstrap.Bootstrap) error {
 				Hook: &admission.Webhook{
 					Handler: &operandrequestwebhook.Defaulter{
 						Bootstrap: bs,
+					},
+				},
+			},
+			NsSelector: v1.LabelSelector{
+				MatchExpressions: []v1.LabelSelectorRequirement{
+					{
+						Key:      "kubernetes.io/metadata.name",
+						Operator: v1.LabelSelectorOpIn,
+						Values:   strings.Split(bs.CSData.WatchNamespaces, ","),
 					},
 				},
 			},

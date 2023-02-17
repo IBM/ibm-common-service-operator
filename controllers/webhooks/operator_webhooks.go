@@ -254,7 +254,7 @@ func createService(ctx context.Context, client k8sclient.Client, owner ownerutil
 		service.Annotations[caServiceAnnotation] = "cs-webhook-cert"
 		service.Spec.ClusterIP = "None"
 		service.Spec.Selector = map[string]string{
-			"name": "ibm-common-service-webhook",
+			"name": "ibm-common-service-operator",
 		}
 		service.Spec.Ports = []corev1.ServicePort{
 			{
