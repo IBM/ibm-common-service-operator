@@ -28,6 +28,7 @@ import (
 	operatorsv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/package-server/apis/operators/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -38,6 +39,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/IBM/controller-filtered-cache/filteredcache"
 	nssv1 "github.com/IBM/ibm-namespace-scope-operator/api/v1"
@@ -54,7 +57,8 @@ import (
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/controllers/goroutines"
-	operandrequestwebhook "github.com/IBM/ibm-common-service-operator/controllers/webhook/operandrequest"
+	"github.com/IBM/ibm-common-service-operator/controllers/webhooks"
+	operandrequestwebhook "github.com/IBM/ibm-common-service-operator/controllers/webhooks/operandrequest"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -105,14 +109,14 @@ func main() {
 			LabelSelector: cmconstants.SecretWatchLabel,
 		},
 	}
+	clusterGVKList := []schema.GroupVersionKind{
+		{Group: "admissionregistration.k8s.io", Kind: "MutatingWebhookConfiguration", Version: "v1"},
+		{Group: "admissionregistration.k8s.io", Kind: "ValidatingWebhookConfiguration", Version: "v1"},
+	}
 
 	var NewCache cache.NewCacheFunc
-	if watchNamespace == "" {
-		NewCache = filteredcache.NewFilteredCacheBuilder(gvkLabelMap)
-	} else {
-		watchNamespaceList := strings.Split(watchNamespace, ",")
-		NewCache = filteredcache.MultiNamespacedFilteredCacheBuilder(gvkLabelMap, watchNamespaceList)
-	}
+	watchNamespaceList := strings.Split(watchNamespace, ",")
+	NewCache = util.NewCSCache(clusterGVKList, gvkLabelMap, watchNamespaceList)
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
@@ -222,11 +226,10 @@ func main() {
 		klog.Error(err, "unable to create controller", "controller", "V1AddLabel")
 		os.Exit(1)
 	}
-	if err = (&operandrequestwebhook.Defaulter{
-		Bootstrap: bs,
-	}).SetupWebhookWithManager(mgr); err != nil {
-		klog.Errorf("Unable to create OperandRequest webhook: %v", err)
-		os.Exit(1)
+
+	// Start up the webhook server
+	if err := setupWebhooks(mgr, bs); err != nil {
+		klog.Error(err, "Error setting up webhook server")
 	}
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
@@ -243,4 +246,49 @@ func main() {
 		klog.Errorf("Problem running manager: %v", err)
 		os.Exit(1)
 	}
+
+}
+
+func setupWebhooks(mgr manager.Manager, bs *bootstrap.Bootstrap) error {
+
+	klog.Info("Creating common service webhook configuration")
+	opreqMutatingWebhookConfigurationName := "ibm-operandrequest-webhook-configuration-" + bs.CSData.OperatorNs
+	managedbyCSWebhookLabel := make(map[string]string)
+	managedbyCSWebhookLabel["managed-by-common-service-webhook"] = "true"
+	if util.GetEnableOpreqWebhook() {
+		webhooks.Config.AddWebhook(webhooks.CSWebhook{
+			Name:        opreqMutatingWebhookConfigurationName,
+			WebhookName: "ibm-cloudpak-operandrequest.operator.ibm.com",
+			Rule: webhooks.NewRule().
+				OneResource("operator.ibm.com", "v1alpha1", "operandrequests").
+				ForUpdate().
+				ForCreate().
+				NamespacedScope(),
+			Register: webhooks.AdmissionWebhookRegister{
+				Type: webhooks.MutatingType,
+				Path: "/mutate-ibm-cp-operandrequest",
+				Hook: &admission.Webhook{
+					Handler: &operandrequestwebhook.Defaulter{
+						Bootstrap: bs,
+					},
+				},
+			},
+			NsSelector: v1.LabelSelector{
+				MatchExpressions: []v1.LabelSelectorRequirement{
+					{
+						Key:      "kubernetes.io/metadata.name",
+						Operator: v1.LabelSelectorOpIn,
+						Values:   strings.Split(bs.CSData.WatchNamespaces, ","),
+					},
+				},
+			},
+		})
+	}
+
+	klog.Info("setting up webhook server")
+	if err := webhooks.Config.SetupServer(mgr, bs.CSData.ServicesNs); err != nil {
+		return err
+	}
+
+	return nil
 }
