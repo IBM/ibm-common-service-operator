@@ -199,7 +199,7 @@ func (c CSCache) getFromClient(ctx context.Context, key client.ObjectKey, obj ru
 	}
 	result, err := client.
 		Get().
-		Namespace(key.Namespace).
+		NamespaceIfScoped(key.Namespace, key.Namespace != "").
 		Name(key.Name).
 		Resource(resource).
 		VersionedParams(&metav1.GetOptions{}, metav1.ParameterCodec).

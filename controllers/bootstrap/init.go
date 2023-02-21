@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"text/template"
 	"time"
 
@@ -614,7 +615,7 @@ func (b *Bootstrap) CheckOperatorCatalog(ns string) error {
 
 func (b *Bootstrap) waitResourceReady(apiGroupVersion, kind string) error {
 	dc := discovery.NewDiscoveryClientForConfigOrDie(b.Config)
-	if err := utilwait.PollImmediate(time.Second*10, time.Minute*5, func() (done bool, err error) {
+	if err := utilwait.PollImmediate(time.Second*10, time.Minute*2, func() (done bool, err error) {
 		exist, err := b.ResourceExists(dc, apiGroupVersion, kind)
 		if err != nil {
 			return exist, err
@@ -1084,4 +1085,70 @@ func (b *Bootstrap) ConfigODLMOperandManagedByOperator(ctx context.Context) erro
 	}
 
 	return nil
+}
+
+func (b *Bootstrap) PropagateDefaultCR(instance *apiv3.CommonService) error {
+	// Copy Master CR into namespace in WATCH_NAMESPACE list
+	watchNamespaceList := strings.Split(b.CSData.WatchNamespaces, ",")
+	csLabel := make(map[string]string)
+	// Copy from the original labels to the target labels
+	for k, v := range instance.Labels {
+		csLabel[k] = v
+	}
+	csAnnotation := make(map[string]string)
+	// Copy from the original Annotations to the target Annotations
+	for k, v := range instance.Annotations {
+		csAnnotation[k] = v
+	}
+	for _, watchNamespace := range watchNamespaceList {
+		if watchNamespace == instance.Namespace {
+			continue
+		}
+		copiedCsInstance := &apiv3.CommonService{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        constant.MasterCR,
+				Namespace:   watchNamespace,
+				Labels:      csLabel,
+				Annotations: csAnnotation,
+			},
+			Spec: instance.Spec,
+		}
+		util.EnsureLabelsForCsCR(copiedCsInstance, map[string]string{
+			constant.CsClonedFromLabel: b.CSData.OperatorNs,
+		})
+		if err := b.Client.Create(ctx, copiedCsInstance); err != nil {
+			if errors.IsAlreadyExists(err) {
+				csKey := types.NamespacedName{Name: constant.MasterCR, Namespace: watchNamespace}
+				existingCsInstance := &apiv3.CommonService{}
+				if err := b.Client.Get(ctx, csKey, existingCsInstance); err != nil {
+					return fmt.Errorf("could not get cloned CommonServiceCR in namespace %s: %v", watchNamespace, err)
+				}
+				if needUpdate := util.CompareCsCR(copiedCsInstance, existingCsInstance); needUpdate {
+					if err := b.Client.Update(ctx, copiedCsInstance); err != nil {
+						return fmt.Errorf("could not update cloned CommonServiceCR in namespace %s: %v", watchNamespace, err)
+					}
+				}
+			} else {
+				return fmt.Errorf("could not create cloned CommonServiceCR in namespace %s: %v", watchNamespace, err)
+			}
+		}
+	}
+	return nil
+}
+
+func IdentifyCPFSNs(r client.Reader, operatorNs string) (string, error) {
+	csKey := types.NamespacedName{Name: constant.MasterCR, Namespace: operatorNs}
+	csCR := &apiv3.CommonService{}
+	if err := r.Get(context.TODO(), csKey, csCR); err != nil && !errors.IsNotFound(err) {
+		return operatorNs, err
+	} else if errors.IsNotFound(err) {
+		return operatorNs, nil
+	}
+	// Assign .spec.operatorNamespace from existing default CommonSerivce CR to CPFSNs
+
+	cpfsNs := csCR.Spec.OperatorNamespace
+	if csCR.Status.ConfigStatus.OperatorPlane.OperatorNamespace != "" {
+		cpfsNs = csCR.Status.ConfigStatus.OperatorPlane.OperatorNamespace
+	}
+	return string(cpfsNs), nil
 }

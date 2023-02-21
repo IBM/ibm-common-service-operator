@@ -36,11 +36,7 @@ type CSData struct {
 	IsolatedModeEnable string
 	ApprovalMode       string
 	OnPremMultiEnable  string
-	CrossplaneProvider string
 	ZenOperatorImage   string
-	ICPPKOperator      string
-	ICPPICOperator     string
-	ICPOperator        string
 	IsOCP              bool
 	WatchNamespaces    string
 }
@@ -157,6 +153,7 @@ type CommonServiceStatus struct {
 	BedrockOperators []BedrockOperator `json:"bedrockOperators,omitempty"`
 	OverallStatus    string            `json:"overallStatus,omitempty"`
 	ConfigStatus     ConfigStatus      `json:"configStatus,omitempty"`
+	Configurable     bool              `json:"configurable"`
 }
 
 // +kubebuilder:object:root=true
@@ -208,6 +205,7 @@ func (r *CommonService) UpdateConfigStatus(CSData *CSData, operatorDeployed, ser
 	} else {
 		r.Status.ConfigStatus.CatalogPlane.CatalogNamespace = CatalogNamespace(CSData.CatalogSourceNs)
 	}
+	r.Status.Configurable = true
 
 }
 
