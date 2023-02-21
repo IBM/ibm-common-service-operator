@@ -172,6 +172,8 @@ spec:
                         type: string
                     type: object
                 type: object
+              configurable:
+                type: boolean
               overallStatus:
                 type: string
               phase:

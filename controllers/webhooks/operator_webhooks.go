@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/IBM/ibm-common-service-operator/controllers/common"
+	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 
 	"github.com/operator-framework/operator-lifecycle-manager/pkg/lib/ownerutil"
 	corev1 "k8s.io/api/core/v1"
@@ -80,6 +81,7 @@ const (
 	caConfigMap            = "ibm-cs-operator-webhook-ca"
 	caConfigMapAnnotation  = "service.beta.openshift.io/inject-cabundle"
 	caServiceAnnotation    = "service.beta.openshift.io/serving-cert-secret-name"
+	caCertSecretName       = "cs-webhook-cert"
 )
 
 // Config is a global instance. The same instance is needed in order to use the
@@ -251,10 +253,10 @@ func createService(ctx context.Context, client k8sclient.Client, owner ownerutil
 		if service.Annotations == nil {
 			service.Annotations = map[string]string{}
 		}
-		service.Annotations[caServiceAnnotation] = "cs-webhook-cert"
+		service.Annotations[caServiceAnnotation] = caCertSecretName
 		service.Spec.ClusterIP = "None"
 		service.Spec.Selector = map[string]string{
-			"name": "ibm-common-service-operator",
+			"name": constant.IBMCSPackage,
 		}
 		service.Spec.Ports = []corev1.ServicePort{
 			{
@@ -278,7 +280,7 @@ func (webhookConfig *CSWebhookConfig) setupCerts(ctx context.Context, client k8s
 	// Wait for the secret to te created
 	secret := &corev1.Secret{}
 	err := wait.PollImmediate(time.Second*1, time.Second*30, func() (bool, error) {
-		err := client.Get(ctx, k8sclient.ObjectKey{Namespace: namespace, Name: "cs-webhook-cert"}, secret)
+		err := client.Get(ctx, k8sclient.ObjectKey{Namespace: namespace, Name: caCertSecretName}, secret)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return false, nil

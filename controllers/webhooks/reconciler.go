@@ -18,14 +18,20 @@ package webhooks
 
 import (
 	"context"
-
-	"github.com/IBM/ibm-common-service-operator/controllers/common"
+	"strings"
 
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+
+	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
+	"github.com/IBM/ibm-common-service-operator/controllers/common"
+	"github.com/IBM/ibm-common-service-operator/controllers/constant"
+	operandrequestwebhook "github.com/IBM/ibm-common-service-operator/controllers/webhooks/operandrequest"
 )
 
 // WebhookReconciler knows how to reconcile webhook configuration CRs
@@ -113,7 +119,7 @@ func (reconciler *MutatingWebhookReconciler) Reconcile(ctx context.Context, clie
 	}
 
 	webhookLabel := make(map[string]string)
-	webhookLabel["managed-by-common-service-webhook"] = "true"
+	webhookLabel[constant.CsManagedLabel] = "true"
 
 	klog.Infof("Creating/Updating MutatingWebhook %s", reconciler.name)
 	_, err = controllerutil.CreateOrUpdate(ctx, client, cr, func() error {
@@ -125,7 +131,7 @@ func (reconciler *MutatingWebhookReconciler) Reconcile(ctx context.Context, clie
 					CABundle: caBundle,
 					Service: &admissionregistrationv1.ServiceReference{
 						Namespace: namespace,
-						Name:      "ibm-common-service-webhook",
+						Name:      operatorPodServiceName,
 						Path:      &reconciler.Path,
 						Port:      &port,
 					},
@@ -180,7 +186,7 @@ func (reconciler *ValidatingWebhookReconciler) Reconcile(ctx context.Context, cl
 	}
 
 	webhookLabel := make(map[string]string)
-	webhookLabel["managed-by-common-service-webhook"] = "true"
+	webhookLabel[constant.CsManagedLabel] = "true"
 
 	klog.Infof("Creating/Updating ValidatingWebhook %s", reconciler.name)
 	_, err = controllerutil.CreateOrUpdate(ctx, client, cr, func() error {
@@ -255,4 +261,47 @@ func (reconciler *MutatingWebhookReconciler) SetNsSelector(selector v1.LabelSele
 
 func (reconciler *ValidatingWebhookReconciler) SetNsSelector(selector v1.LabelSelector) {
 	reconciler.NameSpaceSelector = selector
+}
+
+func SetupWebhooks(mgr manager.Manager, bs *bootstrap.Bootstrap) error {
+
+	klog.Info("Creating common service webhook configuration")
+	managedbyCSWebhookLabel := make(map[string]string)
+	managedbyCSWebhookLabel[constant.CsManagedLabel] = "true"
+	if common.GetEnableOpreqWebhook() {
+		Config.AddWebhook(CSWebhook{
+			Name:        "ibm-operandrequest-webhook-configuration-" + bs.CSData.OperatorNs,
+			WebhookName: "ibm-cloudpak-operandrequest.operator.ibm.com",
+			Rule: NewRule().
+				OneResource("operator.ibm.com", "v1alpha1", "operandrequests").
+				ForUpdate().
+				ForCreate().
+				NamespacedScope(),
+			Register: AdmissionWebhookRegister{
+				Type: MutatingType,
+				Path: "/mutate-ibm-cp-operandrequest",
+				Hook: &admission.Webhook{
+					Handler: &operandrequestwebhook.Defaulter{
+						Bootstrap: bs,
+					},
+				},
+			},
+			NsSelector: v1.LabelSelector{
+				MatchExpressions: []v1.LabelSelectorRequirement{
+					{
+						Key:      "kubernetes.io/metadata.name",
+						Operator: v1.LabelSelectorOpIn,
+						Values:   strings.Split(bs.CSData.WatchNamespaces, ","),
+					},
+				},
+			},
+		})
+	}
+
+	klog.Info("setting up webhook server")
+	if err := Config.SetupServer(mgr, bs.CSData.OperatorNs); err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 
 	// certmanagerv1alpha1 "github.com/ibm/ibm-cert-manager-operator/apis/certmanager/v1alpha1"
 
@@ -67,6 +68,15 @@ func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	// Fetch the CommonService instance
 	instance := &apiv3.CommonService{}
+	if req.Name == constant.MasterCR && util.Contains(strings.Split(r.Bootstrap.CSData.WatchNamespaces, ","), req.Namespace) && req.Namespace != r.Bootstrap.CSData.OperatorNs {
+		if err := r.Bootstrap.Client.Get(ctx, req.NamespacedName, instance); err != nil {
+			if errors.IsNotFound(err) {
+				klog.Infof("Finished reconciling to delete CommonService: %s/%s", req.NamespacedName.Namespace, req.NamespacedName.Name)
+			}
+			return ctrl.Result{}, client.IgnoreNotFound(err)
+		}
+		return r.ReconileNonConfigurableCR(ctx, instance)
+	}
 
 	if err := r.Bootstrap.Client.Get(ctx, req.NamespacedName, instance); err != nil {
 		if errors.IsNotFound(err) {
@@ -82,11 +92,6 @@ func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// Reconcile the webhooks
-	if err := webhooks.Config.Reconcile(context.TODO(), r.Client, instance); err != nil {
-		return ctrl.Result{}, err
-	}
-
 	if r.checkNamespace(req.NamespacedName.String()) {
 		return r.ReconcileMasterCR(ctx, instance)
 	}
@@ -99,12 +104,12 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 	operatorDeployed, servicesDeployed := r.Bootstrap.CheckDeployStatus(ctx)
 	instance.UpdateConfigStatus(&r.Bootstrap.CSData, operatorDeployed, servicesDeployed)
 
+	r.Bootstrap.CSData.CPFSNs = string(instance.Status.ConfigStatus.OperatorPlane.OperatorNamespace)
+	r.Bootstrap.CSData.ServicesNs = string(instance.Status.ConfigStatus.ServicesPlane.ServicesNamespace)
+	r.Bootstrap.CSData.CatalogSourceName = string(instance.Status.ConfigStatus.CatalogPlane.CatalogName)
+	r.Bootstrap.CSData.CatalogSourceNs = string(instance.Status.ConfigStatus.CatalogPlane.CatalogNamespace)
 	var forceUpdateODLMCRs bool
 	if !reflect.DeepEqual(originalInstance.Status, instance.Status) {
-		r.Bootstrap.CSData.CPFSNs = string(instance.Status.ConfigStatus.OperatorPlane.OperatorNamespace)
-		r.Bootstrap.CSData.ServicesNs = string(instance.Status.ConfigStatus.ServicesPlane.ServicesNamespace)
-		r.Bootstrap.CSData.CatalogSourceName = string(instance.Status.ConfigStatus.CatalogPlane.CatalogName)
-		r.Bootstrap.CSData.CatalogSourceNs = string(instance.Status.ConfigStatus.CatalogPlane.CatalogNamespace)
 		forceUpdateODLMCRs = true
 	}
 
@@ -124,6 +129,10 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 		}
 	}
 
+	// Reconcile the webhooks
+	if err := webhooks.Config.Reconcile(context.TODO(), r.Client, instance); err != nil {
+		return ctrl.Result{}, err
+	}
 	// Init common service bootstrap resource
 	// Including namespace-scope configmap
 	// Deploy OperandConfig and OperandRegistry
@@ -172,6 +181,11 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 	// Create Event if there is no update in OperandConfig after applying current CR
 	if isEqual {
 		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.OperatorNs, "common-service", instance.Namespace, instance.Name))
+	}
+
+	if err := r.Bootstrap.PropagateDefaultCR(instance); err != nil {
+		klog.Error(err)
+		return ctrl.Result{}, err
 	}
 
 	if err := r.updatePhase(ctx, instance, CRSucceeded); err != nil {
@@ -249,6 +263,45 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(ctx context.Context, instan
 	// Create Event if there is no update in OperandConfig after applying current CR
 	if isEqual {
 		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.OperatorNs, "common-service", instance.Namespace, instance.Name))
+	}
+
+	if err := r.updatePhase(ctx, instance, CRSucceeded); err != nil {
+		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
+		return ctrl.Result{}, err
+	}
+
+	klog.Infof("Finished reconciling CommonService: %s/%s", instance.Namespace, instance.Name)
+	return ctrl.Result{}, nil
+}
+
+// ReconileNonConfigurableCR is for setting the cloned Master CR status for advaned topologies
+func (r *CommonServiceReconciler) ReconileNonConfigurableCR(ctx context.Context, instance *apiv3.CommonService) (ctrl.Result, error) {
+
+	if instance.Status.Phase == "" {
+		if err := r.updatePhase(ctx, instance, CRInitializing); err != nil {
+			klog.Error(err)
+			return ctrl.Result{}, err
+		}
+	} else {
+		if err := r.updatePhase(ctx, instance, CRUpdating); err != nil {
+			klog.Error(err)
+			return ctrl.Result{}, err
+		}
+	}
+
+	originalInstance := instance.DeepCopy()
+
+	instance.Status.ConfigStatus.OperatorPlane.OperatorNamespace = apiv3.OperatorNamespace(r.Bootstrap.CSData.OperatorNs)
+	instance.Status.ConfigStatus.ServicesPlane.ServicesNamespace = apiv3.ServicesNamespace(r.Bootstrap.CSData.ServicesNs)
+	instance.Status.ConfigStatus.CatalogPlane.CatalogName = apiv3.CatalogName(r.Bootstrap.CSData.CatalogSourceName)
+	instance.Status.ConfigStatus.CatalogPlane.CatalogNamespace = apiv3.CatalogNamespace(r.Bootstrap.CSData.CatalogSourceNs)
+	instance.Status.Configurable = false
+
+	if !reflect.DeepEqual(originalInstance.Status, instance.Status) {
+		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, this resource is the clone of Common Service CR named %s from namespace %s", constant.MasterCR, r.Bootstrap.CSData.OperatorNs))
+		if err := r.Client.Status().Update(ctx, instance); err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	if err := r.updatePhase(ctx, instance, CRSucceeded); err != nil {

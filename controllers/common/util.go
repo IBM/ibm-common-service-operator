@@ -32,6 +32,7 @@ import (
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -255,6 +256,9 @@ func GetServicesNamespace(r client.Reader) (servicesNamespace string) {
 		return
 	}
 
+	if string(defaultCsCR.Spec.ServicesNamespace) != "" {
+		servicesNamespace = string(defaultCsCR.Spec.ServicesNamespace)
+	}
 	if string(defaultCsCR.Status.ConfigStatus.ServicesPlane.ServicesNamespace) != "" {
 		servicesNamespace = string(defaultCsCR.Status.ConfigStatus.ServicesPlane.ServicesNamespace)
 	}
@@ -716,4 +720,18 @@ func GetEnableOpreqWebhook() bool {
 		return false
 	}
 	return true
+}
+
+// EnsureLabelsForConfigMap ensures that the specifc ConfigMap has the certain labels
+func EnsureLabelsForCsCR(cs *apiv3.CommonService, labels map[string]string) {
+	if cs.Labels == nil {
+		cs.Labels = make(map[string]string)
+	}
+	for k, v := range labels {
+		cs.Labels[k] = v
+	}
+}
+
+func CompareCsCR(csCR *apiv3.CommonService, existingCsCR *apiv3.CommonService) (needUpdate bool) {
+	return !equality.Semantic.DeepEqual(csCR.GetLabels(), existingCsCR.GetLabels()) || !equality.Semantic.DeepEqual(csCR.GetAnnotations(), existingCsCR.GetAnnotations()) || !equality.Semantic.DeepEqual(csCR.Spec, existingCsCR.Spec)
 }

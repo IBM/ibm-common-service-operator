@@ -28,7 +28,6 @@ import (
 	operatorsv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/package-server/apis/operators/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -39,8 +38,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/IBM/controller-filtered-cache/filteredcache"
 	nssv1 "github.com/IBM/ibm-namespace-scope-operator/api/v1"
@@ -58,7 +55,6 @@ import (
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/controllers/goroutines"
 	"github.com/IBM/ibm-common-service-operator/controllers/webhooks"
-	operandrequestwebhook "github.com/IBM/ibm-common-service-operator/controllers/webhooks/operandrequest"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -132,104 +128,122 @@ func main() {
 		os.Exit(1)
 	}
 
-	for {
-		typeCorrect, err := bootstrap.CheckClusterType(mgr, util.GetServicesNamespace(mgr.GetAPIReader()))
-		if err != nil {
-			klog.Errorf("Failed to verify cluster type  %v", err)
-			continue
-		}
-
-		if !typeCorrect {
-			klog.Error("Cluster type specificed in the ibm-cpp-config isn't correct")
-			time.Sleep(2 * time.Minute)
-		} else {
-			break
-		}
-	}
-
-	// New bootstrap Object
-	bs, err := bootstrap.NewBootstrap(mgr)
+	operatorNs, err := util.GetOperatorNamespace()
+	klog.Infof("Identifying Common Service Operator Role in the namespace %s", operatorNs)
 	if err != nil {
-		klog.Errorf("Bootstrap failed: %v", err)
+		klog.Errorf("Failed to get operatorNs: %v", err)
 		os.Exit(1)
 	}
 
-	cm, err := util.GetCmOfMapCs(mgr.GetAPIReader())
+	cpfsNs, err := bootstrap.IdentifyCPFSNs(mgr.GetAPIReader(), operatorNs)
 	if err != nil {
-		// Create new common-service-maps
-		if errors.IsNotFound(err) {
-			klog.Infof("Creating common-service-maps ConfigMap in kube-public")
-			if err = bs.CreateCsMaps(); err != nil {
-				klog.Errorf("Failed to create common-service-maps ConfigMap: %v", err)
+		klog.Errorf("Failed to get Common Service deployed namespace: %v", err)
+		os.Exit(1)
+	}
+	// If Common Service Operator Namespace is not in the same as .spec.operatorNamespace(cpfsNs) in default CS CR,
+	// this Common Service Operator is not in the operatorNamespace(cpfsNs) under this tenant, and goes dormant.
+	if operatorNs == cpfsNs {
+		for {
+			typeCorrect, err := bootstrap.CheckClusterType(mgr, util.GetServicesNamespace(mgr.GetAPIReader()))
+			if err != nil {
+				klog.Errorf("Failed to verify cluster type  %v", err)
+				continue
+			}
+
+			if !typeCorrect {
+				klog.Error("Cluster type specificed in the ibm-cpp-config isn't correct")
+				time.Sleep(2 * time.Minute)
+			} else {
+				break
+			}
+		}
+
+		// New bootstrap Object
+		bs, err := bootstrap.NewBootstrap(mgr)
+		if err != nil {
+			klog.Errorf("Bootstrap failed: %v", err)
+			os.Exit(1)
+		}
+
+		cm, err := util.GetCmOfMapCs(mgr.GetAPIReader())
+		if err != nil {
+			// Create new common-service-maps
+			if errors.IsNotFound(err) {
+				klog.Infof("Creating common-service-maps ConfigMap in kube-public")
+				if err = bs.CreateCsMaps(); err != nil {
+					klog.Errorf("Failed to create common-service-maps ConfigMap: %v", err)
+					os.Exit(1)
+				}
+			} else if !errors.IsNotFound(err) {
+				klog.Errorf("Failed to get common-service-maps: %v", err)
 				os.Exit(1)
 			}
-		} else if !errors.IsNotFound(err) {
-			klog.Errorf("Failed to get common-service-maps: %v", err)
+		} else {
+			// Validate common-service-maps
+			if err := util.ValidateCsMaps(cm); err != nil {
+				klog.Errorf("Unsupported common-service-maps: %v", err)
+				os.Exit(1)
+			}
+			if !(cm.Labels != nil && cm.Labels[constant.CsManagedLabel] == "true") {
+				util.EnsureLabelsForConfigMap(cm, map[string]string{
+					constant.CsManagedLabel: "true",
+				})
+				if err := mgr.GetClient().Update(context.TODO(), cm); err != nil {
+					klog.Errorf("Failed to update labels for common-service-maps: %v", err)
+					os.Exit(1)
+				}
+			}
+		}
+
+		klog.Infof("Creating CommonService CR in the namespace %s", bs.CSData.OperatorNs)
+		if err = bs.CreateCsCR(); err != nil {
+			klog.Errorf("Failed to create CommonService CR: %v", err)
 			os.Exit(1)
+		}
+
+		// Check IAM pods status
+		go goroutines.CheckIamStatus(bs)
+		// Create or Update CPP configuration
+		go goroutines.CreateUpdateConfig(bs)
+		// Update CS CR Status
+		go goroutines.UpdateCsCrStatus(bs)
+
+		if err = (&controllers.CommonServiceReconciler{
+			Bootstrap: bs,
+			Scheme:    mgr.GetScheme(),
+			Recorder:  mgr.GetEventRecorderFor("commonservice-controller"),
+		}).SetupWithManager(mgr); err != nil {
+			klog.Errorf("Unable to create controller CommonService: %v", err)
+			os.Exit(1)
+		}
+		if err = (&certmanagerv1controllers.CertificateRefreshReconciler{
+			Client: mgr.GetClient(),
+			Scheme: mgr.GetScheme(),
+		}).SetupWithManager(mgr); err != nil {
+			klog.Error(err, "unable to create controller", "controller", "CertificateRefresh")
+			os.Exit(1)
+		}
+		if err = (&certmanagerv1controllers.PodRefreshReconciler{
+			Client: mgr.GetClient(),
+			Scheme: mgr.GetScheme(),
+		}).SetupWithManager(mgr); err != nil {
+			klog.Error(err, "unable to create controller", "controller", "PodRefresh")
+			os.Exit(1)
+		}
+		if err = (&certmanagerv1controllers.V1AddLabelReconciler{
+			Client: mgr.GetClient(),
+			Scheme: mgr.GetScheme(),
+		}).SetupWithManager(mgr); err != nil {
+			klog.Error(err, "unable to create controller", "controller", "V1AddLabel")
+			os.Exit(1)
+		}
+		// Start up the webhook server
+		if err := webhooks.SetupWebhooks(mgr, bs); err != nil {
+			klog.Error(err, "Error setting up webhook server")
 		}
 	} else {
-		// Validate common-service-maps
-		if err := util.ValidateCsMaps(cm); err != nil {
-			klog.Errorf("Unsupported common-service-maps: %v", err)
-			os.Exit(1)
-		}
-		if !(cm.Labels != nil && cm.Labels[constant.CsManagedLabel] == "true") {
-			util.EnsureLabelsForConfigMap(cm, map[string]string{
-				constant.CsManagedLabel: "true",
-			})
-			if err := mgr.GetClient().Update(context.TODO(), cm); err != nil {
-				klog.Errorf("Failed to update labels for common-service-maps: %v", err)
-				os.Exit(1)
-			}
-		}
-	}
-
-	klog.Infof("Creating CommonService CR in the namespace %s", bs.CSData.OperatorNs)
-	if err = bs.CreateCsCR(); err != nil {
-		klog.Errorf("Failed to create CommonService CR: %v", err)
-		os.Exit(1)
-	}
-
-	// Check IAM pods status
-	go goroutines.CheckIamStatus(bs)
-	// Create or Update CPP configuration
-	go goroutines.CreateUpdateConfig(bs)
-	// Update CS CR Status
-	go goroutines.UpdateCsCrStatus(bs)
-
-	if err = (&controllers.CommonServiceReconciler{
-		Bootstrap: bs,
-		Scheme:    mgr.GetScheme(),
-		Recorder:  mgr.GetEventRecorderFor("commonservice-controller"),
-	}).SetupWithManager(mgr); err != nil {
-		klog.Errorf("Unable to create controller CommonService: %v", err)
-		os.Exit(1)
-	}
-	if err = (&certmanagerv1controllers.CertificateRefreshReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		klog.Error(err, "unable to create controller", "controller", "CertificateRefresh")
-		os.Exit(1)
-	}
-	if err = (&certmanagerv1controllers.PodRefreshReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		klog.Error(err, "unable to create controller", "controller", "PodRefresh")
-		os.Exit(1)
-	}
-	if err = (&certmanagerv1controllers.V1AddLabelReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		klog.Error(err, "unable to create controller", "controller", "V1AddLabel")
-		os.Exit(1)
-	}
-
-	// Start up the webhook server
-	if err := setupWebhooks(mgr, bs); err != nil {
-		klog.Error(err, "Error setting up webhook server")
+		klog.Infof("Common Service Operator goes dormant in the namespace %s", operatorNs)
+		klog.Infof("Common Service Operator in the namespace %s takes charge of resource managemet", cpfsNs)
 	}
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
@@ -247,48 +261,4 @@ func main() {
 		os.Exit(1)
 	}
 
-}
-
-func setupWebhooks(mgr manager.Manager, bs *bootstrap.Bootstrap) error {
-
-	klog.Info("Creating common service webhook configuration")
-	opreqMutatingWebhookConfigurationName := "ibm-operandrequest-webhook-configuration-" + bs.CSData.OperatorNs
-	managedbyCSWebhookLabel := make(map[string]string)
-	managedbyCSWebhookLabel["managed-by-common-service-webhook"] = "true"
-	if util.GetEnableOpreqWebhook() {
-		webhooks.Config.AddWebhook(webhooks.CSWebhook{
-			Name:        opreqMutatingWebhookConfigurationName,
-			WebhookName: "ibm-cloudpak-operandrequest.operator.ibm.com",
-			Rule: webhooks.NewRule().
-				OneResource("operator.ibm.com", "v1alpha1", "operandrequests").
-				ForUpdate().
-				ForCreate().
-				NamespacedScope(),
-			Register: webhooks.AdmissionWebhookRegister{
-				Type: webhooks.MutatingType,
-				Path: "/mutate-ibm-cp-operandrequest",
-				Hook: &admission.Webhook{
-					Handler: &operandrequestwebhook.Defaulter{
-						Bootstrap: bs,
-					},
-				},
-			},
-			NsSelector: v1.LabelSelector{
-				MatchExpressions: []v1.LabelSelectorRequirement{
-					{
-						Key:      "kubernetes.io/metadata.name",
-						Operator: v1.LabelSelectorOpIn,
-						Values:   strings.Split(bs.CSData.WatchNamespaces, ","),
-					},
-				},
-			},
-		})
-	}
-
-	klog.Info("setting up webhook server")
-	if err := webhooks.Config.SetupServer(mgr, bs.CSData.ServicesNs); err != nil {
-		return err
-	}
-
-	return nil
 }
