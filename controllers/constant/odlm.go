@@ -507,12 +507,13 @@ spec:
     sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-iam-operator
     namespace: "{{ .CPFSNs }}"
-    channel: {{ .Channel }}
+    channel: v3.23
     packageName: ibm-iam-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+    supportStatus: maintained
   - name: ibm-im-operator
     namespace: "{{ .CPFSNs }}"
     channel: {{ .Channel }}
@@ -613,7 +614,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
-  - channel: {{ .Channel }}
+  - channel: v3.23
     name: ibm-zen-operator
     namespace: "{{ .CPFSNs }}"
     packageName: ibm-zen-operator
@@ -621,6 +622,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+    supportStatus: maintained
   - channel: v3.22
     name: ibm-zen-operator-v3.22
     namespace: "{{ .CPFSNs }}"
@@ -1038,12 +1040,13 @@ spec:
     sourceNamespace: "{{ .CatalogSourceNs }}" 
   - name: ibm-iam-operator
     namespace: "{{ .CPFSNs }}"
-    channel: {{ .Channel }}
+    channel: v3.23
     packageName: ibm-iam-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+    supportStatus: maintained
   - name: ibm-im-operator
     namespace: "{{ .CPFSNs }}"
     channel: {{ .Channel }}
@@ -1086,7 +1089,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
-  - channel: {{ .Channel }}
+  - channel: v3.23
     name: ibm-zen-operator
     namespace: "{{ .CPFSNs }}"
     packageName: ibm-zen-operator
@@ -1094,6 +1097,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+    supportStatus: maintained
   - channel: v3.22
     name: ibm-zen-operator-v3.22
     namespace: "{{ .CPFSNs }}"
