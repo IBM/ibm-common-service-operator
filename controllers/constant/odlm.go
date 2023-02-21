@@ -605,6 +605,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+    supportStatus: maintained
   - channel: v3
     name: ibm-events-operator
     namespace: "{{ .CPFSNs }}"
