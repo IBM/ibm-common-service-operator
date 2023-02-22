@@ -235,7 +235,6 @@ const ConfigurationRules = `
           requests:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
-      replicas: LARGEST_VALUE
 - name: ibm-im-operator-v4.0
   spec:
     authentication:
@@ -282,7 +281,6 @@ const ConfigurationRules = `
           requests:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
-      replicas: LARGEST_VALUE
 - name: ibm-management-ingress-operator
   spec:
     managementIngress:
