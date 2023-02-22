@@ -136,7 +136,9 @@ spec:
   - name: ibm-im-operator
     spec:
       authentication: {}
-      policydecision: {}
+  - name: ibm-im-operator-v4.0
+    spec:
+      authentication: {}
   - name: ibm-healthcheck-operator
     spec:
       healthService: {}

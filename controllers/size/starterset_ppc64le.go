@@ -230,23 +230,50 @@ const StarterSet = `
           requests:
             cpu: 80m
             memory: 130Mi
-    policydecision:
+- name: ibm-im-operator-v4.0
+  spec:
+    authentication:
+      replicas: 1
       auditService:
         resources:
           limits:
             cpu: 1000m
-            memory: 70Mi
+            memory: 300Mi
           requests:
             cpu: 20m
             memory: 50Mi
-      resources:
-        limits:
-          cpu: 1000m
-          memory: 100Mi
-        requests:
-          cpu: 20m
-          memory: 50Mi
-      replicas: 1
+      authService:
+        resources:
+          limits:
+            cpu: 2000m
+            memory: 950Mi
+          requests:
+            cpu: 140m
+            memory: 525Mi
+      clientRegistration:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 300Mi
+          requests:
+            cpu: 20m
+            memory: 50Mi
+      identityManager:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 350Mi
+          requests:
+            cpu: 50m
+            memory: 120Mi
+      identityProvider:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 250Mi
+          requests:
+            cpu: 80m
+            memory: 130Mi
 - name: ibm-management-ingress-operator
   spec:
     managementIngress:
