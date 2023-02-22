@@ -451,12 +451,13 @@ spec:
     supportStatus: maintained
   - name: ibm-iam-operator
     namespace: "{{ .CPFSNs }}"
-    channel: {{ .Channel }}
+    channel: v3.23
     packageName: ibm-iam-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+    supportStatus: maintained
   - name: ibm-im-operator
     namespace: "{{ .CPFSNs }}"
     channel: {{ .Channel }}
@@ -542,7 +543,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
-  - channel: {{ .Channel }}
+  - channel: v3.23
     name: ibm-zen-operator
     namespace: "{{ .CPFSNs }}"
     packageName: ibm-zen-operator
@@ -550,6 +551,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+    supportStatus: maintained
   - name: ibm-platformui-operator
     namespace: "{{ .CPFSNs }}"
     channel: {{ .Channel }}
@@ -923,12 +925,13 @@ spec:
     supportStatus: maintained
   - name: ibm-iam-operator
     namespace: "{{ .CPFSNs }}"
-    channel: {{ .Channel }}
+    channel: v3.23
     packageName: ibm-iam-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+    supportStatus: maintained
   - name: ibm-im-operator
     namespace: "{{ .CPFSNs }}"
     channel: {{ .Channel }}
@@ -971,7 +974,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
-  - channel: {{ .Channel }}
+  - channel: v3.23
     name: ibm-zen-operator
     namespace: "{{ .CPFSNs }}"
     packageName: ibm-zen-operator
@@ -979,6 +982,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+    supportStatus: maintained
   - name: ibm-platformui-operator
     namespace: "{{ .CPFSNs }}"
     channel: {{ .Channel }}
