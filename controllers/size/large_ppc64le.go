@@ -230,23 +230,50 @@ const Large = `
             cpu: 410m
             memory: 335Mi
       replicas: 3
-    policydecision:
+- name: ibm-im-operator-v4.0
+  spec:
+    authentication:
       auditService:
         resources:
           limits:
             cpu: 1000m
-            memory: 84Mi
+            memory: 400Mi
           requests:
-            cpu: 30m
+            cpu: 75m
             memory: 50Mi
+      authService:
+        resources:
+          limits:
+            cpu: 3000m
+            memory: 1201Mi
+          requests:
+            cpu: 725m
+            memory: 695Mi
+      clientRegistration:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 300Mi
+          requests:
+            cpu: 20m
+            memory: 50Mi
+      identityManager:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 645Mi
+          requests:
+            cpu: 340m
+            memory: 385Mi
+      identityProvider:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 480Mi
+          requests:
+            cpu: 410m
+            memory: 335Mi
       replicas: 3
-      resources:
-        limits:
-          cpu: 1000m
-          memory: 420Mi
-        requests:
-          cpu: 195m
-          memory: 270Mi
 - name: ibm-management-ingress-operator
   spec:
     managementIngress:

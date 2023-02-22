@@ -1124,6 +1124,7 @@ func (b *Bootstrap) PropagateDefaultCR(instance *apiv3.CommonService) error {
 					return fmt.Errorf("could not get cloned CommonServiceCR in namespace %s: %v", watchNamespace, err)
 				}
 				if needUpdate := util.CompareCsCR(copiedCsInstance, existingCsInstance); needUpdate {
+					copiedCsInstance.SetResourceVersion(existingCsInstance.GetResourceVersion())
 					if err := b.Client.Update(ctx, copiedCsInstance); err != nil {
 						return fmt.Errorf("could not update cloned CommonServiceCR in namespace %s: %v", watchNamespace, err)
 					}

@@ -235,8 +235,12 @@ const ConfigurationRules = `
           requests:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+- name: ibm-im-operator-v4.0
+  spec:
+    authentication:
+      config:
+        fipsEnabled: LARGEST_VALUE
       replicas: LARGEST_VALUE
-    policydecision:
       auditService:
         resources:
           limits:
@@ -245,14 +249,38 @@ const ConfigurationRules = `
           requests:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
-      resources:
-        limits:
-          cpu: LARGEST_VALUE
-          memory: LARGEST_VALUE
-        requests:
-          cpu: LARGEST_VALUE
-          memory: LARGEST_VALUE
-      replicas: LARGEST_VALUE
+      authService:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      clientRegistration:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      identityManager:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      identityProvider:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
 - name: ibm-management-ingress-operator
   spec:
     managementIngress:

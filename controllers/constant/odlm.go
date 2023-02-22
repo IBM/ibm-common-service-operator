@@ -51,38 +51,6 @@ spec:
       policydecision: {}
       operandBindInfo: {}
       operandRequest: {}
-  - name: ibm-iam-operator-v3.22
-    spec:
-      authentication:
-        config:
-          onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      oidcclientwatcher: {}
-      pap: {}
-      policycontroller: {}
-      policydecision: {}
-      secretwatcher: {}
-      securityonboarding: {}
-      operandBindInfo:
-        bindings:
-          protected-zen-serviceid:
-            secret: zen-serviceid-apikey-secret
-      operandRequest: {}
-  - name: ibm-iam-operator-v3.21
-    spec:
-      authentication:
-        config:
-          onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      oidcclientwatcher: {}
-      pap: {}
-      policycontroller: {}
-      policydecision: {}
-      secretwatcher: {}
-      securityonboarding: {}
-      operandBindInfo:
-        bindings:
-          protected-zen-serviceid:
-            secret: zen-serviceid-apikey-secret
-      operandRequest: {}
   - name: ibm-iam-operator
     spec:
       authentication:
@@ -102,18 +70,6 @@ spec:
       mustgatherService: {}
       mustgatherConfig: {}
   - name: ibm-commonui-operator
-    spec:
-      commonWebUI: {}
-      switcheritem: {}
-      operandRequest: {}
-      navconfiguration: {}
-  - name: ibm-commonui-operator-v3.22
-    spec:
-      commonWebUI: {}
-      switcheritem: {}
-      operandRequest: {}
-      navconfiguration: {}
-  - name: ibm-commonui-operator-v3.21
     spec:
       commonWebUI: {}
       switcheritem: {}
@@ -329,7 +285,9 @@ spec:
         force: true
         kind: Job
         name: pre-zen-operand-config-job 
-  - name: ibm-zen-operator-v3.22
+  - name: ibm-platformui-operator
+    spec:
+      operandBindInfo: {}
     resources:
       - apiVersion: batch/v1
         data:
@@ -389,7 +347,9 @@ spec:
         force: true
         kind: Job
         name: pre-zen-operand-config-job
-  - name: ibm-zen-operator-v3.21
+  - name: ibm-platformui-operator-v4.0
+    spec:
+      operandBindInfo: {}
     resources:
       - apiVersion: batch/v1
         data:
@@ -448,7 +408,7 @@ spec:
                 terminationGracePeriodSeconds: 30
         force: true
         kind: Job
-        name: pre-zen-operand-config-job 
+        name: pre-zen-operand-config-job
 `
 
 const CSV3OperandRegistry = `
@@ -489,22 +449,6 @@ spec:
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
     supportStatus: maintained
-  - name: ibm-iam-operator-v3.22
-    namespace: "{{ .CPFSNs }}"
-    channel: v3.22
-    packageName: ibm-iam-operator
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: "{{ .CatalogSourceNs }}"
-  - name: ibm-iam-operator-v3.21
-    namespace: "{{ .CPFSNs }}"
-    channel: v3.21
-    packageName: ibm-iam-operator
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-iam-operator
     namespace: "{{ .CPFSNs }}"
     channel: v3.23
@@ -541,22 +485,6 @@ spec:
   - name: ibm-commonui-operator
     namespace: "{{ .CPFSNs }}"
     channel: {{ .Channel }}
-    packageName: ibm-commonui-operator-app
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: "{{ .CatalogSourceNs }}"
-  - name: ibm-commonui-operator-v3.22
-    namespace: "{{ .CPFSNs }}"
-    channel: v3.22
-    packageName: ibm-commonui-operator-app
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: "{{ .CatalogSourceNs }}"
-  - name: ibm-commonui-operator-v3.21
-    namespace: "{{ .CPFSNs }}"
-    channel: v3.21
     packageName: ibm-commonui-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -606,6 +534,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+    supportStatus: maintained
   - channel: v3
     name: ibm-events-operator
     namespace: "{{ .CPFSNs }}"
@@ -623,17 +552,17 @@ spec:
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
     supportStatus: maintained
-  - channel: v3.22
-    name: ibm-zen-operator-v3.22
+  - name: ibm-platformui-operator
     namespace: "{{ .CPFSNs }}"
+    channel: {{ .Channel }}
     packageName: ibm-zen-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
-  - channel: v3.21
-    name: ibm-zen-operator-v3.21
+  - name: ibm-platformui-operator-v4.0
     namespace: "{{ .CPFSNs }}"
+    channel: {{ .Channel }}
     packageName: ibm-zen-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -718,38 +647,6 @@ spec:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       policydecision: {}
       operandBindInfo: {}
-      operandRequest: {}
-  - name: ibm-iam-operator-v3.22
-    spec:
-      authentication:
-        config:
-          onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      oidcclientwatcher: {}
-      pap: {}
-      policycontroller: {}
-      policydecision: {}
-      secretwatcher: {}
-      securityonboarding: {}
-      operandBindInfo:
-        bindings:
-          protected-zen-serviceid:
-            secret: zen-serviceid-apikey-secret
-      operandRequest: {}
-  - name: ibm-iam-operator-v3.21
-    spec:
-      authentication:
-        config:
-          onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      oidcclientwatcher: {}
-      pap: {}
-      policycontroller: {}
-      policydecision: {}
-      secretwatcher: {}
-      securityonboarding: {}
-      operandBindInfo:
-        bindings:
-          protected-zen-serviceid:
-            secret: zen-serviceid-apikey-secret
       operandRequest: {}
   - name: ibm-iam-operator
     spec:
@@ -862,7 +759,9 @@ spec:
         force: true
         kind: Job
         name: pre-zen-operand-config-job
-  - name: ibm-zen-operator-v3.22
+  - name: ibm-platformui-operator
+    spec:
+      operandBindInfo: {}
     resources:
       - apiVersion: batch/v1
         data:
@@ -922,7 +821,9 @@ spec:
         force: true
         kind: Job
         name: pre-zen-operand-config-job
-  - name: ibm-zen-operator-v3.21
+  - name: ibm-platformui-operator-v4.0
+    spec:
+      operandBindInfo: {}
     resources:
       - apiVersion: batch/v1
         data:
@@ -981,7 +882,7 @@ spec:
                 terminationGracePeriodSeconds: 30
         force: true
         kind: Job
-        name: pre-zen-operand-config-job 
+        name: pre-zen-operand-config-job
 `
 
 const CSV3SaasOperandRegistry = `
@@ -1022,22 +923,6 @@ spec:
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
     supportStatus: maintained
-  - name: ibm-iam-operator-v3.22
-    namespace: "{{ .CPFSNs }}"
-    channel: v3.22
-    packageName: ibm-iam-operator
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: "{{ .CatalogSourceNs }}"
-  - name: ibm-iam-operator-v3.21
-    namespace: "{{ .CPFSNs }}"
-    channel: v3.21
-    packageName: ibm-iam-operator
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: "{{ .CatalogSourceNs }}" 
   - name: ibm-iam-operator
     namespace: "{{ .CPFSNs }}"
     channel: v3.23
@@ -1098,17 +983,17 @@ spec:
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
     supportStatus: maintained
-  - channel: v3.22
-    name: ibm-zen-operator-v3.22
+  - name: ibm-platformui-operator
     namespace: "{{ .CPFSNs }}"
+    channel: {{ .Channel }}
     packageName: ibm-zen-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
-  - channel: v3.21
-    name: ibm-zen-operator-v3.21
+  - name: ibm-platformui-operator-v4.0
     namespace: "{{ .CPFSNs }}"
+    channel: {{ .Channel }}
     packageName: ibm-zen-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}

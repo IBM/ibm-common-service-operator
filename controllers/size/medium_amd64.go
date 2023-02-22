@@ -230,7 +230,10 @@ const Medium = `
           requests:
             cpu: 570m
             memory: 250Mi
-    policydecision:
+- name: ibm-im-operator-v4.0
+  spec:
+    authentication:
+      replicas: 2
       auditService:
         resources:
           limits:
@@ -239,14 +242,38 @@ const Medium = `
           requests:
             cpu: 10m
             memory: 20Mi
-      resources:
-        limits:
-          cpu: 1000m
-          memory: 160Mi
-        requests:
-          cpu: 70m
-          memory: 30Mi
-      replicas: 2
+      authService:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1090Mi
+          requests:
+            cpu: 600m
+            memory: 540Mi
+      clientRegistration:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 50Mi
+          requests:
+            cpu: 20m
+            memory: 50Mi
+      identityManager:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1260Mi
+          requests:
+            cpu: 260m
+            memory: 240Mi
+      identityProvider:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 920Mi
+          requests:
+            cpu: 570m
+            memory: 250Mi
 - name: ibm-management-ingress-operator
   spec:
     managementIngress:
