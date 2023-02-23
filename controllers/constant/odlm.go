@@ -482,6 +482,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+    supportStatus: maintained
   - name: ibm-commonui-operator
     namespace: "{{ .CPFSNs }}"
     channel: {{ .Channel }}
