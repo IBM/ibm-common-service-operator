@@ -12,11 +12,4 @@ spec:
   policyTypes:
   - Ingress
   ingress:
-  - from:
-    - namespaceSelector:
-        matchLabels:
-          kubernetes.io/metadata.name: openshift-host-network
-    - namespaceSelector: 
-        matchLabels:
-          kubernetes.io/metadata.name: "csNamespace"
-    - podSelector: {}
+  - {}
