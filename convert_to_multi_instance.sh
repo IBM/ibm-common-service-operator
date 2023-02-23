@@ -23,7 +23,6 @@ set -o nounset
 OC=${1:-oc}
 YQ=${1:-yq}
 
-master_ns=
 cs_operator_channel=
 catalog_source=
 
@@ -62,7 +61,7 @@ function prepare_cluster() {
     controlNs=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data' | grep controlNamespace: | awk '{print $2}')
     return_value=$("${OC}" get ns "${controlNs}" > /dev/null || echo failed)
     if [[ $return_value == "failed" ]]; then
-        error "The namespace specified in controlNamespace does not exist"
+        error "The namespace specified in controlNamespace does not exist. This namespace must be created before proceeding."
     fi
     return_value="reset"
 
@@ -125,7 +124,7 @@ function prepare_cluster() {
 
 # scale back cs pod 
 function scale_up_pod() {
-    msg "scaling back ibm-common-service-operator deployment in ${master_ns} namespace"
+    info "scaling back ibm-common-service-operator deployment in ${master_ns} namespace"
     ${OC} scale deployment -n ${master_ns} ibm-common-service-operator --replicas=1
     ${OC} scale deployment -n ${master_ns} operand-deployment-lifecycle-manager --replicas=1
     check_healthy "${master_ns}"
@@ -301,43 +300,58 @@ function cleanupZenService(){
     for namespace in $requestedNS
     do
         # remove cs namespace from zen service cr
-        return_value=$(${OC} get zenservice -n ${namespace})
-        if [[ $return_value != "" ]]; then
-            zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
-            ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type json -p '[{ "op": "remove", "path": "/spec/csNamespace" }]' || info "CS Namespace not defined in ${zenServiceCR} in ${namespace}. Moving on..."
+        return_value=$(${OC} get zenservice -n ${namespace} || echo "fail")
+        if [[ $return_value != "fail" ]]; then
+            if [[ $return_value != "" ]]; then
+                zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
+                ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type json -p '[{ "op": "remove", "path": "/spec/csNamespace" }]' || info "CS Namespace not defined in ${zenServiceCR} in ${namespace}. Moving on..."
+            else
+                info "No zen service in namespace ${namespace}. Moving on..."
+            fi
         else
-            info "No zen service in namespace ${namespace}. Moving on..."
+          info "Zen not installed in ${namespace}. Moving on..."
         fi
+        return_value=""
 
         # delete iam config job
-        return_value=$(${OC} get job -n ${namespace} | grep iam-config-job || echo "failed")
-        if [[ $return_value != "failed" ]]; then
+        return_value=$(${OC} get job -n ${namespace} | grep iam-config-job || echo "fail")
+        if [[ $return_value != "fail" ]]; then
             ${OC} delete job iam-config-job -n ${namespace}
         else
             info "iam-config-job not present in namespace ${namespace}. Moving on..."
         fi
 
         # delete zen client
-        return_value=$(${OC} get client -n ${namespace})
-        if [[ $return_value != "" ]]; then
-            zenClient=$(${OC} get client -n ${namespace} | awk '{if (NR!=1) {print $1}}')
-            ${OC} patch client ${zenClient} -n ${namespace} --type=merge -p '{"metadata": {"finalizers":null}}'
-            ${OC} delete client ${zenClient} -n ${namespace}
+        return_value=$(${OC} get client -n ${namespace} || echo "fail")
+        if [[ $return_value != "fail" ]]; then
+            if [[ $return_value != "" ]]; then
+                zenClient=$(${OC} get client -n ${namespace} | awk '{if (NR!=1) {print $1}}')
+                ${OC} patch client ${zenClient} -n ${namespace} --type=merge -p '{"metadata": {"finalizers":null}}'
+                ${OC} delete client ${zenClient} -n ${namespace}
+            else
+                info "No zen client in ${namespace}. Moving on..."
+            fi
         else
-            info "No zen client in ${namespace}. Moving on..."
+            info "Zen not installed in ${namespace}. Moving on..."
         fi
+        return_value=""
     done
     
     for namespace in $mapToCSNS
     do
         # remove cs namespace from zen service cr
-        return_value=$(${OC} get zenservice -n ${namespace})
-        if [[ $return_value != "" ]]; then
-            zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
-            ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type json -p '[{ "op": "remove", "path": "/spec/csNamespace" }]' || info "CS Namespace not defined in ${zenServiceCR} in ${namespace}. Moving on..."
+        return_value=$(${OC} get zenservice -n ${namespace} || echo "fail")
+        if [[ $return_value != "fail" ]]; then
+            if [[ $return_value != "" ]]; then
+                zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
+                ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type json -p '[{ "op": "remove", "path": "/spec/csNamespace" }]' || info "CS Namespace not defined in ${zenServiceCR} in ${namespace}. Moving on..."
+            else
+                info "No zen service in namespace ${namespace}. Moving on..."
+            fi
         else
-            info "No zen service in namespace ${namespace}. Moving on..."
+            info "Zen not installed in ${namespace}. Moving on..."
         fi
+        return_value=""
 
         # delete iam config job
         return_value=$(${OC} get job -n ${namespace} | grep iam-config-job || echo "failed")
@@ -349,13 +363,18 @@ function cleanupZenService(){
 
         # delete zen client
         return_value=$(${OC} get client -n ${namespace})
-        if [[ $return_value != "" ]]; then
-            zenClient=$(${OC} get client -n ${namespace} | awk '{if (NR!=1) {print $1}}')
-            ${OC} patch client ${zenClient} -n ${namespace} --type=merge -p '{"metadata": {"finalizers":null}}'
-            ${OC} delete client ${zenClient} -n ${namespace}
+        if [[ $return_value != "fail" ]]; then
+            if [[ $return_value != "" ]]; then
+                zenClient=$(${OC} get client -n ${namespace} | awk '{if (NR!=1) {print $1}}')
+                ${OC} patch client ${zenClient} -n ${namespace} --type=merge -p '{"metadata": {"finalizers":null}}'
+                ${OC} delete client ${zenClient} -n ${namespace}
+            else
+                info "No zen client in ${namespace}. Moving on..."
+            fi
         else
-            info "No zen client in ${namespace}. Moving on..."
+            info "Zen not installed in ${namespace}. Moving on..."
         fi
+        return_value=""
     done
     success "Zen instances cleaned up"
 }
@@ -428,7 +447,7 @@ function removeNSS(){
         ${OC} get nss --all-namespaces | grep nss-managedby-odlm | while read -r line; do
             local namespace=$(echo $line | awk '{print $1}')
             info "deleting namespace scope nss-managedby-odlm in namespace $namespace"
-            ${OC} delete nss nss-managedby-odlm -n ${namespace} || error "unable to delete namespace scope nss-managedby-odlm in ${namespace}"
+            ${OC} delete nss nss-managedby-odlm -n ${namespace} || (error "unable to delete namespace scope nss-managedby-odlm in ${namespace}")
         done
     else
         info "Namespace Scope CR \"nss-managedby-odlm\" not present. Moving on..."
@@ -438,7 +457,7 @@ function removeNSS(){
         ${OC} get nss --all-namespaces | grep odlm-scope-managedby-odlm | while read -r line; do
             local namespace=$(echo $line | awk '{print $1}')
             info "deleting namespace scope odlm-scope-managedby-odlm in namespace $namespace"
-            ${OC} delete nss odlm-scope-managedby-odlm -n ${namespace} || error "unable to delete namespace scope odlm-scope-managedby-odlm in ${namespace}"
+            ${OC} delete nss odlm-scope-managedby-odlm -n ${namespace} || (error "unable to delete namespace scope odlm-scope-managedby-odlm in ${namespace}")
         done
     else
         info "Namespace Scope CR \"odlm-scope-managedby-odlm\" not present. Moving on..."
