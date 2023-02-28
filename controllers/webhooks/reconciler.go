@@ -31,6 +31,7 @@ import (
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 	"github.com/IBM/ibm-common-service-operator/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
+	commonservicewebhook "github.com/IBM/ibm-common-service-operator/controllers/webhooks/commonservice"
 	operandrequestwebhook "github.com/IBM/ibm-common-service-operator/controllers/webhooks/operandrequest"
 )
 
@@ -282,6 +283,33 @@ func SetupWebhooks(mgr manager.Manager, bs *bootstrap.Bootstrap) error {
 				Path: "/mutate-ibm-cp-operandrequest",
 				Hook: &admission.Webhook{
 					Handler: &operandrequestwebhook.Defaulter{
+						Bootstrap: bs,
+					},
+				},
+			},
+			NsSelector: v1.LabelSelector{
+				MatchExpressions: []v1.LabelSelectorRequirement{
+					{
+						Key:      "kubernetes.io/metadata.name",
+						Operator: v1.LabelSelectorOpIn,
+						Values:   strings.Split(bs.CSData.WatchNamespaces, ","),
+					},
+				},
+			},
+		})
+		Config.AddWebhook(CSWebhook{
+			Name:        "ibm-common-service-validating-webhook-" + bs.CSData.OperatorNs,
+			WebhookName: "ibm-common-service-validating-webhook.operator.ibm.com",
+			Rule: NewRule().
+				OneResource("operator.ibm.com", "v3", "commonservices").
+				ForUpdate().
+				ForCreate().
+				NamespacedScope(),
+			Register: AdmissionWebhookRegister{
+				Type: ValidatingType,
+				Path: "/validating-ibm-commonservice",
+				Hook: &admission.Webhook{
+					Handler: &commonservicewebhook.Defaulter{
 						Bootstrap: bs,
 					},
 				},
