@@ -362,7 +362,7 @@ function cleanupZenService(){
         fi
 
         # delete zen client
-        return_value=$(${OC} get client -n ${namespace})
+        return_value=$(${OC} get client -n ${namespace} || echo "fail")
         if [[ $return_value != "fail" ]]; then
             if [[ $return_value != "" ]]; then
                 zenClient=$(${OC} get client -n ${namespace} | awk '{if (NR!=1) {print $1}}')
