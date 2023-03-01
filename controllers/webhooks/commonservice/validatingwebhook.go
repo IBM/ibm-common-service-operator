@@ -20,16 +20,19 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	// certmanagerv1alpha1 "github.com/ibm/ibm-cert-manager-operator/apis/certmanager/v1alpha1"
 
-	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	operatorv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
+	"github.com/IBM/operand-deployment-lifecycle-manager/controllers/util"
 )
 
 // +kubebuilder:webhook:path=/mutate-operator-ibm-com-v1alpha1-operandrequest,mutating=true,failurePolicy=fail,sideEffects=None,groups=operator.ibm.com,resources=operandrequests,verbs=create;update,versions=v1alpha1,name=moperandrequest.kb.io,admissionReviewVersions=v1
@@ -51,50 +54,54 @@ func (r *Defaulter) Handle(ctx context.Context, req admission.Request) admission
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
-	// get targetNamespace from OperatorGroup
-	existOG := &olmv1.OperatorGroupList{}
-	if err := r.Bootstrap.Reader.List(context.TODO(), existOG, &client.ListOptions{Namespace: r.Bootstrap.CSData.CPFSNs}); err != nil {
-		klog.Errorf("Failed to get OperatorGroup in %s namespace: %v, retry in 10 seconds", r.Bootstrap.CSData.CPFSNs, err)
-		return admission.Errored(http.StatusBadRequest, err)
-	}
-	if len(existOG.Items) != 1 {
-		klog.Errorf("The number of OperatorGroup in %s namespace is incorrect, Only one OperatorGroup is allowed in one namespace", r.Bootstrap.CSData.CPFSNs)
-		return admission.Errored(http.StatusBadRequest, err)
-	}
-
-	originalOG := &existOG.Items[0]
-	originalOGNs := originalOG.Status.Namespaces
-
-	if originalOGNs[0] == "" {
-		return admission.Allowed("")
-	}
-
 	// check operatornamespace
-	checkedopNs := false
 	opNs := cs.Spec.OperatorNamespace
-	for _, ns := range originalOGNs {
-		if ns == string(opNs) {
-			checkedopNs = true
-		}
+	deniedOpNs, err := r.CheckNamespace(string(opNs))
+	if err != nil {
+		return admission.Denied(fmt.Sprintf("Can't check operatorNamespace. Found error: %v", err))
 	}
-	if !checkedopNs {
-		return admission.Denied(fmt.Sprintf("Operator Namespace: %v should be one of target namespace in OpertorGroup", opNs))
+	if deniedOpNs {
+		return admission.Denied(fmt.Sprintf("Operator Namespace: %v should be one of WATCH_NAMESPACE", opNs))
 	}
 
-	// check operatornamespace
-	checkedserviceNs := false
+	// check servicenamespace
 	serviceNs := cs.Spec.ServicesNamespace
-	for _, ns := range originalOGNs {
-		if ns == string(serviceNs) {
-			checkedserviceNs = true
-		}
+	deniedServiceNs, err := r.CheckNamespace(string(serviceNs))
+	if err != nil {
+		return admission.Denied(fmt.Sprintf("Can't check serviceNamespace. Found error: %v", err))
 	}
-	if !checkedserviceNs {
-		return admission.Denied(fmt.Sprintf("Service Namespace: %v should be one of target namespace in OpertorGroup", opNs))
+	if deniedServiceNs {
+		return admission.Denied(fmt.Sprintf("Service Namespace: %v should be one of WATCH_NAMESPACE", serviceNs))
 	}
 
 	// admission.PatchResponse generates a Response containing patches.
 	return admission.Allowed("")
+}
+
+func (r *Defaulter) CheckNamespace(name string) (bool, error) {
+	denied := false
+	// in cluster scope
+	if len(r.Bootstrap.CSData.WatchNamespaces) == 0 {
+		ctx := context.Background()
+		ns := &corev1.Namespace{}
+		nsKey := types.NamespacedName{
+			Name: name,
+		}
+		// check if this namespace exist
+		if err := r.Client.Get(ctx, nsKey, ns); err != nil {
+			if errors.IsNotFound(err) {
+				klog.Infof("Not found Namespace %v ", name)
+				return true, err
+			} else {
+				klog.Errorf("Failed to get namespace %v: %v", name, err)
+				return true, err
+			}
+		}
+		// if it is not cluster scope
+	} else if len(r.Bootstrap.CSData.WatchNamespaces) != 0 && !util.Contains(strings.Split(r.Bootstrap.CSData.WatchNamespaces, ","), name) {
+		denied = true
+	}
+	return denied, nil
 }
 
 func (r *Defaulter) InjectDecoder(decoder *admission.Decoder) error {
