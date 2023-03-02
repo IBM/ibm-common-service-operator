@@ -167,16 +167,19 @@ func main() {
 
 		cm, err := util.GetCmOfMapCs(bs.Reader)
 		if err != nil {
-			// Create new common-service-maps
-			if errors.IsNotFound(err) {
-				klog.Infof("Creating common-service-maps ConfigMap in kube-public")
-				if err = bs.CreateCsMaps(); err != nil {
-					klog.Errorf("Failed to create common-service-maps ConfigMap: %v", err)
+			// Skip common-service-maps creating when installing in AllNamespace Mode
+			if bs.CSData.WatchNamespaces != "" {
+				// Create new common-service-maps
+				if errors.IsNotFound(err) {
+					klog.Infof("Creating common-service-maps ConfigMap in kube-public")
+					if err = bs.CreateCsMaps(); err != nil {
+						klog.Errorf("Failed to create common-service-maps ConfigMap: %v", err)
+						os.Exit(1)
+					}
+				} else if !errors.IsNotFound(err) {
+					klog.Errorf("Failed to get common-service-maps: %v", err)
 					os.Exit(1)
 				}
-			} else if !errors.IsNotFound(err) {
-				klog.Errorf("Failed to get common-service-maps: %v", err)
-				os.Exit(1)
 			}
 		} else {
 			// Update common-service-maps
