@@ -1100,37 +1100,41 @@ func (b *Bootstrap) PropagateDefaultCR(instance *apiv3.CommonService) error {
 	for k, v := range instance.Annotations {
 		csAnnotation[k] = v
 	}
-	for _, watchNamespace := range watchNamespaceList {
-		if watchNamespace == instance.Namespace {
-			continue
-		}
-		copiedCsInstance := &apiv3.CommonService{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:        constant.MasterCR,
-				Namespace:   watchNamespace,
-				Labels:      csLabel,
-				Annotations: csAnnotation,
-			},
-			Spec: instance.Spec,
-		}
-		util.EnsureLabelsForCsCR(copiedCsInstance, map[string]string{
-			constant.CsClonedFromLabel: b.CSData.OperatorNs,
-		})
-		if err := b.Client.Create(ctx, copiedCsInstance); err != nil {
-			if errors.IsAlreadyExists(err) {
-				csKey := types.NamespacedName{Name: constant.MasterCR, Namespace: watchNamespace}
-				existingCsInstance := &apiv3.CommonService{}
-				if err := b.Client.Get(ctx, csKey, existingCsInstance); err != nil {
-					return fmt.Errorf("could not get cloned CommonServiceCR in namespace %s: %v", watchNamespace, err)
-				}
-				if needUpdate := util.CompareCsCR(copiedCsInstance, existingCsInstance); needUpdate {
-					copiedCsInstance.SetResourceVersion(existingCsInstance.GetResourceVersion())
-					if err := b.Client.Update(ctx, copiedCsInstance); err != nil {
-						return fmt.Errorf("could not update cloned CommonServiceCR in namespace %s: %v", watchNamespace, err)
+
+	// Exclude CommonService cloned in AllNamespace Mode
+	if len(watchNamespaceList) > 1 {
+		for _, watchNamespace := range watchNamespaceList {
+			if watchNamespace == instance.Namespace {
+				continue
+			}
+			copiedCsInstance := &apiv3.CommonService{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        constant.MasterCR,
+					Namespace:   watchNamespace,
+					Labels:      csLabel,
+					Annotations: csAnnotation,
+				},
+				Spec: instance.Spec,
+			}
+			util.EnsureLabelsForCsCR(copiedCsInstance, map[string]string{
+				constant.CsClonedFromLabel: b.CSData.OperatorNs,
+			})
+			if err := b.Client.Create(ctx, copiedCsInstance); err != nil {
+				if errors.IsAlreadyExists(err) {
+					csKey := types.NamespacedName{Name: constant.MasterCR, Namespace: watchNamespace}
+					existingCsInstance := &apiv3.CommonService{}
+					if err := b.Client.Get(ctx, csKey, existingCsInstance); err != nil {
+						return fmt.Errorf("could not get cloned CommonServiceCR in namespace %s: %v", watchNamespace, err)
 					}
+					if needUpdate := util.CompareCsCR(copiedCsInstance, existingCsInstance); needUpdate {
+						copiedCsInstance.SetResourceVersion(existingCsInstance.GetResourceVersion())
+						if err := b.Client.Update(ctx, copiedCsInstance); err != nil {
+							return fmt.Errorf("could not update cloned CommonServiceCR in namespace %s: %v", watchNamespace, err)
+						}
+					}
+				} else {
+					return fmt.Errorf("could not create cloned CommonServiceCR in namespace %s: %v", watchNamespace, err)
 				}
-			} else {
-				return fmt.Errorf("could not create cloned CommonServiceCR in namespace %s: %v", watchNamespace, err)
 			}
 		}
 	}
