@@ -80,6 +80,9 @@ func (r *Defaulter) Handle(ctx context.Context, req admission.Request) admission
 
 func (r *Defaulter) CheckNamespace(name string) (bool, error) {
 	denied := false
+	if name == "" {
+		return false, nil
+	}
 	// in cluster scope
 	if len(r.Bootstrap.CSData.WatchNamespaces) == 0 {
 		ctx := context.Background()
