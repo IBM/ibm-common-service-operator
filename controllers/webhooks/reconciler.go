@@ -317,15 +317,7 @@ func SetupWebhooks(mgr manager.Manager, bs *bootstrap.Bootstrap) error {
 					},
 				},
 			},
-			NsSelector: v1.LabelSelector{
-				MatchExpressions: []v1.LabelSelectorRequirement{
-					{
-						Key:      "kubernetes.io/metadata.name",
-						Operator: v1.LabelSelectorOpIn,
-						Values:   strings.Split(bs.CSData.WatchNamespaces, ","),
-					},
-				},
-			},
+			NsSelector: *nsLabelSelector,
 		})
 	}
 
