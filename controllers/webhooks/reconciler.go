@@ -269,6 +269,17 @@ func SetupWebhooks(mgr manager.Manager, bs *bootstrap.Bootstrap) error {
 	klog.Info("Creating common service webhook configuration")
 	managedbyCSWebhookLabel := make(map[string]string)
 	managedbyCSWebhookLabel[constant.CsManagedLabel] = "true"
+
+	nsLabelSelector := &v1.LabelSelector{}
+	if bs.CSData.WatchNamespaces != "" {
+		nsLabelSelector.MatchExpressions = []v1.LabelSelectorRequirement{
+			{
+				Key:      "kubernetes.io/metadata.name",
+				Operator: v1.LabelSelectorOpIn,
+				Values:   strings.Split(bs.CSData.WatchNamespaces, ","),
+			},
+		}
+	}
 	if common.GetEnableOpreqWebhook() {
 		Config.AddWebhook(CSWebhook{
 			Name:        "ibm-operandrequest-webhook-configuration-" + bs.CSData.OperatorNs,
@@ -287,15 +298,7 @@ func SetupWebhooks(mgr manager.Manager, bs *bootstrap.Bootstrap) error {
 					},
 				},
 			},
-			NsSelector: v1.LabelSelector{
-				MatchExpressions: []v1.LabelSelectorRequirement{
-					{
-						Key:      "kubernetes.io/metadata.name",
-						Operator: v1.LabelSelectorOpIn,
-						Values:   strings.Split(bs.CSData.WatchNamespaces, ","),
-					},
-				},
-			},
+			NsSelector: *nsLabelSelector,
 		})
 		Config.AddWebhook(CSWebhook{
 			Name:        "ibm-common-service-validating-webhook-" + bs.CSData.OperatorNs,

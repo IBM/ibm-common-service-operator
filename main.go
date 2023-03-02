@@ -165,7 +165,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		cm, err := util.GetCmOfMapCs(mgr.GetAPIReader())
+		cm, err := util.GetCmOfMapCs(bs.Reader)
 		if err != nil {
 			// Create new common-service-maps
 			if errors.IsNotFound(err) {
@@ -179,19 +179,21 @@ func main() {
 				os.Exit(1)
 			}
 		} else {
+			// Update common-service-maps
+			if err := util.UpdateCsMaps(cm, bs.CSData.WatchNamespaces, bs.CSData.ServicesNs, bs.CSData.OperatorNs); err != nil {
+				klog.Errorf("Failed to update common-service-maps: %v", err)
+				os.Exit(1)
+			}
+
 			// Validate common-service-maps
 			if err := util.ValidateCsMaps(cm); err != nil {
 				klog.Errorf("Unsupported common-service-maps: %v", err)
 				os.Exit(1)
 			}
-			if !(cm.Labels != nil && cm.Labels[constant.CsManagedLabel] == "true") {
-				util.EnsureLabelsForConfigMap(cm, map[string]string{
-					constant.CsManagedLabel: "true",
-				})
-				if err := mgr.GetClient().Update(context.TODO(), cm); err != nil {
-					klog.Errorf("Failed to update labels for common-service-maps: %v", err)
-					os.Exit(1)
-				}
+
+			if err := bs.Client.Update(context.TODO(), cm); err != nil {
+				klog.Errorf("Failed to update namespaceMapping in common-service-maps: %v", err)
+				os.Exit(1)
 			}
 		}
 

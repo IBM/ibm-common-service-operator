@@ -535,6 +535,55 @@ func GetCatalogSource(packageName, ns string, r client.Reader) (CatalogSourceNam
 	return subscriptions[0].Spec.CatalogSource, subscriptions[0].Spec.CatalogSourceNamespace
 }
 
+// UpdateCsMaps will update namespaceMapping in common-service-maps
+func UpdateCsMaps(cm *corev1.ConfigMap, requestNsList, servicesNS, operatorNs string) error {
+	commonServiceMaps, ok := cm.Data["common-service-maps.yaml"]
+	if !ok {
+		return fmt.Errorf("there is no common-service-maps.yaml in configmap kube-public/common-service-maps")
+	}
+
+	var cmData CsMaps
+	if err := utilyaml.Unmarshal([]byte(commonServiceMaps), &cmData); err != nil {
+		return fmt.Errorf("failed to fetch data of configmap common-service-maps: %v", err)
+	}
+
+	var alreadyExists bool
+	var newnsMapping nsMapping
+	var count int
+
+	newnsMapping.RequestNs = append(newnsMapping.RequestNs, strings.Split(requestNsList, ",")...)
+	newnsMapping.CsNs = servicesNS
+
+	for _, nsMapping := range cmData.NsMappingList {
+		for _, ns := range nsMapping.RequestNs {
+			if operatorNs == ns {
+				// OperatorNs already exists in the common-service-maps
+				alreadyExists = true
+				cmData.NsMappingList[count] = newnsMapping
+			}
+		}
+		count++
+	}
+
+	// Create a new namespaceMapping
+	if !alreadyExists {
+		cmData.NsMappingList = append(cmData.NsMappingList, newnsMapping)
+	}
+
+	commonServiceMap, error := utilyaml.Marshal(&cmData)
+	if error != nil {
+		return fmt.Errorf("failed to fetch data of configmap common-service-maps: %v", error)
+	}
+	cm.Data["common-service-maps.yaml"] = string(commonServiceMap)
+
+	if !(cm.Labels != nil && cm.Labels[constant.CsManagedLabel] == "true") {
+		EnsureLabelsForConfigMap(cm, map[string]string{
+			constant.CsManagedLabel: "true",
+		})
+	}
+	return nil
+}
+
 // ValidateCsMaps checks common-service-maps has no scope overlapping
 func ValidateCsMaps(cm *corev1.ConfigMap) error {
 	commonServiceMaps, ok := cm.Data["common-service-maps.yaml"]
