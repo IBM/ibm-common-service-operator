@@ -186,16 +186,15 @@ func main() {
 					klog.Errorf("Failed to update common-service-maps: %v", err)
 					os.Exit(1)
 				}
-				if err := bs.Client.Update(context.TODO(), cm); err != nil {
-					klog.Errorf("Failed to update namespaceMapping in common-service-maps: %v", err)
-					os.Exit(1)
-				}
 				// Validate common-service-maps
 				if err := util.ValidateCsMaps(cm); err != nil {
 					klog.Errorf("Unsupported common-service-maps: %v", err)
 					os.Exit(1)
 				}
-
+				if err := bs.Client.Update(context.TODO(), cm); err != nil {
+					klog.Errorf("Failed to update namespaceMapping in common-service-maps: %v", err)
+					os.Exit(1)
+				}
 			}
 		}
 
