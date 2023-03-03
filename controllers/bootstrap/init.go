@@ -25,6 +25,7 @@ import (
 	"text/template"
 	"time"
 
+	utilyaml "github.com/ghodss/yaml"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -679,9 +680,30 @@ func (b *Bootstrap) CreateNsScopeConfigmap() error {
 
 // CreateCsMaps will create a new common-service-maps configmap if not exists
 func (b *Bootstrap) CreateCsMaps() error {
-	cmRes := constant.CommonServiceMaps
-	if err := b.renderTemplate(cmRes, b.CSData, false); err != nil {
-		return err
+
+	var cmData util.CsMaps
+	var newnsMapping util.NsMapping
+
+	newnsMapping.RequestNs = append(newnsMapping.RequestNs, strings.Split(b.CSData.WatchNamespaces, ",")...)
+	newnsMapping.CsNs = b.CSData.ServicesNs
+	cmData.NsMappingList = append(cmData.NsMappingList, newnsMapping)
+	commonServiceMap, error := utilyaml.Marshal(&cmData)
+	if error != nil {
+		klog.Errorf("failed to fetch data of configmap common-service-maps: %v", error)
+	}
+
+	data := make(map[string]string)
+	data["common-service-maps.yaml"] = string(commonServiceMap)
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "common-service-maps",
+			Namespace: "kube-public",
+		},
+		Data: data,
+	}
+
+	if err := b.Client.Create(ctx, cm); err != nil {
+		klog.Errorf("could not create common-service-map in kube-public: %v", err)
 	}
 	return nil
 }

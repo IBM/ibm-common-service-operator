@@ -54,11 +54,11 @@ import (
 
 type CsMaps struct {
 	ControlNs     string      `json:"controlNamespace"`
-	NsMappingList []nsMapping `json:"namespaceMapping"`
+	NsMappingList []NsMapping `json:"namespaceMapping"`
 	// DefaultCsNs   string      `json:"defaultCsNs"`
 }
 
-type nsMapping struct {
+type NsMapping struct {
 	RequestNs []string `json:"requested-from-namespace"`
 	CsNs      string   `json:"map-to-common-service-namespace"`
 }
@@ -548,7 +548,7 @@ func UpdateCsMaps(cm *corev1.ConfigMap, requestNsList, servicesNS, operatorNs st
 	}
 
 	var alreadyExists bool
-	var newnsMapping nsMapping
+	var newnsMapping NsMapping
 	var count int
 
 	newnsMapping.RequestNs = append(newnsMapping.RequestNs, strings.Split(requestNsList, ",")...)
