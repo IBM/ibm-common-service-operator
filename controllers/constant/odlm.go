@@ -42,7 +42,12 @@ spec:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       policydecision: {}
       operandBindInfo: {}
-      operandRequest: {}
+      operandRequest: 
+        requests:
+          - operands:
+              - name: ibm-mongodb-operator
+              - name: ibm-commonui-operator
+            registry: common-service
   - name: ibm-im-operator-v4.0
     spec:
       authentication:
@@ -50,7 +55,12 @@ spec:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       policydecision: {}
       operandBindInfo: {}
-      operandRequest: {}
+      operandRequest:
+        requests:
+          - operands:
+              - name: ibm-mongodb-operator
+              - name: ibm-commonui-operator
+            registry: common-service
   - name: ibm-iam-operator
     spec:
       authentication:
@@ -640,7 +650,12 @@ spec:
       policydecision: {}
       operandBindInfo:
         bindings: {}
-      operandRequest: {}
+      operandRequest:
+        requests:
+          - operands:
+              - name: ibm-mongodb-operator
+              - name: ibm-commonui-operator
+            registry: common-service
   - name: ibm-im-operator-v4.0
     spec:
       authentication:
@@ -648,7 +663,12 @@ spec:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       policydecision: {}
       operandBindInfo: {}
-      operandRequest: {}
+      operandRequest:
+        requests:
+          - operands:
+              - name: ibm-mongodb-operator
+              - name: ibm-commonui-operator
+            registry: common-service
   - name: ibm-iam-operator
     spec:
       authentication:
