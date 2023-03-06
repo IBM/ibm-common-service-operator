@@ -9,9 +9,7 @@ spec:
   storageLocation: bcdr-s3-location
   includeClusterResources: true
   includedNamespaces:
-  - ibm-common-services
-  - openshift-marketplace
-  - openshift-config
+  - '*'
   includedResources:
   - '*'
   orLabelSelectors:
@@ -22,8 +20,11 @@ spec:
       - catalog
       - subscription
       - operand
-      - iam
+      - data
       - entitlementkey
       - commonservice
       - pull-secret
       - operatorgroup
+      - zen
+      - licensing
+      - cert-manager

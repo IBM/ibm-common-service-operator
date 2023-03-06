@@ -1,5 +1,4 @@
 #!/bin/bash
-CONVERT=${1:-'false'}
 function msg() {
   printf '%b\n' "$1"
 }
@@ -38,10 +37,8 @@ function backup_mongodb(){
   #
   SAMPLEPV=$(oc get pvc -n $CS_NAMESPACE | grep mongodb | awk '{ print $3 }')
   SAMPLEPV=$( echo $SAMPLEPV | awk '{ print $1 }' )
-  STGCLASS=$(oc get pvc --no-headers=true mongodbdir-icp-mongodb-0 -n $CS_NAMESPACE | awk '{ print $6 }')
-  if [[ $CONVERT != 'false' ]]; then
-    STGCLASS='backup-sc'
-  fi
+  #STGCLASS=$(oc get pvc --no-headers=true mongodbdir-icp-mongodb-0 -n $CS_NAMESPACE | awk '{ print $6 }')
+  STGCLASS=ibmc-block-retain-gold
   #
   # Backup MongoDB
   #
@@ -52,7 +49,7 @@ metadata:
   name: cs-mongodump
   namespace: $CS_NAMESPACE
   labels:
-    foundationservices.cloudpak.ibm.com: iam
+    foundationservices.cloudpak.ibm.com: data
 spec:
   accessModes:
   - ReadWriteOnce

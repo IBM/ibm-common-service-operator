@@ -10,7 +10,7 @@ try{
          roles: []
        }
     )
-
+   
     db.createUser({
       user: "root",
       pwd: "ADMIN_PASSWORD",
@@ -22,5 +22,5 @@ try{
     ;
 }
 
-use config
+use config 
 db.runCommand({startSession:1});
