@@ -43,11 +43,11 @@ spec:
       policydecision: {}
       operandBindInfo: {}
       operandRequest: 
-        spec:
-          operands:
-            - name: ibm-mongodb-operator
-            - name: ibm-commonui-operator
-          registry: common-service
+        requests:
+          - operands:
+              - name: ibm-mongodb-operator
+              - name: ibm-commonui-operator
+            registry: common-service
   - name: ibm-im-operator-v4.0
     spec:
       authentication:
@@ -56,11 +56,11 @@ spec:
       policydecision: {}
       operandBindInfo: {}
       operandRequest:
-        spec:
-          operands:
-            - name: ibm-mongodb-operator
-            - name: ibm-commonui-operator
-          registry: common-service
+        requests:
+          - operands:
+              - name: ibm-mongodb-operator
+              - name: ibm-commonui-operator
+            registry: common-service
   - name: ibm-iam-operator
     spec:
       authentication:
@@ -651,11 +651,11 @@ spec:
       operandBindInfo:
         bindings: {}
       operandRequest:
-        spec:
-          operands:
-            - name: ibm-mongodb-operator
-            - name: ibm-commonui-operator
-          registry: common-service
+        requests:
+          - operands:
+              - name: ibm-mongodb-operator
+              - name: ibm-commonui-operator
+            registry: common-service
   - name: ibm-im-operator-v4.0
     spec:
       authentication:
@@ -664,11 +664,11 @@ spec:
       policydecision: {}
       operandBindInfo: {}
       operandRequest:
-        spec:
-          operands:
-            - name: ibm-mongodb-operator
-            - name: ibm-commonui-operator
-          registry: common-service
+        requests:
+          - operands:
+              - name: ibm-mongodb-operator
+              - name: ibm-commonui-operator
+            registry: common-service
   - name: ibm-iam-operator
     spec:
       authentication:
