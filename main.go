@@ -198,6 +198,19 @@ func main() {
 			}
 		}
 
+		validatingWebhookConfiguration := bootstrap.Resource{
+			Name:    "ibm-common-service-validating-webhook-" + bs.CSData.OperatorNs,
+			Version: "v1",
+			Group:   "admissionregistration.k8s.io",
+			Kind:    "ValidatingWebhookConfiguration",
+			Scope:   "clusterScope",
+		}
+
+		if err = bs.Cleanup(bs.CSData.OperatorNs, &validatingWebhookConfiguration); err != nil {
+			klog.Errorf("Failed to cleanup validatingWebhookConfig: %v", err)
+			os.Exit(1)
+		}
+
 		klog.Infof("Creating CommonService CR in the namespace %s", bs.CSData.OperatorNs)
 		if err = bs.CreateCsCR(); err != nil {
 			klog.Errorf("Failed to create CommonService CR: %v", err)
