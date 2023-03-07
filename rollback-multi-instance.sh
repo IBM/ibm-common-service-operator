@@ -35,6 +35,7 @@ function main() {
         error "Master common services namespace not specified, please specify common services namespace parameter and try again."
     fi
     rollback
+    refresh_zen
 }
 
 function rollback() {
@@ -171,6 +172,109 @@ function scale_up_pod() {
     ${OC} scale deployment -n ${MASTER_NS} ibm-common-service-operator --replicas=1
     ${OC} scale deployment -n ${MASTER_NS} operand-deployment-lifecycle-manager --replicas=1
     check_healthy "${MASTER_NS}"
+}
+
+# wait for new cs to be ready
+function check_IAM(){
+    mapToCSNS=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].map-to-common-service-namespace' | awk '{print}')
+    sleep 10
+    for namespace in $mapToCSNS
+    do
+        retries=40
+        sleep_time=15
+        total_time_mins=$(( sleep_time * retries / 60))
+        info "Waiting for IAM to come ready in namespace ${namespace}"
+        sleep 10
+        local cm="ibm-common-services-status"
+        local statusName="${namespace}-iamstatus"
+        
+        while true; do
+            if [[ ${retries} -eq 0 ]]; then
+                error "Timeout after ${total_time_mins} minutes waiting for IAM to come ready in namespace ${namespace}"
+            fi
+
+            iamReady=$("${OC}" get configmap -n kube-public -o yaml ${cm} | (grep $statusName || echo fail))
+
+            if [[ "${iamReady}" == "fail" ]]; then
+                retries=$(( retries - 1 ))
+                info "RETRYING: Waiting for IAM service to be Ready (${retries} left)"
+                sleep ${sleep_time}
+            else
+                msg "-----------------------------------------------------------------------"    
+                success "IAM Service Ready in ${namespace}"
+                break
+            fi
+        done
+    done
+}
+
+# update zenservice CRs to be reconciled again
+function refresh_zen(){
+    title " Refreshing Zen Services "
+    msg "-----------------------------------------------------------------------"
+    local cm_name="common-service-maps"
+    #make sure IAM is ready before reconciling.
+    check_IAM #this will likely need to change in the future depending on how we check iam status
+
+    #this command gets all of the ns listed in requested from namesapce fields
+    requestedNS=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].requested-from-namespace' | awk '{print $2}')
+    #this command gets all of the ns listed in map-to-common-service-namespace
+    mapToCSNS=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].map-to-common-service-namespace' | awk '{print}')
+    
+    for namespace in $requestedNS
+    do
+        # remove cs namespace from zen service cr
+        return_value=$(${OC} get zenservice -n ${namespace} || echo "fail")
+        if [[ $return_value != "fail" ]]; then
+            if [[ $return_value != "" ]]; then
+                zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
+                conversionField=$("${OC}" get zenservice ${zenServiceCR} -n ${namespace} -o yaml | yq '.spec | has("conversion")')
+                if [[ $conversionField == "false" ]]; then
+                    ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type='merge' -p '{"spec":{"conversion":"true"}}' || error "Zenservice ${zenServiceCR} in ${namespace} cannot be updated."
+                else
+                    ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type json -p '[{ "op": "remove", "path": "/spec/conversion" }]' || error "Zenservice ${zenServiceCR} in ${namespace} cannot be updated."
+                fi
+                conversionField=""
+            else
+                info "No zen service in namespace ${namespace}. Moving on..."
+            fi
+        else
+          info "Zen not installed in ${namespace}. Moving on..."
+        fi
+        return_value=""
+    done
+    
+    for namespace in $mapToCSNS
+    do
+        # remove cs namespace from zen service cr
+        return_value=$(${OC} get zenservice -n ${namespace} || echo "fail")
+        if [[ $return_value != "fail" ]]; then
+            if [[ $return_value != "" ]]; then
+                zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
+                conversionField=$(${OC} get zenservice ${zenServiceCR} -n ${namespace} -o yaml | yq '.spec | has("conversion")')
+                if [[ $conversionField == "true" ]]; then
+                    ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type='merge' -p '{"spec":{"conversion":"true"}}' || error "Zenservice ${zenServiceCR} in ${namespace} cannot be updated."
+                else
+                    ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type json -p '[{ "op": "remove", "path": "/spec/conversion" }]' || error "Zenservice ${zenServiceCR} in ${namespace} cannot be updated."
+                fi
+                conversionField=""
+            else
+                info "No zen service in namespace ${namespace}. Moving on..."
+            fi
+        else
+            info "Zen not installed in ${namespace}. Moving on..."
+        fi
+        return_value=""
+        #restart mgmt ingress pods
+        pods=$(${OC} get pods -n ${namespace} | grep management-ingress | awk '{print $1}')
+        for pod in $pods
+        do
+            ${OC} delete pod $pod -n ${namespace} || error "Unable to delete pod ${pod} in namespace -n {namespace}"
+        done
+    done
+    success "Reconcile loop initiated for Zenservice instances"
+
+    
 }
 
 function msg() {
