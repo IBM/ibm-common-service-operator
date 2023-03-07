@@ -35,7 +35,6 @@ function main() {
         error "Master common services namespace not specified, please specify common services namespace parameter and try again."
     fi
     rollback
-    refresh_zen
 }
 
 function rollback() {
