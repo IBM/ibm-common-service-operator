@@ -206,28 +206,28 @@ function check_IAM(){
     sleep 10
     for namespace in $mapToCSNS
     do
-        retries=60
+        retries=40
         sleep_time=15
         total_time_mins=$(( sleep_time * retries / 60))
         info "Waiting for IAM to come ready in namespace ${namespace}"
         sleep 10
-        cm="ibm-common-services-status"
-        statusName="$namespace-iamstatus"
+        local cm="ibm-common-services-status"
+        local statusName="${namespace}-iamstatus"
         
         while true; do
             if [[ ${retries} -eq 0 ]]; then
                 error "Timeout after ${total_time_mins} minutes waiting for IAM to come ready in namespace ${namespace}"
             fi
 
-            iamReady=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | grep $statusName | awk '{print $2}')
-            info "iamReady = $iamReady"
-            if [[ "${iamReady}" != "Ready" ]]; then
+            iamReady=$("${OC}" get configmap -n kube-public -o yaml ${cm} | (grep $statusName || echo fail))
+
+            if [[ "${iamReady}" == "fail" ]]; then
                 retries=$(( retries - 1 ))
                 info "RETRYING: Waiting for IAM service to be Ready (${retries} left)"
                 sleep ${sleep_time}
             else
                 msg "-----------------------------------------------------------------------"    
-                success "IAM Service Ready in ${CS_NAMESPACE}"
+                success "IAM Service Ready in ${namespace}"
                 break
             fi
         done
@@ -255,7 +255,7 @@ function refresh_zen(){
             if [[ $return_value != "" ]]; then
                 zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
                 conversionField=$("${OC}" get zenservice ${zenServiceCR} -n ${namespace} -o yaml | yq '.spec | has("conversion")')
-                if [[ $conversionField == "true" ]]; then
+                if [[ $conversionField == "false" ]]; then
                     ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type='merge' -p '{"spec":{"conversion":"true"}}' || error "Zenservice ${zenServiceCR} in ${namespace} cannot be updated."
                 else
                     ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type json -p '[{ "op": "remove", "path": "/spec/conversion" }]' || error "Zenservice ${zenServiceCR} in ${namespace} cannot be updated."
