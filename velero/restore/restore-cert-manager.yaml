@@ -1,7 +1,7 @@
 apiVersion: velero.io/v1
 kind: Restore
 metadata:
-  name: restore-iam
+  name: restore-cert-manager
   namespace: velero
 spec:
   backupName: __BACKUP_NAME__
@@ -14,7 +14,7 @@ spec:
   - resticrepositories.velero.io
   hooks: {}
   includedNamespaces:
-  - ibm-common-services
+  - '*'
   labelSelector:
     matchLabels:
-      foundationservices.cloudpak.ibm.com: iam
+      foundationservices.cloudpak.ibm.com: cert-manager

@@ -2,11 +2,11 @@ kind: Pod
 apiVersion: v1
 metadata:
   annotations:
-    backup.velero.io/backup-volumes: mongodump
+    backup.velero.io/backup-volumes: mongodump,zendump
   name: hold-for-backup
   namespace: ibm-common-services
   labels:
-    foundationservices.cloudpak.ibm.com: iam
+    foundationservices.cloudpak.ibm.com: data
 spec:
   containers:
   - name: hold-for-backup
@@ -16,8 +16,13 @@ spec:
     - mountPath: "/dump"
       subpath: dump
       name: mongodump
+    - mountPath: "/zen-dump"
+      name: zendump
   volumes:
   - name: mongodump
     persistentVolumeClaim:
       claimName: cs-mongodump
+  - name: zendump
+    persistentVolumeClaim:
+      claimName: zen-backup-pvc
   restartPolicy: Never
