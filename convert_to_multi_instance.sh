@@ -261,7 +261,7 @@ function check_healthy() {
 
     sleep 10
 
-    retries=20
+    retries=70
     sleep_time=15
     total_time_mins=$(( sleep_time * retries / 60))
     info "Waiting for IBM Common Services CR is Succeeded"
