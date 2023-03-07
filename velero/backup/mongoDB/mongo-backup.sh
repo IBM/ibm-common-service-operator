@@ -1,4 +1,5 @@
 #!/bin/bash
+# Used by multi-namespace
 CONVERT=${1:-'false'}
 function msg() {
   printf '%b\n' "$1"
@@ -40,6 +41,7 @@ function backup_mongodb(){
   SAMPLEPV=$( echo $SAMPLEPV | awk '{ print $1 }' )
   #STGCLASS=$(oc get pvc --no-headers=true mongodbdir-icp-mongodb-0 -n $CS_NAMESPACE | awk '{ print $6 }')
   STGCLASS=ibmc-block-retain-gold
+  # Used by multi-namespace
   if [[ $CONVERT != 'false' ]]; then
     STGCLASS='backup-sc'
   fi
