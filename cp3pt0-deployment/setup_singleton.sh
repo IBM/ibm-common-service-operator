@@ -11,6 +11,7 @@
 # ---------- Command arguments ----------
 OC=oc
 ENABLE_LICENSING=0
+ENABLE_PRIVATE_CATALOG=0
 CHANNEL="v4.0"
 SOURCE="opencloud-operators"
 SOURCE_NS="openshift-marketplace"
@@ -46,6 +47,9 @@ function parse_arguments() {
         --enable-licensing)
             ENABLE_LICENSING=1
             ;;
+        --enable-private-catalog)
+            ENABLE_PRIVATE_CATALOG=1
+            ;;
         -c | --channel)
             shift
             CHANNEL=$1
@@ -53,10 +57,6 @@ function parse_arguments() {
         -s | --source)
             shift
             SOURCE=$1
-            ;;
-        -n | --source-namespace)
-            shift
-            SOURCE_NS=$1
             ;;
         -h | --help)
             print_usage
@@ -81,10 +81,10 @@ function print_usage() {
     echo "Options:"
     echo "   --oc string                    File path to oc CLI. Default uses oc in your PATH"
     echo "   --enable-licensing             Set this flag to install ibm-licensing-operator"
+    echo "   --enable-private-catalog       Set this flag to use namespace scoped CatalogSource. Default is in openshift-marketplace namespace"
     echo "   -c, --channel string           Channel for Subscription(s). Default is v4.0"   
     echo "   -i, --install-mode string      InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
     echo "   -s, --source string            CatalogSource name. This assumes your CatalogSource is already created. Default is opencloud-operators"
-    echo "   -n, --namespace string         Namespace of CatalogSource. Default is openshift-marketplace"
     echo "   -h, --help                     Print usage information"
     echo ""
 }
@@ -103,6 +103,9 @@ function install_cert_manager() {
         return 0
     fi
 
+    if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
+        SOURCE_NS="ibm-cert-manager"
+    fi
     create_namespace ibm-cert-manager
     create_operator_group "ibm-cert-manager-operator" "ibm-cert-manager" "{}"
     create_subscription "ibm-cert-manager-operator" "ibm-cert-manager" "$CHANNEL" "ibm-cert-manager-operator" "${SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
@@ -119,6 +122,10 @@ function install_licensing() {
     if [ $? -eq 0 ]; then
         warning "There is an ibm-licensing-operator Subscription already\n"
         return 0
+    fi
+
+    if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
+        SOURCE_NS="ibm-licensing"
     fi
 
     create_namespace ibm-licensing
