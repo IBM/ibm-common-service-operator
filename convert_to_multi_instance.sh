@@ -206,10 +206,10 @@ function check_IAM(){
     sleep 10
     for namespace in $mapToCSNS
     do
-        retries=20
+        retries=60
         sleep_time=15
         total_time_mins=$(( sleep_time * retries / 60))
-        info "Waiting for IAM to come ready"
+        info "Waiting for IAM to come ready in namespace ${namespace}"
         sleep 10
         cm="ibm-common-services-status"
         
@@ -219,7 +219,7 @@ function check_IAM(){
             fi
 
             iamReady=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | grep $namespace | awk '{print $2}')
-
+            info "iamReady = $iamReady"
             if [[ "${iamReady}" != "Ready" ]]; then
                 retries=$(( retries - 1 ))
                 info "RETRYING: Waiting for IAM service to be Ready (${retries} left)"
