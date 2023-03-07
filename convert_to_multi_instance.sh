@@ -212,13 +212,14 @@ function check_IAM(){
         info "Waiting for IAM to come ready in namespace ${namespace}"
         sleep 10
         cm="ibm-common-services-status"
+        statusName="$namespace-iamstatus"
         
         while true; do
             if [[ ${retries} -eq 0 ]]; then
                 error "Timeout after ${total_time_mins} minutes waiting for IAM to come ready in namespace ${namespace}"
             fi
 
-            iamReady=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | grep $namespace | awk '{print $2}')
+            iamReady=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | grep $statusName | awk '{print $2}')
             info "iamReady = $iamReady"
             if [[ "${iamReady}" != "Ready" ]]; then
                 retries=$(( retries - 1 ))
