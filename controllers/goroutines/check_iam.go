@@ -36,10 +36,11 @@ import (
 
 // CheckIamStatus check IAM status if ready
 func CheckIamStatus(bs *bootstrap.Bootstrap) {
-	MasterNamespace = bs.CSData.CPFSNs
-	ServicesNamespace = bs.CSData.ServicesNs
 
 	for {
+		MasterNamespace = bs.CSData.CPFSNs
+		ServicesNamespace = bs.CSData.ServicesNs
+
 		if !getIamSubscription(bs.Reader) {
 			if err := cleanUpConfigmap(bs); err != nil {
 				klog.Errorf("Create or update configmap failed: %v", err)
