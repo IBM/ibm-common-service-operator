@@ -206,7 +206,7 @@ function check_IAM(){
     sleep 10
     for namespace in $mapToCSNS
     do
-        retries=40
+        retries=75
         sleep_time=15
         total_time_mins=$(( sleep_time * retries / 60))
         info "Waiting for IAM to come ready in namespace ${namespace}"
