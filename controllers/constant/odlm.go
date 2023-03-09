@@ -436,7 +436,7 @@ spec:
   operators:
   - name: ibm-licensing-operator
     namespace: "{{ .CPFSNs }}"
-    channel: {{ .Channel }}
+    channel: v3.23
     packageName: ibm-licensing-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -503,7 +503,7 @@ spec:
     sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-management-ingress-operator
     namespace: "{{ .CPFSNs }}"
-    channel: {{ .Channel }}
+    channel: v3.23
     packageName: ibm-management-ingress-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -921,7 +921,7 @@ spec:
   operators:
   - name: ibm-licensing-operator
     namespace: "{{ .CPFSNs }}"
-    channel: {{ .Channel }}
+    channel: v3.23
     packageName: ibm-licensing-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -971,7 +971,7 @@ spec:
     sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-management-ingress-operator
     namespace: "{{ .CPFSNs }}"
-    channel: {{ .Channel }}
+    channel: v3.23
     packageName: ibm-management-ingress-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
