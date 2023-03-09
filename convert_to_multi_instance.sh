@@ -110,10 +110,11 @@ function prepare_cluster() {
     fi
     return_value="reset"
     #might need a more robust check for if licensing is installed
-    "${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-licensing-operator
+    #"${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-licensing-operator
     csv=$("${OC}" get -n "${master_ns}" csv | (grep ibm-licensing-operator || echo "fail") | awk '{print $1}')
     if [[ $csv != "fail" ]]; then
         migrate_lic_cms $master_ns $controlNs
+        "${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-licensing-operator
         "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
     fi
 
