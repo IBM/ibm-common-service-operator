@@ -109,14 +109,12 @@ function prepare_cluster() {
         "${OC}" delete -n "${master_ns}" --ignore-not-found ibmlicensing instance
     fi
     return_value="reset"
-    licensing="false"
     #might need a more robust check for if licensing is installed
     "${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-licensing-operator
     csv=$("${OC}" get -n "${master_ns}" csv | (grep ibm-licensing-operator || echo "fail") | awk '{print $1}')
     if [[ $csv != "fail" ]]; then
+        migrate_lic_cms $master_ns $controlNs
         "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
-        #could trigger licensing flag here for backup/restore of licensing cms
-        licensing="true"
     fi
 
     "${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-crossplane-operator-app
@@ -125,10 +123,6 @@ function prepare_cluster() {
     "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
     csv=$("${OC}" get -n "${master_ns}" csv | (grep ibm-crossplane-provider-kubernetes-operator || echo "fail") | awk '{print $1}')
     "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
-
-    if [[ $licensing == "true" ]]; then
-        migrate_lic_cms $master_ns $controlNs
-    fi
 }
 
 function migrate_lic_cms() {
