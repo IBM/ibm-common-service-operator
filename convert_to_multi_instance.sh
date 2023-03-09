@@ -127,11 +127,11 @@ function prepare_cluster() {
     "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
 
     if [[ $licensing == "true" ]]; then
-        restore_lic_cms $master_ns $controlNs
+        migrate_lic_cms $master_ns $controlNs
     fi
 }
 
-function restore_lic_cms() {
+function migrate_lic_cms() {
     title "Copying over Licensing Configmaps"
     msg "-----------------------------------------------------------------------"
     local namespace=$1
@@ -150,11 +150,12 @@ function restore_lic_cms() {
 "ibm-licensing-services"
 )
 
-    for cm in $POSSIBLE_CONFIGMAPS
+    for cm in ${POSSIBLE_CONFIGMAPS[@]}
     do
-        return_value=$(${OC} get cm -n $namespace | grep $cm || echo "fail")
-        if [[ return_value != "fail" ]]; then
-            ${OC} get cm -n $namespace $cm -o yaml > tmp.yaml
+        return_value=$(${OC} get cm -n $namespace --ignore-not-found | grep $cm || echo "fail")
+        info "return value for $cm: $return_value"
+        if [[ $return_value != "fail" ]]; then
+            ${OC} get cm -n $namespace $cm -o yaml --ignore-not-found > tmp.yaml
             #edit the file to change the namespace to controlNs
             yq '.metadata.namespace = "'${controlNs}'"' tmp.yaml
             ${OC} apply -f tmp.yaml
