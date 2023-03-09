@@ -163,7 +163,7 @@ function migrate_lic_cms() {
             info "Licensing configmap $cm copied from $namespace to $controlNs"
         fi
     done
-    success "Licensing configmaps copied from $namespace to $controlNS"
+    success "Licensing configmaps copied from $namespace to $controlNs"
 }
 
 # scale back cs pod 
