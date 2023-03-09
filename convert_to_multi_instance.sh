@@ -148,7 +148,6 @@ function migrate_lic_cms() {
     for cm in ${POSSIBLE_CONFIGMAPS[@]}
     do
         return_value=$(${OC} get cm -n $namespace --ignore-not-found | grep $cm || echo "fail")
-        info "return value for $cm: $return_value"
         if [[ $return_value != "fail" ]]; then
             ${OC} get cm -n $namespace $cm -o yaml --ignore-not-found > tmp.yaml
             #edit the file to change the namespace to controlNs
