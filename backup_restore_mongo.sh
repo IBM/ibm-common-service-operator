@@ -33,6 +33,7 @@ function main() {
     prep_restore
     restore
     cleanup
+    refresh_auth_idp
 }
 
 # verify that all pre-requisite CLI tools exist and parameters set
@@ -292,6 +293,14 @@ function cleanup(){
 
     success "Cleanup complete."
 
+}
+
+function refresh_auth_idp(){
+    title " Restarting auth-idp pod in namespace $TARGET_NAMESPACE "
+    msg "-----------------------------------------------------------------------"
+    local auth_pod=$(${OC} get pods -n $TARGET_NAMESPACE | grep auth-idp | awk '{print $1}')
+    ${OC} delete pod $auth_pod -n $TARGET_NAMESPACE || error "Pod $auth_pod could not be deleted"
+    success "Pod $auth_pod deleted. Please allow a few minutes for it to restart."
 }
 
 function msg() {
