@@ -106,6 +106,7 @@ function prepare_cluster() {
     # This makes recovery from simple pre-requisite errors easier.
     return_value=$(("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
     if [[ $return_value == "exists" ]]; then
+        migrate_lic_cms $master_ns $controlNs
         "${OC}" delete -n "${master_ns}" --ignore-not-found ibmlicensing instance
     fi
     return_value="reset"
@@ -113,7 +114,6 @@ function prepare_cluster() {
     #"${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-licensing-operator
     csv=$("${OC}" get -n "${master_ns}" csv | (grep ibm-licensing-operator || echo "fail") | awk '{print $1}')
     if [[ $csv != "fail" ]]; then
-        migrate_lic_cms $master_ns $controlNs
         "${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-licensing-operator
         "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
     fi
@@ -147,17 +147,21 @@ function migrate_lic_cms() {
 
     for cm in ${POSSIBLE_CONFIGMAPS[@]}
     do
-        return_value=$(${OC} get cm -n $namespace --ignore-not-found | grep $cm || echo "fail")
+        return_value=$(${OC} get cm -n $namespace --ignore-not-found | (grep $cm || echo "fail") awk '{print $1}')
+        info "return value for $cm: $return_value"
         if [[ $return_value != "fail" ]]; then
-            ${OC} get cm -n $namespace $cm -o yaml --ignore-not-found > tmp.yaml
-            #edit the file to change the namespace to controlNs
-            yq '.metadata.namespace = "'${controlNs}'"' tmp.yaml
-            ${OC} apply -f tmp.yaml
-            rm tmp.yaml -f
-            info "Licensing configmap $cm copied from $namespace to $controlNs"
+            if [[ $return_value == $cm ]]; then
+                ${OC} get cm -n $namespace $cm -o yaml --ignore-not-found > tmp.yaml
+                #edit the file to change the namespace to controlNs
+                yq '.metadata.namespace = "'${controlNs}'"' tmp.yaml
+                ${OC} apply -f tmp.yaml
+                rm tmp.yaml -f
+                info "Licensing configmap $cm copied from $namespace to $controlNs"
+            fi
         fi
     done
     success "Licensing configmaps copied from $namespace to $controlNs"
+    exit
 }
 
 # scale back cs pod 
