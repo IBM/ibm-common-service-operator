@@ -147,7 +147,7 @@ function migrate_lic_cms() {
 
     for cm in ${POSSIBLE_CONFIGMAPS[@]}
     do
-        return_value=$(${OC} get cm -n $namespace --ignore-not-found | (grep $cm || echo "fail") awk '{print $1}')
+        return_value=$(${OC} get cm -n $namespace --ignore-not-found | (grep $cm || echo "fail") | awk '{print $1}')
         info "return value for $cm: $return_value"
         if [[ $return_value != "fail" ]]; then
             if [[ $return_value == $cm ]]; then
