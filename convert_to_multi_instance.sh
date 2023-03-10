@@ -25,7 +25,6 @@ YQ=${1:-yq}
 
 cs_operator_channel=
 catalog_source=
-
 function main() {
     msg "Conversion Script Version v1.0.0"
     prereq
@@ -108,12 +107,17 @@ function prepare_cluster() {
     # This makes recovery from simple pre-requisite errors easier.
     return_value=$(("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
     if [[ $return_value == "exists" ]]; then
+        migrate_lic_cms $master_ns $controlNs
         "${OC}" delete -n "${master_ns}" --ignore-not-found ibmlicensing instance
     fi
     return_value="reset"
-    "${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-licensing-operator
+    #might need a more robust check for if licensing is installed
+    #"${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-licensing-operator
     csv=$("${OC}" get -n "${master_ns}" csv | (grep ibm-licensing-operator || echo "fail") | awk '{print $1}')
-    "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
+    if [[ $csv != "fail" ]]; then
+        "${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-licensing-operator
+        "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
+    fi
 
     "${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-crossplane-operator-app
     "${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-crossplane-provider-kubernetes-operator-app
@@ -121,6 +125,44 @@ function prepare_cluster() {
     "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
     csv=$("${OC}" get -n "${master_ns}" csv | (grep ibm-crossplane-provider-kubernetes-operator || echo "fail") | awk '{print $1}')
     "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
+}
+
+function migrate_lic_cms() {
+    title "Copying over Licensing Configmaps"
+    msg "-----------------------------------------------------------------------"
+    local namespace=$1
+    local controlNs=$2
+    POSSIBLE_CONFIGMAPS=("ibm-licensing-config"
+"ibm-licensing-annotations"
+"ibm-licensing-products"
+"ibm-licensing-products-vpc-hour"
+"ibm-licensing-cloudpaks"
+"ibm-licensing-products-groups"
+"ibm-licensing-cloudpaks-groups"
+"ibm-licensing-cloudpaks-metrics"
+"ibm-licensing-products-metrics"
+"ibm-licensing-products-metrics-groups"
+"ibm-licensing-cloudpaks-metrics-groups"
+"ibm-licensing-services"
+)
+
+    for cm in ${POSSIBLE_CONFIGMAPS[@]}
+    do
+        return_value=$(${OC} get cm -n $namespace --ignore-not-found | (grep $cm || echo "fail") | awk '{print $1}')
+        info "return value for $cm: $return_value"
+        if [[ $return_value != "fail" ]]; then
+            if [[ $return_value == $cm ]]; then
+                ${OC} get cm -n $namespace $cm -o yaml --ignore-not-found > tmp.yaml
+                #edit the file to change the namespace to controlNs
+                yq '.metadata.namespace = "'${controlNs}'"' tmp.yaml
+                ${OC} apply -f tmp.yaml
+                rm tmp.yaml -f
+                info "Licensing configmap $cm copied from $namespace to $controlNs"
+            fi
+        fi
+    done
+    success "Licensing configmaps copied from $namespace to $controlNs"
+    exit
 }
 
 # scale back cs pod 
