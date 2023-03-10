@@ -22,17 +22,62 @@ set -o nounset
 
 OC=${3:-oc}
 YQ=${3:-yq}
-ORIGINAL_NAMESPACE=$1
-TARGET_NAMESPACE=$2
+ORIGINAL_NAMESPACE=
+TARGET_NAMESPACE=
+backup="false"
+restore="false"
 function main() {
+    while [ "$#" -gt "0" ]
+    do
+        case "$1" in
+        "-h"|"--help")
+            usage
+            exit 0
+            ;;
+        "-b")
+            ORIGINAL_NAMESPACE=$2
+            backup="true"
+            shift
+            ;;
+        "-r")
+            TARGET_NAMESPACE=$2
+            restore="true"
+            shift
+            ;;
+        *)
+            warning "invalid option -- \`$1\`"
+            usage
+            exit 1
+            ;;
+        esac
+        shift
+    done
     msg "MongoDB Backup and Restore v1.0.0"
     cleanup
     prereq
-    prep_backup
-    backup
-    prep_restore
-    restore
+    if [[ $backup == "true" ]]; then
+        prep_backup
+        backup
+    fi
+    if [[ $restore == "true" ]]; then
+        prep_restore
+        restore
+    fi
     cleanup
+}
+
+function usage() {
+	local script="${0##*/}"
+
+	while read -r ; do echo "${REPLY}" ; done <<-EOF
+	Usage: ${script} [OPTION]...
+	Uninstall common services
+	Options:
+	Mandatory arguments to long options are mandatory for short options too.
+	  -h, --help                    display this help and exit
+	  -b                            specify the namespace to backup
+      -r                            specify the namespace where data is to be restored
+	EOF
 }
 
 # verify that all pre-requisite CLI tools exist and parameters set
@@ -48,6 +93,13 @@ function prereq() {
         ${OC} create namespace $TARGET_NAMESPACE || info "Target namespace ${TARGET_NAMESPACE} already exists. Moving on..."
     fi
 
+    success "Prerequisites present."
+}
+
+function prep_backup() {
+    title " Preparing for Mongo backup in namespace $ORIGINAL_NAMESPACE "
+    msg "-----------------------------------------------------------------------"
+    
     #check if files are already present on machine before trying to download (airgap)
     #TODO add clarifying messages and check response code to make more transparent
     #backup files
@@ -66,36 +118,6 @@ function prereq() {
         wget -O mongo-backup.sh https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongoDB/mongo-backup.sh
     fi
 
-    #Restore files
-    info "Checking for necessary restore files..."
-    if [[ -f "mongodbrestore.yaml" ]]; then
-        info "mongodbrestore.yaml already present"
-    else
-        info "mongodbrestore.yaml not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongodbrestore.yaml"
-        wget https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongodbrestore.yaml || error "Failed to download mongodbrestore.yaml"
-    fi
-
-    if [[ -f "set_access.js" ]]; then
-        info "set_access.js already present"
-    else
-        info "set_access.js not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/set_access.js"
-        wget https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/set_access.js || error "Failed to download set_access.js"
-    fi
-
-    if [[ -f "mongo-restore.sh" ]]; then
-        info "mongo-restore.sh already present"
-    else
-        info "set_access.js not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongo-restore.sh"
-        wget https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongo-restore.sh || error "Failed to download mongo-restore.sh"
-    fi
-
-    success "Prerequisites present."
-}
-
-function prep_backup() {
-    title " Preparing for Mongo backup in namespace $ORIGINAL_NAMESPACE "
-    msg "-----------------------------------------------------------------------"
-    
     local pvx=$(${OC} get pv | grep mongodbdir | awk 'FNR==1 {print $1}')
     local storageClassName=$("${OC}" get pv -o yaml ${pvx} | yq '.spec.storageClassName' | awk '{print}')
     
@@ -165,6 +187,30 @@ function backup() {
 function prep_restore() {
     title " Pepare for restore in namespace $TARGET_NAMESPACE "
     msg "-----------------------------------------------------------------------"
+    
+    #Restore files
+    info "Checking for necessary restore files..."
+    if [[ -f "mongodbrestore.yaml" ]]; then
+        info "mongodbrestore.yaml already present"
+    else
+        info "mongodbrestore.yaml not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongodbrestore.yaml"
+        wget https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongodbrestore.yaml || error "Failed to download mongodbrestore.yaml"
+    fi
+
+    if [[ -f "set_access.js" ]]; then
+        info "set_access.js already present"
+    else
+        info "set_access.js not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/set_access.js"
+        wget https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/set_access.js || error "Failed to download set_access.js"
+    fi
+
+    if [[ -f "mongo-restore.sh" ]]; then
+        info "mongo-restore.sh already present"
+    else
+        info "set_access.js not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongo-restore.sh"
+        wget https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongo-restore.sh || error "Failed to download mongo-restore.sh"
+    fi
+    
     ${OC} get pvc -n ${ORIGINAL_NAMESPACE} cs-mongodump -o yaml > cs-mongodump-copy.yaml
     local pvx=$(${OC} get pv | grep cs-mongodump | awk '{print $1}')
     export PVX=${pvx}
