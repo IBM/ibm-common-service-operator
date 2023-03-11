@@ -99,7 +99,9 @@ function prereq() {
     if [[ -z $ORIGINAL_NAMESPACE ]] && [[ -z $TARGET_NAMESPACE ]]; then
         error "Neither backup nor restore namespaces were set. Use -h or --help to see script usage options"
     elif [[ -z $ORIGINAL_NAMESPACE ]] && [[ $cleanup == "false" ]]; then
-        error "Backup namespace not specified. Please specify backup namespace with --bns. Use -h or --help for script usage"
+        if [[ $backup == "true" || $restore == "true" ]]; then
+            error "Backup namespace not specified. Please specify backup namespace with --bns. Use -h or --help for script usage"
+        fi
     fi
     
     if [[ $backup == "false" ]] && [[ $restore == "false" ]] && [[ $cleanup == "false" ]]; then
