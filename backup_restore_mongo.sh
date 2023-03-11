@@ -20,12 +20,13 @@ set -o pipefail
 set -o errtrace
 set -o nounset
 
-OC=${3:-oc}
-YQ=${3:-yq}
+OC=oc
+YQ=yq
 ORIGINAL_NAMESPACE=
 TARGET_NAMESPACE=
 backup="false"
 restore="false"
+cleanup="false"
 function main() {
     while [ "$#" -gt "0" ]
     do
@@ -34,26 +35,31 @@ function main() {
             usage
             exit 0
             ;;
-        "-b")
+        "--bns")
             ORIGINAL_NAMESPACE=$2
-            backup="true"
             shift
+            ;;
+        "--rns")
+            TARGET_NAMESPACE=$2
+            shift
+            ;;
+        "-b")
+            backup="true"
             ;;
         "-r")
-            TARGET_NAMESPACE=$2
             restore="true"
-            shift
+            ;;
+        "-c")
+            cleanup="true"
             ;;
         *)
-            warning "invalid option -- \`$1\`"
-            usage
-            exit 1
+            error "invalid option -- \`$1\`. Use the -h or --help option for usage info."
             ;;
         esac
         shift
     done
+
     msg "MongoDB Backup and Restore v1.0.0"
-    cleanup
     prereq
     if [[ $backup == "true" ]]; then
         prep_backup
@@ -63,7 +69,9 @@ function main() {
         prep_restore
         restore
     fi
-    cleanup
+    if [[ $cleanup == "true" ]]; then
+        cleanup
+    fi
 }
 
 function usage() {
@@ -75,8 +83,11 @@ function usage() {
 	Options:
 	Mandatory arguments to long options are mandatory for short options too.
 	  -h, --help                    display this help and exit
-	  -b                            specify the namespace to backup
-      -r                            specify the namespace where data is to be restored
+	  -bns                          specify the namespace to backup/where the backup exists
+      -rns                          specify the namespace where data is to be restored
+      -b                            run the backup process
+      -r                            run the restore process
+      -c                            cleanup resources used or created by this script
 	EOF
 }
 
@@ -84,13 +95,15 @@ function usage() {
 function prereq() {
     which "${OC}" || error "Missing oc CLI"
     which "${YQ}" || error "Missing yq"
-    if [[ -z $ORIGINAL_NAMESPACE ]]; then
-        export ORIGINAL_NAMESPACE=ibm-common-services
+
+    if [[ -z $ORIGINAL_NAMESPACE ]] && [[ -z $TARGET_NAMESPACE ]]; then
+        error "Neither backup nor restore namespaces were set. Use -h or --help to see script usage options"
+    elif [[ -z $ORIGINAL_NAMESPACE ]] && [[ $cleanup == "false" ]]; then
+        error "Backup namespace not specified. Please specify backup namespace with --bns. Use -h or --help for script usage"
     fi
-    if [[ -z $TARGET_NAMESPACE ]]; then
-        error "TARGET_NAMESPACE not specified, please specify target namespace parameter and try again."
-    else
-        ${OC} create namespace $TARGET_NAMESPACE || info "Target namespace ${TARGET_NAMESPACE} already exists. Moving on..."
+    
+    if [[ $backup == "false" ]] && [[ $restore == "false" ]] && [[ $cleanup == "false" ]]; then
+        error "Neither backup nor restore processes were triggered. Use -h or --help to see script usage options"
     fi
 
     success "Prerequisites present."
@@ -297,43 +310,48 @@ function cleanup(){
     title " Cleaning up resources created during backup restore process "
     msg "-----------------------------------------------------------------------"
     
-    info "Deleting pvc and pv used in backup restore process"
-    
-    #clean up backup resources
-    local return_value=$("${OC}" get pvc -n $ORIGINAL_NAMESPACE | grep cs-mongodump || echo failed)
-    if [[ $return_value != "failed" ]]; then
-    #delete backup items in original namespace
-        ${OC} delete job mongodb-backup -n ${ORIGINAL_NAMESPACE} || info "Backup job already deleted. Moving on..."
-        ${OC} patch pvc cs-mongodump -n $ORIGINAL_NAMESPACE --type=merge -p '{"metadata": {"finalizers":null}}'
-        ${OC} delete pvc cs-mongodump -n $ORIGINAL_NAMESPACE
-    else
-        info "Resources used in backup already cleaned up. Moving on..."
+    if [[ $ORIGINAL_NAMESPACE != "" ]]; then
+        info "Deleting resources used in backup process from namespace $ORIGINAL_NAMESPACE"
+        
+        #clean up backup resources
+        local return_value=$("${OC}" get pvc -n $ORIGINAL_NAMESPACE | grep cs-mongodump || echo failed)
+        if [[ $return_value != "failed" ]]; then
+        #delete backup items in original namespace
+            ${OC} delete job mongodb-backup -n ${ORIGINAL_NAMESPACE} || info "Backup job already deleted. Moving on..."
+            ${OC} patch pvc cs-mongodump -n $ORIGINAL_NAMESPACE --type=merge -p '{"metadata": {"finalizers":null}}'
+            ${OC} delete pvc cs-mongodump -n $ORIGINAL_NAMESPACE
+        else
+            info "Resources used in backup already cleaned up. Moving on..."
+        fi
+
+        local rbac=$(${OC} get clusterrolebinding cs-br -n $ORIGINAL_NAMESPACE || echo failed)
+        if [[ $rbac != "failed" ]]; then
+            info "Deleting RBAC from backup restore process"
+            ${OC} delete clusterrolebinding cs-br -n $ORIGINAL_NAMESPACE
+        fi
+
+        local scExist=$(${OC} get sc backup-sc -n $ORIGINAL_NAMESPACE || echo failed)
+        if [[ $scExist != "failed" ]]; then
+            info "Deleting storage class used in backup restore process"
+            ${OC} delete sc backup-sc
+        fi
     fi
 
-    #clean up restore resources
-    local return_value=$("${OC}" get pvc -n $TARGET_NAMESPACE | grep cs-mongodump || echo failed)
-    if [[ $return_value != "failed" ]]; then
-    #delete retore items in target namespace
-        local boundPV=$(${OC} get pvc cs-mongodump -n $TARGET_NAMESPACE -o yaml | yq '.spec.volumeName' | awk '{print}')
-        ${OC} delete job mongodb-restore -n ${TARGET_NAMESPACE} || info "Restore job already deleted. Moving on..."
-        ${OC} patch pvc cs-mongodump -n $TARGET_NAMESPACE --type=merge -p '{"metadata": {"finalizers":null}}'
-        ${OC} delete pvc cs-mongodump -n $TARGET_NAMESPACE
-        ${OC} patch pv $boundPV --type=merge -p '{"metadata": {"finalizers":null}}'
-        ${OC} delete pv $boundPV
-    else
-        info "Resources used in restore already cleaned up. Moving on..."
-    fi
-
-    local rbac=$(${OC} get clusterrolebinding cs-br -n $ORIGINAL_NAMESPACE || echo failed)
-    if [[ $rbac != "failed" ]]; then
-        info "Deleting RBAC from backup restore process"
-        ${OC} delete clusterrolebinding cs-br -n $ORIGINAL_NAMESPACE
-    fi
-
-    local scExist=$(${OC} get sc backup-sc -n $ORIGINAL_NAMESPACE || echo failed)
-    if [[ $scExist != "failed" ]]; then
-        info "Deleting storage class used in backup restore process"
-        ${OC} delete sc backup-sc
+    if [[ $TARGET_NAMESPACE != "" ]]; then
+        info "Deleting resources used in restore process from namespace $TARGET_NAMESPACE"
+        #clean up restore resources
+        local return_value=$("${OC}" get pvc -n $TARGET_NAMESPACE | grep cs-mongodump || echo failed)
+        if [[ $return_value != "failed" ]]; then
+        #delete retore items in target namespace
+            local boundPV=$(${OC} get pvc cs-mongodump -n $TARGET_NAMESPACE -o yaml | yq '.spec.volumeName' | awk '{print}')
+            ${OC} delete job mongodb-restore -n ${TARGET_NAMESPACE} || info "Restore job already deleted. Moving on..."
+            ${OC} patch pvc cs-mongodump -n $TARGET_NAMESPACE --type=merge -p '{"metadata": {"finalizers":null}}'
+            ${OC} delete pvc cs-mongodump -n $TARGET_NAMESPACE
+            ${OC} patch pv $boundPV --type=merge -p '{"metadata": {"finalizers":null}}'
+            ${OC} delete pv $boundPV
+        else
+            info "Resources used in restore already cleaned up. Moving on..."
+        fi
     fi
 
     success "Cleanup complete."
