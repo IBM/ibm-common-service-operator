@@ -61,6 +61,7 @@ function main() {
 
     msg "MongoDB Backup and Restore v1.0.0"
     prereq
+    
     if [[ $backup == "true" ]]; then
         prep_backup
         backup
@@ -68,6 +69,7 @@ function main() {
     if [[ $restore == "true" ]]; then
         prep_restore
         restore
+        refresh_auth_idp
     fi
     if [[ $cleanup == "true" ]]; then
         cleanup
@@ -358,6 +360,14 @@ function cleanup(){
 
     success "Cleanup complete."
 
+}
+
+function refresh_auth_idp(){
+    title " Restarting auth-idp pod in namespace $TARGET_NAMESPACE "
+    msg "-----------------------------------------------------------------------"
+    local auth_pod=$(${OC} get pods -n $TARGET_NAMESPACE | grep auth-idp | awk '{print $1}')
+    ${OC} delete pod $auth_pod -n $TARGET_NAMESPACE || error "Pod $auth_pod could not be deleted"
+    success "Pod $auth_pod deleted. Please allow a few minutes for it to restart."
 }
 
 function msg() {

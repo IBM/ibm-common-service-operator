@@ -25,7 +25,6 @@ YQ=${1:-yq}
 
 cs_operator_channel=
 catalog_source=
-
 function main() {
     msg "Conversion Script Version v1.0.0"
     prereq
@@ -34,6 +33,7 @@ function main() {
     scale_up_pod
     restart_CS_pods
     install_new_CS
+    refresh_zen
 }
 
 
@@ -107,12 +107,17 @@ function prepare_cluster() {
     # This makes recovery from simple pre-requisite errors easier.
     return_value=$(("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
     if [[ $return_value == "exists" ]]; then
+        migrate_lic_cms $master_ns $controlNs
         "${OC}" delete -n "${master_ns}" --ignore-not-found ibmlicensing instance
     fi
     return_value="reset"
-    "${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-licensing-operator
+    #might need a more robust check for if licensing is installed
+    #"${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-licensing-operator
     csv=$("${OC}" get -n "${master_ns}" csv | (grep ibm-licensing-operator || echo "fail") | awk '{print $1}')
-    "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
+    if [[ $csv != "fail" ]]; then
+        "${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-licensing-operator
+        "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
+    fi
 
     "${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-crossplane-operator-app
     "${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-crossplane-provider-kubernetes-operator-app
@@ -120,6 +125,44 @@ function prepare_cluster() {
     "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
     csv=$("${OC}" get -n "${master_ns}" csv | (grep ibm-crossplane-provider-kubernetes-operator || echo "fail") | awk '{print $1}')
     "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
+}
+
+function migrate_lic_cms() {
+    title "Copying over Licensing Configmaps"
+    msg "-----------------------------------------------------------------------"
+    local namespace=$1
+    local controlNs=$2
+    POSSIBLE_CONFIGMAPS=("ibm-licensing-config"
+"ibm-licensing-annotations"
+"ibm-licensing-products"
+"ibm-licensing-products-vpc-hour"
+"ibm-licensing-cloudpaks"
+"ibm-licensing-products-groups"
+"ibm-licensing-cloudpaks-groups"
+"ibm-licensing-cloudpaks-metrics"
+"ibm-licensing-products-metrics"
+"ibm-licensing-products-metrics-groups"
+"ibm-licensing-cloudpaks-metrics-groups"
+"ibm-licensing-services"
+)
+
+    for cm in ${POSSIBLE_CONFIGMAPS[@]}
+    do
+        return_value=$(${OC} get cm -n $namespace --ignore-not-found | (grep $cm || echo "fail") | awk '{print $1}')
+        info "return value for $cm: $return_value"
+        if [[ $return_value != "fail" ]]; then
+            if [[ $return_value == $cm ]]; then
+                ${OC} get cm -n $namespace $cm -o yaml --ignore-not-found > tmp.yaml
+                #edit the file to change the namespace to controlNs
+                yq '.metadata.namespace = "'${controlNs}'"' tmp.yaml
+                ${OC} apply -f tmp.yaml
+                rm tmp.yaml -f
+                info "Licensing configmap $cm copied from $namespace to $controlNs"
+            fi
+        fi
+    done
+    success "Licensing configmaps copied from $namespace to $controlNs"
+    exit
 }
 
 # scale back cs pod 
@@ -197,6 +240,101 @@ function install_new_CS() {
     done
     
     success "Common Services Operator is converted to multi_instance mode"
+}
+
+# wait for new cs to be ready
+function check_IAM(){
+    mapToCSNS=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].map-to-common-service-namespace' | awk '{print}')
+    sleep 10
+    for namespace in $mapToCSNS
+    do
+        retries=75
+        sleep_time=15
+        total_time_mins=$(( sleep_time * retries / 60))
+        info "Waiting for IAM to come ready in namespace ${namespace}"
+        sleep 10
+        local cm="ibm-common-services-status"
+        local statusName="${namespace}-iamstatus"
+        
+        while true; do
+            if [[ ${retries} -eq 0 ]]; then
+                error "Timeout after ${total_time_mins} minutes waiting for IAM to come ready in namespace ${namespace}"
+            fi
+
+            iamReady=$("${OC}" get configmap -n kube-public -o yaml ${cm} | (grep $statusName || echo fail))
+
+            if [[ "${iamReady}" == "fail" ]]; then
+                retries=$(( retries - 1 ))
+                info "RETRYING: Waiting for IAM service to be Ready (${retries} left)"
+                sleep ${sleep_time}
+            else
+                msg "-----------------------------------------------------------------------"    
+                success "IAM Service Ready in ${namespace}"
+                break
+            fi
+        done
+    done
+}
+
+# update zenservice CRs to be reconciled again
+function refresh_zen(){
+    title " Refreshing Zen Services "
+    msg "-----------------------------------------------------------------------"
+    local cm_name="common-service-maps"
+    #make sure IAM is ready before reconciling.
+    check_IAM #this will likely need to change in the future depending on how we check iam status
+
+    #this command gets all of the ns listed in requested from namesapce fields
+    requestedNS=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].requested-from-namespace' | awk '{print $2}')
+    #this command gets all of the ns listed in map-to-common-service-namespace
+    mapToCSNS=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].map-to-common-service-namespace' | awk '{print}')
+    
+    for namespace in $requestedNS
+    do
+        # remove cs namespace from zen service cr
+        return_value=$(${OC} get zenservice -n ${namespace} || echo "fail")
+        if [[ $return_value != "fail" ]]; then
+            if [[ $return_value != "" ]]; then
+                zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
+                conversionField=$("${OC}" get zenservice ${zenServiceCR} -n ${namespace} -o yaml | yq '.spec | has("conversion")')
+                if [[ $conversionField == "false" ]]; then
+                    ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type='merge' -p '{"spec":{"conversion":"true"}}' || error "Zenservice ${zenServiceCR} in ${namespace} cannot be updated."
+                else
+                    ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type json -p '[{ "op": "remove", "path": "/spec/conversion" }]' || error "Zenservice ${zenServiceCR} in ${namespace} cannot be updated."
+                fi
+                conversionField=""
+            else
+                info "No zen service in namespace ${namespace}. Moving on..."
+            fi
+        else
+          info "Zen not installed in ${namespace}. Moving on..."
+        fi
+        return_value=""
+    done
+    
+    for namespace in $mapToCSNS
+    do
+        # remove cs namespace from zen service cr
+        return_value=$(${OC} get zenservice -n ${namespace} || echo "fail")
+        if [[ $return_value != "fail" ]]; then
+            if [[ $return_value != "" ]]; then
+                zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
+                conversionField=$(${OC} get zenservice ${zenServiceCR} -n ${namespace} -o yaml | yq '.spec | has("conversion")')
+                if [[ $conversionField == "true" ]]; then
+                    ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type='merge' -p '{"spec":{"conversion":"true"}}' || error "Zenservice ${zenServiceCR} in ${namespace} cannot be updated."
+                else
+                    ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type json -p '[{ "op": "remove", "path": "/spec/conversion" }]' || error "Zenservice ${zenServiceCR} in ${namespace} cannot be updated."
+                fi
+                conversionField=""
+            else
+                info "No zen service in namespace ${namespace}. Moving on..."
+            fi
+        else
+            info "Zen not installed in ${namespace}. Moving on..."
+        fi
+        return_value=""
+    done
+    success "Reconcile loop initiated for Zenservice instances"
 }
 
 function create_operator_group() {
