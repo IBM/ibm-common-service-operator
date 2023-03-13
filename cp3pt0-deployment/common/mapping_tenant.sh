@@ -11,6 +11,7 @@
 # ---------- Command arguments ----------
 
 OC=oc
+YQ=yq
 OPERATOR_NS=""
 SERVICES_NS=""
 TETHERED_NS=""
@@ -45,6 +46,10 @@ function parse_arguments() {
         --oc)
             shift
             OC=$1
+            ;;
+        --yq)
+            shift
+            YQ=$1
             ;;
         --operator-namespace)
             shift
@@ -87,6 +92,7 @@ function print_usage() {
     echo ""
     echo "Options:"
     echo "   --oc string                    File path to oc CLI. Default uses oc in your PATH"
+    echo "   --yq string                    File path to yq CLI. Default uses yq in your PATH"
     echo "   --operator-namespace string    Required. Namespace to install Foundational services operator"
     echo "   --services-namespace           Namespace to install operands of Foundational services, i.e. 'dataplane'. Default is the same as operator-namespace"
     echo "   --tethered-namespaces string   Additional namespaces for this tenant, comma-delimited, e.g. 'ns1,ns2'"
@@ -146,12 +152,27 @@ function mapping_topology() {
         current_mapping=$(echo "$current_mapping" | awk '/defaultCsNs:/ {next} {print}')
 
         # Check if servicesNamespace already exists in the map-to-common-service-namespace
-        if echo "$current_mapping" | grep -q "map-to-common-service-namespace: $SERVICES_NS"; then
+        # extract the mapped namespaces from the ConfigMap
+        map_to_ns=$(echo "$current_mapping" | yq -r '.namespaceMapping[].map-to-common-service-namespace')
+        echo "map_to_ns"
+        echo "$map_to_ns"
+        if grep -Fxq $SERVICES_NS <<< "$map_to_ns"; then
             info "map-to-common-service-namespace $SERVICES_NS already exists in the namespaceMapping array. Skipping updating common-service-maps ConfigMap"
             return 0
         fi
         
-        # TODO Check if each tenant namespace already exists in the requested-from-namespace array
+        # Check if each tenant namespace already exists in the requested-from-namespace array
+        # extract the requested namespaces from the ConfigMap
+        requested_ns=$(echo "$current_mapping" | yq -r '.namespaceMapping[].requested-from-namespace[]')
+        echo "requested_ns"
+        echo "$requested_ns"
+        # loop over each namespace in the list and check if it exists in the ConfigMap
+        for ns in $OPERATOR_NS $SERVICES_NS ${TETHERED_NS//,/ }; do
+            if grep -Fxq $ns <<< "$requested_ns"; then
+                info "requested-from-namespace $ns already exists in the namespaceMapping array. Skipping updating common-service-maps ConfigMap"
+                return 0
+            fi
+        done
 
         current_control_ns=$(echo "$current_mapping" | awk '/controlNamespace:/ {print $2}')
 
