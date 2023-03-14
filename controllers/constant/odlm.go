@@ -442,7 +442,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
-    supportStatus: maintained
+    installMode: no-op
   - name: ibm-mongodb-operator
     namespace: "{{ .CPFSNs }}"
     channel: {{ .Channel }}
@@ -458,7 +458,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
-    supportStatus: maintained
+    installMode: no-op
   - name: ibm-iam-operator
     namespace: "{{ .CPFSNs }}"
     channel: v3.23
@@ -467,7 +467,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
-    supportStatus: maintained
+    installMode: no-op
   - name: ibm-im-operator
     namespace: "{{ .CPFSNs }}"
     channel: {{ .Channel }}
@@ -492,7 +492,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
-    supportStatus: maintained
+    installMode: no-op
   - name: ibm-commonui-operator
     namespace: "{{ .CPFSNs }}"
     channel: {{ .Channel }}
@@ -509,7 +509,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
-    supportStatus: maintained
+    installMode: no-op
   - name: ibm-ingress-nginx-operator
     namespace: "{{ .CPFSNs }}"
     channel: v3.23
@@ -518,7 +518,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
-    supportStatus: maintained
+    installMode: no-op
   - name: ibm-auditlogging-operator
     namespace: "{{ .CPFSNs }}"
     channel: v3.23
@@ -527,7 +527,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
-    supportStatus: maintained
+    installMode: no-op
   - name: ibm-platform-api-operator
     namespace: "{{ .CPFSNs }}"
     channel: v3.23
@@ -536,7 +536,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
-    supportStatus: maintained
+    installMode: no-op
   - channel: v3.23
     name: ibm-monitoring-grafana-operator
     namespace: "{{ .CPFSNs }}"
@@ -545,7 +545,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
-    supportStatus: maintained
+    installMode: no-op
   - channel: v3
     name: ibm-events-operator
     namespace: "{{ .CPFSNs }}"
@@ -562,7 +562,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
-    supportStatus: maintained
+    installMode: no-op
   - name: ibm-platformui-operator
     namespace: "{{ .CPFSNs }}"
     channel: {{ .Channel }}
@@ -921,7 +921,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
-    supportStatus: maintained
+    installMode: no-op
   - name: ibm-mongodb-operator
     namespace: "{{ .CPFSNs }}"
     channel: {{ .Channel }}
@@ -937,7 +937,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
-    supportStatus: maintained
+    installMode: no-op
   - name: ibm-iam-operator
     namespace: "{{ .CPFSNs }}"
     channel: v3.23
@@ -946,7 +946,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
-    supportStatus: maintained
+    installMode: no-op
   - name: ibm-im-operator
     namespace: "{{ .CPFSNs }}"
     channel: {{ .Channel }}
@@ -971,7 +971,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
-    supportStatus: maintained
+    installMode: no-op
   - name: ibm-ingress-nginx-operator
     namespace: "{{ .CPFSNs }}"
     channel: v3.23
@@ -980,7 +980,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
-    supportStatus: maintained
+    installMode: no-op
   - channel: v3
     name: ibm-events-operator
     namespace: "{{ .CPFSNs }}"
@@ -997,7 +997,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
-    supportStatus: maintained
+    installMode: no-op
   - name: ibm-platformui-operator
     namespace: "{{ .CPFSNs }}"
     channel: {{ .Channel }}
