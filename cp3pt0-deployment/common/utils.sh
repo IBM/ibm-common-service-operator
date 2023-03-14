@@ -176,6 +176,20 @@ function wait_for_pod() {
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
+function wait_for_no_pod() {
+    local namespace=$1
+    local name=$2
+    local condition="${OC} -n ${namespace} get po --no-headers --ignore-not-found | grep ^${name}"
+    local retries=30
+    local sleep_time=10
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for pod ${name} in namespace ${namespace} to be deleting"
+    local success_message="Pod ${name} in namespace ${namespace} is deleted"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for pod ${name} in namespace ${namespace} to be deleted"
+ 
+    wait_for_not_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
 function wait_for_project() {
     local name=$1
     local condition="${OC} get project ${name} --no-headers --ignore-not-found"
