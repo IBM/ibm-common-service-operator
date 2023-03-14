@@ -231,6 +231,67 @@ function wait_for_operand_request() {
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
+function wait_for_nss_patch() {
+    local namespace=$1
+    local csv_name=$($OC get sub ibm-common-service-operator -n ${namespace} -o jsonpath='{.status.installedCSV}')
+    local condition="${OC} -n ${namespace}  get csv ${csv_name} -o jsonpath='{.spec.install.spec.deployments[0].spec.template.spec.containers[0].env[?(@.name=="WATCH_NAMESPACE")].valueFrom.configMapKeyRef.name}'| grep 'namespace-scope'"
+    local retries=10
+    local sleep_time=10
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for cs-operator CSV to be patched with NSS configmap"
+    local success_message="cs-operator CSV is patched with NSS configmap"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for cs-operator CSV to be patched with NSS configmap"
+    local pod_name=$($OC get pod -n ${namespace} | grep namespace-scope | awk '{print $1}')
+
+    # wait for nss patch
+    info "${wait_message}"
+    while true; do
+        result=$(eval "${condition}")
+
+        # restart namespace scope operator pod to reconcilie
+        if [[ ( ${retries} -eq 0 ) && ( ! -z "${result}" ) ]]; then
+            info "Reconciling namespace scope operator"
+            echo "deleting pod ${pod_name}"
+            $OC delete pod ${pod_name} -n ${namespace}    
+            wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+            break
+        fi
+ 
+        sleep ${sleep_time}
+        result=$(eval "${condition}")
+        
+        if [[ ! -z "${result}" ]]; then
+            info "RETRYING: ${wait_message} (${retries} left)"
+            retries=$(( retries - 1 ))
+        else
+            break
+        fi
+    done
+
+    if [[ ! -z "${success_message}" ]]; then
+        success "${success_message}"
+    fi
+    
+    # wait for deployment to be ready
+    deployment_name=$($OC get deployment -n ${namespace} | grep common-service-operator | awk '{print $1}')
+    wait_for_deployment ${namespace} ${deployment_name}
+    
+}
+
+function wait_for_deployment() {
+    local namespace=$1
+    local name=$2
+    local condition="${OC} -n ${namespace} get deployment ${name} --no-headers --ignore-not-found -o jsonpath='{.status.readyReplicas}' | grep '1'"
+    local retries=10
+    local sleep_time=30
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for Deployment ${name} to be ready"
+    local success_message="Deployment ${name} is running"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for Deployment ${name} to be running"
+    
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
 function is_sub_exist() {
     local package_name=$1
     if [ $# -eq 2 ]; then
