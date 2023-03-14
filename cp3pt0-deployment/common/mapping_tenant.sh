@@ -117,7 +117,10 @@ function pre_req() {
     if [ "$OPERATOR_NS" == "" ]; then
         error "Must provide operator namespace"
     fi
-    SERVICES_NS=$OPERATOR_NS
+
+    if [ "$SERVICES_NS" == "" ]; then
+        SERVICES_NS=$OPERATOR_NS
+    fi
 }
 
 function construct_mapping() {
