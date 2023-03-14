@@ -579,12 +579,6 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
-  - channel: v2.2
-    name: ibm-db2u-operator
-    namespace: "{{ .CPFSNs }}"
-    packageName: db2u-operator
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
   - channel: stable
     name: cloud-native-postgresql
     namespace: "{{ .CPFSNs }}"
