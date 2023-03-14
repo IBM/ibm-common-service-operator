@@ -12,6 +12,7 @@
 
 OC=oc
 CONTROL_NS=""
+TARGET_NS=ibm-licensing
 DEBUG=0
 PREVIEW_MODE=1
 
@@ -30,7 +31,9 @@ STEP=0
 function main() {
     parse_arguments "$@"
     pre_req
-    deactivate_cp2_cert_manager
+    create_namespace $TARGET_NS
+    migrate_lic_cms
+    # TODO: restore ibm-license-service Secrets
 }
 
 function parse_arguments() {
@@ -48,6 +51,10 @@ function parse_arguments() {
         --control-namespace)
             shift
             CONTROL_NS=$1
+            ;;
+        --target-namespace)
+            shift
+            TARGET_NS=$1
             ;;
         -v | --debug)
             shift
@@ -67,14 +74,15 @@ function parse_arguments() {
 
 function print_usage() {
     script_name=`basename ${0}`
-    echo "Usage: ${script_name} --control-namespace <cert-manager-namespace> [OPTIONS]..."
+    echo "Usage: ${script_name} --control-namespace <licensing-services-namespace> [OPTIONS]..."
     echo ""
-    echo "De-activate Certificate Management for IBM Cloud Pak 2.0 Cert Manager."
+    echo "Migrate Licensing Data for IBM Cloud Pak 2.0 Licensing Service."
     echo "The --control-namespace must be provided."
     echo ""
     echo "Options:"
     echo "   --oc string                    File path to oc CLI. Default uses oc in your PATH"
-    echo "   --control-namespace string     Required. Namespace to de-activate Cloud Pak 2.0 Cert Manager services."
+    echo "   --control-namespace string     Required. Source Namespace where Cloud Pak 2.0 Licensing Data is located."
+    echo "   --target-namespace string      Target Namespace where Cloud Pak 3.0 Licensing Operator is located. Default is ibm-licensing"
     echo "   -v, --debug integer            Verbosity of logs. Default is 0. Set to 1 for debug logs."
     echo "   -h, --help                     Print usage information"
     echo ""
@@ -94,30 +102,40 @@ function pre_req() {
     if [ "$CONTROL_NS" == "" ]; then
         error "Must provide control namespace"
     fi
+
 }
 
-function deactivate_cp2_cert_manager() {
-    title "De-activating IBM Cloud Pak 2.0 Cert Manager in ${CONTROL_NS}...\n"
+function migrate_lic_cms() {
+    
+    title "Migrating IBM License Service data from ${CONTROL_NS} into ${TARGET_NS} namespace"
 
-    info "Configuring Common Services Cert Manager.."
-    ${OC} patch configmap ibm-cpp-config -n ${CONTROL_NS} --type='json' -p='[{"op": "add", "path": "/data/deployCSCertManagerOperands", "value": "false"}]' 
-    if [ $? -ne 0 ]; then
-        error "Failed to patch ibm-cpp-config ConfigMap in ${CONTROL_NS}"
-        return 0
-    fi
+    POSSIBLE_CONFIGMAPS=("ibm-licensing-config"
+"ibm-licensing-annotations"
+"ibm-licensing-products"
+"ibm-licensing-products-vpc-hour"
+"ibm-licensing-cloudpaks"
+"ibm-licensing-products-groups"
+"ibm-licensing-cloudpaks-groups"
+"ibm-licensing-cloudpaks-metrics"
+"ibm-licensing-products-metrics"
+"ibm-licensing-products-metrics-groups"
+"ibm-licensing-cloudpaks-metrics-groups"
+"ibm-licensing-services"
+)
 
-    info "Deleting existing Cert Manager CR..."
-    ${OC} delete certmanager.operator.ibm.com default --ignore-not-found
+    for configmap in ${POSSIBLE_CONFIGMAPS[@]}
+    do
+        ${OC} get configmap "${configmap}" -n "${CONTROL_NS}" > /dev/null 2>&1
+        if [ $? -eq 0 ]
+        then
+            info "Copying Licensing Services ConfigMap $cm from $CONTROL_NS to $TARGET_NS"
+            ${OC} get configmap "${configmap}" -n "${CONTROL_NS}" -o yaml | yq -e '.metadata.namespace = "'${TARGET_NS}'"' > ${configmap}.yaml
+            yq eval 'select(.kind == "ConfigMap") | del(.metadata.resourceVersion) | del(.metadata.uid)' ${configmap}.yaml | ${OC} apply -f -
 
-    info "Restarting IBM Cloud Pak 2.0 Cert Manager to provide cert-rotation only..."
-    oc delete pod -l name=ibm-cert-manager-operator -n ${CONTROL_NS} --ignore-not-found
-
-    wait_for_no_pod ${CONTROL_NS} "cert-manager-cainjector"
-    wait_for_no_pod ${CONTROL_NS} "cert-manager-controller"
-    wait_for_no_pod ${CONTROL_NS} "cert-manager-webhook"
-
-    wait_for_pod ${CONTROL_NS} "ibm-cert-manager-operator"
-
+            rm ${configmap}.yaml
+        fi
+    done
+    success "Licensing Service ConfigMaps are migrated from $CONTROL_NS to $TARGET_NS"
 }
 
 function debug1() {
