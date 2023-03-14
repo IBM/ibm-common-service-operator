@@ -107,7 +107,7 @@ function deactivate_cp2_cert_manager() {
     fi
 
     info "Deleting existing Cert Manager CR..."
-    ${OC} delete certmanager default --ignore-not-found
+    ${OC} delete certmanager.operator.ibm.com default --ignore-not-found
 
     info "Restarting IBM Cloud Pak 2.0 Cert Manager to provide cert-rotation only..."
     oc delete pod -l name=ibm-cert-manager-operator -n ${CONTROL_NS} --ignore-not-found
