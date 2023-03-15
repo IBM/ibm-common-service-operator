@@ -78,15 +78,15 @@ function prereq() {
     if [[ $return_value != "pass" ]]; then
         error "The ibm-common-service-operator must not be installed in AllNamespaces mode"
     fi
+}
+
+function prepare_cluster() {
 
     # TODO for more advanced checking
     # find all namespaces with cs-operator running
     # each namespace should be in configmap
     # all namespaces in configmap should exist
     check_cm_ns_exist $cm_name
-}
-
-function prepare_cluster() {
 
     ${OC} scale deployment -n ${master_ns} ibm-common-service-operator --replicas=0
     ${OC} scale deployment -n ${master_ns} operand-deployment-lifecycle-manager --replicas=0
