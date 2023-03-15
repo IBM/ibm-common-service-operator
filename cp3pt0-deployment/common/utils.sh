@@ -288,7 +288,7 @@ function wait_for_deployment() {
     local wait_message="Waiting for Deployment ${name} to be ready"
     local success_message="Deployment ${name} is running"
     local error_message="Timeout after ${total_time_mins} minutes waiting for Deployment ${name} to be running"
-    
+    sleep 30
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
