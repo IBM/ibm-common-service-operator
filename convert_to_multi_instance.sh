@@ -41,9 +41,7 @@ function main() {
 function prereq() {
     which "${OC}" || error "Missing oc CLI"
     which "${YQ}" || error "Missing yq"
-}
-
-function prepare_cluster() {
+    
     local cm_name="common-service-maps"
     return_value=$("${OC}" get -n kube-public configmap ${cm_name} > /dev/null || echo failed)
     if [[ $return_value == "failed" ]]; then
@@ -86,15 +84,21 @@ function prepare_cluster() {
     # each namespace should be in configmap
     # all namespaces in configmap should exist
     check_cm_ns_exist $cm_name
+}
+
+function prepare_cluster() {
 
     ${OC} scale deployment -n ${master_ns} ibm-common-service-operator --replicas=0
     ${OC} scale deployment -n ${master_ns} operand-deployment-lifecycle-manager --replicas=0
     ${OC} delete operandregistry -n ${master_ns} --ignore-not-found common-service 
     ${OC} delete operandconfig -n ${master_ns} --ignore-not-found common-service
 
+    #clean up cs operators in cloud pak namespaces, ensure they use same catalog source as original cs instance
+    cleanupCSOperators
+
     # remove existing namespace scope CRs
     removeNSS
-    cleanupZenService $cm_name
+    cleanupZenService
 
     # uninstall singleton services
     "${OC}" delete -n "${master_ns}" --ignore-not-found certmanager default
@@ -174,13 +178,19 @@ function scale_up_pod() {
 function collect_data() {
     title "Collecting data"
     msg "-----------------------------------------------------------------------"
-
     master_ns=$(${OC} get deployment --all-namespaces | grep operand-deployment-lifecycle-manager | awk '{print $1}')
     info "MasterNS:${master_ns}"
     cs_operator_channel=$(${OC} get sub ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.channel") 
     info "channel:${cs_operator_channel}"   
     catalog_source=$(${OC} get sub ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.source")
-    info "catalog_source:${catalog_source}"   
+    info "catalog_source:${catalog_source}"
+    
+    local cm_name="common-service-maps"
+    #this command gets all of the ns listed in requested from namesapce fields
+    requestedNS=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].requested-from-namespace' | awk '{print $2}')
+    #this command gets all of the ns listed in map-to-common-service-namespace
+    mapToCSNS=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].map-to-common-service-namespace' | awk '{print}')
+      
 }
 
 # delete all CS pod and read configmap
@@ -212,7 +222,7 @@ function install_new_CS() {
                     return_value=$("${OC}" get namespace ${namespace} || echo failed)
                     if [[ $return_value != "failed" ]]; then
                         info "In_CloudpakNS:${namespace}"
-                        get_sub=$("${OC}" get sub ibm-common-service-operator -n ${namespace} > /dev/null || echo failed)
+                        get_sub=$("${OC}" get sub -n ${namespace} | (grep ibm-common-service-operator || echo failed))
                         if [[ $get_sub == "failed" ]]; then
                             create_operator_group "${namespace}"
                             install_common_service_operator_sub "${namespace}"
@@ -227,7 +237,7 @@ function install_new_CS() {
             if [[ $return_value != "failed" ]]; then
                 namespace=$(echo $line | awk '{print $2}')
                 info "In_MasterNS:${namespace}"
-                get_sub=$("${OC}" get sub ibm-common-service-operator -n ${namespace} > /dev/null || echo failed)
+                get_sub=$("${OC}" get sub -n ${namespace} | (grep ibm-common-service-operator || echo failed))
                 if [[ $get_sub == "failed" ]]; then
                     create_operator_group "${namespace}"
                     install_common_service_operator_sub "${namespace}"
@@ -242,12 +252,11 @@ function install_new_CS() {
 
 # wait for new cs to be ready
 function check_IAM(){
-    mapToCSNS=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].map-to-common-service-namespace' | awk '{print}')
     sleep 10
     for namespace in $mapToCSNS
     do
-        retries=75
-        sleep_time=15
+        retries=40
+        sleep_time=30
         total_time_mins=$(( sleep_time * retries / 60))
         info "Waiting for IAM to come ready in namespace ${namespace}"
         sleep 10
@@ -281,12 +290,7 @@ function refresh_zen(){
     local cm_name="common-service-maps"
     #make sure IAM is ready before reconciling.
     check_IAM #this will likely need to change in the future depending on how we check iam status
-
-    #this command gets all of the ns listed in requested from namesapce fields
-    requestedNS=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].requested-from-namespace' | awk '{print $2}')
-    #this command gets all of the ns listed in map-to-common-service-namespace
-    mapToCSNS=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].map-to-common-service-namespace' | awk '{print}')
-    
+ 
     for namespace in $requestedNS
     do
         # remove cs namespace from zen service cr
@@ -333,6 +337,27 @@ function refresh_zen(){
         return_value=""
     done
     success "Reconcile loop initiated for Zenservice instances"
+}
+
+function cleanupCSOperators(){
+    title "Checking subs of Common Service Operator in Cloudpak Namespaces"
+    msg "-----------------------------------------------------------------------"
+    for namespace in $requestedNS
+    do
+        # remove cs namespace from zen service cr
+        return_value=$(${OC} get sub -n ${namespace} | (grep ibm-common-service-operator || echo "fail"))
+        if [[ $return_value != "fail" ]]; then
+            local sub=$(${OC} get sub -n ${namespace} | grep ibm-common-service-operator | awk '{print $1}')
+            ${OC} get sub ${sub} -n ${namespace} -o yaml > tmp.yaml 
+            ${YQ} '.spec.source = "'${catalog_source}'"' tmp.yaml || error "Could not replace catalog source for CS operator in namespace ${namespace}"
+            ${OC} apply -f tmp.yaml
+            rm tmp.yaml -f
+            info "Common Service Operator Subscription in namespace ${namespace} updated to use catalog source ${catalog_source}"
+        else
+            info "No Common Service Operator in namespace ${namespace}. Moving on..."
+        fi
+        return_value=""
+    done
 }
 
 function create_operator_group() {
@@ -426,13 +451,7 @@ function check_healthy() {
 function cleanupZenService(){
     title " Cleaning up Zen installation "
     msg "-----------------------------------------------------------------------"
-    local cm_name=$1
 
-    #this command gets all of the ns listed in requested from namesapce fields
-    requestedNS=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].requested-from-namespace' | awk '{print $2}')
-    #this command gets all of the ns listed in map-to-common-service-namespace
-    mapToCSNS=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].map-to-common-service-namespace' | awk '{print}')
-    
     for namespace in $requestedNS
     do
         # remove cs namespace from zen service cr
@@ -553,12 +572,6 @@ function check_cm_ns_exist(){
     
     title " Verify all namespaces exist "
     msg "-----------------------------------------------------------------------"
-
-    #this command gets all of the ns listed in requested from namesapce fields
-    requestedNS=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].requested-from-namespace' | awk '{print $2}')
-
-    #this command gets all of the ns listed in map-to-common-service-namespace
-    mapToCSNS=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].map-to-common-service-namespace' | awk '{print}')
 
     for ns in $requestedNS
     do
