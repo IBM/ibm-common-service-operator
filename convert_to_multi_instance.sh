@@ -82,6 +82,7 @@ function prereq() {
 
 function prepare_cluster() {
 
+    local cm_name="common-service-maps"
     # TODO for more advanced checking
     # find all namespaces with cs-operator running
     # each namespace should be in configmap
