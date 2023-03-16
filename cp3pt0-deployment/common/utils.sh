@@ -387,6 +387,21 @@ function cleanup_crossplane() {
     ${OC} delete sub ibm-crossplane-operator-app -n ${namespace} --ignore-not-found
 }
 
+function cleanup_OperandBindInfo() {
+    local namespace=$1
+    ${OC} delete operandbindInfo ibm-commonui-bindinfo -n ${namespace} --ignore-not-found
+}
+
+function cleanup_NamespaceScope() {
+    local namespace=$1
+    ${OC} delete namespacescope odlm-scope-managedby-odlm nss-odlm-scope nss-managedby-odlm -n ${namespace} --ignore-not-found
+}
+
+function cleanup_OperandRequest() {
+    local namespace=$1
+    ${OC} delete operandrequest ibm-commonui-request ibm-mongodb-request -n ${namespace} --ignore-not-found
+}
+
 function cleanup_deployment() {
     local name=$1
     local namespace=$($OC get deployment -A | grep ${name} | awk '{print $1}')
