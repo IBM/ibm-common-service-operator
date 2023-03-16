@@ -151,10 +151,6 @@ function pre_req() {
     if [[ "$TETHERED_NS" == "$OPERATOR_NS" || "$TETHERED_NS" == "$SERVICES_NS" ]]; then
         error "Must provide additional namespaces for --tethered-namespaces, different from operator-namespace and services-namespace"
     fi
-
-    if [[ ! "$(${OC} get csv -n $OPERATOR_NS --ignore-not-found | grep "cert-manager" )" ]]; then
-        echo "Missing a cert-manager"
-    fi
 }
 
 function check_ns_list(){
