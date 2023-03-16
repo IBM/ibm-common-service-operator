@@ -37,7 +37,7 @@ STEP=0
 function main() {
     parse_arguments "$@"
     pre_req
-    create_ns_list
+    check_ns_list
     setup_topology
     install_cs_operator
 }
@@ -49,9 +49,6 @@ function parse_arguments() {
         --oc)
             shift
             OC=$1
-            ;;
-        --enable-licensing)
-            ENABLE_LICENSING=1
             ;;
         --operator-namespace)
             shift
@@ -110,7 +107,6 @@ function print_usage() {
     echo ""
     echo "Options:"
     echo "   --oc string                    File path to oc CLI. Default uses oc in your PATH"
-    echo "   --enable-licensing             Set this flag to install ibm-licensing-operator"
     echo "   --operator-namespace string    Required. Namespace to install Foundational services operator"
     echo "   --services-namespace           Namespace to install operands of Foundational services, i.e. 'dataplane'. Default is the same as operator-namespace"
     echo "   --tethered-namespaces string   Additional namespaces for this tenant, comma-delimited, e.g. 'ns1,ns2'"
@@ -123,6 +119,17 @@ function print_usage() {
     echo ""
 }
 
+function check_cert_manager(){
+    csv_count=`$OC get csv |grep "cert-manager"|wc -l`
+    if [[ $csv_count == 0 ]]; then
+        error "Missing a cert-manager"
+    fi
+    if [[ $csv_count > 1 ]]; then
+        error "Multiple cert-manager csv found. Only one should be installed per cluster"
+    fi
+}
+
+
 function pre_req() {
     check_command "${OC}"
 
@@ -134,9 +141,7 @@ function pre_req() {
         success "oc command logged in as ${user}"
     fi
 
-    if [ $ENABLE_LICENSING -eq 1 ]; then
-        is_sub_exist "ibm-licensing-operator-app" || error "Missing ibm-licensing-operator"
-    fi
+    check_cert_manager "cert-manager"
 
     if [ "$OPERATOR_NS" == "" ]; then
         error "Must provide operator namespace"
@@ -157,6 +162,12 @@ function pre_req() {
     if [[ ! "$(${OC} get csv -n $OPERATOR_NS --ignore-not-found | grep "cert-manager" )" ]]; then
         echo "Missing a cert-manager"
     fi
+}
+
+function check_ns_list(){
+    for ns in $OPERATOR_NS $SERVICES_NS ${TETHERED_NS//,/ }; do
+        check_namespace $ns
+    done
 }
 
 function create_ns_list() {

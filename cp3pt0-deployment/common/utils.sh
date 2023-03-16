@@ -255,7 +255,12 @@ function is_sub_exist() {
     fi
     is_exist=$(echo "$name" | grep -w "$package_name")
 }
-
+function check_namespace(){
+    local namespace=$1
+    if [[ -z "$(${OC} get namespace ${namespace} --ignore-not-found)" ]]; then
+        error "Namespace ${namespace} does not exist"
+    fi
+}
 # ---------- creation functions ----------
 
 function create_namespace() {
