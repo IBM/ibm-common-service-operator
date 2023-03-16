@@ -295,6 +295,7 @@ spec:
         force: true
         kind: Job
         name: pre-zen-operand-config-job 
+        namespace: "{{ .OperatorNs }}"
   - name: ibm-platformui-operator
     spec:
       operandBindInfo: {}
@@ -357,6 +358,7 @@ spec:
         force: true
         kind: Job
         name: pre-zen-operand-config-job
+        namespace: "{{ .OperatorNs }}"
   - name: ibm-platformui-operator-v4.0
     spec:
       operandBindInfo: {}
@@ -419,6 +421,7 @@ spec:
         force: true
         kind: Job
         name: pre-zen-operand-config-job
+        namespace: "{{ .OperatorNs }}"
 `
 
 const CSV3OperandRegistry = `
@@ -774,6 +777,7 @@ spec:
         force: true
         kind: Job
         name: pre-zen-operand-config-job
+        namespace: "{{ .OperatorNs }}"
   - name: ibm-platformui-operator
     spec:
       operandBindInfo: {}
@@ -836,6 +840,7 @@ spec:
         force: true
         kind: Job
         name: pre-zen-operand-config-job
+        namespace: "{{ .OperatorNs }}"
   - name: ibm-platformui-operator-v4.0
     spec:
       operandBindInfo: {}
@@ -898,6 +903,7 @@ spec:
         force: true
         kind: Job
         name: pre-zen-operand-config-job
+        namespace: "{{ .OperatorNs }}"
 `
 
 const CSV3SaasOperandRegistry = `
