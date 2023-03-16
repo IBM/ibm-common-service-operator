@@ -25,6 +25,11 @@ YQ=${1:-yq}
 
 cs_operator_channel=
 catalog_source=
+requestedNS=
+mapToCSNS=
+
+cm_name="common-service-maps"
+    
 function main() {
     msg "Conversion Script Version v1.0.0"
     prereq
@@ -42,7 +47,6 @@ function prereq() {
     which "${OC}" || error "Missing oc CLI"
     which "${YQ}" || error "Missing yq"
     
-    local cm_name="common-service-maps"
     return_value=$("${OC}" get -n kube-public configmap ${cm_name} > /dev/null || echo failed)
     if [[ $return_value == "failed" ]]; then
         error "Missing configmap: ${cm_name}. This must be configured before proceeding"
@@ -82,12 +86,11 @@ function prereq() {
 
 function prepare_cluster() {
 
-    local cm_name="common-service-maps"
     # TODO for more advanced checking
     # find all namespaces with cs-operator running
     # each namespace should be in configmap
     # all namespaces in configmap should exist
-    check_cm_ns_exist $cm_name
+    check_cm_ns_exist
 
     ${OC} scale deployment -n ${master_ns} ibm-common-service-operator --replicas=0
     ${OC} scale deployment -n ${master_ns} operand-deployment-lifecycle-manager --replicas=0
@@ -160,11 +163,11 @@ function migrate_lic_cms() {
                 #edit the file to change the namespace to controlNs
                 yq '.metadata.namespace = "'${controlNs}'"' tmp.yaml
                 ${OC} apply -f tmp.yaml
-                rm tmp.yaml -f
                 info "Licensing configmap $cm copied from $namespace to $controlNs"
             fi
         fi
     done
+    rm tmp.yaml -f
     success "Licensing configmaps copied from $namespace to $controlNs"
 }
 
@@ -184,14 +187,13 @@ function collect_data() {
     cs_operator_channel=$(${OC} get sub ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.channel") 
     info "channel:${cs_operator_channel}"   
     catalog_source=$(${OC} get sub ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.source")
-    info "catalog_source:${catalog_source}"
-    
-    local cm_name="common-service-maps"
+    info "catalog_source:${catalog_source}" 
+
     #this command gets all of the ns listed in requested from namesapce fields
     requestedNS=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].requested-from-namespace' | awk '{print $2}')
     #this command gets all of the ns listed in map-to-common-service-namespace
     mapToCSNS=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].map-to-common-service-namespace' | awk '{print}')
-      
+    
 }
 
 # delete all CS pod and read configmap
@@ -288,7 +290,6 @@ function check_IAM(){
 function refresh_zen(){
     title " Refreshing Zen Services "
     msg "-----------------------------------------------------------------------"
-    local cm_name="common-service-maps"
     #make sure IAM is ready before reconciling.
     check_IAM #this will likely need to change in the future depending on how we check iam status
  
@@ -352,13 +353,13 @@ function cleanupCSOperators(){
             ${OC} get sub ${sub} -n ${namespace} -o yaml > tmp.yaml 
             ${YQ} '.spec.source = "'${catalog_source}'"' tmp.yaml || error "Could not replace catalog source for CS operator in namespace ${namespace}"
             ${OC} apply -f tmp.yaml
-            rm tmp.yaml -f
             info "Common Service Operator Subscription in namespace ${namespace} updated to use catalog source ${catalog_source}"
         else
             info "No Common Service Operator in namespace ${namespace}. Moving on..."
         fi
         return_value=""
     done
+    rm tmp.yaml -f
 }
 
 function create_operator_group() {
@@ -569,7 +570,6 @@ function check_CSCR() {
 # Create them if not already present 
 # Does not create cs-control namespace
 function check_cm_ns_exist(){
-    local cm_name=$1
     
     title " Verify all namespaces exist "
     msg "-----------------------------------------------------------------------"
