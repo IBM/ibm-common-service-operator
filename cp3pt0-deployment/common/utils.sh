@@ -350,13 +350,15 @@ function update_cscr() {
         echo $namespace
         # update or create cs cr in the tenant namespace
         if [[ "${namespace}" != "${operator_ns}" ]]; then
-            get_commonservice=$("${OC}" get commonservice -n "${namespace}" || echo failed)
-            if [[ "${get_commonservice}" == "failed" ]]; then
+            get_commonservice=$("${OC}" get commonservice -n ${namespace})
+            if [[ "${get_commonservice}" == "" ]]; then
+                echo "create in" $namespace
                 # copy commonservice from operator namespace
                 ${OC} get commonservice common-service -n "${operator_ns}" -o yaml | yq eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
                 yq eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.namespace = "'${namespace}'"' common-service.yaml | ${OC} apply --overwrite=true -f -
 
             else
+                echo "update in" $namespace
                 # update commonservice
                 cs_name=$(${OC} get commonservice -n ${namespace} --no-headers | awk '{print $1}')
                 op_namespace=$(${OC} get commonservice ${cs_name} -n ${namespace} -o jsonpath='{.spec.operatorNamespace}')
@@ -379,4 +381,6 @@ function update_cscr() {
             fi
         fi
     done
+
+    rm common-service.yaml
 }
