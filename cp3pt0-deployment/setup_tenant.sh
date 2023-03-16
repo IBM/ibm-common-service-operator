@@ -38,6 +38,7 @@ function main() {
     parse_arguments "$@"
     pre_req
     check_ns_list
+    check_topology
     setup_topology
     install_cs_operator
 }
@@ -176,6 +177,17 @@ function create_ns_list() {
     done
 }
 
+function check_topology(){
+    cs_cr=`$OC get commonservice common-service -n $OPERATOR_NS --ignore-not-found -o name`
+    if [ ! -z "$cs_cr" ]; then
+        #found commonservice cr, thus an existing tenant. Throw error if --services-namespace has a different value from that of the cr
+        local service_ns=$(oc get commonservice common-service -o jsonpath={.status.configStatus.servicesPlane.servicesNamespace})
+        if [[ $service_ns != $SERVICES_NS ]]; then
+            error "Invalid topology - operator-namespace '$OPERATOR_NS' already has a services-namespace '$service_ns', but --services-namespace flag provided a different value '$SERVICES_NS'"
+        fi
+    fi
+}
+
 function setup_topology() {
     target=$(cat <<EOF
         
@@ -185,7 +197,7 @@ EOF
 )
     create_operator_group "common-service" "$OPERATOR_NS" "$target"
     install_nss
-    authorize_nss
+    #authorize_nss #authorize_nss should be done by a different command with cluster admin
 }
 function install_nss() {
     title "Installing Namespace Scope operator\n"
