@@ -134,7 +134,6 @@ function pre_req() {
         success "oc command logged in as ${user}"
     fi
 
-    is_sub_exist "cert-manager" || error "Missing a cert-manager"
     if [ $ENABLE_LICENSING -eq 1 ]; then
         is_sub_exist "ibm-licensing-operator-app" || error "Missing ibm-licensing-operator"
     fi
@@ -153,6 +152,10 @@ function pre_req() {
 
     if [[ "$TETHERED_NS" == "$OPERATOR_NS" || "$TETHERED_NS" == "$SERVICES_NS" ]]; then
         error "Must provide additional namespaces for --tethered-namespaces, different from operator-namespace and services-namespace"
+    fi
+
+    if [[ ! "$(${OC} get csv -n $OPERATOR_NS --ignore-not-found | grep "cert-manager" )" ]]; then
+        echo "Missing a cert-manager"
     fi
 }
 
