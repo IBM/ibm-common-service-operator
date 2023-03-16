@@ -161,7 +161,7 @@ function migrate_lic_cms() {
             if [[ $return_value == $cm ]]; then
                 ${OC} get cm -n $namespace $cm -o yaml --ignore-not-found > tmp.yaml
                 #edit the file to change the namespace to controlNs
-                yq '.metadata.namespace = "'${controlNs}'"' tmp.yaml
+                yq -i '.metadata.namespace = "'${controlNs}'"' tmp.yaml
                 ${OC} apply -f tmp.yaml
                 info "Licensing configmap $cm copied from $namespace to $controlNs"
             fi
@@ -351,7 +351,7 @@ function cleanupCSOperators(){
         if [[ $return_value != "fail" ]]; then
             local sub=$(${OC} get sub -n ${namespace} | grep ibm-common-service-operator | awk '{print $1}')
             ${OC} get sub ${sub} -n ${namespace} -o yaml > tmp.yaml 
-            ${YQ} '.spec.source = "'${catalog_source}'"' tmp.yaml || error "Could not replace catalog source for CS operator in namespace ${namespace}"
+            ${YQ} -i '.spec.source = "'${catalog_source}'"' tmp.yaml || error "Could not replace catalog source for CS operator in namespace ${namespace}"
             ${OC} apply -f tmp.yaml
             info "Common Service Operator Subscription in namespace ${namespace} updated to use catalog source ${catalog_source}"
         else
