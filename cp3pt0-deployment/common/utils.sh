@@ -545,3 +545,110 @@ function cleanup_deployment() {
     wait_for_no_pod ${namespace} ${name}
 }
 
+function validate_control_namespace() {
+    # Define the ConfigMap name and namespace
+    local namespace=$1
+    local config_map_name="common-service-maps"
+
+    # Get the ConfigMap data
+    config_map_data=$(${OC} get configmap "${config_map_name}" -n kube-public -o jsonpath='{.data.common-service-maps\.yaml}')
+
+    # Check if the ConfigMap exists
+    if [[ ! -z "${config_map_data}" ]]; then
+        # Get the controlNamespace value
+        control_namespace=$(echo "${config_map_data}" | yq -r '.controlNamespace')
+
+        # Check if the controlNamespace key exists
+        if [[ ! -z "${control_namespace}" ]] && [[ "${namespace}" != "" ]] && [[ "${control_namespace}" != "${namespace}" ]]; then
+            error "Must match controlNamespace: ${control_namespace} from common-serivce-maps ConfigMap in kube-public namespace with --control-namespace ${namespace}."
+        fi
+    fi
+}
+
+function compare_semantic_version() {
+    # Extract major, minor, and patch versions from the arguments
+    regex='^v([0-9]+)\.?([0-9]*)\.?([0-9]*)?$'
+    if [[ $1 =~ $regex ]]; then
+        major1=${BASH_REMATCH[1]}
+        minor1=${BASH_REMATCH[2]:-0}
+        patch1=${BASH_REMATCH[3]:-0}
+
+        if [[  $2 =~ $regex ]]; then
+            major2=${BASH_REMATCH[1]}
+            minor2=${BASH_REMATCH[2]:-0}
+            patch2=${BASH_REMATCH[3]:-0}
+        else
+            echo "Invalid version format: $2"
+            return 1
+        fi
+    else
+        echo "Invalid version format: $1"
+        return 1
+    fi
+    
+    # If the versions have different number of components, add the missing parts
+    if [[ -z "$minor1" && -z "$minor2" ]]; then
+        minor1=0
+        minor2=0
+        patch1=0
+        patch2=0
+    elif [[ -z "$minor1" ]]; then
+        minor1=0
+        patch1=0
+    elif [[ -z "$minor2" ]]; then
+        minor2=0
+        patch2=0
+    fi
+
+    # Compare the versions
+    if [[ $major1 -gt $major2 ]]; then
+        echo "$1 is greater than $2"
+        return 0
+    elif [[ $major1 -lt $major2 ]]; then
+        echo "$1 is less than $2"
+        return 2
+    elif [[ $minor1 -gt $minor2 ]]; then
+        echo "$1 is greater than $2"
+        return 0
+    elif [[ $minor1 -lt $minor2 ]]; then
+        echo "$1 is less than $2"
+        return 2
+    elif [[ $patch1 -gt $patch2 ]]; then
+        echo "$1 is greater than $2"
+        return 0
+    elif [[ $patch1 -lt $patch2 ]]; then
+        echo "$1 is less than $2"
+        return 2
+    else
+        echo "$1 is equal to $2"
+        return 3
+    fi
+}
+
+# TODO update source and source_ns
+function update_operator_channel() {
+    local package_name=$1
+    local ns=$2
+    local channel=$3
+    local source=$4
+    local source_ns=$5
+    local install_mode=$6
+    
+    local sub_name=$(${OC} get subscription.operators.coreos.com -n ${ns} -l operators.coreos.com/${package_name}.${ns}='' --no-headers | awk '{print $1}')
+    ${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml > sub.yaml
+    
+    existing_channel=$(yq eval '.spec.channel' sub.yaml)
+    compare_semantic_version $existing_channel $channel
+    
+    if [[ $? -ne 2 ]]; then
+        echo "Failed to update channel subscription ${package_name} in ${ns}"
+        exit 1
+    fi
+
+    yq -i eval 'select(.kind == "Subscription") | .spec += {"channel": "'${channel}'"}' sub.yaml
+    ${OC} apply -f sub.yaml
+    if [[ $? -ne 0 ]]; then
+        error "Failed to update subscription ${package_name} in ${ns}"
+    fi
+    rm sub.yaml
+}
