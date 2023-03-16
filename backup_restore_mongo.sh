@@ -20,35 +20,103 @@ set -o pipefail
 set -o errtrace
 set -o nounset
 
-OC=${3:-oc}
-YQ=${3:-yq}
-ORIGINAL_NAMESPACE=$1
-TARGET_NAMESPACE=$2
+OC=oc
+YQ=yq
+ORIGINAL_NAMESPACE=
+TARGET_NAMESPACE=
+backup="false"
+restore="false"
+cleanup="false"
 function main() {
+    while [ "$#" -gt "0" ]
+    do
+        case "$1" in
+        "-h"|"--help")
+            usage
+            exit 0
+            ;;
+        "--bns")
+            ORIGINAL_NAMESPACE=$2
+            shift
+            ;;
+        "--rns")
+            TARGET_NAMESPACE=$2
+            shift
+            ;;
+        "-b")
+            backup="true"
+            ;;
+        "-r")
+            restore="true"
+            ;;
+        "-c")
+            cleanup="true"
+            ;;
+        *)
+            error "invalid option -- \`$1\`. Use the -h or --help option for usage info."
+            ;;
+        esac
+        shift
+    done
+
     msg "MongoDB Backup and Restore v1.0.0"
-    cleanup
     prereq
-    prep_backup
-    backup
-    prep_restore
-    restore
-    cleanup
-    refresh_auth_idp
+    
+    if [[ $backup == "true" ]]; then
+        prep_backup
+        backup
+    fi
+    if [[ $restore == "true" ]]; then
+        prep_restore
+        restore
+        refresh_auth_idp
+    fi
+    if [[ $cleanup == "true" ]]; then
+        cleanup
+    fi
+}
+
+function usage() {
+	local script="${0##*/}"
+
+	while read -r ; do echo "${REPLY}" ; done <<-EOF
+	Usage: ${script} [OPTION]...
+	Uninstall common services
+	Options:
+	Mandatory arguments to long options are mandatory for short options too.
+	  -h, --help                    display this help and exit
+	  -bns                          specify the namespace to backup/where the backup exists
+      -rns                          specify the namespace where data is to be restored
+      -b                            run the backup process
+      -r                            run the restore process
+      -c                            cleanup resources used or created by this script
+	EOF
 }
 
 # verify that all pre-requisite CLI tools exist and parameters set
 function prereq() {
     which "${OC}" || error "Missing oc CLI"
     which "${YQ}" || error "Missing yq"
-    if [[ -z $ORIGINAL_NAMESPACE ]]; then
-        export ORIGINAL_NAMESPACE=ibm-common-services
+
+    if [[ -z $ORIGINAL_NAMESPACE ]] && [[ -z $TARGET_NAMESPACE ]]; then
+        error "Neither backup nor restore namespaces were set. Use -h or --help to see script usage options"
+    elif [[ -z $ORIGINAL_NAMESPACE ]] && [[ $cleanup == "false" ]]; then
+        if [[ $backup == "true" || $restore == "true" ]]; then
+            error "Backup namespace not specified. Please specify backup namespace with --bns. Use -h or --help for script usage"
+        fi
     fi
-    if [[ -z $TARGET_NAMESPACE ]]; then
-        error "TARGET_NAMESPACE not specified, please specify target namespace parameter and try again."
-    else
-        ${OC} create namespace $TARGET_NAMESPACE || info "Target namespace ${TARGET_NAMESPACE} already exists. Moving on..."
+    
+    if [[ $backup == "false" ]] && [[ $restore == "false" ]] && [[ $cleanup == "false" ]]; then
+        error "Neither backup nor restore processes were triggered. Use -h or --help to see script usage options"
     fi
 
+    success "Prerequisites present."
+}
+
+function prep_backup() {
+    title " Preparing for Mongo backup in namespace $ORIGINAL_NAMESPACE "
+    msg "-----------------------------------------------------------------------"
+    
     #check if files are already present on machine before trying to download (airgap)
     #TODO add clarifying messages and check response code to make more transparent
     #backup files
@@ -67,36 +135,6 @@ function prereq() {
         wget -O mongo-backup.sh https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongoDB/mongo-backup.sh
     fi
 
-    #Restore files
-    info "Checking for necessary restore files..."
-    if [[ -f "mongodbrestore.yaml" ]]; then
-        info "mongodbrestore.yaml already present"
-    else
-        info "mongodbrestore.yaml not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongodbrestore.yaml"
-        wget https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongodbrestore.yaml || error "Failed to download mongodbrestore.yaml"
-    fi
-
-    if [[ -f "set_access.js" ]]; then
-        info "set_access.js already present"
-    else
-        info "set_access.js not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/set_access.js"
-        wget https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/set_access.js || error "Failed to download set_access.js"
-    fi
-
-    if [[ -f "mongo-restore.sh" ]]; then
-        info "mongo-restore.sh already present"
-    else
-        info "set_access.js not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongo-restore.sh"
-        wget https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongo-restore.sh || error "Failed to download mongo-restore.sh"
-    fi
-
-    success "Prerequisites present."
-}
-
-function prep_backup() {
-    title " Preparing for Mongo backup in namespace $ORIGINAL_NAMESPACE "
-    msg "-----------------------------------------------------------------------"
-    
     local pvx=$(${OC} get pv | grep mongodbdir | awk 'FNR==1 {print $1}')
     local storageClassName=$("${OC}" get pv -o yaml ${pvx} | yq '.spec.storageClassName' | awk '{print}')
     
@@ -166,6 +204,30 @@ function backup() {
 function prep_restore() {
     title " Pepare for restore in namespace $TARGET_NAMESPACE "
     msg "-----------------------------------------------------------------------"
+    
+    #Restore files
+    info "Checking for necessary restore files..."
+    if [[ -f "mongodbrestore.yaml" ]]; then
+        info "mongodbrestore.yaml already present"
+    else
+        info "mongodbrestore.yaml not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongodbrestore.yaml"
+        wget https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongodbrestore.yaml || error "Failed to download mongodbrestore.yaml"
+    fi
+
+    if [[ -f "set_access.js" ]]; then
+        info "set_access.js already present"
+    else
+        info "set_access.js not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/set_access.js"
+        wget https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/set_access.js || error "Failed to download set_access.js"
+    fi
+
+    if [[ -f "mongo-restore.sh" ]]; then
+        info "mongo-restore.sh already present"
+    else
+        info "set_access.js not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongo-restore.sh"
+        wget https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongo-restore.sh || error "Failed to download mongo-restore.sh"
+    fi
+    
     ${OC} get pvc -n ${ORIGINAL_NAMESPACE} cs-mongodump -o yaml > cs-mongodump-copy.yaml
     local pvx=$(${OC} get pv | grep cs-mongodump | awk '{print $1}')
     export PVX=${pvx}
@@ -252,43 +314,48 @@ function cleanup(){
     title " Cleaning up resources created during backup restore process "
     msg "-----------------------------------------------------------------------"
     
-    info "Deleting pvc and pv used in backup restore process"
-    
-    #clean up backup resources
-    local return_value=$("${OC}" get pvc -n $ORIGINAL_NAMESPACE | grep cs-mongodump || echo failed)
-    if [[ $return_value != "failed" ]]; then
-    #delete backup items in original namespace
-        ${OC} delete job mongodb-backup -n ${ORIGINAL_NAMESPACE} || info "Backup job already deleted. Moving on..."
-        ${OC} patch pvc cs-mongodump -n $ORIGINAL_NAMESPACE --type=merge -p '{"metadata": {"finalizers":null}}'
-        ${OC} delete pvc cs-mongodump -n $ORIGINAL_NAMESPACE
-    else
-        info "Resources used in backup already cleaned up. Moving on..."
+    if [[ $ORIGINAL_NAMESPACE != "" ]]; then
+        info "Deleting resources used in backup process from namespace $ORIGINAL_NAMESPACE"
+        
+        #clean up backup resources
+        local return_value=$("${OC}" get pvc -n $ORIGINAL_NAMESPACE | grep cs-mongodump || echo failed)
+        if [[ $return_value != "failed" ]]; then
+        #delete backup items in original namespace
+            ${OC} delete job mongodb-backup -n ${ORIGINAL_NAMESPACE} || info "Backup job already deleted. Moving on..."
+            ${OC} patch pvc cs-mongodump -n $ORIGINAL_NAMESPACE --type=merge -p '{"metadata": {"finalizers":null}}'
+            ${OC} delete pvc cs-mongodump -n $ORIGINAL_NAMESPACE
+        else
+            info "Resources used in backup already cleaned up. Moving on..."
+        fi
+
+        local rbac=$(${OC} get clusterrolebinding cs-br -n $ORIGINAL_NAMESPACE || echo failed)
+        if [[ $rbac != "failed" ]]; then
+            info "Deleting RBAC from backup restore process"
+            ${OC} delete clusterrolebinding cs-br -n $ORIGINAL_NAMESPACE
+        fi
+
+        local scExist=$(${OC} get sc backup-sc -n $ORIGINAL_NAMESPACE || echo failed)
+        if [[ $scExist != "failed" ]]; then
+            info "Deleting storage class used in backup restore process"
+            ${OC} delete sc backup-sc
+        fi
     fi
 
-    #clean up restore resources
-    local return_value=$("${OC}" get pvc -n $TARGET_NAMESPACE | grep cs-mongodump || echo failed)
-    if [[ $return_value != "failed" ]]; then
-    #delete retore items in target namespace
-        local boundPV=$(${OC} get pvc cs-mongodump -n $TARGET_NAMESPACE -o yaml | yq '.spec.volumeName' | awk '{print}')
-        ${OC} delete job mongodb-restore -n ${TARGET_NAMESPACE} || info "Restore job already deleted. Moving on..."
-        ${OC} patch pvc cs-mongodump -n $TARGET_NAMESPACE --type=merge -p '{"metadata": {"finalizers":null}}'
-        ${OC} delete pvc cs-mongodump -n $TARGET_NAMESPACE
-        ${OC} patch pv $boundPV --type=merge -p '{"metadata": {"finalizers":null}}'
-        ${OC} delete pv $boundPV
-    else
-        info "Resources used in restore already cleaned up. Moving on..."
-    fi
-
-    local rbac=$(${OC} get clusterrolebinding cs-br -n $ORIGINAL_NAMESPACE || echo failed)
-    if [[ $rbac != "failed" ]]; then
-        info "Deleting RBAC from backup restore process"
-        ${OC} delete clusterrolebinding cs-br -n $ORIGINAL_NAMESPACE
-    fi
-
-    local scExist=$(${OC} get sc backup-sc -n $ORIGINAL_NAMESPACE || echo failed)
-    if [[ $scExist != "failed" ]]; then
-        info "Deleting storage class used in backup restore process"
-        ${OC} delete sc backup-sc
+    if [[ $TARGET_NAMESPACE != "" ]]; then
+        info "Deleting resources used in restore process from namespace $TARGET_NAMESPACE"
+        #clean up restore resources
+        local return_value=$("${OC}" get pvc -n $TARGET_NAMESPACE | grep cs-mongodump || echo failed)
+        if [[ $return_value != "failed" ]]; then
+        #delete retore items in target namespace
+            local boundPV=$(${OC} get pvc cs-mongodump -n $TARGET_NAMESPACE -o yaml | yq '.spec.volumeName' | awk '{print}')
+            ${OC} delete job mongodb-restore -n ${TARGET_NAMESPACE} || info "Restore job already deleted. Moving on..."
+            ${OC} patch pvc cs-mongodump -n $TARGET_NAMESPACE --type=merge -p '{"metadata": {"finalizers":null}}'
+            ${OC} delete pvc cs-mongodump -n $TARGET_NAMESPACE
+            ${OC} patch pv $boundPV --type=merge -p '{"metadata": {"finalizers":null}}'
+            ${OC} delete pv $boundPV
+        else
+            info "Resources used in restore already cleaned up. Moving on..."
+        fi
     fi
 
     success "Cleanup complete."
