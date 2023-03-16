@@ -120,15 +120,7 @@ function print_usage() {
     echo ""
 }
 
-function check_cert_manager(){
-    csv_count=`$OC get csv |grep "cert-manager"|wc -l`
-    if [[ $csv_count == 0 ]]; then
-        error "Missing a cert-manager"
-    fi
-    if [[ $csv_count > 1 ]]; then
-        error "Multiple cert-manager csv found. Only one should be installed per cluster"
-    fi
-}
+
 
 
 function pre_req() {
