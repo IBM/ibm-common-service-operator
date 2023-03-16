@@ -1,6 +1,6 @@
 module github.com/IBM/ibm-common-service-operator
 
-go 1.20
+go 1.18
 
 require (
 	github.com/IBM/controller-filtered-cache v0.3.2
