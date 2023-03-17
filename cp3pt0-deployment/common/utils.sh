@@ -257,8 +257,6 @@ function wait_for_nss_patch() {
             break
         fi
  
-        sleep ${sleep_time}
-        result=$(eval "${condition}")
         
         if [[ ! -z "${result}" ]]; then
             info "RETRYING: ${wait_message} (${retries} left)"
