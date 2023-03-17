@@ -336,6 +336,45 @@ EOF
     fi
 }
 
+# update/create cs cr
+function update_cscr() {
+    local operator_ns=$1
+    local service_ns=$2
+    
+    # get all the watch_namespaces
+    local cp_namespaces=$($OC get configmap namespace-scope -n ${operator_ns} -o jsonpath='{.data.namespaces}')
+    local namespaces_array=($(echo $cp_namespaces | tr "," "\n") )
+    
+    for namespace in "${namespaces_array[@]}"
+    do
+        echo $namespace
+        # update or create cs cr in the tenant namespace
+        if [[ "${namespace}" != "${operator_ns}" ]]; then
+            get_commonservice=$("${OC}" get commonservice -n ${namespace})
+            if [[ "${get_commonservice}" == "" ]]; then
+                echo "create in" $namespace
+                # copy commonservice from operator namespace
+                ${OC} get commonservice common-service -n "${operator_ns}" -o yaml | yq eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
+                yq eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.namespace = "'${namespace}'"' common-service.yaml | ${OC} apply --overwrite=true -f -
+
+            else
+                echo "update in" $namespace
+                # update commonservice
+                cs_name=$(${OC} get commonservice -n ${namespace} --no-headers | awk '{print $1}')
+                ${OC} get commonservice ${cs_name} -n "${namespace}" -o yaml | yq eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
+                yq eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.namespace = "'${namespace}'"' common-service.yaml | ${OC} apply --overwrite=true -f -
+            fi  
+        else
+            # update commonservice
+            cs_name=$(${OC} get commonservice -n ${namespace} --no-headers | awk '{print $1}')
+            ${OC} get commonservice ${cs_name} -n "${namespace}" -o yaml | yq eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
+            yq eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.namespace = "'${namespace}'"' common-service.yaml | ${OC} apply --overwrite=true -f -
+        fi
+    done
+
+    rm common-service.yaml
+}
+
 # ---------- cleanup functions ----------
 function cleanup_cp2() {
     cleanup_webhook
@@ -410,3 +449,4 @@ function cleanup_deployment() {
 
     wait_for_no_pod ${namespace} ${name}
 }
+
