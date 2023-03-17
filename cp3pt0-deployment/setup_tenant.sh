@@ -35,11 +35,12 @@ STEP=0
 . ${BASE_DIR}/common/utils.sh
 
 function main() {
-    parse_arguments "$@"
-    pre_req
-    create_ns_list
-    setup_topology
-    install_cs_operator
+    # parse_arguments "$@"
+    # pre_req
+    # create_ns_list
+    # setup_topology
+    # install_cs_operator
+    update_cscr "cs-operator-namespace" "cs-services-namespace"
 }
 
 function parse_arguments() {

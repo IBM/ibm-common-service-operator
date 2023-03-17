@@ -361,24 +361,14 @@ function update_cscr() {
                 echo "update in" $namespace
                 # update commonservice
                 cs_name=$(${OC} get commonservice -n ${namespace} --no-headers | awk '{print $1}')
-                op_namespace=$(${OC} get commonservice ${cs_name} -n ${namespace} -o jsonpath='{.spec.operatorNamespace}')
-                se_namespace=$(${OC} get commonservice ${cs_name} -n ${namespace} -o jsonpath='{.spec.servicesNamespace}')
-                # if we didn't set operatorNamespace
-                if [[ ( "${op_namespace}" == "" ) && ( "${se_namespace}" == "" ) ]]; then
-                    ${OC} get commonservice ${cs_name} -n "${namespace}" -o yaml | yq eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
-                    yq eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.namespace = "'${namespace}'"' common-service.yaml | ${OC} apply --overwrite=true -f -
-                fi
+                ${OC} get commonservice ${cs_name} -n "${namespace}" -o yaml | yq eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
+                yq eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.namespace = "'${namespace}'"' common-service.yaml | ${OC} apply --overwrite=true -f -
             fi  
         else
             # update commonservice
             cs_name=$(${OC} get commonservice -n ${namespace} --no-headers | awk '{print $1}')
-            op_namespace=$(${OC} get commonservice ${cs_name} -n ${namespace} -o jsonpath='{.spec.operatorNamespace}')
-            se_namespace=$(${OC} get commonservice ${cs_name} -n ${namespace} -o jsonpath='{.spec.servicesNamespace}')
-            # if we didn't set operatorNamespace
-            if [[ ( "${op_namespace}" == "" ) && ( "${se_namespace}" == "" ) ]]; then
-                ${OC} get commonservice ${cs_name} -n "${namespace}" -o yaml | yq eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
-                yq eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.namespace = "'${namespace}'"' common-service.yaml | ${OC} apply --overwrite=true -f -
-            fi
+            ${OC} get commonservice ${cs_name} -n "${namespace}" -o yaml | yq eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
+            yq eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.namespace = "'${namespace}'"' common-service.yaml | ${OC} apply --overwrite=true -f -
         fi
     done
 
