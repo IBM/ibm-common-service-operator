@@ -68,14 +68,15 @@ function main() {
         fi
     done
 
-    # Update ibm-namespace-scope-operator channel
-    update_operator_channel ibm-namespace-scope-operator $OPERATOR_NS $CHANNEL $SOURCE $SOURCE_NS $INSTALL_MODE
-
     # wait for operator upgrade
     # TODO: wait for operator by checking installedCSV in sub
     sleep 60
     wait_for_operator "$OPERATOR_NS" "ibm-common-service-operator"
     wait_for_operator "$OPERATOR_NS" "operand-deployment-lifecycle-manager"
+
+    # Update ibm-namespace-scope-operator channel
+    update_operator_channel ibm-namespace-scope-operator $OPERATOR_NS $CHANNEL $SOURCE $SOURCE_NS $INSTALL_MODE
+
     sleep 60
     wait_for_operator "$OPERATOR_NS" "ibm-namespace-scope-operator"
     
