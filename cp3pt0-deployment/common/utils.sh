@@ -435,51 +435,88 @@ EOF
 function update_cscr() {
     local operator_ns=$1
     local service_ns=$2
-    
-    # get all the watch_namespaces
-    local cp_namespaces=$($OC get configmap namespace-scope -n ${operator_ns} -o jsonpath='{.data.namespaces}')
-    local namespaces_array=($(echo $cp_namespaces | tr "," "\n") )
-    
-    for namespace in "${namespaces_array[@]}"
-    do
-        echo $namespace
-        # update or create cs cr in the tenant namespace
-        if [[ "${namespace}" != "${operator_ns}" ]]; then
-            get_commonservice=$("${OC}" get commonservice -n ${namespace})
-            if [[ "${get_commonservice}" == "" ]]; then
-                echo "create in" $namespace
-                # copy commonservice from operator namespace
-                ${OC} get commonservice common-service -n "${operator_ns}" -o yaml | yq eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
-                yq eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.namespace = "'${namespace}'"' common-service.yaml | ${OC} apply --overwrite=true -f -
+    local nss_list=$3
 
-            else
-                echo "update in" $namespace
-                # update commonservice
-                cs_name=$(${OC} get commonservice -n ${namespace} --no-headers | awk '{print $1}')
-                ${OC} get commonservice ${cs_name} -n "${namespace}" -o yaml | yq eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
-                yq eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.namespace = "'${namespace}'"' common-service.yaml | ${OC} apply --overwrite=true -f -
-            fi  
+    for namespace in ${nss_list//,/ }
+    do
+        # update or create default CS CR in every namespace
+        result=$("${OC}" get commonservice common-service -n ${namespace} --ignore-not-found)
+        if [[ -z "${result}" ]]; then
+            info "Creating CommonService CR common-service in $namespace"
+            # copy commonservice from operator namespace
+            ${OC} get commonservice common-service -n "${operator_ns}" -o yaml | yq eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
         else
-            # update commonservice
-            cs_name=$(${OC} get commonservice -n ${namespace} --no-headers | awk '{print $1}')
-            ${OC} get commonservice ${cs_name} -n "${namespace}" -o yaml | yq eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
-            yq eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.namespace = "'${namespace}'"' common-service.yaml | ${OC} apply --overwrite=true -f -
+            info "Configuring CommonService CR common-service in $namespace"
+            ${OC} get commonservice common-service -n "${namespace}" -o yaml | yq eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
+            
+        fi  
+        yq eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.namespace = "'${namespace}'"' common-service.yaml | ${OC} apply --overwrite=true -f -
+        if [[ $? -ne 0 ]]; then
+            error "Failed to apply CommonService CR in ${namespace}"
         fi
     done
 
     rm common-service.yaml
 }
 
+# Update nss cr
+function update_nss_kind() {
+    local operator_ns=$1
+    local nss_list=$2
+    for n in ${nss_list//,/ }
+    do
+        local members=$members$(cat <<EOF
+
+    - $n
+EOF
+    )
+    done
+
+    local object=$(
+        cat <<EOF
+apiVersion: operator.ibm.com/v1
+kind: NamespaceScope
+metadata:
+  name: common-service
+  namespace: $operator_ns
+spec:
+  csvInjector:
+    enable: true
+  namespaceMembers: $members
+  restartLabels:
+    intent: projected
+EOF
+    )
+    
+    echo
+    info "Updating the NamespaceScope object"
+    echo "$object" | ${OC} apply -f -
+    if [[ $? -ne 0 ]]; then
+        error "Failed to create NSS CR in ${OPERATOR_NS}"
+    fi
+}
+
 # ---------- cleanup functions ----------
 function cleanup_cp2() {
-    cleanup_webhook
-    cleanup_secretshare
+    local operator_ns=$1
+    local service_ns=$2
+    cleanup_webhook $operator_ns $service_ns
+    cleanup_secretshare $operator_ns
     cleanup_crossplane
+
+    cleanup_OperandBindInfo $service_ns
+    cleanup_NamespaceScope $operator_ns
+    cleanup_OperandRequest $service_ns
 }
 
 # clean up webhook deployment and webhookconfiguration
 function cleanup_webhook() {
-    cleanup_deployment "ibm-common-service-webhook"
+    local operator_ns=$1
+    local service_ns=$2
+    info "Deleting podpresets..."
+    ${OC} get podpresets.operator.ibm.com -n $service_ns --no-headers | awk '{print $1}' | xargs ${OC} delete -n $service_ns --ignore-not-found podpresets.operator.ibm.com
+
+    cleanup_deployment "ibm-common-service-webhook" $operator_ns
 
     info "Deleting MutatingWebhookConfiguration..."
     ${OC} delete MutatingWebhookConfiguration ibm-common-service-webhook-configuration --ignore-not-found
@@ -487,29 +524,26 @@ function cleanup_webhook() {
 
     info "Deleting MutatingWebhookConfiguration..."
     ${OC} delete ValidatingWebhookConfiguration ibm-cs-ns-mapping-webhook-configuration --ignore-not-found
-    
-    info "Deleting podpresets..."
-    local namespace=$(${OC} get podpresets.operator.ibm.com -A --no-headers | awk '{print $1}')
-    ${OC} get podpresets.operator.ibm.com -A --no-headers | awk '{print $2}' | xargs oc delete -n ${namespace} --ignore-not-found podpresets.operator.ibm.com
 
 }
 
-# clean up secretshare deployment and CR
+# TODO: clean up secretshare deployment and CR in service_ns
 function cleanup_secretshare() {
-    cleanup_deployment "secretshare"
+    local operator_ns=$1
+    cleanup_deployment "secretshare" "$operator_ns"
 
     info "Deleting SecretShare..."
-    ${OC} get secretshare -A --no-headers | awk '{print $2}' | xargs oc delete --ignore-not-found secretshare 
+    ${OC} get secretshare -A --no-headers | awk '{print $2}' | xargs ${OC} delete --ignore-not-found secretshare 
 
 }
 
-# todo: clean up crossplane sub and CR
+# TODO: clean up crossplane sub and CR in operator_ns and service_ns
 function cleanup_crossplane() {
     # delete CR
     info "cleanup crossplane CR"
-    ${OC} get configuration.pkg.ibm.crossplane.io -A --no-headers | awk '{print $1}' | xargs oc delete --ignore-not-found configuration.pkg.ibm.crossplane.io
-    ${OC} get lock.pkg.ibm.crossplane.io -A --no-headers | awk '{print $1}' | xargs oc delete --ignore-not-found lock.pkg.ibm.crossplane.io
-    ${OC} get ProviderConfig -A --no-headers | awk '{print $1}' | xargs oc delete --ignore-not-found ProviderConfig
+    ${OC} get configuration.pkg.ibm.crossplane.io -A --no-headers | awk '{print $1}' | xargs ${OC} delete --ignore-not-found configuration.pkg.ibm.crossplane.io
+    ${OC} get lock.pkg.ibm.crossplane.io -A --no-headers | awk '{print $1}' | xargs ${OC} delete --ignore-not-found lock.pkg.ibm.crossplane.io
+    ${OC} get ProviderConfig -A --no-headers | awk '{print $1}' | xargs ${OC} delete --ignore-not-found ProviderConfig
 
     sleep 60
 
@@ -538,8 +572,8 @@ function cleanup_OperandRequest() {
 
 function cleanup_deployment() {
     local name=$1
-    local namespace=$($OC get deployment -A | grep ${name} | awk '{print $1}')
-    info "Deleting existing Deployment ${name}..."
+    local namespace=$2
+    info "Deleting existing Deployment ${name} in namespace ${namespace}..."
     ${OC} delete deployment ${name} -n ${namespace} --ignore-not-found
 
     wait_for_no_pod ${namespace} ${name}
@@ -578,12 +612,10 @@ function compare_semantic_version() {
             minor2=${BASH_REMATCH[2]:-0}
             patch2=${BASH_REMATCH[3]:-0}
         else
-            echo "Invalid version format: $2"
-            return 1
+            error "Invalid version format: $2"
         fi
     else
-        echo "Invalid version format: $1"
-        return 1
+        error "Invalid version format: $1"
     fi
     
     # If the versions have different number of components, add the missing parts
@@ -602,25 +634,25 @@ function compare_semantic_version() {
 
     # Compare the versions
     if [[ $major1 -gt $major2 ]]; then
-        echo "$1 is greater than $2"
+        info "$1 is greater than $2"
         return 0
     elif [[ $major1 -lt $major2 ]]; then
-        echo "$1 is less than $2"
+        info "$1 is less than $2"
         return 2
     elif [[ $minor1 -gt $minor2 ]]; then
-        echo "$1 is greater than $2"
+        info "$1 is greater than $2"
         return 0
     elif [[ $minor1 -lt $minor2 ]]; then
-        echo "$1 is less than $2"
+        info "$1 is less than $2"
         return 2
     elif [[ $patch1 -gt $patch2 ]]; then
-        echo "$1 is greater than $2"
+        info "$1 is greater than $2"
         return 0
     elif [[ $patch1 -lt $patch2 ]]; then
-        echo "$1 is less than $2"
+        info "$1 is less than $2"
         return 2
     else
-        echo "$1 is equal to $2"
+        info "$1 is equal to $2"
         return 3
     fi
 }
@@ -639,10 +671,13 @@ function update_operator_channel() {
     
     existing_channel=$(yq eval '.spec.channel' sub.yaml)
     compare_semantic_version $existing_channel $channel
+    return_value=$?
     
-    if [[ $? -ne 2 ]]; then
-        echo "Failed to update channel subscription ${package_name} in ${ns}"
-        exit 1
+    if [[ $return_value -eq 3 ]]; then
+        info "$package_name already has channel $3 in the subscription."
+        return 0
+    elif [[ $return_value -ne 2 ]]; then
+        error "Failed to update channel subscription ${package_name} in ${ns}"
     fi
 
     yq -i eval 'select(.kind == "Subscription") | .spec += {"channel": "'${channel}'"}' sub.yaml
@@ -651,4 +686,23 @@ function update_operator_channel() {
         error "Failed to update subscription ${package_name} in ${ns}"
     fi
     rm sub.yaml
+}
+
+function delete_operator() {
+    subs=$1
+    ns=$2
+    for sub in ${subs}; do
+        title "Deleting ${sub} in namesapce ${ns}..."
+        csv=$(${OC} get sub ${sub} -n ${ns} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
+        in_step=1
+        msg "[${in_step}] Removing the subscription of ${sub} in namesapce ${ns} ..."
+        ${OC} delete sub ${sub} -n ${ns} --ignore-not-found
+        in_step=$((in_step + 1))
+        msg "[${in_step}] Removing the csv of ${sub} in namesapce ${ns} ..."
+        [[ "X${csv}" != "X" ]] && ${OC} delete csv ${csv}  -n ${ns} --ignore-not-found
+        msg ""
+
+        success "Remove $sub successfully."
+        msg ""
+    done
 }
