@@ -14,6 +14,8 @@ OC=oc
 ENABLE_LICENSING=0
 CHANNEL="v4.0"
 SOURCE="opencloud-operators"
+CERT_MANAGER_SOURCE="ibm-cert-manager-operator-catalog"
+LICENSING_SOURCE="ibm-licensing-catalog"
 SOURCE_NS="openshift-marketplace"
 OPERATOR_NS=""
 SERVICES_NS=""
@@ -65,6 +67,14 @@ function parse_arguments() {
             shift
             TETHERED_NS=$1
             ;;
+        --cert-manager-source)
+            shift
+            CERT_MANAGER_SOURCE=$1
+            ;;
+        --licensing-source)
+            shift
+            LICENSING_SOURCE=$1
+            ;;
         -c | --channel)
             shift
             CHANNEL=$1
@@ -111,6 +121,8 @@ function print_usage() {
     echo "Options:"
     echo "   --oc string                    File path to oc CLI. Default uses oc in your PATH"
     echo "   --enable-licensing             Set this flag to install ibm-licensing-operator"
+    echo "   --cert-manager-source string   CatalogSource name of ibm-cert-manager-operator. This assumes your CatalogSource is already created. Default is ibm-cert-manager-operator-catalog"
+    echo "   --licensing-source string      CatalogSource name of ibm-licensing. This assumes your CatalogSource is already created. Default is ibm-licensing-catalog"
     echo "   --operator-namespace string    Required. Namespace to install Foundational services operator"
     echo "   --services-namespace           Namespace to install operands of Foundational services, i.e. 'dataplane'. Default is the same as operator-namespace"
     echo "   --tethered-namespaces string   Additional namespaces for this tenant, comma-delimited, e.g. 'ns1,ns2'"
