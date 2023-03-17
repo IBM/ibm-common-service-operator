@@ -258,7 +258,7 @@ function wait_for_nss_patch() {
         fi
  
         
-        if [[ ! -z "${result}" ]]; then
+        if [ -z "${result}" ]; then
             info "RETRYING: ${wait_message} (${retries} left)"
             retries=$(( retries - 1 ))
         else
