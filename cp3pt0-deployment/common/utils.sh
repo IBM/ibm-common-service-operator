@@ -264,6 +264,8 @@ function wait_for_nss_patch() {
         else
             break
         fi
+
+        sleep ${sleep_time}
     done
 
     if [[ ! -z "${success_message}" ]]; then
