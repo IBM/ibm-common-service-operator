@@ -13,7 +13,6 @@ OC=oc
 ENABLE_LICENSING=0
 ENABLE_PRIVATE_CATALOG=0
 CHANNEL="v4.0"
-SOURCE="opencloud-operators"
 SOURCE_NS="openshift-marketplace"
 INSTALL_MODE="Automatic"
 CERT_MANAGER_SOURCE="ibm-cert-manager-operator-catalog"
@@ -56,10 +55,6 @@ function parse_arguments() {
             shift
             CHANNEL=$1
             ;;
-        -s | --source)
-            shift
-            SOURCE=$1
-            ;;
         --cert-manager-source)
             shift
             CERT_MANAGER_SOURCE=$1
@@ -96,7 +91,6 @@ function print_usage() {
     echo "   --licensing-source string      CatalogSource name of ibm-licensing. This assumes your CatalogSource is already created. Default is ibm-licensing-catalog"
     echo "   -c, --channel string           Channel for Subscription(s). Default is v4.0"   
     echo "   -i, --install-mode string      InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
-    echo "   -s, --source string            CatalogSource name. This assumes your CatalogSource is already created. Default is opencloud-operators"
     echo "   -h, --help                     Print usage information"
     echo ""
 }
