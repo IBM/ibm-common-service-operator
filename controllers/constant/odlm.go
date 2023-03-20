@@ -85,6 +85,18 @@ spec:
       switcheritem: {}
       operandRequest: {}
       navconfiguration: {}
+  - name: ibm-idp-config-ui-operator-v4.0
+    spec:
+      commonWebUI: {}
+      switcheritem: {}
+      operandRequest: {}
+      navconfiguration: {}
+  - name: ibm-idp-config-ui-operator
+    spec:
+      commonWebUI: {}
+      switcheritem: {}
+      operandRequest: {}
+      navconfiguration: {}
   - name: ibm-management-ingress-operator
     spec:
       managementIngress: {}
@@ -497,6 +509,23 @@ spec:
     installMode: no-op
   - name: ibm-commonui-operator
     namespace: "{{ .CPFSNs }}"
+    channel: v3.23
+    packageName: ibm-commonui-operator-app
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+    installMode: no-op
+ - name: ibm-idp-config-ui-operator-v4.0
+    namespace: "{{ .CPFSNs }}"
+    channel: {{ .Channel }}
+    packageName: ibm-commonui-operator-app
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+ - name: ibm-idp-config-ui-operator
+    namespace: "{{ .CPFSNs }}"
     channel: {{ .Channel }}
     packageName: ibm-commonui-operator-app
     scope: public
@@ -690,6 +719,18 @@ spec:
       operandRequest: {}
       navconfiguration: {}
       operandBindInfo: {}
+  - name: ibm-idp-config-ui-operator-v4.0
+    spec:
+      commonWebUI: {}
+      switcheritem: {}
+      operandRequest: {}
+      navconfiguration: {}
+  - name: ibm-idp-config-ui-operator
+    spec:
+      commonWebUI: {}
+      switcheritem: {}
+      operandRequest: {}
+      navconfiguration: {}
   - name: ibm-management-ingress-operator
     spec:
       managementIngress: {}
