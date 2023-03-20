@@ -95,7 +95,6 @@ spec:
       nginxIngress: {}
   - name: ibm-auditlogging-operator
     spec:
-      auditLogging: {}
       operandBindInfo: {}
       operandRequest: {}
   - name: ibm-platform-api-operator
@@ -701,7 +700,6 @@ spec:
       nginxIngress: {}
   - name: ibm-auditlogging-operator
     spec:
-      auditLogging: {}
       operandBindInfo: {}
       operandRequest: {}
   - name: ibm-platform-api-operator
