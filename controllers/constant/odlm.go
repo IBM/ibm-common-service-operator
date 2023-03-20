@@ -46,7 +46,7 @@ spec:
         requests:
           - operands:
               - name: ibm-mongodb-operator
-              - name: ibm-commonui-operator
+              - name: ibm-idp-config-ui-operator
             registry: common-service
   - name: ibm-im-operator-v4.0
     spec:
@@ -59,7 +59,7 @@ spec:
         requests:
           - operands:
               - name: ibm-mongodb-operator
-              - name: ibm-commonui-operator
+              - name: ibm-idp-config-ui-operator
             registry: common-service
   - name: ibm-iam-operator
     spec:
@@ -89,13 +89,11 @@ spec:
     spec:
       commonWebUI: {}
       switcheritem: {}
-      operandRequest: {}
       navconfiguration: {}
   - name: ibm-idp-config-ui-operator
     spec:
       commonWebUI: {}
       switcheritem: {}
-      operandRequest: {}
       navconfiguration: {}
   - name: ibm-management-ingress-operator
     spec:
@@ -679,7 +677,7 @@ spec:
         requests:
           - operands:
               - name: ibm-mongodb-operator
-              - name: ibm-commonui-operator
+              - name: ibm-idp-config-ui-operator
             registry: common-service
   - name: ibm-im-operator-v4.0
     spec:
@@ -692,7 +690,7 @@ spec:
         requests:
           - operands:
               - name: ibm-mongodb-operator
-              - name: ibm-commonui-operator
+              - name: ibm-idp-config-ui-operator
             registry: common-service
   - name: ibm-iam-operator
     spec:
@@ -723,13 +721,11 @@ spec:
     spec:
       commonWebUI: {}
       switcheritem: {}
-      operandRequest: {}
       navconfiguration: {}
   - name: ibm-idp-config-ui-operator
     spec:
       commonWebUI: {}
       switcheritem: {}
-      operandRequest: {}
       navconfiguration: {}
   - name: ibm-management-ingress-operator
     spec:
