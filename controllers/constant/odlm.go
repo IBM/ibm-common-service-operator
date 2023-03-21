@@ -46,7 +46,7 @@ spec:
         requests:
           - operands:
               - name: ibm-mongodb-operator
-              - name: ibm-commonui-operator
+              - name: ibm-idp-config-ui-operator
             registry: common-service
   - name: ibm-im-operator-v4.0
     spec:
@@ -59,7 +59,7 @@ spec:
         requests:
           - operands:
               - name: ibm-mongodb-operator
-              - name: ibm-commonui-operator
+              - name: ibm-idp-config-ui-operator
             registry: common-service
   - name: ibm-iam-operator
     spec:
@@ -84,6 +84,16 @@ spec:
       commonWebUI: {}
       switcheritem: {}
       operandRequest: {}
+      navconfiguration: {}
+  - name: ibm-idp-config-ui-operator-v4.0
+    spec:
+      commonWebUI: {}
+      switcheritem: {}
+      navconfiguration: {}
+  - name: ibm-idp-config-ui-operator
+    spec:
+      commonWebUI: {}
+      switcheritem: {}
       navconfiguration: {}
   - name: ibm-management-ingress-operator
     spec:
@@ -497,6 +507,23 @@ spec:
     installMode: no-op
   - name: ibm-commonui-operator
     namespace: "{{ .CPFSNs }}"
+    channel: v3.23
+    packageName: ibm-commonui-operator-app
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+    installMode: no-op
+ - name: ibm-idp-config-ui-operator-v4.0
+    namespace: "{{ .CPFSNs }}"
+    channel: {{ .Channel }}
+    packageName: ibm-commonui-operator-app
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+ - name: ibm-idp-config-ui-operator
+    namespace: "{{ .CPFSNs }}"
     channel: {{ .Channel }}
     packageName: ibm-commonui-operator-app
     scope: public
@@ -650,7 +677,7 @@ spec:
         requests:
           - operands:
               - name: ibm-mongodb-operator
-              - name: ibm-commonui-operator
+              - name: ibm-idp-config-ui-operator
             registry: common-service
   - name: ibm-im-operator-v4.0
     spec:
@@ -663,7 +690,7 @@ spec:
         requests:
           - operands:
               - name: ibm-mongodb-operator
-              - name: ibm-commonui-operator
+              - name: ibm-idp-config-ui-operator
             registry: common-service
   - name: ibm-iam-operator
     spec:
@@ -690,6 +717,16 @@ spec:
       operandRequest: {}
       navconfiguration: {}
       operandBindInfo: {}
+  - name: ibm-idp-config-ui-operator-v4.0
+    spec:
+      commonWebUI: {}
+      switcheritem: {}
+      navconfiguration: {}
+  - name: ibm-idp-config-ui-operator
+    spec:
+      commonWebUI: {}
+      switcheritem: {}
+      navconfiguration: {}
   - name: ibm-management-ingress-operator
     spec:
       managementIngress: {}
