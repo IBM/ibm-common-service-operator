@@ -120,7 +120,7 @@ func YamlToObjects(yamlContent []byte) ([]*unstructured.Unstructured, error) {
 
 	yamlDecoder := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
 
-	reader := json.YAMLFramer.NewFrameReader(ioutil.NopCloser(bytes.NewReader(yamlContent)))
+	reader := json.YAMLFramer.NewFrameReader(io.NopCloser(bytes.NewReader(yamlContent)))
 	decoder := streaming.NewDecoder(reader, yamlDecoder)
 	for {
 		obj, _, err := decoder.Decode(nil, nil)
@@ -194,7 +194,7 @@ func GetOperatorName() (string, error) {
 func GetOperatorNamespace() (string, error) {
 	ns, found := os.LookupEnv(constant.OperatorNamespaceEnvVar)
 	if !found {
-		nsBytes, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
+		nsBytes, err := os.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/namespace")
 		if err != nil {
 			if os.IsNotExist(err) {
 				return "", fmt.Errorf("namespace not found for current environment")
