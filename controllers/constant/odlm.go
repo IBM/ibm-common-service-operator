@@ -41,7 +41,8 @@ spec:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       policydecision: {}
-      operandBindInfo: {}
+      operandBindInfo:  
+        operand: ibm-im-operator
       operandRequest: 
         requests:
           - operands:
@@ -54,7 +55,8 @@ spec:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       policydecision: {}
-      operandBindInfo: {}
+      operandBindInfo: 
+        operand: ibm-im-operator
       operandRequest:
         requests:
           - operands:
@@ -672,6 +674,7 @@ spec:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       policydecision: {}
       operandBindInfo:
+        operand: ibm-im-operator
         bindings: {}
       operandRequest:
         requests:
@@ -685,7 +688,8 @@ spec:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       policydecision: {}
-      operandBindInfo: {}
+      operandBindInfo: 
+        operand: ibm-im-operator
       operandRequest:
         requests:
           - operands:
