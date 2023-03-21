@@ -307,6 +307,9 @@ EOF
         if [[ $(oc get RoleBinding nss-managed-role-from-$OPERATOR_NS -n $ns 2>/dev/null) != "" ]];then
             info "RoleBinding nss-managed-role-from-$OPERATOR_NS is already existed in $ns, skip creating"
         else
+            if $LIMITED;then 
+              error "User only has namespace admin, need to setup role and rolebinding in all tenant namespaces before setup topology"
+            fi
             debug1 "Creating following Role:\n"
             debug1 "${role//ns_to_replace/$ns}\n"
             echo "${role//ns_to_replace/$ns}" | ${OC} apply -f -
@@ -340,7 +343,7 @@ function install_cs_operator() {
 function configure_nss_kind() {
     local members=$1
 
-    if [[ $(oc get NamespaceScope common-service -n $OPERATOR_NS 2>/dev/null) != ""]];then
+    if [[ $(oc get NamespaceScope common-service -n $OPERATOR_NS 2>/dev/null) != "" ]];then
       title "NamespaceScope CR is already deployed in $OPERATOR_NS"
     else
       title "Creating the NamespaceScope object"
