@@ -15,7 +15,7 @@ ENABLE_PRIVATE_CATALOG=0
 CHANNEL="v4.0"
 SOURCE_NS="openshift-marketplace"
 INSTALL_MODE="Automatic"
-CERT_MANAGER_SOURCE="ibm-cert-manager-operator-catalog"
+CERT_MANAGER_SOURCE="ibm-cert-manager-catalog"
 LICENSING_SOURCE="ibm-licensing-catalog"
 
 # ---------- Command variables ----------
