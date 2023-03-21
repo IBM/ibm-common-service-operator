@@ -14,6 +14,7 @@ OC=oc
 CONTROL_NS=""
 DEBUG=0
 PREVIEW_MODE=1
+SKIP_USER_VERIFY=0
 
 # ---------- Command variables ----------
 
@@ -53,6 +54,9 @@ function parse_arguments() {
             shift
             DEBUG=$1
             ;;
+        --skip-user-vertify)
+            SKIP_USER_VERIFY=1
+            ;;
         -h | --help)
             print_usage
             exit 1
@@ -76,19 +80,22 @@ function print_usage() {
     echo "   --oc string                    File path to oc CLI. Default uses oc in your PATH"
     echo "   --control-namespace string     Required. Namespace to de-activate Cloud Pak 2.0 Cert Manager services."
     echo "   -v, --debug integer            Verbosity of logs. Default is 0. Set to 1 for debug logs."
+    echo "   --skip-user-vertify string     Skip checking user logged into oc command"
     echo "   -h, --help                     Print usage information"
     echo ""
 }
 
 function pre_req() {
-    check_command "${OC}"
+    if [[ $SKIP_USER_VERIFY -eq 0 ]]; then
+        check_command "${OC}"
 
-    # checking oc command logged in
-    user=$(${OC} whoami 2> /dev/null)
-    if [ $? -ne 0 ]; then
-        error "You must be logged into the OpenShift Cluster from the oc command line"
-    else
-        success "oc command logged in as ${user}"
+        # checking oc command logged in
+        user=$(${OC} whoami 2> /dev/null)
+        if [ $? -ne 0 ]; then
+            error "You must be logged into the OpenShift Cluster from the oc command line"
+        else
+            success "oc command logged in as ${user}"
+        fi
     fi
 
     if [ "$CONTROL_NS" == "" ]; then
@@ -105,12 +112,15 @@ function deactivate_cp2_cert_manager() {
         error "Failed to patch ibm-cpp-config ConfigMap in ${CONTROL_NS}"
         return 0
     fi
+    msg ""
 
     info "Deleting existing Cert Manager CR..."
     ${OC} delete certmanager.operator.ibm.com default --ignore-not-found
+    msg ""
 
     info "Restarting IBM Cloud Pak 2.0 Cert Manager to provide cert-rotation only..."
     oc delete pod -l name=ibm-cert-manager-operator -n ${CONTROL_NS} --ignore-not-found
+    msg ""
 
     wait_for_no_pod ${CONTROL_NS} "cert-manager-cainjector"
     wait_for_no_pod ${CONTROL_NS} "cert-manager-controller"

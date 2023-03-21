@@ -499,28 +499,42 @@ EOF
 # ---------- cleanup functions ----------
 function cleanup_cp2() {
     local operator_ns=$1
-    local service_ns=$2
-    cleanup_webhook $operator_ns $service_ns
-    cleanup_secretshare $operator_ns
-    cleanup_crossplane
+    local control_ns=$2
+    local nss_list=$3
+    local enable_multi_instance=0
 
-    cleanup_OperandBindInfo $service_ns
+    if [[ "$operator_ns" != "$control_ns" ]]; then
+        enable_multi_instance=1
+    fi
+
+    if [[ enable_multi_instance -eq 0 ]]; then
+        cleanup_webhook $control_ns $nss_list
+        cleanup_secretshare $control_ns $nss_list
+        cleanup_crossplane $control_ns $nss_list
+    fi
+    
+
+    cleanup_OperandBindInfo $operator_ns
     cleanup_NamespaceScope $operator_ns
-    cleanup_OperandRequest $service_ns
 }
 
 # clean up webhook deployment and webhookconfiguration
 function cleanup_webhook() {
-    local operator_ns=$1
-    local service_ns=$2
-    info "Deleting podpresets..."
-    ${OC} get podpresets.operator.ibm.com -n $service_ns --no-headers | awk '{print $1}' | xargs ${OC} delete -n $service_ns --ignore-not-found podpresets.operator.ibm.com
+    local control_ns=$1
+    local nss_list=$2
+    for ns in ${nss_list//,/ }
+    do
+        info "Deleting podpresets in namespace {$ns}..."
+        ${OC} get podpresets.operator.ibm.com -n $ns --no-headers | awk '{print $1}' | xargs ${OC} delete -n $ns --ignore-not-found podpresets.operator.ibm.com
+    done
+    msg ""
 
-    cleanup_deployment "ibm-common-service-webhook" $operator_ns
+    cleanup_deployment "ibm-common-service-webhook" $control_ns
 
     info "Deleting MutatingWebhookConfiguration..."
     ${OC} delete MutatingWebhookConfiguration ibm-common-service-webhook-configuration --ignore-not-found
     ${OC} delete MutatingWebhookConfiguration ibm-operandrequest-webhook-configuration --ignore-not-found
+    msg ""
 
     info "Deleting MutatingWebhookConfiguration..."
     ${OC} delete ValidatingWebhookConfiguration ibm-cs-ns-mapping-webhook-configuration --ignore-not-found
@@ -529,11 +543,17 @@ function cleanup_webhook() {
 
 # TODO: clean up secretshare deployment and CR in service_ns
 function cleanup_secretshare() {
-    local operator_ns=$1
-    cleanup_deployment "secretshare" "$operator_ns"
+    local control_ns=$1
+    local nss_list=$2
 
-    info "Deleting SecretShare..."
-    ${OC} get secretshare -A --no-headers | awk '{print $2}' | xargs ${OC} delete --ignore-not-found secretshare 
+    for ns in ${nss_list//,/ }
+    do
+        info "Deleting SecretShare in namespace {$ns}..."
+        ${OC} get secretshare -n $ns --no-headers | awk '{print $1}' | xargs ${OC} delete -n $ns --ignore-not-found secretshare
+    done
+    msg ""
+
+    cleanup_deployment "secretshare" "$control_ns"
 
 }
 
@@ -579,9 +599,8 @@ function cleanup_deployment() {
     wait_for_no_pod ${namespace} ${name}
 }
 
-function validate_control_namespace() {
+function get_control_namespace() {
     # Define the ConfigMap name and namespace
-    local namespace=$1
     local config_map_name="common-service-maps"
 
     # Get the ConfigMap data
@@ -593,8 +612,10 @@ function validate_control_namespace() {
         control_namespace=$(echo "${config_map_data}" | yq -r '.controlNamespace')
 
         # Check if the controlNamespace key exists
-        if [[ ! -z "${control_namespace}" ]] && [[ "${namespace}" != "" ]] && [[ "${control_namespace}" != "${namespace}" ]]; then
-            error "Must match controlNamespace: ${control_namespace} from common-serivce-maps ConfigMap in kube-public namespace with --control-namespace ${namespace}."
+        if [[ ! -z "${control_namespace}" ]]; then
+            CONTROL_NS=$control_namespace
+        else
+            warning "No controlNamespace is found from common-serivce-maps ConfigMap in kube-public namespace. It is a single shared Common Service instance upgrade"
         fi
     fi
 }
@@ -657,7 +678,6 @@ function compare_semantic_version() {
     fi
 }
 
-# TODO update source and source_ns
 function update_operator_channel() {
     local package_name=$1
     local ns=$2
@@ -681,6 +701,10 @@ function update_operator_channel() {
     fi
 
     yq -i eval 'select(.kind == "Subscription") | .spec += {"channel": "'${channel}'"}' sub.yaml
+    yq -i eval 'select(.kind == "Subscription") | .spec += {"source": "'${source}'"}' sub.yaml
+    yq -i eval 'select(.kind == "Subscription") | .spec += {"sourceNamespace": "'${source_ns}'"}' sub.yaml
+    yq -i eval 'select(.kind == "Subscription") | .spec += {"installPlanApproval": "'${install_mode}'"}' sub.yaml
+
     ${OC} apply -f sub.yaml
     if [[ $? -ne 0 ]]; then
         error "Failed to update subscription ${package_name} in ${ns}"

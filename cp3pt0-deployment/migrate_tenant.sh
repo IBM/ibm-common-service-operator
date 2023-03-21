@@ -18,8 +18,12 @@ NS_LIST=""
 CONTROL_NS=""
 CHANNEL="v4.0"
 SOURCE="opencloud-operators"
+CERT_MANAGER_SOURCE="ibm-cert-manager-operator-catalog"
+LICENSING_SOURCE="ibm-licensing-catalog"
 SOURCE_NS="openshift-marketplace"
 INSTALL_MODE="Automatic"
+ENABLE_CERTMANAGER=0
+ENABLE_LICENSING=0
 ENABLE_PRIVATE_CATALOG=0
 NEW_MAPPING=""
 NEW_TENANT=0
@@ -47,13 +51,6 @@ function main() {
 
     # # Update common-serivce-maps ConfigMap
     # ${BASE_DIR}/common/mapping_tenant.sh --operator-namespace $OPERATOR_NS --services-namespace $SERVICES_NS --tethered-namespaces $TETHERED_NS --control-namespace $CONTROL_NS
-
-    # Delgation of CP2 Cert Manager
-    ${BASE_DIR}/common/delegate_cp2_cert_manager.sh --control-namespace $CONTROL_NS
-
-    # Migrate Licensing Services Data
-    ${BASE_DIR}/common/migrate_cp2_licensing.sh --control-namespace $CONTROL_NS
-
     
     # Update CommonService CR with OPERATOR_NS and SERVICES_NS
     # Propogate CommonService CR to every namespace in the tenant
@@ -61,7 +58,7 @@ function main() {
 
     # Update ibm-common-service-operator channel
     for ns in ${NS_LIST//,/ }; do
-        if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
+        if [ $ENABLE_PRIVATE_CATALOG -eq 0 ]; then
             update_operator_channel ibm-common-service-operator $ns $CHANNEL $SOURCE $SOURCE_NS $INSTALL_MODE
         else
             update_operator_channel ibm-common-service-operator $ns $CHANNEL $SOURCE $ns $INSTALL_MODE
@@ -79,9 +76,6 @@ function main() {
 
     sleep 60
     wait_for_operator "$OPERATOR_NS" "ibm-namespace-scope-operator"
-    
-    # Update NamespaceScope CR common-service
-    update_nss_kind "$OPERATOR_NS" "$NS_LIST"
 
     # Authroize NSS operator
     for ns in ${NS_LIST//,/ }; do
@@ -89,29 +83,30 @@ function main() {
             ${BASE_DIR}/common/authorize-namespace.sh $ns -to $OPERATOR_NS
         fi
     done
+
+    # Update NamespaceScope CR common-service
+    update_nss_kind "$OPERATOR_NS" "$NS_LIST"
     
     # Clean resources
-    # TODO: auditloggings CR(Remove from operandconfig) and csv/subscription
-    cleanup_cp2 "$OPERATOR_NS" "$SERVICES_NS"
+    cleanup_cp2 "$OPERATOR_NS" "$CONTROL_NS" "$NS_LIST"
 
-    # Delete CP2.0 Cert-Manager CR
-    ${OC} delete certmanager.operator.ibm.com default --ignore-not-found
-
-    # Delete cert-Manager and licensing csv/subscriptions
-    delete_operator "ibm-cert-manager-operator" "$OPERATOR_NS"
-    delete_operator "ibm-licensing-operator" "$OPERATOR_NS"
+    # Migrate CP2 cluster singleton services
+    local arguments=""
+    if [[ $ENABLE_CERTMANAGER -eq 1 ]]; then
+        arguments+=" --enable-cert-manager"
+    fi
+    if [[ $ENABLE_LICENSING -eq 1 ]]; then
+        arguments+=" --enable-licensing"
+    fi
     
-    # TODO: Install New CertManager and Licensing, supporting new CatalogSource
-    # if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
-    #     ${BASE_DIR}/setup_singleton.sh --enable-licensing --enable-private-catalog
-    # else
-    #     ${BASE_DIR}/setup_singleton.sh --enable-licensing
-    # fi
-
-    # Install PostgreSQL
+    if [[ $ENABLE_PRIVATE_CATALOG -eq 1 ]]; then
+        arguments+=" --enable-private-catalog"
+    fi
+    ${BASE_DIR}/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" "-c" "$CHANNEL" "--cert-manager-source" "$CERT_MANAGER_SOURCE" "--licensing-source" "$LICENSING_SOURCE" "$arguments"
 
     # Migrate IAM roles
-    ${OC} apply -n $OPERATOR_NS -f ${BASE_DIR}/common/cloudpak3-iam-migration-job.yaml
+    
+    ${OC} apply -n $SERVICES_NS -f ${BASE_DIR}/common/cloudpak3-iam-migration-job.yaml
 
     success "Preparation is completed for upgrading Cloud Pak 3.0"
     info "Please update OperandRequest to upgrade foundational core services"
@@ -137,12 +132,22 @@ function parse_arguments() {
             shift
             SERVICES_NS=$1
             ;;
-        --control-namespace)
-            shift
-            CONTROL_NS=$1
+        --enable-cert-manager)
+            ENABLE_CERTMANAGER=1
+            ;;
+        --enable-licensing)
+            ENABLE_LICENSING=1
             ;;
         --enable-private-catalog)
             ENABLE_PRIVATE_CATALOG=1
+            ;;
+        --cert-manager-source)
+            shift
+            CERT_MANAGER_SOURCE=$1
+            ;;
+        --licensing-source)
+            shift
+            LICENSING_SOURCE=$1
             ;;
         -c | --channel)
             shift
@@ -170,9 +175,9 @@ function parse_arguments() {
 
 function print_usage() {
     script_name=`basename ${0}`
-    echo "Usage: ${script_name} --operator-namespace <bedrock-namespace> [OPTIONS]..."
+    echo "Usage: ${script_name} --operator-namespace <foundational-services-namespace> [OPTIONS]..."
     echo ""
-    echo "Migrate Cloud Pak 2.0 Foundational services to in Cloud Pak 3.0 Foundational services."
+    echo "Migrate Cloud Pak 2.0 Foundational services to in Cloud Pak 3.0 Foundational services"
     echo "The --operator-namespace must be provided."
     echo ""
     echo "Options:"
@@ -180,8 +185,10 @@ function print_usage() {
     echo "   --yq string                    File path to yq CLI. Default uses yq in your PATH"
     echo "   --operator-namespace string    Required. Namespace to migrate Foundational services operator"
     echo "   --services-namespace           Namespace to migrate operands of Foundational services, i.e. 'dataplane'. Default is the same as operator-namespace"
-    echo "   --control-namespace string     Namespace to install Cloud Pak 2.0 cluster singleton Foundational services."
-    echo "                                  It is required if there are multiple Cloud Pak 2.0 Foundational services instances or it is a co-existence of Cloud Pak 2.0 and Cloud Pak 3.0"
+    echo "   --cert-manager-source string   CatalogSource name of ibm-cert-manager-operator. This assumes your CatalogSource is already created. Default is ibm-cert-manager-operator-catalog"
+    echo "   --licensing-source string      CatalogSource name of ibm-licensing. This assumes your CatalogSource is already created. Default is ibm-licensing-catalog"
+    echo "   --enable-licensing             Set this flag to migrate ibm-licensing-operator"
+    echo "   --enable-cert-manager          Set this flag to migrate ibm-cert-manager-operator"
     echo "   --enable-private-catalog       Set this flag to use namespace scoped CatalogSource. Default is in openshift-marketplace namespace"
     echo "   -c, --channel string           Channel for Subscription(s). Default is v4.0"   
     echo "   -i, --install-mode string      InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
@@ -222,15 +229,13 @@ function pre_req() {
     if [[ -z "$NS_LIST" ]]; then
         error "Failed to get tenant scope from ConfigMap namespace-scope in namespace ${OPERATOR_NS}"
     fi
-
-    echo "Tenant namespaces are $NS_LIST"
     
-    validate_arguments
+    get_and_validate_arguments
 }
 
 # TODO validate argument
-function validate_arguments() {
-    validate_control_namespace "$CONTROL_NS"
+function get_and_validate_arguments() {
+    get_control_namespace
 }
 
 function debug1() {
