@@ -18,7 +18,8 @@ INSTALL_MODE="Automatic"
 CERT_MANAGER_SOURCE="ibm-cert-manager-operator-catalog"
 LICENSING_SOURCE="ibm-licensing-catalog"
 
-SKIP_INSTALL=false
+SKIP_INSTALL=0
+CHECK_LICENSING_ONLY=0
 
 # ---------- Command variables ----------
 
@@ -66,11 +67,11 @@ function parse_arguments() {
             LICENSING_SOURCE=$1
             ;;
         --check-cert-manager)
-            SKIP_INSTALL=true
+            SKIP_INSTALL=1
             ;;
         --check-licensing)
             CHECK_LICENSING_ONLY=1
-            SKIP_INSTALL=true           
+            SKIP_INSTALL=1           
             ;;
         -h | --help)
             print_usage
@@ -126,7 +127,7 @@ function install_cert_manager() {
         SOURCE_NS="ibm-cert-manager"
     fi
 
-    if [ $SKIP_INSTALL = true ]; then
+    if [ $SKIP_INSTALL -eq 1 ]; then
         wait_for_operator "ibm-cert-manager" "ibm-cert-manager-operator" 6 # only wait 1 min by retrying 6 times
         return
     fi
@@ -154,7 +155,7 @@ function install_licensing() {
         SOURCE_NS="ibm-licensing"
     fi
 
-    if [ $SKIP_INSTALL = true ]; then
+    if [ $SKIP_INSTALL -eq 1 ]; then
         wait_for_operator "ibm-licensing" "ibm-licensing-operator" 6 # only wait 1 min by retrying 6 times
         return
     fi
