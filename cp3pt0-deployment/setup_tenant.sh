@@ -8,6 +8,8 @@
 # This is an internal component, bundled with an official IBM product. 
 # Please refer to that particular license for additional information. 
 
+set -e
+
 # ---------- Command arguments ----------
 
 OC=oc
@@ -21,6 +23,7 @@ TETHERED_NS=""
 SIZE_PROFILE="small"
 INSTALL_MODE="Automatic"
 DEBUG=0
+LIMITED=false
 
 # ---------- Command variables ----------
 
@@ -37,10 +40,16 @@ STEP=0
 function main() {
     parse_arguments "$@"
     pre_req
-    check_ns_list
-    check_topology
+    if $LIMITED;then 
+        check_ns_list
+    else
+        create_ns_list
+    fi
+    
+    # check_topology
     setup_topology
     install_cs_operator
+    configure_cs_kind
 }
 
 function parse_arguments() {
@@ -50,6 +59,9 @@ function parse_arguments() {
         --oc)
             shift
             OC=$1
+            ;;
+        --enable-licensing)
+            ENABLE_LICENSING=1
             ;;
         --operator-namespace)
             shift
@@ -83,6 +95,10 @@ function parse_arguments() {
             shift
             SIZE_PROFILE=$1
             ;;
+        --limited-access-mode)
+            shift
+            LIMITED=$1
+            ;;
         -v | --debug)
             shift
             DEBUG=$1
@@ -108,6 +124,7 @@ function print_usage() {
     echo ""
     echo "Options:"
     echo "   --oc string                    File path to oc CLI. Default uses oc in your PATH"
+    echo "   --enable-licensing             Set this flag to install ibm-licensing-operator"
     echo "   --operator-namespace string    Required. Namespace to install Foundational services operator"
     echo "   --services-namespace           Namespace to install operands of Foundational services, i.e. 'dataplane'. Default is the same as operator-namespace"
     echo "   --tethered-namespaces string   Additional namespaces for this tenant, comma-delimited, e.g. 'ns1,ns2'"
@@ -115,6 +132,7 @@ function print_usage() {
     echo "   -i, --install-mode string      InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
     echo "   -s, --source string            CatalogSource name. This assumes your CatalogSource is already created. Default is opencloud-operators"
     echo "   -n, --namespace string         Namespace of CatalogSource. Default is openshift-marketplace"
+    echo "   --limited-access-mode string   Default is false, if set to true will throw error when require resources are not found"
     echo "   -v, --debug integer            Verbosity of logs. Default is 0. Set to 1 for debug logs."
     echo "   -h, --help                     Print usage information"
     echo ""
@@ -136,8 +154,12 @@ function pre_req() {
 
     check_cert_manager "cert-manager"
 
+    if [ $ENABLE_LICENSING -eq 1 ]; then
+        check_licensing
+    fi
+
     if [ "$OPERATOR_NS" == "" ]; then
-        error "Must provide operator namespace"
+        error "Must provide operator namespace, please specify argument --operator-namespace"
     fi
 
     if [[ "$SERVICES_NS" == "" && "$TETHERED_NS" == "" ]]; then
@@ -185,18 +207,16 @@ EOF
 )
     create_operator_group "common-service" "$OPERATOR_NS" "$target"
     install_nss
-    #authorize_nss #authorize_nss should be done by a different command with cluster admin
+    authorize_nss #authorize_nss should be done by a different command with cluster admin
 }
 function install_nss() {
     title "Installing Namespace Scope operator\n"
 
     is_sub_exist "ibm-namespace-scope-operator" "$OPERATOR_NS"
     if [ $? -eq 0 ]; then
-        warning "There is an ibm-namespace-scope-operator already\n"
-        return 0
+        warning "There is an ibm-namespace-scope-operator subscription already deployed\n"
+        create_subscription "ibm-namespace-scope-operator" "$OPERATOR_NS" "$CHANNEL" "ibm-namespace-scope-operator" "${SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
     fi
-
-    create_subscription "ibm-namespace-scope-operator" "$OPERATOR_NS" "$CHANNEL" "ibm-namespace-scope-operator" "${SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
     wait_for_operator "$OPERATOR_NS" "ibm-namespace-scope-operator"
 
     # namespaceMembers should at least have Bedrock operators' namespace
@@ -216,7 +236,7 @@ EOF
     )
     done
 
-    create_nss_kind "$ns"
+    configure_nss_kind "$ns"
     if [ $? -ne 0 ]; then
         error "Failed to configure NamespaceScope CR in ${OPERATOR_NS}\n"
     fi
@@ -296,13 +316,17 @@ function install_cs_operator() {
     create_subscription "ibm-common-service-operator" "$OPERATOR_NS" "$CHANNEL" "ibm-common-service-operator" "${SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
     wait_for_operator "$OPERATOR_NS" "ibm-common-service-operator"
     sleep 120
-    configure_cs_kind
 }
 
 function create_nss_kind() {
-        local members=$1
-        local object=$(
-        cat <<EOF
+    local members=$1
+
+    if [[ $(oc get NamespaceScope common-service -n $OPERATOR_NS 2>/dev/null) != ""]];then
+
+    else
+    fi
+    local object=$(
+    cat <<EOF
 apiVersion: operator.ibm.com/v1
 kind: NamespaceScope
 metadata:
