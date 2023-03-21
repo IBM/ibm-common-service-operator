@@ -8,8 +8,6 @@
 # This is an internal component, bundled with an official IBM product. 
 # Please refer to that particular license for additional information. 
 
-set -e
-
 # ---------- Command arguments ----------
 
 OC=oc
@@ -40,14 +38,9 @@ STEP=0
 function main() {
     parse_arguments "$@"
     pre_req
-    if $LIMITED;then 
-        check_ns_list
-    else
-        create_ns_list
-    fi
-    
     # check_topology
     setup_topology
+    setup_nss
     install_cs_operator
     configure_cs_kind
 }
@@ -138,9 +131,6 @@ function print_usage() {
     echo ""
 }
 
-
-
-
 function pre_req() {
     check_command "${OC}"
 
@@ -153,9 +143,15 @@ function pre_req() {
     fi
 
     check_cert_manager "cert-manager"
+    if [ $? -ne 0 ]; then
+      error "Cert-manager is not found or having more than one\n"
+    fi
 
     if [ $ENABLE_LICENSING -eq 1 ]; then
         check_licensing
+        if [ $? -ne 0 ]; then
+          error "ibm-licensing is not found or having more than one\n"
+        fi
     fi
 
     if [ "$OPERATOR_NS" == "" ]; then
@@ -178,12 +174,18 @@ function pre_req() {
 function check_ns_list(){
     for ns in $OPERATOR_NS $SERVICES_NS ${TETHERED_NS//,/ }; do
         check_namespace $ns
+        if [ $? -ne 0 ]; then
+          error "Namespace $ns is not exist or current user $user does not get permission for this namespace\n"
+        fi
     done
 }
 
 function create_ns_list() {
     for ns in $OPERATOR_NS $SERVICES_NS ${TETHERED_NS//,/ }; do
         create_namespace $ns
+        if [ $? -ne 0 ]; then
+          error "Namespace $ns cannot be created, please ensure user $user has proper permission to create namepace\n"
+        fi
     done
 }
 
@@ -199,6 +201,11 @@ function check_topology(){
 }
 
 function setup_topology() {
+    if $LIMITED;then 
+        check_ns_list
+    else
+        create_ns_list
+    fi
     target=$(cat <<EOF
         
   targetNamespaces:
@@ -206,17 +213,26 @@ function setup_topology() {
 EOF
 )
     create_operator_group "common-service" "$OPERATOR_NS" "$target"
+    if [ $? -ne 0 ]; then
+      error "Operatorgroup cannot be created in namespace $OPERATOR_NS, please ensure user $user has proper permission to create Operatorgroup\n"
+    fi
+}
+
+function setup_nss() {
     install_nss
     authorize_nss #authorize_nss should be done by a different command with cluster admin
 }
+
 function install_nss() {
     title "Installing Namespace Scope operator\n"
 
     is_sub_exist "ibm-namespace-scope-operator" "$OPERATOR_NS"
     if [ $? -eq 0 ]; then
         warning "There is an ibm-namespace-scope-operator subscription already deployed\n"
-        create_subscription "ibm-namespace-scope-operator" "$OPERATOR_NS" "$CHANNEL" "ibm-namespace-scope-operator" "${SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
+    else
+      create_subscription "ibm-namespace-scope-operator" "$OPERATOR_NS" "$CHANNEL" "ibm-namespace-scope-operator" "${SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
     fi
+
     wait_for_operator "$OPERATOR_NS" "ibm-namespace-scope-operator"
 
     # namespaceMembers should at least have Bedrock operators' namespace
@@ -238,12 +254,11 @@ EOF
 
     configure_nss_kind "$ns"
     if [ $? -ne 0 ]; then
-        error "Failed to configure NamespaceScope CR in ${OPERATOR_NS}\n"
+        error "Failed to create NSS CR in ${OPERATOR_NS}"
     fi
 }
 
 function authorize_nss() {
-    title "Authorizing NSS to all namespaces in tenant\n"
 
     local role=$(
         cat <<EOF
@@ -286,20 +301,25 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 EOF
 )
-
+    title "Checking and authorizing NSS to all namespaces in tenant\n"
     for ns in $SERVICES_NS ${TETHERED_NS//,/ }; do
-        debug1 "Creating following Role:\n"
-        debug1 "${role//ns_to_replace/$ns}\n"
-        echo "${role//ns_to_replace/$ns}" | ${OC} apply -f -
-        if [[ $? -ne 0 ]]; then
-        error "Failed to create Role for NSS in $ns"
-        fi
 
-        debug1 "Creating following RoleBinding:\n"
-        debug1 "${rb//ns_to_replace/$ns}\n"
-        echo "${rb//ns_to_replace/$ns}" | ${OC} apply -f -
-        if [[ $? -ne 0 ]]; then
-        error "Failed to create RoleBinding for NSS in $ns"
+        if [[ $(oc get RoleBinding nss-managed-role-from-$OPERATOR_NS -n $ns 2>/dev/null) != "" ]];then
+            info "RoleBinding nss-managed-role-from-$OPERATOR_NS is already existed in $ns, skip creating"
+        else
+            debug1 "Creating following Role:\n"
+            debug1 "${role//ns_to_replace/$ns}\n"
+            echo "${role//ns_to_replace/$ns}" | ${OC} apply -f -
+            if [[ $? -ne 0 ]]; then
+                error "Failed to create Role for NSS in namespace $ns"
+            fi
+
+            debug1 "Creating following RoleBinding:\n"
+            debug1 "${rb//ns_to_replace/$ns}\n"
+            echo "${rb//ns_to_replace/$ns}" | ${OC} apply -f -
+            if [[ $? -ne 0 ]]; then
+                error "Failed to create RoleBinding for NSS in namespace $ns"
+            fi
         fi
     done
 }
@@ -310,20 +330,20 @@ function install_cs_operator() {
     is_sub_exist "ibm-common-service-operator" "$OPERATOR_NS"
     if [ $? -eq 0 ]; then
         info "There is an ibm-common-service-operator Subscription already\n"
-        return 0
+    else
+        create_subscription "ibm-common-service-operator" "$OPERATOR_NS" "$CHANNEL" "ibm-common-service-operator" "${SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
+        sleep 120
     fi
-
-    create_subscription "ibm-common-service-operator" "$OPERATOR_NS" "$CHANNEL" "ibm-common-service-operator" "${SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
     wait_for_operator "$OPERATOR_NS" "ibm-common-service-operator"
-    sleep 120
 }
 
-function create_nss_kind() {
+function configure_nss_kind() {
     local members=$1
 
     if [[ $(oc get NamespaceScope common-service -n $OPERATOR_NS 2>/dev/null) != ""]];then
-
+      title "NamespaceScope CR is already deployed in $OPERATOR_NS"
     else
+      title "Creating the NamespaceScope object"
     fi
     local object=$(
     cat <<EOF
@@ -340,14 +360,9 @@ spec:
     intent: projected
 EOF
     )
-    
     echo
-    info "Creating the NamespaceScope object"
     echo "$object"
     echo "$object" | ${OC} apply -f -
-    if [[ $? -ne 0 ]]; then
-        error "Failed to create NSS CR in ${OPERATOR_NS}"
-    fi
 }
 
 function configure_cs_kind() {
@@ -376,7 +391,7 @@ EOF
 
 function debug1() {
     if [ $DEBUG -eq 1 ]; then
-       debug "${1}"
+        debug "${1}"
     fi
 }
 
