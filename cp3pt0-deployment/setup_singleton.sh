@@ -18,6 +18,8 @@ INSTALL_MODE="Automatic"
 CERT_MANAGER_SOURCE="ibm-cert-manager-operator-catalog"
 LICENSING_SOURCE="ibm-licensing-catalog"
 
+SKIP_INSTALL=false
+
 # ---------- Command variables ----------
 
 # script base directory
@@ -63,6 +65,13 @@ function parse_arguments() {
             shift
             LICENSING_SOURCE=$1
             ;;
+        --check-cert-manager)
+            SKIP_INSTALL=true
+            ;;
+        --check-licensing)
+            CHECK_LICENSING_ONLY=1
+            SKIP_INSTALL=true           
+            ;;
         -h | --help)
             print_usage
             exit 1
@@ -96,6 +105,10 @@ function print_usage() {
 }
 
 function install_cert_manager() {
+    if [ $CHECK_LICENSING_ONLY -eq 1 ]; then
+        return
+    fi
+
     title "Installing cert-manager\n"
     is_sub_exist "cert-manager" # this will catch the packagenames of all cert-manager-operators
     if [ $? -eq 0 ]; then
@@ -112,14 +125,21 @@ function install_cert_manager() {
     if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
         SOURCE_NS="ibm-cert-manager"
     fi
+
+    if [ $SKIP_INSTALL = true ]; then
+        wait_for_operator "ibm-cert-manager" "ibm-cert-manager-operator" 6 # only wait 1 min by retrying 6 times
+        return
+    fi
+
     create_namespace ibm-cert-manager
     create_operator_group "ibm-cert-manager-operator" "ibm-cert-manager" "{}"
     create_subscription "ibm-cert-manager-operator" "ibm-cert-manager" "$CHANNEL" "ibm-cert-manager-operator" "${CERT_MANAGER_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
     wait_for_operator "ibm-cert-manager" "ibm-cert-manager-operator"
+   
 }
 
 function install_licensing() {
-    if [ $ENABLE_LICENSING -ne 1 ]; then
+    if [ $ENABLE_LICENSING -ne 1 ] && [ $CHECK_LICENSING_ONLY -ne 1 ]; then
         return
     fi
 
@@ -132,6 +152,11 @@ function install_licensing() {
 
     if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
         SOURCE_NS="ibm-licensing"
+    fi
+
+    if [ $SKIP_INSTALL = true ]; then
+        wait_for_operator "ibm-licensing" "ibm-licensing-operator" 6 # only wait 1 min by retrying 6 times
+        return
     fi
 
     create_namespace ibm-licensing

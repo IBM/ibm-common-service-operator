@@ -208,6 +208,9 @@ function wait_for_operator() {
     local operator_name=$2
     local condition="${OC} -n ${namespace} get csv --no-headers --ignore-not-found | egrep 'Succeeded' | grep ^${operator_name}"
     local retries=50
+    if [ "x$3" != "x" ]; then
+        retries=$3
+    fi
     local sleep_time=10
     local total_time_mins=$(( sleep_time * retries / 60))
     local wait_message="Waiting for operator ${operator_name} in namespace ${namespace} to be made available"
