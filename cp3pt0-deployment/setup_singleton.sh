@@ -13,9 +13,10 @@ OC=oc
 ENABLE_LICENSING=0
 ENABLE_PRIVATE_CATALOG=0
 CHANNEL="v4.0"
-SOURCE="opencloud-operators"
 SOURCE_NS="openshift-marketplace"
 INSTALL_MODE="Automatic"
+CERT_MANAGER_SOURCE="ibm-cert-manager-operator-catalog"
+LICENSING_SOURCE="ibm-licensing-catalog"
 
 # ---------- Command variables ----------
 
@@ -54,9 +55,13 @@ function parse_arguments() {
             shift
             CHANNEL=$1
             ;;
-        -s | --source)
+        --cert-manager-source)
             shift
-            SOURCE=$1
+            CERT_MANAGER_SOURCE=$1
+            ;;
+        --licensing-source)
+            shift
+            LICENSING_SOURCE=$1
             ;;
         -h | --help)
             print_usage
@@ -82,9 +87,10 @@ function print_usage() {
     echo "   --oc string                    File path to oc CLI. Default uses oc in your PATH"
     echo "   --enable-licensing             Set this flag to install ibm-licensing-operator"
     echo "   --enable-private-catalog       Set this flag to use namespace scoped CatalogSource. Default is in openshift-marketplace namespace"
+    echo "   --cert-manager-source string   CatalogSource name of ibm-cert-manager-operator. This assumes your CatalogSource is already created. Default is ibm-cert-manager-operator-catalog"
+    echo "   --licensing-source string      CatalogSource name of ibm-licensing. This assumes your CatalogSource is already created. Default is ibm-licensing-catalog"
     echo "   -c, --channel string           Channel for Subscription(s). Default is v4.0"   
     echo "   -i, --install-mode string      InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
-    echo "   -s, --source string            CatalogSource name. This assumes your CatalogSource is already created. Default is opencloud-operators"
     echo "   -h, --help                     Print usage information"
     echo ""
 }
@@ -108,7 +114,7 @@ function install_cert_manager() {
     fi
     create_namespace ibm-cert-manager
     create_operator_group "ibm-cert-manager-operator" "ibm-cert-manager" "{}"
-    create_subscription "ibm-cert-manager-operator" "ibm-cert-manager" "$CHANNEL" "ibm-cert-manager-operator" "${SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
+    create_subscription "ibm-cert-manager-operator" "ibm-cert-manager" "$CHANNEL" "ibm-cert-manager-operator" "${CERT_MANAGER_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
     wait_for_operator "ibm-cert-manager" "ibm-cert-manager-operator"
 }
 
@@ -137,7 +143,7 @@ function install_licensing() {
 EOF
 )
     create_operator_group "ibm-licensing-operator-app" "ibm-licensing" "$target"
-    create_subscription "ibm-licensing-operator-app" "ibm-licensing" "$CHANNEL" "ibm-licensing-operator-app" "${SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
+    create_subscription "ibm-licensing-operator-app" "ibm-licensing" "$CHANNEL" "ibm-licensing-operator-app" "${LICENSING_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
     wait_for_operator "ibm-licensing" "ibm-licensing-operator"
 }
 
