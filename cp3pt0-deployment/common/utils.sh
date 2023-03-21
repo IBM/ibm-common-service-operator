@@ -361,3 +361,118 @@ EOF
         error "Failed to create subscription ${name} in ${ns}"
     fi
 }
+
+# update/create cs cr
+function update_cscr() {
+    local operator_ns=$1
+    local service_ns=$2
+    
+    # get all the watch_namespaces
+    local cp_namespaces=$($OC get configmap namespace-scope -n ${operator_ns} -o jsonpath='{.data.namespaces}')
+    local namespaces_array=($(echo $cp_namespaces | tr "," "\n") )
+    
+    for namespace in "${namespaces_array[@]}"
+    do
+        echo $namespace
+        # update or create cs cr in the tenant namespace
+        if [[ "${namespace}" != "${operator_ns}" ]]; then
+            get_commonservice=$("${OC}" get commonservice -n ${namespace})
+            if [[ "${get_commonservice}" == "" ]]; then
+                echo "create in" $namespace
+                # copy commonservice from operator namespace
+                ${OC} get commonservice common-service -n "${operator_ns}" -o yaml | yq eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
+                yq eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.namespace = "'${namespace}'"' common-service.yaml | ${OC} apply --overwrite=true -f -
+
+            else
+                echo "update in" $namespace
+                # update commonservice
+                cs_name=$(${OC} get commonservice -n ${namespace} --no-headers | awk '{print $1}')
+                ${OC} get commonservice ${cs_name} -n "${namespace}" -o yaml | yq eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
+                yq eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.namespace = "'${namespace}'"' common-service.yaml | ${OC} apply --overwrite=true -f -
+            fi  
+        else
+            # update commonservice
+            cs_name=$(${OC} get commonservice -n ${namespace} --no-headers | awk '{print $1}')
+            ${OC} get commonservice ${cs_name} -n "${namespace}" -o yaml | yq eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
+            yq eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.namespace = "'${namespace}'"' common-service.yaml | ${OC} apply --overwrite=true -f -
+        fi
+    done
+
+    rm common-service.yaml
+}
+
+# ---------- cleanup functions ----------
+function cleanup_cp2() {
+    cleanup_webhook
+    cleanup_secretshare
+    cleanup_crossplane
+}
+
+# clean up webhook deployment and webhookconfiguration
+function cleanup_webhook() {
+    cleanup_deployment "ibm-common-service-webhook"
+
+    info "Deleting MutatingWebhookConfiguration..."
+    ${OC} delete MutatingWebhookConfiguration ibm-common-service-webhook-configuration --ignore-not-found
+    ${OC} delete MutatingWebhookConfiguration ibm-operandrequest-webhook-configuration --ignore-not-found
+
+    info "Deleting MutatingWebhookConfiguration..."
+    ${OC} delete ValidatingWebhookConfiguration ibm-cs-ns-mapping-webhook-configuration --ignore-not-found
+    
+    info "Deleting podpresets..."
+    local namespace=$(${OC} get podpresets.operator.ibm.com -A --no-headers | awk '{print $1}')
+    ${OC} get podpresets.operator.ibm.com -A --no-headers | awk '{print $2}' | xargs oc delete -n ${namespace} --ignore-not-found podpresets.operator.ibm.com
+
+}
+
+# clean up secretshare deployment and CR
+function cleanup_secretshare() {
+    cleanup_deployment "secretshare"
+
+    info "Deleting SecretShare..."
+    ${OC} get secretshare -A --no-headers | awk '{print $2}' | xargs oc delete --ignore-not-found secretshare 
+
+}
+
+# todo: clean up crossplane sub and CR
+function cleanup_crossplane() {
+    # delete CR
+    info "cleanup crossplane CR"
+    ${OC} get configuration.pkg.ibm.crossplane.io -A --no-headers | awk '{print $1}' | xargs oc delete --ignore-not-found configuration.pkg.ibm.crossplane.io
+    ${OC} get lock.pkg.ibm.crossplane.io -A --no-headers | awk '{print $1}' | xargs oc delete --ignore-not-found lock.pkg.ibm.crossplane.io
+    ${OC} get ProviderConfig -A --no-headers | awk '{print $1}' | xargs oc delete --ignore-not-found ProviderConfig
+
+    sleep 60
+
+    # delete Sub
+    info "cleanup crossplane subscription"
+    local namespace=$($OC get sub -A --no-headers | grep ibm-crossplane-operator-app | awk '{print $1}')
+    ${OC} delete sub ibm-crossplane-provider-kubernetes-operator-app -n ${namespace} --ignore-not-found
+    ${OC} delete sub ibm-crossplane-provider-ibm-cloud-operator-app -n ${namespace} --ignore-not-found
+    ${OC} delete sub ibm-crossplane-operator-app -n ${namespace} --ignore-not-found
+}
+
+function cleanup_OperandBindInfo() {
+    local namespace=$1
+    ${OC} delete operandbindInfo ibm-commonui-bindinfo -n ${namespace} --ignore-not-found
+}
+
+function cleanup_NamespaceScope() {
+    local namespace=$1
+    ${OC} delete namespacescope odlm-scope-managedby-odlm nss-odlm-scope nss-managedby-odlm -n ${namespace} --ignore-not-found
+}
+
+function cleanup_OperandRequest() {
+    local namespace=$1
+    ${OC} delete operandrequest ibm-commonui-request ibm-mongodb-request -n ${namespace} --ignore-not-found
+}
+
+function cleanup_deployment() {
+    local name=$1
+    local namespace=$($OC get deployment -A | grep ${name} | awk '{print $1}')
+    info "Deleting existing Deployment ${name}..."
+    ${OC} delete deployment ${name} -n ${namespace} --ignore-not-found
+
+    wait_for_no_pod ${namespace} ${name}
+}
+
