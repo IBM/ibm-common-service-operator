@@ -52,6 +52,24 @@ function main() {
     # # Update common-serivce-maps ConfigMap
     # ${BASE_DIR}/common/mapping_tenant.sh --operator-namespace $OPERATOR_NS --services-namespace $SERVICES_NS --tethered-namespaces $TETHERED_NS --control-namespace $CONTROL_NS
     
+    # Scale down CS and ODLM
+    # It helps to prevent re-installing licensing and cert-manager services
+    scale_down_cs
+
+    # Migrate CP2 cluster singleton services
+    local arguments="--enable-cert-manager"
+
+    # Do not migrate Licensing if it is multi-instance enabled mode
+    if [[ "$CONTROL_NS" == "$OPERATOR_NS" ]]; then
+        arguments+=" --enable-licensing"
+    fi
+    
+    if [[ $ENABLE_PRIVATE_CATALOG -eq 1 ]]; then
+        arguments+=" --enable-private-catalog"
+    fi
+    ${BASE_DIR}/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" "-c" "$CHANNEL" "--cert-manager-source" "$CERT_MANAGER_SOURCE" "--licensing-source" "$LICENSING_SOURCE" "$arguments"
+
+
     # Update CommonService CR with OPERATOR_NS and SERVICES_NS
     # Propogate CommonService CR to every namespace in the tenant
     update_cscr "$OPERATOR_NS" "$SERVICES_NS" "$NS_LIST"
@@ -89,20 +107,6 @@ function main() {
     
     # Clean resources
     cleanup_cp2 "$OPERATOR_NS" "$CONTROL_NS" "$NS_LIST"
-
-    # Migrate CP2 cluster singleton services
-    local arguments=""
-    if [[ $ENABLE_CERTMANAGER -eq 1 ]]; then
-        arguments+=" --enable-cert-manager"
-    fi
-    if [[ $ENABLE_LICENSING -eq 1 ]]; then
-        arguments+=" --enable-licensing"
-    fi
-    
-    if [[ $ENABLE_PRIVATE_CATALOG -eq 1 ]]; then
-        arguments+=" --enable-private-catalog"
-    fi
-    ${BASE_DIR}/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" "-c" "$CHANNEL" "--cert-manager-source" "$CERT_MANAGER_SOURCE" "--licensing-source" "$LICENSING_SOURCE" "$arguments"
 
     # Migrate IAM roles
     
@@ -236,6 +240,14 @@ function pre_req() {
 # TODO validate argument
 function get_and_validate_arguments() {
     get_control_namespace
+}
+
+function scale_down_cs() {
+    ${OC} scale deployment -n $OPERATOR_NS ibm-common-service-operator --replicas=0
+    # ${OC} scale deployment -n $OPERATOR_NS operand-deployment-lifecycle-manager --replicas=0
+    delete_operator "operand-deployment-lifecycle-manager-app" $OPERATOR_NS
+    ${OC} delete operandregistry -n $SERVICES_NS --ignore-not-found common-service 
+    ${OC} delete operandconfig -n $SERVICES_NS --ignore-not-found common-service
 }
 
 function debug1() {
