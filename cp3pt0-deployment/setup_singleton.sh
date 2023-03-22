@@ -18,6 +18,9 @@ INSTALL_MODE="Automatic"
 CERT_MANAGER_SOURCE="ibm-cert-manager-operator-catalog"
 LICENSING_SOURCE="ibm-licensing-catalog"
 
+SKIP_INSTALL=0
+CHECK_LICENSING_ONLY=0
+
 # ---------- Command variables ----------
 
 # script base directory
@@ -63,6 +66,13 @@ function parse_arguments() {
             shift
             LICENSING_SOURCE=$1
             ;;
+        --check-cert-manager)
+            SKIP_INSTALL=1
+            ;;
+        --check-licensing)
+            CHECK_LICENSING_ONLY=1
+            SKIP_INSTALL=1           
+            ;;
         -h | --help)
             print_usage
             exit 1
@@ -96,30 +106,42 @@ function print_usage() {
 }
 
 function install_cert_manager() {
+    if [ $CHECK_LICENSING_ONLY -eq 1 ]; then
+        return
+    fi
+
     title "Installing cert-manager\n"
     is_sub_exist "cert-manager" # this will catch the packagenames of all cert-manager-operators
     if [ $? -eq 0 ]; then
         warning "There is a cert-manager Subscription already\n"
         return 0
+    elif [ $SKIP_INSTALL -eq 1 ]; then
+        warning "There is no cert-manager Subscription installed\n"
+        exit 1
     fi
 
     pods_exist=$(${OC} get pods -A | grep -w cert-manager-webhook)
     if [ $? -eq 0 ]; then
         warning "There is a cert-manager-webhook pod Running, so most likely another cert-manager is already installed\n"
         return 0
+    elif [ $SKIP_INSTALL -eq 1 ]; then
+        warning "There is no cert-manager-webhook pod running\n"
+        exit 1
     fi
 
     if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
         SOURCE_NS="ibm-cert-manager"
     fi
+
     create_namespace ibm-cert-manager
     create_operator_group "ibm-cert-manager-operator" "ibm-cert-manager" "{}"
     create_subscription "ibm-cert-manager-operator" "ibm-cert-manager" "$CHANNEL" "ibm-cert-manager-operator" "${CERT_MANAGER_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
     wait_for_operator "ibm-cert-manager" "ibm-cert-manager-operator"
+   
 }
 
 function install_licensing() {
-    if [ $ENABLE_LICENSING -ne 1 ]; then
+    if [ $ENABLE_LICENSING -ne 1 ] && [ $CHECK_LICENSING_ONLY -ne 1 ]; then
         return
     fi
 
@@ -128,6 +150,9 @@ function install_licensing() {
     if [ $? -eq 0 ]; then
         warning "There is an ibm-licensing-operator Subscription already\n"
         return 0
+    elif [ $SKIP_INSTALL -eq 1 ]; then
+        warning "There is no ibm-licensing-operator Subscription installed\n"
+        exit 1
     fi
 
     if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
