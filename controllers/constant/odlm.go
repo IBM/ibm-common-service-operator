@@ -516,7 +516,7 @@ spec:
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
     installMode: no-op
- - name: ibm-idp-config-ui-operator-v4.0
+  - name: ibm-idp-config-ui-operator-v4.0
     namespace: "{{ .CPFSNs }}"
     channel: {{ .Channel }}
     packageName: ibm-commonui-operator-app
@@ -524,7 +524,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
- - name: ibm-idp-config-ui-operator
+  - name: ibm-idp-config-ui-operator
     namespace: "{{ .CPFSNs }}"
     channel: {{ .Channel }}
     packageName: ibm-commonui-operator-app
