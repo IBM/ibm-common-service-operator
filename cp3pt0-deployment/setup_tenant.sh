@@ -5,8 +5,8 @@
 # US Government Users Restricted Rights -
 # Use, duplication or disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
 #
-# This is an internal component, bundled with an official IBM product. 
-# Please refer to that particular license for additional information. 
+# This is an internal component, bundled with an official IBM product.
+# Please refer to that particular license for additional information.
 
 # ---------- Command arguments ----------
 
@@ -98,7 +98,7 @@ function parse_arguments() {
             print_usage
             exit 1
             ;;
-        *) 
+        *)
             echo "wildcard"
             ;;
         esac
@@ -133,7 +133,7 @@ function pre_req() {
     check_command "${OC}"
 
     # checking oc command logged in
-    user=$(oc whoami 2> /dev/null)
+    user=$($OC whoami 2> /dev/null)
     if [ $? -ne 0 ]; then
         error "You must be logged into the OpenShift Cluster from the oc command line"
     else
@@ -188,13 +188,13 @@ function create_ns_list() {
 }
 
 function setup_topology() {
-    if $LIMITED;then 
+    if $LIMITED;then
         check_ns_list
     else
         create_ns_list
     fi
     target=$(cat <<EOF
-        
+
   targetNamespaces:
     - $OPERATOR_NS
 EOF
@@ -228,7 +228,7 @@ function install_nss() {
     - $OPERATOR_NS
 EOF
     )
-    
+
     # add the tethered optional namespaces for a tenant to namespaceMembers
     # ${TETHERED_NS} is comma delimited, so need to replace commas with space
     for n in $SERVICES_NS ${TETHERED_NS//,/ }; do
@@ -291,10 +291,10 @@ EOF
     title "Checking and authorizing NSS to all namespaces in tenant\n"
     for ns in $SERVICES_NS ${TETHERED_NS//,/ }; do
 
-        if [[ $(oc get RoleBinding nss-managed-role-from-$OPERATOR_NS -n $ns 2>/dev/null) != "" ]];then
+        if [[ $($OC get RoleBinding nss-managed-role-from-$OPERATOR_NS -n $ns 2>/dev/null) != "" ]];then
             info "RoleBinding nss-managed-role-from-$OPERATOR_NS is already existed in $ns, skip creating"
         else
-            if $LIMITED;then 
+            if $LIMITED;then
                 error "User only has namespace admin, need to setup role and rolebinding in all tenant namespaces before setup topology"
             fi
             debug1 "Creating following Role:\n"
@@ -331,7 +331,7 @@ function install_cs_operator() {
 function configure_nss_kind() {
     local members=$1
 
-    if [[ $(oc get NamespaceScope common-service -n $OPERATOR_NS 2>/dev/null) != "" ]];then
+    if [[ $($OC get NamespaceScope common-service -n $OPERATOR_NS 2>/dev/null) != "" ]];then
         title "NamespaceScope CR is already deployed in $OPERATOR_NS"
     else
         title "Creating the NamespaceScope object"
