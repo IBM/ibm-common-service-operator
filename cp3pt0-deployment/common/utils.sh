@@ -612,10 +612,10 @@ function get_control_namespace() {
         control_namespace=$(echo "${config_map_data}" | yq -r '.controlNamespace')
 
         # Check if the controlNamespace key exists
-        if [[ ! -z "${control_namespace}" ]]; then
-            CONTROL_NS=$control_namespace
-        else
+        if [[ -z "${control_namespace}" ]]; then
             warning "No controlNamespace is found from common-serivce-maps ConfigMap in kube-public namespace. It is a single shared Common Service instance upgrade"
+        else
+            CONTROL_NS=$control_namespace
         fi
     fi
 }
