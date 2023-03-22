@@ -256,6 +256,32 @@ function is_sub_exist() {
     is_exist=$(echo "$name" | grep -w "$package_name")
 }
 
+function check_namespace(){
+    local namespace=$1
+    if [[ -z "$(${OC} get namespace ${namespace} --ignore-not-found)" ]]; then
+        error "Namespace ${namespace} does not exist"
+    fi
+}
+
+function check_cert_manager(){
+    csv_count=`$OC get csv |grep "cert-manager"|wc -l`
+    if [[ $csv_count == 0 ]]; then
+        error "Missing a cert-manager"
+    fi
+    if [[ $csv_count > 1 ]]; then
+        error "Multiple cert-manager csv found. Only one should be installed per cluster"
+    fi
+}
+
+function check_licensing(){
+    csv_count=`$OC get csv |grep "ibm-licensing"|wc -l`
+    if [[ $csv_count == 0 ]]; then
+        error "Missing ibm-licensing service"
+    fi
+    if [[ $csv_count > 1 ]]; then
+        error "Multiple ibm-licensing service csv found. Only one should be installed per cluster"
+    fi
+}
 # ---------- creation functions ----------
 
 function create_namespace() {
