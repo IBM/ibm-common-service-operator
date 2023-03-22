@@ -144,13 +144,13 @@ function pre_req() {
 
     check_cert_manager "cert-manager"
     if [ $? -ne 0 ]; then
-      error "Cert-manager is not found or having more than one\n"
+        error "Cert-manager is not found or having more than one\n"
     fi
 
     if [ $ENABLE_LICENSING -eq 1 ]; then
         check_licensing
         if [ $? -ne 0 ]; then
-          error "ibm-licensing is not found or having more than one\n"
+            error "ibm-licensing is not found or having more than one\n"
         fi
     fi
 
@@ -175,7 +175,7 @@ function check_ns_list(){
     for ns in $OPERATOR_NS $SERVICES_NS ${TETHERED_NS//,/ }; do
         check_namespace $ns
         if [ $? -ne 0 ]; then
-          error "Namespace $ns is not exist or current user $user does not get permission for this namespace\n"
+            error "Namespace $ns is not exist or current user $user does not get permission for this namespace\n"
         fi
     done
 }
@@ -184,7 +184,7 @@ function create_ns_list() {
     for ns in $OPERATOR_NS $SERVICES_NS ${TETHERED_NS//,/ }; do
         create_namespace $ns
         if [ $? -ne 0 ]; then
-          error "Namespace $ns cannot be created, please ensure user $user has proper permission to create namepace\n"
+            error "Namespace $ns cannot be created, please ensure user $user has proper permission to create namepace\n"
         fi
     done
 }
@@ -214,7 +214,7 @@ EOF
 )
     create_operator_group "common-service" "$OPERATOR_NS" "$target"
     if [ $? -ne 0 ]; then
-      error "Operatorgroup cannot be created in namespace $OPERATOR_NS, please ensure user $user has proper permission to create Operatorgroup\n"
+        error "Operatorgroup cannot be created in namespace $OPERATOR_NS, please ensure user $user has proper permission to create Operatorgroup\n"
     fi
 }
 
@@ -230,7 +230,7 @@ function install_nss() {
     if [ $? -eq 0 ]; then
         warning "There is an ibm-namespace-scope-operator subscription already deployed\n"
     else
-      create_subscription "ibm-namespace-scope-operator" "$OPERATOR_NS" "$CHANNEL" "ibm-namespace-scope-operator" "${SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
+        create_subscription "ibm-namespace-scope-operator" "$OPERATOR_NS" "$CHANNEL" "ibm-namespace-scope-operator" "${SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
     fi
 
     wait_for_operator "$OPERATOR_NS" "ibm-namespace-scope-operator"
@@ -308,7 +308,7 @@ EOF
             info "RoleBinding nss-managed-role-from-$OPERATOR_NS is already existed in $ns, skip creating"
         else
             if $LIMITED;then 
-              error "User only has namespace admin, need to setup role and rolebinding in all tenant namespaces before setup topology"
+                error "User only has namespace admin, need to setup role and rolebinding in all tenant namespaces before setup topology"
             fi
             debug1 "Creating following Role:\n"
             debug1 "${role//ns_to_replace/$ns}\n"
@@ -344,9 +344,9 @@ function configure_nss_kind() {
     local members=$1
 
     if [[ $(oc get NamespaceScope common-service -n $OPERATOR_NS 2>/dev/null) != "" ]];then
-      title "NamespaceScope CR is already deployed in $OPERATOR_NS"
+        title "NamespaceScope CR is already deployed in $OPERATOR_NS"
     else
-      title "Creating the NamespaceScope object"
+        title "Creating the NamespaceScope object"
     fi
     local object=$(
     cat <<EOF
