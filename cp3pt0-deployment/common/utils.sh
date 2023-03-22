@@ -249,9 +249,9 @@ function is_sub_exist() {
     local package_name=$1
     if [ $# -eq 2 ]; then
         local namespace=$2
-        local name=$(${OC} get sub -n ${namespace} -o yaml -o jsonpath='{.items[*].spec.name}')
+        local name=$(${OC} get subscription.operators.coreos.com -n ${namespace} -o yaml -o jsonpath='{.items[*].spec.name}')
     else
-        local name=$(${OC} get sub -A -o yaml -o jsonpath='{.items[*].spec.name}')
+        local name=$(${OC} get subscription.operators.coreos.com -A -o yaml -o jsonpath='{.items[*].spec.name}')
     fi
     is_exist=$(echo "$name" | grep -w "$package_name")
 }
@@ -420,7 +420,7 @@ function cleanup_crossplane() {
 
     # delete Sub
     info "cleanup crossplane subscription"
-    local namespace=$($OC get sub -A --no-headers | grep ibm-crossplane-operator-app | awk '{print $1}')
+    local namespace=$($OC get subscription.operators.coreos.com -A --no-headers | grep ibm-crossplane-operator-app | awk '{print $1}')
     ${OC} delete sub ibm-crossplane-provider-kubernetes-operator-app -n ${namespace} --ignore-not-found
     ${OC} delete sub ibm-crossplane-provider-ibm-cloud-operator-app -n ${namespace} --ignore-not-found
     ${OC} delete sub ibm-crossplane-operator-app -n ${namespace} --ignore-not-found
