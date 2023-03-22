@@ -38,11 +38,9 @@ STEP=0
 function main() {
     parse_arguments "$@"
     pre_req
-    # check_topology
     setup_topology
     setup_nss
     install_cs_operator
-    configure_cs_kind
 }
 
 function parse_arguments() {
@@ -189,17 +187,6 @@ function create_ns_list() {
     done
 }
 
-function check_topology(){
-    cs_cr=`$OC get commonservice common-service -n $OPERATOR_NS --ignore-not-found -o name`
-    if [ ! -z "$cs_cr" ]; then
-        #found commonservice cr, thus an existing tenant. Throw error if --services-namespace has a different value from that of the cr
-        local service_ns=$($OC get commonservice common-service -o jsonpath={.status.configStatus.servicesPlane.servicesNamespace})
-        if [[ $service_ns != $SERVICES_NS ]]; then
-            error "Invalid topology - operator-namespace '$OPERATOR_NS' already has a services-namespace '$service_ns', but --services-namespace flag provided a different value '$SERVICES_NS'"
-        fi
-    fi
-}
-
 function setup_topology() {
     if $LIMITED;then 
         check_ns_list
@@ -220,7 +207,7 @@ EOF
 
 function setup_nss() {
     install_nss
-    authorize_nss #authorize_nss should be done by a different command with cluster admin
+    authorize_nss
 }
 
 function install_nss() {
@@ -338,6 +325,7 @@ function install_cs_operator() {
         sleep 120
     fi
     wait_for_operator "$OPERATOR_NS" "ibm-common-service-operator"
+    configure_cs_kind
 }
 
 function configure_nss_kind() {
