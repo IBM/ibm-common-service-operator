@@ -133,7 +133,7 @@ function pre_req() {
     check_command "${OC}"
 
     # checking oc command logged in
-    user=$(oc whoami 2> /dev/null)
+    user=$($OC whoami 2> /dev/null)
     if [ $? -ne 0 ]; then
         error "You must be logged into the OpenShift Cluster from the oc command line"
     else
@@ -291,7 +291,7 @@ EOF
     title "Checking and authorizing NSS to all namespaces in tenant\n"
     for ns in $SERVICES_NS ${TETHERED_NS//,/ }; do
 
-        if [[ $(oc get RoleBinding nss-managed-role-from-$OPERATOR_NS -n $ns 2>/dev/null) != "" ]];then
+        if [[ $($OC get RoleBinding nss-managed-role-from-$OPERATOR_NS -n $ns 2>/dev/null) != "" ]];then
             info "RoleBinding nss-managed-role-from-$OPERATOR_NS is already existed in $ns, skip creating"
         else
             if $LIMITED;then 
@@ -331,7 +331,7 @@ function install_cs_operator() {
 function configure_nss_kind() {
     local members=$1
 
-    if [[ $(oc get NamespaceScope common-service -n $OPERATOR_NS 2>/dev/null) != "" ]];then
+    if [[ $($OC get NamespaceScope common-service -n $OPERATOR_NS 2>/dev/null) != "" ]];then
         title "NamespaceScope CR is already deployed in $OPERATOR_NS"
     else
         title "Creating the NamespaceScope object"
