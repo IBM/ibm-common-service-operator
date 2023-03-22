@@ -274,8 +274,23 @@ function wait_for_nss_patch() {
     
     # wait for deployment to be ready
     deployment_name=$($OC get deployment -n ${namespace} | grep common-service-operator | awk '{print $1}')
+    wait_for_env_var ${namespace} ${deployment_name}
     wait_for_deployment ${namespace} ${deployment_name}
     
+}
+
+function wait_for_env_var() {
+    local namespace=$1
+    local name=$2
+    local condition="${OC} -n ${namespace} get deployment ${name} -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name==\"WATCH_NAMESPACE\")].valueFrom.configMapKeyRef.name}'| grep 'namespace-scope'"
+    local retries=10
+    local sleep_time=30
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for OLM to update Deployment ${name} "
+    local success_message="Deployment ${name} is updated"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for OLM to update Deployment ${name} "
+
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
 function wait_for_deployment() {
@@ -288,7 +303,7 @@ function wait_for_deployment() {
     local wait_message="Waiting for Deployment ${name} to be ready"
     local success_message="Deployment ${name} is running"
     local error_message="Timeout after ${total_time_mins} minutes waiting for Deployment ${name} to be running"
-    sleep 30
+
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
