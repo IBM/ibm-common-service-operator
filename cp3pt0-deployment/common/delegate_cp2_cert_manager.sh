@@ -11,6 +11,7 @@
 # ---------- Command arguments ----------
 
 OC=oc
+YQ=yq
 CONTROL_NS=""
 DEBUG=0
 PREVIEW_MODE=1
@@ -107,11 +108,15 @@ function deactivate_cp2_cert_manager() {
     title "De-activating IBM Cloud Pak 2.0 Cert Manager in ${CONTROL_NS}...\n"
 
     info "Configuring Common Services Cert Manager.."
-    ${OC} patch configmap ibm-cpp-config -n ${CONTROL_NS} --type='json' -p='[{"op": "add", "path": "/data/deployCSCertManagerOperands", "value": "false"}]' 
+    ${OC} get configmap ibm-cpp-config -n ${CONTROL_NS}  -o yaml > ibm-cpp-config.yaml
+    ${YQ} -i eval 'select(.kind == "ConfigMap") | .data += {"deployCSCertManagerOperands": "'"false"'"}' ibm-cpp-config.yaml
+    
+    ${OC} apply -f ibm-cpp-config.yaml
     if [ $? -ne 0 ]; then
         error "Failed to patch ibm-cpp-config ConfigMap in ${CONTROL_NS}"
         return 0
     fi
+    rm ibm-cpp-config.yaml
     msg ""
 
     info "Deleting existing Cert Manager CR..."
