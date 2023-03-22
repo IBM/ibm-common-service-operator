@@ -173,7 +173,7 @@ function check_ns_list(){
     for ns in $OPERATOR_NS $SERVICES_NS ${TETHERED_NS//,/ }; do
         check_namespace $ns
         if [ $? -ne 0 ]; then
-            error "Namespace $ns is not exist or current user $user does not get permission for this namespace\n"
+            error "Namespace $ns does not exist or current user $user does not get permission for this namespace\n"
         fi
     done
 }
