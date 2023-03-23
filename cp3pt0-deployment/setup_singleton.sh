@@ -116,8 +116,7 @@ function install_cert_manager() {
         warning "There is a cert-manager Subscription already\n"
         return 0
     elif [ $SKIP_INSTALL -eq 1 ]; then
-        warning "There is no cert-manager Subscription installed\n"
-        exit 1
+        error "There is no cert-manager Subscription installed\n"
     fi
 
     pods_exist=$(${OC} get pods -A | grep -w cert-manager-webhook)
@@ -125,8 +124,7 @@ function install_cert_manager() {
         warning "There is a cert-manager-webhook pod Running, so most likely another cert-manager is already installed\n"
         return 0
     elif [ $SKIP_INSTALL -eq 1 ]; then
-        warning "There is no cert-manager-webhook pod running\n"
-        exit 1
+        error "There is no cert-manager-webhook pod running\n"
     fi
 
     if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
