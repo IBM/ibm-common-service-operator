@@ -281,21 +281,18 @@ EOF
         if [[ $($OC get RoleBinding nss-managed-role-from-$OPERATOR_NS -n $ns 2>/dev/null) != "" ]];then
             info "RoleBinding nss-managed-role-from-$OPERATOR_NS is already existed in $ns, skip creating"
         else
-            if $LIMITED;then
-                error "User only has namespace admin, need to setup role and rolebinding in all tenant namespaces before setup topology"
-            fi
             debug1 "Creating following Role:\n"
             debug1 "${role//ns_to_replace/$ns}\n"
             echo "${role//ns_to_replace/$ns}" | ${OC} apply -f -
             if [[ $? -ne 0 ]]; then
-                error "Failed to create Role for NSS in namespace $ns"
+                error "Failed to create Role for NSS in namespace $ns, please check if user has proper permission to create role"
             fi
 
             debug1 "Creating following RoleBinding:\n"
             debug1 "${rb//ns_to_replace/$ns}\n"
             echo "${rb//ns_to_replace/$ns}" | ${OC} apply -f -
             if [[ $? -ne 0 ]]; then
-                error "Failed to create RoleBinding for NSS in namespace $ns"
+                error "Failed to create RoleBinding for NSS in namespace $ns, please check if user has proper permission to create rolebinding"
             fi
         fi
     done
