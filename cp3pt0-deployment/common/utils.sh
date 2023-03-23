@@ -350,12 +350,13 @@ function check_cert_manager(){
 }
 
 function check_licensing(){
-    csv_count=`$OC get csv |grep "ibm-licensing"|wc -l`
-    if [[ $csv_count == 0 ]]; then
-        error "Missing ibm-licensing service"
+    [[ ! $($OC get IBMLicensing) ]] && error "User does not have proper permission to get IBMLicensing"
+    instance_count=`$OC get IBMLicensing -o name | wc -l`
+    if [[ $instance_count == 0 ]]; then
+        error "Missing IBMLicensing"
     fi
-    if [[ $csv_count > 1 ]]; then
-        error "Multiple ibm-licensing service csv found. Only one should be installed per cluster"
+    if [[ $instance_count > 1 ]]; then
+        error "Multiple IBMLicensing are found. Only one should be installed per cluster"
     fi
 }
 # ---------- creation functions ----------
