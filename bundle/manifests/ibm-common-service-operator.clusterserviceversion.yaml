@@ -357,10 +357,6 @@ spec:
   relatedImages:
     - image: icr.io/cpopen/common-service-operator:4.0.0
       name: COMMON_SERVICE_OPERATOR_IMAGE
-    - image: icr.io/cpopen/cpfs/ibm-cs-webhook:1.18.0
-      name: IBM_CS_WEBHOOK_IMAGE
-    - image: icr.io/cpopen/cpfs/ibm-secretshare-operator:1.19.0
-      name: IBM_SECRETSHARE_OPERATOR_IMAGE
     - image: icr.io/cpopen/cpfs/cpfs-utils:4.0.0
       name: CS_UTILS_IMAGE
   version: 4.0.0
