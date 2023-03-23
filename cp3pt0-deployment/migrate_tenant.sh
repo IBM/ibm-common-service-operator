@@ -94,6 +94,9 @@ function main() {
 
     sleep 60
     wait_for_operator "$OPERATOR_NS" "ibm-namespace-scope-operator"
+    
+    # Clean resources
+    cleanup_cp2 "$OPERATOR_NS" "$CONTROL_NS" "$NS_LIST"
 
     # Authroize NSS operator
     for ns in ${NS_LIST//,/ }; do
@@ -104,9 +107,6 @@ function main() {
 
     # Update NamespaceScope CR common-service
     update_nss_kind "$OPERATOR_NS" "$NS_LIST"
-    
-    # Clean resources
-    cleanup_cp2 "$OPERATOR_NS" "$CONTROL_NS" "$NS_LIST"
 
     # Migrate IAM roles
     
