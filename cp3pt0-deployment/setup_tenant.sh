@@ -21,7 +21,6 @@ TETHERED_NS=""
 SIZE_PROFILE="small"
 INSTALL_MODE="Automatic"
 DEBUG=0
-LIMITED=false
 
 # ---------- Command variables ----------
 
@@ -85,10 +84,6 @@ function parse_arguments() {
         -p | --size-profile)
             shift
             SIZE_PROFILE=$1
-            ;;
-        --limited-access-mode)
-            shift
-            LIMITED=$1
             ;;
         -v | --debug)
             shift
