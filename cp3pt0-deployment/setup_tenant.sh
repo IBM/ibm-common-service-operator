@@ -169,15 +169,6 @@ function pre_req() {
     fi
 }
 
-function check_ns_list(){
-    for ns in $OPERATOR_NS $SERVICES_NS ${TETHERED_NS//,/ }; do
-        check_namespace $ns
-        if [ $? -ne 0 ]; then
-            error "Namespace $ns does not exist or current user $user does not get permission for this namespace\n"
-        fi
-    done
-}
-
 function create_ns_list() {
     for ns in $OPERATOR_NS $SERVICES_NS ${TETHERED_NS//,/ }; do
         create_namespace $ns
@@ -188,11 +179,7 @@ function create_ns_list() {
 }
 
 function setup_topology() {
-    if $LIMITED;then
-        check_ns_list
-    else
-        create_ns_list
-    fi
+    create_ns_list
     target=$(cat <<EOF
 
   targetNamespaces:
