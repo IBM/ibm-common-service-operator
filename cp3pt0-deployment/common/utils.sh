@@ -332,13 +332,6 @@ function is_sub_exist() {
     is_exist=$(echo "$name" | grep -w "$package_name")
 }
 
-function check_namespace(){
-    local namespace=$1
-    if [[ -z "$(${OC} get namespace ${namespace} --ignore-not-found)" ]]; then
-        error "Namespace ${namespace} does not exist"
-    fi
-}
-
 function check_cert_manager(){
     csv_count=`$OC get csv |grep "cert-manager"|wc -l`
     if [[ $csv_count == 0 ]]; then
@@ -363,10 +356,9 @@ function check_licensing(){
 
 function create_namespace() {
     local namespace=$1
-
-    title "Creating namespace ${namespace}\n"
     
     if [[ -z "$(${OC} get namespace ${namespace} --ignore-not-found)" ]]; then
+        title "Creating namespace ${namespace}\n"
         ${OC} create namespace ${namespace}
         if [[ $? -ne 0 ]]; then
             error "Error creating namespace ${namespace}"
