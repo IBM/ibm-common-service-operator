@@ -118,7 +118,6 @@ function print_usage() {
     echo "   -i, --install-mode string      InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
     echo "   -s, --source string            CatalogSource name. This assumes your CatalogSource is already created. Default is opencloud-operators"
     echo "   -n, --namespace string         Namespace of CatalogSource. Default is openshift-marketplace"
-    echo "   --limited-access-mode string   Default is false, if set to true will throw error when require resources are not found"
     echo "   -v, --debug integer            Verbosity of logs. Default is 0. Set to 1 for debug logs."
     echo "   -h, --help                     Print usage information"
     echo ""
