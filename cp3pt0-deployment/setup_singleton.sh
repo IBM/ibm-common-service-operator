@@ -149,8 +149,7 @@ function install_licensing() {
         warning "There is an ibm-licensing-operator Subscription already\n"
         return 0
     elif [ $SKIP_INSTALL -eq 1 ]; then
-        warning "There is no ibm-licensing-operator Subscription installed\n"
-        exit 1
+        error "There is no ibm-licensing-operator Subscription installed\n"
     fi
 
     if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
