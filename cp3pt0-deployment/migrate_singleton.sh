@@ -13,13 +13,14 @@
 OC=oc
 YQ=yq
 OPERATOR_NS=""
-SERVICES_NS=""
 CONTROL_NS=""
 CHANNEL="v4.0"
 CERT_MANAGER_SOURCE="ibm-cert-manager-catalog"
 LICENSING_SOURCE="ibm-licensing-catalog"
 SOURCE_NS="openshift-marketplace"
 INSTALL_MODE="Automatic"
+CERT_MANAGER_NAMESPACE="ibm-cert-manager"
+LICENSING_NAMESPACE="ibm-licensing"
 ENABLE_LICENSING=0
 ENABLE_PRIVATE_CATALOG=0
 NEW_MAPPING=""
@@ -68,8 +69,14 @@ function main() {
         arguments+=" --enable-private-catalog"
     fi
 
+    argument+=" --cert-manager-source $CERT_MANAGER_SOURCE"
+    argument+=" --licensing-source $LICENSING_SOURCE"
+    argument+=" -c $CHANNEL"
+    argument+=" -cmNs $CERT_MANAGER_NAMESPACE"
+    argument+=" -licensingNs $LICENSING_NAMESPACE" 
+
     # Install New CertManager and Licensing, supporting new CatalogSource
-    ${BASE_DIR}/setup_singleton.sh "--cert-manager-source" "$CERT_MANAGER_SOURCE" "--licensing-source" "$LICENSING_SOURCE" "-c" "$CHANNEL" "$arguments"
+    ${BASE_DIR}/setup_singleton.sh "$arguments"
 
     success "Migration is completed for Cloud Pak 3.0 Foundational singleton services."
 }
@@ -108,6 +115,14 @@ function parse_arguments() {
             shift
             LICENSING_SOURCE=$1
             ;;
+        -cmNs | --cert-manager-namespace)
+            shift
+            CERT_MANAGER_NAMESPACE=$1
+            ;;
+        -licensingNs | --licensing-namespace)
+            shift
+            LICENSING_NAMESPACE=$1
+            ;;
         -v | --debug)
             shift
             DEBUG=$1
@@ -132,17 +147,19 @@ function print_usage() {
     echo "The --operator-namespace must be provided."
     echo ""
     echo "Options:"
-    echo "   --oc string                    File path to oc CLI. Default uses oc in your PATH"
-    echo "   --yq string                    File path to yq CLI. Default uses yq in your PATH"
-    echo "   --operator-namespace string    Required. Namespace to migrate Foundational services operator"
-    echo "   --enable-private-catalog       Set this flag to use namespace scoped CatalogSource. Default is in openshift-marketplace namespace"
-    echo "   --cert-manager-source string   CatalogSource name of ibm-cert-manager-operator. This assumes your CatalogSource is already created. Default is ibm-cert-manager-operator-catalog"
-    echo "   --licensing-source string      CatalogSource name of ibm-licensing. This assumes your CatalogSource is already created. Default is ibm-licensing-catalog"
-    echo "   --enable-licensing             Set this flag to migrate ibm-licensing-operator"
-    echo "   -c, --channel string           Channel for Subscription(s). Default is v4.0"   
-    echo "   -i, --install-mode string      InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
-    echo "   -v, --debug integer            Verbosity of logs. Default is 0. Set to 1 for debug logs."
-    echo "   -h, --help                     Print usage information"
+    echo "   --oc string                                    File path to oc CLI. Default uses oc in your PATH"
+    echo "   --yq string                                    File path to yq CLI. Default uses yq in your PATH"
+    echo "   --operator-namespace string                    Required. Namespace to migrate Foundational services operator"
+    echo "   --enable-private-catalog                       Set this flag to use namespace scoped CatalogSource. Default is in openshift-marketplace namespace"
+    echo "   --cert-manager-source string                   CatalogSource name of ibm-cert-manager-operator. This assumes your CatalogSource is already created. Default is ibm-cert-manager-operator-catalog"
+    echo "   --licensing-source string                      CatalogSource name of ibm-licensing. This assumes your CatalogSource is already created. Default is ibm-licensing-catalog"
+    echo "   -cmNs, --cert-manager-namespace string         Set custom namespace for ibm-cert-manager-operator. Default is ibm-cert-manager"
+    echo "   -licensingNs, --licensing-namespace string     Set custom namespace for ibm-licensing-operator. Default is ibm-licensing"
+    echo "   --enable-licensing                             Set this flag to migrate ibm-licensing-operator"
+    echo "   -c, --channel string                           Channel for Subscription(s). Default is v4.0"   
+    echo "   -i, --install-mode string                      InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
+    echo "   -v, --debug integer                            Verbosity of logs. Default is 0. Set to 1 for debug logs."
+    echo "   -h, --help                                     Print usage information"
     echo ""
 }
 
@@ -159,10 +176,6 @@ function pre_req() {
 
     if [ "$OPERATOR_NS" == "" ]; then
         error "Must provide operator namespace"
-    fi
-
-    if [ "$SERVICES_NS" == "" ]; then
-        SERVICES_NS=$OPERATOR_NS
     fi
 
     if [ "$CONTROL_NS" == "" ]; then
