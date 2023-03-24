@@ -69,7 +69,8 @@ function parse_arguments() {
             ;;
         --check-licensing)
             CHECK_LICENSING_ONLY=1
-            SKIP_INSTALL=1           
+            SKIP_INSTALL=1     
+            ;;
         -cmNs | --cert-manager-namespace)
             shift
             CERT_MANAGER_NAMESPACE=$1
