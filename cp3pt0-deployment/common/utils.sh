@@ -321,6 +321,23 @@ function wait_for_deployment() {
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
+function wait_for_operator_upgrade() {
+    local namespace=$1
+    local package_name=$2
+    local channel=$3
+    local sub_name=$(${OC} get subscription.operators.coreos.com -n ${namespace} -l operators.coreos.com/${package_name}.${namespace}='' --no-headers | awk '{print $1}')
+    local condition="${OC} get subscription.operators.coreos.com ${sub_name} -n ${namespace} -o jsonpath='{.status.installedCSV}' | awk -Fv '{print \$NF}' | grep ^$(echo $channel | awk -Fv '{print $NF}')"
+
+    local retries=10
+    local sleep_time=30
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for operator ${package_name} to be upgraded"
+    local success_message="Operator ${package_name} is upgraded to latest version in channel ${channel}"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for operator ${package_name} to be upgraded"
+
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
 function is_sub_exist() {
     local package_name=$1
     if [ $# -eq 2 ]; then
@@ -548,7 +565,7 @@ function cleanup_secretshare() {
 
     for ns in ${nss_list//,/ }
     do
-        info "Deleting SecretShare in namespace {$ns}..."
+        info "Deleting SecretShare in namespace $ns..."
         ${OC} get secretshare -n $ns --no-headers | awk '{print $1}' | xargs ${OC} delete -n $ns --ignore-not-found secretshare
     done
     msg ""
@@ -607,12 +624,14 @@ function get_control_namespace() {
     config_map_data=$(${OC} get configmap "${config_map_name}" -n kube-public -o jsonpath='{.data.common-service-maps\.yaml}')
 
     # Check if the ConfigMap exists
-    if [[ ! -z "${config_map_data}" ]]; then
+    if [[ -z "${config_map_data}" ]]; then
+        warning "Not found common-serivce-maps ConfigMap in kube-public namespace. It is a single shared Common Service instance upgrade"
+    else
         # Get the controlNamespace value
         control_namespace=$(echo "${config_map_data}" | yq -r '.controlNamespace')
 
         # Check if the controlNamespace key exists
-        if [[ -z "${control_namespace}" ]]; then
+        if [[ "${control_namespace}" == "null" ]] || [[ "${control_namespace}" == "" ]]; then
             warning "No controlNamespace is found from common-serivce-maps ConfigMap in kube-public namespace. It is a single shared Common Service instance upgrade"
         else
             CONTROL_NS=$control_namespace
@@ -694,7 +713,7 @@ function update_operator_channel() {
     return_value=$?
     
     if [[ $return_value -eq 3 ]]; then
-        info "$package_name already has channel $3 in the subscription."
+        info "$package_name already has channel $existing_channel in the subscription."
         return 0
     elif [[ $return_value -ne 2 ]]; then
         error "Failed to update channel subscription ${package_name} in ${ns}"

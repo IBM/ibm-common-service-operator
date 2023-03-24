@@ -22,7 +22,6 @@ CERT_MANAGER_SOURCE="ibm-cert-manager-operator-catalog"
 LICENSING_SOURCE="ibm-licensing-catalog"
 SOURCE_NS="openshift-marketplace"
 INSTALL_MODE="Automatic"
-ENABLE_CERTMANAGER=0
 ENABLE_LICENSING=0
 ENABLE_PRIVATE_CATALOG=0
 NEW_MAPPING=""
@@ -56,13 +55,7 @@ function main() {
     # It helps to prevent re-installing licensing and cert-manager services
     scale_down_cs
 
-    # Migrate CP2 cluster singleton services
-    local arguments="--enable-cert-manager"
-
-    # Do not migrate Licensing if it is multi-instance enabled mode
-    if [[ "$CONTROL_NS" == "$OPERATOR_NS" ]]; then
-        arguments+=" --enable-licensing"
-    fi
+    local arguments="--enable-licensing"
     
     if [[ $ENABLE_PRIVATE_CATALOG -eq 1 ]]; then
         arguments+=" --enable-private-catalog"
@@ -84,20 +77,15 @@ function main() {
     done
 
     # wait for operator upgrade
-    # TODO: wait for operator by checking installedCSV in sub
-    sleep 60
-    wait_for_operator "$OPERATOR_NS" "ibm-common-service-operator"
-    wait_for_operator "$OPERATOR_NS" "operand-deployment-lifecycle-manager"
+    wait_for_operator_upgrade "$OPERATOR_NS" "ibm-common-service-operator" "$CHANNEL"
+    wait_for_operator_upgrade "$OPERATOR_NS" "ibm-odlm" "$CHANNEL"
 
-    # Update ibm-namespace-scope-operator channel
-    update_operator_channel ibm-namespace-scope-operator $OPERATOR_NS $CHANNEL $SOURCE $SOURCE_NS $INSTALL_MODE
-
-    sleep 60
-    wait_for_operator "$OPERATOR_NS" "ibm-namespace-scope-operator"
-    
     # Clean resources
     cleanup_cp2 "$OPERATOR_NS" "$CONTROL_NS" "$NS_LIST"
 
+    # Update ibm-namespace-scope-operator channel
+    update_operator_channel ibm-namespace-scope-operator $OPERATOR_NS $CHANNEL $SOURCE $SOURCE_NS $INSTALL_MODE
+    wait_for_operator_upgrade "$OPERATOR_NS" "ibm-namespace-scope-operator" "$CHANNEL"
     # Authroize NSS operator
     for ns in ${NS_LIST//,/ }; do
         if [ "$ns" != "$OPERATOR_NS" ]; then
@@ -135,9 +123,6 @@ function parse_arguments() {
         --services-namespace)
             shift
             SERVICES_NS=$1
-            ;;
-        --enable-cert-manager)
-            ENABLE_CERTMANAGER=1
             ;;
         --enable-licensing)
             ENABLE_LICENSING=1
@@ -189,10 +174,9 @@ function print_usage() {
     echo "   --yq string                    File path to yq CLI. Default uses yq in your PATH"
     echo "   --operator-namespace string    Required. Namespace to migrate Foundational services operator"
     echo "   --services-namespace           Namespace to migrate operands of Foundational services, i.e. 'dataplane'. Default is the same as operator-namespace"
-    echo "   --cert-manager-source string   CatalogSource name of ibm-cert-manager-operator. This assumes your CatalogSource is already created. Default is ibm-cert-manager-operator-catalog"
+    echo "   --cert-manager-source string   CatalogSource name of ibm-cert-manager-operator. This assumes your CatalogSource is already created. Default is ibm-cert-manager-catalog"
     echo "   --licensing-source string      CatalogSource name of ibm-licensing. This assumes your CatalogSource is already created. Default is ibm-licensing-catalog"
     echo "   --enable-licensing             Set this flag to migrate ibm-licensing-operator"
-    echo "   --enable-cert-manager          Set this flag to migrate ibm-cert-manager-operator"
     echo "   --enable-private-catalog       Set this flag to use namespace scoped CatalogSource. Default is in openshift-marketplace namespace"
     echo "   -c, --channel string           Channel for Subscription(s). Default is v4.0"   
     echo "   -i, --install-mode string      InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
@@ -204,6 +188,7 @@ function print_usage() {
 
 function pre_req() {
     check_command "${OC}"
+    check_command "${YQ}"
 
     # checking oc command logged in
     user=$(${OC} whoami 2> /dev/null)
@@ -243,8 +228,22 @@ function get_and_validate_arguments() {
 }
 
 function scale_down_cs() {
+
+    local sub_name=$(${OC} get subscription.operators.coreos.com -n $OPERATOR_NS -l operators.coreos.com/ibm-common-service-operator.$OPERATOR_NS='' --no-headers | awk '{print $1}')
+    ${OC} get subscription.operators.coreos.com ${sub_name} -n $OPERATOR_NS -o yaml > sub.yaml
+    
+    existing_channel=$(yq eval '.spec.channel' sub.yaml)
+    compare_semantic_version $existing_channel $CHANNEL
+    return_value=$?
+    
+    if [[ $return_value -eq 3 ]]; then
+        info "$sub_name already has channel $existing_channel in the subscription."
+        return 0
+    elif [[ $return_value -ne 2 ]]; then
+        error "Must provide correct channel. The channel $existing_channel is found in subscription ibm-common-service-operator in $OPERATOR_NS"
+    fi
+
     ${OC} scale deployment -n $OPERATOR_NS ibm-common-service-operator --replicas=0
-    # ${OC} scale deployment -n $OPERATOR_NS operand-deployment-lifecycle-manager --replicas=0
     delete_operator "operand-deployment-lifecycle-manager-app" $OPERATOR_NS
     ${OC} delete operandregistry -n $SERVICES_NS --ignore-not-found common-service 
     ${OC} delete operandconfig -n $SERVICES_NS --ignore-not-found common-service

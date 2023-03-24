@@ -59,6 +59,8 @@ function main() {
     if [[ $ENABLE_LICENSING -eq 1 ]] && [[ "$CONTROL_NS" == "$OPERATOR_NS" ]]; then
         # Migrate Licensing Services Data
         ${BASE_DIR}/common/migrate_cp2_licensing.sh --control-namespace $CONTROL_NS "--skip-user-vertify"
+        # Delete IBM Licensing Service instance
+        ${OC} delete --ignore-not-found ibmlicensing instance
         # Delete licensing csv/subscriptions
         delete_operator "ibm-licensing-operator" "$CONTROL_NS"
 

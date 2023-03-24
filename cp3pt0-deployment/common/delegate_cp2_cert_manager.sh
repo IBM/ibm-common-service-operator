@@ -126,6 +126,7 @@ EOF
     
     ${OC} apply -f ibm-cpp-config.yaml
     if [ $? -ne 0 ]; then
+        rm ibm-cpp-config.yaml
         error "Failed to patch ibm-cpp-config ConfigMap in ${CONTROL_NS}"
     fi
     rm ibm-cpp-config.yaml
