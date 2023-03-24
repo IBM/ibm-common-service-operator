@@ -444,10 +444,10 @@ function update_cscr() {
         if [[ -z "${result}" ]]; then
             info "Creating CommonService CR common-service in $namespace"
             # copy commonservice from operator namespace
-            ${OC} get commonservice common-service -n "${operator_ns}" -o yaml | yq eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
+            ${OC} get commonservice common-service -n "${operator_ns}" -o yaml | ${YQ} eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
         else
             info "Configuring CommonService CR common-service in $namespace"
-            ${OC} get commonservice common-service -n "${namespace}" -o yaml | yq eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
+            ${OC} get commonservice common-service -n "${namespace}" -o yaml | ${YQ} eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
             
         fi  
         yq eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.namespace = "'${namespace}'"' common-service.yaml | ${OC} apply --overwrite=true -f -

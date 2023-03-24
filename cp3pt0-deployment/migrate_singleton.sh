@@ -14,14 +14,12 @@ OC=oc
 YQ=yq
 OPERATOR_NS=""
 SERVICES_NS=""
-NS_LIST=""
 CONTROL_NS=""
 CHANNEL="v4.0"
 CERT_MANAGER_SOURCE="ibm-cert-manager-catalog"
 LICENSING_SOURCE="ibm-licensing-catalog"
 SOURCE_NS="openshift-marketplace"
 INSTALL_MODE="Automatic"
-ENABLE_CERTMANAGER=0
 ENABLE_LICENSING=0
 ENABLE_PRIVATE_CATALOG=0
 NEW_MAPPING=""
@@ -47,7 +45,7 @@ function main() {
 
     local arguments=""
 
-    if [[ $ENABLE_CERTMANAGER -eq 1 ]]; then
+    if [ "$CONTROL_NS" == "$OPERATOR_NS" ]; then
         # Delete CP2.0 Cert-Manager CR
         ${OC} delete certmanager.operator.ibm.com default --ignore-not-found
         # Delete cert-Manager
@@ -57,7 +55,7 @@ function main() {
         ${BASE_DIR}/common/delegate_cp2_cert_manager.sh --control-namespace $CONTROL_NS "--skip-user-vertify"
     fi
     
-    if [[ $ENABLE_LICENSING -eq 1 ]]; then
+    if [[ $ENABLE_LICENSING -eq 1 ]] && [[ "$CONTROL_NS" == "$OPERATOR_NS" ]]; then
         # Migrate Licensing Services Data
         ${BASE_DIR}/common/migrate_cp2_licensing.sh --control-namespace $CONTROL_NS "--skip-user-vertify"
         # Delete licensing csv/subscriptions
@@ -91,9 +89,6 @@ function parse_arguments() {
         --operator-namespace)
             shift
             OPERATOR_NS=$1
-            ;;
-        --enable-cert-manager)
-            ENABLE_CERTMANAGER=1
             ;;
         --enable-licensing)
             ENABLE_LICENSING=1
@@ -144,7 +139,6 @@ function print_usage() {
     echo "   --cert-manager-source string   CatalogSource name of ibm-cert-manager-operator. This assumes your CatalogSource is already created. Default is ibm-cert-manager-operator-catalog"
     echo "   --licensing-source string      CatalogSource name of ibm-licensing. This assumes your CatalogSource is already created. Default is ibm-licensing-catalog"
     echo "   --enable-licensing             Set this flag to migrate ibm-licensing-operator"
-    echo "   --enable-cert-manager          Set this flag to migrate ibm-cert-manager-operator"
     echo "   -c, --channel string           Channel for Subscription(s). Default is v4.0"   
     echo "   -i, --install-mode string      InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
     echo "   -v, --debug integer            Verbosity of logs. Default is 0. Set to 1 for debug logs."
@@ -177,11 +171,6 @@ function pre_req() {
 
     if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
         SOURCE_NS=$OPERATOR_NS
-    fi
-
-    NS_LIST=$(${OC} get configmap namespace-scope -n ${OPERATOR_NS} -o jsonpath='{.data.namespaces}')
-    if [[ -z "$NS_LIST" ]]; then
-        error "Failed to get tenant scope from ConfigMap namespace-scope in namespace ${OPERATOR_NS}"
     fi
     
     get_and_validate_arguments

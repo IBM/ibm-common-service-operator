@@ -108,13 +108,25 @@ function deactivate_cp2_cert_manager() {
     title "De-activating IBM Cloud Pak 2.0 Cert Manager in ${CONTROL_NS}...\n"
 
     info "Configuring Common Services Cert Manager.."
-    ${OC} get configmap ibm-cpp-config -n ${CONTROL_NS}  -o yaml > ibm-cpp-config.yaml
-    ${YQ} -i eval 'select(.kind == "ConfigMap") | .data += {"deployCSCertManagerOperands": "'"false"'"}' ibm-cpp-config.yaml
+    result=$(${OC} get configmap ibm-cpp-config -n ${CONTROL_NS} -o yaml --ignore-not-found)
+    if [[ -z "${result}" ]]; then
+        cat <<EOF > ibm-cpp-config.yaml
+kind: ConfigMap
+apiVersion: v1
+metadata:
+name: ibm-cpp-config
+namespace: ${CONTROL_NS}
+data:
+deployCSCertManagerOperands: "false"
+EOF
+    else
+        ${OC} get configmap ibm-cpp-config -n ${CONTROL_NS} -o yaml | ${YQ} eval 'select(.kind == "ConfigMap") | .data += {"deployCSCertManagerOperands": "'"false"'"}' > ibm-cpp-config.yaml
+    fi
+    
     
     ${OC} apply -f ibm-cpp-config.yaml
     if [ $? -ne 0 ]; then
         error "Failed to patch ibm-cpp-config ConfigMap in ${CONTROL_NS}"
-        return 0
     fi
     rm ibm-cpp-config.yaml
     msg ""
