@@ -321,6 +321,23 @@ function wait_for_deployment() {
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
+function wait_for_operator_upgrade() {
+    local namespace=$1
+    local package_name=$2
+    local channel=$3
+    local sub_name=$(${OC} get subscription.operators.coreos.com -n ${namespace} -l operators.coreos.com/${package_name}.${namespace}='' --no-headers | awk '{print $1}')
+    local condition="${OC} get subscription.operators.coreos.com ${sub_name} -n ${namespace} -o jsonpath='{.status.installedCSV}' | grep -w $channel"
+
+    local retries=10
+    local sleep_time=30
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for operator ${package_name} to be upgraded"
+    local success_message="Operator ${package_name} is upgraded to latest version in channel ${channel}"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for operator ${package_name} to be upgraded"
+
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
 function is_sub_exist() {
     local package_name=$1
     if [ $# -eq 2 ]; then
@@ -435,81 +452,135 @@ EOF
 function update_cscr() {
     local operator_ns=$1
     local service_ns=$2
-    
-    # get all the watch_namespaces
-    local cp_namespaces=$($OC get configmap namespace-scope -n ${operator_ns} -o jsonpath='{.data.namespaces}')
-    local namespaces_array=($(echo $cp_namespaces | tr "," "\n") )
-    
-    for namespace in "${namespaces_array[@]}"
-    do
-        echo $namespace
-        # update or create cs cr in the tenant namespace
-        if [[ "${namespace}" != "${operator_ns}" ]]; then
-            get_commonservice=$("${OC}" get commonservice -n ${namespace})
-            if [[ "${get_commonservice}" == "" ]]; then
-                echo "create in" $namespace
-                # copy commonservice from operator namespace
-                ${OC} get commonservice common-service -n "${operator_ns}" -o yaml | yq eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
-                yq eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.namespace = "'${namespace}'"' common-service.yaml | ${OC} apply --overwrite=true -f -
+    local nss_list=$3
 
-            else
-                echo "update in" $namespace
-                # update commonservice
-                cs_name=$(${OC} get commonservice -n ${namespace} --no-headers | awk '{print $1}')
-                ${OC} get commonservice ${cs_name} -n "${namespace}" -o yaml | yq eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
-                yq eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.namespace = "'${namespace}'"' common-service.yaml | ${OC} apply --overwrite=true -f -
-            fi  
+    for namespace in ${nss_list//,/ }
+    do
+        # update or create default CS CR in every namespace
+        result=$("${OC}" get commonservice common-service -n ${namespace} --ignore-not-found)
+        if [[ -z "${result}" ]]; then
+            info "Creating CommonService CR common-service in $namespace"
+            # copy commonservice from operator namespace
+            ${OC} get commonservice common-service -n "${operator_ns}" -o yaml | ${YQ} eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
         else
-            # update commonservice
-            cs_name=$(${OC} get commonservice -n ${namespace} --no-headers | awk '{print $1}')
-            ${OC} get commonservice ${cs_name} -n "${namespace}" -o yaml | yq eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
-            yq eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.namespace = "'${namespace}'"' common-service.yaml | ${OC} apply --overwrite=true -f -
+            info "Configuring CommonService CR common-service in $namespace"
+            ${OC} get commonservice common-service -n "${namespace}" -o yaml | ${YQ} eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
+            
+        fi  
+        yq eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.namespace = "'${namespace}'"' common-service.yaml | ${OC} apply --overwrite=true -f -
+        if [[ $? -ne 0 ]]; then
+            error "Failed to apply CommonService CR in ${namespace}"
         fi
     done
 
     rm common-service.yaml
 }
 
+# Update nss cr
+function update_nss_kind() {
+    local operator_ns=$1
+    local nss_list=$2
+    for n in ${nss_list//,/ }
+    do
+        local members=$members$(cat <<EOF
+
+    - $n
+EOF
+    )
+    done
+
+    local object=$(
+        cat <<EOF
+apiVersion: operator.ibm.com/v1
+kind: NamespaceScope
+metadata:
+  name: common-service
+  namespace: $operator_ns
+spec:
+  csvInjector:
+    enable: true
+  namespaceMembers: $members
+  restartLabels:
+    intent: projected
+EOF
+    )
+    
+    echo
+    info "Updating the NamespaceScope object"
+    echo "$object" | ${OC} apply -f -
+    if [[ $? -ne 0 ]]; then
+        error "Failed to create NSS CR in ${OPERATOR_NS}"
+    fi
+}
+
 # ---------- cleanup functions ----------
 function cleanup_cp2() {
-    cleanup_webhook
-    cleanup_secretshare
-    cleanup_crossplane
+    local operator_ns=$1
+    local control_ns=$2
+    local nss_list=$3
+    local enable_multi_instance=0
+
+    if [[ "$operator_ns" != "$control_ns" ]]; then
+        enable_multi_instance=1
+    fi
+
+    if [[ enable_multi_instance -eq 0 ]]; then
+        cleanup_webhook $control_ns $nss_list
+        cleanup_secretshare $control_ns $nss_list
+        cleanup_crossplane $control_ns $nss_list
+    fi
+    
+
+    cleanup_OperandBindInfo $operator_ns
+    cleanup_NamespaceScope $operator_ns
 }
 
 # clean up webhook deployment and webhookconfiguration
 function cleanup_webhook() {
-    cleanup_deployment "ibm-common-service-webhook"
+    local control_ns=$1
+    local nss_list=$2
+    for ns in ${nss_list//,/ }
+    do
+        info "Deleting podpresets in namespace {$ns}..."
+        ${OC} get podpresets.operator.ibm.com -n $ns --no-headers | awk '{print $1}' | xargs ${OC} delete -n $ns --ignore-not-found podpresets.operator.ibm.com
+    done
+    msg ""
+
+    cleanup_deployment "ibm-common-service-webhook" $control_ns
 
     info "Deleting MutatingWebhookConfiguration..."
     ${OC} delete MutatingWebhookConfiguration ibm-common-service-webhook-configuration --ignore-not-found
     ${OC} delete MutatingWebhookConfiguration ibm-operandrequest-webhook-configuration --ignore-not-found
+    msg ""
 
     info "Deleting MutatingWebhookConfiguration..."
     ${OC} delete ValidatingWebhookConfiguration ibm-cs-ns-mapping-webhook-configuration --ignore-not-found
-    
-    info "Deleting podpresets..."
-    local namespace=$(${OC} get podpresets.operator.ibm.com -A --no-headers | awk '{print $1}')
-    ${OC} get podpresets.operator.ibm.com -A --no-headers | awk '{print $2}' | xargs oc delete -n ${namespace} --ignore-not-found podpresets.operator.ibm.com
 
 }
 
-# clean up secretshare deployment and CR
+# TODO: clean up secretshare deployment and CR in service_ns
 function cleanup_secretshare() {
-    cleanup_deployment "secretshare"
+    local control_ns=$1
+    local nss_list=$2
 
-    info "Deleting SecretShare..."
-    ${OC} get secretshare -A --no-headers | awk '{print $2}' | xargs oc delete --ignore-not-found secretshare 
+    for ns in ${nss_list//,/ }
+    do
+        info "Deleting SecretShare in namespace $ns..."
+        ${OC} get secretshare -n $ns --no-headers | awk '{print $1}' | xargs ${OC} delete -n $ns --ignore-not-found secretshare
+    done
+    msg ""
+
+    cleanup_deployment "secretshare" "$control_ns"
 
 }
 
-# todo: clean up crossplane sub and CR
+# TODO: clean up crossplane sub and CR in operator_ns and service_ns
 function cleanup_crossplane() {
     # delete CR
     info "cleanup crossplane CR"
-    ${OC} get configuration.pkg.ibm.crossplane.io -A --no-headers | awk '{print $1}' | xargs oc delete --ignore-not-found configuration.pkg.ibm.crossplane.io
-    ${OC} get lock.pkg.ibm.crossplane.io -A --no-headers | awk '{print $1}' | xargs oc delete --ignore-not-found lock.pkg.ibm.crossplane.io
-    ${OC} get ProviderConfig -A --no-headers | awk '{print $1}' | xargs oc delete --ignore-not-found ProviderConfig
+    ${OC} get configuration.pkg.ibm.crossplane.io -A --no-headers | awk '{print $1}' | xargs ${OC} delete --ignore-not-found configuration.pkg.ibm.crossplane.io
+    ${OC} get lock.pkg.ibm.crossplane.io -A --no-headers | awk '{print $1}' | xargs ${OC} delete --ignore-not-found lock.pkg.ibm.crossplane.io
+    ${OC} get ProviderConfig -A --no-headers | awk '{print $1}' | xargs ${OC} delete --ignore-not-found ProviderConfig
 
     sleep 60
 
@@ -538,10 +609,143 @@ function cleanup_OperandRequest() {
 
 function cleanup_deployment() {
     local name=$1
-    local namespace=$($OC get deployment -A | grep ${name} | awk '{print $1}')
-    info "Deleting existing Deployment ${name}..."
+    local namespace=$2
+    info "Deleting existing Deployment ${name} in namespace ${namespace}..."
     ${OC} delete deployment ${name} -n ${namespace} --ignore-not-found
 
     wait_for_no_pod ${namespace} ${name}
 }
 
+function get_control_namespace() {
+    # Define the ConfigMap name and namespace
+    local config_map_name="common-service-maps"
+
+    # Get the ConfigMap data
+    config_map_data=$(${OC} get configmap "${config_map_name}" -n kube-public -o jsonpath='{.data.common-service-maps\.yaml}')
+
+    # Check if the ConfigMap exists
+    if [[ -z "${config_map_data}" ]]; then
+        warning "Not found common-serivce-maps ConfigMap in kube-public namespace. It is a single shared Common Service instance upgrade"
+    else
+        # Get the controlNamespace value
+        control_namespace=$(echo "${config_map_data}" | yq -r '.controlNamespace')
+
+        # Check if the controlNamespace key exists
+        if [[ "${control_namespace}" == "null" ]] || [[ "${control_namespace}" == "" ]]; then
+            warning "No controlNamespace is found from common-serivce-maps ConfigMap in kube-public namespace. It is a single shared Common Service instance upgrade"
+        else
+            CONTROL_NS=$control_namespace
+        fi
+    fi
+}
+
+function compare_semantic_version() {
+    # Extract major, minor, and patch versions from the arguments
+    regex='^v([0-9]+)\.?([0-9]*)\.?([0-9]*)?$'
+    if [[ $1 =~ $regex ]]; then
+        major1=${BASH_REMATCH[1]}
+        minor1=${BASH_REMATCH[2]:-0}
+        patch1=${BASH_REMATCH[3]:-0}
+
+        if [[  $2 =~ $regex ]]; then
+            major2=${BASH_REMATCH[1]}
+            minor2=${BASH_REMATCH[2]:-0}
+            patch2=${BASH_REMATCH[3]:-0}
+        else
+            error "Invalid version format: $2"
+        fi
+    else
+        error "Invalid version format: $1"
+    fi
+    
+    # If the versions have different number of components, add the missing parts
+    if [[ -z "$minor1" && -z "$minor2" ]]; then
+        minor1=0
+        minor2=0
+        patch1=0
+        patch2=0
+    elif [[ -z "$minor1" ]]; then
+        minor1=0
+        patch1=0
+    elif [[ -z "$minor2" ]]; then
+        minor2=0
+        patch2=0
+    fi
+
+    # Compare the versions
+    if [[ $major1 -gt $major2 ]]; then
+        info "$1 is greater than $2"
+        return 0
+    elif [[ $major1 -lt $major2 ]]; then
+        info "$1 is less than $2"
+        return 2
+    elif [[ $minor1 -gt $minor2 ]]; then
+        info "$1 is greater than $2"
+        return 0
+    elif [[ $minor1 -lt $minor2 ]]; then
+        info "$1 is less than $2"
+        return 2
+    elif [[ $patch1 -gt $patch2 ]]; then
+        info "$1 is greater than $2"
+        return 0
+    elif [[ $patch1 -lt $patch2 ]]; then
+        info "$1 is less than $2"
+        return 2
+    else
+        info "$1 is equal to $2"
+        return 3
+    fi
+}
+
+function update_operator_channel() {
+    local package_name=$1
+    local ns=$2
+    local channel=$3
+    local source=$4
+    local source_ns=$5
+    local install_mode=$6
+    
+    local sub_name=$(${OC} get subscription.operators.coreos.com -n ${ns} -l operators.coreos.com/${package_name}.${ns}='' --no-headers | awk '{print $1}')
+    ${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml > sub.yaml
+    
+    existing_channel=$(yq eval '.spec.channel' sub.yaml)
+    compare_semantic_version $existing_channel $channel
+    return_value=$?
+    
+    if [[ $return_value -eq 3 ]]; then
+        info "$package_name already has channel $existing_channel in the subscription."
+        return 0
+    elif [[ $return_value -ne 2 ]]; then
+        error "Failed to update channel subscription ${package_name} in ${ns}"
+    fi
+
+    yq -i eval 'select(.kind == "Subscription") | .spec += {"channel": "'${channel}'"}' sub.yaml
+    yq -i eval 'select(.kind == "Subscription") | .spec += {"source": "'${source}'"}' sub.yaml
+    yq -i eval 'select(.kind == "Subscription") | .spec += {"sourceNamespace": "'${source_ns}'"}' sub.yaml
+    yq -i eval 'select(.kind == "Subscription") | .spec += {"installPlanApproval": "'${install_mode}'"}' sub.yaml
+
+    ${OC} apply -f sub.yaml
+    if [[ $? -ne 0 ]]; then
+        error "Failed to update subscription ${package_name} in ${ns}"
+    fi
+    rm sub.yaml
+}
+
+function delete_operator() {
+    subs=$1
+    ns=$2
+    for sub in ${subs}; do
+        title "Deleting ${sub} in namesapce ${ns}..."
+        csv=$(${OC} get sub ${sub} -n ${ns} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
+        in_step=1
+        msg "[${in_step}] Removing the subscription of ${sub} in namesapce ${ns} ..."
+        ${OC} delete sub ${sub} -n ${ns} --ignore-not-found
+        in_step=$((in_step + 1))
+        msg "[${in_step}] Removing the csv of ${sub} in namesapce ${ns} ..."
+        [[ "X${csv}" != "X" ]] && ${OC} delete csv ${csv}  -n ${ns} --ignore-not-found
+        msg ""
+
+        success "Remove $sub successfully."
+        msg ""
+    done
+}
