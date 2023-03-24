@@ -332,14 +332,33 @@ function is_sub_exist() {
     is_exist=$(echo "$name" | grep -w "$package_name")
 }
 
+function check_cert_manager(){
+    csv_count=`$OC get csv |grep "cert-manager"|wc -l`
+    if [[ $csv_count == 0 ]]; then
+        error "Missing a cert-manager"
+    fi
+    if [[ $csv_count > 1 ]]; then
+        error "Multiple cert-manager csv found. Only one should be installed per cluster"
+    fi
+}
+
+function check_licensing(){
+    [[ ! $($OC get IBMLicensing) ]] && error "User does not have proper permission to get IBMLicensing"
+    instance_count=`$OC get IBMLicensing -o name | wc -l`
+    if [[ $instance_count == 0 ]]; then
+        error "Missing IBMLicensing"
+    fi
+    if [[ $instance_count > 1 ]]; then
+        error "Multiple IBMLicensing are found. Only one should be installed per cluster"
+    fi
+}
 # ---------- creation functions ----------
 
 function create_namespace() {
     local namespace=$1
-
-    title "Creating namespace ${namespace}\n"
     
     if [[ -z "$(${OC} get namespace ${namespace} --ignore-not-found)" ]]; then
+        title "Creating namespace ${namespace}\n"
         ${OC} create namespace ${namespace}
         if [[ $? -ne 0 ]]; then
             error "Error creating namespace ${namespace}"
