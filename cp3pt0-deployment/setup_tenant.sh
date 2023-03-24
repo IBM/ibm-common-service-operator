@@ -304,6 +304,7 @@ function install_cs_operator() {
     fi
     wait_for_operator "$OPERATOR_NS" "ibm-common-service-operator"
     sleep 120
+    wait_for_nss_patch "$OPERATOR_NS" 
     configure_cs_kind
 }
 

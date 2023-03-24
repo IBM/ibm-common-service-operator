@@ -15,6 +15,7 @@ CONTROL_NS=""
 TARGET_NS=ibm-licensing
 DEBUG=0
 PREVIEW_MODE=1
+SKIP_USER_VERIFY=0
 
 # ---------- Command variables ----------
 
@@ -60,6 +61,9 @@ function parse_arguments() {
             shift
             DEBUG=$1
             ;;
+        --skip-user-vertify)
+            SKIP_USER_VERIFY=1
+            ;;
         -h | --help)
             print_usage
             exit 1
@@ -84,19 +88,22 @@ function print_usage() {
     echo "   --control-namespace string     Required. Source Namespace where Cloud Pak 2.0 Licensing Data is located."
     echo "   --target-namespace string      Target Namespace where Cloud Pak 3.0 Licensing Operator is located. Default is ibm-licensing"
     echo "   -v, --debug integer            Verbosity of logs. Default is 0. Set to 1 for debug logs."
+    echo "   --skip-user-vertify string     Skip checking user logged into oc command"
     echo "   -h, --help                     Print usage information"
     echo ""
 }
 
 function pre_req() {
-    check_command "${OC}"
+    if [[ $SKIP_USER_VERIFY -eq 0 ]]; then
+        check_command "${OC}"
 
-    # checking oc command logged in
-    user=$(${OC} whoami 2> /dev/null)
-    if [ $? -ne 0 ]; then
-        error "You must be logged into the OpenShift Cluster from the oc command line"
-    else
-        success "oc command logged in as ${user}"
+        # checking oc command logged in
+        user=$(${OC} whoami 2> /dev/null)
+        if [ $? -ne 0 ]; then
+            error "You must be logged into the OpenShift Cluster from the oc command line"
+        else
+            success "oc command logged in as ${user}"
+        fi
     fi
 
     if [ "$CONTROL_NS" == "" ]; then
@@ -133,6 +140,7 @@ function migrate_lic_cms() {
             yq eval 'select(.kind == "ConfigMap") | del(.metadata.resourceVersion) | del(.metadata.uid)' ${configmap}.yaml | ${OC} apply -f -
 
             rm ${configmap}.yaml
+            msg ""
         fi
     done
     success "Licensing Service ConfigMaps are migrated from $CONTROL_NS to $TARGET_NS"
