@@ -27,8 +27,6 @@ cs_operator_channel=
 catalog_source=
 requestedNS=
 mapToCSNS=
-activeMapTo= #plan is to replace the above two variables with their "active" counterparts. This way script only runs on namespaces that need updating
-activeRequestedFrom=
 cm_name="common-service-maps"
     
 function main() {
