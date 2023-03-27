@@ -194,9 +194,17 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		return err
 	}
 
-	klog.Info("Installing ODLM Operator")
-	if err := b.renderTemplate(constant.ODLMSubscription, b.CSData); err != nil {
-		return err
+	// Check if ODLM OperandRegistry and OperandConfig are created
+	dc := discovery.NewDiscoveryClientForConfigOrDie(b.Config)
+	existOpreg := b.ResourceExists(dc, "operator.ibm.com/v1alpha1", "OperandRegistry")
+	existOpcon := b.ResourceExists(dc, "operator.ibm.com/v1alpha1", "OperandConfig")
+	
+	// Installing ODLM if opreg and opcon CRD does not exist
+	if !existOpreg || !existOpcon {
+		klog.Info("Installing ODLM Operator")
+		if err := b.renderTemplate(constant.ODLMSubscription, b.CSData); err != nil {
+			return err
+		}
 	}
 
 	// create and wait ODLM OperandRegistry and OperandConfig CR resources
@@ -274,6 +282,11 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		if err := b.renderTemplate(constant.CSV3OperandConfig, b.CSData, forceUpdateODLMCRs); err != nil {
 			return err
 		}
+	}
+
+	klog.Info("Installing ODLM Operator")
+	if err := b.renderTemplate(constant.ODLMSubscription, b.CSData); err != nil {
+		return err
 	}
 
 	return nil
