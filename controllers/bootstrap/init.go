@@ -196,8 +196,8 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 
 	// Check if ODLM OperandRegistry and OperandConfig are created
 	dc := discovery.NewDiscoveryClientForConfigOrDie(b.Config)
-	existOpreg := b.ResourceExists(dc, "operator.ibm.com/v1alpha1", "OperandRegistry")
-	existOpcon := b.ResourceExists(dc, "operator.ibm.com/v1alpha1", "OperandConfig")
+	existOpreg, _ := b.ResourceExists(dc, "operator.ibm.com/v1alpha1", "OperandRegistry")
+	existOpcon, _ := b.ResourceExists(dc, "operator.ibm.com/v1alpha1", "OperandConfig")
 	
 	// Installing ODLM if opreg and opcon CRD does not exist
 	if !existOpreg || !existOpcon {
