@@ -991,10 +991,276 @@ data:
       authorization: enabled
       keyFile: /data/configdb/key.txt
 EOF
+    #icp-mongodb-keyfile-secret.yaml
+    cat << EOF | oc apply -f -
+kind: Secret
+apiVersion: v1
+metadata:
+  name: icp-mongodb-keyfile
+  labels:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/instance: icp-mongodb
+    app.kubernetes.io/managed-by: operator
+    app.kubernetes.io/name: icp-mongodb
+    release: mongodb
+data:
+  key.txt: aWNwdGVzdA==
+type: Opaque
+EOF
+    #icp-mongodb-metrics-secret.yaml
+    cat << EOF | oc apply -f -
+kind: Secret
+apiVersion: v1
+metadata:
+  name: icp-mongodb-metrics
+  labels:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/instance: icp-mongodb
+    app.kubernetes.io/managed-by: operator
+    app.kubernetes.io/name: icp-mongodb
+    release: mongodb
+data:
+  password: aWNwbWV0cmljcw==
+  user: bWV0cmljcw==
+type: Opaque
+EOF
+    #mongo-rbac.yaml
+    cat << EOF | oc apply -f -
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: ibm-mongodb-operand
+  labels:
+    app.kubernetes.io/instance: mongodbs.operator.ibm.com
+    app.kubernetes.io/managed-by: mongodbs.operator.ibm.com
+    app.kubernetes.io/name: mongodbs.operator.ibm.com
+secrets:
+  - name: ibm-mongodb-operand-dockercfg-x7n5t
+imagePullSecrets:
+  - name: ibm-mongodb-operand-dockercfg-x7n5t
+EOF
+    #mongo-service.yaml
+    cat << EOF | oc apply -f -
+kind: Service
+apiVersion: v1
+metadata:
+  name: mongodb
+  labels:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/instance: icp-mongodb
+    app.kubernetes.io/managed-by: operator
+    app.kubernetes.io/name: icp-mongodb
+    app.kubernetes.io/part-of: common-services-cloud-pak
+    app.kubernetes.io/version: 4.0.12-build.3
+    release: mongodb
+spec:
+  ipFamilies:
+    - IPv4
+  ports:
+    - protocol: TCP
+      port: 27017
+      targetPort: 27017
+  internalTrafficPolicy: Cluster
+  type: ClusterIP
+  ipFamilyPolicy: SingleStack
+  sessionAffinity: None
+  selector:
+    app: icp-mongodb
+    release: mongodb
+status:
+  loadBalancer: {}
+EOF
+    #mongo-service2.yaml
+    cat << EOF | oc apply -f -
+kind: Service
+apiVersion: v1
+metadata:
+  name: icp-mongodb
+  labels:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/instance: icp-mongodb
+    app.kubernetes.io/managed-by: operator
+    app.kubernetes.io/name: icp-mongodb
+    app.kubernetes.io/part-of: common-services-cloud-pak
+    app.kubernetes.io/version: 4.0.12-build.3
+    release: mongodb
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  ipFamilies:
+    - IPv4
+  ports:
+    - name: peer
+      protocol: TCP
+      port: 27017
+      targetPort: 27017
+  internalTrafficPolicy: Cluster
+  clusterIPs:
+    - None
+  type: ClusterIP
+  ipFamilyPolicy: SingleStack
+  sessionAffinity: None
+  selector:
+    app: icp-mongodb
+    release: mongodb
+status:
+  loadBalancer: {}
+EOF
+    #mongodb-root-ca-cert-certificate.yaml
+    cat << EOF | oc apply -f -
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: mongodb-root-ca-cert
+  labels:
+    app.kubernetes.io/instance: mongodbs.operator.ibm.com
+    app.kubernetes.io/managed-by: mongodbs.operator.ibm.com
+    app.kubernetes.io/name: mongodbs.operator.ibm.com
+spec:
+  commonName: mongodb
+  dnsNames:
+    - mongodb.root
+  duration: 17520h
+  isCA: true
+  issuerRef:
+    kind: Issuer
+    name: god-issuer
+  secretName: mongodb-root-ca-cert
+EOF
+    #mongodb-root-ca-issuer-issuer.yaml
+    cat << EOF | oc apply -f -
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: mongodb-root-ca-issuer
+  labels:
+    app.kubernetes.io/instance: mongodbs.operator.ibm.com
+    app.kubernetes.io/managed-by: mongodbs.operator.ibm.com
+    app.kubernetes.io/name: mongodbs.operator.ibm.com
+spec:
+  ca:
+    secretName: mongodb-root-ca-cert
+EOF
+    #namespace-scope-cm.yaml
+    cat << EOF | oc apply -f -
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: namespace-scope
+data:
+  namespaces: "$TO_NAMESPACE"
+EOF
+
+    #icp-mongodb-install-cm.yaml
+    cat << EOF | oc apply -f -
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: icp-mongodb-install
+  labels:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/instance: icp-mongodb
+    app.kubernetes.io/managed-by: operator
+    app.kubernetes.io/name: icp-mongodb
+    app.kubernetes.io/part-of: common-services-cloud-pak
+    app.kubernetes.io/version: 4.0.12-build.3
+    release: mongodb
+data:
+  install.sh: >-
+    #!/bin/bash
+
+
+    # Copyright 2016 The Kubernetes Authors. All rights reserved.
+
+    #
+
+    # Licensed under the Apache License, Version 2.0 (the "License");
+
+    # you may not use this file except in compliance with the License.
+
+    # You may obtain a copy of the License at
+
+    #
+
+    #     http://www.apache.org/licenses/LICENSE-2.0
+
+    #
+
+    # Unless required by applicable law or agreed to in writing, software
+
+    # distributed under the License is distributed on an "AS IS" BASIS,
+
+    # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
+    # See the License for the specific language governing permissions and
+
+    # limitations under the License.
+
+
+    # This volume is assumed to exist and is shared with the peer-finder
+
+    # init container. It contains on-start/change configuration scripts.
+
+    WORKDIR_VOLUME="/work-dir"
+
+    CONFIGDIR_VOLUME="/data/configdb"
+
+
+    for i in "$@"
+
+    do
+
+    case $i in
+        -c=*|--config-dir=*)
+        CONFIGDIR_VOLUME="${i#*=}"
+        shift
+        ;;
+        -w=*|--work-dir=*)
+        WORKDIR_VOLUME="${i#*=}"
+        shift
+        ;;
+        *)
+        # unknown option
+        ;;
+    esac
+
+    done
+
+
+    echo installing config scripts into "${WORKDIR_VOLUME}"
+
+    mkdir -p "${WORKDIR_VOLUME}"
+
+    cp /peer-finder "${WORKDIR_VOLUME}"/
+
+    echo "I am running as " $(whoami)
+
+
+    cp /configdb-readonly/mongod.conf "${CONFIGDIR_VOLUME}"/mongod.conf
+
+    cp /keydir-readonly/key.txt "${CONFIGDIR_VOLUME}"/
+
+    cp /ca-readonly/tls.key "${CONFIGDIR_VOLUME}"/tls.key
+
+    cp /ca-readonly/tls.crt "${CONFIGDIR_VOLUME}"/tls.crt
+
+
+    chmod 600 "${CONFIGDIR_VOLUME}"/key.txt
+
+    # chown -R 999:999 /work-dir
+
+    # chown -R 999:999 /data
+
+
+    # Root file system is readonly but still need write and execute access to
+    tmp
+
+    # chmod -R 777 /tmp
+EOF
 
     #icp-mongodb-init-cm.yaml
     cat << EOF | oc apply -f -
-    kind: ConfigMap
+kind: ConfigMap
 apiVersion: v1
 metadata:
   name: icp-mongodb-init
@@ -1351,271 +1617,6 @@ data:
     log "MongoDB bootstrap complete"
 
     exit 0
-EOF
-    #icp-mongodb-install-cm.yaml
-    cat << EOF | oc apply -f -
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: icp-mongodb-install
-  labels:
-    app.kubernetes.io/component: database
-    app.kubernetes.io/instance: icp-mongodb
-    app.kubernetes.io/managed-by: operator
-    app.kubernetes.io/name: icp-mongodb
-    app.kubernetes.io/part-of: common-services-cloud-pak
-    app.kubernetes.io/version: 4.0.12-build.3
-    release: mongodb
-data:
-  install.sh: >-
-    #!/bin/bash
-
-
-    # Copyright 2016 The Kubernetes Authors. All rights reserved.
-
-    #
-
-    # Licensed under the Apache License, Version 2.0 (the "License");
-
-    # you may not use this file except in compliance with the License.
-
-    # You may obtain a copy of the License at
-
-    #
-
-    #     http://www.apache.org/licenses/LICENSE-2.0
-
-    #
-
-    # Unless required by applicable law or agreed to in writing, software
-
-    # distributed under the License is distributed on an "AS IS" BASIS,
-
-    # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
-    # See the License for the specific language governing permissions and
-
-    # limitations under the License.
-
-
-    # This volume is assumed to exist and is shared with the peer-finder
-
-    # init container. It contains on-start/change configuration scripts.
-
-    WORKDIR_VOLUME="/work-dir"
-
-    CONFIGDIR_VOLUME="/data/configdb"
-
-
-    for i in "$@"
-
-    do
-
-    case $i in
-        -c=*|--config-dir=*)
-        CONFIGDIR_VOLUME="${i#*=}"
-        shift
-        ;;
-        -w=*|--work-dir=*)
-        WORKDIR_VOLUME="${i#*=}"
-        shift
-        ;;
-        *)
-        # unknown option
-        ;;
-    esac
-
-    done
-
-
-    echo installing config scripts into "${WORKDIR_VOLUME}"
-
-    mkdir -p "${WORKDIR_VOLUME}"
-
-    cp /peer-finder "${WORKDIR_VOLUME}"/
-
-    echo "I am running as " $(whoami)
-
-
-    cp /configdb-readonly/mongod.conf "${CONFIGDIR_VOLUME}"/mongod.conf
-
-    cp /keydir-readonly/key.txt "${CONFIGDIR_VOLUME}"/
-
-    cp /ca-readonly/tls.key "${CONFIGDIR_VOLUME}"/tls.key
-
-    cp /ca-readonly/tls.crt "${CONFIGDIR_VOLUME}"/tls.crt
-
-
-    chmod 600 "${CONFIGDIR_VOLUME}"/key.txt
-
-    # chown -R 999:999 /work-dir
-
-    # chown -R 999:999 /data
-
-
-    # Root file system is readonly but still need write and execute access to
-    tmp
-
-    # chmod -R 777 /tmp
-EOF
-    #icp-mongodb-keyfile-secret.yaml
-    cat << EOF | oc apply -f -
-kind: Secret
-apiVersion: v1
-metadata:
-  name: icp-mongodb-keyfile
-  labels:
-    app.kubernetes.io/component: database
-    app.kubernetes.io/instance: icp-mongodb
-    app.kubernetes.io/managed-by: operator
-    app.kubernetes.io/name: icp-mongodb
-    release: mongodb
-data:
-  key.txt: aWNwdGVzdA==
-type: Opaque
-EOF
-    #icp-mongodb-metrics-secret.yaml
-    cat << EOF | oc apply -f -
-kind: Secret
-apiVersion: v1
-metadata:
-  name: icp-mongodb-metrics
-  labels:
-    app.kubernetes.io/component: database
-    app.kubernetes.io/instance: icp-mongodb
-    app.kubernetes.io/managed-by: operator
-    app.kubernetes.io/name: icp-mongodb
-    release: mongodb
-data:
-  password: aWNwbWV0cmljcw==
-  user: bWV0cmljcw==
-type: Opaque
-EOF
-    #mongo-rbac.yaml
-    cat << EOF | oc apply -f -
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: ibm-mongodb-operand
-  labels:
-    app.kubernetes.io/instance: mongodbs.operator.ibm.com
-    app.kubernetes.io/managed-by: mongodbs.operator.ibm.com
-    app.kubernetes.io/name: mongodbs.operator.ibm.com
-secrets:
-  - name: ibm-mongodb-operand-dockercfg-x7n5t
-imagePullSecrets:
-  - name: ibm-mongodb-operand-dockercfg-x7n5t
-EOF
-    #mongo-service.yaml
-    cat << EOF | oc apply -f -
-kind: Service
-apiVersion: v1
-metadata:
-  name: mongodb
-  labels:
-    app.kubernetes.io/component: database
-    app.kubernetes.io/instance: icp-mongodb
-    app.kubernetes.io/managed-by: operator
-    app.kubernetes.io/name: icp-mongodb
-    app.kubernetes.io/part-of: common-services-cloud-pak
-    app.kubernetes.io/version: 4.0.12-build.3
-    release: mongodb
-spec:
-  ipFamilies:
-    - IPv4
-  ports:
-    - protocol: TCP
-      port: 27017
-      targetPort: 27017
-  internalTrafficPolicy: Cluster
-  type: ClusterIP
-  ipFamilyPolicy: SingleStack
-  sessionAffinity: None
-  selector:
-    app: icp-mongodb
-    release: mongodb
-status:
-  loadBalancer: {}
-EOF
-    #mongo-service2.yaml
-    cat << EOF | oc apply -f -
-kind: Service
-apiVersion: v1
-metadata:
-  name: icp-mongodb
-  labels:
-    app.kubernetes.io/component: database
-    app.kubernetes.io/instance: icp-mongodb
-    app.kubernetes.io/managed-by: operator
-    app.kubernetes.io/name: icp-mongodb
-    app.kubernetes.io/part-of: common-services-cloud-pak
-    app.kubernetes.io/version: 4.0.12-build.3
-    release: mongodb
-spec:
-  clusterIP: None
-  publishNotReadyAddresses: true
-  ipFamilies:
-    - IPv4
-  ports:
-    - name: peer
-      protocol: TCP
-      port: 27017
-      targetPort: 27017
-  internalTrafficPolicy: Cluster
-  clusterIPs:
-    - None
-  type: ClusterIP
-  ipFamilyPolicy: SingleStack
-  sessionAffinity: None
-  selector:
-    app: icp-mongodb
-    release: mongodb
-status:
-  loadBalancer: {}
-EOF
-    #mongodb-root-ca-cert-certificate.yaml
-    cat << EOF | oc apply -f -
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: mongodb-root-ca-cert
-  labels:
-    app.kubernetes.io/instance: mongodbs.operator.ibm.com
-    app.kubernetes.io/managed-by: mongodbs.operator.ibm.com
-    app.kubernetes.io/name: mongodbs.operator.ibm.com
-spec:
-  commonName: mongodb
-  dnsNames:
-    - mongodb.root
-  duration: 17520h
-  isCA: true
-  issuerRef:
-    kind: Issuer
-    name: god-issuer
-  secretName: mongodb-root-ca-cert
-EOF
-    #mongodb-root-ca-issuer-issuer.yaml
-    cat << EOF | oc apply -f -
-apiVersion: cert-manager.io/v1
-kind: Issuer
-metadata:
-  name: mongodb-root-ca-issuer
-  labels:
-    app.kubernetes.io/instance: mongodbs.operator.ibm.com
-    app.kubernetes.io/managed-by: mongodbs.operator.ibm.com
-    app.kubernetes.io/name: mongodbs.operator.ibm.com
-spec:
-  ca:
-    secretName: mongodb-root-ca-cert
-EOF
-    #namespace-scope-cm.yaml
-    cat << EOF | oc apply -f -
-kind: ConfigMap
-apiVersion: v1
-metadata:
-  name: namespace-scope
-data:
-  namespaces: "$TO_NAMESPACE"
 EOF
     #apply statefulset (in same dir)
     #icp-mongodb-ss.yaml

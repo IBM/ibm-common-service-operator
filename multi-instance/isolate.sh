@@ -26,6 +26,7 @@ master_ns=
 requestedNS=
 mapToCSNS=
 controlNs=
+cm_name="common-service-maps"
 restart="false"
 requested="false"
 # pause installer
@@ -212,7 +213,9 @@ function check_cm_ns_exist(){
 
 function cleanupCSOperators(){
     title "Checking subs of Common Service Operator in Cloudpak Namespaces"
-    msg "-----------------------------------------------------------------------"
+    msg "-----------------------------------------------------------------------"   
+    catalog_source=$(${OC} get sub ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.source")
+    info "catalog_source:${catalog_source}" 
     for namespace in $requestedNS
     do
         # remove cs namespace from zen service cr
