@@ -34,7 +34,7 @@ function main() {
   deploymongocopy
   createdumppvc
   dumpmongo
-  setupStatefulset
+#   setupStatefulset
   loadmongo
   swapmongopvc
 } # main
@@ -290,7 +290,6 @@ function swapmongopvc() {
   deletemongocopy
   oc patch pv $VOL --type=merge -p '{"spec": {"claimRef":null}}'
 
-# oc get 
   cat <<EOF >$TEMPFILE
 apiVersion: v1
 kind: PersistentVolumeClaim
