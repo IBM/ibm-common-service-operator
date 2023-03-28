@@ -98,10 +98,16 @@ function prereq() {
     
     if [[ -z $requestedNS ]] && [[ -z $mapToCSNS ]] &&  [[ -z $master_ns ]]; then
         usage
-        error "No parameters entered. Please re-run specifying requested-from, map-to, and original namespace values"
-    else if [[ -z $requestedNS ]] || [[ -z $mapToCSNS ]] || [[ -z $master_ns ]]; then
+        error "No parameters entered. Please re-run specifying original, map-to, and requested-from namespace values"
+    else if [[ -z $requestedNS ]]; then
         usage
-        error "Required parameters missing. Please re-run specifying requested-from, map-to, and original namespace values"
+        error "Required parameters missing. Please re-run specifying original, map-to, and requested-from namespace values"
+    else if [[ -z $mapToCSNS ]]; then
+        usage
+        error "Required parameters missing. Please re-run specifying original, map-to, and requested-from namespace values"
+    else if [[ -z $master_ns ]]; then
+        usage
+        error "Required parameters missing. Please re-run specifying original, map-to, and requested-from namespace values"
     fi
     
     namespaces="$requestedNS $mapToCSNS"
