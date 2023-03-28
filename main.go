@@ -182,6 +182,7 @@ func main() {
 				}
 			} else {
 				// Update common-service-maps
+				klog.Infof("Updating common-service-maps ConfigMap in kube-public")
 				if err := util.UpdateCsMaps(cm, bs.CSData.WatchNamespaces, bs.CSData.ServicesNs, bs.CSData.OperatorNs); err != nil {
 					klog.Errorf("Failed to update common-service-maps: %v", err)
 					os.Exit(1)

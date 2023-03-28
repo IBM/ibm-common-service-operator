@@ -690,6 +690,7 @@ func (b *Bootstrap) CreateCsMaps() error {
 
 	newnsMapping.RequestNs = append(newnsMapping.RequestNs, strings.Split(b.CSData.WatchNamespaces, ",")...)
 	newnsMapping.CsNs = b.CSData.ServicesNs
+	cmData.ControlNs = "cs-control"
 	cmData.NsMappingList = append(cmData.NsMappingList, newnsMapping)
 	commonServiceMap, error := utilyaml.Marshal(&cmData)
 	if error != nil {
