@@ -103,6 +103,7 @@ function cleanup() {
       dv=$(oc get pvc cs-mongodump -n $FROM_NAMESPACE -o=jsonpath='{.spec.volumeName}')
       oc patch pv $dv -p '{"spec": { "persistentVolumeReclaimPolicy" : "Delete" }}'
     fi
+    #TODO remove finalizers before deleting
     oc delete pvc cs-mongodump -n $FROM_NAMESPACE
   fi
   pvcexists=$(oc get pvc cs-mongodump -n $TO_NAMESPACE --no-headers --ignore-not-found | awk '{print $2}')
@@ -111,6 +112,7 @@ function cleanup() {
       dv=$(oc get pvc cs-mongodump -n $TO_NAMESPACE -o=jsonpath='{.spec.volumeName}')
       oc patch pv $dv -p '{"spec": { "persistentVolumeReclaimPolicy" : "Delete" }}'
     fi
+    #TODO remove finalizers before deleting
     oc delete pvc cs-mongodump -n $TO_NAMESPACE
   fi
   deletemongocopy
@@ -288,7 +290,7 @@ function swapmongopvc() {
   deletemongocopy
   oc patch pv $VOL --type=merge -p '{"spec": {"claimRef":null}}'
 
-oc get 
+# oc get 
   cat <<EOF >$TEMPFILE
 apiVersion: v1
 kind: PersistentVolumeClaim
