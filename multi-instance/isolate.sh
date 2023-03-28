@@ -68,9 +68,9 @@ function main () {
     done
     prereq
     if [[ $restart ==  "false" ]]; then
+        ./backup_preload_mongo.sh $master_ns $mapToCSNS #requires cert manager
         pause
         uninstall_singletons
-        ./backup_preload_mongo.sh $master_ns $mapToCSNS
     else
         restart
     fi

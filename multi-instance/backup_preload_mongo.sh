@@ -1212,16 +1212,16 @@ data:
 
     case $i in
         -c=*|--config-dir=*)
-        CONFIGDIR_VOLUME="${i#*=}"
-        shift
-        ;;
+            CONFIGDIR_VOLUME="${i#*=}"
+            shift
+            ;;
         -w=*|--work-dir=*)
-        WORKDIR_VOLUME="${i#*=}"
-        shift
-        ;;
+            WORKDIR_VOLUME="${i#*=}"
+            shift
+            ;;
         *)
-        # unknown option
-        ;;
+            # unknown option
+            ;;
     esac
 
     done
@@ -2022,7 +2022,7 @@ function check_healthy() {
 
     sleep 10
 
-    retries=20
+    retries=60
     sleep_time=15
     total_time_mins=$(( sleep_time * retries / 60))
     info "Waiting for Mongo Statefulset is Succeeded"
