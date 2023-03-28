@@ -161,6 +161,7 @@ EOF
     sleep 10
     status=$(oc get pvc cs-mongodump --no-headers | awk '{print $2}')
   done
+  success "MongoDB backup ready for new mongo install"
 
   #DUMPVOL=$(oc get pvc cs-mongodump  -o=jsonpath='{.spec.volumeName}')
   #oc patch pv $DUMPVOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Retain" }}'

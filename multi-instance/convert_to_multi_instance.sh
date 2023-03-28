@@ -676,52 +676,52 @@ function removeNSS(){
     success "Namespace Scope CRs cleaned up"
 }
 
-function check_topology() {
-    #get list of cs instance namespaces
-    #get list of namespaces associated with each cs instance from common-service nss
-    #get list of namespaces associated with each cs instance from common-service-maps
-    #compare two lists
-    # if lists are equal, topology is as expected, do nothing
-    # else, install or restart cs operator in mapTo namespace
-        #would possibly need to restart cs operator in a different namespace if it's going from one cs instance to another
-            #this would be caught later since that grouping would be different in cs maps as well
-    local nsFromCM=""
-    ${OC} get cm $cm_name -o yaml -n kube-public | yq '.data[]' | yq '.namespaceMapping[]'| while read -r line; do
-        first_element=$(echo $line | awk '{print $1}')
+# function check_topology() {
+#     #get list of cs instance namespaces
+#     #get list of namespaces associated with each cs instance from common-service nss
+#     #get list of namespaces associated with each cs instance from common-service-maps
+#     #compare two lists
+#     # if lists are equal, topology is as expected, do nothing
+#     # else, install or restart cs operator in mapTo namespace
+#         #would possibly need to restart cs operator in a different namespace if it's going from one cs instance to another
+#             #this would be caught later since that grouping would be different in cs maps as well
+#     local nsFromCM=""
+#     ${OC} get cm $cm_name -o yaml -n kube-public | yq '.data[]' | yq '.namespaceMapping[]'| while read -r line; do
+#         first_element=$(echo $line | awk '{print $1}')
         
-        if [[ "${first_element}" == "-" ]]; then
-            namespace=$(echo $line | awk '{print $2}')
-            if [[ "${namespace}" == "requested-from-namespace:" ]]; then
-                nsFromCM=""
-            else if [[ "${namespace}" != "requested-from-namespace:" ]]; then
-                nsFromCM="$nsFromCM $namespace"
-            fi
-        fi
+#         if [[ "${first_element}" == "-" ]]; then
+#             namespace=$(echo $line | awk '{print $2}')
+#             if [[ "${namespace}" == "requested-from-namespace:" ]]; then
+#                 nsFromCM=""
+#             else if [[ "${namespace}" != "requested-from-namespace:" ]]; then
+#                 nsFromCM="$nsFromCM $namespace"
+#             fi
+#         fi
 
-        if [[ "${first_element}" == "map-to-common-service-namespace:" ]]; then
-            csNamespace=$(echo $line | awk '{print $2}')
-            #nsFromCM="$nsFromCM $csNamespace" 
-            #at this point we should have the full grouping for an instance, now is when we run the topo check
-            nsFromNSS=$(${OC} get nss -n $csNamespace -o yaml common-service | yq '.status.validatedMembers[]')
-            allPresent="true"
-            for cmNS in $nsFromCM
-            do
-                return_value="$(echo $nsFromNSS | grep -w -q $cmNS || echo fail)"
-                if [[ $return_value == "fail" ]]; then
-                    #do something with namespaces
-                    activeRequestedFrom="$activeRequestedFrom $nsFromCM"
-                    activeMapTo="$activeMapTo $csNamespace"
-                    info "Namespaces $nsFromCM $csNamespace added to conversion pool."
-                    allPresent="false"
-                    break
-                fi
-            done
-            if [[ $allPresent == "true" ]]; then
-                info "Namespaces $nsFromCM are already setup to use Common Service instance in namespace $csNamespace"
-            fi
-        fi
-    done
-}
+#         if [[ "${first_element}" == "map-to-common-service-namespace:" ]]; then
+#             csNamespace=$(echo $line | awk '{print $2}')
+#             #nsFromCM="$nsFromCM $csNamespace" 
+#             #at this point we should have the full grouping for an instance, now is when we run the topo check
+#             nsFromNSS=$(${OC} get nss -n $csNamespace -o yaml common-service | yq '.status.validatedMembers[]')
+#             allPresent="true"
+#             for cmNS in $nsFromCM
+#             do
+#                 return_value="$(echo $nsFromNSS | grep -w -q $cmNS || echo fail)"
+#                 if [[ $return_value == "fail" ]]; then
+#                     #do something with namespaces
+#                     activeRequestedFrom="$activeRequestedFrom $nsFromCM"
+#                     activeMapTo="$activeMapTo $csNamespace"
+#                     info "Namespaces $nsFromCM $csNamespace added to conversion pool."
+#                     allPresent="false"
+#                     break
+#                 fi
+#             done
+#             if [[ $allPresent == "true" ]]; then
+#                 info "Namespaces $nsFromCM are already setup to use Common Service instance in namespace $csNamespace"
+#             fi
+#         fi
+#     done
+# }
 
 function msg() {
     printf '%b\n' "$1"
