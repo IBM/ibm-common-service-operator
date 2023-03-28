@@ -26,6 +26,8 @@ master_ns=
 requestedNS=
 mapToCSNS=
 controlNs=
+restart="false"
+requested="false"
 # pause installer
 # uninstall singletons
 # restart installer
@@ -43,25 +45,34 @@ function main () {
             shift
             ;;
         "--requested-from-ns")
-            requestedNS="$requestedNS $2"
             shift
+            requestedNS="$@"
+            info "requestedNs= $requestedNS"
+            requested="true"
             ;;
         "--map-to-ns")
             mapToCSNS=$2
             shift
             ;;
+        "-r")
+            restart="true"
+            ;;
         *)
-            error "invalid option -- \`$1\`. Use the -h or --help option for usage info."
+            if [[ $requested == "false" ]]; then
+                error "invalid option -- \`$1\`. Use the -h or --help option for usage info."
+            fi
             ;;
         esac
         shift
     done
     prereq
-    pause
-    uninstall_singletons
-    ./backup_preload_mongo.sh $master_ns $mapToCSNS
-    restart
-
+    if [[ $restart ==  "false" ]]; then
+        pause
+        uninstall_singletons
+        ./backup_preload_mongo.sh $master_ns $mapToCSNS
+    else
+        restart
+    fi
 }
 
 function usage() {
@@ -74,8 +85,9 @@ function usage() {
 	Mandatory arguments to long options are mandatory for short options too.
 	  -h, --help                    display this help and exit
 	  --original-cs-ns              specify the namespace the original common services installation resides
-      --requested-from-ns           specify the namespace values for "requested-from-namespace" in common-service-maps
       --map-to-ns                   specify the namespace value for "map-to-common-service-namespace" in common-service-maps
+      -r                            restart common services
+      --requested-from-ns           specify the namespace values for "requested-from-namespace" in common-service-maps. Must be last.
 	EOF
 }
 
@@ -129,10 +141,11 @@ function prereq() {
     if [[ $return_value != "pass" ]]; then
         error "The ibm-common-service-operator must not be installed in AllNamespaces mode"
     fi
+
+    check_cm_ns_exist
 }
 
 function pause() {
-    check_cm_ns_exist
     
     ${OC} scale deployment -n ${master_ns} ibm-common-service-operator --replicas=0
     ${OC} scale deployment -n ${master_ns} operand-deployment-lifecycle-manager --replicas=0
@@ -196,6 +209,28 @@ function check_cm_ns_exist(){
     done
     success "All namespaces in $cm_name exist"
 }
+
+function cleanupCSOperators(){
+    title "Checking subs of Common Service Operator in Cloudpak Namespaces"
+    msg "-----------------------------------------------------------------------"
+    for namespace in $requestedNS
+    do
+        # remove cs namespace from zen service cr
+        return_value=$(${OC} get sub -n ${namespace} | (grep ibm-common-service-operator || echo "fail"))
+        if [[ $return_value != "fail" ]]; then
+            local sub=$(${OC} get sub -n ${namespace} | grep ibm-common-service-operator | awk '{print $1}')
+            ${OC} get sub ${sub} -n ${namespace} -o yaml > tmp.yaml 
+            ${YQ} -i '.spec.source = "'${catalog_source}'"' tmp.yaml || error "Could not replace catalog source for CS operator in namespace ${namespace}"
+            ${OC} apply -f tmp.yaml
+            info "Common Service Operator Subscription in namespace ${namespace} updated to use catalog source ${catalog_source}"
+        else
+            info "No Common Service Operator in namespace ${namespace}. Moving on..."
+        fi
+        return_value=""
+    done
+    rm tmp.yaml -f
+}
+
 #TODO change looping to be more specific? 
 #Should this only remove the nss from specified set of namespaces? Or should it be more general?
 function removeNSS(){
@@ -245,6 +280,14 @@ function cleanupZenService(){
           info "Zen not installed in ${namespace}. Moving on..."
         fi
         return_value=""
+
+        # delete iam config job
+        return_value=$(${OC} get job -n ${namespace} | grep iam-config-job || echo "fail")
+        if [[ $return_value != "fail" ]]; then
+            ${OC} delete job iam-config-job -n ${namespace}
+        else
+            info "iam-config-job not present in namespace ${namespace}. Moving on..."
+        fi
     done
     success "Zen instances cleaned up"
 }
