@@ -194,6 +194,26 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		return err
 	}
 
+	// Check if ODLM OperandRegistry and OperandConfig are created
+	dc := discovery.NewDiscoveryClientForConfigOrDie(b.Config)
+	klog.Info("Checking if OperandRegistry and OperandConfig CRD already exist")
+	existOpreg, _ := b.ResourceExists(dc, "operator.ibm.com/v1alpha1", "OperandRegistry")
+	existOpcon, _ := b.ResourceExists(dc, "operator.ibm.com/v1alpha1", "OperandConfig")
+
+	// Install/update Opreg and Opcon resources before installing ODLM if CRDs exist
+	if existOpreg && existOpcon {
+
+		klog.Info("Installing/Updating OperandRegistry")
+		if err := b.InstallOrUpdateOpreg(forceUpdateODLMCRs, installPlanApproval); err != nil {
+			return err
+		}
+
+		klog.Info("Installing/Updating OperandConfig")
+		if err := b.InstallOrUpdateOpcon(forceUpdateODLMCRs); err != nil {
+			return err
+		}
+	}
+
 	klog.Info("Installing ODLM Operator")
 	if err := b.renderTemplate(constant.ODLMSubscription, b.CSData); err != nil {
 		return err
@@ -213,67 +233,13 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 	}
 
 	klog.Info("Installing/Updating OperandRegistry")
-	if installPlanApproval != "" || b.CSData.ApprovalMode == string(olmv1alpha1.ApprovalManual) {
-		if err := b.updateApprovalMode(); err != nil {
-			return err
-		}
-	}
-
-	var obj []*unstructured.Unstructured
-	var err error
-	if b.SaasEnable {
-		// OperandRegistry for SaaS deployment
-		obj, err = b.GetObjs(constant.CSV3SaasOperandRegistry, b.CSData)
-	} else {
-		// OperandRegistry for on-prem deployment
-		obj, err = b.GetObjs(constant.CSV3OperandRegistry, b.CSData)
-	}
-	if err != nil {
-		klog.Error(err)
+	if err := b.InstallOrUpdateOpreg(forceUpdateODLMCRs, installPlanApproval); err != nil {
 		return err
-	}
-
-	objInCluster, err := b.GetObject(obj[0])
-	if errors.IsNotFound(err) {
-		klog.Infof("Creating resource with name: %s, namespace: %s, kind: %s, apiversion: %s\n", obj[0].GetName(), obj[0].GetNamespace(), obj[0].GetKind(), obj[0].GetAPIVersion())
-		if err := b.CreateObject(obj[0]); err != nil {
-			klog.Error(err)
-			return err
-
-		}
-	} else if err != nil {
-		klog.Error(err)
-
-		return err
-	} else {
-		klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s\n", obj[0].GetName(), obj[0].GetNamespace(), obj[0].GetKind(), obj[0].GetAPIVersion())
-		resourceVersion := objInCluster.GetResourceVersion()
-		obj[0].SetResourceVersion(resourceVersion)
-		v1IsLarger, convertErr := util.CompareVersion(obj[0].GetAnnotations()["version"], objInCluster.GetAnnotations()["version"])
-		if convertErr != nil {
-			return convertErr
-		}
-		if v1IsLarger || forceUpdateODLMCRs {
-			if err := b.UpdateObject(obj[0]); err != nil {
-				klog.Error(err)
-
-				return err
-			}
-		}
 	}
 
 	klog.Info("Installing/Updating OperandConfig")
-	if b.SaasEnable {
-		// OperandConfig for SaaS deployment
-		if err := b.renderTemplate(constant.CSV3SaasOperandConfig, b.CSData, forceUpdateODLMCRs); err != nil {
-			return err
-		}
-	} else {
-		// OperandConfig for on-prem deployment
-		b.CSData.OnPremMultiEnable = strconv.FormatBool(b.MultiInstancesEnable)
-		if err := b.renderTemplate(constant.CSV3OperandConfig, b.CSData, forceUpdateODLMCRs); err != nil {
-			return err
-		}
+	if err := b.InstallOrUpdateOpcon(forceUpdateODLMCRs); err != nil {
+		return err
 	}
 
 	return nil
@@ -361,19 +327,6 @@ func (b *Bootstrap) CreateCsCR() error {
 	// Restart && Upgrade from 3.5+: Found existing CR
 	return nil
 }
-
-// func (b *Bootstrap) CreateOperatorGroup(namespace string) error {
-// 	existOG := &olmv1.OperatorGroupList{}
-// 	if err := b.Reader.List(context.TODO(), existOG, &client.ListOptions{Namespace: namespace}); err != nil {
-// 		return err
-// 	}
-// 	if len(existOG.Items) == 0 {
-// 		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(constant.CsOperatorGroup, placeholder, namespace))); err != nil {
-// 			return err
-// 		}
-// 	}
-// 	return nil
-// }
 
 func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...bool) error {
 	objects, err := util.YamlToObjects(yamlContent)
@@ -650,24 +603,75 @@ func (b *Bootstrap) ResourceExists(dc discovery.DiscoveryInterface, apiGroupVers
 	return false, nil
 }
 
-// func (b *Bootstrap) createNsSubscription(manualManagement bool) error {
-// 	resourceName := constant.NSSubscription
-// 	subNameToRemove := constant.NsRestrictedSubName
-// 	if manualManagement {
-// 		resourceName = constant.NSRestrictedSubscription
-// 		subNameToRemove = constant.NsSubName
-// 	}
+// InstallOrUpdateOpreg will install or update OperandRegistry when Opreg CRD is existent
+func (b *Bootstrap) InstallOrUpdateOpreg(forceUpdateODLMCRs bool, installPlanApproval olmv1alpha1.Approval) error {
 
-// 	if err := b.deleteSubscription(subNameToRemove, b.CSData.CPFSNs); err != nil {
-// 		return err
-// 	}
+	if installPlanApproval != "" || b.CSData.ApprovalMode == string(olmv1alpha1.ApprovalManual) {
+		if err := b.updateApprovalMode(); err != nil {
+			return err
+		}
+	}
 
-// 	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
-// 		return err
-// 	}
+	var obj []*unstructured.Unstructured
+	var err error
+	if b.SaasEnable {
+		// OperandRegistry for SaaS deployment
+		obj, err = b.GetObjs(constant.CSV3SaasOperandRegistry, b.CSData)
+	} else {
+		// OperandRegistry for on-prem deployment
+		obj, err = b.GetObjs(constant.CSV3OperandRegistry, b.CSData)
+	}
+	if err != nil {
+		klog.Error(err)
+		return err
+	}
 
-// 	return nil
-// }
+	objInCluster, err := b.GetObject(obj[0])
+	if errors.IsNotFound(err) {
+		klog.Infof("Creating resource with name: %s, namespace: %s, kind: %s, apiversion: %s\n", obj[0].GetName(), obj[0].GetNamespace(), obj[0].GetKind(), obj[0].GetAPIVersion())
+		if err := b.CreateObject(obj[0]); err != nil {
+			klog.Error(err)
+			return err
+		}
+	} else if err != nil {
+		klog.Error(err)
+		return err
+	} else {
+		klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s\n", obj[0].GetName(), obj[0].GetNamespace(), obj[0].GetKind(), obj[0].GetAPIVersion())
+		resourceVersion := objInCluster.GetResourceVersion()
+		obj[0].SetResourceVersion(resourceVersion)
+		v1IsLarger, convertErr := util.CompareVersion(obj[0].GetAnnotations()["version"], objInCluster.GetAnnotations()["version"])
+		if convertErr != nil {
+			return convertErr
+		}
+		if v1IsLarger || forceUpdateODLMCRs {
+			if err := b.UpdateObject(obj[0]); err != nil {
+				klog.Error(err)
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// InstallOrUpdateOpcon will install or update OperandConfig when Opcon CRD is existent
+func (b *Bootstrap) InstallOrUpdateOpcon(forceUpdateODLMCRs bool) error {
+	if b.SaasEnable {
+		// OperandConfig for SaaS deployment
+		if err := b.renderTemplate(constant.CSV3SaasOperandConfig, b.CSData, forceUpdateODLMCRs); err != nil {
+			return err
+		}
+	} else {
+		// OperandConfig for on-prem deployment
+		b.CSData.OnPremMultiEnable = strconv.FormatBool(b.MultiInstancesEnable)
+		if err := b.renderTemplate(constant.CSV3OperandConfig, b.CSData, forceUpdateODLMCRs); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
 
 // CreateNsScopeConfigmap creates nss configmap for operators
 func (b *Bootstrap) CreateNsScopeConfigmap() error {
