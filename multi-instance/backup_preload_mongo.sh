@@ -267,7 +267,7 @@ EOF
 # Swap the PVC from the from_namespace to the to_namespace
 #
 function swapmongopvc() {
-  info "Moving restored mongodb volume to  $TO_NAMESPACE"
+  info "Moving restored mongodb volume to $TO_NAMESPACE"
 
   status=$(oc get pvc mongodbdircopy-icp-mongodb-copy-0 -n $FROM_NAMESPACE)
   if [[ -z "$status" ]]; then
@@ -279,9 +279,9 @@ function swapmongopvc() {
     error "Volume for pvc  mongodbdircopy-icp-mongodb-copy-0 not found in $FROM_NAMESPACE"
   fi
 
-  IMAGE=$(oc get o icp-mongodb-0 $FROM_NAMESPACE  -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
+  IMAGE=$(oc get pod icp-mongodb-0 $FROM_NAMESPACE  -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
   if [[ -z "$IMAGE" ]]; then
-    error "IMAGE for pod  icp-mongodb-0 not found in $FROM_NAMESPACE"
+    error "IMAGE for pod icp-mongodb-0 not found in $FROM_NAMESPACE"
   fi
 
   oc patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Retain" }}'
