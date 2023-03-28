@@ -38,6 +38,7 @@ function main() {
     restart_CS_pods
     install_new_CS
     refresh_zen
+    refresh_kafka
 }
 
 
@@ -338,6 +339,66 @@ function refresh_zen(){
         return_value=""
     done
     success "Reconcile loop initiated for Zenservice instances"
+}
+
+function refresh_kafka (){
+    return_value=$(${OC} get kafkaclaim -A || echo fail)
+    if [[ $return_value != "fail" ]]; then
+        title " Refreshing Kafka Deployments "
+        msg "-----------------------------------------------------------------------"
+        for namespace in $requestedNS
+        do
+            # remove cs namespace from zen service cr
+            return_value=$(${OC} get kafkaclaim -n ${namespace} || echo "fail")
+            if [[ $return_value != "fail" ]]; then
+                if [[ $return_value != "" ]]; then
+                    kafkaClaims=$(${OC} get kafkaclaim -n ${namespace} | awk '{if (NR!=1) {print $1}}')
+                    #TODO copy kc to file, delete original kc, re-apply copied file (check for an existing of the same name)
+                    for kc in $kafkaClaims
+                    do
+                        ${OC} get kafkaclaim -n ${namespace} $kc -o yaml > tmp.yaml
+                        ${OC} patch kafkaclaim ${kc} -n ${namespace} --type=merge -p '{"metadata": {"finalizers":null}}'
+                        ${OC} delete kafkaclaim ${kc} -n ${namespace} 
+                        ${OC} apply -f tmp.yaml  || info "kafkaclaim ${kc} already recreated. Moving on..."
+                    done
+                else
+                    info "No kafkaclaim in namespace ${namespace}. Moving on..."
+                fi
+            else
+            info "Kafka not installed in ${namespace}. Moving on..."
+            fi
+            return_value=""
+        done
+        
+        for namespace in $mapToCSNS
+        do
+            # remove cs namespace from zen service cr
+            return_value=$(${OC} get kafkaclaim -n ${namespace} || echo "fail")
+            if [[ $return_value != "fail" ]]; then
+                if [[ $return_value != "" ]]; then
+                    kafkaClaims=$(${OC} get kafkaclaim -n ${namespace} | awk '{if (NR!=1) {print $1}}')
+                    #TODO copy kc to file, delete original kc, re-apply copied file (check for an existing of the same name)
+                    for kc in $kafkaClaims
+                    do
+                        ${OC} get kafkaclaim -n ${namespace} $kc -o yaml > tmp.yaml
+                        ${OC} patch kafkaclaim ${kc} -n ${namespace} --type=merge -p '{"metadata": {"finalizers":null}}'
+                        ${OC} delete kafkaclaim ${kc} -n ${namespace} 
+                        ${OC} apply -f tmp.yaml  || info "kafkaclaim ${kc} already recreated. Moving on..."
+                    done
+                else
+                    info "No kafkaclaim in namespace ${namespace}. Moving on..."
+                fi
+            else
+                info "Kafka not installed in ${namespace}. Moving on..."
+            fi
+            return_value=""
+        done
+        
+        rm tmp.yaml -f
+        success "Reconcile loop initiated for Kafka instances"
+    else
+        info "Kafka not installed on cluster, no refresh needed."
+    fi
 }
 
 function cleanupCSOperators(){
