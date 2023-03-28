@@ -114,10 +114,10 @@ function deactivate_cp2_cert_manager() {
 kind: ConfigMap
 apiVersion: v1
 metadata:
-name: ibm-cpp-config
-namespace: ${CONTROL_NS}
+    name: ibm-cpp-config
+    namespace: ${CONTROL_NS}
 data:
-deployCSCertManagerOperands: "false"
+    deployCSCertManagerOperands: "false"
 EOF
     else
         ${OC} get configmap ibm-cpp-config -n ${CONTROL_NS} -o yaml | ${YQ} eval 'select(.kind == "ConfigMap") | .data += {"deployCSCertManagerOperands": "'"false"'"}' > ibm-cpp-config.yaml
