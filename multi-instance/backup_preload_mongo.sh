@@ -279,7 +279,7 @@ function swapmongopvc() {
     error "Volume for pvc  mongodbdircopy-icp-mongodb-copy-0 not found in $FROM_NAMESPACE"
   fi
 
-  IMAGE=$(oc get pod icp-mongodb-0 $FROM_NAMESPACE  -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
+  IMAGE=$(oc get pod icp-mongodb-0 -n $FROM_NAMESPACE  -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
   if [[ -z "$IMAGE" ]]; then
     error "IMAGE for pod icp-mongodb-0 not found in $FROM_NAMESPACE"
   fi
