@@ -104,6 +104,7 @@ function cleanup() {
       oc patch pv $dv -p '{"spec": { "persistentVolumeReclaimPolicy" : "Delete" }}'
     fi
     #TODO remove finalizers before deleting
+    oc patch pvc cs-mongodump -n $FROM_NAMESPACE --type=merge -p '{"metadata": {"finalizers":null}}'
     oc delete pvc cs-mongodump -n $FROM_NAMESPACE
   fi
   pvcexists=$(oc get pvc cs-mongodump -n $TO_NAMESPACE --no-headers --ignore-not-found | awk '{print $2}')
@@ -112,7 +113,7 @@ function cleanup() {
       dv=$(oc get pvc cs-mongodump -n $TO_NAMESPACE -o=jsonpath='{.spec.volumeName}')
       oc patch pv $dv -p '{"spec": { "persistentVolumeReclaimPolicy" : "Delete" }}'
     fi
-    #TODO remove finalizers before deleting
+    oc patch pvc cs-mongodump -n $FROM_NAMESPACE --type=merge -p '{"metadata": {"finalizers":null}}'
     oc delete pvc cs-mongodump -n $TO_NAMESPACE
   fi
   deletemongocopy
@@ -290,6 +291,11 @@ function swapmongopvc() {
   deletemongocopy
   oc patch pv $VOL --type=merge -p '{"spec": {"claimRef":null}}'
 
+  stgclass=$(oc get pvc mongodbdir-icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{.spec.storageClassName}')
+  if [[ -z $stgclass ]]; then
+    error "Cannnot get storage class name from PVC mongodbdir-icp-mongodb-0 in $FROM_NAMESPACE"
+  fi
+
   cat <<EOF >$TEMPFILE
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -302,7 +308,7 @@ spec:
   resources:
     requests:
       storage: 20Gi
-  storageClassName: ""
+  storageClassName: $stgclass
   volumeMode: Filesystem
   volumeName: $VOL
 EOF
