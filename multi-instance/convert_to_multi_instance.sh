@@ -20,13 +20,14 @@ set -o pipefail
 set -o errtrace
 set -o nounset
 
-OC=${1:-oc}
-YQ=${1:-yq}
+OC=oc
+YQ=yq
 
 cs_operator_channel=
 catalog_source=
 requestedNS=
 mapToCSNS=
+master_ns=$1
 cm_name="common-service-maps"
     
 function main() {
@@ -47,6 +48,10 @@ function prereq() {
     which "${OC}" || error "Missing oc CLI"
     which "${YQ}" || error "Missing yq"
     
+    if [[ -z $master_ns ]]; then
+        error "Please specify original cs namespace."
+    fi
+
     return_value=$("${OC}" get -n kube-public configmap ${cm_name} > /dev/null || echo failed)
     if [[ $return_value == "failed" ]]; then
         error "Missing configmap: ${cm_name}. This must be configured before proceeding"
@@ -182,7 +187,7 @@ function scale_up_pod() {
 function collect_data() {
     title "Collecting data"
     msg "-----------------------------------------------------------------------"
-    master_ns=$(${OC} get deployment --all-namespaces | grep operand-deployment-lifecycle-manager | awk '{print $1}')
+    
     info "MasterNS:${master_ns}"
     cs_operator_channel=$(${OC} get sub ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.channel") 
     info "channel:${cs_operator_channel}"   
