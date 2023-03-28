@@ -59,7 +59,7 @@ function main () {
     prereq
     pause
     uninstall_singletons
-    #new backup/restore goes here
+    ./backup_preload_mongo.sh $master_ns $mapToCSNS
     restart
 
 }
