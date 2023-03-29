@@ -66,7 +66,7 @@ function main() {
     ${OC} delete operandregistry -n ${master_ns} --ignore-not-found common-service 
     ${OC} delete operandconfig -n ${master_ns} --ignore-not-found common-service
     
-    cleanupCSOperators
+    cleanupCSOperators #this might not be necessary in isolate.sh
     removeNSS
     ./zen-util.sh --cleanup --map-to-ns $mapToCSNS --requested-from-ns $requestedNS
     ./zen-util.sh --delete-job --map-to-ns $mapToCSNS --requested-from-ns $requestedNS
