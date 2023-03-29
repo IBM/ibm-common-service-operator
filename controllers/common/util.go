@@ -558,7 +558,6 @@ func UpdateCsMaps(cm *corev1.ConfigMap, requestNsList, servicesNS, operatorNs st
 		// OperatorNs already exists in common service namespace
 		if operatorNs == nsMapping.CsNs {
 			alreadyExists = true
-			break
 		}
 
 		for _, ns := range nsMapping.RequestNs {
@@ -567,6 +566,10 @@ func UpdateCsMaps(cm *corev1.ConfigMap, requestNsList, servicesNS, operatorNs st
 				alreadyExists = true
 				break
 			}
+		}
+
+		if alreadyExists {
+			break
 		}
 		count++
 	}
