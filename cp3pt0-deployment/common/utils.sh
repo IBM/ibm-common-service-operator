@@ -706,6 +706,11 @@ function update_operator_channel() {
     local install_mode=$6
     
     local sub_name=$(${OC} get subscription.operators.coreos.com -n ${ns} -l operators.coreos.com/${package_name}.${ns}='' --no-headers | awk '{print $1}')
+    if [ -z "$sub_name" ]; then
+        warning "Not found subscription ${package_name} in ${ns}"
+        return 0
+    fi
+
     ${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml > sub.yaml
     
     existing_channel=$(yq eval '.spec.channel' sub.yaml)
