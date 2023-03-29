@@ -448,7 +448,7 @@ function deploymongocopy {
     error "Cannot switch to $TO_NAMESPACE"
   fi
 
-  STGCLASS=$(oc get pvc mongodbdir-icp-mongodb-0 -n $FROM_NAMESPACE-o=jsonpath='{.spec.storageClassName}')
+  STGCLASS=$(oc get pvc mongodbdir-icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{.spec.storageClassName}')
   if [[ -z $STGCLASS ]]; then
     error "Cannnot get storage class name from PVC mongodbdir-icp-mongodb-0 in $FROM_NAMESPACE"
   fi
