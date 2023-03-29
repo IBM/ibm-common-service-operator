@@ -115,7 +115,7 @@ function cleanup() {
     oc patch pvc cs-mongodump -n $FROM_NAMESPACE --type=merge -p '{"metadata": {"finalizers":null}}'
     oc delete pvc cs-mongodump -n $TO_NAMESPACE
   fi
-  deletemongocopy
+#   deletemongocopy
 } # cleanup
 
 
@@ -441,16 +441,16 @@ function dumplogs() {
 # deploymongocopy
 #
 function deploymongocopy {
-  info "Deploying a duplicate mongodb copy in $TO_NAMESPACE"
+  info "Deploying a temporary mongodb in $TO_NAMESPACE"
 
   currentns=$(oc project $TO_NAMESPACE -q)
   if [[ "$currentns" -ne "$TO_NAMESPACE" ]]; then
     error "Cannot switch to $TO_NAMESPACE"
   fi
 
-  STGCLASS=$(oc get pvc mongodbdir-icp-mongodb-0 -o=jsonpath='{.spec.storageClassName}')
+  STGCLASS=$(oc get pvc mongodbdir-icp-mongodb-0 -n $FROM_NAMESPACE-o=jsonpath='{.spec.storageClassName}')
   if [[ -z $STGCLASS ]]; then
-    error "Cannnot get storage class name from PVC mongodbdir-icp-mongodb-0 in $TO_NAMESPACE"
+    error "Cannnot get storage class name from PVC mongodbdir-icp-mongodb-0 in $FROM_NAMESPACE"
   fi
 
 #apply all of the other resources here
