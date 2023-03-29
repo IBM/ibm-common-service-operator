@@ -55,6 +55,7 @@ function main() {
     # It helps to prevent re-installing licensing and cert-manager services
     scale_down_cs
 
+    # migrate singleton services
     local arguments="--enable-licensing"
     
     if [[ $ENABLE_PRIVATE_CATALOG -eq 1 ]]; then
@@ -84,7 +85,15 @@ function main() {
     cleanup_cp2 "$OPERATOR_NS" "$CONTROL_NS" "$NS_LIST"
 
     # Update ibm-namespace-scope-operator channel
-    update_operator_channel ibm-namespace-scope-operator $OPERATOR_NS $CHANNEL $SOURCE $SOURCE_NS $INSTALL_MODE
+    is_sub_exist ibm-namespace-scope-operator-restricted $OPERATOR_NS
+    if [ $? -eq 0 ]; then
+        warning "There is a ibm-namespace-scope-operator-restricted Subscription\n"
+        delete_operator ibm-namespace-scope-operator-restricted $OPERATOR_NS
+        create_subscription ibm-namespace-scope-operator $OPERATOR_NS $CHANNEL ibm-namespace-scope-operator $SOURCE $SOURCE_NS $INSTALL_MODE
+    else
+        update_operator_channel ibm-namespace-scope-operator $OPERATOR_NS $CHANNEL $SOURCE $SOURCE_NS $INSTALL_MODE
+    fi
+
     wait_for_operator_upgrade "$OPERATOR_NS" "ibm-namespace-scope-operator" "$CHANNEL"
     # Authroize NSS operator
     for ns in ${NS_LIST//,/ }; do
