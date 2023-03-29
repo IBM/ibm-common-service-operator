@@ -34,8 +34,8 @@ function main() {
   deploymongocopy
   createdumppvc
   dumpmongo
-  loadmongo
   swapmongopvc
+  loadmongo
 } # main
 
 
