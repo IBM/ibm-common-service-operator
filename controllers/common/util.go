@@ -553,6 +553,9 @@ func UpdateCsMaps(cm *corev1.ConfigMap, requestNsList, servicesNS, operatorNs st
 
 	newnsMapping.RequestNs = append(newnsMapping.RequestNs, strings.Split(requestNsList, ",")...)
 	newnsMapping.CsNs = servicesNS
+	if cmData.ControlNs == "" {
+		cmData.ControlNs = "cs-control"
+	}
 
 	for _, nsMapping := range cmData.NsMappingList {
 		// OperatorNs already exists in common service namespace
