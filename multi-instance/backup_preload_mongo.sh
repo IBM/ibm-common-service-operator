@@ -36,6 +36,7 @@ function main() {
   dumpmongo
   swapmongopvc
   loadmongo
+  deletemongocopy
 } # main
 
 
