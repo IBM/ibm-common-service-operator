@@ -765,6 +765,11 @@ function check_topology() {
             info "nsfromcm $nsFromCM"
             info "nss $nsFromNSS"
             leftover=(`echo ${nsFromCM[@]} ${nsFromNSS[@]} | tr ' ' '\n' | sort | uniq -u`)
+            #if there are no differences between the two lists, the variable is unset.
+            #check for unset, if it is, then the grouping doesn't need to be changed anyway
+            if [[ -z ${leftover:-} ]]; then
+                leftover=""
+            fi
             if [[ $leftover != "" ]] || [[ $leftover == $csNamespace ]]; then
                 activeRequestedFrom="$activeRequestedFrom $nsFromCM"
                 activeMapTo="$activeMapTo $csNamespace"
