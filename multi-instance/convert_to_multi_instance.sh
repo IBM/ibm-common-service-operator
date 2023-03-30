@@ -209,7 +209,7 @@ function restart_CS_pods() {
     for namespace in $namespaces
     do
         cs_pod=$(${OC} get pod -n $namespace | (grep ibm-common-service-operator || echo fail) | awk '{print $1}')
-        if [[ $cs_pod != "fail"]]; then
+        if [[ $cs_pod != "fail" ]]; then
             msg "deleting pod ${cs_pod} in namespace ${namespace}"
             ${OC} delete pod ${cs_pod} -n ${namespace} || error "Error deleting pod ${cs_pod} in namespace ${namespace}"
         fi
@@ -758,11 +758,15 @@ function check_topology() {
                 nsFromNSS=$(${OC} get nss -n $csNamespace -o yaml common-service | yq '.status.validatedMembers[]')
                 allPresent="true"
             fi
+            #need to check both directions to get accurate picture of what changed
+            #requested from could have fewer ns than NSS but it would appear as "allPresent"
+            #ie when a namespace is moved out of a grouping
+            #checking list of requested from present in NSS
+            #this looks for if namespaces were added to the grouping
             for cmNS in $nsFromCM
             do
                 return_value="$(echo $nsFromNSS | grep -w -q $cmNS || echo fail)"
                 if [[ $return_value == "fail" ]]; then
-                    #do something with namespaces
                     activeRequestedFrom="$activeRequestedFrom $nsFromCM"
                     activeMapTo="$activeMapTo $csNamespace"
                     info "Namespaces $nsFromCM $csNamespace added to conversion pool."
@@ -771,6 +775,21 @@ function check_topology() {
                 fi
             done
             if [[ $allPresent == "true" ]]; then
+                #checking list in NSS present in list of requested from
+                #this looks to see if a ns was removed from grouping
+                for ns in $nsFromNSS
+                do
+                    nsFromCM="$nsFromCM $csNamespace"
+                    return_value="$(echo $nsFromCM | grep -w -q $ns || echo fail)"
+                    if [[ $return_value == "fail" ]]; then
+                        #in this case we only need to update the cs namespace
+                        #cp namespaces attached do not need refreshing
+                        activeMapTo="$activeMapTo $csNamespace"
+                        info "Namespace $csNamespace added to conversion pool."
+                        allPresent="false"
+                        break
+                    fi
+                done
                 info "Namespaces $nsFromCM are already setup to use Common Service instance in namespace $csNamespace"
                 nsFromCM=""
             else
