@@ -310,7 +310,9 @@ function wait_for_env_var() {
 function wait_for_deployment() {
     local namespace=$1
     local name=$2
-    local condition="${OC} -n ${namespace} get deployment ${name} --no-headers --ignore-not-found -o jsonpath='{.status.readyReplicas}' | grep '1'"
+    local readyReplicas="${OC} -n ${namespace} get deployment ${name} --no-headers --ignore-not-found -o jsonpath='{.status.readyReplicas}' | grep '1'"
+    local replicas="${OC} -n ${namespace} get deployment ${name} --no-headers --ignore-not-found -o jsonpath='{.status.replicas}' | grep '1'"
+    local condition="(${readyReplicas} && ${replicas})"
     local retries=10
     local sleep_time=30
     local total_time_mins=$(( sleep_time * retries / 60))
