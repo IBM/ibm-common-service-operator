@@ -208,9 +208,11 @@ function restart_CS_pods() {
     local namespaces="$requestedNS $mapToCSNS"
     for namespace in $namespaces
     do
-        cs_pod=$(${OC} get pod -n $namespace | grep ibm-common-service-operator | awk '{print $1}')
-        msg "deleting pod ${cs_pod} in namespace ${namespace}"
-        ${OC} delete pod ${cs_pod} -n ${namespace} || error "Error deleting pod ${cs_pod} in namespace ${namespace}"
+        cs_pod=$(${OC} get pod -n $namespace | (grep ibm-common-service-operator || echo fail) | awk '{print $1}')
+        if [[ $cs_pod != "fail"]]
+            msg "deleting pod ${cs_pod} in namespace ${namespace}"
+            ${OC} delete pod ${cs_pod} -n ${namespace} || error "Error deleting pod ${cs_pod} in namespace ${namespace}"
+        fi
     done
     #original implementation
     # ${OC} get pod --all-namespaces | grep ibm-common-service-operator | while read -r line; do
@@ -220,7 +222,7 @@ function restart_CS_pods() {
     #     msg "deleting pod ${cs_pod} in namespace ${namespace} "
     #     ${OC} delete pod ${cs_pod} -n ${namespace} || error "Error deleting pod ${cs_pod} in namespace ${namespace}"
     # done
-    success "All ibm-common-service-operator pod is deleted"
+    success "All ibm-common-service-operator pods are deleted"
 }
 
 #  install new instances of CS based on cs mapping configmap
@@ -770,6 +772,7 @@ function check_topology() {
             done
             if [[ $allPresent == "true" ]]; then
                 info "Namespaces $nsFromCM are already setup to use Common Service instance in namespace $csNamespace"
+                nsFromCM=""
             else
                 local namespaces="$activeRequestedFrom $activeMapTo"
                 info "Active namespaces: $namespaces"
