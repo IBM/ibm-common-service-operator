@@ -88,15 +88,13 @@ function prereq() {
     if [[ $return_value != "pass" ]]; then
         error "The ibm-common-service-operator must not be installed in AllNamespaces mode"
     fi
-}
 
-function prepare_cluster() {
-
-    # TODO for more advanced checking
-    # find all namespaces with cs-operator running
     # each namespace should be in configmap
     # all namespaces in configmap should exist
     check_cm_ns_exist
+}
+
+function prepare_cluster() {
 
     ${OC} scale deployment -n ${master_ns} ibm-common-service-operator --replicas=0
     ${OC} scale deployment -n ${master_ns} operand-deployment-lifecycle-manager --replicas=0
@@ -726,6 +724,8 @@ function check_topology() {
     #if the order of requested from/mapt to is not fixed (ie map to above requested would break this logic)
     # we could try having a count of both and reseting the nsFromCM when either reaches 2. 
     # That should hopefully protect against users ordering their csmaps differently
+    local activeRequestedFrom=""
+    local activeMapTo=""
     local nsFromCM=""
     ${OC} get cm $cm_name -o yaml -n kube-public | yq '.data[]' | yq '.namespaceMapping[]'| while read -r line; do
         first_element=$(echo $line | awk '{print $1}')
@@ -747,8 +747,15 @@ function check_topology() {
             csNamespace=$(echo $line | awk '{print $2}')
             #nsFromCM="$nsFromCM $csNamespace" 
             #at this point we should have the full grouping for an instance, now is when we run the topo check
-            nsFromNSS=$(${OC} get nss -n $csNamespace -o yaml common-service | yq '.status.validatedMembers[]')
-            allPresent="true"
+            #need to account for instances when map to is a new ns and would not have nss in it already
+            nssExist=$(${OC} get nss -n $csNamespace common-service || echo fail)
+            if [[ $nssExist == "fail" ]]; then
+                allPresent="false"
+                nsFromNSS=""
+            else
+                nsFromNSS=$(${OC} get nss -n $csNamespace -o yaml common-service | yq '.status.validatedMembers[]')
+                allPresent="true"
+            fi
             for cmNS in $nsFromCM
             do
                 return_value="$(echo $nsFromNSS | grep -w -q $cmNS || echo fail)"
