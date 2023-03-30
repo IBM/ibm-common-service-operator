@@ -35,8 +35,10 @@ function main() {
     prereq
     collect_data
     check_topology
+    info "rns= $requestedNS mns= $mapToCSNS"
     prepare_cluster
     scale_up_pod
+    info "rns= $requestedNS mns= $mapToCSNS"
     restart_CS_pods
     install_new_CS
     refresh_zen
@@ -177,7 +179,7 @@ function migrate_lic_cms() {
 
 # scale back cs pod 
 function scale_up_pod() {
-    info "scaling back ibm-common-service-operator deployment in ${master_ns} namespace"
+    info "scaling up ibm-common-service-operator deployment in ${master_ns} namespace"
     ${OC} scale deployment -n ${master_ns} ibm-common-service-operator --replicas=1
     ${OC} scale deployment -n ${master_ns} operand-deployment-lifecycle-manager --replicas=1
     check_healthy "${master_ns}"
@@ -714,6 +716,8 @@ function removeNSS(){
 }
 
 function check_topology() {
+    title " Checking expected vs actual topology based on common-service-maps "
+    msg "-----------------------------------------------------------------------"
     #get list of cs instance namespaces
     #get list of namespaces associated with each cs instance from common-service nss
     #get list of namespaces associated with each cs instance from common-service-maps
@@ -726,12 +730,12 @@ function check_topology() {
     #if the order of requested from/mapt to is not fixed (ie map to above requested would break this logic)
     # we could try having a count of both and reseting the nsFromCM when either reaches 2. 
     # That should hopefully protect against users ordering their csmaps differently
-    local activeRequestedFrom=""
-    local activeMapTo=""
-    local nsFromCM=""
-    ${OC} get cm $cm_name -o yaml -n kube-public | yq '.data[]' | yq '.namespaceMapping[]'| while read -r line; do
+    nsFromCM=""
+    activeRequestedFrom=""
+    activeMapTo=""
+    while read -r line; do
         first_element=$(echo $line | awk '{print $1}')
-        
+    
     #if the order of requested from/map to is not fixed (ie map to above requested would break this logic)
     # we could try having a count of both and reseting the nsFromCM when either reaches 2. 
     # That should hopefully protect against users ordering their csmaps differently
@@ -758,48 +762,35 @@ function check_topology() {
                 nsFromNSS=$(${OC} get nss -n $csNamespace -o yaml common-service | yq '.status.validatedMembers[]')
                 allPresent="true"
             fi
-            #need to check both directions to get accurate picture of what changed
-            #requested from could have fewer ns than NSS but it would appear as "allPresent"
-            #ie when a namespace is moved out of a grouping
-            #checking list of requested from present in NSS
-            #this looks for if namespaces were added to the grouping
-            for cmNS in $nsFromCM
-            do
-                return_value="$(echo $nsFromNSS | grep -w -q $cmNS || echo fail)"
-                if [[ $return_value == "fail" ]]; then
-                    activeRequestedFrom="$activeRequestedFrom $nsFromCM"
-                    activeMapTo="$activeMapTo $csNamespace"
-                    info "Namespaces $nsFromCM $csNamespace added to conversion pool."
-                    allPresent="false"
-                    break
-                fi
-            done
+            info "nsfromcm $nsFromCM"
+            info "nss $nsFromNSS"
+            leftover=(`echo ${nsFromCM[@]} ${nsFromNSS[@]} | tr ' ' '\n' | sort | uniq -u`)
+            if [[ $leftover != "" ]] || [[ $leftover == $csNamespace ]]; then
+                activeRequestedFrom="$activeRequestedFrom $nsFromCM"
+                activeMapTo="$activeMapTo $csNamespace"
+                info "activeR $activeRequestedFrom"
+                info "activeM $activeMapTo"
+                info "Namespaces $nsFromCM $csNamespace added to conversion pool."
+                nsFromCM=""
+                allPresent="false"
+            fi
             if [[ $allPresent == "true" ]]; then
-                #checking list in NSS present in list of requested from
-                #this looks to see if a ns was removed from grouping
-                for ns in $nsFromNSS
-                do
-                    nsFromCM="$nsFromCM $csNamespace"
-                    return_value="$(echo $nsFromCM | grep -w -q $ns || echo fail)"
-                    if [[ $return_value == "fail" ]]; then
-                        #in this case we only need to update the cs namespace
-                        #cp namespaces attached do not need refreshing
-                        activeMapTo="$activeMapTo $csNamespace"
-                        info "Namespace $csNamespace added to conversion pool."
-                        allPresent="false"
-                        break
-                    fi
-                done
                 info "Namespaces $nsFromCM are already setup to use Common Service instance in namespace $csNamespace"
                 nsFromCM=""
-            else
-                local namespaces="$activeRequestedFrom $activeMapTo"
-                info "Active namespaces: $namespaces"
-                requestedNS=$activeRequestedFrom
-                mapToCSNS=$activeMapTo
             fi
         fi
-    done
+        info "loop"
+        info "activeR $activeRequestedFrom"
+        info "activeM $activeMapTo"
+    done <<<$(${OC} get cm $cm_name -o yaml -n kube-public | yq '.data[]' | yq '.namespaceMapping[]')
+    #the | while loop is preventing these variables from saving...
+    requestedNS="$activeRequestedFrom"
+    mapToCSNS="$activeMapTo"
+    info "rns= $activeRequestedFrom mns= $activeMapTo"
+    if [[ $requestedNS == "" ]] && [[ $mapToCSNS == "" ]]; then
+        success "No difference in topology detected."
+        error "Please update common-service-maps configmap in kube-public and run again."
+    fi
     
     success "Topology info collected from common-service-maps configmap"
 }
