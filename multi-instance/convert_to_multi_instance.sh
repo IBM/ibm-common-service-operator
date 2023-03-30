@@ -209,7 +209,7 @@ function restart_CS_pods() {
     for namespace in $namespaces
     do
         cs_pod=$(${OC} get pod -n $namespace | (grep ibm-common-service-operator || echo fail) | awk '{print $1}')
-        if [[ $cs_pod != "fail"]]
+        if [[ $cs_pod != "fail"]]; then
             msg "deleting pod ${cs_pod} in namespace ${namespace}"
             ${OC} delete pod ${cs_pod} -n ${namespace} || error "Error deleting pod ${cs_pod} in namespace ${namespace}"
         fi
