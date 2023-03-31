@@ -69,7 +69,6 @@ const ConfigurationRules = `
     authentication:
       config:
         fipsEnabled: LARGEST_VALUE
-        defaultAdminUser: LARGEST_VALUE
       replicas: LARGEST_VALUE
       auditService:
         resources:
@@ -195,7 +194,6 @@ const ConfigurationRules = `
     authentication:
       config:
         fipsEnabled: LARGEST_VALUE
-        defaultAdminUser: LARGEST_VALUE
       replicas: LARGEST_VALUE
       auditService:
         resources:
@@ -242,7 +240,6 @@ const ConfigurationRules = `
     authentication:
       config:
         fipsEnabled: LARGEST_VALUE
-        defaultAdminUser: LARGEST_VALUE
       replicas: LARGEST_VALUE
       auditService:
         resources:

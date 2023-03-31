@@ -27,9 +27,4 @@ const DefaultAdminUserTemplate = `
     authentication:
       config:
         defaultAdminUser: placeholder
-- name: ibm-iam-operator
-  spec:
-    authentication:
-      config:
-        defaultAdminUser: placeholder
 `
