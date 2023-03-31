@@ -135,7 +135,7 @@ EOF
     info "Deleting existing Cert Manager CR..."
     ${OC} delete certmanager.operator.ibm.com default --ignore-not-found --timeout=10s
     if [ $? -ne 0 ]; then
-        wanring "Failed to delete Cert Manager CR, patching its finalizer to null..."
+        warning "Failed to delete Cert Manager CR, patching its finalizer to null..."
         ${OC} patch certmanagers.operator.ibm.com default --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
     fi
     msg ""
