@@ -325,8 +325,7 @@ function wait_for_operator_upgrade() {
     local namespace=$1
     local package_name=$2
     local channel=$3
-    local sub_name=$(${OC} get subscription.operators.coreos.com -n ${namespace} -l operators.coreos.com/${package_name}.${namespace}='' --no-headers | awk '{print $1}')
-    local condition="${OC} get subscription.operators.coreos.com ${sub_name} -n ${namespace} -o jsonpath='{.status.installedCSV}' | grep -w $channel"
+    local condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${package_name}.${namespace}='' -n ${namespace} -o yaml -o jsonpath='{.items[*].status.installedCSV}' | grep -w $channel"
 
     local retries=10
     local sleep_time=30
