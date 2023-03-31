@@ -42,6 +42,8 @@ spec:
                 type: string
               catalogNamespace:
                 type: string
+              defaultAdminUsername:
+                type: string
               features:
                 description: Features defines the configurations of Cloud Pak Services
                 properties:

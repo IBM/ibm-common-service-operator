@@ -52,20 +52,21 @@ type CommonServiceSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	Features            *Features            `json:"features,omitempty"`
-	InstallPlanApproval olmv1alpha1.Approval `json:"installPlanApproval,omitempty"`
-	ManualManagement    bool                 `json:"manualManagement,omitempty"`
-	FipsEnabled         bool                 `json:"fipsEnabled,omitempty"`
-	RouteHost           string               `json:"routeHost,omitempty"`
-	Size                string               `json:"size,omitempty"`
-	Services            []ServiceConfig      `json:"services,omitempty"`
-	StorageClass        string               `json:"storageClass,omitempty"`
-	BYOCACertificate    bool                 `json:"BYOCACertificate,omitempty"`
-	ProfileController   string               `json:"profileController,omitempty"`
-	ServicesNamespace   ServicesNamespace    `json:"servicesNamespace,omitempty"`
-	OperatorNamespace   OperatorNamespace    `json:"operatorNamespace,omitempty"`
-	CatalogName         CatalogName          `json:"catalogName,omitempty"`
-	CatalogNamespace    CatalogNamespace     `json:"catalogNamespace,omitempty"`
+	Features             *Features            `json:"features,omitempty"`
+	InstallPlanApproval  olmv1alpha1.Approval `json:"installPlanApproval,omitempty"`
+	ManualManagement     bool                 `json:"manualManagement,omitempty"`
+	FipsEnabled          bool                 `json:"fipsEnabled,omitempty"`
+	RouteHost            string               `json:"routeHost,omitempty"`
+	Size                 string               `json:"size,omitempty"`
+	Services             []ServiceConfig      `json:"services,omitempty"`
+	StorageClass         string               `json:"storageClass,omitempty"`
+	BYOCACertificate     bool                 `json:"BYOCACertificate,omitempty"`
+	ProfileController    string               `json:"profileController,omitempty"`
+	ServicesNamespace    ServicesNamespace    `json:"servicesNamespace,omitempty"`
+	OperatorNamespace    OperatorNamespace    `json:"operatorNamespace,omitempty"`
+	CatalogName          CatalogName          `json:"catalogName,omitempty"`
+	CatalogNamespace     CatalogNamespace     `json:"catalogNamespace,omitempty"`
+	DefaultAdminUsername string               `json:"defaultAdminUsername,omitempty"`
 
 	// +optional
 	License LicenseList `json:"license"`

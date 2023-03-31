@@ -54,6 +54,16 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 		newConfigs = append(newConfigs, routeHostConfig...)
 	}
 
+	// Specify default Admin Username
+	if cs.Object["spec"].(map[string]interface{})["defaultAdminUsername"] != nil {
+		klog.Info("Changing the default admin username")
+		adminUsernameConfig, err := convertStringToSlice(strings.ReplaceAll(constant.DefaultAdminUserTemplate, "placeholder", cs.Object["spec"].(map[string]interface{})["defaultAdminUsername"].(string)))
+		if err != nil {
+			return nil, nil, err
+		}
+		newConfigs = append(newConfigs, adminUsernameConfig...)
+	}
+
 	// Update multipleInstancesEnabled when multi-instances
 	if r.Bootstrap.MultiInstancesEnable {
 		klog.Info("Applying multipleInstancesEnabled configuration")
