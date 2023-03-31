@@ -129,10 +129,6 @@ function switch_to_eus() {
     delete_rbac_resource $namespace
 
     in_step=$((in_step + 1))
-    msg "[${in_step}] Deleting iam-status configMap in kube-public namespace" 
-    oc delete configmap ibm-common-services-status -n kube-public --ignore-not-found
-
-    in_step=$((in_step + 1))
     msg "[${in_step}] Deleting cert-manager webhooks and apiservice" 
     oc delete ValidatingWebhookConfiguration cert-manager-webhook --ignore-not-found
     oc delete MutatingWebhookConfiguration cert-manager-webhook --ignore-not-found

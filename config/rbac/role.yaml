@@ -13,7 +13,6 @@ rules:
   - configmaps
   resourceNames:
   - common-service-maps
-  - ibm-common-services-status
 - verbs:
   - create
   - get

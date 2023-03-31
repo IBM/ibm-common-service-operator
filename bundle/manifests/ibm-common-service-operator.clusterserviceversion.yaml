@@ -175,7 +175,6 @@ spec:
                 - ""
               resourceNames:
                 - common-service-maps
-                - ibm-common-services-status
               resources:
                 - configmaps
               verbs:

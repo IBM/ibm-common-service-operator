@@ -321,9 +321,6 @@ if [[ "$FORCE_DELETE" == "false" ]]; then
   ${KUBECTL} delete MutatingWebhookConfiguration cert-manager-webhook ibm-common-service-webhook-configuration ibm-operandrequest-webhook-configuration namespace-admission-config --ignore-not-found
 fi
 
-title "Deleting iam-status configMap in kube-public namespace"
-${KUBECTL} delete configmap ibm-common-services-status -n kube-public --ignore-not-found
-
 if [[ "$REMOVE_IAM_CP_NS" == "true" ]]; then
   title "Deleting iam crs in cloudpak namespace"
 	if [[ "$FORCE_DELETE" == "true" ]]; then
