@@ -55,9 +55,9 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 	}
 
 	// Specify default Admin Username
-	if cs.Object["spec"].(map[string]interface{})["defaultAdminUsername"] != nil {
+	if cs.Object["spec"].(map[string]interface{})["defaultAdminUser"] != nil {
 		klog.Info("Applying the default admin username")
-		adminUsernameConfig, err := convertStringToSlice(strings.ReplaceAll(constant.DefaultAdminUserTemplate, "placeholder", cs.Object["spec"].(map[string]interface{})["defaultAdminUsername"].(string)))
+		adminUsernameConfig, err := convertStringToSlice(strings.ReplaceAll(constant.DefaultAdminUserTemplate, "placeholder", cs.Object["spec"].(map[string]interface{})["defaultAdminUser"].(string)))
 		if err != nil {
 			return nil, nil, err
 		}
