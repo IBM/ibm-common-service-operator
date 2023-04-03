@@ -307,9 +307,15 @@ function swapmongopvc() {
   oc patch pv $VOL --type=merge -p '{"spec": {"claimRef":null}}'
   oc patch pv $VOL --type json -p '[{ "op": "remove", "path": "/spec/claimRef" }]'
   
-  oc patch pvc cs-mongodump -n $FROM_NAMESPACE --type=merge -p '{"metadata": {"finalizers":null}}'
-  oc patch pvc cs-mongodump -n $FROM_NAMESPACE --type json -p '[{ "op": "remove", "path": "/metadata/finalizers" }]'
-  oc delete pvc cs-mongodump -n $FROM_NAMESPACE
+  oc delete pvc cs-mongodump -n $FROM_NAMESPACE --ignore-not-found --timeout=10s
+    if [ $? -ne 0 ]; then
+        warning "Failed to delete pvc cs-mongodump, patching its finalizer to null..."
+        oc patch pvc cs-mongodump -n $FROM_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+    fi
+  
+  # oc patch pvc cs-mongodump -n $FROM_NAMESPACE --type=merge -p '{"metadata": {"finalizers":null}}'
+  # oc patch pvc cs-mongodump -n $FROM_NAMESPACE --type json -p '[{ "op": "remove", "path": "/metadata/finalizers" }]'
+  # oc delete pvc cs-mongodump -n $FROM_NAMESPACE
 
   stgclass=$(oc get pvc mongodbdir-icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{.spec.storageClassName}')
   if [[ -z $stgclass ]]; then
@@ -338,6 +344,10 @@ EOF
   status=$(oc get pvc cs-mongodump -n $TO_NAMESPACE --no-headers | awk '{print $2}')
   while [[ "$status" != "Bound" ]]
   do
+    namespace=$(oc get pv $VOL -o=jsonpath='{.spec.claimRef.namespace}')
+    if [[ $namespace != $TO_NAMESPACE ]]; then
+      oc patch pv $VOL --type=merge -p '{"spec": {"claimRef":null}}'
+    fi
     info "Waiting for pvc cs-mongodump to bind"
     sleep 10
     status=$(oc get pvc cs-mongodump -n $TO_NAMESPACE --no-headers | awk '{print $2}')
@@ -1632,9 +1642,15 @@ function deletemongocopy {
   fi
 
   oc patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Delete" }}'
-  oc patch pvc cs-mongodump --type=merge -p '{"metadata": {"finalizers":null}}'
-  oc patch pvc cs-mongodump --type json -p '[{ "op": "remove", "path": "/metadata/finalizers" }]'
-  oc delete pvc cs-mongodump --ignore-not-found
+  
+  oc delete pvc cs-mongodump -n $FROM_NAMESPACE --ignore-not-found --timeout=10s
+    if [ $? -ne 0 ]; then
+        warning "Failed to delete pvc cs-mongodump, patching its finalizer to null..."
+        oc patch pvc cs-mongodump -n $FROM_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+    fi
+  # oc patch pvc cs-mongodump --type=merge -p '{"metadata": {"finalizers":null}}'
+  # oc patch pvc cs-mongodump --type json -p '[{ "op": "remove", "path": "/metadata/finalizers" }]'
+  # oc delete pvc cs-mongodump --ignore-not-found
   oc delete pv $VOL --ignore-not-found
 
   success "MongoDB backup restored to new namespace"
