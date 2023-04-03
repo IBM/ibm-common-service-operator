@@ -522,23 +522,30 @@ function check_healthy() {
     total_time_mins=$(( sleep_time * retries / 60))
     info "Waiting for IBM Common Services CR is Succeeded"
     sleep 10
-    pod=$(oc get pods -n ${CS_NAMESPACE} | grep ibm-common-service-operator | awk '{print $1}')
+    # pod=$(oc get pods -n ${CS_NAMESPACE} | grep ibm-common-service-operator | awk '{print $1}')
     
     while true; do
+        pod=$(oc get pods -n ${CS_NAMESPACE} | (grep ibm-common-service-operator || echo fail) | awk '{print $1}')
         if [[ ${retries} -eq 0 ]]; then
             error "Timeout after ${total_time_mins} minutes waiting for IBM Common Services is deployed"
         fi
 
-        phase=$(oc get pod ${pod} -o jsonpath='{.status.phase}' -n ${CS_NAMESPACE})
+        if [[ $pod != "fail" ]]; then
+            phase=$(oc get pod ${pod} -o jsonpath='{.status.phase}' -n ${CS_NAMESPACE})
 
-        if [[ "${phase}" != "Running" ]]; then
+            if [[ "${phase}" != "Running" ]]; then
+                retries=$(( retries - 1 ))
+                info "RETRYING: Waiting for IBM Common Services CR is Succeeded (${retries} left)"
+                sleep ${sleep_time}
+            else
+                msg "-----------------------------------------------------------------------"    
+                success "Common Services is deployed in ${CS_NAMESPACE}"
+                break
+            fi
+        else
             retries=$(( retries - 1 ))
             info "RETRYING: Waiting for IBM Common Services CR is Succeeded (${retries} left)"
             sleep ${sleep_time}
-        else
-            msg "-----------------------------------------------------------------------"    
-            success "Common Services is deployed in ${CS_NAMESPACE}"
-            break
         fi
     done
 }
@@ -770,7 +777,9 @@ function check_topology() {
             if [[ -z ${leftover:-} ]]; then
                 leftover=""
             fi
-            if [[ $leftover != "" ]] || [[ $leftover == $csNamespace ]]; then
+            if [[ $leftover == "" ]] || [[ $leftover == $csNamespace ]]; then
+                allPresent="true"
+            else
                 activeRequestedFrom="$activeRequestedFrom $nsFromCM"
                 activeMapTo="$activeMapTo $csNamespace"
                 info "activeR $activeRequestedFrom"
