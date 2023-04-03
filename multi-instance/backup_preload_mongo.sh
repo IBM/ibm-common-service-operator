@@ -909,7 +909,7 @@ data:
 
     cp /peer-finder "\${WORKDIR_VOLUME}"/
 
-    echo "I am running as " $(whoami)
+    echo "I am running as " \$(whoami)
 
 
     cp /configdb-readonly/mongod.conf "\${CONFIGDIR_VOLUME}"/mongod.conf
