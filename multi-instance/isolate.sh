@@ -153,7 +153,7 @@ function pause() {
     ${OC} delete operandregistry -n ${master_ns} --ignore-not-found common-service 
     ${OC} delete operandconfig -n ${master_ns} --ignore-not-found common-service
     
-    cleanupCSOperators
+    cleanupCSOperators # need to update this, we do not want to restart cs operators across the cluster
     removeNSS
     cleanupZenService
 }
