@@ -69,7 +69,7 @@ function parse_arguments() {
             ;;
         --check-licensing)
             CHECK_LICENSING_ONLY=1
-            SKIP_INSTALL=1     
+            SKIP_INSTALL=1
             ;;
         -cmNs | --cert-manager-namespace)
             shift
@@ -126,9 +126,6 @@ function install_cert_manager() {
     is_sub_exist "cert-manager" # this will catch the packagenames of all cert-manager-operators
     if [ $? -eq 0 ]; then
         warning "There is a cert-manager Subscription already\n"
-        return 0
-    elif [ $SKIP_INSTALL -eq 1 ]; then
-        error "There is no cert-manager Subscription installed\n"
     fi
 
     pods_exist=$(${OC} get pods -A | grep -w cert-manager-webhook)
