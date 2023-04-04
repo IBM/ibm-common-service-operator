@@ -66,12 +66,24 @@ function main () {
         esac
         shift
     done
-    prereq
+    which "${OC}" || error "Missing oc CLI"
+    which "${YQ}" || error "Missing yq"
+    
+    if [[ -z $requestedNS ]] && [[ -z $mapToCSNS ]] &&  [[ -z $master_ns ]]; then
+        usage
+        error "No parameters entered. Please re-run specifying original, map-to, and requested-from namespace values. Use -h for help."
+    elif [[ -z $requestedNS ]] || [[ -z $mapToCSNS ]] || [[ -z $master_ns ]]; then
+        usage
+        error "Required parameters missing. Please re-run specifying original, map-to, and requested-from namespace values. Use -h for help."
+    fi
+    namespaces="$requestedNS $mapToCSNS"
+
     if [[ $restart ==  "false" ]]; then
         #./backup_preload_mongo.sh $master_ns $mapToCSNS #requires cert manager, probably don't need to include it in this script
         pause
-        uninstall_singletons
     else
+        prereq
+        uninstall_singletons
         restart
     fi
 }
@@ -94,18 +106,6 @@ function usage() {
 
 # verify that all pre-requisite CLI tools exist
 function prereq() {
-    which "${OC}" || error "Missing oc CLI"
-    which "${YQ}" || error "Missing yq"
-    
-    if [[ -z $requestedNS ]] && [[ -z $mapToCSNS ]] &&  [[ -z $master_ns ]]; then
-        usage
-        error "No parameters entered. Please re-run specifying original, map-to, and requested-from namespace values"
-    elif [[ -z $requestedNS ]] || [[ -z $mapToCSNS ]] || [[ -z $master_ns ]]; then
-        usage
-        error "Required parameters missing. Please re-run specifying original, map-to, and requested-from namespace values"
-    fi
-    
-    namespaces="$requestedNS $mapToCSNS"
     
     return_value=$("${OC}" get -n kube-public configmap ${cm_name} > /dev/null || echo failed)
     if [[ $return_value == "failed" ]]; then
@@ -153,9 +153,8 @@ function pause() {
     ${OC} delete operandregistry -n ${master_ns} --ignore-not-found common-service 
     ${OC} delete operandconfig -n ${master_ns} --ignore-not-found common-service
     
-    cleanupCSOperators # need to update this, we do not want to restart cs operators across the cluster
+    cleanupCSOperators # only updates cs operators in requestedNS list passed in as parameter to script
     removeNSS
-    cleanupZenService
 }
 
 function uninstall_singletons() {
@@ -263,36 +262,6 @@ function removeNSS(){
     fi
 
     success "Namespace Scope CRs cleaned up"
-}
-
-function cleanupZenService(){
-    title " Cleaning up Zen installation "
-    msg "-----------------------------------------------------------------------"
-    for namespace in $namespaces
-    do
-        # remove cs namespace from zen service cr
-        return_value=$(${OC} get zenservice -n ${namespace} || echo "fail")
-        if [[ $return_value != "fail" ]]; then
-            if [[ $return_value != "" ]]; then
-                zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
-                ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type json -p '[{ "op": "remove", "path": "/spec/csNamespace" }]' || info "CS Namespace not defined in ${zenServiceCR} in ${namespace}. Moving on..."
-            else
-                info "No zen service in namespace ${namespace}. Moving on..."
-            fi
-        else
-          info "Zen not installed in ${namespace}. Moving on..."
-        fi
-        return_value=""
-
-        # delete iam config job
-        return_value=$(${OC} get job -n ${namespace} | grep iam-config-job || echo "fail")
-        if [[ $return_value != "fail" ]]; then
-            ${OC} delete job iam-config-job -n ${namespace}
-        else
-            info "iam-config-job not present in namespace ${namespace}. Moving on..."
-        fi
-    done
-    success "Zen instances cleaned up"
 }
 
 function migrate_lic_cms() {
