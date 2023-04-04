@@ -24,8 +24,14 @@ OC=oc
 YQ=yq
 master_ns=
 requestedNS=
+excludedNS=
+excludedRaw=
 mapToCSNS=
-controlNs=
+OPERATOR_NS=""
+SERVICES_NS=""
+TETHERED_NS=""
+CONTROL_NS=""
+NEW_MAPPING=""
 cm_name="common-service-maps"
 restart="false"
 requested="false"
@@ -45,14 +51,12 @@ function main () {
             master_ns=$2
             shift
             ;;
-        "--requested-from-ns")
+        "--excluded-ns")
+            excludedRaw=$2
             shift
-            requestedNS="$@"
-            info "requestedNs= $requestedNS"
-            requested="true"
             ;;
-        "--map-to-ns")
-            mapToCSNS=$2
+        "--control-ns")
+            CONTROL_NS=$2
             shift
             ;;
         "-r")
@@ -68,20 +72,19 @@ function main () {
     done
     which "${OC}" || error "Missing oc CLI"
     which "${YQ}" || error "Missing yq"
-    
-    if [[ -z $requestedNS ]] && [[ -z $mapToCSNS ]] &&  [[ -z $master_ns ]]; then
+    #TODO update these parameter requirements
+    if [[ -z $CONTROL_NS ]] &&  [[ -z $master_ns ]]; then
         usage
-        error "No parameters entered. Please re-run specifying original, map-to, and requested-from namespace values. Use -h for help."
-    elif [[ -z $requestedNS ]] || [[ -z $mapToCSNS ]] || [[ -z $master_ns ]]; then
+        error "No parameters entered. Please re-run specifying original and control namespace values. Use -h for help."
+    elif [[ -z $CONTROL_NS ]] || [[ -z $master_ns ]]; then
         usage
-        error "Required parameters missing. Please re-run specifying original, map-to, and requested-from namespace values. Use -h for help."
+        error "Required parameters missing. Please re-run specifying original and control namespace values. Use -h for help."
     fi
-    namespaces="$requestedNS $mapToCSNS"
 
     if [[ $restart ==  "false" ]]; then
-        #./backup_preload_mongo.sh $master_ns $mapToCSNS #requires cert manager, probably don't need to include it in this script
         pause
     else
+        create_csmaps
         prereq
         uninstall_singletons
         restart
@@ -104,6 +107,158 @@ function usage() {
 	EOF
 }
 
+function create_csmaps() {
+    #read list of namespaces from nss common-service in original namespace
+    return_value=$(${OC} get -n ${master_ns} cm namespace-scope > /dev/null || echo failed)
+    if [[ $return_value == "failed" ]]; then
+        error "No namespace-scope configmap in Original CS Namespace ${master_ns}. Verify namespace is correct and IBM common services is installed there."
+    else
+        namespaces=$(oc get cm namespace-scope -n "${master_ns}" -o json | jq '.data.namespaces')
+        namespaces=$(echo $namespaces | tr -d '"')
+        echo $namespaces
+        #either of these two methods work, just need to pick one
+        IFS=',' read -a nsFromCM <<< "$namespaces"  && echo ${nsFromCM[@]}
+        # readarray -d , -t ns2 <<< "${namespaces}" && echo ${ns2[@]}
+    fi
+    #remove excluded from namespaces
+    IFS=',' read -a excludedNS <<< "$excludedRaw" && echo ${excludedNS[@]}
+    leftover=(`echo ${nsFromCM[@]} ${excludedNS[@]} | tr ' ' '\n'  | tr -d '"' | sort | uniq -u`)
+    #if there are no differences between the two lists, the variable is unset.
+    #check for unset, if it is, then the grouping doesn't need to be changed anyway
+    if [[ -z ${leftover:-} ]]; then
+        leftover=""
+    fi
+    if [[ $leftover == "" ]] || [[ $leftover == $master_ns ]]; then
+        requestedNS=$master_ns
+    else
+        requestedNS=$leftover
+    fi
+    echo $requestedNS
+    #create new csmaps
+    OPERATOR_NS=$master_ns
+    SERVICES_NS=$master_ns
+    for ns in $requestedNS
+    do
+        if [[ $TETHERED_NS == "" ]]; then
+            TETHERED_NS="$ns"
+        else
+            TETHERED_NS="$TETHERED_NS,$ns"
+        fi
+    done
+    mapping_topology
+
+}
+
+function construct_mapping() {
+    NEW_MAPPING='- requested-from-namespace:'
+
+    unique_ns_list=()
+    # Loop over each tenant namespace and add each unique namespace value to the 'unique' array
+    for ns in $OPERATOR_NS $SERVICES_NS ${TETHERED_NS//,/ }; do
+        if [[ ! " ${uniqueNsList[@]} " =~ " ${ns} " ]]; then
+            unique_ns_list+=("$ns")
+        fi
+    done
+
+    # Append tenant namespaces to NEW_MAPPING to requested-from-namespace list
+    for ns in "${unique_ns_list[@]}"; do
+        NEW_MAPPING="$NEW_MAPPING\n  - $ns"
+    done
+
+    # Append servicesNamespace to map-to-common-service-namespace
+    NEW_MAPPING="$NEW_MAPPING\n  map-to-common-service-namespace: $SERVICES_NS"
+}
+
+function mapping_topology() {
+    construct_mapping
+
+    # Check if ConfigMap exists in the cluster
+    if ${OC} get configmap common-service-maps -n kube-public > /dev/null 2>&1; then
+        # ConfigMap exists, retrieve its current data
+        local current_mapping=$(${OC} get configmap common-service-maps -n kube-public -o jsonpath='{.data.common-service-maps\.yaml}')
+
+        # Remove the defaultCsNs key-value mapping if it exists
+        current_mapping=$(echo "$current_mapping" | awk '/defaultCsNs:/ {next} {print}')
+
+        # Check if servicesNamespace already exists in the map-to-common-service-namespace
+        # extract the mapped namespaces from the ConfigMap
+        map_to_ns=$(echo "$current_mapping" | yq -r '.namespaceMapping[].map-to-common-service-namespace')
+        echo "map_to_ns"
+        echo "$map_to_ns"
+        if grep -Fxq $SERVICES_NS <<< "$map_to_ns"; then
+            info "map-to-common-service-namespace $SERVICES_NS already exists in the namespaceMapping array. Skipping updating common-service-maps ConfigMap"
+            return 0
+        fi
+        
+        # Check if each tenant namespace already exists in the requested-from-namespace array
+        # extract the requested namespaces from the ConfigMap
+        requested_ns=$(echo "$current_mapping" | yq -r '.namespaceMapping[].requested-from-namespace[]')
+        echo "requested_ns"
+        echo "$requested_ns"
+        # loop over each namespace in the list and check if it exists in the ConfigMap
+        for ns in $OPERATOR_NS $SERVICES_NS ${TETHERED_NS//,/ }; do
+            if grep -Fxq $ns <<< "$requested_ns"; then
+                info "requested-from-namespace $ns already exists in the namespaceMapping array. Skipping updating common-service-maps ConfigMap"
+                return 0
+            fi
+        done
+
+        current_control_ns=$(echo "$current_mapping" | awk '/controlNamespace:/ {print $2}')
+
+        # If controlNamespace is not set, assign the value of CONTROL_NS to it
+        if [ -z "$current_control_ns" ]; then
+            if [ -z "$CONTROL_NS" ]; then
+                error "MUST provide control namespace, controlNamespace is not set in common-service-maps ConfigMap"
+            else
+                info "controlNamespace not set in common-service-maps ConfigMap, setting to $CONTROL_NS"
+                current_mapping="controlNamespace: ${CONTROL_NS}\n$current_mapping"
+            fi
+        else
+            # Otherwise, if controlNamespace is set but different from CONTROL_NS, raise an error and abort the script
+            if [[ ! -z "$CONTROL_NS" && "$current_control_ns" != "$CONTROL_NS" ]]; then
+                error "controlNamespace is set to $current_control_ns but the script receives is $CONTROL_NS for --control-namespace"
+            fi
+        fi
+
+        # Update ConfigMap data
+        info "Updating common-service-maps ConfigMap in kube-public namespace"
+        NEW_MAPPING=$(echo -e "$current_mapping\n$NEW_MAPPING")
+
+        local object=$(
+            cat <<EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: common-service-maps
+    namespace: kube-public
+data:
+    common-service-maps.yaml: |
+$(echo "$NEW_MAPPING" | awk '{print "        "$0}')
+EOF
+)
+
+        echo "$object" | ${OC} apply -f -
+    else
+        # ConfigMap does not exist, create it
+        info "Creating common-service-maps ConfigMap in kube-public namespace"
+
+        NEW_MAPPING=$(echo -e "namespaceMapping:\n$NEW_MAPPING")
+        local object=$(
+            cat <<EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: common-service-maps
+    namespace: kube-public
+data:
+    common-service-maps.yaml: |
+$(echo "$NEW_MAPPING" | awk '{print "        "$0}')
+EOF
+)
+        echo "$object" | ${OC} apply -f -
+    fi
+}
+
 # verify that all pre-requisite CLI tools exist
 function prereq() {
     
@@ -120,8 +275,8 @@ function prereq() {
     fi
     return_value="reset"
 
-    controlNs=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data' | grep controlNamespace: | awk '{print $2}')
-    return_value=$("${OC}" get ns "${controlNs}" > /dev/null || echo failed)
+    CONTROL_NS=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data' | grep controlNamespace: | awk '{print $2}')
+    return_value=$("${OC}" get ns "${CONTROL_NS}" > /dev/null || echo failed)
     if [[ $return_value == "failed" ]]; then
         error "The namespace specified in controlNamespace does not exist. This namespace must be created before proceeding."
     fi
@@ -288,15 +443,15 @@ function migrate_lic_cms() {
         if [[ $return_value != "fail" ]]; then
             if [[ $return_value == $cm ]]; then
                 ${OC} get cm -n $namespace $cm -o yaml --ignore-not-found > tmp.yaml
-                #edit the file to change the namespace to controlNs
-                yq -i '.metadata.namespace = "'${controlNs}'"' tmp.yaml
+                #edit the file to change the namespace to CONTROL_NS
+                yq -i '.metadata.namespace = "'${CONTROL_NS}'"' tmp.yaml
                 ${OC} apply -f tmp.yaml
-                info "Licensing configmap $cm copied from $namespace to $controlNs"
+                info "Licensing configmap $cm copied from $namespace to $CONTROL_NS"
             fi
         fi
     done
     rm tmp.yaml -f
-    success "Licensing configmaps copied from $namespace to $controlNs"
+    success "Licensing configmaps copied from $namespace to $CONTROL_NS"
 }
 
 function check_CSCR() {
