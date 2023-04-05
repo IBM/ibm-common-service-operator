@@ -734,9 +734,9 @@ function update_operator() {
 
     if [[ $return_value1 -eq 0 || $return_value2 -eq 1 ]]; then
         info "$package_name is ready for updaing the subscription."
-    elif [[ $return_value -ne 2 ]]; then
+    elif [[ $return_value1 -ne 2 ]]; then
         error "Failed to update channel subscription ${package_name} in ${ns}"
-    elif [[ $return_value1 -eq 3 || $return_value2 -eq 0 ]]; then
+    elif [[ $return_value1 -eq 3 && $return_value2 -eq 0 ]]; then
         info "$package_name already has updated channel $existing_channel and catalogsource $existing_catalogsource in the subscription."
         return 0
     fi

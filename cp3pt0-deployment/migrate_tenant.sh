@@ -251,9 +251,9 @@ function scale_down_cs() {
 
     if [[ $return_value1 -eq 0 || $return_value2 -eq 1 ]]; then
         info "$package_name is ready for scaling down."
-    elif [[ $return_value -ne 2 ]]; then
+    elif [[ $return_value1 -ne 2 ]]; then
         error "Must provide correct channel. The channel $existing_channel is found in subscription ibm-common-service-operator in $OPERATOR_NS"
-    elif [[ $return_value1 -eq 3 || $return_value2 -eq 0 ]]; then
+    elif [[ $return_value1 -eq 3 && $return_value2 -eq 0 ]]; then
         info "$package_name already has updated channel $existing_channel and catalogsource $existing_catalogsource in the subscription."
         return 0
     fi
