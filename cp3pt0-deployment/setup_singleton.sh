@@ -155,12 +155,12 @@ function install_licensing() {
     fi
 
     title "Installing licensing\n"
-    is_sub_exist "ibm-licensing-operator" # this will catch the packagenames of all ibm-licensing-operator
+    is_sub_exist "ibm-licensing-operator-app" # this will catch the packagenames of all ibm-licensing-operator-app
     if [ $? -eq 0 ]; then
-        warning "There is an ibm-licensing-operator Subscription already\n"
+        warning "There is an ibm-licensing-operator-app Subscription already\n"
         return 0
     elif [ $SKIP_INSTALL -eq 1 ]; then
-        error "There is no ibm-licensing-operator Subscription installed\n"
+        error "There is no ibm-licensing-operator-app Subscription installed\n"
     fi
 
     if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
@@ -175,9 +175,9 @@ function install_licensing() {
     - ${LICENSING_NAMESPACE}
 EOF
 )
-    create_operator_group "ibm-licensing-operator" "${LICENSING_NAMESPACE}" "$target"
-    create_subscription "ibm-licensing-operator" "${LICENSING_NAMESPACE}" "$CHANNEL" "ibm-licensing-operator" "${LICENSING_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
-    wait_for_operator "${LICENSING_NAMESPACE}" "ibm-licensing-operator"
+    create_operator_group "ibm-licensing-operator-app" "${LICENSING_NAMESPACE}" "$target"
+    create_subscription "ibm-licensing-operator-app" "${LICENSING_NAMESPACE}" "$CHANNEL" "ibm-licensing-operator-app" "${LICENSING_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
+    wait_for_operator "${LICENSING_NAMESPACE}" "ibm-licensing-operator-app"
 }
 
 function pre_req() {
