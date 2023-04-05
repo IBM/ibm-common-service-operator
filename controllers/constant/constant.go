@@ -82,8 +82,10 @@ const (
 	CSCACertificate = "cs-ca-certificate"
 	// CertManagerSub is the name of ibm-cert-manager-operator subscription
 	CertManagerSub = "ibm-cert-manager-operator"
-	//CsClonedFromLabel is the label used to label the CommonService CR are cloned from the default CR in operatorNamespace
+	// CsClonedFromLabel is the label used to label the CommonService CR are cloned from the default CR in operatorNamespace
 	CsClonedFromLabel = "operator.ibm.com/common-services.cloned-from"
+	// IBMCPPCONFIG is the name of ibm-cpp-config ConfigMap
+	IBMCPPCONFIG = "ibm-cpp-config"
 )
 
 // CsOg is OperatorGroup constent for the common service operator

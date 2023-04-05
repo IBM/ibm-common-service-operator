@@ -260,7 +260,7 @@ func main() {
 		}
 	} else {
 		klog.Infof("Common Service Operator goes dormant in the namespace %s", operatorNs)
-		klog.Infof("Common Service Operator in the namespace %s takes charge of resource managemet", cpfsNs)
+		klog.Infof("Common Service Operator in the namespace %s takes charge of resource management", cpfsNs)
 	}
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
