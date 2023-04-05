@@ -116,38 +116,41 @@ function gather_csmaps_ns() {
     else
         namespaces=$(oc get cm namespace-scope -n "${master_ns}" -o json | jq '.data.namespaces')
         namespaces=$(echo $namespaces | tr -d '"')
-        echo $namespaces
+
         #either of these two methods work, just need to pick one
         IFS=',' read -a nsFromCM <<< "$namespaces"  && echo ${nsFromCM[@]}
-        # readarray -d , -t ns2 <<< "${namespaces}" && echo ${ns2[@]}
     fi
     #remove excluded from namespaces
     IFS=',' read -a excludedNS <<< "$excludedRaw" && echo ${excludedNS[@]}
-    leftover=(`echo ${nsFromCM[@]} ${excludedNS[@]} | tr ' ' '\n'  | tr -d '"' | sort | uniq -u`)
-    #if there are no differences between the two lists, the variable is unset.
-    #check for unset, if it is, then the grouping doesn't need to be changed anyway
-    if [[ -z ${leftover:-} ]]; then
-        leftover=""
-    fi
-    if [[ $leftover == "" ]] || [[ $leftover == $master_ns ]]; then
-        requestedNS=$master_ns
-    else
-        requestedNS=$leftover
-    fi
-    echo $requestedNS
-    #create new csmaps
-    OPERATOR_NS=$master_ns
-    SERVICES_NS=$master_ns
-    echo "tethered 1: $TETHERED_NS"
-    for ns in $requestedNS
+
+    for ns in ${nsFromCM[@]}
     do
-        if [[ $TETHERED_NS == "" ]]; then
-            TETHERED_NS="$ns"
-        else
-            TETHERED_NS="$TETHERED_NS $ns"
+        skip=0
+        for exns in ${excludedNS[@]}
+        do
+            if [[ $ns == $exns ]]; then
+                skip=1
+                break
+            fi
+        done
+        if [[ $ns == $master_ns ]]; then
+            skip=1
+        fi
+        if [[ $skip != 1 ]]; then
+            if [[ $TETHERED_NS == "" ]]; then
+                TETHERED_NS="$ns"
+            else
+                TETHERED_NS="$TETHERED_NS $ns"
+            fi
         fi
     done
-    echo "tethered 2: $TETHERED_NS"
+    if [[ $TETHERED_NS == "" ]]; then
+        TETHERED_NS=$master_ns
+    fi
+    
+    OPERATOR_NS=$master_ns
+    SERVICES_NS=$master_ns
+    requestedNS=$TETHERED_NS
 }
 
 function construct_mapping() {
@@ -156,7 +159,7 @@ function construct_mapping() {
     unique_ns_list=()
     # Loop over each tenant namespace and add each unique namespace value to the 'unique' array
     local namespaces="$OPERATOR_NS $SERVICES_NS $TETHERED_NS"
-    echo "namespaces: $namespaces"
+
     for ns in $namespaces; do
         if [[ ! " ${unique_ns_list[@]} " =~ " ${ns} " ]]; then
             unique_ns_list+=("$ns")
@@ -314,7 +317,7 @@ function pause() {
     
     cleanupCSOperators # only updates cs operators in requestedNS list passed in as parameter to script
     removeNSS
-    success "Common Services successfully isolated in namesapce ${master_ns}"
+    success "Common Services successfully isolated in namespace ${master_ns}"
 }
 
 function uninstall_singletons() {
@@ -375,7 +378,7 @@ function cleanupCSOperators(){
     msg "-----------------------------------------------------------------------"   
     catalog_source=$(${OC} get sub ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.source")
     info "catalog_source:${catalog_source}" 
-    for namespace in $requestedNS
+    for namespace in $requestedNS #may need to rethink this variable, maybe Tetheredns?
     do
         # remove cs namespace from zen service cr
         return_value=$(${OC} get sub -n ${namespace} | (grep ibm-common-service-operator || echo "fail"))
