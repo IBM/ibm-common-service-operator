@@ -72,7 +72,6 @@ function main () {
     done
     which "${OC}" || error "Missing oc CLI"
     which "${YQ}" || error "Missing yq"
-    #TODO update these parameter requirements
     if [[ -z $CONTROL_NS ]] &&  [[ -z $master_ns ]]; then
         usage
         error "No parameters entered. Please re-run specifying original and control namespace values. Use -h for help."
@@ -82,9 +81,11 @@ function main () {
     fi
 
     if [[ $restart ==  "false" ]]; then
+        #need to get the namespaces for csmaps generation before pausing cs, otherwise namespace-scope cm does not include all namespaces
+        gather_csmaps_ns
         pause
+        mapping_topology
     else
-        create_csmaps
         prereq
         uninstall_singletons
         restart
@@ -100,14 +101,14 @@ function usage() {
 	Options:
 	Mandatory arguments to long options are mandatory for short options too.
 	  -h, --help                    display this help and exit
-	  --original-cs-ns              specify the namespace the original common services installation resides
-      --map-to-ns                   specify the namespace value for "map-to-common-service-namespace" in common-service-maps
+	  --original-cs-ns              specify the namespace the original common services installation resides in
+      --control-ns                  specify the control namespace value in the common-service-maps configmap
+      --excluded-ns                 specify namespaces to be excluded from the common-service-maps configmap
       -r                            restart common services
-      --requested-from-ns           specify the namespace values for "requested-from-namespace" in common-service-maps. Must be last.
 	EOF
 }
 
-function create_csmaps() {
+function gather_csmaps_ns() {
     #read list of namespaces from nss common-service in original namespace
     return_value=$(${OC} get -n ${master_ns} cm namespace-scope > /dev/null || echo failed)
     if [[ $return_value == "failed" ]]; then
@@ -137,16 +138,16 @@ function create_csmaps() {
     #create new csmaps
     OPERATOR_NS=$master_ns
     SERVICES_NS=$master_ns
+    echo "tethered 1: $TETHERED_NS"
     for ns in $requestedNS
     do
         if [[ $TETHERED_NS == "" ]]; then
             TETHERED_NS="$ns"
         else
-            TETHERED_NS="$TETHERED_NS,$ns"
+            TETHERED_NS="$TETHERED_NS $ns"
         fi
     done
-    mapping_topology
-
+    echo "tethered 2: $TETHERED_NS"
 }
 
 function construct_mapping() {
@@ -154,8 +155,10 @@ function construct_mapping() {
 
     unique_ns_list=()
     # Loop over each tenant namespace and add each unique namespace value to the 'unique' array
-    for ns in $OPERATOR_NS $SERVICES_NS ${TETHERED_NS//,/ }; do
-        if [[ ! " ${uniqueNsList[@]} " =~ " ${ns} " ]]; then
+    local namespaces="$OPERATOR_NS $SERVICES_NS $TETHERED_NS"
+    echo "namespaces: $namespaces"
+    for ns in $namespaces; do
+        if [[ ! " ${unique_ns_list[@]} " =~ " ${ns} " ]]; then
             unique_ns_list+=("$ns")
         fi
     done
@@ -196,7 +199,8 @@ function mapping_topology() {
         echo "requested_ns"
         echo "$requested_ns"
         # loop over each namespace in the list and check if it exists in the ConfigMap
-        for ns in $OPERATOR_NS $SERVICES_NS ${TETHERED_NS//,/ }; do
+        local namespaces="$OPERATOR_NS $SERVICES_NS $TETHERED_NS"
+        for ns in $namespaces; do
             if grep -Fxq $ns <<< "$requested_ns"; then
                 info "requested-from-namespace $ns already exists in the namespaceMapping array. Skipping updating common-service-maps ConfigMap"
                 return 0
@@ -242,7 +246,7 @@ EOF
         # ConfigMap does not exist, create it
         info "Creating common-service-maps ConfigMap in kube-public namespace"
 
-        NEW_MAPPING=$(echo -e "namespaceMapping:\n$NEW_MAPPING")
+        NEW_MAPPING=$(echo -e "controlNamespace: $CONTROL_NS\nnamespaceMapping:\n$NEW_MAPPING")
         local object=$(
             cat <<EOF
 apiVersion: v1
@@ -310,6 +314,7 @@ function pause() {
     
     cleanupCSOperators # only updates cs operators in requestedNS list passed in as parameter to script
     removeNSS
+    success "Common Services successfully isolated in namesapce ${master_ns}"
 }
 
 function uninstall_singletons() {
