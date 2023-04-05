@@ -100,11 +100,11 @@ function usage() {
 	Isolate and prepare common services for upgrade
 	Options:
 	Mandatory arguments to long options are mandatory for short options too.
-	  -h, --help                    display this help and exit
-	  --original-cs-ns              specify the namespace the original common services installation resides in
-      --control-ns                  specify the control namespace value in the common-service-maps configmap
-      --excluded-ns                 specify namespaces to be excluded from the common-service-maps configmap
-      -r                            restart common services
+    -h, --help                    display this help and exit
+    --original-cs-ns              specify the namespace the original common services installation resides in
+    --control-ns                  specify the control namespace value in the common-service-maps configmap
+    --excluded-ns                 specify namespaces to be excluded from the common-service-maps configmap. Comma separated no spaces.
+    -r                            restart common services
 	EOF
 }
 
@@ -118,10 +118,10 @@ function gather_csmaps_ns() {
         namespaces=$(echo $namespaces | tr -d '"')
 
         #either of these two methods work, just need to pick one
-        IFS=',' read -a nsFromCM <<< "$namespaces"  && echo ${nsFromCM[@]}
+        IFS=',' read -a nsFromCM <<< "$namespaces"
     fi
     #remove excluded from namespaces
-    IFS=',' read -a excludedNS <<< "$excludedRaw" && echo ${excludedNS[@]}
+    IFS=',' read -a excludedNS <<< "$excludedRaw"
 
     for ns in ${nsFromCM[@]}
     do
@@ -189,8 +189,7 @@ function mapping_topology() {
         # Check if servicesNamespace already exists in the map-to-common-service-namespace
         # extract the mapped namespaces from the ConfigMap
         map_to_ns=$(echo "$current_mapping" | yq -r '.namespaceMapping[].map-to-common-service-namespace')
-        echo "map_to_ns"
-        echo "$map_to_ns"
+
         if grep -Fxq $SERVICES_NS <<< "$map_to_ns"; then
             info "map-to-common-service-namespace $SERVICES_NS already exists in the namespaceMapping array. Skipping updating common-service-maps ConfigMap"
             return 0
@@ -199,8 +198,7 @@ function mapping_topology() {
         # Check if each tenant namespace already exists in the requested-from-namespace array
         # extract the requested namespaces from the ConfigMap
         requested_ns=$(echo "$current_mapping" | yq -r '.namespaceMapping[].requested-from-namespace[]')
-        echo "requested_ns"
-        echo "$requested_ns"
+
         # loop over each namespace in the list and check if it exists in the ConfigMap
         local namespaces="$OPERATOR_NS $SERVICES_NS $TETHERED_NS"
         for ns in $namespaces; do
@@ -289,6 +287,11 @@ function prereq() {
     fi
     return_value="reset"
 
+    #this command gets all of the ns listed in requested from namesapce fields
+    requestedNS=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].requested-from-namespace' | awk '{print $2}')
+    #this command gets all of the ns listed in map-to-common-service-namespace
+    mapToCSNS=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].map-to-common-service-namespace' | awk '{print}')
+
     # LicenseServiceReporter should not be installed because it does not support multi-instance mode
     return_value=$(("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
     if [[ $return_value == "exists" ]]; then
@@ -309,7 +312,8 @@ function prereq() {
 }
 
 function pause() {
-    
+    title "Pausing Common Services in namespace $master_ns"
+    msg "-----------------------------------------------------------------------"
     ${OC} scale deployment -n ${master_ns} ibm-common-service-operator --replicas=0
     ${OC} scale deployment -n ${master_ns} operand-deployment-lifecycle-manager --replicas=0
     ${OC} delete operandregistry -n ${master_ns} --ignore-not-found common-service 
@@ -321,6 +325,8 @@ function pause() {
 }
 
 function uninstall_singletons() {
+    title "Uninstalling Singleton Operators"
+    msg "-----------------------------------------------------------------------"
     # uninstall singleton services
     "${OC}" delete -n "${master_ns}" --ignore-not-found certmanager default
     "${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-cert-manager-operator
@@ -350,21 +356,25 @@ function uninstall_singletons() {
     "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
     csv=$("${OC}" get -n "${master_ns}" csv | (grep ibm-crossplane-provider-kubernetes-operator || echo "fail") | awk '{print $1}')
     "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
+    success "Singletons successfully uninstalled"
 }
 
 function restart() {
-    info "scaling up ibm-common-service-operator deployment in ${master_ns} namespace"
+    title "Scaling up ibm-common-service-operator deployment in ${master_ns} namespace"
+    msg "-----------------------------------------------------------------------"
     ${OC} scale deployment -n ${master_ns} ibm-common-service-operator --replicas=1
     ${OC} scale deployment -n ${master_ns} operand-deployment-lifecycle-manager --replicas=1
     check_CSCR "$master_ns"
-    check_CSCR "$mapToCSNS"
+    if [[ $master_ns != $mapToCSNS ]]; then
+        check_CSCR "$mapToCSNS"
+    fi
+    success "Common Service Operator restarted."
 }
 
 function check_cm_ns_exist(){
-    
     title " Verify all namespaces exist "
     msg "-----------------------------------------------------------------------"
-
+    local namespaces="$requestedNS $mapToCSNS"
     for ns in $namespaces
     do
         info "Creating namespace $ns"
