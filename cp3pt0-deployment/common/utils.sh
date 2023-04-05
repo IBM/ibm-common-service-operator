@@ -696,7 +696,18 @@ function compare_semantic_version() {
     fi
 }
 
-function update_operator_channel() {
+function compare_catalogsource(){
+    # Compare the catalogsource
+    if [[ $1 == $2 ]]; then
+        info "catalogsource $1 is the same as $2"
+        return 0
+    else
+        info "catalogsource $1 is different from $2"
+        return 1
+    fi
+}
+
+function update_operator() {
     local package_name=$1
     local ns=$2
     local channel=$3
@@ -713,14 +724,21 @@ function update_operator_channel() {
     ${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml > sub.yaml
     
     existing_channel=$(yq eval '.spec.channel' sub.yaml)
+    existing_catalogsource=$(yq eval '.spec.source' sub.yaml)
+
     compare_semantic_version $existing_channel $channel
-    return_value=$?
-    
-    if [[ $return_value -eq 3 ]]; then
-        info "$package_name already has channel $existing_channel in the subscription."
-        return 0
+    return_value1=$?
+
+    compare_catalogsource $existing_catalogsource $source
+    return_value2=$?
+
+    if [[ $return_value1 -eq 0 || $return_value2 -eq 1 ]]; then
+        info "$package_name is ready for updaing the subscription."
     elif [[ $return_value -ne 2 ]]; then
         error "Failed to update channel subscription ${package_name} in ${ns}"
+    elif [[ $return_value1 -eq 3 || $return_value2 -eq 0 ]]; then
+        info "$package_name already has updated channel $existing_channel and catalogsource $existing_catalogsource in the subscription."
+        return 0
     fi
 
     yq -i eval 'select(.kind == "Subscription") | .spec += {"channel": "'${channel}'"}' sub.yaml

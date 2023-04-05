@@ -71,9 +71,9 @@ function main() {
     # Update ibm-common-service-operator channel
     for ns in ${NS_LIST//,/ }; do
         if [ $ENABLE_PRIVATE_CATALOG -eq 0 ]; then
-            update_operator_channel ibm-common-service-operator $ns $CHANNEL $SOURCE $SOURCE_NS $INSTALL_MODE
+            update_operator ibm-common-service-operator $ns $CHANNEL $SOURCE $SOURCE_NS $INSTALL_MODE
         else
-            update_operator_channel ibm-common-service-operator $ns $CHANNEL $SOURCE $ns $INSTALL_MODE
+            update_operator ibm-common-service-operator $ns $CHANNEL $SOURCE $ns $INSTALL_MODE
         fi
     done
 
@@ -91,7 +91,7 @@ function main() {
         delete_operator ibm-namespace-scope-operator-restricted $OPERATOR_NS
         create_subscription ibm-namespace-scope-operator $OPERATOR_NS $CHANNEL ibm-namespace-scope-operator $SOURCE $SOURCE_NS $INSTALL_MODE
     else
-        update_operator_channel ibm-namespace-scope-operator $OPERATOR_NS $CHANNEL $SOURCE $SOURCE_NS $INSTALL_MODE
+        update_operator ibm-namespace-scope-operator $OPERATOR_NS $CHANNEL $SOURCE $SOURCE_NS $INSTALL_MODE
     fi
 
     wait_for_operator_upgrade "$OPERATOR_NS" "ibm-namespace-scope-operator" "$CHANNEL"
@@ -242,14 +242,20 @@ function scale_down_cs() {
     ${OC} get subscription.operators.coreos.com ${sub_name} -n $OPERATOR_NS -o yaml > sub.yaml
     
     existing_channel=$(yq eval '.spec.channel' sub.yaml)
+    existing_catalogsource=$(yq eval '.spec.source' sub.yaml)
     compare_semantic_version $existing_channel $CHANNEL
-    return_value=$?
-    
-    if [[ $return_value -eq 3 ]]; then
-        info "$sub_name already has channel $existing_channel in the subscription."
-        return 0
+    return_value1=$?
+
+    compare_catalogsource $existing_catalogsource $SOURCE
+    return_value2=$?
+
+    if [[ $return_value1 -eq 0 || $return_value2 -eq 1 ]]; then
+        info "$package_name is ready for scaling down."
     elif [[ $return_value -ne 2 ]]; then
         error "Must provide correct channel. The channel $existing_channel is found in subscription ibm-common-service-operator in $OPERATOR_NS"
+    elif [[ $return_value1 -eq 3 || $return_value2 -eq 0 ]]; then
+        info "$package_name already has updated channel $existing_channel and catalogsource $existing_catalogsource in the subscription."
+        return 0
     fi
 
     ${OC} scale deployment -n $OPERATOR_NS ibm-common-service-operator --replicas=0
