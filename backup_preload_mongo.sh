@@ -93,7 +93,8 @@ function parse() {
 # Cleanup artifacts from previous executions
 #
 function cleanup() {
-  info "Cleaning up any previous copy operations..."
+  title "Cleaning up any previous copy operations..."
+  msg "-----------------------------------------------------------------------"
   rm $TEMPFILE
   oc delete job mongodb-backup -n $FROM_NAMESPACE
   oc delete job mongodb-restore -n $TO_NAMESPACE
@@ -122,7 +123,7 @@ function cleanup() {
         oc patch pvc cs-mongodump -n $TO_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
     fi
   fi
-#   deletemongocopy
+  success "Previous run cleaned up."
 } # cleanup
 
 
@@ -130,8 +131,8 @@ function cleanup() {
 #  Create the dump PVC
 #
 function createdumppvc() {
-  info "Creating a PVC for the MongoDB dump"
-
+  title "Creating a PVC for the MongoDB dump"
+  msg "-----------------------------------------------------------------------"
   oc project $FROM_NAMESPACE
   currentns=$(oc project -q)
   if [[ "$currentns" -ne "$FROM_NAMESPACE" ]]; then
@@ -170,9 +171,6 @@ EOF
   done
   success "MongoDB backup ready"
 
-  #DUMPVOL=$(oc get pvc cs-mongodump  -o=jsonpath='{.spec.volumeName}')
-  #oc patch pv $DUMPVOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Retain" }}'
-
 } # createdumppvc
 
 
@@ -180,8 +178,8 @@ EOF
 # Backup(Dump) the mongodb in the from: namespace
 #
 function dumpmongo() {
-  info "Backing up MongoDB in namespace $FROM_NAMESPACE"
-
+  title "Backing up MongoDB in namespace $FROM_NAMESPACE"
+  msg "-----------------------------------------------------------------------"
   currentns=$(oc project $FROM_NAMESPACE -q)
   if [[ "$currentns" -ne "$FROM_NAMESPACE" ]]; then
     error "Cannot switch to $FROM_NAMESPACE"
@@ -277,7 +275,8 @@ EOF
 # Swap the PVC from the from_namespace to the to_namespace
 #
 function swapmongopvc() {
-  info "Moving restored mongodb volume to $TO_NAMESPACE"
+  title "Moving restored mongodb volume to $TO_NAMESPACE"
+  msg "-----------------------------------------------------------------------"
 
   status=$(oc get pvc cs-mongodump -n $FROM_NAMESPACE)
   if [[ -z "$status" ]]; then
@@ -295,7 +294,6 @@ function swapmongopvc() {
   fi
 
   oc patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Retain" }}'
-#   deletemongocopy
   oc patch pv $VOL --type=merge -p '{"spec": {"claimRef":null}}'
   oc patch pv $VOL --type json -p '[{ "op": "remove", "path": "/spec/claimRef" }]'
   
@@ -340,6 +338,8 @@ EOF
     sleep 10
     status=$(oc get pvc cs-mongodump -n $TO_NAMESPACE --no-headers | awk '{print $2}')
   done
+
+  success "Restored MongoDB volume moved to namespace $TO_NAMESPACE"
 } # swappvc
 
 
@@ -347,7 +347,8 @@ EOF
 # Restore the mongodb in the to: namespace
 #
 function loadmongo() {
-  info "Restoring MongoDB to copy in namespace $TO_NAMESPACE"
+  title "Restoring MongoDB to copy in namespace $TO_NAMESPACE"
+  msg "-----------------------------------------------------------------------"
 
   currentns=$(oc project $TO_NAMESPACE -q)
   if [[ "$currentns" -ne "$TO_NAMESPACE" ]]; then
@@ -456,8 +457,8 @@ function dumplogs() {
 # deploymongocopy
 #
 function deploymongocopy {
-  info "Deploying a temporary mongodb in $TO_NAMESPACE"
-
+  title "Deploying a temporary mongodb in $TO_NAMESPACE"
+  msg "-----------------------------------------------------------------------"
   currentns=$(oc project $TO_NAMESPACE -q)
   if [[ "$currentns" -ne "$TO_NAMESPACE" ]]; then
     error "Cannot switch to $TO_NAMESPACE"
@@ -1589,6 +1590,8 @@ EOF
     status=$(oc get po icp-mongodb-0 --no-headers | awk '{print $3}')
   done
 
+  success "Temporary Mongo copy deployed to namespace $TO_NAMESPACE"
+
 } # deploymongocopy
 
 
@@ -1596,7 +1599,8 @@ EOF
 # Delete the mongo copy
 #
 function deletemongocopy {
-  info "Deleting the stand up mongodb statefulset in $TO_NAMESPACE"
+  title "Deleting the stand up mongodb statefulset in $TO_NAMESPACE"
+  msg "-----------------------------------------------------------------------"
 
   currentns=$(oc project $TO_NAMESPACE -q)
   if [[ "$currentns" -ne "$TO_NAMESPACE" ]]; then
@@ -1639,7 +1643,7 @@ function deletemongocopy {
     oc patch pv $VOL --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
   fi
 
-  success "MongoDB backup restored to new namespace"
+  success "MongoDB restored to new namespace $TO_NAMESPACE"
 
 } # deletemongocopy
 
