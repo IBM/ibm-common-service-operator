@@ -20,8 +20,6 @@ set -o pipefail
 set -o errtrace
 #set -o nounset
 
-OC=${3:-oc}
-
 NUM=$#
 TEMPFILE="_TMP.yaml"
 
