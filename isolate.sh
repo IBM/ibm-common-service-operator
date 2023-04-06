@@ -92,6 +92,7 @@ function main () {
         fi
         prereq
         uninstall_singletons
+        isolate_odlm "ibm-odlm" $master_ns
         restart
     fi
 }
