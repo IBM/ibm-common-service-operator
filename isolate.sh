@@ -72,20 +72,24 @@ function main () {
     done
     which "${OC}" || error "Missing oc CLI"
     which "${YQ}" || error "Missing yq"
-    if [[ -z $CONTROL_NS ]] &&  [[ -z $master_ns ]]; then
-        usage
-        error "No parameters entered. Please re-run specifying original and control namespace values. Use -h for help."
-    elif [[ -z $CONTROL_NS ]] || [[ -z $master_ns ]]; then
-        usage
-        error "Required parameters missing. Please re-run specifying original and control namespace values. Use -h for help."
-    fi
 
     if [[ $restart ==  "false" ]]; then
+        if [[ -z $CONTROL_NS ]] &&  [[ -z $master_ns ]]; then
+            usage
+            error "No parameters entered. Please re-run specifying original and control namespace values. Use -h for help."
+        elif [[ -z $CONTROL_NS ]] || [[ -z $master_ns ]]; then
+            usage
+            error "Required parameters missing. Please re-run specifying original and control namespace values. Use -h for help."
+        fi
         #need to get the namespaces for csmaps generation before pausing cs, otherwise namespace-scope cm does not include all namespaces
         gather_csmaps_ns
         pause
         mapping_topology
     else
+        if [[ -z $master_ns ]]; then
+            usage
+            error "Original CS namespace not entered. Please re-run specifying original namespace value. Use -h for help."
+        fi
         prereq
         uninstall_singletons
         restart
@@ -121,29 +125,40 @@ function gather_csmaps_ns() {
         IFS=',' read -a nsFromCM <<< "$namespaces"
     fi
     #remove excluded from namespaces
-    IFS=',' read -a excludedNS <<< "$excludedRaw"
-    #this is very ugly but very consistent and these lists should not be too long anyway
-    for ns in ${nsFromCM[@]}
-    do
-        skip=0
-        for exns in ${excludedNS[@]}
+    if [[ -z $excludedRaw ]]; then
+        IFS=',' read -a excludedNS <<< "$excludedRaw"
+        #this is very ugly but very consistent and these lists should not be too long anyway
+        for ns in ${nsFromCM[@]}
         do
-            if [[ $ns == $exns ]]; then
+            skip=0
+            for exns in ${excludedNS[@]}
+            do
+                if [[ $ns == $exns ]]; then
+                    skip=1
+                    break
+                fi
+            done
+            if [[ $ns == $master_ns ]]; then
                 skip=1
-                break
+            fi
+            if [[ $skip != 1 ]]; then
+                if [[ $TETHERED_NS == "" ]]; then
+                    TETHERED_NS="$ns"
+                else
+                    TETHERED_NS="$TETHERED_NS $ns"
+                fi
             fi
         done
-        if [[ $ns == $master_ns ]]; then
-            skip=1
-        fi
-        if [[ $skip != 1 ]]; then
+    else
+        for ns in ${nsFromCM[@]}
+        do
             if [[ $TETHERED_NS == "" ]]; then
                 TETHERED_NS="$ns"
             else
                 TETHERED_NS="$TETHERED_NS $ns"
             fi
-        fi
-    done
+        done
+    fi
     if [[ $TETHERED_NS == "" ]]; then
         TETHERED_NS=$master_ns
     fi
@@ -156,18 +171,9 @@ function gather_csmaps_ns() {
 function construct_mapping() {
     NEW_MAPPING='- requested-from-namespace:'
 
-    unique_ns_list=()
-    # Loop over each tenant namespace and add each unique namespace value to the 'unique' array
-    local namespaces="$OPERATOR_NS $SERVICES_NS $TETHERED_NS"
-    unique_ns_list=()
-    for ns in $namespaces; do
-        if [[ ! " ${unique_ns_list[@]} " =~ " ${ns} " ]]; then
-            unique_ns_list+=("$ns")
-        fi
-    done
+    local unique_ns_list=$(echo $OPERATOR_NS $SERVICES_NS $TETHERED_NS | tr ' ' '\n' | sort | uniq | tr '\n' ' ')
 
-    # Append tenant namespaces to NEW_MAPPING to requested-from-namespace list
-    for ns in "${unique_ns_list[@]}"; do
+    for ns in $unique_ns_list; do
         NEW_MAPPING="$NEW_MAPPING\n  - $ns"
     done
 
@@ -403,7 +409,7 @@ function cleanupCSOperators(){
         fi
         return_value=""
     done
-    rm tmp.yaml -f
+    rm -f tmp.yaml
 }
 
 #TODO change looping to be more specific? 
@@ -468,7 +474,7 @@ function migrate_lic_cms() {
             fi
         fi
     done
-    rm tmp.yaml -f
+    rm -f tmp.yaml 
     success "Licensing configmaps copied from $namespace to $CONTROL_NS"
 }
 
