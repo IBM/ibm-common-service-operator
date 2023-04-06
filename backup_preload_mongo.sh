@@ -1233,14 +1233,6 @@ spec:
           command:
             - /install/install.sh
           imagePullPolicy: IfNotPresent
-          securityContext:
-            runAsNonRoot: true
-            allowPrivilegeEscalation: false
-            seccompProfile:
-              type: RuntimeDefault
-            capabilities:
-              drop:
-              - ALL
           volumeMounts:
             - name: mongodbdir
               mountPath: /work-dir
@@ -1314,12 +1306,6 @@ spec:
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
-            runAsNonRoot: true
-            seccompProfile:
-              type: RuntimeDefault
-            capabilities:
-              drop:
-              - ALL
           imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: mongodbdir
@@ -1413,12 +1399,6 @@ spec:
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
-            runAsNonRoot: true
-            seccompProfile:
-              type: RuntimeDefault
-            capabilities:
-              drop:
-              - ALL
           ports:
             - name: peer
               containerPort: 27017
@@ -1500,12 +1480,6 @@ spec:
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
-            runAsNonRoot: true
-            seccompProfile:
-              type: RuntimeDefault
-            capabilities:
-              drop:
-              - ALL
           ports:
             - name: metrics
               containerPort: 9216
@@ -1654,10 +1628,10 @@ function deletemongocopy {
 
   oc patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Delete" }}'
   
-  oc delete pvc cs-mongodump -n $FROM_NAMESPACE --ignore-not-found --timeout=10s
+  oc delete pvc cs-mongodump -n $TO_NAMESPACE --ignore-not-found --timeout=10s
   if [ $? -ne 0 ]; then
     info "Failed to delete pvc cs-mongodump, patching its finalizer to null..."
-    oc patch pvc cs-mongodump -n $FROM_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+    oc patch pvc cs-mongodump -n $TO_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
   fi
   oc delete pv $VOL --ignore-not-found --timeout=10s
   if [ $? -ne 0 ]; then
