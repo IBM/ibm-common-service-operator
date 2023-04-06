@@ -174,7 +174,7 @@ EOF
 )
     create_operator_group "ibm-licensing-operator-app" "${LICENSING_NAMESPACE}" "$target"
     create_subscription "ibm-licensing-operator-app" "${LICENSING_NAMESPACE}" "$CHANNEL" "ibm-licensing-operator-app" "${LICENSING_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
-    wait_for_operator "${LICENSING_NAMESPACE}" "ibm-licensing-operator-app"
+    wait_for_operator "${LICENSING_NAMESPACE}" "ibm-licensing-operator"
 }
 
 function pre_req() {
