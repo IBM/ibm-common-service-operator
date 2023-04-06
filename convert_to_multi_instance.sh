@@ -20,20 +20,21 @@ set -o pipefail
 set -o errtrace
 set -o nounset
 
-OC=${1:-oc}
-YQ=${1:-yq}
+OC=oc
+YQ=yq
 
 cs_operator_channel=
 catalog_source=
 requestedNS=
 mapToCSNS=
-
+master_ns=$1
 cm_name="common-service-maps"
     
 function main() {
     msg "Conversion Script Version v1.0.0"
     prereq
     collect_data
+    check_topology
     prepare_cluster
     scale_up_pod
     restart_CS_pods
@@ -48,6 +49,10 @@ function prereq() {
     which "${OC}" || error "Missing oc CLI"
     which "${YQ}" || error "Missing yq"
     
+    if [[ -z $master_ns ]]; then
+        error "Please specify original cs namespace."
+    fi
+
     return_value=$("${OC}" get -n kube-public configmap ${cm_name} > /dev/null || echo failed)
     if [[ $return_value == "failed" ]]; then
         error "Missing configmap: ${cm_name}. This must be configured before proceeding"
@@ -83,15 +88,13 @@ function prereq() {
     if [[ $return_value != "pass" ]]; then
         error "The ibm-common-service-operator must not be installed in AllNamespaces mode"
     fi
-}
 
-function prepare_cluster() {
-
-    # TODO for more advanced checking
-    # find all namespaces with cs-operator running
     # each namespace should be in configmap
     # all namespaces in configmap should exist
     check_cm_ns_exist
+}
+
+function prepare_cluster() {
 
     ${OC} scale deployment -n ${master_ns} ibm-common-service-operator --replicas=0
     ${OC} scale deployment -n ${master_ns} operand-deployment-lifecycle-manager --replicas=0
@@ -174,7 +177,7 @@ function migrate_lic_cms() {
 
 # scale back cs pod 
 function scale_up_pod() {
-    info "scaling back ibm-common-service-operator deployment in ${master_ns} namespace"
+    info "scaling up ibm-common-service-operator deployment in ${master_ns} namespace"
     ${OC} scale deployment -n ${master_ns} ibm-common-service-operator --replicas=1
     ${OC} scale deployment -n ${master_ns} operand-deployment-lifecycle-manager --replicas=1
     check_healthy "${master_ns}"
@@ -183,7 +186,7 @@ function scale_up_pod() {
 function collect_data() {
     title "Collecting data"
     msg "-----------------------------------------------------------------------"
-    master_ns=$(${OC} get deployment --all-namespaces | grep operand-deployment-lifecycle-manager | awk '{print $1}')
+    
     info "MasterNS:${master_ns}"
     cs_operator_channel=$(${OC} get sub ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.channel") 
     info "channel:${cs_operator_channel}"   
@@ -201,14 +204,17 @@ function collect_data() {
 function restart_CS_pods() {
     title "restarting ibm-common-service-operator pod"
     msg "-----------------------------------------------------------------------"
-    ${OC} get pod --all-namespaces | grep ibm-common-service-operator | while read -r line; do
-        local namespace=$(echo $line | awk '{print $1}')
-        local cs_pod=$(echo $line | awk '{print $2}')
-
-        msg "deleting pod ${cs_pod} in namespace ${namespace} "
-        ${OC} delete pod ${cs_pod} -n ${namespace} || error "Error deleting pod ${cs_pod} in namespace ${namespace}"
+    
+    local namespaces="$requestedNS $mapToCSNS"
+    for namespace in $namespaces
+    do
+        cs_pod=$(${OC} get pod -n $namespace | (grep ibm-common-service-operator || echo fail) | awk '{print $1}')
+        if [[ $cs_pod != "fail" ]]; then
+            msg "deleting pod ${cs_pod} in namespace ${namespace}"
+            ${OC} delete pod ${cs_pod} -n ${namespace} || error "Error deleting pod ${cs_pod} in namespace ${namespace}"
+        fi
     done
-    success "All ibm-common-service-operator pod is deleted"
+    success "All ibm-common-service-operator pods are deleted"
 }
 
 #  install new instances of CS based on cs mapping configmap
@@ -216,39 +222,19 @@ function install_new_CS() {
     title "install new instances of CS based on cs mapping configmap"
     msg "-----------------------------------------------------------------------"
 
-    ${OC} get configmap common-service-maps -n kube-public -o yaml | while read -r line; do
-        first_element=$(echo $line | awk '{print $1}')
-        
-        if [[ "${first_element}" == "-" ]]; then
-            namespace=$(echo $line | awk '{print $2}')
-            if [[ "${namespace}" != "requested-from-namespace:" ]]; then
-                if [[ "${namespace}" != "${master_ns}" ]]; then
-                    return_value=$("${OC}" get namespace ${namespace} || echo failed)
-                    if [[ $return_value != "failed" ]]; then
-                        info "In_CloudpakNS:${namespace}"
-                        get_sub=$("${OC}" get sub -n ${namespace} | (grep ibm-common-service-operator || echo failed))
-                        if [[ $get_sub == "failed" ]]; then
-                            create_operator_group "${namespace}"
-                            install_common_service_operator_sub "${namespace}"
-                        fi
-                    fi  
-                fi
-            fi
-        fi
+    for namespace in $requestedNS
+    do
+        info "In_CloudpakNS:${namespace}"
+        create_operator_group "${namespace}"
+        install_common_service_operator_sub "${namespace}"
+    done
 
-        if [[ "${first_element}" == "map-to-common-service-namespace:" ]]; then
-            return_value=$("${OC}" get namespace ${namespace} || echo failed)
-            if [[ $return_value != "failed" ]]; then
-                namespace=$(echo $line | awk '{print $2}')
-                info "In_MasterNS:${namespace}"
-                get_sub=$("${OC}" get sub -n ${namespace} | (grep ibm-common-service-operator || echo failed))
-                if [[ $get_sub == "failed" ]]; then
-                    create_operator_group "${namespace}"
-                    install_common_service_operator_sub "${namespace}"
-                    check_CSCR "${namespace}"
-                fi
-            fi  
-        fi
+    for namespace in $mapToCSNS
+    do
+        info "In_CommonServiceNS:${namespace}"
+        create_operator_group "${namespace}"
+        install_common_service_operator_sub "${namespace}"
+        check_CSCR "${namespace}"
     done
     
     success "Common Services Operator is converted to multi_instance mode"
@@ -347,7 +333,8 @@ function refresh_kafka (){
     if [[ $return_value != "fail" ]]; then
         title " Refreshing Kafka Deployments "
         msg "-----------------------------------------------------------------------"
-        for namespace in $requestedNS
+        local namespaces="$requestedNS $mapToCSNS"
+        for namespace in $namespaces
         do
             # remove cs namespace from zen service cr
             return_value=$(${OC} get kafkaclaim -n ${namespace} || echo "fail")
@@ -367,30 +354,6 @@ function refresh_kafka (){
                 fi
             else
             info "Kafka not installed in ${namespace}. Moving on..."
-            fi
-            return_value=""
-        done
-        
-        for namespace in $mapToCSNS
-        do
-            # remove cs namespace from zen service cr
-            return_value=$(${OC} get kafkaclaim -n ${namespace} || echo "fail")
-            if [[ $return_value != "fail" ]]; then
-                if [[ $return_value != "" ]]; then
-                    kafkaClaims=$(${OC} get kafkaclaim -n ${namespace} | awk '{if (NR!=1) {print $1}}')
-                    #TODO copy kc to file, delete original kc, re-apply copied file (check for an existing of the same name)
-                    for kc in $kafkaClaims
-                    do
-                        ${OC} get kafkaclaim -n ${namespace} $kc -o yaml > tmp.yaml
-                        ${OC} patch kafkaclaim ${kc} -n ${namespace} --type=merge -p '{"metadata": {"finalizers":null}}'
-                        ${OC} delete kafkaclaim ${kc} -n ${namespace} 
-                        ${OC} apply -f tmp.yaml  || info "kafkaclaim ${kc} already recreated. Moving on..."
-                    done
-                else
-                    info "No kafkaclaim in namespace ${namespace}. Moving on..."
-                fi
-            else
-                info "Kafka not installed in ${namespace}. Moving on..."
             fi
             return_value=""
         done
@@ -490,23 +453,30 @@ function check_healthy() {
     total_time_mins=$(( sleep_time * retries / 60))
     info "Waiting for IBM Common Services CR is Succeeded"
     sleep 10
-    pod=$(oc get pods -n ${CS_NAMESPACE} | grep ibm-common-service-operator | awk '{print $1}')
+    # pod=$(oc get pods -n ${CS_NAMESPACE} | grep ibm-common-service-operator | awk '{print $1}')
     
     while true; do
+        pod=$(oc get pods -n ${CS_NAMESPACE} | (grep ibm-common-service-operator || echo fail) | awk '{print $1}')
         if [[ ${retries} -eq 0 ]]; then
             error "Timeout after ${total_time_mins} minutes waiting for IBM Common Services is deployed"
         fi
 
-        phase=$(oc get pod ${pod} -o jsonpath='{.status.phase}' -n ${CS_NAMESPACE})
+        if [[ $pod != "fail" ]]; then
+            phase=$(oc get pod ${pod} -o jsonpath='{.status.phase}' -n ${CS_NAMESPACE})
 
-        if [[ "${phase}" != "Running" ]]; then
+            if [[ "${phase}" != "Running" ]]; then
+                retries=$(( retries - 1 ))
+                info "RETRYING: Waiting for IBM Common Services CR is Succeeded (${retries} left)"
+                sleep ${sleep_time}
+            else
+                msg "-----------------------------------------------------------------------"    
+                success "Common Services is deployed in ${CS_NAMESPACE}"
+                break
+            fi
+        else
             retries=$(( retries - 1 ))
             info "RETRYING: Waiting for IBM Common Services CR is Succeeded (${retries} left)"
             sleep ${sleep_time}
-        else
-            msg "-----------------------------------------------------------------------"    
-            success "Common Services is deployed in ${CS_NAMESPACE}"
-            break
         fi
     done
 }
@@ -674,7 +644,113 @@ function removeNSS(){
         info "Namespace Scope CR \"odlm-scope-managedby-odlm\" not present. Moving on..."
     fi
 
+    for namespace in $mapToCSNS
+    do
+        ${OC} delete nss common-service -n $namespace --ignore-not-found 
+        ${OC} delete nss nss-odlm-scope -n $namespace --ignore-not-found
+    done
+
     success "Namespace Scope CRs cleaned up"
+}
+
+function check_topology() {
+    title " Checking expected vs actual topology based on common-service-maps "
+    msg "-----------------------------------------------------------------------"
+    #get list of cs instance namespaces
+    #get list of namespaces associated with each cs instance from common-service nss
+    #get list of namespaces associated with each cs instance from common-service-maps
+    #compare two lists
+    # if lists are equal, topology is as expected, do nothing
+    # else, install or restart cs operator in mapTo namespace
+        #would possibly need to restart cs operator in a different namespace if it's going from one cs instance to another
+            #this would be caught later since that grouping would be different in cs maps as well
+    
+    #if the order of requested from/mapt to is not fixed (ie map to above requested would break this logic)
+    # we could try having a count of both and reseting the nsFromCM when either reaches 2. 
+    # That should hopefully protect against users ordering their csmaps differently
+    nsFromCM=""
+    activeRequestedFrom=""
+    activeMapTo=""
+    while read -r line; do
+        first_element=$(echo $line | awk '{print $1}')
+    
+    #if the order of requested from/map to is not fixed (ie map to above requested would break this logic)
+    # we could try having a count of both and reseting the nsFromCM when either reaches 2. 
+    # That should hopefully protect against users ordering their csmaps differently
+    # or we enforce the order of requested from over map to
+        if [[ "${first_element}" == "-" ]]; then
+            namespace=$(echo $line | awk '{print $2}')
+            if [[ "${namespace}" == "requested-from-namespace:" ]]; then
+                nsFromCM=""
+            #elif could check if equal to map to then else could be a requested from ns
+            elif [[ "${namespace}" != "requested-from-namespace:" ]]; then
+                nsFromCM="$nsFromCM $namespace"
+            fi
+        fi
+
+        if [[ "${first_element}" == "map-to-common-service-namespace:" ]]; then
+            csNamespace=$(echo $line | awk '{print $2}')
+            #nsFromCM="$nsFromCM $csNamespace" 
+            #at this point we should have the full grouping for an instance, now is when we run the topo check
+            #need to account for instances when map to is a new ns and would not have nss in it already
+            nssExist=$(${OC} get nss -n $csNamespace common-service || echo fail)
+            if [[ $nssExist == "fail" ]]; then
+                allPresent="false"
+                nsFromNSS=""
+            else
+                nsFromNSS=$(${OC} get nss -n $csNamespace -o yaml common-service | yq '.status.validatedMembers[]')
+                allPresent="true"
+            fi
+            leftover=""
+            #need to make sure this works on both ends, both ns missing from either ns need to be included
+            #may be better to make this its own function
+            for CMns in "${nsFromCM[@]}"
+            do
+                skip=0
+                for NSSns in "${nsFromNSS[@]}"
+                do
+                    if [[ $CMns == $NSSns ]]; then
+                        skip=1
+                        break
+                    fi
+                done
+                if [[ $skip != 1 ]]; then
+                    if [[ $leftover == "" ]]; then
+                        leftover="$CMns"
+                    else
+                        leftover="$leftover $CMns"
+                    fi
+                fi
+            done
+            # leftover=(`echo ${nsFromCM[@]} ${nsFromNSS[@]} | tr ' ' '\n' | sort | uniq -u`)
+            # #if there are no differences between the two lists, the variable is unset.
+            # #check for unset, if it is, then the grouping doesn't need to be changed anyway
+            # if [[ -z ${leftover:-} ]]; then
+            #     leftover=""
+            # fi
+            if [[ $leftover == "" ]] || [[ $leftover == $csNamespace ]]; then
+                allPresent="true"
+            else
+                activeRequestedFrom="$activeRequestedFrom $nsFromCM"
+                activeMapTo="$activeMapTo $csNamespace"
+                info "Namespaces $nsFromCM $csNamespace added to conversion pool."
+                nsFromCM=""
+                allPresent="false"
+            fi
+            if [[ $allPresent == "true" ]]; then
+                info "Namespaces $nsFromCM are already setup to use Common Service instance in namespace $csNamespace"
+                nsFromCM=""
+            fi
+        fi
+    done <<<$(${OC} get cm $cm_name -o yaml -n kube-public | yq '.data[]' | yq '.namespaceMapping[]')
+    requestedNS="$activeRequestedFrom"
+    mapToCSNS="$activeMapTo"
+    if [[ $requestedNS == "" ]] && [[ $mapToCSNS == "" ]]; then
+        success "No difference in topology detected."
+        error "Please update common-service-maps configmap in kube-public and run again."
+    fi
+    
+    success "Topology info collected from common-service-maps configmap"
 }
 
 function msg() {
