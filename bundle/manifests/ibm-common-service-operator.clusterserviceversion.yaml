@@ -388,7 +388,8 @@ spec:
             selector:
               matchLabels:
                 name: ibm-common-service-operator
-            strategy: {}
+            strategy: 
+              type: Recreate
             template:
               metadata:
                 annotations:
