@@ -528,7 +528,7 @@ function isolate_odlm() {
 function check_odlm_env() {
     local namespace=$1
     local name="operand-deployment-lifecycle-manager"
-    local condition="${OC} -n ${namespace} get deployment ${name} -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name==\"ISOLATED_MODE\")].value}'| = "true" "
+    local condition="${OC} -n ${namespace} get deployment ${name} -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name==\"ISOLATED_MODE\")].value}'| grep "true" "
     local retries=10
     local sleep_time=12
     local total_time_mins=$(( sleep_time * retries / 60))
@@ -549,14 +549,14 @@ function wait_for_condition() {
 
     info "${wait_message}"
     while true; do
-        result="${condition}"
+        result=$(eval "${condition}")
 
         if [[ ( ${retries} -eq 0 ) && ( -z "${result}" ) ]]; then
             error "${error_message}"
         fi
  
         sleep ${sleep_time}
-        result="${condition}"
+        result=$(eval "${condition}")
         
         if [[ -z "${result}" ]]; then
             info "RETRYING: ${wait_message} (${retries} left)"
@@ -577,6 +577,10 @@ function msg() {
 
 function success() {
     msg "\33[32m[✔] ${1}\33[0m"
+}
+
+function warning() {
+    msg "\33[33m[✗] ${1}\33[0m"
 }
 
 function error() {
