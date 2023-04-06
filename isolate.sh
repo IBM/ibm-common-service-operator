@@ -521,6 +521,54 @@ function isolate_odlm() {
         error "Failed to update subscription ${package_name} in ${ns}"
     fi
     rm sub.yaml
+
+    check_odlm_env "${ns}" 
+}
+
+function check_odlm_env() {
+    local namespace=$1
+    local name="operand-deployment-lifecycle-manager"
+    local condition="${OC} -n ${namespace} get deployment ${name} -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name==\"ISOLATED_MODE\")].value}'| = "true" "
+    local retries=10
+    local sleep_time=12
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for OLM to update Deployment ${name} "
+    local success_message="Deployment ${name} is updated"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for OLM to update Deployment ${name} "
+
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
+function wait_for_condition() {
+    local condition=$1
+    local retries=$2
+    local sleep_time=$3
+    local wait_message=$4
+    local success_message=$5
+    local error_message=$6
+
+    info "${wait_message}"
+    while true; do
+        result="${condition}"
+
+        if [[ ( ${retries} -eq 0 ) && ( -z "${result}" ) ]]; then
+            error "${error_message}"
+        fi
+ 
+        sleep ${sleep_time}
+        result="${condition}"
+        
+        if [[ -z "${result}" ]]; then
+            info "RETRYING: ${wait_message} (${retries} left)"
+            retries=$(( retries - 1 ))
+        else
+            break
+        fi
+    done
+
+    if [[ ! -z "${success_message}" ]]; then
+        success "${success_message}"
+    fi
 }
 
 function msg() {
