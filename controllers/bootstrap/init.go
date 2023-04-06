@@ -1152,16 +1152,16 @@ func (b *Bootstrap) PropagateDefaultCR(instance *apiv3.CommonService) error {
 					csKey := types.NamespacedName{Name: constant.MasterCR, Namespace: watchNamespace}
 					existingCsInstance := &apiv3.CommonService{}
 					if err := b.Client.Get(ctx, csKey, existingCsInstance); err != nil {
-						return fmt.Errorf("Failed to get cloned CommonService CR in namespace %s: %v", watchNamespace, err)
+						return fmt.Errorf("failed to get cloned CommonService CR in namespace %s: %v", watchNamespace, err)
 					}
 					if needUpdate := util.CompareCsCR(copiedCsInstance, existingCsInstance); needUpdate {
 						copiedCsInstance.SetResourceVersion(existingCsInstance.GetResourceVersion())
 						if err := b.Client.Update(ctx, copiedCsInstance); err != nil {
-							return fmt.Errorf("Failed to update cloned CommonService CR in namespace %s: %v", watchNamespace, err)
+							return fmt.Errorf("failed to update cloned CommonService CR in namespace %s: %v", watchNamespace, err)
 						}
 					}
 				} else {
-					return fmt.Errorf("Failed to create cloned CommonService CR in namespace %s: %v", watchNamespace, err)
+					return fmt.Errorf("failed to create cloned CommonService CR in namespace %s: %v", watchNamespace, err)
 				}
 			}
 		}
@@ -1209,17 +1209,17 @@ func (b *Bootstrap) PropagateCPPConfig(instance *corev1.ConfigMap) error {
 					cmKey := types.NamespacedName{Name: constant.IBMCPPCONFIG, Namespace: watchNamespace}
 					existingCM := &corev1.ConfigMap{}
 					if err := b.Client.Get(ctx, cmKey, existingCM); err != nil {
-						return fmt.Errorf("Failed to get %s ConfigMap in namespace %s: %v", constant.IBMCPPCONFIG, watchNamespace, err)
+						return fmt.Errorf("failed to get %s ConfigMap in namespace %s: %v", constant.IBMCPPCONFIG, watchNamespace, err)
 					}
 					if !reflect.DeepEqual(copiedCPPConfigMap.Data, existingCM.Data) {
 						copiedCPPConfigMap.SetResourceVersion(existingCM.GetResourceVersion())
 						if err := b.Client.Update(ctx, copiedCPPConfigMap); err != nil {
-							return fmt.Errorf("Failed to update %s ConfigMap in namespace %s: %v", constant.IBMCPPCONFIG, watchNamespace, err)
+							return fmt.Errorf("failed to update %s ConfigMap in namespace %s: %v", constant.IBMCPPCONFIG, watchNamespace, err)
 						}
 						klog.Infof("Global CPP config %s/%s is updated", watchNamespace, constant.IBMCPPCONFIG)
 					}
 				} else {
-					return fmt.Errorf("Failed to create cloned %s ConfigMap in namespace %s: %v", constant.IBMCPPCONFIG, watchNamespace, err)
+					return fmt.Errorf("failed to create cloned %s ConfigMap in namespace %s: %v", constant.IBMCPPCONFIG, watchNamespace, err)
 				}
 			} else {
 				klog.Infof("Global CPP config %s/%s is propagated to namespace %s", b.CSData.ServicesNs, constant.IBMCPPCONFIG, watchNamespace)
