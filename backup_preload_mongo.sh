@@ -1233,6 +1233,14 @@ spec:
           command:
             - /install/install.sh
           imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop:
+              - ALL
           volumeMounts:
             - name: mongodbdir
               mountPath: /work-dir
@@ -1306,6 +1314,12 @@ spec:
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop:
+              - ALL
           imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: mongodbdir
@@ -1399,6 +1413,12 @@ spec:
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop:
+              - ALL
           ports:
             - name: peer
               containerPort: 27017
@@ -1480,6 +1500,12 @@ spec:
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop:
+              - ALL
           ports:
             - name: metrics
               containerPort: 9216
