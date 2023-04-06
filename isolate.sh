@@ -501,6 +501,28 @@ function check_CSCR() {
 
 }
 
+function isolate_odlm() {
+    package_name=$1
+    ns=$2
+    # get subscription of ODLM based on namespace 
+    sub_name=$(${OC} get subscription.operators.coreos.com -n ${ns} -l operators.coreos.com/${package_name}.${ns}='' --no-headers | awk '{print $1}')
+    if [ -z "$sub_name" ]; then
+        warning "Not found subscription ${package_name} in ${ns}"
+        return 0
+    fi
+    ${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml > sub.yaml
+    
+    # set ISOLATED_MODE to true
+    yq e '.spec.config.env |= (map(select(.name == "ISOLATED_MODE").value |= "true") + [{"name": "ISOLATED_MODE", "value": "true"}] | unique_by(.name))' sub.yaml -i
+    
+    # apply updated subscription back to cluster
+    ${OC} apply -f sub.yaml
+    if [[ $? -ne 0 ]]; then
+        error "Failed to update subscription ${package_name} in ${ns}"
+    fi
+    rm sub.yaml
+}
+
 function msg() {
     printf '%b\n' "$1"
 }
