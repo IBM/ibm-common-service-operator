@@ -528,7 +528,7 @@ function isolate_odlm() {
 function check_odlm_env() {
     local namespace=$1
     local name="operand-deployment-lifecycle-manager"
-    local condition="${OC} -n ${namespace} get deployment ${name} -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name==\"ISOLATED_MODE\")].value}'| grep "true" "
+    local condition="${OC} -n ${namespace} get deployment ${name} -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name==\"ISOLATED_MODE\")].value}'| grep "true" || true"
     local retries=10
     local sleep_time=12
     local total_time_mins=$(( sleep_time * retries / 60))
