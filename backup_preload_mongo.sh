@@ -42,7 +42,7 @@ function main() {
 # Help function - print out when error are found
 #
 function help() {
-  echo "SYNTAX: copymongo.sh from-namespace to-namespace"
+  echo "SYNTAX: backup_preload_mongo.sh from-namespace to-namespace"
   echo "Where:"
   echo "  from-namespace: is the namespace in which mongodb is running and FROM which database content should be copied"
   echo "  to-namespace:   is the namespace in which mongodb is running and TO which database content should be copied"
@@ -167,7 +167,7 @@ EOF
     sleep 10
     status=$(oc get pvc cs-mongodump --no-headers | awk '{print $2}')
   done
-  success "MongoDB backup ready"
+  success "MongoDB PVC ready"
 
 } # createdumppvc
 
@@ -1184,6 +1184,10 @@ data:
   namespaces: "$TO_NAMESPACE"
 EOF
     #apply statefulset (in same dir)
+    #get images from cp2 namespace
+    ibm_mongodb_install_image=$(oc get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.initContainers[0]}{.image}{end}')
+    ibm_mongodb_image=$(oc get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
+    ibm_mongodb_exporter_image=$(oc get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[1]}{.image}{end}')
     #icp-mongodb-ss.yaml
     cat << EOF | oc apply -f -
 kind: StatefulSet
@@ -1253,7 +1257,7 @@ spec:
               mountPath: /tmp
           terminationMessagePolicy: File
           image: >-
-            icr.io/cpopen/cpfs/ibm-mongodb-install@sha256:bb236428cd36f3937d268c4475a1c62ac1a4e7cb9ca0f3de482f08817378b003
+            $ibm_mongodb_install_image
           args:
             - '--work-dir=/work-dir'
             - '--config-dir=/data/configdb'
@@ -1321,7 +1325,7 @@ spec:
               mountPath: /tmp
           terminationMessagePolicy: File
           image: >-
-            icr.io/cpopen/cpfs/ibm-mongodb@sha256:3a44fcf5656cdd3f062d3ca45d7fd0a46ff3ed90f6ed34ba260ad50938e95f57
+            $ibm_mongodb_image
           args:
             - '-on-start=/init/on-start.sh'
             - '-service=icp-mongodb'
@@ -1416,7 +1420,7 @@ spec:
               mountPath: /tmp
           terminationMessagePolicy: File
           image: >-
-            icr.io/cpopen/cpfs/ibm-mongodb@sha256:3a44fcf5656cdd3f062d3ca45d7fd0a46ff3ed90f6ed34ba260ad50938e95f57
+            $ibm_mongodb_image
         - resources:
             limits:
               cpu: '1'
@@ -1494,7 +1498,7 @@ spec:
               mountPath: /tmp
           terminationMessagePolicy: File
           image: >-
-            icr.io/cpopen/cpfs/ibm-mongodb-exporter@sha256:f6456dc4e473295648c779cdabe1e4a40b660d69c9190fb2d5dfe7e94656ef17
+            $ibm_mongodb_exporter_image
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: topology.kubernetes.io/zone
