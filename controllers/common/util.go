@@ -547,43 +547,42 @@ func UpdateCsMaps(cm *corev1.ConfigMap, requestNsList, servicesNS, operatorNs st
 		return fmt.Errorf("failed to fetch data of configmap common-service-maps: %v", err)
 	}
 
-	var alreadyExists bool
-	var newnsMapping NsMapping
-	var count int
+	var newNsMapping NsMapping
+	var newNsMappingList []NsMapping
 
-	newnsMapping.RequestNs = append(newnsMapping.RequestNs, strings.Split(requestNsList, ",")...)
-	newnsMapping.CsNs = servicesNS
+	// construct new mapping for current entry
+	newNsMapping.RequestNs = append(newNsMapping.RequestNs, strings.Split(requestNsList, ",")...)
+	newNsMapping.CsNs = servicesNS
+	newNsMappingList = append(newNsMappingList, newNsMapping)
+
+	// add well known control namespace for CP2 backward compatibility
 	if cmData.ControlNs == "" {
 		cmData.ControlNs = "cs-control"
 	}
 
 	for _, nsMapping := range cmData.NsMappingList {
-		// OperatorNs already exists in common service namespace
-		if operatorNs == nsMapping.CsNs {
-			alreadyExists = true
+		var copiedNsMapping NsMapping
+		// exclude entire entry if its map-to-cs-namespace is in WATCH_NAMESPACE
+		if Contains(strings.Split(requestNsList, ","), nsMapping.CsNs) {
+			continue
 		}
+		copiedNsMapping.CsNs = nsMapping.CsNs
 
 		for _, ns := range nsMapping.RequestNs {
-			// OperatorNs already exists in request namespaces list
-			if operatorNs == ns {
-				alreadyExists = true
-				break
+			// exclude request namespace if it is in WATCH_NAMESPACE
+			if Contains(strings.Split(requestNsList, ","), ns) {
+				continue
 			}
+			copiedNsMapping.RequestNs = append(copiedNsMapping.RequestNs, ns)
 		}
 
-		if alreadyExists {
-			break
+		// existing entry is valid and add it into new mapping list
+		if len(copiedNsMapping.CsNs) != 0 && len(copiedNsMapping.RequestNs) != 0 {
+			newNsMappingList = append(newNsMappingList, copiedNsMapping)
 		}
-		count++
 	}
 
-	// Create/Update namespaceMapping entry
-	if !alreadyExists {
-		cmData.NsMappingList = append(cmData.NsMappingList, newnsMapping)
-	} else {
-		cmData.NsMappingList[count] = newnsMapping
-	}
-
+	cmData.NsMappingList = newNsMappingList
 	commonServiceMap, error := utilyaml.Marshal(&cmData)
 	if error != nil {
 		return fmt.Errorf("failed to fetch data of configmap common-service-maps: %v", error)
