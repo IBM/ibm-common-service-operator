@@ -26,6 +26,7 @@ master_ns=
 requestedNS=
 excludedNS=
 excludedRaw=""
+insertRaw=""
 mapToCSNS=
 OPERATOR_NS=""
 SERVICES_NS=""
@@ -51,6 +52,10 @@ function main () {
             ;;
         "--excluded-ns")
             excludedRaw=$2
+            shift
+            ;;
+        "--insert-ns")
+            insertRaw=$2
             shift
             ;;
         "--control-ns")
@@ -95,6 +100,7 @@ function usage() {
     --original-cs-ns              specify the namespace the original common services installation resides in
     --control-ns                  specify the control namespace value in the common-service-maps configmap
     --excluded-ns                 specify namespaces to be excluded from the common-service-maps configmap. Comma separated no spaces.
+    --insert-ns                 specify namespaces to be inserted into the common-service-maps configmap. Comma separated no spaces.
 	EOF
 }
 
@@ -146,6 +152,17 @@ function gather_csmaps_ns() {
                 else
                     TETHERED_NS="$TETHERED_NS $ns"
                 fi
+            fi
+        done
+    fi
+    if [[ $insertRaw != "" ]]; then
+        IFS=',' read -a insertNS <<< "$insertRaw"
+        for ns in ${insertNS[@]}
+        do
+            if [[ $TETHERED_NS == "" ]]; then
+                TETHERED_NS="$ns"
+            else
+                TETHERED_NS="$TETHERED_NS $ns"
             fi
         done
     fi
