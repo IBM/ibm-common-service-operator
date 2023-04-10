@@ -81,6 +81,10 @@ function main () {
     #need to get the namespaces for csmaps generation before pausing cs, otherwise namespace-scope cm does not include all namespaces
     gather_csmaps_ns
     pause
+    return_value=$(${OC} get cm $cm_name -n kube-public || echo fail)
+    if [[ $return_value != "fail" ]]; then
+        ${OC} delete cm $cm_name -n kube-public --ignore-not-found || error "Could not delete configmap $cm_name."
+    fi
     mapping_topology
     prereq
     uninstall_singletons
