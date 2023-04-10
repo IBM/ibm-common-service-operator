@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+/usr/bin/env bash
 #
 # Copyright 2022 IBM Corporation
 #
@@ -25,7 +25,7 @@ YQ=yq
 master_ns=
 requestedNS=
 excludedNS=
-excludedRaw=
+excludedRaw=""
 mapToCSNS=
 OPERATOR_NS=""
 SERVICES_NS=""
@@ -121,12 +121,10 @@ function gather_csmaps_ns() {
     else
         namespaces=$(oc get cm namespace-scope -n "${master_ns}" -o json | jq '.data.namespaces')
         namespaces=$(echo $namespaces | tr -d '"')
-
-        #either of these two methods work, just need to pick one
         IFS=',' read -a nsFromCM <<< "$namespaces"
     fi
     #remove excluded from namespaces
-    if [[ -z $excludedRaw ]]; then
+    if [[ $excludedRaw != "" ]]; then
         IFS=',' read -a excludedNS <<< "$excludedRaw"
         #this is very ugly but very consistent and these lists should not be too long anyway
         for ns in ${nsFromCM[@]}
@@ -143,6 +141,19 @@ function gather_csmaps_ns() {
                 skip=1
             fi
             if [[ $skip != 1 ]]; then
+                if [[ $TETHERED_NS != $master_ns ]]; then
+                    if [[ $TETHERED_NS == "" ]]; then
+                        TETHERED_NS="$ns"
+                    else
+                        TETHERED_NS="$TETHERED_NS $ns"
+                    fi
+                fi
+            fi
+        done
+    else
+        for ns in ${nsFromCM[@]}
+        do
+            if [[ $TETHERED_NS != $master_ns ]]; then
                 if [[ $TETHERED_NS == "" ]]; then
                     TETHERED_NS="$ns"
                 else
@@ -150,23 +161,15 @@ function gather_csmaps_ns() {
                 fi
             fi
         done
-    else
-        for ns in ${nsFromCM[@]}
-        do
-            if [[ $TETHERED_NS == "" ]]; then
-                TETHERED_NS="$ns"
-            else
-                TETHERED_NS="$TETHERED_NS $ns"
-            fi
-        done
     fi
     if [[ $TETHERED_NS == "" ]]; then
         TETHERED_NS=$master_ns
     fi
-    
+
     OPERATOR_NS=$master_ns
     SERVICES_NS=$master_ns
     requestedNS=$TETHERED_NS
+    info "common-service-maps namespaces: $requestedNS"
 }
 
 function construct_mapping() {
@@ -201,7 +204,7 @@ function mapping_topology() {
             info "map-to-common-service-namespace $SERVICES_NS already exists in the namespaceMapping array. Skipping updating common-service-maps ConfigMap"
             return 0
         fi
-        
+
         # Check if each tenant namespace already exists in the requested-from-namespace array
         # extract the requested namespaces from the ConfigMap
         requested_ns=$(echo "$current_mapping" | yq -r '.namespaceMapping[].requested-from-namespace[]')
@@ -273,7 +276,7 @@ EOF
 
 # verify that all pre-requisite CLI tools exist
 function prereq() {
-    
+
     return_value=$("${OC}" get -n kube-public configmap ${cm_name} > /dev/null || echo failed)
     if [[ $return_value == "failed" ]]; then
         error "Missing configmap: ${cm_name}. This must be configured before proceeding"
@@ -308,16 +311,13 @@ function prereq() {
         fi
     fi
     return_value="reset"
-
     # ensure cs-operator is not installed in all namespace mode
     return_value=$("${OC}" get csv -n openshift-operators | grep ibm-common-service-operator > /dev/null || echo pass)
     if [[ $return_value != "pass" ]]; then
         error "The ibm-common-service-operator must not be installed in AllNamespaces mode"
     fi
-
     check_cm_ns_exist
 }
-
 function pause() {
     title "Pausing Common Services in namespace $master_ns"
     msg "-----------------------------------------------------------------------"
@@ -330,7 +330,6 @@ function pause() {
     removeNSS
     success "Common Services successfully isolated in namespace ${master_ns}"
 }
-
 function uninstall_singletons() {
     title "Uninstalling Singleton Operators"
     msg "-----------------------------------------------------------------------"
@@ -339,7 +338,6 @@ function uninstall_singletons() {
     "${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-cert-manager-operator
     csv=$("${OC}" get -n "${master_ns}" csv | (grep ibm-cert-manager-operator || echo "fail") | awk '{print $1}')
     "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
-
     # reason for checking again instead of simply deleting the CR when checking
     # for LSR is to avoid deleting anything until the last possible moment.
     # This makes recovery from simple pre-requisite errors easier.
@@ -356,7 +354,6 @@ function uninstall_singletons() {
         "${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-licensing-operator
         "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
     fi
-
     "${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-crossplane-operator-app
     "${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-crossplane-provider-kubernetes-operator-app
     csv=$("${OC}" get -n "${master_ns}" csv | (grep ibm-crossplane-operator || echo "fail") | awk '{print $1}')
@@ -365,7 +362,6 @@ function uninstall_singletons() {
     "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
     success "Singletons successfully uninstalled"
 }
-
 function restart() {
     title "Scaling up ibm-common-service-operator deployment in ${master_ns} namespace"
     msg "-----------------------------------------------------------------------"
@@ -377,7 +373,6 @@ function restart() {
     fi
     success "Common Service Operator restarted."
 }
-
 function check_cm_ns_exist(){
     title " Verify all namespaces exist "
     msg "-----------------------------------------------------------------------"
@@ -389,7 +384,6 @@ function check_cm_ns_exist(){
     done
     success "All namespaces in $cm_name exist"
 }
-
 function cleanupCSOperators(){
     title "Checking subs of Common Service Operator in Cloudpak Namespaces"
     msg "-----------------------------------------------------------------------"   
@@ -416,7 +410,7 @@ function cleanupCSOperators(){
 #TODO change looping to be more specific? 
 #Should this only remove the nss from specified set of namespaces? Or should it be more general?
 function removeNSS(){
-    
+
     title " Removing ODLM managed Namespace Scope CRs "
     msg "-----------------------------------------------------------------------"
 
@@ -518,10 +512,10 @@ function isolate_odlm() {
         return 0
     fi
     ${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml > sub.yaml
-    
+
     # set ISOLATED_MODE to true
     yq e '.spec.config.env |= (map(select(.name == "ISOLATED_MODE").value |= "true") + [{"name": "ISOLATED_MODE", "value": "true"}] | unique_by(.name))' sub.yaml -i
-    
+
     # apply updated subscription back to cluster
     ${OC} apply -f sub.yaml
     if [[ $? -ne 0 ]]; then
@@ -561,10 +555,10 @@ function wait_for_condition() {
         if [[ ( ${retries} -eq 0 ) && ( -z "${result}" ) ]]; then
             error "${error_message}"
         fi
- 
+
         sleep ${sleep_time}
         result=$(eval "${condition}")
-        
+
         if [[ -z "${result}" ]]; then
             info "RETRYING: ${wait_message} (${retries} left)"
             retries=$(( retries - 1 ))
