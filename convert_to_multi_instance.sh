@@ -35,12 +35,12 @@ function main() {
     prereq
     collect_data
     check_topology
-    prepare_cluster
-    scale_up_pod
-    restart_CS_pods
-    install_new_CS
-    refresh_zen
-    refresh_kafka
+    # prepare_cluster
+    # scale_up_pod
+    # restart_CS_pods
+    # install_new_CS
+    # refresh_zen
+    # refresh_kafka
 }
 
 
@@ -684,7 +684,11 @@ function check_topology() {
                 nsFromCM=""
             #elif could check if equal to map to then else could be a requested from ns
             elif [[ "${namespace}" != "requested-from-namespace:" ]]; then
-                nsFromCM="$nsFromCM $namespace"
+                if [[ $nsFromCM == "" ]]; then
+                    nsFromCM="$namespace"
+                else
+                    nsFromCM="$nsFromCM $namespace"
+                fi
             fi
         fi
 
@@ -698,37 +702,41 @@ function check_topology() {
                 allPresent="false"
                 nsFromNSS=""
             else
-                nsFromNSS=$(${OC} get nss -n $csNamespace -o yaml common-service | yq '.status.validatedMembers[]')
+                nsFromNSS=$(${OC} get nss -n $csNamespace -o yaml common-service | yq '.status.validatedMembers[]' | tr '\n' ' ')
                 allPresent="true"
             fi
             leftover=""
             #need to make sure this works on both ends, both ns missing from either ns need to be included
             #may be better to make this its own function
-            for CMns in "${nsFromCM[@]}"
-            do
-                skip=0
-                for NSSns in "${nsFromNSS[@]}"
-                do
-                    if [[ $CMns == $NSSns ]]; then
-                        skip=1
-                        break
-                    fi
-                done
-                if [[ $skip != 1 ]]; then
-                    if [[ $leftover == "" ]]; then
-                        leftover="$CMns"
-                    else
-                        leftover="$leftover $CMns"
-                    fi
-                fi
-            done
-            # leftover=(`echo ${nsFromCM[@]} ${nsFromNSS[@]} | tr ' ' '\n' | sort | uniq -u`)
-            # #if there are no differences between the two lists, the variable is unset.
-            # #check for unset, if it is, then the grouping doesn't need to be changed anyway
-            # if [[ -z ${leftover:-} ]]; then
-            #     leftover=""
-            # fi
-            if [[ $leftover == "" ]] || [[ $leftover == $csNamespace ]]; then
+            # for CMns in "${nsFromCM[@]}"
+            # do
+            #     skip=0
+            #     for NSSns in "${nsFromNSS[@]}"
+            #     do
+            #         if [[ $CMns == $NSSns ]]; then
+            #             skip=1
+            #             break
+            #         fi
+            #     done
+            #     if [[ $skip != 1 ]]; then
+            #         if [[ $leftover == "" ]]; then
+            #             leftover="$CMns"
+            #         else
+            #             leftover="$leftover $CMns"
+            #         fi
+            #     fi
+            # done
+            leftover=$(echo $nsFromCM $nsFromNSS | tr ' ' '\n' | sort | uniq -u | tr '\n' ' ')
+            #if there are no differences between the two lists, the variable is unset.
+            #check for unset, if it is, then the grouping doesn't need to be changed anyway
+            echo "ns from cm: $nsFromCM"
+            echo "ns from nss: $nsFromNSS"
+            echo "leftover $leftover"
+            echo "cs ns: $csNamespace"
+            if [[ -z ${leftover:-} ]]; then
+                echo "empty leftover"
+                allPresent="true"
+            elif [[ "$leftover" == "$csNamespace" ]]; then
                 allPresent="true"
             else
                 activeRequestedFrom="$activeRequestedFrom $nsFromCM"
@@ -745,6 +753,8 @@ function check_topology() {
     done <<<$(${OC} get cm $cm_name -o yaml -n kube-public | yq '.data[]' | yq '.namespaceMapping[]')
     requestedNS="$activeRequestedFrom"
     mapToCSNS="$activeMapTo"
+    echo "requested: $requestedNS"
+    echo "mapTo: $mapToCSNS"
     if [[ $requestedNS == "" ]] && [[ $mapToCSNS == "" ]]; then
         success "No difference in topology detected."
         error "Please update common-service-maps configmap in kube-public and run again."
