@@ -33,8 +33,6 @@ TETHERED_NS=""
 CONTROL_NS=""
 NEW_MAPPING=""
 cm_name="common-service-maps"
-restart="false"
-requested="false"
 # pause installer
 # uninstall singletons
 # restart installer
@@ -59,13 +57,8 @@ function main () {
             CONTROL_NS=$2
             shift
             ;;
-        "-r")
-            restart="true"
-            ;;
         *)
-            if [[ $requested == "false" ]]; then
-                error "invalid option -- \`$1\`. Use the -h or --help option for usage info."
-            fi
+            error "invalid option -- \`$1\`. Use the -h or --help option for usage info."
             ;;
         esac
         shift
@@ -73,28 +66,21 @@ function main () {
     which "${OC}" || error "Missing oc CLI"
     which "${YQ}" || error "Missing yq"
 
-    if [[ $restart ==  "false" ]]; then
-        if [[ -z $CONTROL_NS ]] &&  [[ -z $master_ns ]]; then
-            usage
-            error "No parameters entered. Please re-run specifying original and control namespace values. Use -h for help."
-        elif [[ -z $CONTROL_NS ]] || [[ -z $master_ns ]]; then
-            usage
-            error "Required parameters missing. Please re-run specifying original and control namespace values. Use -h for help."
-        fi
-        #need to get the namespaces for csmaps generation before pausing cs, otherwise namespace-scope cm does not include all namespaces
-        gather_csmaps_ns
-        pause
-        mapping_topology
-    else
-        if [[ -z $master_ns ]]; then
-            usage
-            error "Original CS namespace not entered. Please re-run specifying original namespace value. Use -h for help."
-        fi
-        prereq
-        uninstall_singletons
-        isolate_odlm "ibm-odlm" $master_ns
-        restart
+    if [[ -z $CONTROL_NS ]] &&  [[ -z $master_ns ]]; then
+        usage
+        error "No parameters entered. Please re-run specifying original and control namespace values. Use -h for help."
+    elif [[ -z $CONTROL_NS ]] || [[ -z $master_ns ]]; then
+        usage
+        error "Required parameters missing. Please re-run specifying original and control namespace values. Use -h for help."
     fi
+    #need to get the namespaces for csmaps generation before pausing cs, otherwise namespace-scope cm does not include all namespaces
+    gather_csmaps_ns
+    pause
+    mapping_topology
+    prereq
+    uninstall_singletons
+    isolate_odlm "ibm-odlm" $master_ns
+    restart
 }
 
 function usage() {
@@ -109,7 +95,6 @@ function usage() {
     --original-cs-ns              specify the namespace the original common services installation resides in
     --control-ns                  specify the control namespace value in the common-service-maps configmap
     --excluded-ns                 specify namespaces to be excluded from the common-service-maps configmap. Comma separated no spaces.
-    -r                            restart common services
 	EOF
 }
 
@@ -120,6 +105,8 @@ function gather_csmaps_ns() {
         error "No namespace-scope configmap in Original CS Namespace ${master_ns}. Verify namespace is correct and IBM common services is installed there."
     else
         namespaces=$(oc get cm namespace-scope -n "${master_ns}" -o json | jq '.data.namespaces')
+        #output namespace-scope cm
+        echo $(oc get cm namespace-scope -n "${master_ns}" -o yaml)
         namespaces=$(echo $namespaces | tr -d '"')
         IFS=',' read -a nsFromCM <<< "$namespaces"
     fi
@@ -600,3 +587,4 @@ function info() {
 # --- Run ---
 
 main $*
+
