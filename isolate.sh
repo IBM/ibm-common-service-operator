@@ -339,6 +339,7 @@ function pause() {
     removeNSS
     success "Common Services successfully isolated in namespace ${master_ns}"
 }
+
 function uninstall_singletons() {
     title "Uninstalling Singleton Operators"
     msg "-----------------------------------------------------------------------"
@@ -371,6 +372,7 @@ function uninstall_singletons() {
     "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
     success "Singletons successfully uninstalled"
 }
+
 function restart() {
     title "Scaling up ibm-common-service-operator deployment in ${master_ns} namespace"
     msg "-----------------------------------------------------------------------"
@@ -382,6 +384,7 @@ function restart() {
     fi
     success "Common Service Operator restarted."
 }
+
 function check_cm_ns_exist(){
     title " Verify all namespaces exist "
     msg "-----------------------------------------------------------------------"
@@ -393,6 +396,7 @@ function check_cm_ns_exist(){
     done
     success "All namespaces in $cm_name exist"
 }
+
 function cleanupCSOperators(){
     title "Checking subs of Common Service Operator in Cloudpak Namespaces"
     msg "-----------------------------------------------------------------------"   
