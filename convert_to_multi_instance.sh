@@ -165,6 +165,8 @@ function migrate_lic_cms() {
                 yq -i '.metadata.namespace = "'${controlNs}'"' tmp.yaml
                 ${OC} apply -f tmp.yaml
                 info "Licensing configmap $cm copied from $namespace to $controlNs"
+                # delete the original in the cs namespace
+                ${OC} delete cm -n $namespace $cm --ignore-not-found
             fi
         fi
     done
