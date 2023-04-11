@@ -36,6 +36,7 @@ function main() {
     collect_data
     check_topology
     # prepare_cluster
+    # isolate_odlm "ibm-odlm" $master_ns
     # scale_up_pod
     # restart_CS_pods
     # install_new_CS
@@ -735,8 +736,11 @@ function check_topology() {
             echo "cs ns: $csNamespace"
             if [[ -z ${leftover:-} ]]; then
                 echo "empty leftover"
-                allPresent="true"
-            elif [[ "$leftover" == "$csNamespace" ]]; then
+                leftover=""
+            fi
+            #try removing whitespace from leftover variable, this variable does not get assigned to anything so just need tto check if empty or equal to csNamespace
+            leftover=${leftover%%[[:space:]]}
+            if [[ "$leftover" == "$csNamespace" ]] || [[ $leftover == "" ]]; then
                 allPresent="true"
             else
                 activeRequestedFrom="$activeRequestedFrom $nsFromCM"
@@ -761,6 +765,76 @@ function check_topology() {
     fi
     
     success "Topology info collected from common-service-maps configmap"
+}
+
+function isolate_odlm() {
+    package_name=$1
+    ns=$2
+    # get subscription of ODLM based on namespace 
+    sub_name=$(${OC} get subscription.operators.coreos.com -n ${ns} -l operators.coreos.com/${package_name}.${ns}='' --no-headers | awk '{print $1}')
+    if [ -z "$sub_name" ]; then
+        warning "Not found subscription ${package_name} in ${ns}"
+        return 0
+    fi
+    ${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml > sub.yaml
+
+    # set ISOLATED_MODE to true
+    yq e '.spec.config.env |= (map(select(.name == "ISOLATED_MODE").value |= "true") + [{"name": "ISOLATED_MODE", "value": "true"}] | unique_by(.name))' sub.yaml -i
+
+    # apply updated subscription back to cluster
+    ${OC} apply -f sub.yaml
+    if [[ $? -ne 0 ]]; then
+        error "Failed to update subscription ${package_name} in ${ns}"
+    fi
+    rm sub.yaml
+
+    check_odlm_env "${ns}" 
+}
+
+function check_odlm_env() {
+    local namespace=$1
+    local name="operand-deployment-lifecycle-manager"
+    local condition="${OC} -n ${namespace} get deployment ${name} -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name==\"ISOLATED_MODE\")].value}'| grep "true" || true"
+    local retries=10
+    local sleep_time=12
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for OLM to update Deployment ${name} "
+    local success_message="Deployment ${name} is updated"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for OLM to update Deployment ${name} "
+
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
+function wait_for_condition() {
+    local condition=$1
+    local retries=$2
+    local sleep_time=$3
+    local wait_message=$4
+    local success_message=$5
+    local error_message=$6
+
+    info "${wait_message}"
+    while true; do
+        result=$(eval "${condition}")
+
+        if [[ ( ${retries} -eq 0 ) && ( -z "${result}" ) ]]; then
+            error "${error_message}"
+        fi
+
+        sleep ${sleep_time}
+        result=$(eval "${condition}")
+
+        if [[ -z "${result}" ]]; then
+            info "RETRYING: ${wait_message} (${retries} left)"
+            retries=$(( retries - 1 ))
+        else
+            break
+        fi
+    done
+
+    if [[ ! -z "${success_message}" ]]; then
+        success "${success_message}"
+    fi
 }
 
 function msg() {
