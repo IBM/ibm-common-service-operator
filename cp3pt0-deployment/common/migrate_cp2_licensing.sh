@@ -139,6 +139,14 @@ function migrate_lic_cms() {
             ${OC} get configmap "${configmap}" -n "${CONTROL_NS}" -o yaml | yq -e '.metadata.namespace = "'${TARGET_NS}'"' > ${configmap}.yaml
             yq eval 'select(.kind == "ConfigMap") | del(.metadata.resourceVersion) | del(.metadata.uid)' ${configmap}.yaml | ${OC} apply -f -
 
+            if [[ $? -eq 0 ]]; then
+                info "Licensing Services ConfigMap $configmap is copied from $CONTROL_NS to $TARGET_NS"
+                # delete the original
+                ${OC} delete cm -n $CONTROL_NS $configmap --ignore-not-found
+            else
+                error "Failed to move Licensing Services ConfigMap $configmap to $TARGET_NS"
+            fi
+
             rm ${configmap}.yaml
             msg ""
         fi

@@ -167,15 +167,16 @@ function migrate_lic_cms() {
                 # apply updated ConfigMap back to cluster
                 ${OC} apply -f tmp.yaml
                 if [[ $? -eq 0 ]]; then
-                    info "Licensing configmap $cm copied from $namespace to $controlNs"
+                    info "Licensing Services ConfigMap $cm copied from $namespace to $controlNs"
                     # delete the original in cs namespace
                     ${OC} delete cm -n $namespace $cm --ignore-not-found
                 else
-                    error "Failed to move Licensing configmap $cm to $controlNs"
+                    error "Failed to move Licensing Services ConfigMap $cm to $controlNs"
                 fi
             fi
         fi
     done
+    
     rm tmp.yaml -f
     success "Licensing configmaps copied from $namespace to $controlNs"
 }
