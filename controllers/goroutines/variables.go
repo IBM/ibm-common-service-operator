@@ -16,12 +16,14 @@
 
 package goroutines
 
+import "github.com/IBM/ibm-common-service-operator/controllers/constant"
+
 var (
 	OperatorAPIGroupVersion = "operator.ibm.com/v1"
 
 	SecretShareAPIGroupVersion = "ibmcpcs.ibm.com/v1"
 	SecretShareKind            = "SecretShare"
-	SecretShareCppName         = "ibm-cpp-config"
+	SecretShareCppName         = constant.IBMCPPCONFIG
 
 	IAMSaaSDeployNames = []string{"platform-identity-management", "platform-identity-provider", "platform-auth-service"}
 	IAMDeployNames     = []string{"platform-identity-management", "platform-identity-provider", "platform-auth-service"}
