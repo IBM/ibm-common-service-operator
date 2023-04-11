@@ -287,6 +287,13 @@ function refresh_zen(){
         return_value=$(${OC} get zenservice -n ${namespace} || echo "fail")
         if [[ $return_value != "fail" ]]; then
             if [[ $return_value != "" ]]; then
+                #need to delete the iam config job and zenclient again
+                return_value=$(${OC} get job -n ${namespace} | grep iam-config-job || echo "fail")
+                if [[ $return_value != "fail" ]]; then
+                    ${OC} delete job iam-config-job -n ${namespace}
+                else
+                    info "iam-config-job not present in namespace ${namespace}. Moving on..."
+                fi
                 zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
                 conversionField=$("${OC}" get zenservice ${zenServiceCR} -n ${namespace} -o yaml | yq '.spec | has("conversion")')
                 if [[ $conversionField == "false" ]]; then
@@ -310,6 +317,13 @@ function refresh_zen(){
         return_value=$(${OC} get zenservice -n ${namespace} || echo "fail")
         if [[ $return_value != "fail" ]]; then
             if [[ $return_value != "" ]]; then
+                #need to delete the iam config job and zenclient again
+                return_value=$(${OC} get job -n ${namespace} | grep iam-config-job || echo "fail")
+                if [[ $return_value != "fail" ]]; then
+                    ${OC} delete job iam-config-job -n ${namespace}
+                else
+                    info "iam-config-job not present in namespace ${namespace}. Moving on..."
+                fi
                 zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
                 conversionField=$(${OC} get zenservice ${zenServiceCR} -n ${namespace} -o yaml | yq '.spec | has("conversion")')
                 if [[ $conversionField == "true" ]]; then
@@ -329,7 +343,35 @@ function refresh_zen(){
     success "Reconcile loop initiated for Zenservice instances"
 }
 
-function refresh_kafka (){
+function run_iam_jobs() {
+    local cs_namespace=$1
+    title " Running IAM jobs for new zen client "
+    msg "-----------------------------------------------------------------------"
+    
+    local name="oidc-client-registration"
+    local retries=10
+    local sleep_time=15
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for ${name} job to complete"
+    local success_message="Job ${name} completed"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for ${name} job to complete "
+    
+    #this command restarts the oidc-client-registration job
+    ${OC} get job ${name} -n $cs_namespace -o yaml |yq 'del(.spec.selector)' |yq 'del(.spec.template.metadata.labels)'| ${OC} replace --force -f -
+    local condition="${OC} -n ${cs_namespace} get job ${name} -o jsonpath='{.spec.completions}'| grep '1' || true"
+    #wait for oidc client registration job to complete
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+
+    #do the same for iam-onboarding job
+    local name="iam-onboarding"
+    ${OC} get job ${name} -n $cs_namespace -o yaml |yq 'del(.spec.selector)' |yq 'del(.spec.template.metadata.labels)'| ${OC} replace --force -f -
+    local condition="${OC} -n ${cs_namespace} get job ${name} -o jsonpath='{.spec.completions}'| grep "1" || true"
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+
+    success "New zen client registered with IAM"
+}
+
+function refresh_kafka () {
     return_value=$(${OC} get kafkaclaim -A || echo fail)
     if [[ $return_value != "fail" ]]; then
         title " Refreshing Kafka Deployments "
