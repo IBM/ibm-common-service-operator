@@ -23,11 +23,11 @@ set -o nounset
 OC=oc
 YQ=yq
 master_ns=
-requestedNS=
-excludedNS=
-excludedRaw=""
-insertRaw=""
-mapToCSNS=
+requested_ns=
+excluded_ns=
+excluded_raw=""
+insert_raw=""
+map_to_cs_ns=
 OPERATOR_NS=""
 SERVICES_NS=""
 TETHERED_NS=""
@@ -51,11 +51,11 @@ function main () {
             shift
             ;;
         "--excluded-ns")
-            excludedRaw=$2
+            excluded_raw=$2
             shift
             ;;
         "--insert-ns")
-            insertRaw=$2
+            insert_raw=$2
             shift
             ;;
         "--control-ns")
@@ -121,13 +121,13 @@ function gather_csmaps_ns() {
         IFS=',' read -a nsFromCM <<< "$namespaces"
     fi
     #remove excluded from namespaces
-    if [[ $excludedRaw != "" ]]; then
-        IFS=',' read -a excludedNS <<< "$excludedRaw"
+    if [[ $excluded_raw != "" ]]; then
+        IFS=',' read -a excluded_ns <<< "$excluded_raw"
         #this is very ugly but very consistent and these lists should not be too long anyway
         for ns in ${nsFromCM[@]}
         do
             skip=0
-            for exns in ${excludedNS[@]}
+            for exns in ${excluded_ns[@]}
             do
                 if [[ $ns == $exns ]]; then
                     skip=1
@@ -159,8 +159,8 @@ function gather_csmaps_ns() {
             fi
         done
     fi
-    if [[ $insertRaw != "" ]]; then
-        IFS=',' read -a insertNS <<< "$insertRaw"
+    if [[ $insert_raw != "" ]]; then
+        IFS=',' read -a insertNS <<< "$insert_raw"
         for ns in ${insertNS[@]}
         do
             if [[ $TETHERED_NS == "" ]]; then
@@ -176,8 +176,8 @@ function gather_csmaps_ns() {
 
     OPERATOR_NS=$master_ns
     SERVICES_NS=$master_ns
-    requestedNS=$TETHERED_NS
-    info "common-service-maps namespaces: $requestedNS"
+    requested_ns=$TETHERED_NS
+    info "common-service-maps namespaces: $requested_ns"
 }
 
 function construct_mapping() {
@@ -306,9 +306,9 @@ function prereq() {
     return_value="reset"
 
     #this command gets all of the ns listed in requested from namesapce fields
-    requestedNS=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].requested-from-namespace' | awk '{print $2}')
+    requested_ns=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].requested-from-namespace' | awk '{print $2}')
     #this command gets all of the ns listed in map-to-common-service-namespace
-    mapToCSNS=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].map-to-common-service-namespace' | awk '{print}')
+    map_to_cs_ns=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].map-to-common-service-namespace' | awk '{print}')
 
     # LicenseServiceReporter should not be installed because it does not support multi-instance mode
     return_value=$(("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
@@ -326,6 +326,7 @@ function prereq() {
     fi
     check_cm_ns_exist
 }
+
 function pause() {
     title "Pausing Common Services in namespace $master_ns"
     msg "-----------------------------------------------------------------------"
@@ -334,7 +335,7 @@ function pause() {
     ${OC} delete operandregistry -n ${master_ns} --ignore-not-found common-service 
     ${OC} delete operandconfig -n ${master_ns} --ignore-not-found common-service
     
-    cleanupCSOperators # only updates cs operators in requestedNS list passed in as parameter to script
+    cleanupCSOperators # only updates cs operators in requested_ns list passed in as parameter to script
     removeNSS
     success "Common Services successfully isolated in namespace ${master_ns}"
 }
@@ -376,15 +377,15 @@ function restart() {
     ${OC} scale deployment -n ${master_ns} ibm-common-service-operator --replicas=1
     ${OC} scale deployment -n ${master_ns} operand-deployment-lifecycle-manager --replicas=1
     check_CSCR "$master_ns"
-    if [[ $master_ns != $mapToCSNS ]]; then
-        check_CSCR "$mapToCSNS"
+    if [[ $master_ns != $map_to_cs_ns ]]; then
+        check_CSCR "$map_to_cs_ns"
     fi
     success "Common Service Operator restarted."
 }
 function check_cm_ns_exist(){
     title " Verify all namespaces exist "
     msg "-----------------------------------------------------------------------"
-    local namespaces="$requestedNS $mapToCSNS"
+    local namespaces="$requested_ns $map_to_cs_ns"
     for ns in $namespaces
     do
         info "Creating namespace $ns"
@@ -397,7 +398,7 @@ function cleanupCSOperators(){
     msg "-----------------------------------------------------------------------"   
     catalog_source=$(${OC} get sub ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.source")
     info "catalog_source:${catalog_source}" 
-    for namespace in $requestedNS #may need to rethink this variable, maybe Tetheredns?
+    for namespace in $requested_ns #may need to rethink this variable, maybe Tetheredns?
     do
         # remove cs namespace from zen service cr
         return_value=$(${OC} get sub -n ${namespace} | (grep ibm-common-service-operator || echo "fail"))
