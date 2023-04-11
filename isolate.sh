@@ -298,13 +298,6 @@ function prereq() {
     fi
     return_value="reset"
 
-    CONTROL_NS=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data' | grep controlNamespace: | awk '{print $2}')
-    return_value=$("${OC}" get ns "${CONTROL_NS}" > /dev/null || echo failed)
-    if [[ $return_value == "failed" ]]; then
-        error "The namespace specified in controlNamespace does not exist. This namespace must be created before proceeding."
-    fi
-    return_value="reset"
-
     #this command gets all of the ns listed in requested from namesapce fields
     requested_ns=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].requested-from-namespace' | awk '{print $2}')
     #this command gets all of the ns listed in map-to-common-service-namespace
@@ -388,7 +381,7 @@ function restart() {
 function check_cm_ns_exist(){
     title " Verify all namespaces exist "
     msg "-----------------------------------------------------------------------"
-    local namespaces="$requested_ns $map_to_cs_ns"
+    local namespaces="$requested_ns $map_to_cs_ns $CONTROL_NS"
     for ns in $namespaces
     do
         info "Creating namespace $ns"
