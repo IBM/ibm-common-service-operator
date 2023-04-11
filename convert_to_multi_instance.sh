@@ -25,8 +25,8 @@ YQ=yq
 
 cs_operator_channel=
 catalog_source=
-requestedNS=
-mapToCSNS=
+requested_ns=
+map_to_cs_ns=
 master_ns=$1
 cm_name="common-service-maps"
     
@@ -67,8 +67,8 @@ function prereq() {
     fi
     return_value="reset"
 
-    controlNs=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data' | grep controlNamespace: | awk '{print $2}')
-    return_value=$("${OC}" get ns "${controlNs}" > /dev/null || echo failed)
+    control_ns=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data' | grep controlNamespace: | awk '{print $2}')
+    return_value=$("${OC}" get ns "${control_ns}" > /dev/null || echo failed)
     if [[ $return_value == "failed" ]]; then
         error "The namespace specified in controlNamespace does not exist. This namespace must be created before proceeding."
     fi
@@ -120,7 +120,7 @@ function prepare_cluster() {
     # This makes recovery from simple pre-requisite errors easier.
     return_value=$(("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
     if [[ $return_value == "exists" ]]; then
-        migrate_lic_cms $master_ns $controlNs
+        migrate_lic_cms $master_ns $control_ns
         "${OC}" delete -n "${master_ns}" --ignore-not-found ibmlicensing instance
     fi
     return_value="reset"
@@ -144,7 +144,7 @@ function migrate_lic_cms() {
     title "Copying over Licensing Configmaps"
     msg "-----------------------------------------------------------------------"
     local namespace=$1
-    local controlNs=$2
+    local control_ns=$2
     POSSIBLE_CONFIGMAPS=("ibm-licensing-config"
 "ibm-licensing-annotations"
 "ibm-licensing-products"
@@ -165,15 +165,15 @@ function migrate_lic_cms() {
         if [[ $return_value != "fail" ]]; then
             if [[ $return_value == $cm ]]; then
                 ${OC} get cm -n $namespace $cm -o yaml --ignore-not-found > tmp.yaml
-                #edit the file to change the namespace to controlNs
-                yq -i '.metadata.namespace = "'${controlNs}'"' tmp.yaml
+                #edit the file to change the namespace to control_ns
+                yq -i '.metadata.namespace = "'${control_ns}'"' tmp.yaml
                 ${OC} apply -f tmp.yaml
-                info "Licensing configmap $cm copied from $namespace to $controlNs"
+                info "Licensing configmap $cm copied from $namespace to $control_ns"
             fi
         fi
     done
     rm tmp.yaml -f
-    success "Licensing configmaps copied from $namespace to $controlNs"
+    success "Licensing configmaps copied from $namespace to $control_ns"
 }
 
 # scale back cs pod 
@@ -195,9 +195,9 @@ function collect_data() {
     info "catalog_source:${catalog_source}" 
 
     #this command gets all of the ns listed in requested from namesapce fields
-    requestedNS=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].requested-from-namespace' | awk '{print $2}')
+    requested_ns=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].requested-from-namespace' | awk '{print $2}')
     #this command gets all of the ns listed in map-to-common-service-namespace
-    mapToCSNS=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].map-to-common-service-namespace' | awk '{print}')
+    map_to_cs_ns=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].map-to-common-service-namespace' | awk '{print}')
     
 }
 
@@ -206,7 +206,7 @@ function restart_CS_pods() {
     title "restarting ibm-common-service-operator pod"
     msg "-----------------------------------------------------------------------"
     
-    local namespaces="$requestedNS $mapToCSNS"
+    local namespaces="$requested_ns $map_to_cs_ns"
     for namespace in $namespaces
     do
         cs_pod=$(${OC} get pod -n $namespace | (grep ibm-common-service-operator || echo fail) | awk '{print $1}')
@@ -223,14 +223,14 @@ function install_new_CS() {
     title "install new instances of CS based on cs mapping configmap"
     msg "-----------------------------------------------------------------------"
 
-    for namespace in $requestedNS
+    for namespace in $requested_ns
     do
         info "In_CloudpakNS:${namespace}"
         create_operator_group "${namespace}"
         install_common_service_operator_sub "${namespace}"
     done
 
-    for namespace in $mapToCSNS
+    for namespace in $map_to_cs_ns
     do
         info "In_CommonServiceNS:${namespace}"
         create_operator_group "${namespace}"
@@ -244,7 +244,7 @@ function install_new_CS() {
 # wait for new cs to be ready
 function check_IAM(){
     sleep 10
-    for namespace in $mapToCSNS
+    for namespace in $map_to_cs_ns
     do
         retries=40
         sleep_time=30
@@ -281,7 +281,7 @@ function refresh_zen(){
     #make sure IAM is ready before reconciling.
     check_IAM #this will likely need to change in the future depending on how we check iam status
  
-    for namespace in $requestedNS
+    for namespace in $requested_ns
     do
         # remove cs namespace from zen service cr
         return_value=$(${OC} get zenservice -n ${namespace} || echo "fail")
@@ -304,7 +304,7 @@ function refresh_zen(){
         return_value=""
     done
     
-    for namespace in $mapToCSNS
+    for namespace in $map_to_cs_ns
     do
         # remove cs namespace from zen service cr
         return_value=$(${OC} get zenservice -n ${namespace} || echo "fail")
@@ -334,7 +334,7 @@ function refresh_kafka (){
     if [[ $return_value != "fail" ]]; then
         title " Refreshing Kafka Deployments "
         msg "-----------------------------------------------------------------------"
-        local namespaces="$requestedNS $mapToCSNS"
+        local namespaces="$requested_ns $map_to_cs_ns"
         for namespace in $namespaces
         do
             # remove cs namespace from zen service cr
@@ -369,7 +369,7 @@ function refresh_kafka (){
 function cleanupCSOperators(){
     title "Checking subs of Common Service Operator in Cloudpak Namespaces"
     msg "-----------------------------------------------------------------------"
-    for namespace in $requestedNS
+    for namespace in $requested_ns
     do
         # remove cs namespace from zen service cr
         return_value=$(${OC} get sub -n ${namespace} | (grep ibm-common-service-operator || echo "fail"))
@@ -486,7 +486,7 @@ function cleanupZenService(){
     title " Cleaning up Zen installation "
     msg "-----------------------------------------------------------------------"
 
-    for namespace in $requestedNS
+    for namespace in $requested_ns
     do
         # remove cs namespace from zen service cr
         return_value=$(${OC} get zenservice -n ${namespace} || echo "fail")
@@ -526,7 +526,7 @@ function cleanupZenService(){
         return_value=""
     done
     
-    for namespace in $mapToCSNS
+    for namespace in $map_to_cs_ns
     do
         # remove cs namespace from zen service cr
         return_value=$(${OC} get zenservice -n ${namespace} || echo "fail")
@@ -606,12 +606,12 @@ function check_cm_ns_exist(){
     title " Verify all namespaces exist "
     msg "-----------------------------------------------------------------------"
 
-    for ns in $requestedNS
+    for ns in $requested_ns
     do
         info "Creating namespace $ns"
         ${OC} create namespace $ns || info "$ns already exists, skipping..."
     done
-    for ns in $mapToCSNS
+    for ns in $map_to_cs_ns
     do
         info "Creating namespace $ns"
         ${OC} create namespace $ns || info "$ns already exists, skipping..."
@@ -645,7 +645,7 @@ function removeNSS(){
         info "Namespace Scope CR \"odlm-scope-managedby-odlm\" not present. Moving on..."
     fi
 
-    for namespace in $mapToCSNS
+    for namespace in $map_to_cs_ns
     do
         ${OC} delete nss common-service -n $namespace --ignore-not-found 
         ${OC} delete nss nss-odlm-scope -n $namespace --ignore-not-found
@@ -755,11 +755,11 @@ function check_topology() {
             fi
         fi
     done <<<$(${OC} get cm $cm_name -o yaml -n kube-public | yq '.data[]' | yq '.namespaceMapping[]')
-    requestedNS="$activeRequestedFrom"
-    mapToCSNS="$activeMapTo"
-    echo "requested: $requestedNS"
-    echo "mapTo: $mapToCSNS"
-    if [[ $requestedNS == "" ]] && [[ $mapToCSNS == "" ]]; then
+    requested_ns="$activeRequestedFrom"
+    map_to_cs_ns="$activeMapTo"
+    echo "requested: $requested_ns"
+    echo "mapTo: $map_to_cs_ns"
+    if [[ $requested_ns == "" ]] && [[ $map_to_cs_ns == "" ]]; then
         success "No difference in topology detected."
         error "Please update common-service-maps configmap in kube-public and run again."
     fi
