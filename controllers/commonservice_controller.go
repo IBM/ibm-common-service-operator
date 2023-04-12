@@ -128,12 +128,6 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 			return ctrl.Result{}, err
 		}
 	}
-	// Reconcile the webhooks if it is ocp
-	if r.Bootstrap.CSData.IsOCP {
-		if err := webhooks.Config.Reconcile(context.TODO(), r.Client, instance); err != nil {
-			return ctrl.Result{}, err
-		}
-	}
 
 	// Init common service bootstrap resource
 	// Including namespace-scope configmap
@@ -162,6 +156,18 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 		return ctrl.Result{}, err
 	}
+
+	if err := r.Bootstrap.WaitForCASecret(); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// Reconcile the webhooks if it is ocp
+	if r.Bootstrap.CSData.IsOCP {
+		if err := webhooks.Config.Reconcile(context.TODO(), r.Client, r.Reader, instance); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
 	newConfigs, serviceControllerMapping, err := r.getNewConfigs(cs, true)
 	if err != nil {
 		if err := r.updatePhase(ctx, instance, CRFailed); err != nil {

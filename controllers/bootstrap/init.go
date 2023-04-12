@@ -1184,3 +1184,21 @@ func IdentifyCPFSNs(r client.Reader, operatorNs string) (string, error) {
 	}
 	return string(cpfsNs), nil
 }
+
+func (b *Bootstrap) WaitForCASecret() error {
+	secret := &corev1.Secret{}
+
+	if err := utilwait.PollImmediateInfinite(time.Second*10, func() (done bool, err error) {
+		if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: "cs-ca-certificate-secret", Namespace: b.CSData.ServicesNs}, secret); err != nil {
+			if errors.IsNotFound(err) {
+				klog.V(2).Infof("waiting for cs-ca-certificate-secret be ready")
+				return false, nil
+			}
+			return false, err
+		}
+		return true, nil
+	}); err != nil {
+		return err
+	}
+	return nil
+}

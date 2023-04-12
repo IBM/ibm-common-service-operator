@@ -151,7 +151,7 @@ func (webhookConfig *CSWebhookConfig) SetupServer(mgr manager.Manager, namespace
 // It reconciles a Service that exposes the webhook server
 // A ownerRef to the owner parameter is set on the reconciled resources. This
 // parameter is optional, if `nil` is passed, no ownerReference will be set
-func (webhookConfig *CSWebhookConfig) Reconcile(ctx context.Context, client k8sclient.Client, owner ownerutil.Owner) error {
+func (webhookConfig *CSWebhookConfig) Reconcile(ctx context.Context, client k8sclient.Client, reader k8sclient.Reader, owner ownerutil.Owner) error {
 
 	namespace, err := common.GetOperatorNamespace()
 	if err != nil {
@@ -163,31 +163,31 @@ func (webhookConfig *CSWebhookConfig) Reconcile(ctx context.Context, client k8sc
 		return err
 	}
 
-	// Create (if it doesn't exist) the config map where the CA certificate is
-	// injected
-	caConfigMap := &corev1.ConfigMap{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      webhookConfig.CAConfigMap,
-			Namespace: namespace,
-			Annotations: map[string]string{
-				caConfigMapAnnotation: "true",
-			},
-		},
-	}
+	// // Create (if it doesn't exist) the config map where the CA certificate is
+	// // injected
+	// caConfigMap := &corev1.ConfigMap{
+	// 	ObjectMeta: v1.ObjectMeta{
+	// 		Name:      webhookConfig.CAConfigMap,
+	// 		Namespace: namespace,
+	// 		Annotations: map[string]string{
+	// 			caConfigMapAnnotation: "true",
+	// 		},
+	// 	},
+	// }
 
-	klog.Info("Creating common service webhook CA ConfigMap")
-	err = client.Create(ctx, caConfigMap)
-	if err != nil && !errors.IsAlreadyExists(err) {
-		klog.Error(err)
-		return err
-	}
+	// klog.Info("Creating common service webhook CA ConfigMap")
+	// err = client.Create(ctx, caConfigMap)
+	// if err != nil && !errors.IsAlreadyExists(err) {
+	// 	klog.Error(err)
+	// 	return err
+	// }
 
-	// Wait for the config map to be injected with the CA
-	caBundle, err := webhookConfig.waitForCAInConfigMap(ctx, client, namespace)
-	if err != nil {
-		klog.Error(err)
-		return err
-	}
+	// // Wait for the config map to be injected with the CA
+	// caBundle, err := webhookConfig.waitForCAInConfigMap(ctx, client, namespace)
+	// if err != nil {
+	// 	klog.Error(err)
+	// 	return err
+	// }
 
 	// Reconcile the webhooks
 	for _, webhook := range webhookConfig.Webhooks {
@@ -201,7 +201,7 @@ func (webhookConfig *CSWebhookConfig) Reconcile(ctx context.Context, client k8sc
 		reconciler.SetRule(webhook.Rule)
 		reconciler.SetNsSelector(webhook.NsSelector)
 		klog.Infof("Reconciling webhook %s", webhook.Name)
-		if err := reconciler.Reconcile(ctx, client, caBundle); err != nil {
+		if err := reconciler.Reconcile(ctx, client, reader); err != nil {
 			return err
 		}
 	}
@@ -280,6 +280,7 @@ func (webhookConfig *CSWebhookConfig) setupCerts(ctx context.Context, client k8s
 	// Wait for the secret to te created
 	secret := &corev1.Secret{}
 	err := wait.PollImmediate(time.Second*1, time.Second*30, func() (bool, error) {
+		// it should be cs-ca-certificate-secret
 		err := client.Get(ctx, k8sclient.ObjectKey{Namespace: namespace, Name: caCertSecretName}, secret)
 		if err != nil {
 			if errors.IsNotFound(err) {
