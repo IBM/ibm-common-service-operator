@@ -410,7 +410,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
-  - channel: v2.2
+  - channel: v3.2
     name: ibm-db2u-operator
     namespace: "{{ .MasterNs }}"
     packageName: db2u-operator
