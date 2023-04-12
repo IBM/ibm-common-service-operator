@@ -71,11 +71,11 @@ function main() {
         arguments+=" --enable-private-catalog"
     fi
 
-    argument+=" --cert-manager-source $CERT_MANAGER_SOURCE"
-    argument+=" --licensing-source $LICENSING_SOURCE"
-    argument+=" -c $CHANNEL"
-    argument+=" -cmNs $CERT_MANAGER_NAMESPACE"
-    argument+=" -licensingNs $LICENSING_NAMESPACE" 
+    arguments+=" --cert-manager-source $CERT_MANAGER_SOURCE"
+    arguments+=" --licensing-source $LICENSING_SOURCE"
+    arguments+=" -c $CHANNEL"
+    arguments+=" -cmNs $CERT_MANAGER_NAMESPACE"
+    arguments+=" -licensingNs $LICENSING_NAMESPACE" 
 
     # Install New CertManager and Licensing, supporting new CatalogSource
     ${BASE_DIR}/setup_singleton.sh "$arguments"
