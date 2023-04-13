@@ -21,7 +21,8 @@ var (
 	CertManagerAPIGroupVersionV1       = "cert-manager.io/v1"
 	CertManagerKinds                   = []string{"Issuer", "Certificate"}
 	CertManagerIssuers                 = []string{CSSSIssuer, CSCAIssuer}
-	CertManagerCerts                   = []string{CSCACert, CSWebhookCert}
+	CertManagerCerts                   = []string{CSCACert}
+	WebhookCert                        = []string{CSWebhookCert}
 )
 
 // CSCAIssuer is the CR of cs-ca-issuer
@@ -96,7 +97,7 @@ metadata:
 spec:
   secretName: cs-webhook-cert-secret
   dnsNames:
-  - ibm-common-service-webhook.openshift-operators.svc
+  - ibm-common-service-webhook.OPERATOR_NS.svc
   issuerRef:
     name: cs-ca-issuer
     kind: Issuer

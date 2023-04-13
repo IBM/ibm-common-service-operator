@@ -1020,6 +1020,14 @@ func (b *Bootstrap) DeployCertManagerCR() error {
 			return err
 		}
 	}
+
+	for _, cr := range constant.WebhookCert {
+		resource := util.Namespacelize(cr, "OPERATOR_NS", b.CSData.OperatorNs)
+		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(resource, placeholder, b.CSData.ServicesNs))); err != nil {
+			return err
+		}
+	}
+
 	if deployRootCert {
 		for _, cr := range constant.CertManagerCerts {
 			if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.ServicesNs))); err != nil {
