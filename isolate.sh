@@ -140,8 +140,8 @@ function abort_check() {
     #     cs_LTSR_version=$("${OC}" get csv -n ${master_ns} | grep common-service-operator | grep 3.19 || echo fail)
     #     if [[ $cs_LTSR_version != "fail" ]]; then
     #         version=$(${OC} get csv -n ${master_ns} | grep common-service-operator | awk '{print $7}')
-    #         IFS='.' read -a z_version <<< "$version"
-    #         if [[ $z_version -lt 9 ]]; then
+    #         IFS='.' read -a z_version <<< "$version" #this does not work
+    #         if [[ $z_version[2] -lt 9 ]]; then #this does not work
     #             error "Foundational Services installation does not meet the minimum version requirement. Upgrade to either 3.20+ or 3.19.9+"
     #         fi
     #     else
@@ -190,9 +190,11 @@ function gather_csmaps_ns() {
             fi
         done
     else
+        echo "excluded empty"
+        echo "ns from cm $nsFromCM"
         for ns in ${nsFromCM[@]}
         do
-            if [[ $TETHERED_NS != $master_ns ]]; then
+            if [[ $ns != $master_ns ]]; then
                 if [[ $TETHERED_NS == "" ]]; then
                     TETHERED_NS="$ns"
                 else
