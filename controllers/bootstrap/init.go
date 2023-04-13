@@ -969,17 +969,25 @@ func (b *Bootstrap) IsBYOCert() (bool, error) {
 		}
 		return false, nil
 	}
-	certName := "cs-ca-certificate"
-	cert := &certmanagerv1.Certificate{}
-	certerr := b.Client.Get(context.TODO(), types.NamespacedName{Name: certName, Namespace: b.CSData.ServicesNs}, cert)
-	if certerr != nil {
-		if errors.IsNotFound(certerr) {
-			return true, nil
-		}
+
+	certList := &certmanagerv1.CertificateList{}
+	opts := []client.ListOption{
+		client.InNamespace(b.CSData.ServicesNs),
+		client.MatchingLabels(
+			map[string]string{"app.kubernetes.io/instance": "cs-ca-certificate"}),
+	}
+	if certerr := b.Reader.List(ctx, certList, opts...); err != nil {
 		return false, certerr
 	}
 
-	return false, nil
+	if len(certList.Items) == 0 {
+		return true, nil
+	} else if len(certList.Items) == 1 {
+		klog.V(2).Infof("found cs-ca-certificate, it is not BYOCertificate")
+		return false, nil
+	} else {
+		return false, fmt.Errorf("found more than one cs-ca-certificate in namespace: %v, skip this", b.CSData.ServicesNs)
+	}
 }
 
 func (b *Bootstrap) DeployCertManagerCR(isBYOC bool) error {
