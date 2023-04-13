@@ -100,7 +100,7 @@ var Config *CSWebhookConfig = &CSWebhookConfig{
 // SetupServer sets up the webhook server managed by mgr with the settings from
 // webhookConfig. It sets the port and cert dir based on the settings and
 // registers the Validator implementations from each webhook from webhookConfig.Webhooks
-func (webhookConfig *CSWebhookConfig) SetupServer(mgr manager.Manager, namespace string) error {
+func (webhookConfig *CSWebhookConfig) SetupServer(mgr manager.Manager, namespace string, serviceNamespace string) error {
 	// Create a new client to reconcile the Service. `mgr.GetClient()` can't
 	// be used as it relies on the cache that hasn't been initialized yet
 	client, err := k8sclient.New(mgr.GetConfig(), k8sclient.Options{
@@ -115,7 +115,7 @@ func (webhookConfig *CSWebhookConfig) SetupServer(mgr manager.Manager, namespace
 		return err
 	}
 	// Get the secret with the certificates for the service
-	if err := webhookConfig.setupCerts(context.TODO(), client, namespace); err != nil {
+	if err := webhookConfig.setupCerts(context.TODO(), client, serviceNamespace); err != nil {
 		return err
 	}
 
@@ -249,7 +249,6 @@ func createService(ctx context.Context, client k8sclient.Client, owner ownerutil
 		if service.Annotations == nil {
 			service.Annotations = map[string]string{}
 		}
-		service.Annotations[caServiceAnnotation] = caCertSecretName
 		service.Spec.ClusterIP = "None"
 		service.Spec.Selector = map[string]string{
 			"name": constant.IBMCSPackage,
@@ -272,12 +271,12 @@ func createService(ctx context.Context, client k8sclient.Client, owner ownerutil
 
 // setupCerts waits for the secret created for the operator Service to exist, and
 // when it's ready, extracts the certificates and saves them in webhookConfig.CertDir
-func (webhookConfig *CSWebhookConfig) setupCerts(ctx context.Context, client k8sclient.Client, namespace string) error {
+func (webhookConfig *CSWebhookConfig) setupCerts(ctx context.Context, client k8sclient.Client, serviceNamespace string) error {
 	// Wait for the secret to te created
 	secret := &corev1.Secret{}
 	err := wait.PollImmediate(time.Second*1, time.Second*30, func() (bool, error) {
 		// it should be cs-ca-certificate-secret
-		err := client.Get(ctx, k8sclient.ObjectKey{Namespace: namespace, Name: caCertSecretName}, secret)
+		err := client.Get(ctx, k8sclient.ObjectKey{Namespace: serviceNamespace, Name: caCertSecretName}, secret)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return false, nil
