@@ -80,7 +80,7 @@ const (
 	caConfigMap            = "ibm-cs-operator-webhook-ca"
 	caConfigMapAnnotation  = "service.beta.openshift.io/inject-cabundle"
 	caServiceAnnotation    = "service.beta.openshift.io/serving-cert-secret-name"
-	caCertSecretName       = "cs-webhook-cert"
+	caCertSecretName       = "cs-webhook-cert-secret"
 )
 
 // Config is a global instance. The same instance is needed in order to use the
