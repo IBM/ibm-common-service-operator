@@ -135,19 +135,19 @@ function abort_check() {
         error "Existing value for map-to-common-service-namespace in common-service-maps configmap not equal to argument passed as --original-cs-ns. Exiting..."
     fi
 
-    # local cs_version=$("${OC}" get csv -n ${master_ns} | grep common-service-operator | grep 3.2 || echo fail)
-    # if [[ $cs_version == "fail" ]]; then
-    #     cs_LTSR_version=$("${OC}" get csv -n ${master_ns} | grep common-service-operator | grep 3.19 || echo fail)
-    #     if [[ $cs_LTSR_version != "fail" ]]; then
-    #         version=$(${OC} get csv -n ${master_ns} | grep common-service-operator | awk '{print $7}')
-    #         IFS='.' read -a z_version <<< "$version" #this does not work
-    #         if [[ $z_version[2] -lt 9 ]]; then #this does not work
-    #             error "Foundational Services installation does not meet the minimum version requirement. Upgrade to either 3.20+ or 3.19.9+"
-    #         fi
-    #     else
-    #         error "Foundational Services installation does not meet the minimum version requirement. Upgrade to either 3.20+ or 3.19.9+"
-    #     fi
-    # fi
+    local cs_version=$("${OC}" get csv -n ${master_ns} | grep common-service-operator | grep 3.2 || echo fail)
+    if [[ $cs_version == "fail" ]]; then
+        cs_LTSR_version=$("${OC}" get csv -n ${master_ns} | grep common-service-operator | grep 3.19 || echo fail)
+        if [[ $cs_LTSR_version != "fail" ]]; then
+            version=$(${OC} get csv -n ${master_ns} | grep common-service-operator | awk '{print $7}')
+            IFS='.' read -a z_version <<< "$version"
+            if [[ $((${z_version[2]})) -lt 9 ]]; then 
+                error "Foundational Services installation does not meet the minimum version requirement. Upgrade to either 3.20+ or 3.19.9+"
+            fi
+        else
+            error "Foundational Services installation does not meet the minimum version requirement. Upgrade to either 3.20+ or 3.19.9+"
+        fi
+    fi
 }
 
 function gather_csmaps_ns() {
