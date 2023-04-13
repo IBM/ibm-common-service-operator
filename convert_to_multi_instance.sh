@@ -35,13 +35,14 @@ function main() {
     prereq
     collect_data
     check_topology
-    # prepare_cluster
-    # isolate_odlm "ibm-odlm" $master_ns
-    # scale_up_pod
-    # restart_CS_pods
-    # install_new_CS
-    # refresh_zen
-    # refresh_kafka
+    check_cm_ns_exist
+    prepare_cluster
+    isolate_odlm "ibm-odlm" $master_ns
+    scale_up_pod
+    restart_CS_pods
+    install_new_CS
+    refresh_zen
+    refresh_kafka
 }
 
 
@@ -89,10 +90,6 @@ function prereq() {
     if [[ $return_value != "pass" ]]; then
         error "The ibm-common-service-operator must not be installed in AllNamespaces mode"
     fi
-
-    # each namespace should be in configmap
-    # all namespaces in configmap should exist
-    check_cm_ns_exist
 }
 
 function prepare_cluster() {
@@ -343,6 +340,9 @@ function refresh_zen(){
     success "Reconcile loop initiated for Zenservice instances"
 }
 
+#if this needs to be run after zen has had a chance to reconcile, when do we call it?
+#it can take 45 minutes for zen to reconcile, should the script really be waiting that long?
+#should this be a zen responsibility?
 function run_iam_jobs() {
     local cs_namespace=$1
     title " Running IAM jobs for new zen client "
@@ -419,6 +419,7 @@ function cleanupCSOperators(){
             local sub=$(${OC} get sub -n ${namespace} | grep ibm-common-service-operator | awk '{print $1}')
             ${OC} get sub ${sub} -n ${namespace} -o yaml > tmp.yaml 
             ${YQ} -i '.spec.source = "'${catalog_source}'"' tmp.yaml || error "Could not replace catalog source for CS operator in namespace ${namespace}"
+            ${OC} delete sub ${sub} -n ${namespace}
             ${OC} apply -f tmp.yaml
             info "Common Service Operator Subscription in namespace ${namespace} updated to use catalog source ${catalog_source}"
         else
@@ -749,38 +750,13 @@ function check_topology() {
                 allPresent="true"
             fi
             leftover=""
-            #need to make sure this works on both ends, both ns missing from either ns need to be included
-            #may be better to make this its own function
-            # for CMns in "${nsFromCM[@]}"
-            # do
-            #     skip=0
-            #     for NSSns in "${nsFromNSS[@]}"
-            #     do
-            #         if [[ $CMns == $NSSns ]]; then
-            #             skip=1
-            #             break
-            #         fi
-            #     done
-            #     if [[ $skip != 1 ]]; then
-            #         if [[ $leftover == "" ]]; then
-            #             leftover="$CMns"
-            #         else
-            #             leftover="$leftover $CMns"
-            #         fi
-            #     fi
-            # done
             leftover=$(echo $nsFromCM $nsFromNSS | tr ' ' '\n' | sort | uniq -u | tr '\n' ' ')
             #if there are no differences between the two lists, the variable is unset.
             #check for unset, if it is, then the grouping doesn't need to be changed anyway
-            echo "ns from cm: $nsFromCM"
-            echo "ns from nss: $nsFromNSS"
-            echo "leftover $leftover"
-            echo "cs ns: $csNamespace"
             if [[ -z ${leftover:-} ]]; then
                 echo "empty leftover"
                 leftover=""
             fi
-            #try removing whitespace from leftover variable, this variable does not get assigned to anything so just need tto check if empty or equal to csNamespace
             leftover=${leftover%%[[:space:]]}
             if [[ "$leftover" == "$csNamespace" ]] || [[ $leftover == "" ]]; then
                 allPresent="true"
@@ -841,7 +817,7 @@ function check_odlm_env() {
     local sleep_time=12
     local total_time_mins=$(( sleep_time * retries / 60))
     local wait_message="Waiting for OLM to update Deployment ${name} "
-    local success_message="Deployment ${name} is updated"
+    local success_message="Deployment ${name} is updated to run in isolated mode"
     local error_message="Timeout after ${total_time_mins} minutes waiting for OLM to update Deployment ${name} "
 
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
@@ -903,4 +879,3 @@ function info() {
 # --- Run ---
 
 main $*
-
