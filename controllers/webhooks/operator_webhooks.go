@@ -100,7 +100,7 @@ var Config *CSWebhookConfig = &CSWebhookConfig{
 // SetupServer sets up the webhook server managed by mgr with the settings from
 // webhookConfig. It sets the port and cert dir based on the settings and
 // registers the Validator implementations from each webhook from webhookConfig.Webhooks
-func (webhookConfig *CSWebhookConfig) SetupServer(mgr manager.Manager, serviceNamespace string) error {
+func (webhookConfig *CSWebhookConfig) SetupServer(mgr manager.Manager, namespace string, serviceNamespace string) error {
 	// Create a new client to reconcile the Service. `mgr.GetClient()` can't
 	// be used as it relies on the cache that hasn't been initialized yet
 	client, err := k8sclient.New(mgr.GetConfig(), k8sclient.Options{
@@ -111,7 +111,7 @@ func (webhookConfig *CSWebhookConfig) SetupServer(mgr manager.Manager, serviceNa
 	}
 
 	// Create the service pointing to the operator pod
-	if err := webhookConfig.ReconcileService(context.TODO(), client, nil, serviceNamespace); err != nil {
+	if err := webhookConfig.ReconcileService(context.TODO(), client, nil, namespace); err != nil {
 		return err
 	}
 	// Get the secret with the certificates for the service
@@ -149,7 +149,10 @@ func (webhookConfig *CSWebhookConfig) SetupServer(mgr manager.Manager, serviceNa
 // parameter is optional, if `nil` is passed, no ownerReference will be set
 func (webhookConfig *CSWebhookConfig) Reconcile(ctx context.Context, client k8sclient.Client, reader k8sclient.Reader, owner ownerutil.Owner) error {
 
-	namespace := common.GetServicesNamespace(reader)
+	namespace, err := common.GetOperatorNamespace()
+	if err != nil {
+		return err
+	}
 
 	// Reconcile the Service
 	if err := webhookConfig.ReconcileService(ctx, client, owner, namespace); err != nil {

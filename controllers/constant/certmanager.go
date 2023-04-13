@@ -96,7 +96,7 @@ metadata:
 spec:
   secretName: cs-webhook-cert-secret
   dnsNames:
-  - ibm-common-service-webhook.placeholder.svc
+  - ibm-common-service-webhook.openshift-operators.svc
   issuerRef:
     name: cs-ca-issuer
     kind: Issuer

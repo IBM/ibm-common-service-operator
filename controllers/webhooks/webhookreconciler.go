@@ -334,7 +334,7 @@ func SetupWebhooks(mgr manager.Manager, bs *bootstrap.Bootstrap) error {
 	}
 
 	klog.Info("setting up webhook server")
-	if err := Config.SetupServer(mgr, bs.CSData.ServicesNs); err != nil {
+	if err := Config.SetupServer(mgr, bs.CSData.OperatorNs, bs.CSData.ServicesNs); err != nil {
 		return err
 	}
 
