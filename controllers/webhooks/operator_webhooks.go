@@ -100,7 +100,7 @@ var Config *CSWebhookConfig = &CSWebhookConfig{
 // SetupServer sets up the webhook server managed by mgr with the settings from
 // webhookConfig. It sets the port and cert dir based on the settings and
 // registers the Validator implementations from each webhook from webhookConfig.Webhooks
-func (webhookConfig *CSWebhookConfig) SetupServer(mgr manager.Manager, namespace string, serviceNamespace string) error {
+func (webhookConfig *CSWebhookConfig) SetupServer(mgr manager.Manager, serviceNamespace string) error {
 	// Create a new client to reconcile the Service. `mgr.GetClient()` can't
 	// be used as it relies on the cache that hasn't been initialized yet
 	client, err := k8sclient.New(mgr.GetConfig(), k8sclient.Options{
@@ -111,7 +111,7 @@ func (webhookConfig *CSWebhookConfig) SetupServer(mgr manager.Manager, namespace
 	}
 
 	// Create the service pointing to the operator pod
-	if err := webhookConfig.ReconcileService(context.TODO(), client, nil, namespace); err != nil {
+	if err := webhookConfig.ReconcileService(context.TODO(), client, nil, serviceNamespace); err != nil {
 		return err
 	}
 	// Get the secret with the certificates for the service
