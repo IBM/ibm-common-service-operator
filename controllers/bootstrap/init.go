@@ -49,6 +49,8 @@ import (
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/controllers/deploy"
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/api/v1alpha1"
+
+	certmanagerv1 "github.com/ibm/ibm-cert-manager-operator/apis/cert-manager/v1"
 )
 
 var (
@@ -955,7 +957,42 @@ func CheckClusterType(mgr manager.Manager, ns string) (bool, error) {
 	}
 }
 
-func (b *Bootstrap) DeployCertManagerCR() error {
+// 1. try to get cs-ca-certificate-secret
+// 2. try to get cs-ca-certificate
+// if we get secret but not get the cert, it is BYOC
+func (b *Bootstrap) IsBYOCert() (bool, error) {
+	klog.V(2).Info("Detect if it is BYO cert")
+	secretName := "cs-ca-ceritifcate-secret"
+	secret := &corev1.Secret{}
+	err := b.Client.Get(context.TODO(), types.NamespacedName{Name: secretName, Namespace: b.CSData.ServicesNs}, secret)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return false, err
+		}
+		return false, nil
+	}
+
+	certList := &certmanagerv1.CertificateList{}
+	opts := []client.ListOption{
+		client.InNamespace(b.CSData.ServicesNs),
+		client.MatchingLabels(
+			map[string]string{"app.kubernetes.io/instance": "cs-ca-certificate"}),
+	}
+	if certerr := b.Reader.List(ctx, certList, opts...); err != nil {
+		return false, certerr
+	}
+
+	if len(certList.Items) == 0 {
+		return true, nil
+	} else if len(certList.Items) == 1 {
+		klog.V(2).Infof("found cs-ca-certificate, it is not BYOCertificate")
+		return false, nil
+	} else {
+		return false, fmt.Errorf("found more than one cs-ca-certificate in namespace: %v, skip this", b.CSData.ServicesNs)
+	}
+}
+
+func (b *Bootstrap) DeployCertManagerCR(isBYOC bool) error {
 	klog.V(2).Info("Fetch all the CommonService instances")
 	csObjectList := &apiv3.CommonServiceList{}
 	if err := b.Client.List(ctx, csObjectList); err != nil {
@@ -977,6 +1014,12 @@ func (b *Bootstrap) DeployCertManagerCR() error {
 			break
 		}
 	}
+
+	if isBYOC {
+		deployRootCert = false
+		crWithBYOCert = "cs-ca-certificate-secret"
+	}
+
 	klog.Info("Deploying Cert Manager CRs")
 	for _, kind := range constant.CertManagerKinds {
 		// wait for v1 crd ready
