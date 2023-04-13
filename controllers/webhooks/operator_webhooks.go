@@ -149,10 +149,7 @@ func (webhookConfig *CSWebhookConfig) SetupServer(mgr manager.Manager, serviceNa
 // parameter is optional, if `nil` is passed, no ownerReference will be set
 func (webhookConfig *CSWebhookConfig) Reconcile(ctx context.Context, client k8sclient.Client, reader k8sclient.Reader, owner ownerutil.Owner) error {
 
-	namespace, err := common.GetOperatorNamespace()
-	if err != nil {
-		return err
-	}
+	namespace := common.GetServicesNamespace(reader)
 
 	// Reconcile the Service
 	if err := webhookConfig.ReconcileService(ctx, client, owner, namespace); err != nil {
