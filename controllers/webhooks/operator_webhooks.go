@@ -45,9 +45,8 @@ import (
 type CSWebhookConfig struct {
 	scheme *runtime.Scheme
 
-	Port        int
-	CertDir     string
-	CAConfigMap string
+	Port    int
+	CertDir string
 
 	Webhooks []CSWebhook
 }
@@ -93,9 +92,6 @@ var Config *CSWebhookConfig = &CSWebhookConfig{
 
 	// Mounted as a volume from the secret generated from Openshift
 	CertDir: mountedCertDir,
-
-	// Name of the config map where the CA certificate is injected
-	CAConfigMap: caConfigMap,
 
 	// List of webhooks to configure
 	Webhooks: []CSWebhook{},
@@ -301,37 +297,6 @@ func (webhookConfig *CSWebhookConfig) setupCerts(ctx context.Context, client k8s
 	}
 	// Save the cert
 	return webhookConfig.saveCertFromSecret(secret.Data, "tls.crt")
-}
-
-func (webhookConfig *CSWebhookConfig) waitForCAInConfigMap(ctx context.Context, client k8sclient.Client, namespace string) ([]byte, error) {
-	klog.Info("Waiting for common service webhook CA generated")
-
-	var caBundle []byte
-
-	err := wait.PollImmediate(time.Second, time.Second*30, func() (bool, error) {
-		caConfigMap := &corev1.ConfigMap{}
-		if err := client.Get(ctx,
-			k8sclient.ObjectKey{Name: webhookConfig.CAConfigMap, Namespace: namespace},
-			caConfigMap,
-		); err != nil {
-			if errors.IsNotFound(err) {
-				return false, nil
-			}
-
-			return false, err
-		}
-
-		result, ok := caConfigMap.Data["service-ca.crt"]
-
-		if !ok {
-			return false, nil
-		}
-
-		caBundle = []byte(result)
-		return true, nil
-	})
-
-	return caBundle, err
 }
 
 // AddWebhook adds a webhook configuration to a webhookSettings. This must be done before
