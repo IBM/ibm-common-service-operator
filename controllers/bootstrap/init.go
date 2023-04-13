@@ -967,6 +967,7 @@ func (b *Bootstrap) IsBYOCert() (bool, error) {
 		if !errors.IsNotFound(err) {
 			return false, err
 		}
+		return false, nil
 	}
 	certName := "cs-ca-certificate"
 	cert := &certmanagerv1.Certificate{}
