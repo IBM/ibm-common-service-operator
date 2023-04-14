@@ -166,10 +166,8 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 	}
 
 	// Reconcile the webhooks if it is ocp
-	if r.Bootstrap.CSData.IsOCP {
-		if err := webhooks.Config.Reconcile(context.TODO(), r.Client, r.Reader, instance); err != nil {
-			return ctrl.Result{}, err
-		}
+	if err := webhooks.Config.Reconcile(context.TODO(), r.Client, r.Reader, instance); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	newConfigs, serviceControllerMapping, err := r.getNewConfigs(cs, true)

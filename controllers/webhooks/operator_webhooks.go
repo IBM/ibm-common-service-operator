@@ -77,9 +77,6 @@ const (
 	operatorPodPort        = 8443
 	servicePort            = 443
 	mountedCertDir         = "/etc/ssl/certs/webhook"
-	caConfigMap            = "ibm-cs-operator-webhook-ca"
-	caConfigMapAnnotation  = "service.beta.openshift.io/inject-cabundle"
-	caServiceAnnotation    = "service.beta.openshift.io/serving-cert-secret-name"
 	caCertSecretName       = "cs-webhook-cert-secret"
 )
 

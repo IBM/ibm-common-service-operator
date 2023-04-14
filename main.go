@@ -255,10 +255,8 @@ func main() {
 			os.Exit(1)
 		}
 		// Start up the webhook server if it is ocp
-		if bs.CSData.IsOCP {
-			if err := webhooks.SetupWebhooks(mgr, bs); err != nil {
-				klog.Error(err, "Error setting up webhook server")
-			}
+		if err := webhooks.SetupWebhooks(mgr, bs); err != nil {
+			klog.Error(err, "Error setting up webhook server")
 		}
 	} else {
 		klog.Infof("Common Service Operator goes dormant in the namespace %s", operatorNs)
