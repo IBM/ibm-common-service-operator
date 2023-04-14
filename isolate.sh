@@ -393,6 +393,7 @@ function removeNSS(){
     else
         info "Namespace Scope CR \"nss-managedby-odlm\" not present. Moving on..."
     fi
+
     failcheck=$(${OC} get nss --all-namespaces | grep odlm-scope-managedby-odlm || echo "failed")
     if [[ $failcheck != "failed" ]]; then
         ${OC} get nss --all-namespaces | grep odlm-scope-managedby-odlm | while read -r line; do
@@ -402,6 +403,28 @@ function removeNSS(){
         done
     else
         info "Namespace Scope CR \"odlm-scope-managedby-odlm\" not present. Moving on..."
+    fi
+
+    failcheck=$(${OC} get nss --all-namespaces | grep nss-odlm-scope || echo "failed")
+    if [[ $failcheck != "failed" ]]; then
+        ${OC} get nss --all-namespaces | grep nss-odlm-scope | while read -r line; do
+            local namespace=$(echo $line | awk '{print $1}')
+            info "deleting namespace scope nss-odlm-scope in namespace $namespace"
+            ${OC} delete nss nss-odlm-scope -n ${namespace} || (error "unable to delete namespace scope nss-odlm-scope in ${namespace}")
+        done
+    else
+        info "Namespace Scope CR \"nss-odlm-scope\" not present. Moving on..."
+    fi
+
+    failcheck=$(${OC} get nss --all-namespaces | grep common-service || echo "failed")
+    if [[ $failcheck != "failed" ]]; then
+        ${OC} get nss --all-namespaces | grep common-service | while read -r line; do
+            local namespace=$(echo $line | awk '{print $1}')
+            info "deleting namespace scope common-service in namespace $namespace"
+            ${OC} delete nss common-service -n ${namespace} || (error "unable to delete namespace scope common-service in ${namespace}")
+        done
+    else
+        info "Namespace Scope CR \"common-service\" not present. Moving on..."
     fi
 
     success "Namespace Scope CRs cleaned up"
