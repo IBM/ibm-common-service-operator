@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"text/template"
@@ -48,6 +49,8 @@ import (
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/controllers/deploy"
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/api/v1alpha1"
+
+	certmanagerv1 "github.com/ibm/ibm-cert-manager-operator/apis/cert-manager/v1"
 )
 
 var (
@@ -160,7 +163,7 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 
 func isOCP(mgr manager.Manager, ns string) (bool, error) {
 	config := &corev1.ConfigMap{}
-	if err := mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: "ibm-cpp-config", Namespace: ns}, config); err != nil && !errors.IsNotFound(err) {
+	if err := mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: constant.IBMCPPCONFIG, Namespace: ns}, config); err != nil && !errors.IsNotFound(err) {
 		return false, err
 	} else if errors.IsNotFound(err) {
 		return true, nil
@@ -928,13 +931,13 @@ func CheckClusterType(mgr manager.Manager, ns string) (bool, error) {
 	}
 
 	config := &corev1.ConfigMap{}
-	if err := mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: "ibm-cpp-config", Namespace: ns}, config); err != nil && !errors.IsNotFound(err) {
+	if err := mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: constant.IBMCPPCONFIG, Namespace: ns}, config); err != nil && !errors.IsNotFound(err) {
 		return false, err
 	} else if errors.IsNotFound(err) {
 		if isOCP {
 			return true, nil
 		}
-		klog.Errorf("Configmap %s/ibm-cpp-config is required", ns)
+		klog.Errorf("Configmap %s/%s is required", ns, constant.IBMCPPCONFIG)
 		return false, nil
 	} else {
 		if config.Data["kubernetes_cluster_type"] == "" {
@@ -945,7 +948,7 @@ func CheckClusterType(mgr manager.Manager, ns string) (bool, error) {
 			if isOCP {
 				ocpCluster = "an OCP"
 			}
-			klog.Errorf("cluster type isn't correct, kubernetes_cluster_type in configmap %s/ibm-cpp-config is %s, but the cluster is %s environment", ns, config.Data["kubernetes_cluster_type"], ocpCluster)
+			klog.Errorf("cluster type isn't correct, kubernetes_cluster_type in configmap %s/%s is %s, but the cluster is %s environment", ns, constant.IBMCPPCONFIG, config.Data["kubernetes_cluster_type"], ocpCluster)
 			return false, nil
 		}
 
@@ -954,7 +957,42 @@ func CheckClusterType(mgr manager.Manager, ns string) (bool, error) {
 	}
 }
 
-func (b *Bootstrap) DeployCertManagerCR() error {
+// 1. try to get cs-ca-certificate-secret
+// 2. try to get cs-ca-certificate
+// if we get secret but not get the cert, it is BYOC
+func (b *Bootstrap) IsBYOCert() (bool, error) {
+	klog.V(2).Info("Detect if it is BYO cert")
+	secretName := "cs-ca-ceritifcate-secret"
+	secret := &corev1.Secret{}
+	err := b.Client.Get(context.TODO(), types.NamespacedName{Name: secretName, Namespace: b.CSData.ServicesNs}, secret)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return false, err
+		}
+		return false, nil
+	}
+
+	certList := &certmanagerv1.CertificateList{}
+	opts := []client.ListOption{
+		client.InNamespace(b.CSData.ServicesNs),
+		client.MatchingLabels(
+			map[string]string{"app.kubernetes.io/instance": "cs-ca-certificate"}),
+	}
+	if certerr := b.Reader.List(ctx, certList, opts...); err != nil {
+		return false, certerr
+	}
+
+	if len(certList.Items) == 0 {
+		return true, nil
+	} else if len(certList.Items) == 1 {
+		klog.V(2).Infof("found cs-ca-certificate, it is not BYOCertificate")
+		return false, nil
+	} else {
+		return false, fmt.Errorf("found more than one cs-ca-certificate in namespace: %v, skip this", b.CSData.ServicesNs)
+	}
+}
+
+func (b *Bootstrap) DeployCertManagerCR(isBYOC bool) error {
 	klog.V(2).Info("Fetch all the CommonService instances")
 	csObjectList := &apiv3.CommonServiceList{}
 	if err := b.Client.List(ctx, csObjectList); err != nil {
@@ -976,6 +1014,12 @@ func (b *Bootstrap) DeployCertManagerCR() error {
 			break
 		}
 	}
+
+	if isBYOC {
+		deployRootCert = false
+		crWithBYOCert = "cs-ca-certificate-secret"
+	}
+
 	klog.Info("Deploying Cert Manager CRs")
 	for _, kind := range constant.CertManagerKinds {
 		// wait for v1 crd ready
@@ -1159,16 +1203,16 @@ func (b *Bootstrap) PropagateDefaultCR(instance *apiv3.CommonService) error {
 					csKey := types.NamespacedName{Name: constant.MasterCR, Namespace: watchNamespace}
 					existingCsInstance := &apiv3.CommonService{}
 					if err := b.Client.Get(ctx, csKey, existingCsInstance); err != nil {
-						return fmt.Errorf("could not get cloned CommonServiceCR in namespace %s: %v", watchNamespace, err)
+						return fmt.Errorf("failed to get cloned CommonService CR in namespace %s: %v", watchNamespace, err)
 					}
 					if needUpdate := util.CompareCsCR(copiedCsInstance, existingCsInstance); needUpdate {
 						copiedCsInstance.SetResourceVersion(existingCsInstance.GetResourceVersion())
 						if err := b.Client.Update(ctx, copiedCsInstance); err != nil {
-							return fmt.Errorf("could not update cloned CommonServiceCR in namespace %s: %v", watchNamespace, err)
+							return fmt.Errorf("failed to update cloned CommonService CR in namespace %s: %v", watchNamespace, err)
 						}
 					}
 				} else {
-					return fmt.Errorf("could not create cloned CommonServiceCR in namespace %s: %v", watchNamespace, err)
+					return fmt.Errorf("failed to create cloned CommonService CR in namespace %s: %v", watchNamespace, err)
 				}
 			}
 		}
@@ -1192,7 +1236,6 @@ func IdentifyCPFSNs(r client.Reader, operatorNs string) (string, error) {
 	}
 	return string(cpfsNs), nil
 }
-
 func (b *Bootstrap) WaitForCASecret() error {
 	secret := &corev1.Secret{}
 
@@ -1207,6 +1250,49 @@ func (b *Bootstrap) WaitForCASecret() error {
 		return true, nil
 	}); err != nil {
 		return err
+	}
+	return nil
+}
+
+func (b *Bootstrap) PropagateCPPConfig(instance *corev1.ConfigMap) error {
+	// Copy Master CR into namespace in WATCH_NAMESPACE list
+	watchNamespaceList := strings.Split(b.CSData.WatchNamespaces, ",")
+
+	// Do not copy ibm-cpp-config in AllNamespace Mode
+	if len(watchNamespaceList) > 1 {
+		for _, watchNamespace := range watchNamespaceList {
+			if watchNamespace == instance.Namespace {
+				continue
+			}
+			copiedCPPConfigMap := &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      constant.IBMCPPCONFIG,
+					Namespace: watchNamespace,
+				},
+				Data: instance.Data,
+			}
+
+			if err := b.Client.Create(ctx, copiedCPPConfigMap); err != nil {
+				if errors.IsAlreadyExists(err) {
+					cmKey := types.NamespacedName{Name: constant.IBMCPPCONFIG, Namespace: watchNamespace}
+					existingCM := &corev1.ConfigMap{}
+					if err := b.Client.Get(ctx, cmKey, existingCM); err != nil {
+						return fmt.Errorf("failed to get %s ConfigMap in namespace %s: %v", constant.IBMCPPCONFIG, watchNamespace, err)
+					}
+					if !reflect.DeepEqual(copiedCPPConfigMap.Data, existingCM.Data) {
+						copiedCPPConfigMap.SetResourceVersion(existingCM.GetResourceVersion())
+						if err := b.Client.Update(ctx, copiedCPPConfigMap); err != nil {
+							return fmt.Errorf("failed to update %s ConfigMap in namespace %s: %v", constant.IBMCPPCONFIG, watchNamespace, err)
+						}
+						klog.Infof("Global CPP config %s/%s is updated", watchNamespace, constant.IBMCPPCONFIG)
+					}
+				} else {
+					return fmt.Errorf("failed to create cloned %s ConfigMap in namespace %s: %v", constant.IBMCPPCONFIG, watchNamespace, err)
+				}
+			} else {
+				klog.Infof("Global CPP config %s/%s is propagated to namespace %s", b.CSData.ServicesNs, constant.IBMCPPCONFIG, watchNamespace)
+			}
+		}
 	}
 	return nil
 }
