@@ -285,12 +285,25 @@ function refresh_zen(){
         if [[ $return_value != "fail" ]]; then
             if [[ $return_value != "" ]]; then
                 #need to delete the iam config job and zenclient again
-                return_value=$(${OC} get job -n ${namespace} | grep iam-config-job || echo "fail")
-                if [[ $return_value != "fail" ]]; then
-                    ${OC} delete job iam-config-job -n ${namespace}
-                else
-                    info "iam-config-job not present in namespace ${namespace}. Moving on..."
-                fi
+                # return_value=$(${OC} get job -n ${namespace} | grep iam-config-job || echo "fail")
+                # if [[ $return_value != "fail" ]]; then
+                #     ${OC} delete job iam-config-job -n ${namespace}
+                # else
+                #     info "iam-config-job not present in namespace ${namespace}. Moving on..."
+                # fi
+                # return_value=$(${OC} get client -n ${namespace} || echo "fail")
+                # if [[ $return_value != "fail" ]]; then
+                #     if [[ $return_value != "" ]]; then
+                #         zenClient=$(${OC} get client -n ${namespace} | awk '{if (NR!=1) {print $1}}')
+                #         ${OC} patch client ${zenClient} -n ${namespace} --type=merge -p '{"metadata": {"finalizers":null}}'
+                #         ${OC} delete client ${zenClient} -n ${namespace}
+                #     else
+                #         info "No zen client in ${namespace}. Moving on..."
+                #     fi
+                # else
+                #     info "Zen not installed in ${namespace}. Moving on..."
+                # fi
+                return_value=""
                 zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
                 conversionField=$("${OC}" get zenservice ${zenServiceCR} -n ${namespace} -o yaml | yq '.spec | has("conversion")')
                 if [[ $conversionField == "false" ]]; then
@@ -315,12 +328,25 @@ function refresh_zen(){
         if [[ $return_value != "fail" ]]; then
             if [[ $return_value != "" ]]; then
                 #need to delete the iam config job and zenclient again
-                return_value=$(${OC} get job -n ${namespace} | grep iam-config-job || echo "fail")
-                if [[ $return_value != "fail" ]]; then
-                    ${OC} delete job iam-config-job -n ${namespace}
-                else
-                    info "iam-config-job not present in namespace ${namespace}. Moving on..."
-                fi
+                # return_value=$(${OC} get job -n ${namespace} | grep iam-config-job || echo "fail")
+                # if [[ $return_value != "fail" ]]; then
+                #     ${OC} delete job iam-config-job -n ${namespace}
+                # else
+                #     info "iam-config-job not present in namespace ${namespace}. Moving on..."
+                # fi
+                # return_value=$(${OC} get client -n ${namespace} || echo "fail")
+                # if [[ $return_value != "fail" ]]; then
+                #     if [[ $return_value != "" ]]; then
+                #         zenClient=$(${OC} get client -n ${namespace} | awk '{if (NR!=1) {print $1}}')
+                #         ${OC} patch client ${zenClient} -n ${namespace} --type=merge -p '{"metadata": {"finalizers":null}}'
+                #         ${OC} delete client ${zenClient} -n ${namespace}
+                #     else
+                #         info "No zen client in ${namespace}. Moving on..."
+                #     fi
+                # else
+                #     info "Zen not installed in ${namespace}. Moving on..."
+                # fi
+                # return_value=""
                 zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
                 conversionField=$(${OC} get zenservice ${zenServiceCR} -n ${namespace} -o yaml | yq '.spec | has("conversion")')
                 if [[ $conversionField == "true" ]]; then
@@ -669,7 +695,7 @@ function removeNSS(){
 
     for ns in $map_to_cs_ns
     do
-        failcheck=$(${OC} get nss ${ns} | grep nss-managedby-odlm || echo "failed")
+        failcheck=$(${OC} get nss -n ${ns} | grep nss-managedby-odlm || echo "failed")
         if [[ $failcheck != "failed" ]]; then
             info "deleting namespace scope nss-managedby-odlm in namespace ${ns}"
             ${OC} delete nss nss-managedby-odlm -n ${ns} || (error "unable to delete namespace scope nss-managedby-odlm in ${ns}")
@@ -685,7 +711,7 @@ function removeNSS(){
             info "Namespace Scope CR \"odlm-scope-managedby-odlm\" not present. Moving on..."
         fi
 
-        failcheck=$(${OC} get nss ${ns} | grep nss-odlm-scope || echo "failed")
+        failcheck=$(${OC} get nss -n ${ns} | grep nss-odlm-scope || echo "failed")
         if [[ $failcheck != "failed" ]]; then
             info "deleting namespace scope nss-odlm-scope in namespace ${ns}"
             ${OC} delete nss nss-odlm-scope -n ${ns} || (error "unable to delete namespace scope nss-odlm-scope in ${ns}")
@@ -693,7 +719,7 @@ function removeNSS(){
             info "Namespace Scope CR \"nss-odlm-scope\" not present. Moving on..."
         fi
 
-        failcheck=$(${OC} get nss ${ns} | grep common-service || echo "failed")
+        failcheck=$(${OC} get nss -n ${ns} | grep common-service || echo "failed")
         if [[ $failcheck != "failed" ]]; then
             info "deleting namespace scope common-service in namespace ${ns}"
             ${OC} delete nss common-service -n ${ns} || (error "unable to delete namespace scope common-service in ${ns}")
