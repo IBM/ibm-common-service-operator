@@ -383,45 +383,41 @@ function removeNSS(){
     title " Removing ODLM managed Namespace Scope CRs "
     msg "-----------------------------------------------------------------------"
 
-    failcheck=$(${OC} get nss --all-namespaces | grep nss-managedby-odlm || echo "failed")
+    failcheck=$(${OC} get nss ${master_ns} | grep nss-managedby-odlm || echo "failed")
     if [[ $failcheck != "failed" ]]; then
-        ${OC} get nss --all-namespaces | grep nss-managedby-odlm | while read -r line; do
-            local namespace=$(echo $line | awk '{print $1}')
-            info "deleting namespace scope nss-managedby-odlm in namespace $namespace"
-            ${OC} delete nss nss-managedby-odlm -n ${namespace} || (error "unable to delete namespace scope nss-managedby-odlm in ${namespace}")
+        ${OC} get nss ${master_ns} | grep nss-managedby-odlm | while read -r line; do
+            info "deleting namespace scope nss-managedby-odlm in namespace ${master_ns}"
+            ${OC} delete nss nss-managedby-odlm -n ${master_ns} || (error "unable to delete namespace scope nss-managedby-odlm in ${master_ns}")
         done
     else
         info "Namespace Scope CR \"nss-managedby-odlm\" not present. Moving on..."
     fi
 
-    failcheck=$(${OC} get nss --all-namespaces | grep odlm-scope-managedby-odlm || echo "failed")
+    failcheck=$(${OC} get nss -n ${master_ns} | grep odlm-scope-managedby-odlm || echo "failed")
     if [[ $failcheck != "failed" ]]; then
-        ${OC} get nss --all-namespaces | grep odlm-scope-managedby-odlm | while read -r line; do
-            local namespace=$(echo $line | awk '{print $1}')
-            info "deleting namespace scope odlm-scope-managedby-odlm in namespace $namespace"
-            ${OC} delete nss odlm-scope-managedby-odlm -n ${namespace} || (error "unable to delete namespace scope odlm-scope-managedby-odlm in ${namespace}")
+        ${OC} get nss ${master_ns} | grep odlm-scope-managedby-odlm | while read -r line; do
+            info "deleting namespace scope odlm-scope-managedby-odlm in namespace ${master_ns}"
+            ${OC} delete nss odlm-scope-managedby-odlm -n ${master_ns} || (error "unable to delete namespace scope odlm-scope-managedby-odlm in ${master_ns}")
         done
     else
         info "Namespace Scope CR \"odlm-scope-managedby-odlm\" not present. Moving on..."
     fi
 
-    failcheck=$(${OC} get nss --all-namespaces | grep nss-odlm-scope || echo "failed")
+    failcheck=$(${OC} get nss ${master_ns} | grep nss-odlm-scope || echo "failed")
     if [[ $failcheck != "failed" ]]; then
-        ${OC} get nss --all-namespaces | grep nss-odlm-scope | while read -r line; do
-            local namespace=$(echo $line | awk '{print $1}')
-            info "deleting namespace scope nss-odlm-scope in namespace $namespace"
-            ${OC} delete nss nss-odlm-scope -n ${namespace} || (error "unable to delete namespace scope nss-odlm-scope in ${namespace}")
+        ${OC} get nss ${master_ns} | grep nss-odlm-scope | while read -r line; do
+            info "deleting namespace scope nss-odlm-scope in namespace ${master_ns}"
+            ${OC} delete nss nss-odlm-scope -n ${master_ns} || (error "unable to delete namespace scope nss-odlm-scope in ${master_ns}")
         done
     else
         info "Namespace Scope CR \"nss-odlm-scope\" not present. Moving on..."
     fi
 
-    failcheck=$(${OC} get nss --all-namespaces | grep common-service || echo "failed")
+    failcheck=$(${OC} get nss ${master_ns} | grep common-service || echo "failed")
     if [[ $failcheck != "failed" ]]; then
-        ${OC} get nss --all-namespaces | grep common-service | while read -r line; do
-            local namespace=$(echo $line | awk '{print $1}')
-            info "deleting namespace scope common-service in namespace $namespace"
-            ${OC} delete nss common-service -n ${namespace} || (error "unable to delete namespace scope common-service in ${namespace}")
+        ${OC} get nss ${master_ns} | grep common-service | while read -r line; do
+            info "deleting namespace scope common-service in namespace ${master_ns}"
+            ${OC} delete nss common-service -n ${master_ns} || (error "unable to delete namespace scope common-service in ${master_ns}")
         done
     else
         info "Namespace Scope CR \"common-service\" not present. Moving on..."
