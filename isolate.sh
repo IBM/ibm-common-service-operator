@@ -128,12 +128,13 @@ function abort_check() {
         if [[ $control_ns_exists != "fail" ]]; then
             error "Configmap common-service-maps already exists in kube-pubic namespace. Isolate.sh exiting, it is recommended to make futher changes to the configmap manually."
         fi
+        
+        local map_to_cs_ns_check=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].map-to-common-service-namespace' | awk '{print}')
+        if [[ $map_to_cs_ns_check != $master_ns ]]; then
+            error "Existing value for map-to-common-service-namespace in common-service-maps configmap not equal to argument passed as --original-cs-ns. Exiting..."
+        fi
     fi
     
-    local map_to_cs_ns_check=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].map-to-common-service-namespace' | awk '{print}')
-    if [[ $map_to_cs_ns_check != $master_ns ]]; then
-        error "Existing value for map-to-common-service-namespace in common-service-maps configmap not equal to argument passed as --original-cs-ns. Exiting..."
-    fi
 
     local cs_version=$("${OC}" get csv -n ${master_ns} | grep common-service-operator | grep 3.2 || echo fail)
     if [[ $cs_version == "fail" ]]; then
