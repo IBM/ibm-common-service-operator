@@ -79,6 +79,9 @@ function main() {
 
     # Install New CertManager and Licensing, supporting new CatalogSource
     ${BASE_DIR}/setup_singleton.sh "$arguments"
+    if [ $? -ne 0 ]; then
+        error "Migration is failed when setting up signleton services\n"
+    fi
 
     success "Migration is completed for Cloud Pak 3.0 Foundational singleton services."
 }
