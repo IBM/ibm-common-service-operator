@@ -181,13 +181,11 @@ function gather_csmaps_ns() {
                 skip=1
             fi
             if [[ $skip != 1 ]]; then
-                if [[ $TETHERED_NS != $master_ns ]]; then
                     if [[ $TETHERED_NS == "" ]]; then
                         TETHERED_NS="$ns"
                     else
                         TETHERED_NS="$TETHERED_NS $ns"
                     fi
-                fi
             fi
         done
     else
@@ -291,7 +289,6 @@ function pause() {
     ${OC} delete operandregistry -n ${master_ns} --ignore-not-found common-service 
     ${OC} delete operandconfig -n ${master_ns} --ignore-not-found common-service
     
-    cleanupCSOperators # only updates cs operators in requested_ns list passed in as parameter to script
     removeNSS
     success "Common Services successfully isolated in namespace ${master_ns}"
 }
@@ -353,29 +350,6 @@ function check_cm_ns_exist(){
     success "All namespaces in $cm_name exist"
 }
 
-function cleanupCSOperators(){
-    title "Checking subs of Common Service Operator in Cloudpak Namespaces"
-    msg "-----------------------------------------------------------------------"   
-    catalog_source=$(${OC} get sub ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.source")
-    info "catalog_source:${catalog_source}" 
-    for namespace in $requested_ns #may need to rethink this variable, maybe Tetheredns?
-    do
-        # remove cs namespace from zen service cr
-        return_value=$(${OC} get sub -n ${namespace} | (grep ibm-common-service-operator || echo "fail"))
-        if [[ $return_value != "fail" ]]; then
-            local sub=$(${OC} get sub -n ${namespace} | grep ibm-common-service-operator | awk '{print $1}')
-            ${OC} get sub ${sub} -n ${namespace} -o yaml > tmp.yaml 
-            ${YQ} -i '.spec.source = "'${catalog_source}'"' tmp.yaml || error "Could not replace catalog source for CS operator in namespace ${namespace}"
-            ${OC} apply -f tmp.yaml
-            info "Common Service Operator Subscription in namespace ${namespace} updated to use catalog source ${catalog_source}"
-        else
-            info "No Common Service Operator in namespace ${namespace}. Moving on..."
-        fi
-        return_value=""
-    done
-    rm -f tmp.yaml
-}
-
 #TODO change looping to be more specific? 
 #Should this only remove the nss from specified set of namespaces? Or should it be more general?
 function removeNSS(){
@@ -383,37 +357,17 @@ function removeNSS(){
     title " Removing ODLM managed Namespace Scope CRs "
     msg "-----------------------------------------------------------------------"
 
-    failcheck=$(${OC} get nss -n ${master_ns} | grep nss-managedby-odlm || echo "failed")
-    if [[ $failcheck != "failed" ]]; then
-        info "deleting namespace scope nss-managedby-odlm in namespace ${master_ns}"
-        ${OC} delete nss nss-managedby-odlm -n ${master_ns} || (error "unable to delete namespace scope nss-managedby-odlm in ${master_ns}")
-    else
-        info "Namespace Scope CR \"nss-managedby-odlm\" not present. Moving on..."
-    fi
+    info "deleting namespace scope nss-managedby-odlm in namespace ${master_ns}"
+    ${OC} delete nss nss-managedby-odlm -n ${master_ns} --ignore-not-found || (error "unable to delete namespace scope nss-managedby-odlm in ${master_ns}")
 
-    failcheck=$(${OC} get nss -n ${master_ns} | grep odlm-scope-managedby-odlm || echo "failed")
-    if [[ $failcheck != "failed" ]]; then
-        info "deleting namespace scope odlm-scope-managedby-odlm in namespace ${master_ns}"
-        ${OC} delete nss odlm-scope-managedby-odlm -n ${master_ns} || (error "unable to delete namespace scope odlm-scope-managedby-odlm in ${master_ns}")
-    else
-        info "Namespace Scope CR \"odlm-scope-managedby-odlm\" not present. Moving on..."
-    fi
-
-    failcheck=$(${OC} get nss -n ${master_ns} | grep nss-odlm-scope || echo "failed")
-    if [[ $failcheck != "failed" ]]; then
-        info "deleting namespace scope nss-odlm-scope in namespace ${master_ns}"
-        ${OC} delete nss nss-odlm-scope -n ${master_ns} || (error "unable to delete namespace scope nss-odlm-scope in ${master_ns}")
-    else
-        info "Namespace Scope CR \"nss-odlm-scope\" not present. Moving on..."
-    fi
-
-    failcheck=$(${OC} get nss -n ${master_ns} | grep common-service || echo "failed")
-    if [[ $failcheck != "failed" ]]; then
-        info "deleting namespace scope common-service in namespace ${master_ns}"
-        ${OC} delete nss common-service -n ${master_ns} || (error "unable to delete namespace scope common-service in ${master_ns}")
-    else
-        info "Namespace Scope CR \"common-service\" not present. Moving on..."
-    fi
+    info "deleting namespace scope odlm-scope-managedby-odlm in namespace ${master_ns}"
+    ${OC} delete nss odlm-scope-managedby-odlm -n ${master_ns} --ignore-not-found || (error "unable to delete namespace scope odlm-scope-managedby-odlm in ${master_ns}")
+    
+    info "deleting namespace scope nss-odlm-scope in namespace ${master_ns}"
+    ${OC} delete nss nss-odlm-scope -n ${master_ns} --ignore-not-found || (error "unable to delete namespace scope nss-odlm-scope in ${master_ns}")
+    
+    info "deleting namespace scope common-service in namespace ${master_ns}"
+    ${OC} delete nss common-service -n ${master_ns} --ignore-not-found || (error "unable to delete namespace scope common-service in ${master_ns}")
 
     success "Namespace Scope CRs cleaned up"
 }
