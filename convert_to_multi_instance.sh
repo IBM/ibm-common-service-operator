@@ -220,13 +220,6 @@ function install_new_CS() {
     title "install new instances of CS based on cs mapping configmap"
     msg "-----------------------------------------------------------------------"
 
-    for namespace in $requested_ns
-    do
-        info "In_CloudpakNS:${namespace}"
-        create_operator_group "${namespace}"
-        install_common_service_operator_sub "${namespace}"
-    done
-
     for namespace in $map_to_cs_ns
     do
         info "In_CommonServiceNS:${namespace}"
