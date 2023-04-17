@@ -1088,7 +1088,11 @@ func (b *Bootstrap) DeployCertManagerCR(isBYOC bool) error {
 		klog.Infof("Skipped deploying %s, BYOCertififcate feature is enabled in %s", constant.CSCACertificate, crWithBYOCert)
 	}
 
-	if err := b.WaitForCASecret(); err != nil {
+	if err := b.WaitForSecret("cs-ca-certificate-secret", b.CSData.ServicesNs); err != nil {
+		return err
+	}
+
+	if err := b.WaitForSecret("cs-webhook-cert-secret", b.CSData.ServicesNs); err != nil {
 		return err
 	}
 
@@ -1246,13 +1250,13 @@ func IdentifyCPFSNs(r client.Reader, operatorNs string) (string, error) {
 	}
 	return string(cpfsNs), nil
 }
-func (b *Bootstrap) WaitForCASecret() error {
+func (b *Bootstrap) WaitForSecret(name string, namespace string) error {
 	secret := &corev1.Secret{}
 
 	if err := utilwait.PollImmediateInfinite(time.Second*10, func() (done bool, err error) {
-		if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: "cs-ca-certificate-secret", Namespace: b.CSData.ServicesNs}, secret); err != nil {
+		if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, secret); err != nil {
 			if errors.IsNotFound(err) {
-				klog.V(2).Infof("waiting for cs-ca-certificate-secret be ready")
+				klog.V(2).Infof("waiting for %s/%s be ready", name, namespace)
 				return false, nil
 			}
 			return false, err
