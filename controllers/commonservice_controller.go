@@ -151,21 +151,7 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 		return ctrl.Result{}, err
 	}
-	// Generate Issuer and Certificate CR
-	if err := r.Bootstrap.DeployCertManagerCR(false); err != nil {
-		klog.Errorf("Failed to deploy cert manager CRs: %v", err)
-		if err := r.updatePhase(ctx, instance, CRFailed); err != nil {
-			klog.Error(err)
-		}
-		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
-		return ctrl.Result{}, err
-	}
 
-	if err := r.Bootstrap.WaitForCASecret(); err != nil {
-		return ctrl.Result{}, err
-	}
-
-	// Reconcile the webhooks if it is ocp
 	if err := webhooks.Config.Reconcile(context.TODO(), r.Client, r.Reader, instance); err != nil {
 		return ctrl.Result{}, err
 	}

@@ -186,6 +186,12 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		b.CSData.ApprovalMode = string(installPlanApproval)
 	}
 
+	// Generate Issuer and Certificate CR
+	if err := b.DeployCertManagerCR(false); err != nil {
+		klog.Errorf("Failed to deploy cert manager CRs: %v", err)
+		return err
+	}
+
 	// Check storageClass
 	if err := util.CheckStorageClass(b.Reader); err != nil {
 		return err
@@ -1080,6 +1086,10 @@ func (b *Bootstrap) DeployCertManagerCR(isBYOC bool) error {
 		}
 	} else {
 		klog.Infof("Skipped deploying %s, BYOCertififcate feature is enabled in %s", constant.CSCACertificate, crWithBYOCert)
+	}
+
+	if err := b.WaitForCASecret(); err != nil {
+		return err
 	}
 
 	return nil
