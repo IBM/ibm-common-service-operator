@@ -192,9 +192,9 @@ function collect_data() {
     info "catalog_source:${catalog_source}" 
 
     #this command gets all of the ns listed in requested from namesapce fields
-    requested_ns=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].requested-from-namespace' | awk '{print $2}')
+    requested_ns=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].requested-from-namespace' | awk '{print $2}' | tr '\n' ' ')
     #this command gets all of the ns listed in map-to-common-service-namespace
-    map_to_cs_ns=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].map-to-common-service-namespace' | awk '{print}')
+    map_to_cs_ns=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].map-to-common-service-namespace' | awk '{print}' | tr '\n' ' ')
     
 }
 
@@ -688,37 +688,17 @@ function removeNSS(){
 
     for ns in $map_to_cs_ns
     do
-        failcheck=$(${OC} get nss -n ${ns} | grep nss-managedby-odlm || echo "failed")
-        if [[ $failcheck != "failed" ]]; then
-            info "deleting namespace scope nss-managedby-odlm in namespace ${ns}"
-            ${OC} delete nss nss-managedby-odlm -n ${ns} || (error "unable to delete namespace scope nss-managedby-odlm in ${ns}")
-        else
-            info "Namespace Scope CR \"nss-managedby-odlm\" not present. Moving on..."
-        fi
+        info "deleting namespace scope nss-managedby-odlm in namespace ${ns}"
+        ${OC} delete nss nss-managedby-odlm -n ${ns} --ignore-not-found || (error "unable to delete namespace scope nss-managedby-odlm in ${ns}")
+        info "deleting namespace scope odlm-scope-managedby-odlm in namespace ${ns}"
+        ${OC} delete nss odlm-scope-managedby-odlm -n ${ns} --ignore-not-found || (error "unable to delete namespace scope odlm-scope-managedby-odlm in ${ns}")
+        
+        info "deleting namespace scope nss-odlm-scope in namespace ${ns}"
+        ${OC} delete nss nss-odlm-scope -n ${ns} --ignore-not-found || (error "unable to delete namespace scope nss-odlm-scope in ${ns}")
+        
+        info "deleting namespace scope common-service in namespace ${ns}"
+        ${OC} delete nss common-service -n ${ns} --ignore-not-found || (error "unable to delete namespace scope common-service in ${ns}")
 
-        failcheck=$(${OC} get nss -n ${ns} | grep odlm-scope-managedby-odlm || echo "failed")
-        if [[ $failcheck != "failed" ]]; then
-            info "deleting namespace scope odlm-scope-managedby-odlm in namespace ${ns}"
-            ${OC} delete nss odlm-scope-managedby-odlm -n ${ns} || (error "unable to delete namespace scope odlm-scope-managedby-odlm in ${ns}")
-        else
-            info "Namespace Scope CR \"odlm-scope-managedby-odlm\" not present. Moving on..."
-        fi
-
-        failcheck=$(${OC} get nss -n ${ns} | grep nss-odlm-scope || echo "failed")
-        if [[ $failcheck != "failed" ]]; then
-            info "deleting namespace scope nss-odlm-scope in namespace ${ns}"
-            ${OC} delete nss nss-odlm-scope -n ${ns} || (error "unable to delete namespace scope nss-odlm-scope in ${ns}")
-        else
-            info "Namespace Scope CR \"nss-odlm-scope\" not present. Moving on..."
-        fi
-
-        failcheck=$(${OC} get nss -n ${ns} | grep common-service || echo "failed")
-        if [[ $failcheck != "failed" ]]; then
-            info "deleting namespace scope common-service in namespace ${ns}"
-            ${OC} delete nss common-service -n ${ns} || (error "unable to delete namespace scope common-service in ${ns}")
-        else
-            info "Namespace Scope CR \"common-service\" not present. Moving on..."
-        fi
     done
 
     success "Namespace Scope CRs cleaned up"
@@ -727,86 +707,61 @@ function removeNSS(){
 function check_topology() {
     title " Checking expected vs actual topology based on common-service-maps "
     msg "-----------------------------------------------------------------------"
-    #get list of cs instance namespaces
-    #get list of namespaces associated with each cs instance from common-service nss
-    #get list of namespaces associated with each cs instance from common-service-maps
-    #compare two lists
-    # if lists are equal, topology is as expected, do nothing
-    # else, install or restart cs operator in mapTo namespace
-        #would possibly need to restart cs operator in a different namespace if it's going from one cs instance to another
-            #this would be caught later since that grouping would be different in cs maps as well
-    
-    #if the order of requested from/mapt to is not fixed (ie map to above requested would break this logic)
-    # we could try having a count of both and reseting the nsFromCM when either reaches 2. 
-    # That should hopefully protect against users ordering their csmaps differently
-    nsFromCM=""
-    activeRequestedFrom=""
-    activeMapTo=""
-    while read -r line; do
-        first_element=$(echo $line | awk '{print $1}')
-    
-    #if the order of requested from/map to is not fixed (ie map to above requested would break this logic)
-    # we could try having a count of both and reseting the nsFromCM when either reaches 2. 
-    # That should hopefully protect against users ordering their csmaps differently
-    # or we enforce the order of requested from over map to
-        if [[ "${first_element}" == "-" ]]; then
-            namespace=$(echo $line | awk '{print $2}')
-            if [[ "${namespace}" == "requested-from-namespace:" ]]; then
-                nsFromCM=""
-            #elif could check if equal to map to then else could be a requested from ns
-            elif [[ "${namespace}" != "requested-from-namespace:" ]]; then
-                if [[ $nsFromCM == "" ]]; then
-                    nsFromCM="$namespace"
-                else
-                    nsFromCM="$nsFromCM $namespace"
-                fi
-            fi
+    cm_maps=$(oc get -n kube-public cm common-service-maps -o yaml | yq '.data.["common-service-maps.yaml"]')
+    activeMapTo=
+    activeRequestedFrom=
+    for csNamespace in $map_to_cs_ns
+    do
+        allPresent="false"
+        nsFromCM=$(echo "$cm_maps" | yq eval '.namespaceMapping[] | select(.map-to-common-service-namespace == "'${csNamespace}'").requested-from-namespace' | awk '{ print $2 }' | tr '\n' ' ')
+        echo "nsFromCM2: $nsFromCM"
+        nssExist=$(${OC} get nss -n $csNamespace common-service || echo fail)
+        if [[ $nssExist == "fail" ]]; then
+            allPresent="false"
+            nsFromNSS=""
+        else
+            nsFromNSS=$(${OC} get nss -n $csNamespace -o yaml common-service | yq '.status.validatedMembers[]' | tr '\n' ' ')
+            allPresent="true"
         fi
-
-        if [[ "${first_element}" == "map-to-common-service-namespace:" ]]; then
-            csNamespace=$(echo $line | awk '{print $2}')
-            #nsFromCM="$nsFromCM $csNamespace" 
-            #at this point we should have the full grouping for an instance, now is when we run the topo check
-            #need to account for instances when map to is a new ns and would not have nss in it already
-            nssExist=$(${OC} get nss -n $csNamespace common-service || echo fail)
-            if [[ $nssExist == "fail" ]]; then
-                allPresent="false"
-                nsFromNSS=""
-            else
-                nsFromNSS=$(${OC} get nss -n $csNamespace -o yaml common-service | yq '.status.validatedMembers[]' | tr '\n' ' ')
-                allPresent="true"
-            fi
+        leftover=""
+        leftover=$(echo $nsFromCM $nsFromNSS | tr ' ' '\n' | sort | uniq -u | tr '\n' ' ')
+        #if there are no differences between the two lists, the variable is unset.
+        #check for unset, if it is, then the grouping doesn't need to be changed anyway
+        if [[ -z ${leftover:-} ]]; then
+            echo "empty leftover"
             leftover=""
-            leftover=$(echo $nsFromCM $nsFromNSS | tr ' ' '\n' | sort | uniq -u | tr '\n' ' ')
-            #if there are no differences between the two lists, the variable is unset.
-            #check for unset, if it is, then the grouping doesn't need to be changed anyway
-            if [[ -z ${leftover:-} ]]; then
-                echo "empty leftover"
-                leftover=""
-            fi
-            leftover=${leftover%%[[:space:]]}
-            if [[ "$leftover" == "$csNamespace" ]] || [[ $leftover == "" ]]; then
-                allPresent="true"
+        fi
+        leftover=${leftover%%[[:space:]]}
+        if [[ "$leftover" == "$csNamespace" ]] || [[ $leftover == "" ]]; then
+            allPresent="true"
+        else
+            if [[ $activeRequestedFrom == "" ]]; then
+                activeRequestedFrom="$nsFromCM"
             else
                 activeRequestedFrom="$activeRequestedFrom $nsFromCM"
+            fi
+            if [[ $activeMapTo == "" ]]; then
+                activeMapTo="$csNamespace"
+            else
                 activeMapTo="$activeMapTo $csNamespace"
-                info "Namespaces $nsFromCM $csNamespace added to conversion pool."
-                nsFromCM=""
-                allPresent="false"
             fi
-            if [[ $allPresent == "true" ]]; then
-                info "Namespaces $nsFromCM are already setup to use Common Service instance in namespace $csNamespace"
-                nsFromCM=""
-            fi
+            info "Namespaces $nsFromCM $csNamespace added to conversion pool."
+            nsFromCM=""
+            allPresent="false"
         fi
-    done <<<$(${OC} get cm $cm_name -o yaml -n kube-public | yq '.data[]' | yq '.namespaceMapping[]')
-    requested_ns="$activeRequestedFrom"
-    map_to_cs_ns="$activeMapTo"
-    echo "requested: $requested_ns"
-    echo "mapTo: $map_to_cs_ns"
-    if [[ $requested_ns == "" ]] && [[ $map_to_cs_ns == "" ]]; then
+        if [[ $allPresent == "true" ]]; then
+            info "Namespaces $nsFromCM are already setup to use Common Service instance in namespace $csNamespace"
+            nsFromCM=""
+        fi
+    done
+
+    if [[ $activeRequestedFrom == "" ]] && [[ $activeMapTo == "" ]]; then
         success "No difference in topology detected."
         error "Please update common-service-maps configmap in kube-public and run again."
+    else
+        requested_ns=$activeRequestedFrom
+        map_to_cs_ns=$activeMapTo
+        info "Namespaces to be included in conversion process: $requested_ns $map_to_cs_ns"
     fi
     
     success "Topology info collected from common-service-maps configmap"
