@@ -1256,7 +1256,7 @@ func (b *Bootstrap) WaitForSecret(name string, namespace string) error {
 	if err := utilwait.PollImmediateInfinite(time.Second*10, func() (done bool, err error) {
 		if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, secret); err != nil {
 			if errors.IsNotFound(err) {
-				klog.V(2).Infof("waiting for %s/%s be ready", name, namespace)
+				klog.V(2).Infof("waiting for %s/%s be ready", namespace, name)
 				return false, nil
 			}
 			return false, err
