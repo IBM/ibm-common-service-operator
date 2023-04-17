@@ -79,12 +79,9 @@ function main () {
         error "Required parameters missing. Please re-run specifying original and control namespace values. Use -h for help."
     fi
     #need to get the namespaces for csmaps generation before pausing cs, otherwise namespace-scope cm does not include all namespaces
+    abort_check
     gather_csmaps_ns
     pause
-    return_value=$(${OC} get cm $cm_name -n kube-public || echo fail)
-    if [[ $return_value != "fail" ]]; then
-        ${OC} delete cm $cm_name -n kube-public --ignore-not-found || error "Could not delete configmap $cm_name."
-    fi
     mapping_topology
     prereq
     uninstall_singletons
@@ -106,6 +103,52 @@ function usage() {
     --excluded-ns                 specify namespaces to be excluded from the common-service-maps configmap. Comma separated no spaces.
     --insert-ns                 specify namespaces to be inserted into the common-service-maps configmap. Comma separated no spaces.
 	EOF
+}
+
+function abort_check() {
+    # LicenseServiceReporter should not be installed because it does not support multi-instance mode
+    return_value=$(("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
+    if [[ $return_value == "exists" ]]; then
+        return_value=$("${OC}" get ibmlicenseservicereporters -A | wc -l)
+        if [[ $return_value -gt 0 ]]; then
+            error "LicenseServiceReporter does not support multi-instance mode. Remove before proceeding"
+        fi
+    fi
+
+    return_value="reset"
+    # ensure cs-operator is not installed in all namespace mode
+    return_value=$("${OC}" get csv -n openshift-operators | grep ibm-common-service-operator > /dev/null || echo pass)
+    if [[ $return_value != "pass" ]]; then
+        error "The ibm-common-service-operator must not be installed in AllNamespaces mode"
+    fi
+    
+    local csmaps_exists=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} || echo fail)
+    if [[ $csmaps_exists != "fail" ]]; then
+        local control_ns_exists=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data' | grep controlNamespace: || echo fail)
+        if [[ $control_ns_exists != "fail" ]]; then
+            error "Configmap common-service-maps already exists in kube-pubic namespace. Isolate.sh exiting, it is recommended to make futher changes to the configmap manually."
+        fi
+        
+        local map_to_cs_ns_check=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].map-to-common-service-namespace' | awk '{print}')
+        if [[ $map_to_cs_ns_check != $master_ns ]]; then
+            error "Existing value for map-to-common-service-namespace in common-service-maps configmap not equal to argument passed as --original-cs-ns. Exiting..."
+        fi
+    fi
+    
+
+    local cs_version=$("${OC}" get csv -n ${master_ns} | grep common-service-operator | grep 3.2 || echo fail)
+    if [[ $cs_version == "fail" ]]; then
+        cs_LTSR_version=$("${OC}" get csv -n ${master_ns} | grep common-service-operator | grep 3.19 || echo fail)
+        if [[ $cs_LTSR_version != "fail" ]]; then
+            version=$(${OC} get csv -n ${master_ns} | grep common-service-operator | awk '{print $7}')
+            IFS='.' read -a z_version <<< "$version"
+            if [[ $((${z_version[2]})) -lt 9 ]]; then 
+                error "Foundational Services installation does not meet the minimum version requirement. Upgrade to either 3.20+ or 3.19.9+"
+            fi
+        else
+            error "Foundational Services installation does not meet the minimum version requirement. Upgrade to either 3.20+ or 3.19.9+"
+        fi
+    fi
 }
 
 function gather_csmaps_ns() {
@@ -148,9 +191,11 @@ function gather_csmaps_ns() {
             fi
         done
     else
+        echo "excluded empty"
+        echo "ns from cm $nsFromCM"
         for ns in ${nsFromCM[@]}
         do
-            if [[ $TETHERED_NS != $master_ns ]]; then
+            if [[ $ns != $master_ns ]]; then
                 if [[ $TETHERED_NS == "" ]]; then
                     TETHERED_NS="$ns"
                 else
@@ -196,59 +241,11 @@ function construct_mapping() {
 function mapping_topology() {
     construct_mapping
 
-    # Check if ConfigMap exists in the cluster
-    if ${OC} get configmap common-service-maps -n kube-public > /dev/null 2>&1; then
-        # ConfigMap exists, retrieve its current data
-        local current_mapping=$(${OC} get configmap common-service-maps -n kube-public -o jsonpath='{.data.common-service-maps\.yaml}')
+    info "Creating common-service-maps ConfigMap in kube-public namespace"
 
-        # Remove the defaultCsNs key-value mapping if it exists
-        current_mapping=$(echo "$current_mapping" | awk '/defaultCsNs:/ {next} {print}')
-
-        # Check if servicesNamespace already exists in the map-to-common-service-namespace
-        # extract the mapped namespaces from the ConfigMap
-        map_to_ns=$(echo "$current_mapping" | yq -r '.namespaceMapping[].map-to-common-service-namespace')
-
-        if grep -Fxq $SERVICES_NS <<< "$map_to_ns"; then
-            info "map-to-common-service-namespace $SERVICES_NS already exists in the namespaceMapping array. Skipping updating common-service-maps ConfigMap"
-            return 0
-        fi
-
-        # Check if each tenant namespace already exists in the requested-from-namespace array
-        # extract the requested namespaces from the ConfigMap
-        requested_ns=$(echo "$current_mapping" | yq -r '.namespaceMapping[].requested-from-namespace[]')
-
-        # loop over each namespace in the list and check if it exists in the ConfigMap
-        local namespaces="$OPERATOR_NS $SERVICES_NS $TETHERED_NS"
-        for ns in $namespaces; do
-            if grep -Fxq $ns <<< "$requested_ns"; then
-                info "requested-from-namespace $ns already exists in the namespaceMapping array. Skipping updating common-service-maps ConfigMap"
-                return 0
-            fi
-        done
-
-        current_control_ns=$(echo "$current_mapping" | awk '/controlNamespace:/ {print $2}')
-
-        # If controlNamespace is not set, assign the value of CONTROL_NS to it
-        if [ -z "$current_control_ns" ]; then
-            if [ -z "$CONTROL_NS" ]; then
-                error "MUST provide control namespace, controlNamespace is not set in common-service-maps ConfigMap"
-            else
-                info "controlNamespace not set in common-service-maps ConfigMap, setting to $CONTROL_NS"
-                current_mapping="controlNamespace: ${CONTROL_NS}\n$current_mapping"
-            fi
-        else
-            # Otherwise, if controlNamespace is set but different from CONTROL_NS, raise an error and abort the script
-            if [[ ! -z "$CONTROL_NS" && "$current_control_ns" != "$CONTROL_NS" ]]; then
-                error "controlNamespace is set to $current_control_ns but the script receives is $CONTROL_NS for --control-namespace"
-            fi
-        fi
-
-        # Update ConfigMap data
-        info "Updating common-service-maps ConfigMap in kube-public namespace"
-        NEW_MAPPING=$(echo -e "$current_mapping\n$NEW_MAPPING")
-
-        local object=$(
-            cat <<EOF
+    NEW_MAPPING=$(echo -e "controlNamespace: $CONTROL_NS\nnamespaceMapping:\n$NEW_MAPPING")
+    local object=$(
+        cat <<EOF
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -259,27 +256,7 @@ data:
 $(echo "$NEW_MAPPING" | awk '{print "        "$0}')
 EOF
 )
-
-        echo "$object" | ${OC} apply -f -
-    else
-        # ConfigMap does not exist, create it
-        info "Creating common-service-maps ConfigMap in kube-public namespace"
-
-        NEW_MAPPING=$(echo -e "controlNamespace: $CONTROL_NS\nnamespaceMapping:\n$NEW_MAPPING")
-        local object=$(
-            cat <<EOF
-apiVersion: v1
-kind: ConfigMap
-metadata:
-    name: common-service-maps
-    namespace: kube-public
-data:
-    common-service-maps.yaml: |
-$(echo "$NEW_MAPPING" | awk '{print "        "$0}')
-EOF
-)
-        echo "$object" | ${OC} apply -f -
-    fi
+    echo "$object" | ${OC} apply -f -
 }
 
 # verify that all pre-requisite CLI tools exist
@@ -303,20 +280,6 @@ function prereq() {
     #this command gets all of the ns listed in map-to-common-service-namespace
     map_to_cs_ns=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].map-to-common-service-namespace' | awk '{print}')
 
-    # LicenseServiceReporter should not be installed because it does not support multi-instance mode
-    return_value=$(("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
-    if [[ $return_value == "exists" ]]; then
-        return_value=$("${OC}" get ibmlicenseservicereporters -A | wc -l)
-        if [[ $return_value -gt 0 ]]; then
-            error "LicenseServiceReporter does not support multi-instance mode. Remove before proceeding"
-        fi
-    fi
-    return_value="reset"
-    # ensure cs-operator is not installed in all namespace mode
-    return_value=$("${OC}" get csv -n openshift-operators | grep ibm-common-service-operator > /dev/null || echo pass)
-    if [[ $return_value != "pass" ]]; then
-        error "The ibm-common-service-operator must not be installed in AllNamespaces mode"
-    fi
     check_cm_ns_exist
 }
 
@@ -420,25 +383,36 @@ function removeNSS(){
     title " Removing ODLM managed Namespace Scope CRs "
     msg "-----------------------------------------------------------------------"
 
-    failcheck=$(${OC} get nss --all-namespaces | grep nss-managedby-odlm || echo "failed")
+    failcheck=$(${OC} get nss -n ${master_ns} | grep nss-managedby-odlm || echo "failed")
     if [[ $failcheck != "failed" ]]; then
-        ${OC} get nss --all-namespaces | grep nss-managedby-odlm | while read -r line; do
-            local namespace=$(echo $line | awk '{print $1}')
-            info "deleting namespace scope nss-managedby-odlm in namespace $namespace"
-            ${OC} delete nss nss-managedby-odlm -n ${namespace} || (error "unable to delete namespace scope nss-managedby-odlm in ${namespace}")
-        done
+        info "deleting namespace scope nss-managedby-odlm in namespace ${master_ns}"
+        ${OC} delete nss nss-managedby-odlm -n ${master_ns} || (error "unable to delete namespace scope nss-managedby-odlm in ${master_ns}")
     else
         info "Namespace Scope CR \"nss-managedby-odlm\" not present. Moving on..."
     fi
-    failcheck=$(${OC} get nss --all-namespaces | grep odlm-scope-managedby-odlm || echo "failed")
+
+    failcheck=$(${OC} get nss -n ${master_ns} | grep odlm-scope-managedby-odlm || echo "failed")
     if [[ $failcheck != "failed" ]]; then
-        ${OC} get nss --all-namespaces | grep odlm-scope-managedby-odlm | while read -r line; do
-            local namespace=$(echo $line | awk '{print $1}')
-            info "deleting namespace scope odlm-scope-managedby-odlm in namespace $namespace"
-            ${OC} delete nss odlm-scope-managedby-odlm -n ${namespace} || (error "unable to delete namespace scope odlm-scope-managedby-odlm in ${namespace}")
-        done
+        info "deleting namespace scope odlm-scope-managedby-odlm in namespace ${master_ns}"
+        ${OC} delete nss odlm-scope-managedby-odlm -n ${master_ns} || (error "unable to delete namespace scope odlm-scope-managedby-odlm in ${master_ns}")
     else
         info "Namespace Scope CR \"odlm-scope-managedby-odlm\" not present. Moving on..."
+    fi
+
+    failcheck=$(${OC} get nss -n ${master_ns} | grep nss-odlm-scope || echo "failed")
+    if [[ $failcheck != "failed" ]]; then
+        info "deleting namespace scope nss-odlm-scope in namespace ${master_ns}"
+        ${OC} delete nss nss-odlm-scope -n ${master_ns} || (error "unable to delete namespace scope nss-odlm-scope in ${master_ns}")
+    else
+        info "Namespace Scope CR \"nss-odlm-scope\" not present. Moving on..."
+    fi
+
+    failcheck=$(${OC} get nss -n ${master_ns} | grep common-service || echo "failed")
+    if [[ $failcheck != "failed" ]]; then
+        info "deleting namespace scope common-service in namespace ${master_ns}"
+        ${OC} delete nss common-service -n ${master_ns} || (error "unable to delete namespace scope common-service in ${master_ns}")
+    else
+        info "Namespace Scope CR \"common-service\" not present. Moving on..."
     fi
 
     success "Namespace Scope CRs cleaned up"
