@@ -780,6 +780,20 @@ function scale_deployment() {
     ${OC} scale deployment ${deployment} -n ${ns} --replicas=$3
 }
 
+function wait_for_operand_registry() {
+    local namespace=$1
+    local name=$2
+    local condition="${OC} -n ${namespace} get operandregistry ${name} --no-headers --ignore-not-found"
+    local retries=20
+    local sleep_time=10
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for operand registry ${name} to be present"
+    local success_message="Operand registry ${name} is present"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for operand registry ${name} to be present"
+ 
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
 function scale_down() {
     local operator_ns=$1
     local services_ns=$2
@@ -832,16 +846,3 @@ function scale_up() {
     fi
 }
     
-function wait_for_operand_registry() {
-    local namespace=$1
-    local name=$2
-    local condition="${OC} -n ${namespace} get operandregistry ${name} --no-headers --ignore-not-found"
-    local retries=20
-    local sleep_time=10
-    local total_time_mins=$(( sleep_time * retries / 60))
-    local wait_message="Waiting for operand registry ${name} to be present"
-    local success_message="Operand registry ${name} is present"
-    local error_message="Timeout after ${total_time_mins} minutes waiting for operand registry ${name} to be present"
- 
-    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
-}
