@@ -773,3 +773,84 @@ function delete_operator() {
         msg ""
     done
 }
+
+function scale_deployment() {
+    local ns=$1
+    local sub=$2
+    ${OC} scale deployment -n "${ns}" "${sub}" --replicas=$3
+}
+
+function scale_down() {
+    local operator_ns=$1
+    local services_ns=$2
+    local channel=$3
+    local source=$4
+    local cs_sub=$(${OC} get subscription.operators.coreos.com -n $operator_ns -l operators.coreos.com/ibm-common-service-operator.$operator_ns='' --no-headers | awk '{print $1}')
+    ${OC} get subscription.operators.coreos.com ${cs_sub} -n $operator_ns -o yaml > sub.yaml
+    
+    existing_channel=$(yq eval '.spec.channel' sub.yaml)
+    existing_catalogsource=$(yq eval '.spec.source' sub.yaml)
+    compare_semantic_version $existing_channel $channel
+    return_channel_value=$?
+
+    compare_catalogsource $existing_catalogsource $source
+    return_catsrc_value=$?
+
+    if [[ $return_channel_value -eq 1 ]]; then 
+        error "Must provide correct channel. The channel $CHANNEl is less than $existing_channel found in subscription ibm-common-service-operator in $operator_ns"
+    elif [[ $return_channel_value -eq 2 || $return_catsrc_value -eq 1 ]]; then
+        info "$cs_sub is ready for scaling down."
+    elif [[ $return_channel_value -eq 0 && $return_catsrc_value -eq 0 ]]; then
+        info "$cs_sub already has updated channel $existing_channel and catalogsource $existing_catalogsource in the subscription."
+    fi
+    # scale down CS and ODLM
+    msg "Scaling down ${cs_sub} deployment in ${operator_ns} namespace to 0"
+    scale_deployment $operator_ns $cs_sub 0
+    msg "Scaling down operand-deployment-lifecycle-manager deployment in ${operator_ns} namespace to 0"
+    scale_deployment $operator_ns operand-deployment-lifecycle-manager 0
+    
+    # delete OperandRegistry
+    msg "Deleting OperandRegistry common-service in ${services_ns} namespace..."
+    ${OC} delete operandregistry common-service -n ${services_ns} --ignore-not-found  
+    rm sub.yaml 
+}
+
+function scale_up() {
+    local operator_ns=$1
+    local services_ns=$2
+    local channel=$3
+    local cs_sub=$(${OC} get subscription.operators.coreos.com -n $operator_ns -l operators.coreos.com/ibm-common-service-operator.$operator_ns='' --no-headers | awk '{print $1}')
+    local index=0
+
+    # get installedCSV from subscription
+    csv=$(${OC} get subscription.operators.coreos.com ${cs_sub} -n ${operator_ns} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
+    msg "existing installedCSV is ${csv}"
+
+    # remove all chars before "v"
+    trimmed_csv="$(echo $csv | awk -Fv '{print $NF}')"
+    trimmed_channel="$(echo $channel | awk -Fv '{print $NF}')"
+
+    if [[ "$trimmed_csv" == *"$trimmed_channel"* ]]; then
+        msg "installedCSV ${csv} matches upgrade channel version ${channel}"
+        # scale up CS and ODLM back to 1
+        msg "Scaling up ${cs_sub} deployment in ${operator_ns} namespace to 1"
+        scale_deployment $operator_ns $cs_sub 1
+
+        # scale up ODLM when the new OprandRegistry is ready
+        while true; do 
+            if ${OC} get operandregistry common-service -n cloudpak-all-in-one >/dev/null 2>&1; then
+                msg "Scaling up operand-deployment-lifecycle-manager deployment in ${operator_ns} namespace back to 1"
+                scale_deployment $operator_ns operand-deployment-lifecycle-manager 1
+                break
+            fi
+
+            msg "Waiting for new OprandRegistry ready..."
+            sleep 6
+            index=$(( index + 1 ))
+            if [[ $index -eq 20 ]]; then
+                error "Fail to get new OprandRegistry"
+                break
+            fi 
+        done
+    fi
+}
