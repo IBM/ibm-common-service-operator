@@ -282,29 +282,9 @@ function refresh_zen(){
  
     for namespace in $requested_ns
     do
-        # remove cs namespace from zen service cr
         return_value=$(${OC} get zenservice -n ${namespace} || echo "fail")
         if [[ $return_value != "fail" ]]; then
             if [[ $return_value != "" ]]; then
-                #need to delete the iam config job and zenclient again
-                # return_value=$(${OC} get job -n ${namespace} | grep iam-config-job || echo "fail")
-                # if [[ $return_value != "fail" ]]; then
-                #     ${OC} delete job iam-config-job -n ${namespace}
-                # else
-                #     info "iam-config-job not present in namespace ${namespace}. Moving on..."
-                # fi
-                # return_value=$(${OC} get client -n ${namespace} || echo "fail")
-                # if [[ $return_value != "fail" ]]; then
-                #     if [[ $return_value != "" ]]; then
-                #         zenClient=$(${OC} get client -n ${namespace} | awk '{if (NR!=1) {print $1}}')
-                #         ${OC} patch client ${zenClient} -n ${namespace} --type=merge -p '{"metadata": {"finalizers":null}}'
-                #         ${OC} delete client ${zenClient} -n ${namespace}
-                #     else
-                #         info "No zen client in ${namespace}. Moving on..."
-                #     fi
-                # else
-                #     info "Zen not installed in ${namespace}. Moving on..."
-                # fi
                 return_value=""
                 zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
                 conversionField=$("${OC}" get zenservice ${zenServiceCR} -n ${namespace} -o yaml | yq '.spec | has("conversion")')
@@ -325,30 +305,9 @@ function refresh_zen(){
     
     for namespace in $map_to_cs_ns
     do
-        # remove cs namespace from zen service cr
         return_value=$(${OC} get zenservice -n ${namespace} || echo "fail")
         if [[ $return_value != "fail" ]]; then
             if [[ $return_value != "" ]]; then
-                #need to delete the iam config job and zenclient again
-                # return_value=$(${OC} get job -n ${namespace} | grep iam-config-job || echo "fail")
-                # if [[ $return_value != "fail" ]]; then
-                #     ${OC} delete job iam-config-job -n ${namespace}
-                # else
-                #     info "iam-config-job not present in namespace ${namespace}. Moving on..."
-                # fi
-                # return_value=$(${OC} get client -n ${namespace} || echo "fail")
-                # if [[ $return_value != "fail" ]]; then
-                #     if [[ $return_value != "" ]]; then
-                #         zenClient=$(${OC} get client -n ${namespace} | awk '{if (NR!=1) {print $1}}')
-                #         ${OC} patch client ${zenClient} -n ${namespace} --type=merge -p '{"metadata": {"finalizers":null}}'
-                #         ${OC} delete client ${zenClient} -n ${namespace}
-                #     else
-                #         info "No zen client in ${namespace}. Moving on..."
-                #     fi
-                # else
-                #     info "Zen not installed in ${namespace}. Moving on..."
-                # fi
-                # return_value=""
                 zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
                 conversionField=$(${OC} get zenservice ${zenServiceCR} -n ${namespace} -o yaml | yq '.spec | has("conversion")')
                 if [[ $conversionField == "true" ]]; then
@@ -368,37 +327,6 @@ function refresh_zen(){
     success "Reconcile loop initiated for Zenservice instances"
 }
 
-#if this needs to be run after zen has had a chance to reconcile, when do we call it?
-#it can take 45 minutes for zen to reconcile, should the script really be waiting that long?
-#should this be a zen responsibility?
-function run_iam_jobs() {
-    local cs_namespace=$1
-    title " Running IAM jobs for new zen client "
-    msg "-----------------------------------------------------------------------"
-    
-    local name="oidc-client-registration"
-    local retries=10
-    local sleep_time=15
-    local total_time_mins=$(( sleep_time * retries / 60))
-    local wait_message="Waiting for ${name} job to complete"
-    local success_message="Job ${name} completed"
-    local error_message="Timeout after ${total_time_mins} minutes waiting for ${name} job to complete "
-    
-    #this command restarts the oidc-client-registration job
-    ${OC} get job ${name} -n $cs_namespace -o yaml |yq 'del(.spec.selector)' |yq 'del(.spec.template.metadata.labels)'| ${OC} replace --force -f -
-    local condition="${OC} -n ${cs_namespace} get job ${name} -o jsonpath='{.spec.completions}'| grep '1' || true"
-    #wait for oidc client registration job to complete
-    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
-
-    #do the same for iam-onboarding job
-    local name="iam-onboarding"
-    ${OC} get job ${name} -n $cs_namespace -o yaml |yq 'del(.spec.selector)' |yq 'del(.spec.template.metadata.labels)'| ${OC} replace --force -f -
-    local condition="${OC} -n ${cs_namespace} get job ${name} -o jsonpath='{.spec.completions}'| grep "1" || true"
-    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
-
-    success "New zen client registered with IAM"
-}
-
 function refresh_kafka () {
     return_value=$(${OC} get kafkaclaim -A || echo fail)
     if [[ $return_value != "fail" ]]; then
@@ -407,12 +335,11 @@ function refresh_kafka () {
         local namespaces="$requested_ns $map_to_cs_ns"
         for namespace in $namespaces
         do
-            # remove cs namespace from zen service cr
             return_value=$(${OC} get kafkaclaim -n ${namespace} || echo "fail")
             if [[ $return_value != "fail" ]]; then
                 if [[ $return_value != "" ]]; then
                     kafkaClaims=$(${OC} get kafkaclaim -n ${namespace} | awk '{if (NR!=1) {print $1}}')
-                    #TODO copy kc to file, delete original kc, re-apply copied file (check for an existing of the same name)
+                    #copy kc to file, delete original kc, re-apply copied file (check for an existing of the same name)
                     for kc in $kafkaClaims
                     do
                         ${OC} get kafkaclaim -n ${namespace} $kc -o yaml > tmp.yaml
@@ -441,7 +368,6 @@ function cleanupCSOperators(){
     msg "-----------------------------------------------------------------------"
     for namespace in $requested_ns
     do
-        # remove cs namespace from zen service cr
         return_value=$(${OC} get sub -n ${namespace} | (grep ibm-common-service-operator || echo "fail"))
         if [[ $return_value != "fail" ]]; then
             local sub=$(${OC} get sub -n ${namespace} | grep ibm-common-service-operator | awk '{print $1}')
@@ -525,8 +451,7 @@ function check_healthy() {
     total_time_mins=$(( sleep_time * retries / 60))
     info "Waiting for IBM Common Services CR is Succeeded"
     sleep 10
-    # pod=$(oc get pods -n ${CS_NAMESPACE} | grep ibm-common-service-operator | awk '{print $1}')
-    
+
     while true; do
         pod=$(oc get pods -n ${CS_NAMESPACE} | (grep ibm-common-service-operator || echo fail) | awk '{print $1}')
         if [[ ${retries} -eq 0 ]]; then
@@ -667,7 +592,6 @@ function check_CSCR() {
     done
 
 }
-
 
 # check that all namespaces in common-service-maps cm exist. 
 # Create them if not already present 
