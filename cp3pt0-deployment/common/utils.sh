@@ -832,13 +832,13 @@ function scale_up() {
 
     if [[ "$trimmed_csv" == *"$trimmed_channel"* ]]; then
         msg "installedCSV ${csv} matches upgrade channel version ${channel}"
-        # scale up CS and ODLM back to 1
+        # scale up CS back to 1
         msg "Scaling up ${cs_sub} deployment in ${operator_ns} namespace to 1"
         scale_deployment $operator_ns $cs_sub 1
 
         # scale up ODLM when the new OprandRegistry is ready
         while true; do 
-            if ${OC} get operandregistry common-service -n cloudpak-all-in-one >/dev/null 2>&1; then
+            if ${OC} get operandregistry common-service -n $services_ns >/dev/null 2>&1; then
                 msg "Scaling up operand-deployment-lifecycle-manager deployment in ${operator_ns} namespace back to 1"
                 scale_deployment $operator_ns operand-deployment-lifecycle-manager 1
                 break
