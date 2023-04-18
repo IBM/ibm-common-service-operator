@@ -162,13 +162,22 @@ function migrate_lic_cms() {
         if [[ $return_value != "fail" ]]; then
             if [[ $return_value == $cm ]]; then
                 ${OC} get cm -n $namespace $cm -o yaml --ignore-not-found > tmp.yaml
-                #edit the file to change the namespace to control_ns
-                yq -i '.metadata.namespace = "'${control_ns}'"' tmp.yaml
+                #edit the file to change the namespace to controlNs
+                yq -i '.metadata.namespace = "'${controlNs}'"' tmp.yaml
+
+                # apply updated ConfigMap back to cluster
                 ${OC} apply -f tmp.yaml
-                info "Licensing configmap $cm copied from $namespace to $control_ns"
+                if [[ $? -eq 0 ]]; then
+                    info "Licensing Services ConfigMap $cm copied from $namespace to $controlNs"
+                    # delete the original in cs namespace
+                    ${OC} delete cm -n $namespace $cm --ignore-not-found
+                else
+                    error "Failed to move Licensing Services ConfigMap $cm to $controlNs"
+                fi
             fi
         fi
     done
+    
     rm tmp.yaml -f
     success "Licensing configmaps copied from $namespace to $control_ns"
 }

@@ -310,7 +310,10 @@ function wait_for_env_var() {
 function wait_for_deployment() {
     local namespace=$1
     local name=$2
-    local condition="${OC} -n ${namespace} get deployment ${name} --no-headers --ignore-not-found -o jsonpath='{.status.readyReplicas}' | grep '1'"
+    local needReplicas=$(${OC} -n ${namespace} get deployment ${name} --no-headers --ignore-not-found -o jsonpath='{.spec.replicas}' | awk '{print $1}')
+    local readyReplicas="${OC} -n ${namespace} get deployment ${name} --no-headers --ignore-not-found -o jsonpath='{.status.readyReplicas}' | grep '${needReplicas}'"
+    local replicas="${OC} -n ${namespace} get deployment ${name} --no-headers --ignore-not-found -o jsonpath='{.status.replicas}' | grep '${needReplicas}'"
+    local condition="(${readyReplicas} && ${replicas})"
     local retries=10
     local sleep_time=30
     local total_time_mins=$(( sleep_time * retries / 60))
@@ -674,25 +677,25 @@ function compare_semantic_version() {
     # Compare the versions
     if [[ $major1 -gt $major2 ]]; then
         info "$1 is greater than $2"
-        return 0
+        return 1
     elif [[ $major1 -lt $major2 ]]; then
         info "$1 is less than $2"
         return 2
     elif [[ $minor1 -gt $minor2 ]]; then
         info "$1 is greater than $2"
-        return 0
+        return 1
     elif [[ $minor1 -lt $minor2 ]]; then
         info "$1 is less than $2"
         return 2
     elif [[ $patch1 -gt $patch2 ]]; then
         info "$1 is greater than $2"
-        return 0
+        return 1
     elif [[ $patch1 -lt $patch2 ]]; then
         info "$1 is less than $2"
         return 2
     else
         info "$1 is equal to $2"
-        return 3
+        return 0
     fi
 }
 
@@ -727,18 +730,17 @@ function update_operator() {
     existing_catalogsource=$(yq eval '.spec.source' sub.yaml)
 
     compare_semantic_version $existing_channel $channel
-    return_value1=$?
+    return_channel_value=$?
 
     compare_catalogsource $existing_catalogsource $source
-    return_value2=$?
+    return_catsrc_value=$?
 
-    if [[ $return_value1 -eq 0 || $return_value2 -eq 1 ]]; then
-        info "$package_name is ready for updaing the subscription."
-    elif [[ $return_value1 -ne 2 ]]; then
+    if [[ $return_channel_value -eq 1 ]]; then
         error "Failed to update channel subscription ${package_name} in ${ns}"
-    elif [[ $return_value1 -eq 3 && $return_value2 -eq 0 ]]; then
-        info "$package_name already has updated channel $existing_channel and catalogsource $existing_catalogsource in the subscription."
-        return 0
+    elif [[ $return_channel_value -eq 2 || $return_catsrc_value -eq 1 ]]; then
+        info "$package_name is ready for updaing the subscription."      
+    elif [[ $return_channel_value -eq 0 && $return_catsrc_value -eq 0 ]]; then
+        info "$package_name has already updated channel $existing_channel and catalogsource $existing_catalogsource in the subscription."
     fi
 
     yq -i eval 'select(.kind == "Subscription") | .spec += {"channel": "'${channel}'"}' sub.yaml
