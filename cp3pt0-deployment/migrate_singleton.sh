@@ -53,7 +53,7 @@ function main() {
         delete_operator "ibm-cert-manager-operator" "$CONTROL_NS"
     else
         # Delgation of CP2 Cert Manager
-        ${BASE_DIR}/common/delegate_cp2_cert_manager.sh --control-namespace $CONTROL_NS "--skip-user-vertify"
+        ${BASE_DIR}/common/delegate_cp2_cert_manager.sh --control-namespace $CONTROL_NS --operator-namespace $OPERATOR_NS "--skip-user-vertify"
     fi
     
     if [[ $ENABLE_LICENSING -eq 1 ]] && [[ "$CONTROL_NS" == "$OPERATOR_NS" ]]; then

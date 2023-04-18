@@ -32,7 +32,7 @@ STEP=0
 function main() {
     parse_arguments "$@"
     pre_req
-    deactivate_cp2_cert_manager
+    certmanager_delegation_check
 }
 
 function parse_arguments() {
@@ -50,6 +50,10 @@ function parse_arguments() {
         --control-namespace)
             shift
             CONTROL_NS=$1
+            ;;
+        --operator-namespace)
+            shift
+            OPERATOR_NS=$1
             ;;
         -v | --debug)
             shift
@@ -101,6 +105,46 @@ function pre_req() {
 
     if [ "$CONTROL_NS" == "" ]; then
         error "Must provide control namespace"
+    fi
+
+    if [ "$OPERATOR_NS" == "" ]; then
+        error "Must provide operator namespace"
+    fi
+}
+
+function certmanager_delegation_check() {
+    info "checking ibm-cert-manager version"
+    package_name="ibm-cert-manager-operator"
+    csv=$(${OC} get subscription.operators.coreos.com -l operators.coreos.com/${package_name}.${CONTROL_NS}='' -n ${CONTROL_NS} -o yaml -o jsonpath='{.items[*].status.installedCSV}')
+    if [[ "${csv}" == "null" ]] || [[ "${csv}" == "" ]]; then
+        csv=$(${OC} get subscription.operators.coreos.com -l operators.coreos.com/${package_name}.${OPERATOR_NS}='' -n ${OPERATOR_NS} -o yaml -o jsonpath='{.items[*].status.installedCSV}')
+    fi
+
+    if [[ "${csv}" == "null" ]] || [[ "${csv}" == "" ]]; then
+        error "Not found ibm-cert-manager"
+    fi
+    echo $csv
+    operator_name=$(echo ${csv} | cut -d "." -f 1 | awk '{print $1}')
+    if [[ "${operator_name}" != "ibm-cert-manager-operator" ]]; then
+        error "csv name is not correct"
+    fi
+    
+
+    channel=$(echo ${csv} | cut -d "." -f 2 | awk '{print $1}')
+    big_version=$(echo ${csv} | cut -d "." -f 3 | awk '{print $1}')
+
+    if [[ "${channel}" == "v3" ]]; then
+        if [[ "${big_version}" -ge "20" ]]; then
+            info "version: ${channel}.${big_version} is greater than v3.20, deactivating cp2_cert_manager..."
+            deactivate_cp2_cert_manager
+        else
+            info "version: ${channel}.${big_version} is smaller than v3.20, need to uninstall it"
+        fi
+    elif [[ "${channel}" == "v4" ]]; then
+        info "version: ${channel}.${big_version} is greater than v3.20, deactivating cp2_cert_manager..."
+        deactivate_cp2_cert_manager
+    else
+        info "version: ${channel}.${big_version} is smaller than v3.20, need to uninstall it"
     fi
 }
 
