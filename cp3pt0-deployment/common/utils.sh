@@ -776,8 +776,8 @@ function delete_operator() {
 
 function scale_deployment() {
     local ns=$1
-    local sub=$2
-    ${OC} scale deployment -n "${ns}" "${sub}" --replicas=$3
+    local deployment=$2
+    ${OC} scale deployment ${deployment} -n ${ns} --replicas=$3
 }
 
 function scale_down() {
@@ -785,8 +785,8 @@ function scale_down() {
     local services_ns=$2
     local channel=$3
     local source=$4
-    local cs_sub=$(${OC} get subscription.operators.coreos.com -n $operator_ns -l operators.coreos.com/ibm-common-service-operator.$operator_ns='' --no-headers | awk '{print $1}')
-    ${OC} get subscription.operators.coreos.com ${cs_sub} -n $operator_ns -o yaml > sub.yaml
+    local cs_sub=$(${OC} get subscription.operators.coreos.com -n ${operator_ns} -l operators.coreos.com/ibm-common-service-operator.${operator_ns}='' --no-headers | awk '{print $1}')
+    ${OC} get subscription.operators.coreos.com ${cs_sub} -n ${operator_ns} -o yaml > sub.yaml
     
     existing_channel=$(yq eval '.spec.channel' sub.yaml)
     existing_catalogsource=$(yq eval '.spec.source' sub.yaml)
@@ -805,7 +805,7 @@ function scale_down() {
     fi
     # scale down CS and ODLM
     msg "Scaling down ${cs_sub} deployment in ${operator_ns} namespace to 0"
-    scale_deployment $operator_ns $cs_sub 0
+    scale_deployment $operator_ns ibm-common-service-operator 0
     msg "Scaling down operand-deployment-lifecycle-manager deployment in ${operator_ns} namespace to 0"
     scale_deployment $operator_ns operand-deployment-lifecycle-manager 0
     
@@ -818,39 +818,30 @@ function scale_down() {
 function scale_up() {
     local operator_ns=$1
     local services_ns=$2
-    local channel=$3
-    local cs_sub=$(${OC} get subscription.operators.coreos.com -n $operator_ns -l operators.coreos.com/ibm-common-service-operator.$operator_ns='' --no-headers | awk '{print $1}')
-    local index=0
-
-    # get installedCSV from subscription
-    csv=$(${OC} get subscription.operators.coreos.com ${cs_sub} -n ${operator_ns} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
-    msg "existing installedCSV is ${csv}"
-
-    # remove all chars before "v"
-    trimmed_csv="$(echo $csv | awk -Fv '{print $NF}')"
-    trimmed_channel="$(echo $channel | awk -Fv '{print $NF}')"
-
-    if [[ "$trimmed_csv" == *"$trimmed_channel"* ]]; then
-        msg "installedCSV ${csv} matches upgrade channel version ${channel}"
-        # scale up CS back to 1
-        msg "Scaling up ${cs_sub} deployment in ${operator_ns} namespace to 1"
-        scale_deployment $operator_ns $cs_sub 1
-
-        # scale up ODLM when the new OprandRegistry is ready
-        while true; do 
-            if ${OC} get operandregistry common-service -n $services_ns >/dev/null 2>&1; then
-                msg "Scaling up operand-deployment-lifecycle-manager deployment in ${operator_ns} namespace back to 1"
-                scale_deployment $operator_ns operand-deployment-lifecycle-manager 1
-                break
-            fi
-
-            msg "Waiting for new OprandRegistry ready..."
-            sleep 6
-            index=$(( index + 1 ))
-            if [[ $index -eq 20 ]]; then
-                error "Fail to get new OprandRegistry"
-                break
-            fi 
-        done
+    cs_repliacs=$(${OC} -n ${operator_ns} get deployment ibm-common-service-operator --no-headers --ignore-not-found -o jsonpath='{.status.replicas}')
+    if [[ ${cs_replicas} -ne 1 ]]; then
+        msg "Scaling up ibm-common-service-operator deployment in ${operator_ns} namespace to 1"
+        scale_deployment ${operator_ns} ibm-common-service-operator 1
     fi
+
+    odlm_replicas=$(${OC} -n ${operator_ns} get deployment operand-deployment-lifecycle-manager --no-headers --ignore-not-found -o jsonpath='{.status.replicas}')
+    if [[ ${odlm_replicas} -eq 0 ]]; then
+        wait_for_operand_registry ${services_ns} common-service
+        msg "Scaling up operand-deployment-lifecycle-manager deployment in ${operator_ns} namespace back to 1"
+        scale_deployment ${operator_ns} operand-deployment-lifecycle-manager 1
+    fi
+}
+    
+function wait_for_operand_registry() {
+    local namespace=$1
+    local name=$2
+    local condition="${OC} -n ${namespace} get operandregistry ${name} --no-headers --ignore-not-found"
+    local retries=20
+    local sleep_time=10
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for operand registry ${name} to be present"
+    local success_message="Operand registry ${name} is present"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for operand registry ${name} to be present"
+ 
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
