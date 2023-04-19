@@ -64,7 +64,7 @@ function create_empty_csmaps() {
 function insert_control_ns() {
     local current_yaml=$("${OC}" get -n kube-public cm "$CM_NAME" -o yaml | "${YQ}" '.data.["common-service-maps.yaml"]')
 
-    current=$(echo "$current_yaml" | "${YQ}" .'controlNamespace')
+    current=$(echo "$current_yaml" | "${YQ}" '.controlNamespace')
     if [[ "$current" != "$CONTROL_NS" && "$current" != "" && "$current" != "null" ]]; then
         error "The controlNamespace field in common-service-maps is already set to: $current, and cannot be changed"
     fi
