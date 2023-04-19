@@ -91,7 +91,6 @@ metadata:
     app.kubernetes.io/instance: cs-webhook-certificate
     app.kubernetes.io/managed-by: cert-manager-controller
     app.kubernetes.io/name: Certificate
-    ibm-cert-manager-operator/refresh-ca-chain: 'true'
   name: cs-webhook-certificate
   namespace: "placeholder"
 spec:
