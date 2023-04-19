@@ -212,7 +212,7 @@ function restart_CS_pods() {
     title "restarting ibm-common-service-operator pod"
     msg "-----------------------------------------------------------------------"
     
-    local namespaces="$requested_ns $map_to_cs_ns"
+    local namespaces="$requested_ns $map_to_cs_ns $master_ns"
     for namespace in $namespaces
     do
         cs_pod=$(${OC} get pod -n $namespace | (grep ibm-common-service-operator || echo fail) | awk '{print $1}')
@@ -618,8 +618,8 @@ function removeNSS(){
     
     title " Removing ODLM managed Namespace Scope CRs "
     msg "-----------------------------------------------------------------------"
-
-    for ns in $map_to_cs_ns
+    namespaces="$map_to_cs_ns $master_ns"
+    for ns in $namespaces
     do
         info "deleting namespace scope nss-managedby-odlm in namespace ${ns}"
         ${OC} delete nss nss-managedby-odlm -n ${ns} --ignore-not-found || (error "unable to delete namespace scope nss-managedby-odlm in ${ns}")
