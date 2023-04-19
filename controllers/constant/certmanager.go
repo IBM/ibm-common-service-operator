@@ -22,6 +22,7 @@ var (
 	CertManagerKinds                   = []string{"Issuer", "Certificate"}
 	CertManagerIssuers                 = []string{CSSSIssuer, CSCAIssuer}
 	CertManagerCerts                   = []string{CSCACert}
+	WebhookCert                        = []string{CSWebhookCert}
 )
 
 // CSCAIssuer is the CR of cs-ca-issuer
@@ -77,6 +78,30 @@ spec:
     kind: Issuer
   commonName: cs-ca-certificate
   isCA: true
+  duration: 17520h0m0s
+  renewBefore: 720h0m0s
+`
+
+// CSCACert is the CR of cs-ca-certificate
+const CSWebhookCert = `
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  labels:
+    app.kubernetes.io/instance: cs-webhook-certificate
+    app.kubernetes.io/managed-by: cert-manager-controller
+    app.kubernetes.io/name: Certificate
+    ibm-cert-manager-operator/refresh-ca-chain: 'true'
+  name: cs-webhook-certificate
+  namespace: "placeholder"
+spec:
+  secretName: cs-webhook-cert-secret
+  dnsNames:
+  - ibm-common-service-webhook.OPERATOR_NS.svc
+  issuerRef:
+    name: cs-ca-issuer
+    kind: Issuer
+  commonName: cs-webhook-certificate
   duration: 17520h0m0s
   renewBefore: 720h0m0s
 `

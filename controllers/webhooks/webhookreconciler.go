@@ -41,7 +41,7 @@ type WebhookReconciler interface {
 	SetWebhookName(webhookName string)
 	SetRule(rule RuleWithOperations)
 	SetNsSelector(selector v1.LabelSelector)
-	Reconcile(ctx context.Context, client k8sclient.Client, caBundle []byte) error
+	Reconcile(ctx context.Context, client k8sclient.Client, reader k8sclient.Reader) error
 }
 
 type CompositeWebhookReconciler struct {
@@ -72,9 +72,9 @@ func (reconciler *CompositeWebhookReconciler) SetNsSelector(selector v1.LabelSel
 	}
 }
 
-func (reconciler *CompositeWebhookReconciler) Reconcile(ctx context.Context, client k8sclient.Client, caBundle []byte) error {
+func (reconciler *CompositeWebhookReconciler) Reconcile(ctx context.Context, client k8sclient.Client, reader k8sclient.Reader) error {
 	for _, innerReconciler := range reconciler.Reconcilers {
-		if err := innerReconciler.Reconcile(ctx, client, caBundle); err != nil {
+		if err := innerReconciler.Reconcile(ctx, client, reader); err != nil {
 			return err
 		}
 	}
@@ -99,7 +99,7 @@ type MutatingWebhookReconciler struct {
 }
 
 // Reconcile MutatingWebhookConfiguration
-func (reconciler *MutatingWebhookReconciler) Reconcile(ctx context.Context, client k8sclient.Client, caBundle []byte) error {
+func (reconciler *MutatingWebhookReconciler) Reconcile(ctx context.Context, client k8sclient.Client, reader k8sclient.Reader) error {
 	var (
 		sideEffects    = admissionregistrationv1.SideEffectClassNone
 		port           = int32(servicePort)
@@ -113,9 +113,16 @@ func (reconciler *MutatingWebhookReconciler) Reconcile(ctx context.Context, clie
 		return err
 	}
 
+	// error handle?
+	serviceNamespace := common.GetServicesNamespace(reader)
+	caInjectAnnotation := map[string]string{
+		"cert-manager.io/inject-ca-from": serviceNamespace + "/" + "cs-ca-certificate",
+	}
+
 	cr := &admissionregistrationv1.MutatingWebhookConfiguration{
 		ObjectMeta: v1.ObjectMeta{
-			Name: reconciler.name,
+			Name:        reconciler.name,
+			Annotations: caInjectAnnotation,
 		},
 	}
 
@@ -129,7 +136,6 @@ func (reconciler *MutatingWebhookReconciler) Reconcile(ctx context.Context, clie
 				Name:        reconciler.webhookName,
 				SideEffects: &sideEffects,
 				ClientConfig: admissionregistrationv1.WebhookClientConfig{
-					CABundle: caBundle,
 					Service: &admissionregistrationv1.ServiceReference{
 						Namespace: namespace,
 						Name:      operatorPodServiceName,
@@ -166,7 +172,7 @@ func (reconciler *MutatingWebhookReconciler) Reconcile(ctx context.Context, clie
 }
 
 // Reconcile ValidatingWebhookConfiguration
-func (reconciler *ValidatingWebhookReconciler) Reconcile(ctx context.Context, client k8sclient.Client, caBundle []byte) error {
+func (reconciler *ValidatingWebhookReconciler) Reconcile(ctx context.Context, client k8sclient.Client, reader k8sclient.Reader) error {
 	var (
 		sideEffects    = admissionregistrationv1.SideEffectClassNone
 		port           = int32(servicePort)
@@ -180,9 +186,16 @@ func (reconciler *ValidatingWebhookReconciler) Reconcile(ctx context.Context, cl
 		return err
 	}
 
+	// error handle?
+	serviceNamespace := common.GetServicesNamespace(reader)
+	caInjectAnnotation := map[string]string{
+		"cert-manager.io/inject-ca-from": serviceNamespace + "/" + "cs-ca-certificate",
+	}
+
 	cr := &admissionregistrationv1.ValidatingWebhookConfiguration{
 		ObjectMeta: v1.ObjectMeta{
-			Name: reconciler.name,
+			Name:        reconciler.name,
+			Annotations: caInjectAnnotation,
 		},
 	}
 
@@ -196,7 +209,6 @@ func (reconciler *ValidatingWebhookReconciler) Reconcile(ctx context.Context, cl
 				Name:        reconciler.webhookName,
 				SideEffects: &sideEffects,
 				ClientConfig: admissionregistrationv1.WebhookClientConfig{
-					CABundle: caBundle,
 					Service: &admissionregistrationv1.ServiceReference{
 						Namespace: namespace,
 						Name:      operatorPodServiceName,
@@ -322,7 +334,7 @@ func SetupWebhooks(mgr manager.Manager, bs *bootstrap.Bootstrap) error {
 	}
 
 	klog.Info("setting up webhook server")
-	if err := Config.SetupServer(mgr, bs.CSData.OperatorNs); err != nil {
+	if err := Config.SetupServer(mgr, bs.CSData.OperatorNs, bs.CSData.ServicesNs); err != nil {
 		return err
 	}
 
