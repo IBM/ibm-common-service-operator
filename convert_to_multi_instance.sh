@@ -235,6 +235,7 @@ function install_new_CS() {
         create_operator_group "${namespace}"
         install_common_service_operator_sub "${namespace}"
         check_CSCR "${namespace}"
+        copy_over_commonservice_cr "${namespace}"
     done
     
     success "Common Services Operator is converted to multi_instance mode"
@@ -768,6 +769,23 @@ function wait_for_condition() {
     if [[ ! -z "${success_message}" ]]; then
         success "${success_message}"
     fi
+}
+
+function copy_over_commonservice_cr() {
+    namespace=$1
+    title " Copying existing CommonService CR to new cs instance $namespace "
+    msg "-----------------------------------------------------------------------"
+    
+    ${OC} get commonservice common-service -n ${master_ns} -o yaml > tmp.yaml
+
+    yq -i 'del(.metadata.creationTimestamp)' tmp.yaml
+    yq -i 'del(.metadata.resourceVersion)' tmp.yaml
+    yq -i 'del(.metadata.uid)' tmp.yaml
+    yq -i 'del(.metadata.generation)' tmp.yaml
+    yq -i '.metadata.namespace = "'${namespace}'"' tmp.yaml
+    ${OC} apply -f tmp.yaml  || error "Could not apply CommonService CR changes in namespace $namespace"
+
+    rm -f tmp.yaml
 }
 
 function msg() {
