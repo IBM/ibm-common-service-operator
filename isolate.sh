@@ -576,7 +576,7 @@ function cleanup_webhook() {
     ${OC} delete MutatingWebhookConfiguration ibm-operandrequest-webhook-configuration --ignore-not-found
     msg ""
 
-    info "Deleting MutatingWebhookConfiguration..."
+    info "Deleting ValidatingWebhookConfiguration..."
     ${OC} delete ValidatingWebhookConfiguration ibm-cs-ns-mapping-webhook-configuration --ignore-not-found
 
 }
