@@ -79,16 +79,16 @@ function collect_data() {
     title "Collecting data"
     msg "-----------------------------------------------------------------------"
     
-    info "MasterNS:${master_ns}"
-    cs_operator_channel=$(${OC} get sub ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.channel") 
-    info "channel:${cs_operator_channel}"   
-    catalog_source=$(${OC} get sub ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.source")
-    info "catalog_source:${catalog_source}" 
+    # info "MasterNS:${master_ns}"
+    # cs_operator_channel=$(${OC} get sub ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.channel") 
+    # info "channel:${cs_operator_channel}"   
+    # catalog_source=$(${OC} get sub ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.source")
+    # info "catalog_source:${catalog_source}" 
     #this command gets all of the ns listed in requested from namesapce fields
     requested_ns=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].requested-from-namespace' | awk '{print $2}' | tr '\n' ' ')
     #this command gets all of the ns listed in map-to-common-service-namespace
     map_to_cs_ns=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].map-to-common-service-namespace' | awk '{print}' | tr '\n' ' ')
-    if [[ $MASTER_NS != $map_to_cs_ns ]]; then
+    if [[ $MASTER_NS != ${map_to_cs_ns%%[[:space:]]} ]]; then
         error "The original common service namespace value entered does not match the value in the common-service-maps configmap. Make sure there is only one \"map-to-common-service-namesapce\" value specified in the configmap"
     fi
 }
@@ -147,23 +147,15 @@ function rollback() {
 
     cleanup_webhook
     cleanup_deployment "secretshare" "$CONTROL_NS"
-    
-    removeNSS
-    cleanupZenService
-    
-    #delete misc items in control namespace
-    "${OC}" delete deploy -n "${CONTROL_NS}" --ignore-not-found secretshare ibm-common-service-webhook
-    ${OC} delete svc ibm-common-service-webhook -n ${CONTROL_NS} --ignore-not-found
-    #restart pod in cs namespace to update webhook instance
-    webhookPod=$("${OC}" get pods -n ${MASTER_NS} | grep ibm-common-service-webhook | awk '{print $1}')
-    ${OC} delete pod ${webhookPod} -n ${MASTER_NS} --ignore-not-found
-    ${OC} delete deploy -n ${MASTER_NS} --ignore-not-found ibm-common-service-webhook
 
     info "Deleting control namespace ${CONTROL_NS}"
     ${OC} delete namespace ${CONTROL_NS} --ignore-not-found
 
-    # scale back up
+    removeNSS
+    cleanupZenService
     un_isolate_odlm "ibm-odlm" $MASTER_NS
+
+    # scale back up
     scale_up_pod
 
     #verify singleton's are installed in master ns
@@ -252,7 +244,7 @@ function check_healthy() {
 function cleanupZenService(){
     title " Cleaning up Zen installation "
     msg "-----------------------------------------------------------------------"
-    namespaces="$requested_nss $map_to_csn_ns"
+    namespaces="$requested_ns $MASTER_NS"
     for namespace in $namespaces
     do
         # remove cs namespace from zen service cr
@@ -333,7 +325,7 @@ function refresh_zen(){
     msg "-----------------------------------------------------------------------"
     #make sure IAM is ready before reconciling.
     check_IAM #this will likely need to change in the future depending on how we check iam status
-    local namespaces="$requested_ns $map_to_cs_ns"
+    local namespaces="$requested_ns $MASTER_NS"
     for namespace in $namespaces
     do
         return_value=$(${OC} get zenservice -n ${namespace} || echo "fail")
@@ -365,7 +357,7 @@ function refresh_kafka () {
     if [[ $return_value != "fail" ]]; then
         title " Refreshing Kafka Deployments "
         msg "-----------------------------------------------------------------------"
-        local namespaces="$requested_ns $map_to_cs_ns"
+        local namespaces="$requested_ns $MASTER_NS"
         for namespace in $namespaces
         do
             return_value=$(${OC} get kafkaclaim -n ${namespace} || echo "fail")
@@ -430,7 +422,7 @@ function un_isolate_odlm() {
 function check_odlm_env() {
     local namespace=$1
     local name="operand-deployment-lifecycle-manager"
-    local condition="${OC} -n ${namespace} get deployment ${name} -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name==\"ISOLATED_MODE\")].value}'| grep "true" || true"
+    local condition="${OC} -n ${namespace} get deployment ${name} -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name==\"ISOLATED_MODE\")].value}'| grep "false" || true"
     local retries=10
     local sleep_time=12
     local total_time_mins=$(( sleep_time * retries / 60))
@@ -481,17 +473,19 @@ function cleanup_deployment() {
 }
 
 function cleanup_webhook() {
-
-    info "Deleting podpresets in namespace {$CONTROL_NS}..."
-    ${OC} get podpresets.operator.ibm.com -n $CONTROL_NS --no-headers | awk '{print $1}' | xargs ${OC} delete -n $CONTROL_NS --ignore-not-found podpresets.operator.ibm.com
-    msg ""
+    podpreset_exist="true"
+    podpreset_exist=$(${OC} get podpresets.operator.ibm.com -n $CONTROL_NS --no-headers || echo "false")
+    if [[ $podpreset_exist != "false" ]] && [[ $podpreset_exist != "" ]]; then
+        echo $podpreset_exist
+        info "Deleting podpresets in namespace $CONTROL_NS..."
+        ${OC} get podpresets.operator.ibm.com -n $CONTROL_NS --no-headers --ignore-not-found | awk '{print $1}' | xargs ${OC} delete -n $CONTROL_NS --ignore-not-found podpresets.operator.ibm.com
+    fi
 
     cleanup_deployment "ibm-common-service-webhook" $CONTROL_NS
 
     info "Deleting MutatingWebhookConfiguration..."
     ${OC} delete MutatingWebhookConfiguration ibm-common-service-webhook-configuration --ignore-not-found
     ${OC} delete MutatingWebhookConfiguration ibm-operandrequest-webhook-configuration --ignore-not-found
-    msg ""
 
     info "Deleting ValidatingWebhookConfiguration..."
     ${OC} delete ValidatingWebhookConfiguration ibm-cs-ns-mapping-webhook-configuration --ignore-not-found
