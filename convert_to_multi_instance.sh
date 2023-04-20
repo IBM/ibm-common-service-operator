@@ -280,8 +280,8 @@ function refresh_zen(){
     msg "-----------------------------------------------------------------------"
     #make sure IAM is ready before reconciling.
     check_IAM #this will likely need to change in the future depending on how we check iam status
- 
-    for namespace in $requested_ns
+    local namespaces="$requested_ns $map_to_cs_ns"
+    for namespace in $namespaces
     do
         return_value=$(${OC} get zenservice -n ${namespace} || echo "fail")
         if [[ $return_value != "fail" ]]; then
@@ -303,28 +303,7 @@ function refresh_zen(){
         fi
         return_value=""
     done
-    
-    for namespace in $map_to_cs_ns
-    do
-        return_value=$(${OC} get zenservice -n ${namespace} || echo "fail")
-        if [[ $return_value != "fail" ]]; then
-            if [[ $return_value != "" ]]; then
-                zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
-                conversionField=$(${OC} get zenservice ${zenServiceCR} -n ${namespace} -o yaml | yq '.spec | has("conversion")')
-                if [[ $conversionField == "true" ]]; then
-                    ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type='merge' -p '{"spec":{"conversion":"true"}}' || error "Zenservice ${zenServiceCR} in ${namespace} cannot be updated."
-                else
-                    ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type json -p '[{ "op": "remove", "path": "/spec/conversion" }]' || error "Zenservice ${zenServiceCR} in ${namespace} cannot be updated."
-                fi
-                conversionField=""
-            else
-                info "No zen service in namespace ${namespace}. Moving on..."
-            fi
-        else
-            info "Zen not installed in ${namespace}. Moving on..."
-        fi
-        return_value=""
-    done
+
     success "Reconcile loop initiated for Zenservice instances"
 }
 
@@ -482,7 +461,7 @@ function check_healthy() {
 function cleanupZenService(){
     title " Cleaning up Zen installation "
     msg "-----------------------------------------------------------------------"
-
+    local namespaces="$requested_ns $map_to_cs_ns"
     for namespace in $requested_ns
     do
         # remove cs namespace from zen service cr
@@ -522,46 +501,7 @@ function cleanupZenService(){
         fi
         return_value=""
     done
-    
-    for namespace in $map_to_cs_ns
-    do
-        # remove cs namespace from zen service cr
-        return_value=$(${OC} get zenservice -n ${namespace} || echo "fail")
-        if [[ $return_value != "fail" ]]; then
-            if [[ $return_value != "" ]]; then
-                zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
-                ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type json -p '[{ "op": "remove", "path": "/spec/csNamespace" }]' || info "CS Namespace not defined in ${zenServiceCR} in ${namespace}. Moving on..."
-            else
-                info "No zen service in namespace ${namespace}. Moving on..."
-            fi
-        else
-            info "Zen not installed in ${namespace}. Moving on..."
-        fi
-        return_value=""
 
-        # delete iam config job
-        return_value=$(${OC} get job -n ${namespace} | grep iam-config-job || echo "failed")
-        if [[ $return_value != "failed" ]]; then
-            ${OC} delete job iam-config-job -n ${namespace}
-        else
-            info "iam-config-job not present in namespace ${namespace}. Moving on..."
-        fi
-
-        # delete zen client
-        return_value=$(${OC} get client -n ${namespace} || echo "fail")
-        if [[ $return_value != "fail" ]]; then
-            if [[ $return_value != "" ]]; then
-                zenClient=$(${OC} get client -n ${namespace} | awk '{if (NR!=1) {print $1}}')
-                ${OC} patch client ${zenClient} -n ${namespace} --type=merge -p '{"metadata": {"finalizers":null}}'
-                ${OC} delete client ${zenClient} -n ${namespace}
-            else
-                info "No zen client in ${namespace}. Moving on..."
-            fi
-        else
-            info "Zen not installed in ${namespace}. Moving on..."
-        fi
-        return_value=""
-    done
     success "Zen instances cleaned up"
 }
 
