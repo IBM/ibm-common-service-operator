@@ -147,6 +147,16 @@ spec:
       commonWebUI: {}
       legacyHeader: {}
       navconfiguration: {}
+  - name: ibm-idp-config-ui-operator-v4.0
+    spec:
+      commonWebUI: {}
+      legacyHeader: {}
+      navconfiguration: {}
+  - name: ibm-idp-config-ui-operator
+    spec:
+      commonWebUI: {}
+      legacyHeader: {}
+      navconfiguration: {}
   - name: ibm-management-ingress-operator
     spec:
       managementIngress: {}

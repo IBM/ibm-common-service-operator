@@ -352,6 +352,28 @@ const Medium = `
         requests:
           cpu: 300m
           memory: 376Mi
+- name: ibm-idp-config-ui-operator-v4.0
+  spec:
+    commonWebUI:
+      replicas: 2
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 1225Mi
+        requests:
+          cpu: 300m
+          memory: 376Mi
+- name: ibm-idp-config-ui-operator
+  spec:
+    commonWebUI:
+      replicas: 2
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 1225Mi
+        requests:
+          cpu: 300m
+          memory: 376Mi
 - name: ibm-platform-api-operator
   spec:
     platformApi:
