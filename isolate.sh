@@ -564,7 +564,7 @@ function cleanup_deployment() {
 }
 
 function cleanup_webhook() {
-
+    podpreset_exist="true"
     podpreset_exist=$(${OC} get podpresets.operator.ibm.com -n $master_ns --no-headers || echo "false")
     if [[ $podpreset_exist != "false" ]] && [[ $podpreset_exist != "" ]]; then
         info "Deleting podpresets in namespace $master_ns..."
