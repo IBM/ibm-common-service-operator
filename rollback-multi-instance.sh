@@ -327,6 +327,7 @@ function refresh_zen(){
     title " Refreshing Zen Services "
     msg "-----------------------------------------------------------------------"
     #make sure IAM is ready before reconciling.
+    check_IAM #this will likely need to change in the future depending on how we check iam status
     local namespaces="$requested_ns $MASTER_NS"
     for namespace in $namespaces
     do
@@ -335,12 +336,6 @@ function refresh_zen(){
             if [[ $return_value != "" ]]; then
                 return_value=""
                 zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
-                iam_enabled=$(${OC} get zenservice -n ${namespace} ${zenServiceCR}  -o yaml | grep iamIntegration | awk '{print $2}')
-                if [[ $iam_enabled == "true" ]]; then
-                    check_IAM
-                else
-                    info "IAM not enabled for zenservice in $namespace"
-                fi
                 conversionField=$("${OC}" get zenservice ${zenServiceCR} -n ${namespace} -o yaml | yq '.spec | has("conversion")')
                 if [[ $conversionField == "false" ]]; then
                     ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type='merge' -p '{"spec":{"conversion":"true"}}' || error "Zenservice ${zenServiceCR} in ${namespace} cannot be updated."
