@@ -71,16 +71,16 @@ function main() {
         error "Required parameters missing. Please re-run specifying original and control namespace values. Use -h for help."
     fi
     #need to get the namespaces for csmaps generation before pausing cs, otherwise namespace-scope cm does not include all namespaces
-    prereq
+    # prereq
     local ns_list=$(gather_csmaps_ns)
     # pause
     create_empty_csmaps
     insert_control_ns
     update_tenant "${MASTER_NS}" "${ns_list}"
-    # check_cm_ns_exist "$ns_list" # debating on turning this off by default since this technically falls outside the scope of isolate
-    # uninstall_singletons
-    # isolate_odlm "ibm-odlm" $MASTER_NS
-    # restart
+    check_cm_ns_exist "$ns_list" # debating on turning this off by default since this technically falls outside the scope of isolate
+    uninstall_singletons
+    isolate_odlm "ibm-odlm" $MASTER_NS
+    restart
 }
 
 function usage() {
@@ -259,23 +259,33 @@ function pause() {
     success "Common Services successfully isolated in namespace ${MASTER_NS}"
 }
 
+# uninstall_singletons Deletes resources related to singletons so that when
+# cs-operator and ODLM are restarted, these resources will be re-created in the
+# controlNamespace.
+#
+# Everything here can be deleted without backing up because they will eventually
+# be re-created, except for the licensing configmaps. These configmaps will only
+# be deleted after successful migration. The configmaps should be deleted
+# to avoid overwriting any licensing data if isolate script is run multiple
+# times.
 function uninstall_singletons() {
     title "Uninstalling Singleton Operators"
     msg "-----------------------------------------------------------------------"
-    # uninstall singleton services
-    "${OC}" delete -n "${MASTER_NS}" --ignore-not-found certmanager default
+
+    local isExists=$("${OC}" get deployments -n "${MASTER_NS}" --ignore-not-found ibm-cert-manager-operator)
+    if [ ! -z "$isExists" ]; then
+        "${OC}" delete --ignore-not-found certmanager default
+    fi
     "${OC}" delete -n "${MASTER_NS}" --ignore-not-found sub ibm-cert-manager-operator
     local csv=$("${OC}" get -n "${MASTER_NS}" csv | (grep ibm-cert-manager-operator || echo "fail") | awk '{print $1}')
     "${OC}" delete -n "${MASTER_NS}" --ignore-not-found csv "${csv}"
-    # reason for checking again instead of simply deleting the CR when checking
-    # for LSR is to avoid deleting anything until the last possible moment.
-    # This makes recovery from simple pre-requisite errors easier.
-    return_value=$(("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
-    if [[ $return_value == "exists" ]]; then
-        migrate_lic_cms $MASTER_NS
+
+    migrate_lic_cms $MASTER_NS
+    isExists=$("${OC}" get deployments -n "${MASTER_NS}" --ignore-not-found ibm-licensing-operator)
+    if [ ! -z "$isExists" ]; then
         "${OC}" delete -n "${MASTER_NS}" --ignore-not-found ibmlicensing instance
     fi
-    return_value="reset"
+
     #might need a more robust check for if licensing is installed
     #"${OC}" delete -n "${MASTER_NS}" --ignore-not-found sub ibm-licensing-operator
     csv=$("${OC}" get -n "${MASTER_NS}" csv | (grep ibm-licensing-operator || echo "fail") | awk '{print $1}')
@@ -353,22 +363,32 @@ function migrate_lic_cms() {
 "ibm-licensing-services"
 )
 
-    for cm in "${possible_cms[@]}"
-    do
-        return_value=$(${OC} get cm -n $namespace --ignore-not-found | (grep $cm || echo "fail") | awk '{print $1}')
-        if [[ $return_value != "fail" ]]; then
-            if [[ $return_value == $cm ]]; then
-                ${OC} get cm -n $namespace $cm -o yaml --ignore-not-found > tmp.yaml
-                #edit the file to change the namespace to CONTROL_NS
-                yq -i '.metadata.namespace = "'${CONTROL_NS}'"' tmp.yaml
-                ${OC} apply -f tmp.yaml
-                info "Licensing configmap $cm copied from $namespace to $CONTROL_NS"
-            fi
-        fi
-    done
-    rm -f tmp.yaml
+    local cm_list=$("${OC}" get cm -n $namespace "${possible_cms[@]}" -o yaml --ignore-not-found)
+    if [ -z "$cm_list" ]; then
+        info "No licensing configmaps to migrate"
+        return
+    fi
+
+    local cleaned_cm_list=$(export_k8s_list_yaml "$cm_list")
+    echo "$cleaned_cm_list" | "${OC}" apply -n "$CONTROL_NS" -f -
     success "Licensing configmaps copied from $namespace to $CONTROL_NS"
     "${OC}" delete cm --ignore-not-found -n "${namespace}" "${possible_cms[@]}"
+}
+
+# export_k8s_list_yaml Takes a k8s list in YAML form,
+# e.g. oc get configmap -o yaml, and cleans up the cluster/namespace metadata,
+# and prints out a YAML that can be applied into any namespace
+function export_k8s_list_yaml() {
+    local yaml=$1
+    echo "$yaml" | "${YQ}" '
+        with(.items[].metadata;
+            del(.creationTimestamp) |
+            del(.managedFields) |
+            del(.resourceVersion) |
+            del(.uid) |
+            del(.namespace)
+        )
+    '
 }
 
 function check_CSCR() {
