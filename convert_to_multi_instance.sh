@@ -588,7 +588,6 @@ function check_topology() {
     do
         allPresent="false"
         nsFromCM=$(echo "$cm_maps" | yq eval '.namespaceMapping[] | select(.map-to-common-service-namespace == "'${csNamespace}'").requested-from-namespace' | awk '{ print $2 }' | tr '\n' ' ')
-        echo "nsFromCM2: $nsFromCM"
         nssExist=$(${OC} get nss -n $csNamespace common-service || echo fail)
         if [[ $nssExist == "fail" ]]; then
             allPresent="false"
@@ -602,7 +601,6 @@ function check_topology() {
         #if there are no differences between the two lists, the variable is unset.
         #check for unset, if it is, then the grouping doesn't need to be changed anyway
         if [[ -z ${leftover:-} ]]; then
-            echo "empty leftover"
             leftover=""
         fi
         leftover=${leftover%%[[:space:]]}
