@@ -145,6 +145,9 @@ function rollback() {
     "${OC}" delete namespacescope common-service -n "${CONTROL_NS}" --ignore-not-found
     "${OC}" delete -n "${CONTROL_NS}" --ignore-not-found deploy ibm-namespace-scope-operator
 
+    cleanup_webhook
+    cleanup_deployment "secretshare" "$CONTROL_NS"
+    
     removeNSS
     cleanupZenService
     
@@ -468,6 +471,31 @@ function wait_for_condition() {
     if [[ ! -z "${success_message}" ]]; then
         success "${success_message}"
     fi
+}
+
+function cleanup_deployment() {
+    local name=$1
+    local namespace=$2
+    info "Deleting existing Deployment ${name} in namespace ${namespace}..."
+    ${OC} delete deployment ${name} -n ${namespace} --ignore-not-found
+}
+
+function cleanup_webhook() {
+
+    info "Deleting podpresets in namespace {$CONTROL_NS}..."
+    ${OC} get podpresets.operator.ibm.com -n $CONTROL_NS --no-headers | awk '{print $1}' | xargs ${OC} delete -n $CONTROL_NS --ignore-not-found podpresets.operator.ibm.com
+    msg ""
+
+    cleanup_deployment "ibm-common-service-webhook" $CONTROL_NS
+
+    info "Deleting MutatingWebhookConfiguration..."
+    ${OC} delete MutatingWebhookConfiguration ibm-common-service-webhook-configuration --ignore-not-found
+    ${OC} delete MutatingWebhookConfiguration ibm-operandrequest-webhook-configuration --ignore-not-found
+    msg ""
+
+    info "Deleting ValidatingWebhookConfiguration..."
+    ${OC} delete ValidatingWebhookConfiguration ibm-cs-ns-mapping-webhook-configuration --ignore-not-found
+
 }
 
 function msg() {
