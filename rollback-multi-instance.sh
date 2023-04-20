@@ -159,7 +159,7 @@ function rollback() {
     scale_up_pod
 
     #verify singleton's are installed in master ns
-    retries=10
+    retries=20
     sleep_time=15
     total_time_mins=$(( sleep_time * retries / 60))
     info "Waiting for singleton services to deploy to ${MASTER_NS}..."
@@ -180,8 +180,11 @@ function rollback() {
             licPodCheck=$("${OC}" get pods -n "${CONTROL_NS}" --ignore-not-found | (grep ibm-licensing-service || echo "fail") | awk '{print $1}')
             if [ $certPodCheck != "fail" ] || [ $licPodCheck != "fail" ]; then
                 error "Singleton services re-deployed into control namespace. Verify that the common-services-map configmap in kube-public namespace has had the \"controlNamespace\" field removed and run again."
+            else
+                info "RETRYING: Waiting for singleton services to deploy to ${MASTER_NS}... (${retries} left)"
             fi
         fi
+        retries=$(( retries - 1 ))
     done
 
     refresh_zen
@@ -324,7 +327,6 @@ function refresh_zen(){
     title " Refreshing Zen Services "
     msg "-----------------------------------------------------------------------"
     #make sure IAM is ready before reconciling.
-    check_IAM #this will likely need to change in the future depending on how we check iam status
     local namespaces="$requested_ns $MASTER_NS"
     for namespace in $namespaces
     do
@@ -333,6 +335,12 @@ function refresh_zen(){
             if [[ $return_value != "" ]]; then
                 return_value=""
                 zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
+                iam_enabled=$(${OC} get zenservice -n ${namespace} ${zenServiceCR}  -o yaml | grep iamIntegration | awk '{print $2}')
+                if [[ $iam_enabled == "true" ]]; then
+                    check_IAM
+                else
+                    info "IAM not enabled for zenservice in $namespace"
+                fi
                 conversionField=$("${OC}" get zenservice ${zenServiceCR} -n ${namespace} -o yaml | yq '.spec | has("conversion")')
                 if [[ $conversionField == "false" ]]; then
                     ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type='merge' -p '{"spec":{"conversion":"true"}}' || error "Zenservice ${zenServiceCR} in ${namespace} cannot be updated."
@@ -427,7 +435,7 @@ function check_odlm_env() {
     local sleep_time=12
     local total_time_mins=$(( sleep_time * retries / 60))
     local wait_message="Waiting for OLM to update Deployment ${name} "
-    local success_message="Deployment ${name} is updated to run in isolated mode"
+    local success_message="Deployment ${name} is updated to not run in isolated mode"
     local error_message="Timeout after ${total_time_mins} minutes waiting for OLM to update Deployment ${name} "
 
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
