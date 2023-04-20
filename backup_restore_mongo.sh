@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 
-set -o errexit
+# set -o errexit
 set -o pipefail
 set -o errtrace
 set -o nounset
@@ -85,8 +85,8 @@ function usage() {
 	Options:
 	Mandatory arguments to long options are mandatory for short options too.
 	  -h, --help                    display this help and exit
-	  -bns                          specify the namespace to backup/where the backup exists
-      -rns                          specify the namespace where data is to be restored
+      --bns                          specify the namespace to backup/where the backup exists
+      --rns                          specify the namespace where data is to be restored
       -b                            run the backup process
       -r                            run the restore process
       -c                            cleanup resources used or created by this script
@@ -172,7 +172,7 @@ EOF
 function backup() {
     title " Backing up MongoDB in namespace $ORIGINAL_NAMESPACE "
     msg "-----------------------------------------------------------------------"
-
+    export CS_NAMESPACE=$ORIGINAL_NAMESPACE
     chmod +x mongo-backup.sh
     ./mongo-backup.sh true
 
@@ -232,8 +232,11 @@ function prep_restore() {
     local pvx=$(${OC} get pv | grep cs-mongodump | awk '{print $1}')
     export PVX=${pvx}
     ${OC} delete job mongodb-backup -n ${ORIGINAL_NAMESPACE}
-    ${OC} patch pvc -n ${ORIGINAL_NAMESPACE} cs-mongodump --type=merge -p '{"metadata": {"finalizers":null}}'
-    ${OC} delete pvc -n ${ORIGINAL_NAMESPACE} cs-mongodump
+    ${OC} delete pvc cs-mongodump -n ${ORIGINAL_NAMESPACE} --ignore-not-found --timeout=10s
+    if [ $? -ne 0 ]; then
+        info "Failed to delete pvc cs-mongodump, patching its finalizer to null..."
+        ${OC} patch pvc cs-mongodump -n ${ORIGINAL_NAMESPACE} --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+    fi
     ${OC} patch pv -n ${ORIGINAL_NAMESPACE} ${pvx} --type=merge -p '{"spec": {"claimRef":null}}'
     
     #Check if the backup PV has come available yet
@@ -322,8 +325,11 @@ function cleanup(){
         if [[ $return_value != "failed" ]]; then
         #delete backup items in original namespace
             ${OC} delete job mongodb-backup -n ${ORIGINAL_NAMESPACE} || info "Backup job already deleted. Moving on..."
-            ${OC} patch pvc cs-mongodump -n $ORIGINAL_NAMESPACE --type=merge -p '{"metadata": {"finalizers":null}}'
-            ${OC} delete pvc cs-mongodump -n $ORIGINAL_NAMESPACE
+            ${OC} delete pvc cs-mongodump -n $ORIGINAL_NAMESPACE --ignore-not-found --timeout=10s
+            if [ $? -ne 0 ]; then
+                info "Failed to delete pvc cs-mongodump, patching its finalizer to null..."
+                ${OC} patch pvc cs-mongodump -n $ORIGINAL_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+            fi
         else
             info "Resources used in backup already cleaned up. Moving on..."
         fi
@@ -349,8 +355,11 @@ function cleanup(){
         #delete retore items in target namespace
             local boundPV=$(${OC} get pvc cs-mongodump -n $TARGET_NAMESPACE -o yaml | yq '.spec.volumeName' | awk '{print}')
             ${OC} delete job mongodb-restore -n ${TARGET_NAMESPACE} || info "Restore job already deleted. Moving on..."
-            ${OC} patch pvc cs-mongodump -n $TARGET_NAMESPACE --type=merge -p '{"metadata": {"finalizers":null}}'
-            ${OC} delete pvc cs-mongodump -n $TARGET_NAMESPACE
+            ${OC} delete pvc cs-mongodump -n $TARGET_NAMESPACE --ignore-not-found --timeout=10s
+            if [ $? -ne 0 ]; then
+                info "Failed to delete pvc cs-mongodump, patching its finalizer to null..."
+                ${OC} patch pvc cs-mongodump -n $TARGET_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+            fi
             ${OC} patch pv $boundPV --type=merge -p '{"metadata": {"finalizers":null}}'
             ${OC} delete pv $boundPV
         else
