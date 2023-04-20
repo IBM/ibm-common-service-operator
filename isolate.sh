@@ -115,6 +115,11 @@ function prereq() {
         error "The ibm-common-service-operator must not be installed in AllNamespaces mode"
     fi
 
+    local isExists=$("${OC}" get deploy --ignore-not-found -n ${MASTER_NS} operand-deployment-lifecycle-manager)
+    if [ -z "$isExists" ]; then
+        error "Missing operand-deployment-lifecycle-manager deployment (ODLM) in namespace $MASTER_NS"
+    fi
+
     local cs_version=$("${OC}" get csv -n ${MASTER_NS} | grep common-service-operator | grep 3.2 || echo fail)
     if [[ $cs_version == "fail" ]]; then
         cs_LTSR_version=$("${OC}" get csv -n ${MASTER_NS} | grep common-service-operator | grep 3.19 || echo fail)
