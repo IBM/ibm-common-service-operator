@@ -561,8 +561,6 @@ function cleanup_deployment() {
     local namespace=$2
     info "Deleting existing Deployment ${name} in namespace ${namespace}..."
     ${OC} delete deployment ${name} -n ${namespace} --ignore-not-found
-
-    wait_for_no_pod ${namespace} ${name}
 }
 
 function cleanup_webhook() {
@@ -581,52 +579,6 @@ function cleanup_webhook() {
     info "Deleting MutatingWebhookConfiguration..."
     ${OC} delete ValidatingWebhookConfiguration ibm-cs-ns-mapping-webhook-configuration --ignore-not-found
 
-}
-
-function wait_for_no_pod() {
-    local namespace=$1
-    local name=$2
-    local condition="${OC} -n ${namespace} get po --no-headers --ignore-not-found | grep ^${name}"
-    local retries=30
-    local sleep_time=10
-    local total_time_mins=$(( sleep_time * retries / 60))
-    local wait_message="Waiting for pod ${name} in namespace ${namespace} to be deleting"
-    local success_message="Pod ${name} in namespace ${namespace} is deleted"
-    local error_message="Timeout after ${total_time_mins} minutes waiting for pod ${name} in namespace ${namespace} to be deleted"
- 
-    wait_for_not_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
-}
-
-function wait_for_not_condition() {
-    local condition=$1
-    local retries=$2
-    local sleep_time=$3
-    local wait_message=$4
-    local success_message=$5
-    local error_message=$6
-
-    info "${wait_message}"
-    while true; do
-        result=$(eval "${condition}")
-
-        if [[ ( ${retries} -eq 0 ) && ( ! -z "${result}" ) ]]; then
-            error "${error_message}"
-        fi
- 
-        sleep ${sleep_time}
-        result=$(eval "${condition}")
-        
-        if [[ ! -z "${result}" ]]; then
-            info "RETRYING: ${wait_message} (${retries} left)"
-            retries=$(( retries - 1 ))
-        else
-            break
-        fi
-    done
-
-    if [[ ! -z "${success_message}" ]]; then
-        success "${success_message}"
-    fi
 }
 
 function msg() {
