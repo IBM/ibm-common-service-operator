@@ -25,7 +25,6 @@ YQ=yq
 MASTER_NS=
 EXCLUDED_NS=""
 ADDITIONAL_NS=""
-map_to_cs_ns=
 CONTROL_NS=""
 CS_MAPPING_YAML=""
 CM_NAME="common-service-maps"
@@ -293,15 +292,15 @@ function uninstall_singletons() {
         "${OC}" delete -n "${MASTER_NS}" --ignore-not-found sub ibm-licensing-operator
         "${OC}" delete -n "${MASTER_NS}" --ignore-not-found csv "${csv}"
     fi
-    "${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-crossplane-operator-app
-    "${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-crossplane-provider-kubernetes-operator-app
-    csv=$("${OC}" get -n "${master_ns}" csv | (grep ibm-crossplane-operator || echo "fail") | awk '{print $1}')
-    "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
-    csv=$("${OC}" get -n "${master_ns}" csv | (grep ibm-crossplane-provider-kubernetes-operator || echo "fail") | awk '{print $1}')
-    "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
+    "${OC}" delete -n "${MASTER_NS}" --ignore-not-found sub ibm-crossplane-operator-app
+    "${OC}" delete -n "${MASTER_NS}" --ignore-not-found sub ibm-crossplane-provider-kubernetes-operator-app
+    csv=$("${OC}" get -n "${MASTER_NS}" csv | (grep ibm-crossplane-operator || echo "fail") | awk '{print $1}')
+    "${OC}" delete -n "${MASTER_NS}" --ignore-not-found csv "${csv}"
+    csv=$("${OC}" get -n "${MASTER_NS}" csv | (grep ibm-crossplane-provider-kubernetes-operator || echo "fail") | awk '{print $1}')
+    "${OC}" delete -n "${MASTER_NS}" --ignore-not-found csv "${csv}"
 
     cleanup_webhook
-    cleanup_deployment "secretshare" "$master_ns"
+    cleanup_deployment "secretshare" "$MASTER_NS"
 
     success "Singletons successfully uninstalled"
 }
@@ -503,14 +502,14 @@ function cleanup_deployment() {
 
 function cleanup_webhook() {
     podpreset_exist="true"
-    podpreset_exist=$(${OC} get podpresets.operator.ibm.com -n $master_ns --no-headers || echo "false")
+    podpreset_exist=$(${OC} get podpresets.operator.ibm.com -n $MASTER_NS --no-headers || echo "false")
     if [[ $podpreset_exist != "false" ]] && [[ $podpreset_exist != "" ]]; then
-        info "Deleting podpresets in namespace $master_ns..."
-	${OC} get podpresets.operator.ibm.com -n $master_ns --no-headers --ignore-not-found | awk '{print $1}' | xargs ${OC} delete -n $master_ns --ignore-not-found podpresets.operator.ibm.com
+        info "Deleting podpresets in namespace $MASTER_NS..."
+	${OC} get podpresets.operator.ibm.com -n $MASTER_NS --no-headers --ignore-not-found | awk '{print $1}' | xargs ${OC} delete -n $MASTER_NS --ignore-not-found podpresets.operator.ibm.com
         msg ""
     fi
 
-    cleanup_deployment "ibm-common-service-webhook" $master_ns
+    cleanup_deployment "ibm-common-service-webhook" $MASTER_NS
 
     info "Deleting MutatingWebhookConfiguration..."
     ${OC} delete MutatingWebhookConfiguration ibm-common-service-webhook-configuration --ignore-not-found
