@@ -28,9 +28,9 @@ ADDITIONAL_NS=""
 map_to_cs_ns=
 CONTROL_NS=""
 CS_MAPPING_YAML=""
-CM_NAME="mock-cs-maps"
+CM_NAME="common-service-maps"
 
-function main () {
+function main() {
     while [ "$#" -gt "0" ]
     do
         case "$1" in
@@ -77,7 +77,7 @@ function main () {
     create_empty_csmaps
     insert_control_ns
     update_tenant "${MASTER_NS}" "${ns_list}"
-    # check_cm_ns_exist # debating on turning this off by default since this technically falls outside the scope of isolate
+    # check_cm_ns_exist "$ns_list" # debating on turning this off by default since this technically falls outside the scope of isolate
     # uninstall_singletons
     # isolate_odlm "ibm-odlm" $MASTER_NS
     # restart
@@ -115,20 +115,6 @@ function prereq() {
     if [[ $return_value != "pass" ]]; then
         error "The ibm-common-service-operator must not be installed in AllNamespaces mode"
     fi
-    
-    # local csmaps_exists=$("${OC}" get configmap -n kube-public -o yaml ${CM_NAME} || echo fail)
-    # if [[ $csmaps_exists != "fail" ]]; then
-    #     local control_ns_exists=$("${OC}" get configmap -n kube-public -o yaml ${CM_NAME} | yq '.data' | grep controlNamespace: || echo fail)
-    #     if [[ $control_ns_exists != "fail" ]]; then
-    #         error "Configmap common-service-maps already exists in kube-pubic namespace. Isolate.sh exiting, it is recommended to make futher changes to the configmap manually."
-    #     fi
-        
-    #     local map_to_cs_ns_check=$("${OC}" get configmap -n kube-public -o yaml ${CM_NAME} | yq '.data[]' | yq '.namespaceMapping[].map-to-common-service-namespace' | awk '{print}')
-    #     if [[ $map_to_cs_ns_check != $MASTER_NS ]]; then
-    #         error "Existing value for map-to-common-service-namespace in common-service-maps configmap not equal to argument passed as --original-cs-ns. Exiting..."
-    #     fi
-    # fi
-    
 
     local cs_version=$("${OC}" get csv -n ${MASTER_NS} | grep common-service-operator | grep 3.2 || echo fail)
     if [[ $cs_version == "fail" ]]; then
@@ -279,7 +265,7 @@ function uninstall_singletons() {
     # uninstall singleton services
     "${OC}" delete -n "${MASTER_NS}" --ignore-not-found certmanager default
     "${OC}" delete -n "${MASTER_NS}" --ignore-not-found sub ibm-cert-manager-operator
-    csv=$("${OC}" get -n "${MASTER_NS}" csv | (grep ibm-cert-manager-operator || echo "fail") | awk '{print $1}')
+    local csv=$("${OC}" get -n "${MASTER_NS}" csv | (grep ibm-cert-manager-operator || echo "fail") | awk '{print $1}')
     "${OC}" delete -n "${MASTER_NS}" --ignore-not-found csv "${csv}"
     # reason for checking again instead of simply deleting the CR when checking
     # for LSR is to avoid deleting anything until the last possible moment.
@@ -312,16 +298,13 @@ function restart() {
     ${OC} scale deployment -n ${MASTER_NS} ibm-common-service-operator --replicas=1
     ${OC} scale deployment -n ${MASTER_NS} operand-deployment-lifecycle-manager --replicas=1
     check_CSCR "$MASTER_NS"
-    if [[ $MASTER_NS != $map_to_cs_ns ]]; then
-        check_CSCR "$map_to_cs_ns"
-    fi
     success "Common Service Operator restarted."
 }
 
-function check_cm_ns_exist(){
+function check_cm_ns_exist() {
     title " Verify all namespaces exist "
     msg "-----------------------------------------------------------------------"
-    local namespaces="$requested_ns $map_to_cs_ns $CONTROL_NS"
+    local namespaces=$1
     for ns in $namespaces
     do
         info "Creating namespace $ns"
@@ -356,7 +339,7 @@ function migrate_lic_cms() {
     title "Copying over Licensing Configmaps"
     msg "-----------------------------------------------------------------------"
     local namespace=$1
-    POSSIBLE_CONFIGMAPS=("ibm-licensing-config"
+    local possible_cms=("ibm-licensing-config"
 "ibm-licensing-annotations"
 "ibm-licensing-products"
 "ibm-licensing-products-vpc-hour"
@@ -370,7 +353,7 @@ function migrate_lic_cms() {
 "ibm-licensing-services"
 )
 
-    for cm in ${POSSIBLE_CONFIGMAPS[@]}
+    for cm in "${possible_cms[@]}"
     do
         return_value=$(${OC} get cm -n $namespace --ignore-not-found | (grep $cm || echo "fail") | awk '{print $1}')
         if [[ $return_value != "fail" ]]; then
@@ -383,16 +366,17 @@ function migrate_lic_cms() {
             fi
         fi
     done
-    rm -f tmp.yaml 
+    rm -f tmp.yaml
     success "Licensing configmaps copied from $namespace to $CONTROL_NS"
+    "${OC}" delete cm --ignore-not-found -n "${namespace}" "${possible_cms[@]}"
 }
 
 function check_CSCR() {
-    local CS_NAMESPACE=$1
+    local ns=$1
 
-    retries=30
-    sleep_time=15
-    total_time_mins=$(( sleep_time * retries / 60))
+    local retries=30
+    local sleep_time=15
+    local total_time_mins=$(( sleep_time * retries / 60))
     info "Waiting for IBM Common Services CR is Succeeded"
     sleep 10
 
@@ -401,7 +385,7 @@ function check_CSCR() {
             error "Timeout after ${total_time_mins} minutes waiting for IBM Common Services CR is Succeeded"
         fi
 
-        phase=$(oc get commonservice common-service -o jsonpath='{.status.phase}' -n ${CS_NAMESPACE})
+        local phase=$(oc get commonservice common-service -o jsonpath='{.status.phase}' -n ${ns})
 
         if [[ "${phase}" != "Succeeded" ]]; then
             retries=$(( retries - 1 ))
@@ -417,10 +401,10 @@ function check_CSCR() {
 }
 
 function isolate_odlm() {
-    package_name=$1
-    ns=$2
+    local package_name=$1
+    local ns=$2
     # get subscription of ODLM based on namespace 
-    sub_name=$(${OC} get subscription.operators.coreos.com -n ${ns} -l operators.coreos.com/${package_name}.${ns}='' --no-headers | awk '{print $1}')
+    local sub_name=$(${OC} get subscription.operators.coreos.com -n ${ns} -l operators.coreos.com/${package_name}.${ns}='' --no-headers | awk '{print $1}')
     if [ -z "$sub_name" ]; then
         warning "Not found subscription ${package_name} in ${ns}"
         return 0
