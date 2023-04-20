@@ -51,11 +51,11 @@ function main() {
     # # Update common-serivce-maps ConfigMap
     # ${BASE_DIR}/common/mapping_tenant.sh --operator-namespace $OPERATOR_NS --services-namespace $SERVICES_NS --tethered-namespaces $TETHERED_NS --control-namespace $CONTROL_NS
     
-    # Scale down CS and ODLM
+    # Scale down CS, ODLM and delete OperandReigsrty
     # It helps to prevent re-installing licensing and cert-manager services
-    scale_down_cs
+    scale_down $OPERATOR_NS $SERVICES_NS $CHANNEL $SOURCE
 
-    # migrate singleton services
+    # Migrate singleton services
     local arguments="--enable-licensing"
     
     if [[ $ENABLE_PRIVATE_CATALOG -eq 1 ]]; then
@@ -77,9 +77,12 @@ function main() {
         fi
     done
 
-    # wait for operator upgrade
+    # Wait for operator upgrade
     wait_for_operator_upgrade "$OPERATOR_NS" "ibm-common-service-operator" "$CHANNEL"
     wait_for_operator_upgrade "$OPERATOR_NS" "ibm-odlm" "$CHANNEL"
+
+    # Scale up CS and ODLM
+    scale_up $OPERATOR_NS "$SERVICES_NS" $CHANNEL
 
     # Clean resources
     cleanup_cp2 "$OPERATOR_NS" "$CONTROL_NS" "$NS_LIST"
@@ -234,34 +237,6 @@ function pre_req() {
 # TODO validate argument
 function get_and_validate_arguments() {
     get_control_namespace
-}
-
-function scale_down_cs() {
-
-    local sub_name=$(${OC} get subscription.operators.coreos.com -n $OPERATOR_NS -l operators.coreos.com/ibm-common-service-operator.$OPERATOR_NS='' --no-headers | awk '{print $1}')
-    ${OC} get subscription.operators.coreos.com ${sub_name} -n $OPERATOR_NS -o yaml > sub.yaml
-    
-    existing_channel=$(yq eval '.spec.channel' sub.yaml)
-    existing_catalogsource=$(yq eval '.spec.source' sub.yaml)
-    compare_semantic_version $existing_channel $CHANNEL
-    return_channel_value=$?
-
-    compare_catalogsource $existing_catalogsource $SOURCE
-    return_catsrc_value=$?
-
-    if [[ $return_channel_value -eq 1 ]]; then 
-        error "Must provide correct channel. The channel $CHANNEl is less than $existing_channel found in subscription ibm-common-service-operator in $OPERATOR_NS"
-    elif [[ $return_channel_value -eq 2 || $return_catsrc_value -eq 1 ]]; then
-        info "$package_name is ready for scaling down."
-    elif [[ $return_channel_value -eq 0 && $return_catsrc_value -eq 0 ]]; then
-        info "$package_name already has updated channel $existing_channel and catalogsource $existing_catalogsource in the subscription."
-        return 0
-    fi
-
-    ${OC} scale deployment -n $OPERATOR_NS ibm-common-service-operator --replicas=0
-    delete_operator "operand-deployment-lifecycle-manager-app" $OPERATOR_NS
-    ${OC} delete operandregistry -n $SERVICES_NS --ignore-not-found common-service 
-    ${OC} delete operandconfig -n $SERVICES_NS --ignore-not-found common-service
 }
 
 function debug1() {
