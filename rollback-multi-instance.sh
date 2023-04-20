@@ -19,11 +19,11 @@ set -o errexit
 set -o pipefail
 set -o errtrace
 set -o nounset
-MASTER_NS=$2
-CONTROL_NS=$1
+MASTER_NS=
+CONTROL_NS=
 cm_name="common-service-maps"
-OC=${3:-oc}
-YQ=${3:-yq}
+OC=oc
+YQ=yq
 
 
 function main() {
