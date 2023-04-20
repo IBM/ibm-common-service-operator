@@ -370,6 +370,46 @@ const ConfigurationRules = `
             requests:
               cpu: LARGEST_VALUE
               memory: LARGEST_VALUE
+- name: ibm-idp-config-ui-operator-v4.0
+  spec:
+    commonWebUI:
+      replicas: LARGEST_VALUE
+      resources:
+        requests:
+          memory: LARGEST_VALUE
+          cpu: LARGEST_VALUE
+        limits:
+          memory: LARGEST_VALUE
+          cpu: LARGEST_VALUE
+      commonWebUIConfig:
+        dashboardData:
+          resources:
+            limits:
+              cpu: LARGEST_VALUE
+              memory: LARGEST_VALUE
+            requests:
+              cpu: LARGEST_VALUE
+              memory: LARGEST_VALUE
+- name: ibm-idp-config-ui-operator
+  spec:
+    commonWebUI:
+      replicas: LARGEST_VALUE
+      resources:
+        requests:
+          memory: LARGEST_VALUE
+          cpu: LARGEST_VALUE
+        limits:
+          memory: LARGEST_VALUE
+          cpu: LARGEST_VALUE
+      commonWebUIConfig:
+        dashboardData:
+          resources:
+            limits:
+              cpu: LARGEST_VALUE
+              memory: LARGEST_VALUE
+            requests:
+              cpu: LARGEST_VALUE
+              memory: LARGEST_VALUE
 - name: ibm-platform-api-operator
   spec:
     platformApi:

@@ -94,6 +94,70 @@
     }
   },
   {
+    "name": "ibm-idp-config-ui-operator-v4.0",
+    "spec": {
+      "commonWebUI": {
+        "commonWebUIConfig": {
+          "dashboardData": {
+            "resources": {
+              "limits": {
+                "cpu": "3000m",
+                "memory": "600Mi"
+              },
+              "requests": {
+                "cpu": "390m",
+                "memory": "380Mi"
+              }
+            }
+          }
+        },
+        "replicas": 3,
+        "resources": {
+          "limits": {
+            "cpu": "1000m",
+            "memory": "660Mi"
+          },
+          "requests": {
+            "cpu": "450m",
+            "memory": "490Mi"
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": " ibm-idp-config-ui-operator",
+    "spec": {
+      "commonWebUI": {
+        "commonWebUIConfig": {
+          "dashboardData": {
+            "resources": {
+              "limits": {
+                "cpu": "3000m",
+                "memory": "600Mi"
+              },
+              "requests": {
+                "cpu": "390m",
+                "memory": "380Mi"
+              }
+            }
+          }
+        },
+        "replicas": 3,
+        "resources": {
+          "limits": {
+            "cpu": "1000m",
+            "memory": "660Mi"
+          },
+          "requests": {
+            "cpu": "450m",
+            "memory": "490Mi"
+          }
+        }
+      }
+    }
+  },
+  {
     "name": "ibm-healthcheck-operator",
     "spec": {
       "healthService": {

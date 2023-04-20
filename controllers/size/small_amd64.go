@@ -352,6 +352,28 @@ const Small = `
         limits:
           memory: 440Mi
           cpu: 1000m
+- name: ibm-idp-config-ui-operator-v4.0
+  spec:
+    commonWebUI:
+      replicas: 1
+      resources:
+        requests:
+          memory: 256Mi
+          cpu: 130m
+        limits:
+          memory: 440Mi
+          cpu: 1000m
+- name: ibm-idp-config-ui-operator
+  spec:
+    commonWebUI:
+      replicas: 1
+      resources:
+        requests:
+          memory: 256Mi
+          cpu: 130m
+        limits:
+          memory: 440Mi
+          cpu: 1000m
 - name: ibm-platform-api-operator
   spec:
     platformApi:
