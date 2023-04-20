@@ -70,9 +70,9 @@ function main() {
         error "Required parameters missing. Please re-run specifying original and control namespace values. Use -h for help."
     fi
     #need to get the namespaces for csmaps generation before pausing cs, otherwise namespace-scope cm does not include all namespaces
-    # prereq
+    prereq
     local ns_list=$(gather_csmaps_ns)
-    # pause
+    pause
     create_empty_csmaps
     insert_control_ns
     update_tenant "${MASTER_NS}" "${ns_list}"
