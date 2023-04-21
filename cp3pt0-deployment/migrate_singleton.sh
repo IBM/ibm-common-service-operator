@@ -23,6 +23,7 @@ CERT_MANAGER_NAMESPACE="ibm-cert-manager"
 LICENSING_NAMESPACE="ibm-licensing"
 ENABLE_LICENSING=0
 ENABLE_PRIVATE_CATALOG=0
+SKIP_SETUP_SINGLETON=0
 NEW_MAPPING=""
 NEW_TENANT=0
 DEBUG=0
@@ -76,11 +77,12 @@ function main() {
     arguments+=" -c $CHANNEL"
     arguments+=" -cmNs $CERT_MANAGER_NAMESPACE"
     arguments+=" -licensingNs $LICENSING_NAMESPACE" 
-
-    # Install New CertManager and Licensing, supporting new CatalogSource
-    ${BASE_DIR}/setup_singleton.sh "$arguments"
-    if [ $? -ne 0 ]; then
-        error "Migration is failed when setting up signleton services\n"
+    if [ $SKIP_SETUP_SINGLETON -eq 0]; then
+        # Install New CertManager and Licensing, supporting new CatalogSource
+        ${BASE_DIR}/setup_singleton.sh "$arguments"
+        if [ $? -ne 0 ]; then
+            error "Migration is failed when setting up signleton services\n"
+        fi
     fi
 
     success "Migration is completed for Cloud Pak 3.0 Foundational singleton services."
@@ -107,6 +109,9 @@ function parse_arguments() {
             ;;
         --enable-private-catalog)
             ENABLE_PRIVATE_CATALOG=1
+            ;;
+        --skip-setup-signleton)
+            SKIP_SETUP_SINGLETON=1
             ;;
         -c | --channel)
             shift

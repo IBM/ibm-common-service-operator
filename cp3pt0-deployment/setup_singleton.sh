@@ -12,6 +12,9 @@
 OC=oc
 ENABLE_LICENSING=0
 ENABLE_PRIVATE_CATALOG=0
+MIGRATE_SINGLETON=0
+OPERATOR_NS=""
+CONTROL_NS=""
 CHANNEL="v4.0"
 SOURCE_NS="openshift-marketplace"
 INSTALL_MODE="Automatic"
@@ -38,6 +41,10 @@ STEP=0
 function main() {
     parse_arguments "$@"
     pre_req
+    if [ $MIGRATE_SINGLETON -eq 1 ]; then
+        ${BASE_DIR}/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" "-c" "$CHANNEL" "--cert-manager-source" "$CERT_MANAGER_SOURCE" "--licensing-source" "$LICENSING_SOURCE" "--skip-setup-signleton" "$arguments"
+    fi
+
     install_cert_manager
     install_licensing
 }
@@ -49,6 +56,10 @@ function parse_arguments() {
         --oc)
             shift
             OC=$1
+            ;;
+        --operator-namespace)
+            shift
+            OPERATOR_NS=$1
             ;;
         --enable-licensing)
             ENABLE_LICENSING=1
@@ -105,6 +116,7 @@ function print_usage() {
     echo ""
     echo "Options:"
     echo "   --oc string                                    File path to oc CLI. Default uses oc in your PATH"
+    echo "   --operator-namespace string                    Namespace to migrate Foundational services operator"
     echo "   --enable-licensing                             Set this flag to install ibm-licensing-operator"
     echo "   --enable-private-catalog                       Set this flag to use namespace scoped CatalogSource. Default is in openshift-marketplace namespace"
     echo "   --cert-manager-source string                   CatalogSource name of ibm-cert-manager-operator. This assumes your CatalogSource is already created. Default is ibm-cert-manager-catalog"
@@ -187,6 +199,18 @@ function pre_req() {
     else
         success "oc command logged in as ${user}"
     fi
+
+    if [ "$OPERATOR_NS" == "" ]; then
+        MIGRATE_SINGLETON=0
+    else
+        MIGRATE_SINGLETON=1
+        get_and_validate_arguments
+    fi
+}
+
+# TODO validate argument
+function get_and_validate_arguments() {
+    get_control_namespace
 }
 
 main $*
