@@ -245,11 +245,12 @@ func createService(ctx context.Context, client k8sclient.Client, owner ownerutil
 func (webhookConfig *CSWebhookConfig) setupCerts(ctx context.Context, client k8sclient.Client, serviceNamespace string) error {
 	// Wait for the secret to te created
 	secret := &corev1.Secret{}
-	err := wait.PollImmediate(time.Second*5, time.Minute*3, func() (bool, error) {
+	err := wait.PollImmediateInfinite(time.Second*5, func() (bool, error) {
 		// it should be cs-ca-certificate-secret
 		err := client.Get(ctx, k8sclient.ObjectKey{Namespace: serviceNamespace, Name: caCertSecretName}, secret)
 		if err != nil {
 			if errors.IsNotFound(err) {
+				klog.Infof("wait for CA secret %v/%v", serviceNamespace, caCertSecretName)
 				return false, nil
 			}
 			return false, err
