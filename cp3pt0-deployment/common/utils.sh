@@ -362,7 +362,7 @@ function check_cert_manager(){
 }
 
 function check_licensing(){
-    [[ ! $($OC get IBMLicensing) ]] && error "User does not have proper permission to get IBMLicensing"
+    [[ ! $($OC get IBMLicensing) ]] && error "User does not have proper permission to get IBMLicensing or IBMLicensing is not installed"
     instance_count=`$OC get IBMLicensing -o name | wc -l`
     if [[ $instance_count == 0 ]]; then
         error "Missing IBMLicensing"
