@@ -73,11 +73,11 @@ function main() {
     prereq
     local ns_list=$(gather_csmaps_ns)
     pause
+    uninstall_singletons
     create_empty_csmaps
     insert_control_ns
     update_tenant "${MASTER_NS}" "${ns_list}"
     check_cm_ns_exist "$ns_list" # debating on turning this off by default since this technically falls outside the scope of isolate
-    uninstall_singletons
     isolate_odlm "ibm-odlm" $MASTER_NS
     restart
 }
