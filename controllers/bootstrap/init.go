@@ -186,12 +186,6 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		b.CSData.ApprovalMode = string(installPlanApproval)
 	}
 
-	// Generate Issuer and Certificate CR
-	if err := b.DeployCertManagerCR(false); err != nil {
-		klog.Errorf("Failed to deploy cert manager CRs: %v", err)
-		return err
-	}
-
 	// Check storageClass
 	if err := util.CheckStorageClass(b.Reader); err != nil {
 		return err
@@ -1070,14 +1064,6 @@ func (b *Bootstrap) DeployCertManagerCR(isBYOC bool) error {
 			return err
 		}
 	}
-
-	for _, cr := range constant.WebhookCert {
-		resource := util.Namespacelize(cr, "OPERATOR_NS", b.CSData.OperatorNs)
-		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(resource, placeholder, b.CSData.ServicesNs))); err != nil {
-			return err
-		}
-	}
-
 	if deployRootCert {
 		for _, cr := range constant.CertManagerCerts {
 			if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.ServicesNs))); err != nil {
@@ -1086,14 +1072,6 @@ func (b *Bootstrap) DeployCertManagerCR(isBYOC bool) error {
 		}
 	} else {
 		klog.Infof("Skipped deploying %s, BYOCertififcate feature is enabled in %s", constant.CSCACertificate, crWithBYOCert)
-	}
-
-	if err := b.WaitForSecret("cs-ca-certificate-secret", b.CSData.ServicesNs); err != nil {
-		return err
-	}
-
-	if err := b.WaitForSecret("cs-webhook-cert-secret", b.CSData.ServicesNs); err != nil {
-		return err
 	}
 
 	return nil
@@ -1249,23 +1227,6 @@ func IdentifyCPFSNs(r client.Reader, operatorNs string) (string, error) {
 		cpfsNs = csCR.Status.ConfigStatus.OperatorPlane.OperatorNamespace
 	}
 	return string(cpfsNs), nil
-}
-func (b *Bootstrap) WaitForSecret(name string, namespace string) error {
-	secret := &corev1.Secret{}
-
-	if err := utilwait.PollImmediateInfinite(time.Second*10, func() (done bool, err error) {
-		if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, secret); err != nil {
-			if errors.IsNotFound(err) {
-				klog.V(2).Infof("waiting for %s/%s be ready", namespace, name)
-				return false, nil
-			}
-			return false, err
-		}
-		return true, nil
-	}); err != nil {
-		return err
-	}
-	return nil
 }
 
 func (b *Bootstrap) PropagateCPPConfig(instance *corev1.ConfigMap) error {
