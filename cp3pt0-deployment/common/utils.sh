@@ -623,7 +623,7 @@ function get_control_namespace() {
     local config_map_name="common-service-maps"
 
     # Get the ConfigMap data
-    config_map_data=$(${OC} get configmap "${config_map_name}" -n kube-public -o jsonpath='{.data.common-service-maps\.yaml}')
+    config_map_data=$(${OC} get configmap "${config_map_name}" -n kube-public -o yaml | yq '.data[]')
 
     # Check if the ConfigMap exists
     if [[ -z "${config_map_data}" ]]; then
