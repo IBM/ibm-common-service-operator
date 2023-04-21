@@ -42,6 +42,7 @@ function main() {
     parse_arguments "$@"
     pre_req
     if [ $MIGRATE_SINGLETON -eq 1 ]; then
+        info "found parameter "--operator-namespace", migrating singleton services"
         ${BASE_DIR}/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" "-c" "$CHANNEL" "--cert-manager-source" "$CERT_MANAGER_SOURCE" "--licensing-source" "$LICENSING_SOURCE" "--skip-setup-signleton" "$arguments"
     fi
 

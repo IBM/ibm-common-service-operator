@@ -77,7 +77,7 @@ function main() {
     arguments+=" -c $CHANNEL"
     arguments+=" -cmNs $CERT_MANAGER_NAMESPACE"
     arguments+=" -licensingNs $LICENSING_NAMESPACE" 
-    if [ $SKIP_SETUP_SINGLETON -eq 0]; then
+    if [[ $SKIP_SETUP_SINGLETON -eq 0 ]]; then
         # Install New CertManager and Licensing, supporting new CatalogSource
         ${BASE_DIR}/setup_singleton.sh "$arguments"
         if [ $? -ne 0 ]; then
