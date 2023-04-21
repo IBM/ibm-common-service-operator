@@ -31,6 +31,7 @@ import (
 
 	operatorv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
+	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	"github.com/IBM/operand-deployment-lifecycle-manager/controllers/util"
 )
 
@@ -53,24 +54,59 @@ func (r *Defaulter) Handle(ctx context.Context, req admission.Request) admission
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
-	// check operatornamespace
-	opNs := cs.Spec.OperatorNamespace
-	deniedOpNs, err := r.CheckNamespace(string(opNs))
-	if err != nil {
-		return admission.Denied(fmt.Sprintf("Can't check operatorNamespace. Found error: %v", err))
-	}
-	if deniedOpNs {
-		return admission.Denied(fmt.Sprintf("Operator Namespace: %v should be one of WATCH_NAMESPACE", opNs))
-	}
+	// if it is master CommonService CR, check operator and services namespaces
+	if req.AdmissionRequest.Name == constant.MasterCR && req.AdmissionRequest.Namespace == r.Bootstrap.CSData.OperatorNs {
+		klog.Infof("Start to validate master CommonService CR")
+		// check OperatorNamespace
+		opNs := cs.Spec.OperatorNamespace
+		deniedOpNs, err := r.CheckNamespace(string(opNs))
+		if err != nil {
+			return admission.Denied(fmt.Sprintf("Can't check operatorNamespace. Found error: %v", err))
+		}
+		if deniedOpNs {
+			return admission.Denied(fmt.Sprintf("Operator Namespace: %v should be one of WATCH_NAMESPACE", opNs))
+		}
 
-	// check servicenamespace
-	serviceNs := cs.Spec.ServicesNamespace
-	deniedServiceNs, err := r.CheckNamespace(string(serviceNs))
-	if err != nil {
-		return admission.Denied(fmt.Sprintf("Can't check serviceNamespace. Found error: %v", err))
-	}
-	if deniedServiceNs {
-		return admission.Denied(fmt.Sprintf("Service Namespace: %v should be one of WATCH_NAMESPACE", serviceNs))
+		// check ServicesNamespace
+		serviceNs := cs.Spec.ServicesNamespace
+		deniedServiceNs, err := r.CheckNamespace(string(serviceNs))
+		if err != nil {
+			return admission.Denied(fmt.Sprintf("Can't check serviceNamespace. Found error: %v", err))
+		}
+		if deniedServiceNs {
+			return admission.Denied(fmt.Sprintf("Services Namespace: %v should be one of WATCH_NAMESPACE", serviceNs))
+		}
+
+	} else {
+		klog.Infof("Start to validate non-master CommonService CR")
+		// check OperatorNamespace
+		operatorNamespace := cs.Spec.OperatorNamespace
+		deniedOperatorNs := r.CheckConfig(string(operatorNamespace), r.Bootstrap.CSData.OperatorNs)
+		if deniedOperatorNs {
+			return admission.Denied(fmt.Sprintf("Operator Namespace: %v is not allowed to configured in namespace %v", operatorNamespace, req.AdmissionRequest.Namespace))
+		}
+
+		// check ServicesNamespace
+		servicesNamespace := cs.Spec.ServicesNamespace
+		deniedServicesNs := r.CheckConfig(string(servicesNamespace), r.Bootstrap.CSData.ServicesNs)
+		if deniedServicesNs {
+			return admission.Denied(fmt.Sprintf("Services Namespace: %v is not allowed to configured in namespace %v", servicesNamespace, req.AdmissionRequest.Namespace))
+		}
+
+		// check CatalogName
+
+		catalogName := cs.Spec.CatalogName
+		deniedCatalog := r.CheckConfig(string(catalogName), r.Bootstrap.CSData.CatalogSourceName)
+		if deniedCatalog {
+			return admission.Denied(fmt.Sprintf("CatalogSource Name: %v is not allowed to configured in namespace %v", catalogName, req.AdmissionRequest.Namespace))
+		}
+
+		// check CatalogNamespace
+		catalogNamespace := cs.Spec.CatalogNamespace
+		deniedCatalogNs := r.CheckConfig(string(catalogNamespace), r.Bootstrap.CSData.CatalogSourceNs)
+		if deniedCatalogNs {
+			return admission.Denied(fmt.Sprintf("CatalogSource Namespace: %v is not allowed to configured in namespace %v", catalogNamespace, req.AdmissionRequest.Namespace))
+		}
 	}
 
 	// admission.PatchResponse generates a Response containing patches.
@@ -100,6 +136,14 @@ func (r *Defaulter) CheckNamespace(name string) (bool, error) {
 		denied = true
 	}
 	return denied, nil
+}
+
+func (r *Defaulter) CheckConfig(config, parameter string) bool {
+	if config == "" {
+		return false
+	} else {
+		return config != parameter
+	}
 }
 
 func (r *Defaulter) InjectDecoder(decoder *admission.Decoder) error {
