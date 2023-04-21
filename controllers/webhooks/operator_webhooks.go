@@ -45,8 +45,9 @@ import (
 type CSWebhookConfig struct {
 	scheme *runtime.Scheme
 
-	Port    int
-	CertDir string
+	Port        int
+	CertDir     string
+	CAConfigMap string
 
 	Webhooks []CSWebhook
 }
@@ -77,7 +78,10 @@ const (
 	operatorPodPort        = 8443
 	servicePort            = 443
 	mountedCertDir         = "/etc/ssl/certs/webhook"
-	caCertSecretName       = "cs-webhook-cert-secret"
+	caConfigMap            = "ibm-cs-operator-webhook-ca"
+	caConfigMapAnnotation  = "service.beta.openshift.io/inject-cabundle"
+	caServiceAnnotation    = "service.beta.openshift.io/serving-cert-secret-name"
+	caCertSecretName       = "cs-webhook-cert"
 )
 
 // Config is a global instance. The same instance is needed in order to use the
@@ -90,6 +94,9 @@ var Config *CSWebhookConfig = &CSWebhookConfig{
 	// Mounted as a volume from the secret generated from Openshift
 	CertDir: mountedCertDir,
 
+	// Name of the config map where the CA certificate is injected
+	CAConfigMap: caConfigMap,
+
 	// List of webhooks to configure
 	Webhooks: []CSWebhook{},
 }
@@ -97,7 +104,7 @@ var Config *CSWebhookConfig = &CSWebhookConfig{
 // SetupServer sets up the webhook server managed by mgr with the settings from
 // webhookConfig. It sets the port and cert dir based on the settings and
 // registers the Validator implementations from each webhook from webhookConfig.Webhooks
-func (webhookConfig *CSWebhookConfig) SetupServer(mgr manager.Manager, namespace string, serviceNamespace string) error {
+func (webhookConfig *CSWebhookConfig) SetupServer(mgr manager.Manager, namespace string) error {
 	// Create a new client to reconcile the Service. `mgr.GetClient()` can't
 	// be used as it relies on the cache that hasn't been initialized yet
 	client, err := k8sclient.New(mgr.GetConfig(), k8sclient.Options{
@@ -112,7 +119,7 @@ func (webhookConfig *CSWebhookConfig) SetupServer(mgr manager.Manager, namespace
 		return err
 	}
 	// Get the secret with the certificates for the service
-	if err := webhookConfig.setupCerts(context.TODO(), client, serviceNamespace); err != nil {
+	if err := webhookConfig.setupCerts(context.TODO(), client, namespace); err != nil {
 		return err
 	}
 
@@ -144,7 +151,7 @@ func (webhookConfig *CSWebhookConfig) SetupServer(mgr manager.Manager, namespace
 // It reconciles a Service that exposes the webhook server
 // A ownerRef to the owner parameter is set on the reconciled resources. This
 // parameter is optional, if `nil` is passed, no ownerReference will be set
-func (webhookConfig *CSWebhookConfig) Reconcile(ctx context.Context, client k8sclient.Client, reader k8sclient.Reader, owner ownerutil.Owner) error {
+func (webhookConfig *CSWebhookConfig) Reconcile(ctx context.Context, client k8sclient.Client, owner ownerutil.Owner) error {
 
 	namespace, err := common.GetOperatorNamespace()
 	if err != nil {
@@ -153,6 +160,32 @@ func (webhookConfig *CSWebhookConfig) Reconcile(ctx context.Context, client k8sc
 
 	// Reconcile the Service
 	if err := webhookConfig.ReconcileService(ctx, client, owner, namespace); err != nil {
+		return err
+	}
+
+	// Create (if it doesn't exist) the config map where the CA certificate is
+	// injected
+	caConfigMap := &corev1.ConfigMap{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      webhookConfig.CAConfigMap,
+			Namespace: namespace,
+			Annotations: map[string]string{
+				caConfigMapAnnotation: "true",
+			},
+		},
+	}
+
+	klog.Info("Creating common service webhook CA ConfigMap")
+	err = client.Create(ctx, caConfigMap)
+	if err != nil && !errors.IsAlreadyExists(err) {
+		klog.Error(err)
+		return err
+	}
+
+	// Wait for the config map to be injected with the CA
+	caBundle, err := webhookConfig.waitForCAInConfigMap(ctx, client, namespace)
+	if err != nil {
+		klog.Error(err)
 		return err
 	}
 
@@ -168,7 +201,7 @@ func (webhookConfig *CSWebhookConfig) Reconcile(ctx context.Context, client k8sc
 		reconciler.SetRule(webhook.Rule)
 		reconciler.SetNsSelector(webhook.NsSelector)
 		klog.Infof("Reconciling webhook %s", webhook.Name)
-		if err := reconciler.Reconcile(ctx, client, reader); err != nil {
+		if err := reconciler.Reconcile(ctx, client, caBundle); err != nil {
 			return err
 		}
 	}
@@ -220,6 +253,7 @@ func createService(ctx context.Context, client k8sclient.Client, owner ownerutil
 		if service.Annotations == nil {
 			service.Annotations = map[string]string{}
 		}
+		service.Annotations[caServiceAnnotation] = caCertSecretName
 		service.Spec.ClusterIP = "None"
 		service.Spec.Selector = map[string]string{
 			"name": constant.IBMCSPackage,
@@ -242,12 +276,11 @@ func createService(ctx context.Context, client k8sclient.Client, owner ownerutil
 
 // setupCerts waits for the secret created for the operator Service to exist, and
 // when it's ready, extracts the certificates and saves them in webhookConfig.CertDir
-func (webhookConfig *CSWebhookConfig) setupCerts(ctx context.Context, client k8sclient.Client, serviceNamespace string) error {
+func (webhookConfig *CSWebhookConfig) setupCerts(ctx context.Context, client k8sclient.Client, namespace string) error {
 	// Wait for the secret to te created
 	secret := &corev1.Secret{}
 	err := wait.PollImmediate(time.Second*1, time.Second*30, func() (bool, error) {
-		// it should be cs-ca-certificate-secret
-		err := client.Get(ctx, k8sclient.ObjectKey{Namespace: serviceNamespace, Name: caCertSecretName}, secret)
+		err := client.Get(ctx, k8sclient.ObjectKey{Namespace: namespace, Name: caCertSecretName}, secret)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return false, nil
@@ -267,6 +300,37 @@ func (webhookConfig *CSWebhookConfig) setupCerts(ctx context.Context, client k8s
 	}
 	// Save the cert
 	return webhookConfig.saveCertFromSecret(secret.Data, "tls.crt")
+}
+
+func (webhookConfig *CSWebhookConfig) waitForCAInConfigMap(ctx context.Context, client k8sclient.Client, namespace string) ([]byte, error) {
+	klog.Info("Waiting for common service webhook CA generated")
+
+	var caBundle []byte
+
+	err := wait.PollImmediate(time.Second, time.Second*30, func() (bool, error) {
+		caConfigMap := &corev1.ConfigMap{}
+		if err := client.Get(ctx,
+			k8sclient.ObjectKey{Name: webhookConfig.CAConfigMap, Namespace: namespace},
+			caConfigMap,
+		); err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+
+			return false, err
+		}
+
+		result, ok := caConfigMap.Data["service-ca.crt"]
+
+		if !ok {
+			return false, nil
+		}
+
+		caBundle = []byte(result)
+		return true, nil
+	})
+
+	return caBundle, err
 }
 
 // AddWebhook adds a webhook configuration to a webhookSettings. This must be done before
