@@ -210,7 +210,7 @@ function pre_req() {
     else
         MIGRATE_SINGLETON=1
         get_and_validate_arguments
-        if [[ "$CONTROL_NS" != "$LICENSING_NAMESPACE" ]]; then
+        if [[ "$CONTROL_NS" != "$LICENSING_NAMESPACE" ]] && [[ "$ENABLE_LICENSING" == 1 ]]; then
             error "Licensing Migration could only be done in controlNamespace, please set parameter '-licensingNs $CONTROL_NS'"
         fi
     fi
