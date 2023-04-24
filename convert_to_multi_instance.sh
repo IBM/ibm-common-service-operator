@@ -247,7 +247,28 @@ function install_new_CS() {
 # wait for new cs to be ready
 function check_IAM(){
     sleep 10
-    for namespace in $map_to_cs_ns
+    local namespaces=""
+    for cs_namespace in $map_to_cs_ns
+    do
+        local nsFromNSS=$(${OC} get nss -n $cs_namespace -o yaml common-service | yq '.status.validatedMembers[]' | tr '\n' ' ')
+        for cp_namespace in $nsFromNSS
+        do
+            zenservice_exists=$(${OC} get zenservice -n $cp_namespace || echo fail)
+            if [[ $zenservice_exists != "fail" ]] && [[ $zenservice_exists != "" ]]; then
+                iam_enabled=$(${OC} get zenservice -n $cp_namespace -o yaml | grep iam | awk '{print $2}')
+                if [[ $iam_enabled == "true" ]]; then
+                    if [[ $namespaces == "" ]]; then
+                        namespaces="$cs_namespace"
+                        break
+                    else
+                        namespaces="$namespaces $cs_namespace"
+                        break
+                    fi
+                fi
+            fi
+        done
+    done 
+    for namespace in $namespaces
     do
         retries=40
         sleep_time=30
