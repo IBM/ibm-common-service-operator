@@ -106,6 +106,7 @@ function print_usage() {
     echo "   --oc string                                    File path to oc CLI. Default uses oc in your PATH"
     echo "   --yq string                                    File path to yq CLI. Default uses yq in your PATH"
     echo "   --operator-namespace string                    Required. Namespace to migrate Foundational services operator"
+    echo "   --enable-licensing                             Set this flag to migrate ibm-licensing-operator"
     echo "   -v, --debug integer                            Verbosity of logs. Default is 0. Set to 1 for debug logs."
     echo "   -h, --help                                     Print usage information"
     echo ""

@@ -42,8 +42,12 @@ function main() {
     parse_arguments "$@"
     pre_req
     if [ $MIGRATE_SINGLETON -eq 1 ]; then
-        info "Found parameter "--operator-namespace", migrating singleton services"
-        ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS"
+        info "Found parameter '--operator-namespace', migrating singleton services"
+        if [ $ENABLE_LICENSING -eq 1 ]; then
+            ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" "--enable-licensing"
+        else
+            ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" 
+        fi
     fi
 
     install_cert_manager
