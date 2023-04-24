@@ -246,7 +246,7 @@ function gather_csmaps_ns() {
     tenant_scope=$(echo "${tenant_scope//,/$'\n'}" | sort -u)
 
     # adding excluded namespaces to the list allows uniq -u to remove duplicates
-    tenant_scope="${tenant_scope},${EXCLUDED_NS}"
+    tenant_scope="${tenant_scope},${EXCLUDED_NS},${EXCLUDED_NS}"
     tenant_scope=$(echo "${tenant_scope//,/$'\n'}" | sort | uniq -u)
     echo "$tenant_scope"
 }
