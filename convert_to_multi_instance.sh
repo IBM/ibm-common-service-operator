@@ -20,21 +20,24 @@ set -o pipefail
 set -o errtrace
 set -o nounset
 
-OC=${1:-oc}
-YQ=${1:-yq}
+OC=oc
+YQ=yq
 
 cs_operator_channel=
 catalog_source=
-requestedNS=
-mapToCSNS=
-
+requested_ns=
+map_to_cs_ns=
+master_ns=$1
 cm_name="common-service-maps"
     
 function main() {
     msg "Conversion Script Version v1.0.0"
     prereq
     collect_data
+    check_topology
+    check_cm_ns_exist
     prepare_cluster
+    isolate_odlm "ibm-odlm" $master_ns
     scale_up_pod
     restart_CS_pods
     install_new_CS
@@ -48,6 +51,10 @@ function prereq() {
     which "${OC}" || error "Missing oc CLI"
     which "${YQ}" || error "Missing yq"
     
+    if [[ -z $master_ns ]]; then
+        error "Please specify original cs namespace."
+    fi
+
     return_value=$("${OC}" get -n kube-public configmap ${cm_name} > /dev/null || echo failed)
     if [[ $return_value == "failed" ]]; then
         error "Missing configmap: ${cm_name}. This must be configured before proceeding"
@@ -61,8 +68,8 @@ function prereq() {
     fi
     return_value="reset"
 
-    controlNs=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data' | grep controlNamespace: | awk '{print $2}')
-    return_value=$("${OC}" get ns "${controlNs}" > /dev/null || echo failed)
+    control_ns=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data' | grep controlNamespace: | awk '{print $2}')
+    return_value=$("${OC}" get ns "${control_ns}" > /dev/null || echo failed)
     if [[ $return_value == "failed" ]]; then
         error "The namespace specified in controlNamespace does not exist. This namespace must be created before proceeding."
     fi
@@ -87,12 +94,6 @@ function prereq() {
 
 function prepare_cluster() {
 
-    # TODO for more advanced checking
-    # find all namespaces with cs-operator running
-    # each namespace should be in configmap
-    # all namespaces in configmap should exist
-    check_cm_ns_exist
-
     ${OC} scale deployment -n ${master_ns} ibm-common-service-operator --replicas=0
     ${OC} scale deployment -n ${master_ns} operand-deployment-lifecycle-manager --replicas=0
     ${OC} delete operandregistry -n ${master_ns} --ignore-not-found common-service 
@@ -116,7 +117,7 @@ function prepare_cluster() {
     # This makes recovery from simple pre-requisite errors easier.
     return_value=$(("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
     if [[ $return_value == "exists" ]]; then
-        migrate_lic_cms $master_ns $controlNs
+        migrate_lic_cms $master_ns $control_ns
         "${OC}" delete -n "${master_ns}" --ignore-not-found ibmlicensing instance
     fi
     return_value="reset"
@@ -143,7 +144,7 @@ function migrate_lic_cms() {
     title "Copying over Licensing Configmaps"
     msg "-----------------------------------------------------------------------"
     local namespace=$1
-    local controlNs=$2
+    local control_ns=$2
     POSSIBLE_CONFIGMAPS=("ibm-licensing-config"
 "ibm-licensing-annotations"
 "ibm-licensing-products"
@@ -181,12 +182,12 @@ function migrate_lic_cms() {
     done
     
     rm tmp.yaml -f
-    success "Licensing configmaps copied from $namespace to $controlNs"
+    success "Licensing configmaps copied from $namespace to $control_ns"
 }
 
 # scale back cs pod 
 function scale_up_pod() {
-    info "scaling back ibm-common-service-operator deployment in ${master_ns} namespace"
+    info "scaling up ibm-common-service-operator deployment in ${master_ns} namespace"
     ${OC} scale deployment -n ${master_ns} ibm-common-service-operator --replicas=1
     ${OC} scale deployment -n ${master_ns} operand-deployment-lifecycle-manager --replicas=1
     check_healthy "${master_ns}"
@@ -195,7 +196,7 @@ function scale_up_pod() {
 function collect_data() {
     title "Collecting data"
     msg "-----------------------------------------------------------------------"
-    master_ns=$(${OC} get deployment --all-namespaces | grep operand-deployment-lifecycle-manager | awk '{print $1}')
+    
     info "MasterNS:${master_ns}"
     cs_operator_channel=$(${OC} get sub ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.channel") 
     info "channel:${cs_operator_channel}"   
@@ -203,9 +204,9 @@ function collect_data() {
     info "catalog_source:${catalog_source}" 
 
     #this command gets all of the ns listed in requested from namesapce fields
-    requestedNS=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].requested-from-namespace' | awk '{print $2}')
+    requested_ns=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].requested-from-namespace' | awk '{print $2}' | tr '\n' ' ')
     #this command gets all of the ns listed in map-to-common-service-namespace
-    mapToCSNS=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].map-to-common-service-namespace' | awk '{print}')
+    map_to_cs_ns=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].map-to-common-service-namespace' | awk '{print}' | tr '\n' ' ')
     
 }
 
@@ -213,14 +214,17 @@ function collect_data() {
 function restart_CS_pods() {
     title "restarting ibm-common-service-operator pod"
     msg "-----------------------------------------------------------------------"
-    ${OC} get pod --all-namespaces | grep ibm-common-service-operator | while read -r line; do
-        local namespace=$(echo $line | awk '{print $1}')
-        local cs_pod=$(echo $line | awk '{print $2}')
-
-        msg "deleting pod ${cs_pod} in namespace ${namespace} "
-        ${OC} delete pod ${cs_pod} -n ${namespace} || error "Error deleting pod ${cs_pod} in namespace ${namespace}"
+    
+    local namespaces="$requested_ns $map_to_cs_ns $master_ns"
+    for namespace in $namespaces
+    do
+        cs_pod=$(${OC} get pod -n $namespace | (grep ibm-common-service-operator || echo fail) | awk '{print $1}')
+        if [[ $cs_pod != "fail" ]]; then
+            msg "deleting pod ${cs_pod} in namespace ${namespace}"
+            ${OC} delete pod ${cs_pod} -n ${namespace} || error "Error deleting pod ${cs_pod} in namespace ${namespace}"
+        fi
     done
-    success "All ibm-common-service-operator pod is deleted"
+    success "All ibm-common-service-operator pods are deleted"
 }
 
 #  install new instances of CS based on cs mapping configmap
@@ -228,39 +232,13 @@ function install_new_CS() {
     title "install new instances of CS based on cs mapping configmap"
     msg "-----------------------------------------------------------------------"
 
-    ${OC} get configmap common-service-maps -n kube-public -o yaml | while read -r line; do
-        first_element=$(echo $line | awk '{print $1}')
-        
-        if [[ "${first_element}" == "-" ]]; then
-            namespace=$(echo $line | awk '{print $2}')
-            if [[ "${namespace}" != "requested-from-namespace:" ]]; then
-                if [[ "${namespace}" != "${master_ns}" ]]; then
-                    return_value=$("${OC}" get namespace ${namespace} || echo failed)
-                    if [[ $return_value != "failed" ]]; then
-                        info "In_CloudpakNS:${namespace}"
-                        get_sub=$("${OC}" get sub -n ${namespace} | (grep ibm-common-service-operator || echo failed))
-                        if [[ $get_sub == "failed" ]]; then
-                            create_operator_group "${namespace}"
-                            install_common_service_operator_sub "${namespace}"
-                        fi
-                    fi  
-                fi
-            fi
-        fi
-
-        if [[ "${first_element}" == "map-to-common-service-namespace:" ]]; then
-            return_value=$("${OC}" get namespace ${namespace} || echo failed)
-            if [[ $return_value != "failed" ]]; then
-                namespace=$(echo $line | awk '{print $2}')
-                info "In_MasterNS:${namespace}"
-                get_sub=$("${OC}" get sub -n ${namespace} | (grep ibm-common-service-operator || echo failed))
-                if [[ $get_sub == "failed" ]]; then
-                    create_operator_group "${namespace}"
-                    install_common_service_operator_sub "${namespace}"
-                    check_CSCR "${namespace}"
-                fi
-            fi  
-        fi
+    for namespace in $map_to_cs_ns
+    do
+        info "In_CommonServiceNS:${namespace}"
+        create_operator_group "${namespace}"
+        install_common_service_operator_sub "${namespace}"
+        check_CSCR "${namespace}"
+        copy_over_commonservice_cr "${namespace}"
     done
     
     success "Common Services Operator is converted to multi_instance mode"
@@ -269,7 +247,7 @@ function install_new_CS() {
 # wait for new cs to be ready
 function check_IAM(){
     sleep 10
-    for namespace in $mapToCSNS
+    for namespace in $map_to_cs_ns
     do
         retries=40
         sleep_time=30
@@ -305,13 +283,13 @@ function refresh_zen(){
     msg "-----------------------------------------------------------------------"
     #make sure IAM is ready before reconciling.
     check_IAM #this will likely need to change in the future depending on how we check iam status
- 
-    for namespace in $requestedNS
+    local namespaces="$requested_ns $map_to_cs_ns"
+    for namespace in $namespaces
     do
-        # remove cs namespace from zen service cr
         return_value=$(${OC} get zenservice -n ${namespace} || echo "fail")
         if [[ $return_value != "fail" ]]; then
             if [[ $return_value != "" ]]; then
+                return_value=""
                 zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
                 conversionField=$("${OC}" get zenservice ${zenServiceCR} -n ${namespace} -o yaml | yq '.spec | has("conversion")')
                 if [[ $conversionField == "false" ]]; then
@@ -328,45 +306,23 @@ function refresh_zen(){
         fi
         return_value=""
     done
-    
-    for namespace in $mapToCSNS
-    do
-        # remove cs namespace from zen service cr
-        return_value=$(${OC} get zenservice -n ${namespace} || echo "fail")
-        if [[ $return_value != "fail" ]]; then
-            if [[ $return_value != "" ]]; then
-                zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
-                conversionField=$(${OC} get zenservice ${zenServiceCR} -n ${namespace} -o yaml | yq '.spec | has("conversion")')
-                if [[ $conversionField == "true" ]]; then
-                    ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type='merge' -p '{"spec":{"conversion":"true"}}' || error "Zenservice ${zenServiceCR} in ${namespace} cannot be updated."
-                else
-                    ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type json -p '[{ "op": "remove", "path": "/spec/conversion" }]' || error "Zenservice ${zenServiceCR} in ${namespace} cannot be updated."
-                fi
-                conversionField=""
-            else
-                info "No zen service in namespace ${namespace}. Moving on..."
-            fi
-        else
-            info "Zen not installed in ${namespace}. Moving on..."
-        fi
-        return_value=""
-    done
+
     success "Reconcile loop initiated for Zenservice instances"
 }
 
-function refresh_kafka (){
+function refresh_kafka () {
     return_value=$(${OC} get kafkaclaim -A || echo fail)
     if [[ $return_value != "fail" ]]; then
         title " Refreshing Kafka Deployments "
         msg "-----------------------------------------------------------------------"
-        for namespace in $requestedNS
+        local namespaces="$requested_ns $map_to_cs_ns"
+        for namespace in $namespaces
         do
-            # remove cs namespace from zen service cr
             return_value=$(${OC} get kafkaclaim -n ${namespace} || echo "fail")
             if [[ $return_value != "fail" ]]; then
                 if [[ $return_value != "" ]]; then
                     kafkaClaims=$(${OC} get kafkaclaim -n ${namespace} | awk '{if (NR!=1) {print $1}}')
-                    #TODO copy kc to file, delete original kc, re-apply copied file (check for an existing of the same name)
+                    #copy kc to file, delete original kc, re-apply copied file (check for an existing of the same name)
                     for kc in $kafkaClaims
                     do
                         ${OC} get kafkaclaim -n ${namespace} $kc -o yaml > tmp.yaml
@@ -383,30 +339,6 @@ function refresh_kafka (){
             return_value=""
         done
         
-        for namespace in $mapToCSNS
-        do
-            # remove cs namespace from zen service cr
-            return_value=$(${OC} get kafkaclaim -n ${namespace} || echo "fail")
-            if [[ $return_value != "fail" ]]; then
-                if [[ $return_value != "" ]]; then
-                    kafkaClaims=$(${OC} get kafkaclaim -n ${namespace} | awk '{if (NR!=1) {print $1}}')
-                    #TODO copy kc to file, delete original kc, re-apply copied file (check for an existing of the same name)
-                    for kc in $kafkaClaims
-                    do
-                        ${OC} get kafkaclaim -n ${namespace} $kc -o yaml > tmp.yaml
-                        ${OC} patch kafkaclaim ${kc} -n ${namespace} --type=merge -p '{"metadata": {"finalizers":null}}'
-                        ${OC} delete kafkaclaim ${kc} -n ${namespace} 
-                        ${OC} apply -f tmp.yaml  || info "kafkaclaim ${kc} already recreated. Moving on..."
-                    done
-                else
-                    info "No kafkaclaim in namespace ${namespace}. Moving on..."
-                fi
-            else
-                info "Kafka not installed in ${namespace}. Moving on..."
-            fi
-            return_value=""
-        done
-        
         rm tmp.yaml -f
         success "Reconcile loop initiated for Kafka instances"
     else
@@ -417,14 +349,14 @@ function refresh_kafka (){
 function cleanupCSOperators(){
     title "Checking subs of Common Service Operator in Cloudpak Namespaces"
     msg "-----------------------------------------------------------------------"
-    for namespace in $requestedNS
+    for namespace in $requested_ns
     do
-        # remove cs namespace from zen service cr
         return_value=$(${OC} get sub -n ${namespace} | (grep ibm-common-service-operator || echo "fail"))
         if [[ $return_value != "fail" ]]; then
             local sub=$(${OC} get sub -n ${namespace} | grep ibm-common-service-operator | awk '{print $1}')
             ${OC} get sub ${sub} -n ${namespace} -o yaml > tmp.yaml 
             ${YQ} -i '.spec.source = "'${catalog_source}'"' tmp.yaml || error "Could not replace catalog source for CS operator in namespace ${namespace}"
+            ${OC} delete sub ${sub} -n ${namespace}
             ${OC} apply -f tmp.yaml
             info "Common Service Operator Subscription in namespace ${namespace} updated to use catalog source ${catalog_source}"
         else
@@ -502,23 +434,29 @@ function check_healthy() {
     total_time_mins=$(( sleep_time * retries / 60))
     info "Waiting for IBM Common Services CR is Succeeded"
     sleep 10
-    pod=$(oc get pods -n ${CS_NAMESPACE} | grep ibm-common-service-operator | awk '{print $1}')
-    
+
     while true; do
+        pod=$(oc get pods -n ${CS_NAMESPACE} | (grep ibm-common-service-operator || echo fail) | awk '{print $1}')
         if [[ ${retries} -eq 0 ]]; then
             error "Timeout after ${total_time_mins} minutes waiting for IBM Common Services is deployed"
         fi
 
-        phase=$(oc get pod ${pod} -o jsonpath='{.status.phase}' -n ${CS_NAMESPACE})
+        if [[ $pod != "fail" ]]; then
+            phase=$(oc get pod ${pod} -o jsonpath='{.status.phase}' -n ${CS_NAMESPACE})
 
-        if [[ "${phase}" != "Running" ]]; then
+            if [[ "${phase}" != "Running" ]]; then
+                retries=$(( retries - 1 ))
+                info "RETRYING: Waiting for IBM Common Services CR is Succeeded (${retries} left)"
+                sleep ${sleep_time}
+            else
+                msg "-----------------------------------------------------------------------"    
+                success "Common Services is deployed in ${CS_NAMESPACE}"
+                break
+            fi
+        else
             retries=$(( retries - 1 ))
             info "RETRYING: Waiting for IBM Common Services CR is Succeeded (${retries} left)"
             sleep ${sleep_time}
-        else
-            msg "-----------------------------------------------------------------------"    
-            success "Common Services is deployed in ${CS_NAMESPACE}"
-            break
         fi
     done
 }
@@ -526,8 +464,8 @@ function check_healthy() {
 function cleanupZenService(){
     title " Cleaning up Zen installation "
     msg "-----------------------------------------------------------------------"
-
-    for namespace in $requestedNS
+    local namespaces="$requested_ns $map_to_cs_ns"
+    for namespace in $requested_ns
     do
         # remove cs namespace from zen service cr
         return_value=$(${OC} get zenservice -n ${namespace} || echo "fail")
@@ -566,46 +504,7 @@ function cleanupZenService(){
         fi
         return_value=""
     done
-    
-    for namespace in $mapToCSNS
-    do
-        # remove cs namespace from zen service cr
-        return_value=$(${OC} get zenservice -n ${namespace} || echo "fail")
-        if [[ $return_value != "fail" ]]; then
-            if [[ $return_value != "" ]]; then
-                zenServiceCR=$(${OC} get zenservice -n ${namespace} | awk '{if (NR!=1) {print $1}}')
-                ${OC} patch zenservice ${zenServiceCR} -n ${namespace} --type json -p '[{ "op": "remove", "path": "/spec/csNamespace" }]' || info "CS Namespace not defined in ${zenServiceCR} in ${namespace}. Moving on..."
-            else
-                info "No zen service in namespace ${namespace}. Moving on..."
-            fi
-        else
-            info "Zen not installed in ${namespace}. Moving on..."
-        fi
-        return_value=""
 
-        # delete iam config job
-        return_value=$(${OC} get job -n ${namespace} | grep iam-config-job || echo "failed")
-        if [[ $return_value != "failed" ]]; then
-            ${OC} delete job iam-config-job -n ${namespace}
-        else
-            info "iam-config-job not present in namespace ${namespace}. Moving on..."
-        fi
-
-        # delete zen client
-        return_value=$(${OC} get client -n ${namespace} || echo "fail")
-        if [[ $return_value != "fail" ]]; then
-            if [[ $return_value != "" ]]; then
-                zenClient=$(${OC} get client -n ${namespace} | awk '{if (NR!=1) {print $1}}')
-                ${OC} patch client ${zenClient} -n ${namespace} --type=merge -p '{"metadata": {"finalizers":null}}'
-                ${OC} delete client ${zenClient} -n ${namespace}
-            else
-                info "No zen client in ${namespace}. Moving on..."
-            fi
-        else
-            info "Zen not installed in ${namespace}. Moving on..."
-        fi
-        return_value=""
-    done
     success "Zen instances cleaned up"
 }
 
@@ -638,7 +537,6 @@ function check_CSCR() {
 
 }
 
-
 # check that all namespaces in common-service-maps cm exist. 
 # Create them if not already present 
 # Does not create cs-control namespace
@@ -647,12 +545,12 @@ function check_cm_ns_exist(){
     title " Verify all namespaces exist "
     msg "-----------------------------------------------------------------------"
 
-    for ns in $requestedNS
+    for ns in $requested_ns
     do
         info "Creating namespace $ns"
         ${OC} create namespace $ns || info "$ns already exists, skipping..."
     done
-    for ns in $mapToCSNS
+    for ns in $map_to_cs_ns
     do
         info "Creating namespace $ns"
         ${OC} create namespace $ns || info "$ns already exists, skipping..."
@@ -664,29 +562,171 @@ function removeNSS(){
     
     title " Removing ODLM managed Namespace Scope CRs "
     msg "-----------------------------------------------------------------------"
+    namespaces="$map_to_cs_ns $master_ns"
+    for ns in $namespaces
+    do
+        info "deleting namespace scope nss-managedby-odlm in namespace ${ns}"
+        ${OC} delete nss nss-managedby-odlm -n ${ns} --ignore-not-found || (error "unable to delete namespace scope nss-managedby-odlm in ${ns}")
+        info "deleting namespace scope odlm-scope-managedby-odlm in namespace ${ns}"
+        ${OC} delete nss odlm-scope-managedby-odlm -n ${ns} --ignore-not-found || (error "unable to delete namespace scope odlm-scope-managedby-odlm in ${ns}")
+        
+        info "deleting namespace scope nss-odlm-scope in namespace ${ns}"
+        ${OC} delete nss nss-odlm-scope -n ${ns} --ignore-not-found || (error "unable to delete namespace scope nss-odlm-scope in ${ns}")
+        
+        info "deleting namespace scope common-service in namespace ${ns}"
+        ${OC} delete nss common-service -n ${ns} --ignore-not-found || (error "unable to delete namespace scope common-service in ${ns}")
 
-    failcheck=$(${OC} get nss --all-namespaces | grep nss-managedby-odlm || echo "failed")
-    if [[ $failcheck != "failed" ]]; then
-        ${OC} get nss --all-namespaces | grep nss-managedby-odlm | while read -r line; do
-            local namespace=$(echo $line | awk '{print $1}')
-            info "deleting namespace scope nss-managedby-odlm in namespace $namespace"
-            ${OC} delete nss nss-managedby-odlm -n ${namespace} || (error "unable to delete namespace scope nss-managedby-odlm in ${namespace}")
-        done
-    else
-        info "Namespace Scope CR \"nss-managedby-odlm\" not present. Moving on..."
-    fi
-    failcheck=$(${OC} get nss --all-namespaces | grep odlm-scope-managedby-odlm || echo "failed")
-    if [[ $failcheck != "failed" ]]; then
-        ${OC} get nss --all-namespaces | grep odlm-scope-managedby-odlm | while read -r line; do
-            local namespace=$(echo $line | awk '{print $1}')
-            info "deleting namespace scope odlm-scope-managedby-odlm in namespace $namespace"
-            ${OC} delete nss odlm-scope-managedby-odlm -n ${namespace} || (error "unable to delete namespace scope odlm-scope-managedby-odlm in ${namespace}")
-        done
-    else
-        info "Namespace Scope CR \"odlm-scope-managedby-odlm\" not present. Moving on..."
-    fi
+    done
 
     success "Namespace Scope CRs cleaned up"
+}
+
+function check_topology() {
+    title " Checking expected vs actual topology based on common-service-maps "
+    msg "-----------------------------------------------------------------------"
+    cm_maps=$(oc get -n kube-public cm common-service-maps -o yaml | yq '.data.["common-service-maps.yaml"]')
+    activeMapTo=
+    activeRequestedFrom=
+    for csNamespace in $map_to_cs_ns
+    do
+        allPresent="false"
+        nsFromCM=$(echo "$cm_maps" | yq eval '.namespaceMapping[] | select(.map-to-common-service-namespace == "'${csNamespace}'").requested-from-namespace' | awk '{ print $2 }' | tr '\n' ' ')
+        nssExist=$(${OC} get nss -n $csNamespace common-service || echo fail)
+        if [[ $nssExist == "fail" ]]; then
+            allPresent="false"
+            nsFromNSS=""
+        else
+            nsFromNSS=$(${OC} get nss -n $csNamespace -o yaml common-service | yq '.status.validatedMembers[]' | tr '\n' ' ')
+            allPresent="true"
+        fi
+        leftover=""
+        leftover=$(echo $nsFromCM $nsFromNSS | tr ' ' '\n' | sort | uniq -u | tr '\n' ' ')
+        #if there are no differences between the two lists, the variable is unset.
+        #check for unset, if it is, then the grouping doesn't need to be changed anyway
+        if [[ -z ${leftover:-} ]]; then
+            leftover=""
+        fi
+        leftover=${leftover%%[[:space:]]}
+        if [[ "$leftover" == "$csNamespace" ]] || [[ $leftover == "" ]]; then
+            allPresent="true"
+        else
+            if [[ $activeRequestedFrom == "" ]]; then
+                activeRequestedFrom="$nsFromCM"
+            else
+                activeRequestedFrom="$activeRequestedFrom $nsFromCM"
+            fi
+            if [[ $activeMapTo == "" ]]; then
+                activeMapTo="$csNamespace"
+            else
+                activeMapTo="$activeMapTo $csNamespace"
+            fi
+            info "Namespaces $nsFromCM $csNamespace added to conversion pool."
+            nsFromCM=""
+            allPresent="false"
+        fi
+        if [[ $allPresent == "true" ]]; then
+            info "Namespaces $nsFromCM are already setup to use Common Service instance in namespace $csNamespace"
+            nsFromCM=""
+        fi
+    done
+
+    if [[ $activeRequestedFrom == "" ]] && [[ $activeMapTo == "" ]]; then
+        success "No difference in topology detected."
+        error "Please update common-service-maps configmap in kube-public and run again."
+    else
+        requested_ns=$activeRequestedFrom
+        map_to_cs_ns=$activeMapTo
+        info "Namespaces to be included in conversion process: $requested_ns $map_to_cs_ns"
+    fi
+    
+    success "Topology info collected from common-service-maps configmap"
+}
+
+function isolate_odlm() {
+    package_name=$1
+    ns=$2
+    # get subscription of ODLM based on namespace 
+    sub_name=$(${OC} get subscription.operators.coreos.com -n ${ns} -l operators.coreos.com/${package_name}.${ns}='' --no-headers | awk '{print $1}')
+    if [ -z "$sub_name" ]; then
+        warning "Not found subscription ${package_name} in ${ns}"
+        return 0
+    fi
+    ${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml > sub.yaml
+
+    # set ISOLATED_MODE to true
+    yq e '.spec.config.env |= (map(select(.name == "ISOLATED_MODE").value |= "true") + [{"name": "ISOLATED_MODE", "value": "true"}] | unique_by(.name))' sub.yaml -i
+
+    # apply updated subscription back to cluster
+    ${OC} apply -f sub.yaml
+    if [[ $? -ne 0 ]]; then
+        error "Failed to update subscription ${package_name} in ${ns}"
+    fi
+    rm sub.yaml
+
+    check_odlm_env "${ns}" 
+}
+
+function check_odlm_env() {
+    local namespace=$1
+    local name="operand-deployment-lifecycle-manager"
+    local condition="${OC} -n ${namespace} get deployment ${name} -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name==\"ISOLATED_MODE\")].value}'| grep "true" || true"
+    local retries=10
+    local sleep_time=12
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for OLM to update Deployment ${name} "
+    local success_message="Deployment ${name} is updated to run in isolated mode"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for OLM to update Deployment ${name} "
+
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
+function wait_for_condition() {
+    local condition=$1
+    local retries=$2
+    local sleep_time=$3
+    local wait_message=$4
+    local success_message=$5
+    local error_message=$6
+
+    info "${wait_message}"
+    while true; do
+        result=$(eval "${condition}")
+
+        if [[ ( ${retries} -eq 0 ) && ( -z "${result}" ) ]]; then
+            error "${error_message}"
+        fi
+
+        sleep ${sleep_time}
+        result=$(eval "${condition}")
+
+        if [[ -z "${result}" ]]; then
+            info "RETRYING: ${wait_message} (${retries} left)"
+            retries=$(( retries - 1 ))
+        else
+            break
+        fi
+    done
+
+    if [[ ! -z "${success_message}" ]]; then
+        success "${success_message}"
+    fi
+}
+
+function copy_over_commonservice_cr() {
+    namespace=$1
+    title " Copying existing CommonService CR to new cs instance $namespace "
+    msg "-----------------------------------------------------------------------"
+    
+    ${OC} get commonservice common-service -n ${master_ns} -o yaml > tmp.yaml
+
+    yq -i 'del(.metadata.creationTimestamp)' tmp.yaml
+    yq -i 'del(.metadata.resourceVersion)' tmp.yaml
+    yq -i 'del(.metadata.uid)' tmp.yaml
+    yq -i 'del(.metadata.generation)' tmp.yaml
+    yq -i '.metadata.namespace = "'${namespace}'"' tmp.yaml
+    ${OC} apply -f tmp.yaml  || error "Could not apply CommonService CR changes in namespace $namespace"
+
+    rm -f tmp.yaml
 }
 
 function cleanup_deployment() {
@@ -741,4 +781,3 @@ function info() {
 # --- Run ---
 
 main $*
-
