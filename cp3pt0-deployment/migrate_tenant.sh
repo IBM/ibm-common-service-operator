@@ -61,8 +61,7 @@ function main() {
     if [[ $ENABLE_PRIVATE_CATALOG -eq 1 ]]; then
         arguments+=" --enable-private-catalog"
     fi
-    ${BASE_DIR}/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" "-c" "$CHANNEL" "--cert-manager-source" "$CERT_MANAGER_SOURCE" "--licensing-source" "$LICENSING_SOURCE" "$arguments"
-
+    ${BASE_DIR}/setup_singleton.sh "--operator-namespace" "$OPERATOR_NS" "-c" "$CHANNEL" "--cert-manager-source" "$CERT_MANAGER_SOURCE" "--licensing-source" "$LICENSING_SOURCE" "$arguments"
 
     # Update CommonService CR with OPERATOR_NS and SERVICES_NS
     # Propogate CommonService CR to every namespace in the tenant

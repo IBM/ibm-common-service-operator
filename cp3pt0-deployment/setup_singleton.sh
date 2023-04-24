@@ -121,7 +121,7 @@ function print_usage() {
     echo ""
     echo "Options:"
     echo "   --oc string                                    File path to oc CLI. Default uses oc in your PATH"
-    echo "   --operator-namespace string                    Namespace to migrate Foundational services operator"
+    echo "   --operator-namespace string                    Namespace to migrate Cloud Pak 2 Foundational services"
     echo "   --enable-licensing                             Set this flag to install ibm-licensing-operator"
     echo "   --enable-private-catalog                       Set this flag to use namespace scoped CatalogSource. Default is in openshift-marketplace namespace"
     echo "   --cert-manager-source string                   CatalogSource name of ibm-cert-manager-operator. This assumes your CatalogSource is already created. Default is ibm-cert-manager-catalog"
@@ -210,6 +210,9 @@ function pre_req() {
     else
         MIGRATE_SINGLETON=1
         get_and_validate_arguments
+        if [[ "$CONTROL_NS" != "$LICENSING_NAMESPACE" ]]; then
+            error "Licensing Migration could only be done in controlNamespace, please set parameter '-licensingNs $CONTROL_NS'"
+        fi
     fi
 }
 

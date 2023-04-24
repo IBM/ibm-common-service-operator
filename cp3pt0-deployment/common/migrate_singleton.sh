@@ -47,14 +47,15 @@ function main() {
         ${BASE_DIR}/delegate_cp2_cert_manager.sh --control-namespace $CONTROL_NS "--skip-user-vertify"
     fi
     
-    if [[ $ENABLE_LICENSING -eq 1 ]] && [[ "$CONTROL_NS" == "$OPERATOR_NS" ]]; then
-        # Migrate Licensing Services Data
-        ${BASE_DIR}/migrate_cp2_licensing.sh --control-namespace $CONTROL_NS "--skip-user-vertify"
+    if [[ $ENABLE_LICENSING -eq 1 ]]; then
+        if [[ "$CONTROL_NS" == "$OPERATOR_NS" ]]; then
+            # Migrate Licensing Services Data
+            ${BASE_DIR}/migrate_cp2_licensing.sh --control-namespace $CONTROL_NS "--skip-user-vertify"
+        fi
         # Delete IBM Licensing Service instance
         ${OC} delete --ignore-not-found ibmlicensing instance
         # Delete licensing csv/subscriptions
         delete_operator "ibm-licensing-operator" "$CONTROL_NS"
-
     fi
 
     success "Migration is completed for Cloud Pak 3.0 Foundational singleton services."
