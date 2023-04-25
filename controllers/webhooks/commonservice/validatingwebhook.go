@@ -141,9 +141,8 @@ func (r *Defaulter) CheckNamespace(name string) (bool, error) {
 func (r *Defaulter) CheckConfig(config, parameter string) bool {
 	if config == "" {
 		return false
-	} else {
-		return config != parameter
 	}
+	return config != parameter
 }
 
 func (r *Defaulter) InjectDecoder(decoder *admission.Decoder) error {
