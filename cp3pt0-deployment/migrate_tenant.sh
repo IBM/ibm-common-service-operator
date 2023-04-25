@@ -150,6 +150,10 @@ function parse_arguments() {
             shift
             CHANNEL=$1
             ;;
+        -i | --install-mode)
+            shift
+            INSTALL_MODE=$1
+            ;;
         -s | --source)
             shift
             SOURCE=$1
