@@ -218,8 +218,6 @@ func main() {
 			os.Exit(1)
 		}
 
-		// Check IAM pods status
-		go goroutines.CheckIamStatus(bs)
 		// Create or Update CPP configuration
 		go goroutines.CreateUpdateConfig(bs)
 		// Update CS CR Status

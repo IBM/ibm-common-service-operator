@@ -28,7 +28,7 @@ rules:
   - watch
   - create
   - update
-# create IAM status configmap in kube-public
+# create common-service-maps configmap in kube-public
 - apiGroups:
   - ""
   resources:

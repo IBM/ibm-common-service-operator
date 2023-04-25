@@ -41,7 +41,6 @@ Target:
 * Verify the Namespace Scope Operator can be installed in `ibm-common-services` namespace
 * Verify above operators and operands can work well
 * Verify the `CommonService`, `OperandConfig`, `OperandRegistry` can be created in `ibm-common-services` namespace
-* Verify the IAM status configmap can be created in `kube-public` namespace
 * Verify the RBAC can be created in `kube-public` namespace
 
 How:
@@ -73,7 +72,6 @@ Target:
 * Verify the Namespace Scope Operator can be installed in `ibm-common-services` namespace
 * Verify above operators and operands can work well
 * Verify the `CommonService`, `OperandConfig`, `OperandRegistry` can be created in `ibm-common-services` namespace
-* Verify the IAM status configmap can be created in `kube-public` namespace
 * Verify the RBAC can be created in `kube-public` namespace
 * Verify the Cluster RBAC can be created for Namespace Scope Operator service account
 
