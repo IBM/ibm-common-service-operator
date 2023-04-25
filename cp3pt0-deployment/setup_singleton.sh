@@ -23,6 +23,7 @@ LICENSING_SOURCE="ibm-licensing-catalog"
 CERT_MANAGER_NAMESPACE="ibm-cert-manager"
 LICENSING_NAMESPACE="ibm-licensing"
 
+CUSTOMIZED_LICENSING_NAMESPACE=0
 SKIP_INSTALL=0
 CHECK_LICENSING_ONLY=0
 
@@ -94,6 +95,7 @@ function parse_arguments() {
         -licensingNs | --licensing-namespace)
             shift
             LICENSING_NAMESPACE=$1
+            CUSTOMIZED_LICENSING_NAMESPACE=1
             ;;
         -c | --channel)
             shift
@@ -210,8 +212,12 @@ function pre_req() {
     else
         MIGRATE_SINGLETON=1
         get_and_validate_arguments
-        if [[ "$CONTROL_NS" != "$LICENSING_NAMESPACE" ]] && [[ "$ENABLE_LICENSING" == 1 ]]; then
-            error "Licensing Migration could only be done in controlNamespace, please set parameter '-licensingNs $CONTROL_NS'"
+        if [[ "$ENABLE_LICENSING" == 1 ]];then
+            if [[ "$CUSTOMIZED_LICENSING_NAMESPACE" -eq 1 ]] && [[ "$CONTROL_NS" != "$LICENSING_NAMESPACE" ]]; then
+                error "Licensing Migration could only be done in $CONTROL_NS, please do not set parameter '-licensingNs $LICENSING_NAMESPACE'"
+            else 
+                LICENSING_NAMESPACE="${CONTROL_NS}"
+            fi
         fi
     fi
 }
