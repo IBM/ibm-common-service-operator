@@ -717,6 +717,8 @@ function update_operator() {
     local source=$4
     local source_ns=$5
     local install_mode=$6
+    local retries=5 # Number of retries
+    local delay=5 # Delay between retries in seconds
     
     local sub_name=$(${OC} get subscription.operators.coreos.com -n ${ns} -l operators.coreos.com/${package_name}.${ns}='' --no-headers | awk '{print $1}')
     if [ -z "$sub_name" ]; then
@@ -724,35 +726,51 @@ function update_operator() {
         return 0
     fi
 
-    ${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml > sub.yaml
+    while [ $retries -gt 0 ]; do
+        # Retrieve the latest version of the subscription
+        ${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml > sub.yaml
     
-    existing_channel=$(yq eval '.spec.channel' sub.yaml)
-    existing_catalogsource=$(yq eval '.spec.source' sub.yaml)
+        existing_channel=$(yq eval '.spec.channel' sub.yaml)
+        existing_catalogsource=$(yq eval '.spec.source' sub.yaml)
 
-    compare_semantic_version $existing_channel $channel
-    return_channel_value=$?
+        compare_semantic_version $existing_channel $channel
+        return_channel_value=$?
 
-    compare_catalogsource $existing_catalogsource $source
-    return_catsrc_value=$?
+        compare_catalogsource $existing_catalogsource $source
+        return_catsrc_value=$?
 
-    if [[ $return_channel_value -eq 1 ]]; then
-        error "Failed to update channel subscription ${package_name} in ${ns}"
-    elif [[ $return_channel_value -eq 2 || $return_catsrc_value -eq 1 ]]; then
-        info "$package_name is ready for updaing the subscription."      
-    elif [[ $return_channel_value -eq 0 && $return_catsrc_value -eq 0 ]]; then
-        info "$package_name has already updated channel $existing_channel and catalogsource $existing_catalogsource in the subscription."
-    fi
+        if [[ $return_channel_value -eq 1 ]]; then
+            error "Failed to update channel subscription ${package_name} in ${ns}"
+        elif [[ $return_channel_value -eq 2 || $return_catsrc_value -eq 1 ]]; then
+            info "$package_name is ready for updaing the subscription."      
+        elif [[ $return_channel_value -eq 0 && $return_catsrc_value -eq 0 ]]; then
+            info "$package_name has already updated channel $existing_channel and catalogsource $existing_catalogsource in the subscription."
+        fi
 
-    yq -i eval 'select(.kind == "Subscription") | .spec += {"channel": "'${channel}'"}' sub.yaml
-    yq -i eval 'select(.kind == "Subscription") | .spec += {"source": "'${source}'"}' sub.yaml
-    yq -i eval 'select(.kind == "Subscription") | .spec += {"sourceNamespace": "'${source_ns}'"}' sub.yaml
-    yq -i eval 'select(.kind == "Subscription") | .spec += {"installPlanApproval": "'${install_mode}'"}' sub.yaml
+        # Update the subscription with the desired changes
+        yq -i eval 'select(.kind == "Subscription") | .spec += {"channel": "'${channel}'"}' sub.yaml
+        yq -i eval 'select(.kind == "Subscription") | .spec += {"source": "'${source}'"}' sub.yaml
+        yq -i eval 'select(.kind == "Subscription") | .spec += {"sourceNamespace": "'${source_ns}'"}' sub.yaml
+        yq -i eval 'select(.kind == "Subscription") | .spec += {"installPlanApproval": "'${install_mode}'"}' sub.yaml
 
-    ${OC} apply -f sub.yaml
-    if [[ $? -ne 0 ]]; then
-        error "Failed to update subscription ${package_name} in ${ns}"
-    fi
+        # Apply the patch
+        ${OC} apply -f sub.yaml
+    
+        # Check if the patch was successful
+        if [[ $? -eq 0 ]]; then
+            success "Successfully patched subscription ${package_name} in ${ns}"
+            rm sub.yaml
+            return 0
+        else
+            warning "Failed to patch subscription ${package_name} in ${ns}. Retrying in ${delay} seconds..."
+            sleep ${delay}
+            retries=$((retries-1))
+        fi
+    done
+
+    error "Maximum retries reached. Failed to patch subscription ${sub_name} in ${ns}"
     rm sub.yaml
+    return 1
 }
 
 function delete_operator() {
@@ -845,4 +863,3 @@ function scale_up() {
         scale_deployment ${operator_ns} operand-deployment-lifecycle-manager 1
     fi
 }
-    
