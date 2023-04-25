@@ -83,14 +83,14 @@ func (r *Defaulter) Handle(ctx context.Context, req admission.Request) admission
 		operatorNamespace := cs.Spec.OperatorNamespace
 		deniedOperatorNs := r.CheckConfig(string(operatorNamespace), r.Bootstrap.CSData.OperatorNs)
 		if deniedOperatorNs {
-			return admission.Denied(fmt.Sprintf("Operator Namespace: %v is not allowed to configured in namespace %v", operatorNamespace, req.AdmissionRequest.Namespace))
+			return admission.Denied(fmt.Sprintf("Operator Namespace: %v is not allowed to be configured in namespace %v", operatorNamespace, req.AdmissionRequest.Namespace))
 		}
 
 		// check ServicesNamespace
 		servicesNamespace := cs.Spec.ServicesNamespace
 		deniedServicesNs := r.CheckConfig(string(servicesNamespace), r.Bootstrap.CSData.ServicesNs)
 		if deniedServicesNs {
-			return admission.Denied(fmt.Sprintf("Services Namespace: %v is not allowed to configured in namespace %v", servicesNamespace, req.AdmissionRequest.Namespace))
+			return admission.Denied(fmt.Sprintf("Services Namespace: %v is not allowed to be configured in namespace %v", servicesNamespace, req.AdmissionRequest.Namespace))
 		}
 
 		// check CatalogName
@@ -98,14 +98,14 @@ func (r *Defaulter) Handle(ctx context.Context, req admission.Request) admission
 		catalogName := cs.Spec.CatalogName
 		deniedCatalog := r.CheckConfig(string(catalogName), r.Bootstrap.CSData.CatalogSourceName)
 		if deniedCatalog {
-			return admission.Denied(fmt.Sprintf("CatalogSource Name: %v is not allowed to configured in namespace %v", catalogName, req.AdmissionRequest.Namespace))
+			return admission.Denied(fmt.Sprintf("CatalogSource Name: %v is not allowed to be configured in namespace %v", catalogName, req.AdmissionRequest.Namespace))
 		}
 
 		// check CatalogNamespace
 		catalogNamespace := cs.Spec.CatalogNamespace
 		deniedCatalogNs := r.CheckConfig(string(catalogNamespace), r.Bootstrap.CSData.CatalogSourceNs)
 		if deniedCatalogNs {
-			return admission.Denied(fmt.Sprintf("CatalogSource Namespace: %v is not allowed to configured in namespace %v", catalogNamespace, req.AdmissionRequest.Namespace))
+			return admission.Denied(fmt.Sprintf("CatalogSource Namespace: %v is not allowed to be configured in namespace %v", catalogNamespace, req.AdmissionRequest.Namespace))
 		}
 	}
 
