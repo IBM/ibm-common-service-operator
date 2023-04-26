@@ -168,7 +168,7 @@ function install_cert_manager() {
     create_operator_group "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" "{}"
     create_subscription "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" "$CHANNEL" "ibm-cert-manager-operator" "${CERT_MANAGER_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
     wait_for_operator "${CERT_MANAGER_NAMESPACE}" "ibm-cert-manager-operator"
-    accept_license "certmanagerconfig.operator.ibm.com"
+    accept_license "certmanagerconfig.operator.ibm.com" ""
 }
 
 function install_licensing() {
@@ -200,7 +200,7 @@ EOF
     create_operator_group "ibm-licensing-operator-app" "${LICENSING_NAMESPACE}" "$target"
     create_subscription "ibm-licensing-operator-app" "${LICENSING_NAMESPACE}" "$CHANNEL" "ibm-licensing-operator-app" "${LICENSING_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
     wait_for_operator "${LICENSING_NAMESPACE}" "ibm-licensing-operator"
-    # accept_license "ibmlicensing"
+    # accept_license "ibmlicensing" ""
 }
 
 function pre_req() {

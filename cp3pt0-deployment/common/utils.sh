@@ -867,9 +867,13 @@ function scale_up() {
 function accept_license() {
     kind=$1
     namespace=$2
+    #had an issue with empty namespace value following -n in below command
+    if [[ $namespace != "" ]]; then
+        namespace="-n $namespace"
+    fi
     kind_exists=$(${OC} get $kind || echo "fail")
     if [[ $kind_exists != "fail" ]]; then
-        cr=$(${OC} get $kind -n $namespace --no-headers | awk '{print $1}')
+        cr=$(${OC} get $kind --no-headers $namespace | awk '{print $1}')
         ${OC} patch $kind $cr --type='merge' -p '{"spec":{"license":{"accept":true}}}' || warning "Failed to update license acceptance for $kind CR $cr"
     else
         warning "Resource kind $kind not found on cluster."
