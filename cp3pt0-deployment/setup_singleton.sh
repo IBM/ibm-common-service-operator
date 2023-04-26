@@ -23,6 +23,8 @@ LICENSING_SOURCE="ibm-licensing-catalog"
 CERT_MANAGER_NAMESPACE="ibm-cert-manager"
 LICENSING_NAMESPACE="ibm-licensing"
 
+LICENSE_ACCEPT=""
+
 CUSTOMIZED_LICENSING_NAMESPACE=0
 SKIP_INSTALL=0
 CHECK_LICENSING_ONLY=0
@@ -81,6 +83,10 @@ function parse_arguments() {
             shift
             LICENSING_SOURCE=$1
             ;;
+        --license-accept)
+            shift
+            LICENSE_ACCEPT=$1
+            ;;
         --check-cert-manager)
             SKIP_INSTALL=1
             ;;
@@ -130,6 +136,7 @@ function print_usage() {
     echo "   --licensing-source string                      CatalogSource name of ibm-licensing. This assumes your CatalogSource is already created. Default is ibm-licensing-catalog"
     echo "   -cmNs, --cert-manager-namespace string         Set custom namespace for ibm-cert-manager-operator. Default is ibm-cert-manager"
     echo "   -licensingNs, --licensing-namespace string     Set custom namespace for ibm-licensing-operator. Default is ibm-licensing"
+    echo "   --license-accept                               Set this flag to \"true\" to accept the license agreement"
     echo "   -c, --channel string                           Channel for Subscription(s). Default is v4.0"   
     echo "   -i, --install-mode string                      InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
     echo "   -h, --help                                     Print usage information"
@@ -163,6 +170,7 @@ function install_cert_manager() {
     create_operator_group "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" "{}"
     create_subscription "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" "$CHANNEL" "ibm-cert-manager-operator" "${CERT_MANAGER_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
     wait_for_operator "${CERT_MANAGER_NAMESPACE}" "ibm-cert-manager-operator"
+    accept_license #may need to rethink this, if license is false, wait for operator could fail, if we try to set it before waiting, the cert manager cr may not exist yet
 }
 
 function install_licensing() {
@@ -225,6 +233,18 @@ function pre_req() {
 # TODO validate argument
 function get_and_validate_arguments() {
     get_control_namespace
+}
+
+function accept_license() {
+    if [[ $LICENSE_ACCEPT == "true" ]]; then
+        certmanager_cr=$(${OC} get certmanager --no-headers | awk '{print $1}')
+        if [[ $certmanager_cr != "" ]]; then
+            #value needs to be a boolean not string
+            ${OC} patch certmanager $certmanager_cr --type='merge' -p '{"spec":{"license":{"accept":true}}}' || error "Failed to update license accept for certmanager CR $certmanager_cr"
+        fi
+    else
+        warning "License not accepted, please update the certmanager CR $certmanager_cr to accept the license"
+    fi
 }
 
 main $*
