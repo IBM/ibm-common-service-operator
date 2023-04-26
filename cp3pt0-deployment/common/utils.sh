@@ -587,7 +587,7 @@ function cleanup_crossplane() {
     sleep 60
 
     # delete Sub
-    info "cleanup crossplane subscription"
+    info "cleanup crossplane Subscription and ClusterServiceVersion"
     local namespace=$($OC get subscription.operators.coreos.com -A --no-headers | (grep ibm-crossplane-operator-app || echo "fail") | awk '{print $1}')
     if [[ $namesapce != "fail" ]]; then
         delete_operator "ibm-crossplane-provider-kubernetes-operator-app" $namesapce
