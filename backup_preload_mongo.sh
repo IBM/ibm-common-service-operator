@@ -286,14 +286,24 @@ function swapmongopvc() {
     error "Volume for pvc  cs-mongodump not found in $FROM_NAMESPACE"
   fi
 
+  IMAGE=$(oc get pod icp-mongodb-0 -n $FROM_NAMESPACE  -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
+  if [[ -z "$IMAGE" ]]; then
+    error "IMAGE for pod icp-mongodb-0 not found in $FROM_NAMESPACE"
+  fi
+
   oc patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Retain" }}'
   oc patch pv $VOL --type=merge -p '{"spec": {"claimRef":null}}'
   oc patch pv $VOL --type json -p '[{ "op": "remove", "path": "/spec/claimRef" }]'
   
   oc delete pvc cs-mongodump -n $FROM_NAMESPACE --ignore-not-found --timeout=10s
-  if [ $? -ne 0 ]; then
-      info "Failed to delete pvc cs-mongodump, patching its finalizer to null..."
-      oc patch pvc cs-mongodump -n $FROM_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+    if [ $? -ne 0 ]; then
+        info "Failed to delete pvc cs-mongodump, patching its finalizer to null..."
+        oc patch pvc cs-mongodump -n $FROM_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+    fi
+
+  stgclass=$(oc get pvc mongodbdir-icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{.spec.storageClassName}')
+  if [[ -z $stgclass ]]; then
+    error "Cannnot get storage class name from PVC mongodbdir-icp-mongodb-0 in $FROM_NAMESPACE"
   fi
 
   cat <<EOF >$TEMPFILE
@@ -308,7 +318,7 @@ spec:
   resources:
     requests:
       storage: 20Gi
-  storageClassName: ""
+  storageClassName: $stgclass
   volumeMode: Filesystem
   volumeName: $VOL
 EOF
