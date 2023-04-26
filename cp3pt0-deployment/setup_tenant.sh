@@ -144,7 +144,7 @@ function pre_req() {
         error "Cert-manager is not found or having more than one\n"
     fi
 
-    if [ $LICENSE_ACCEPT -ne 1 ]; then
+    if [[ $LICENSE_ACCEPT != 1 ]]; then
         error "License not accepted. Rerun script with --license-accept flag set. See https://ibm.biz/integration-licenses for more details"
     fi
 
