@@ -83,7 +83,6 @@ function parse_arguments() {
             LICENSING_SOURCE=$1
             ;;
         --license-accept)
-            shift
             LICENSE_ACCEPT=1
             ;;
         --check-cert-manager)
@@ -215,7 +214,7 @@ function pre_req() {
         success "oc command logged in as ${user}"
     fi
 
-    if [ $LICENSE_ACCEPT -ne 1 ]; then
+    if [[ $LICENSE_ACCEPT != 1 ]]; then
         error "License not accepted. Rerun script with --license-accept flag set. See https://ibm.biz/integration-licenses for more details"
     fi
 

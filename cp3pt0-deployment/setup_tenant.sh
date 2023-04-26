@@ -67,7 +67,6 @@ function parse_arguments() {
             TETHERED_NS=$1
             ;;
         --license-accept)
-            shift
             LICENSE_ACCEPT=1
             ;;
         -c | --channel)

@@ -867,40 +867,12 @@ function scale_up() {
 function accept_license() {
     kind=$1
     namespace=$2
-    if [[ $kind == "certmanagerconfig.operator.ibm.com" ]] || [[ $kind == "ibmlicensing" ]]; then
-        kind_exists=$(${OC} get $kind || echo "fail")
-        if [[ $kind_exists != "fail" ]]; then
-            cr=$(${OC} get $kind | awk '{print $1}')
-            ${OC} patch $kind $cr --type='merge' -p '{"spec":{"license":{"accept":true}}}' || warning "Failed to update license acceptance for $kind CR $cr"
-        else
-            warning "Resource kind $kind not found on cluster."
-            return
-        fi
+    kind_exists=$(${OC} get $kind || echo "fail")
+    if [[ $kind_exists != "fail" ]]; then
+        cr=$(${OC} get $kind -n $namespace --no-headers | awk '{print $1}')
+        ${OC} patch $kind $cr --type='merge' -p '{"spec":{"license":{"accept":true}}}' || warning "Failed to update license acceptance for $kind CR $cr"
     else
-        if [[ $kind == "commonservice" ]]; then
-            kind_exists=$(${OC} get $kind -n $namespace || echo "fail")
-            if [[ $kind_exists != "fail" ]]; then
-                cr=$(${OC} get $kind -n $namespace | awk '{print $1}')
-                ${OC} patch $kind $cr -n $namespace --type='merge' -p '{"spec":{"license":{"accept":true}}}' || warning "Failed to update license acceptance for $kind CR $cr"
-            else
-                warning "$kind not found in namespace $namespace"
-                return
-            fi
-        elif [[ $kind == "namespacescope" ]]; then
-            kind_exists=$(${OC} get $kind -n $namespace || echo "fail")
-            if [[ $kind_exists != "fail" ]]; then
-                nss_crs=$(${OC} get $kind -n $namespace | awk '{print $1}' | tr '\n' ' ')
-                for cr in $nss_crs
-                do
-                    ${OC} patch $kind $cr -n $namespace --type='merge' -p '{"spec":{"license":{"accept":true}}}' || warning "Failed to update license acceptance for $kind CR $cr in namespace $namespace"
-                done
-            else
-                warning "$kind not found in namespace $namespace"
-                return
-            fi
-        else
-            warning "Kind $kind specified not recognized. Accepted kinds are commonservice, namespacescope, ibmlicensing, and certmanagerconfig.operator.ibm.com"
-            return  
-        fi
+        warning "Resource kind $kind not found on cluster."
+        return
     fi
 }
