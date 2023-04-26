@@ -40,6 +40,8 @@ function main() {
     # cleanup crossplane    
     cleanup_crossplane
 
+    success "Control namespace: ${CONTROL_NS} is cleanup"
+
 }
 
 function parse_arguments() {
