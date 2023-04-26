@@ -529,7 +529,7 @@ function cleanup_cp2() {
     if [[ enable_multi_instance -eq 0 ]]; then
         cleanup_webhook $control_ns $nss_list
         cleanup_secretshare $control_ns $nss_list
-        cleanup_crossplane $control_ns $nss_list
+        cleanup_crossplane
     fi
     
 
@@ -555,7 +555,7 @@ function cleanup_webhook() {
     ${OC} delete MutatingWebhookConfiguration ibm-operandrequest-webhook-configuration --ignore-not-found
     msg ""
 
-    info "Deleting MutatingWebhookConfiguration..."
+    info "Deleting ValidatingWebhookConfiguration..."
     ${OC} delete ValidatingWebhookConfiguration ibm-cs-ns-mapping-webhook-configuration --ignore-not-found
 
 }
