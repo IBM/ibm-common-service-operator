@@ -865,8 +865,8 @@ function scale_up() {
 }
 
 function accept_license() {
-    kind=$1
-    namespace=$2
+    local kind=$1
+    local namespace=$2
     kind_exists=$(${OC} get "$kind" || echo "fail")
     if [[ $kind_exists != "fail" ]]; then
         cr=$(${OC} get "$kind" --no-headers -n "$namespace" | awk '{print $1}')
