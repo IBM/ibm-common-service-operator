@@ -211,7 +211,7 @@ function install_nss() {
     fi
 
     wait_for_operator "$OPERATOR_NS" "ibm-namespace-scope-operator"
-    accept_license "namespacescope" $OPERATOR_NS
+    accept_license "namespacescope" "$OPERATOR_NS"
 
     # namespaceMembers should at least have Bedrock operators' namespace
     local ns=$(cat <<EOF
