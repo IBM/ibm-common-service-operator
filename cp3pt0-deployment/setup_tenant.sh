@@ -21,6 +21,7 @@ TETHERED_NS=""
 SIZE_PROFILE="small"
 INSTALL_MODE="Automatic"
 DEBUG=0
+LICENSE_ACCEPT=""
 
 # ---------- Command variables ----------
 
@@ -64,6 +65,10 @@ function parse_arguments() {
         --tethered-namespaces)
             shift
             TETHERED_NS=$1
+            ;;
+        --license-accept)
+            shift
+            LICENSE_ACCEPT=1
             ;;
         -c | --channel)
             shift
@@ -114,6 +119,7 @@ function print_usage() {
     echo "   --operator-namespace string    Required. Namespace to install Foundational services operator"
     echo "   --services-namespace           Namespace to install operands of Foundational services, i.e. 'dataplane'. Default is the same as operator-namespace"
     echo "   --tethered-namespaces string   Additional namespaces for this tenant, comma-delimited, e.g. 'ns1,ns2'"
+    echo "   --license-accept               Set this flag to accept the license agreement."
     echo "   -c, --channel string           Channel for Subscription(s). Default is v4.0"
     echo "   -i, --install-mode string      InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
     echo "   -s, --source string            CatalogSource name. This assumes your CatalogSource is already created. Default is opencloud-operators"
@@ -137,6 +143,10 @@ function pre_req() {
     check_cert_manager "cert-manager"
     if [ $? -ne 0 ]; then
         error "Cert-manager is not found or having more than one\n"
+    fi
+
+    if [ $LICENSE_ACCEPT -ne 1 ]; then
+        error "License not accepted. Rerun script with --license-accept flag set. See https://ibm.biz/integration-licenses for more details"
     fi
 
     if [ $ENABLE_LICENSING -eq 1 ]; then
@@ -202,6 +212,7 @@ function install_nss() {
     fi
 
     wait_for_operator "$OPERATOR_NS" "ibm-namespace-scope-operator"
+    accept_license "namespacescope" $OPERATOR_NS
 
     # namespaceMembers should at least have Bedrock operators' namespace
     local ns=$(cat <<EOF
@@ -303,6 +314,7 @@ function install_cs_operator() {
         sleep 120
     fi
     wait_for_operator "$OPERATOR_NS" "ibm-common-service-operator"
+    accept_license "commonservice" "$OPERATOR_NS"
     wait_for_nss_patch "$OPERATOR_NS" 
     configure_cs_kind
 }
