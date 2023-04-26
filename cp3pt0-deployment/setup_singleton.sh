@@ -170,7 +170,7 @@ function install_cert_manager() {
     create_operator_group "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" "{}"
     create_subscription "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" "$CHANNEL" "ibm-cert-manager-operator" "${CERT_MANAGER_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
     wait_for_operator "${CERT_MANAGER_NAMESPACE}" "ibm-cert-manager-operator"
-    accept_license #may need to rethink this, if license is false, wait for operator could fail, if we try to set it before waiting, the cert manager cr may not exist yet
+    accept_license
 }
 
 function install_licensing() {
@@ -237,10 +237,10 @@ function get_and_validate_arguments() {
 
 function accept_license() {
     if [[ $LICENSE_ACCEPT == "true" ]]; then
-        certmanager_cr=$(${OC} get certmanager --no-headers | awk '{print $1}')
+        certmanager_cr=$(${OC} get certmanagerconfig.operator.ibm.com --no-headers | awk '{print $1}')
         if [[ $certmanager_cr != "" ]]; then
             #value needs to be a boolean not string
-            ${OC} patch certmanager $certmanager_cr --type='merge' -p '{"spec":{"license":{"accept":true}}}' || error "Failed to update license accept for certmanager CR $certmanager_cr"
+            ${OC} patch certmanagerconfig.operator.ibm.com $certmanager_cr --type='merge' -p '{"spec":{"license":{"accept":true}}}' || error "Failed to update license accept for certmanager CR $certmanager_cr"
         fi
     else
         warning "License not accepted, please update the certmanager CR $certmanager_cr to accept the license"
