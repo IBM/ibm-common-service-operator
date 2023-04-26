@@ -588,10 +588,12 @@ function cleanup_crossplane() {
 
     # delete Sub
     info "cleanup crossplane subscription"
-    local namespace=$($OC get subscription.operators.coreos.com -A --no-headers | grep ibm-crossplane-operator-app | awk '{print $1}')
-    ${OC} delete sub ibm-crossplane-provider-kubernetes-operator-app -n ${namespace} --ignore-not-found
-    ${OC} delete sub ibm-crossplane-provider-ibm-cloud-operator-app -n ${namespace} --ignore-not-found
-    ${OC} delete sub ibm-crossplane-operator-app -n ${namespace} --ignore-not-found
+    local namespace=$($OC get subscription.operators.coreos.com -A --no-headers | (grep ibm-crossplane-operator-app || echo "fail") | awk '{print $1}')
+    if [[ $namesapce != "fail" ]]; then
+        delete_operator "ibm-crossplane-provider-kubernetes-operator-app" $namesapce
+        delete_operator "ibm-crossplane-provider-ibm-cloud-operator-app" $namesapce
+        delete_operator "ibm-crossplane-operator-app" $namesapce
+    fi
 }
 
 function cleanup_OperandBindInfo() {
