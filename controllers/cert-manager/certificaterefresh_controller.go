@@ -69,7 +69,7 @@ func (r *CertificateRefreshReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 
 	if !masterCR.Spec.License.Accept {
-		klog.Info("Accept license by changing .spec.license.accept to true in the CertManagerConfig CR. Operator will not proceed until then")
+		klog.Info("Accept license by changing .spec.license.accept to true in the CommonService CR. Operator will not proceed until then")
 		return ctrl.Result{Requeue: true}, nil
 	}
 
