@@ -98,7 +98,6 @@ function pre_req() {
         for ns in $cs_namespace
         do
             csv=$(${OC} get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.${ns}='' -n ${ns} -o yaml -o jsonpath='{.items[*].status.installedCSV}')
-            # csv=$(${OC} get subscription.operators.coreos.com -l operators.coreos.com/cert-manager.openshift-operators='' -n openshift-operators -o yaml -o jsonpath='{.items[*].status.installedCSV}')
             if [[ "${csv}" != "null" ]] && [[ "${csv}" != "" ]]; then
                 info "found ibm-common-service-operator, checking the channel"
                 channel=$(echo ${csv} | cut -d "." -f 2 | awk '{print $1}')
