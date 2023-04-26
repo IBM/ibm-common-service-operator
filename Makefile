@@ -194,7 +194,7 @@ build-bundle-image: yq
 	@mv /tmp/ibm-common-service-operator.clusterserviceversion.yaml bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
 
 run-bundle:
-	$(OPERATOR_SDK) run bundle $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(VERSION)
+	$(OPERATOR_SDK) run bundle $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(VERSION) --install-mode OwnNamespace
 
 upgrade-bundle:
 	$(OPERATOR_SDK) run bundle-upgrade $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(VERSION)
