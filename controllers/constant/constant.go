@@ -113,6 +113,8 @@ spec:
   servicesNamespace:  "{{ .ServicesNs }}"
   operatorNamespace: "{{ .CPFSNs }}"
   size: starterset
+  license:
+    accept: false
 `
 
 // CsNoSizeCR is the default common service operator CR for upgrade

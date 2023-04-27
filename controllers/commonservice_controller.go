@@ -97,6 +97,17 @@ func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	masterCR := &apiv3.CommonService{}
+	if err := r.Bootstrap.Client.Get(ctx, types.NamespacedName{Namespace: r.Bootstrap.CSData.OperatorNs, Name: "common-service"}, masterCR); err != nil {
+		if !errors.IsNotFound(err) {
+			return ctrl.Result{}, err
+		}
+	}
+
+	if !masterCR.Spec.License.Accept {
+		klog.Error("Accept license by changing .spec.license.accept to true in the CommonService CR. Operator will not proceed until then")
+	}
+
 	if r.checkNamespace(req.NamespacedName.String()) {
 		return r.ReconcileMasterCR(ctx, instance)
 	}
