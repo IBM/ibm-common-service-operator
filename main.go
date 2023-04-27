@@ -232,25 +232,22 @@ func main() {
 			os.Exit(1)
 		}
 		if err = (&certmanagerv1controllers.CertificateRefreshReconciler{
-			Bootstrap: bs,
-			Client:    mgr.GetClient(),
-			Scheme:    mgr.GetScheme(),
+			Client: mgr.GetClient(),
+			Scheme: mgr.GetScheme(),
 		}).SetupWithManager(mgr); err != nil {
 			klog.Error(err, "unable to create controller", "controller", "CertificateRefresh")
 			os.Exit(1)
 		}
 		if err = (&certmanagerv1controllers.PodRefreshReconciler{
-			Bootstrap: bs,
-			Client:    mgr.GetClient(),
-			Scheme:    mgr.GetScheme(),
+			Client: mgr.GetClient(),
+			Scheme: mgr.GetScheme(),
 		}).SetupWithManager(mgr); err != nil {
 			klog.Error(err, "unable to create controller", "controller", "PodRefresh")
 			os.Exit(1)
 		}
 		if err = (&certmanagerv1controllers.V1AddLabelReconciler{
-			Bootstrap: bs,
-			Client:    mgr.GetClient(),
-			Scheme:    mgr.GetScheme(),
+			Client: mgr.GetClient(),
+			Scheme: mgr.GetScheme(),
 		}).SetupWithManager(mgr); err != nil {
 			klog.Error(err, "unable to create controller", "controller", "V1AddLabel")
 			os.Exit(1)

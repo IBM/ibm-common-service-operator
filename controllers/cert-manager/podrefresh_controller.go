@@ -24,7 +24,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -33,9 +32,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
-	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 
 	certmanagerv1 "github.com/ibm/ibm-cert-manager-operator/apis/cert-manager/v1"
 )
@@ -48,7 +44,6 @@ var (
 
 // CertificateReconciler reconciles a Certificate object
 type PodRefreshReconciler struct {
-	*bootstrap.Bootstrap
 	client.Client
 	Scheme *runtime.Scheme
 }
@@ -66,16 +61,6 @@ type PodRefreshReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.10.0/pkg/reconcile
 func (r *PodRefreshReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logd = log.FromContext(ctx)
-
-	masterCR := &apiv3.CommonService{}
-	if err := r.Bootstrap.Client.Get(ctx, types.NamespacedName{Namespace: r.Bootstrap.CSData.OperatorNs, Name: "common-service"}, masterCR); err != nil {
-		return ctrl.Result{}, err
-	}
-
-	if !masterCR.Spec.License.Accept {
-		klog.Info("Accept license by changing .spec.license.accept to true in the CommonService CR. Operator will not proceed until then")
-		return ctrl.Result{Requeue: true}, nil
-	}
 
 	reqLogger := logd.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
 	reqLogger.Info("Reconciling podrefresh")
