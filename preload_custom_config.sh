@@ -31,7 +31,7 @@ function main() {
     parse_arguments "$@"
     prereq
     # run backup preload
-    backup_preload_mongo "$FROM_NAMESPACE" "$TO_NAMESPACE"
+    backup_preload_mongo
     # copy im credentials
     copy_auth_idp_secret
     # any extra config
@@ -114,6 +114,7 @@ function copy_auth_idp_secret() {
     $YQ -i 'del(.metadata.creationTimestamp)' tmp.yaml
     $YQ -i 'del(.metadata.resourceVersion)' tmp.yaml
     $YQ -i 'del(.metadata.uid)' tmp.yaml
+    $YQ -i 'del(.metadata.ownerReferences)' tmp.yaml
     $YQ -i '.metadata.namespace = "'${TO_NAMESPACE}'"' tmp.yaml
     $OC apply -f tmp.yaml || error "Failed to copy over secret $secret."
     rm -f tmp.yaml
