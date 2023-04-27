@@ -108,16 +108,8 @@ function prereq() {
 
 function copy_auth_idp_secret() {
     local secret="platform-auth-idp-credentials"
-    title " Copying secret $secret from $FROM_NAMESPACE to $TO_NAMESPACE "
-    
-    $OC get secret "$secret" -n $FROM_NAMESPACE -o yaml > tmp.yaml
-    $YQ -i 'del(.metadata.creationTimestamp)' tmp.yaml
-    $YQ -i 'del(.metadata.resourceVersion)' tmp.yaml
-    $YQ -i 'del(.metadata.uid)' tmp.yaml
-    $YQ -i 'del(.metadata.ownerReferences)' tmp.yaml
-    $YQ -i '.metadata.namespace = "'${TO_NAMESPACE}'"' tmp.yaml
-    $OC apply -f tmp.yaml || error "Failed to copy over secret $secret."
-    rm -f tmp.yaml
+    title " Copying secret $secret from $FROM_NAMESPACE to $TO_NAMESPACE "   
+    $OC get secret "$secret" -n $FROM_NAMESPACE -o yaml | $YQ -i 'del(.metadata.creationTimestamp) | del(.metadata.resourceVersion) | del(.metadata.uid) | del(.metadata.ownerReferences)' | $OC apply -n $TO_NAMESPACE -f || error "Failed to copy over secret $secret."
     success "Secret $secret copied over to $TO_NAMESPACE"
 }
 
