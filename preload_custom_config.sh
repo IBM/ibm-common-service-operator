@@ -124,7 +124,7 @@ function copy_auth_idp_secret() {
 # backup_preload_mongo script logic
 #
 function backup_preload_mongo() {
-  parse $*
+  pre_req_bpm
   cleanup
   deploymongocopy
   createdumppvc
@@ -138,14 +138,7 @@ function backup_preload_mongo() {
 #
 # Parse and validate the namespaces
 #
-function parse() {
-  info "Checking parameters and namespaces..."
-  if [ $NUM -ne 2 ]; then
-    help
-    exit -1
-  fi
-  FROM_NAMESPACE=$1
-  TO_NAMESPACE=$2
+function pre_req_bpm() {
 
   info "Copying mongodb from namespace $FROM_NAMESPACE to namespace $TO_NAMESPACE"
  
