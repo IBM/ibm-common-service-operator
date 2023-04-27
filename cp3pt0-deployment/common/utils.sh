@@ -870,7 +870,7 @@ function accept_license() {
     kind_exists=$(${OC} get "$kind" || echo "fail")
     if [[ $kind_exists != "fail" ]]; then
         cr=$(${OC} get "$kind" --no-headers -n "$namespace" | awk '{print $1}')
-        ${OC} patch "$kind" "$cr" --type='merge' -p '{"spec":{"license":{"accept":true}}}' || warning "Failed to update license acceptance for $kind CR $cr"
+        ${OC} patch "$kind" "$cr" -n "$namespace" --type='merge' -p '{"spec":{"license":{"accept":true}}}' || warning "Failed to update license acceptance for $kind CR $cr"
     else
         warning "Resource kind $kind not found on cluster."
         return
