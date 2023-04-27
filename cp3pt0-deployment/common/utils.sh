@@ -247,7 +247,7 @@ function wait_for_operand_request() {
 
 function wait_for_nss_patch() {
     local namespace=$1
-    local csv_name=$($OC get sub ibm-common-service-operator -n ${namespace} -o jsonpath='{.status.installedCSV}')
+    local csv_name=$($OC get subscription.operators.coreos.com ibm-common-service-operator -n ${namespace} -o jsonpath='{.status.installedCSV}')
     local condition="${OC} -n ${namespace}  get csv ${csv_name} -o jsonpath='{.spec.install.spec.deployments[0].spec.template.spec.containers[0].env[?(@.name==\"WATCH_NAMESPACE\")].valueFrom.configMapKeyRef.name}'| grep 'namespace-scope'"
     local retries=10
     local sleep_time=10
@@ -780,7 +780,7 @@ function delete_operator() {
     ns=$2
     for sub in ${subs}; do
         title "Deleting ${sub} in namesapce ${ns}..."
-        csv=$(${OC} get sub ${sub} -n ${ns} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
+        csv=$(${OC} get subscription.operators.coreos.com ${sub} -n ${ns} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
         in_step=1
         msg "[${in_step}] Removing the subscription of ${sub} in namesapce ${ns} ..."
         ${OC} delete sub ${sub} -n ${ns} --ignore-not-found
@@ -837,9 +837,9 @@ function scale_down() {
     local channel=$3
     local source=$4
     local cs_sub=$(${OC} get subscription.operators.coreos.com -n ${operator_ns} -l operators.coreos.com/ibm-common-service-operator.${operator_ns}='' --no-headers | awk '{print $1}')
-    local cs_CSV=$(${OC} get subscription.operators.coreos.com ${cs_sub} -n ${operator_ns} --ignore-not-found -o jsonpath={.status.currentCSV})
+    local cs_CSV=$(${OC} get subscription.operators.coreos.com ${cs_sub} -n ${operator_ns} --ignore-not-found -o jsonpath={.status.installedCSV})
     local odlm_sub=$(${OC} get subscription.operators.coreos.com -n ${operator_ns} -l operators.coreos.com/ibm-odlm.${operator_ns}='' --no-headers | awk '{print $1}')
-    local odlm_CSV=$(${OC} get subscription.operators.coreos.com ${odlm_sub} -n ${operator_ns} --ignore-not-found -o jsonpath={.status.currentCSV})
+    local odlm_CSV=$(${OC} get subscription.operators.coreos.com ${odlm_sub} -n ${operator_ns} --ignore-not-found -o jsonpath={.status.installedCSV})
     
     ${OC} get subscription.operators.coreos.com ${cs_sub} -n ${operator_ns} -o yaml > sub.yaml
 
@@ -903,7 +903,7 @@ function scale_up() {
     local package_name=$3
     local deployment=$4
     local sub=$(${OC} get subscription.operators.coreos.com -n ${operator_ns} -l operators.coreos.com/${package_name}.${operator_ns}='' --no-headers | awk '{print $1}')
-    local csv=$(${OC} get subscription.operators.coreos.com ${sub} -n ${operator_ns} --ignore-not-found -o jsonpath={.status.currentCSV})
+    local csv=$(${OC} get subscription.operators.coreos.com ${sub} -n ${operator_ns} --ignore-not-found -o jsonpath={.status.installedCSV})
 
     if [[ "$deployment" == "operand-deployment-lifecycle-manager" ]]; then
         wait_for_operand_registry ${services_ns} common-service
