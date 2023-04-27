@@ -867,10 +867,11 @@ function scale_up() {
 function accept_license() {
     local kind=$1
     local namespace=$2
-    kind_exists=$(${OC} get "$kind" || echo "fail")
+    kind_exists=$(${OC} get "$kind" -n "$namespace" || echo "fail")
     if [[ $kind_exists != "fail" ]]; then
         cr=$(${OC} get "$kind" --no-headers -n "$namespace" | awk '{print $1}')
         ${OC} patch "$kind" "$cr" -n "$namespace" --type='merge' -p '{"spec":{"license":{"accept":true}}}' || warning "Failed to update license acceptance for $kind CR $cr"
+        info "License accepted for $kind $cr."
     else
         warning "Resource kind $kind not found on cluster."
         return
