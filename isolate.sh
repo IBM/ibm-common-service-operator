@@ -28,6 +28,7 @@ ADDITIONAL_NS=""
 CONTROL_NS=""
 CS_MAPPING_YAML=""
 CM_NAME="common-service-maps"
+DEBUG=0
 
 function main() {
     while [ "$#" -gt "0" ]
@@ -53,6 +54,10 @@ function main() {
             CONTROL_NS=$2
             shift
             ;;
+        -v | --debug)
+            shift
+            DEBUG=$1
+            ;;
         *)
             error "invalid option -- \`$1\`. Use the -h or --help option for usage info."
             ;;
@@ -76,6 +81,7 @@ function main() {
     create_empty_csmaps
     insert_control_ns
     update_tenant "${MASTER_NS}" "${ns_list}"
+    removeNSS
     uninstall_singletons
     check_cm_ns_exist "$ns_list" # debating on turning this off by default since this technically falls outside the scope of isolate
     isolate_odlm "ibm-odlm" $MASTER_NS
@@ -94,7 +100,8 @@ function usage() {
     --original-cs-ns              specify the namespace the original common services installation resides in
     --control-ns                  specify the control namespace value in the common-service-maps configmap
     --excluded-ns                 specify namespaces to be excluded from the common-service-maps configmap. Comma separated no spaces.
-    --insert-ns                 specify namespaces to be inserted into the common-service-maps configmap. Comma separated no spaces.
+    --insert-ns                   specify namespaces to be inserted into the common-service-maps configmap. Comma separated no spaces.
+    -v, --debug integer           Verbosity of logs. Default is 0. Set to 1 for debug logs.
 	EOF
 }
 
@@ -221,7 +228,7 @@ function update_tenant() {
     fi
 
     local tmp="\"$map_to_cs_ns\","
-    # echo "map $map_to_cs_ns namespace $namespaces tmp $tmp"
+    debug1 "map $map_to_cs_ns namespace $namespaces tmp $tmp"
     for ns in $namespaces; do
         tmp="$tmp\"$ns\","
     done
@@ -259,7 +266,6 @@ function pause() {
     ${OC} delete operandregistry -n ${MASTER_NS} --ignore-not-found common-service 
     ${OC} delete operandconfig -n ${MASTER_NS} --ignore-not-found common-service
     
-    removeNSS
     success "Common Services successfully isolated in namespace ${MASTER_NS}"
 }
 
@@ -549,6 +555,12 @@ function title() {
 
 function info() {
     msg "[INFO] ${1}"
+}
+
+function debug1() {
+    if [ $DEBUG -eq 1 ]; then
+        debug "${1}"
+    fi
 }
 
 # --- Run ---
