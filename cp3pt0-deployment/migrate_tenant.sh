@@ -77,13 +77,16 @@ function main() {
         fi
     done
 
-    # Wait for operator upgrade
-    wait_for_operator_upgrade "$OPERATOR_NS" "ibm-common-service-operator" "$CHANNEL"
+    # Wait for CS operator upgrade
+    wait_for_operator_upgrade $OPERATOR_NS ibm-common-service-operator $CHANNEL
     accept_license "commonservice" "$OPERATOR_NS"  "common-service"
-    wait_for_operator_upgrade "$OPERATOR_NS" "ibm-odlm" "$CHANNEL"
+    # Scale up CS
+    scale_up $OPERATOR_NS $SERVICES_NS ibm-common-service-operator ibm-common-service-operator
 
-    # Scale up CS and ODLM
-    scale_up $OPERATOR_NS "$SERVICES_NS" $CHANNEL
+    # Wait for ODLM upgrade
+    wait_for_operator_upgrade $OPERATOR_NS ibm-odlm $CHANNEL
+    # Scale up ODLM
+    scale_up $OPERATOR_NS $SERVICES_NS ibm-odlm operand-deployment-lifecycle-manager
 
     # Clean resources
     cleanup_cp2 "$OPERATOR_NS" "$CONTROL_NS" "$NS_LIST"
