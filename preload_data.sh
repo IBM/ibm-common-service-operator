@@ -22,8 +22,8 @@ set -o errtrace
 
 OC=oc
 YQ=yq
-FROM_NAMESPACE=$1
-TO_NAMESPACE=$2
+FROM_NAMESPACE=""
+TO_NAMESPACE=""
 NUM=$#
 TEMPFILE="_TMP.yaml"
 
@@ -49,20 +49,15 @@ function parse_arguments() {
             shift
             yq=$1
             ;;
-        # --original-cs-ns)
-        #     shift
-        #     FROM_NAMESPACE=$1
-        #     ;;
-        # --target-ns)
-        #     shift
-        #     TO_NAMESPACE=$1
-        #     ;;
         -h | --help)
             print_usage
             exit 1
             ;;
         *) 
-            echo "wildcard"
+            if [ -z "$FROM_NAMESPACE" ]; then
+                FROM_NAMESPACE=$1
+                TO_NAMESPACE=$2
+            fi
             ;;
         esac
         shift
@@ -78,8 +73,6 @@ function print_usage() {
     echo "Options:"
     echo "   --oc string                                    File path to oc CLI. Default uses oc in your PATH"
     echo "   --yq string                                    File path to yq CLI. Default uses yq in your PATH"
-    # echo "   --target-ns string                             Namespace to migrate Cloud Pak 2 Foundational services data too"
-    # echo "   --original-cs-ns string                        Namespace to migrate Cloud Pak 2 Foundational services data from."
     echo "   -h, --help                                     Print usage information"
     echo ""
 }
@@ -107,7 +100,17 @@ function prereq() {
 function copy_auth_idp_secret() {
     local secret="platform-auth-idp-credentials"
     title " Copying secret $secret from $FROM_NAMESPACE to $TO_NAMESPACE "   
-    $OC get secret "$secret" -n $FROM_NAMESPACE -o yaml | $YQ 'del(.metadata.creationTimestamp) | del(.metadata.resourceVersion) | del (.metadata.namespace) | del(.metadata.uid) | del(.metadata.ownerReferences)' | $OC apply -n $TO_NAMESPACE -f - || error "Failed to copy over secret $secret."
+    $OC get secret "$secret" -n $FROM_NAMESPACE -o yaml | \
+        $YQ '
+            del(.metadata.creationTimestamp) | 
+            del(.metadata.resourceVersion) | 
+            del(.metadata.namespace) | 
+            del(.metadata.uid) | 
+            del(.metadata.ownerReferences) |
+            del(.metadata.managedFields) |
+            del(.metadata.labels)
+        ' | \
+        $OC apply -n $TO_NAMESPACE -f - || error "Failed to copy over secret $secret."
     success "Secret $secret copied over to $TO_NAMESPACE"
 }
 
