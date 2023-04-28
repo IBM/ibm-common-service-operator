@@ -247,7 +247,7 @@ function wait_for_operand_request() {
 
 function wait_for_nss_patch() {
     local namespace=$1
-    local csv_name=$($OC get sub ibm-common-service-operator -n ${namespace} -o jsonpath='{.status.installedCSV}')
+    local csv_name=$($OC get subscription.operators.coreos.com ibm-common-service-operator -n ${namespace} -o jsonpath='{.status.installedCSV}')
     local condition="${OC} -n ${namespace}  get csv ${csv_name} -o jsonpath='{.spec.install.spec.deployments[0].spec.template.spec.containers[0].env[?(@.name==\"WATCH_NAMESPACE\")].valueFrom.configMapKeyRef.name}'| grep 'namespace-scope'"
     local retries=10
     local sleep_time=10
@@ -587,11 +587,13 @@ function cleanup_crossplane() {
     sleep 60
 
     # delete Sub
-    info "cleanup crossplane subscription"
-    local namespace=$($OC get subscription.operators.coreos.com -A --no-headers | grep ibm-crossplane-operator-app | awk '{print $1}')
-    ${OC} delete sub ibm-crossplane-provider-kubernetes-operator-app -n ${namespace} --ignore-not-found
-    ${OC} delete sub ibm-crossplane-provider-ibm-cloud-operator-app -n ${namespace} --ignore-not-found
-    ${OC} delete sub ibm-crossplane-operator-app -n ${namespace} --ignore-not-found
+    info "cleanup crossplane Subscription and ClusterServiceVersion"
+    local namespace=$($OC get subscription.operators.coreos.com -A --no-headers | (grep ibm-crossplane-operator-app || echo "fail") | awk '{print $1}')
+    if [[ $namesapce != "fail" ]]; then
+        delete_operator "ibm-crossplane-provider-kubernetes-operator-app" $namesapce
+        delete_operator "ibm-crossplane-provider-ibm-cloud-operator-app" $namesapce
+        delete_operator "ibm-crossplane-operator-app" $namesapce
+    fi
 }
 
 function cleanup_OperandBindInfo() {
@@ -742,7 +744,7 @@ function update_operator() {
         if [[ $return_channel_value -eq 1 ]]; then
             error "Failed to update channel subscription ${package_name} in ${ns}"
         elif [[ $return_channel_value -eq 2 || $return_catsrc_value -eq 1 ]]; then
-            info "$package_name is ready for updaing the subscription."      
+            info "$package_name is ready for updating the subscription."      
         elif [[ $return_channel_value -eq 0 && $return_catsrc_value -eq 0 ]]; then
             info "$package_name has already updated channel $existing_channel and catalogsource $existing_catalogsource in the subscription."
         fi
@@ -778,7 +780,7 @@ function delete_operator() {
     ns=$2
     for sub in ${subs}; do
         title "Deleting ${sub} in namesapce ${ns}..."
-        csv=$(${OC} get sub ${sub} -n ${ns} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
+        csv=$(${OC} get subscription.operators.coreos.com ${sub} -n ${ns} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
         in_step=1
         msg "[${in_step}] Removing the subscription of ${sub} in namesapce ${ns} ..."
         ${OC} delete sub ${sub} -n ${ns} --ignore-not-found
@@ -792,24 +794,41 @@ function delete_operator() {
     done
 }
 
+function scale_deployment_csv() {
+    local ns=$1
+    local csv=$2
+    local replicas=$3
+    ${OC} patch csv ${csv} -n ${ns} --type='json' -p='[{"op": "replace", "path": "/spec/install/spec/deployments/0/spec/replicas", "value": '$((replicas))'}]'
+}
+
+function check_deployment(){
+    local ns=$1
+    local deployment=$2
+    local replicas=$3
+    local retries=5 
+    local count=0
+
+    while [ $count -lt $retries ]; do
+        local current_replicas=$(${OC} get deployment ${deployment} -n ${ns} -o jsonpath='{.spec.replicas}')
+
+        if [ "$current_replicas" -eq "$replicas" ]; then
+            success "Replicas count is as expected: $current_replicas"
+            return 0
+        else
+            warning "Replica count is not as expected: $current_replicas (expected: $replicas)"
+            count=$((count+1))
+            sleep 5
+        fi
+    done
+
+    msg "Failed to reach expected replica count after $retries attempts, scaling deployment..."
+    return 1
+}
+
 function scale_deployment() {
     local ns=$1
     local deployment=$2
     ${OC} scale deployment ${deployment} -n ${ns} --replicas=$3
-}
-
-function wait_for_operand_registry() {
-    local namespace=$1
-    local name=$2
-    local condition="${OC} -n ${namespace} get operandregistry ${name} --no-headers --ignore-not-found"
-    local retries=20
-    local sleep_time=10
-    local total_time_mins=$(( sleep_time * retries / 60))
-    local wait_message="Waiting for operand registry ${name} to be present"
-    local success_message="Operand registry ${name} is present"
-    local error_message="Timeout after ${total_time_mins} minutes waiting for operand registry ${name} to be present"
- 
-    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
 function scale_down() {
@@ -818,8 +837,12 @@ function scale_down() {
     local channel=$3
     local source=$4
     local cs_sub=$(${OC} get subscription.operators.coreos.com -n ${operator_ns} -l operators.coreos.com/ibm-common-service-operator.${operator_ns}='' --no-headers | awk '{print $1}')
-    ${OC} get subscription.operators.coreos.com ${cs_sub} -n ${operator_ns} -o yaml > sub.yaml
+    local cs_CSV=$(${OC} get subscription.operators.coreos.com ${cs_sub} -n ${operator_ns} --ignore-not-found -o jsonpath={.status.installedCSV})
+    local odlm_sub=$(${OC} get subscription.operators.coreos.com -n ${operator_ns} -l operators.coreos.com/ibm-odlm.${operator_ns}='' --no-headers | awk '{print $1}')
+    local odlm_CSV=$(${OC} get subscription.operators.coreos.com ${odlm_sub} -n ${operator_ns} --ignore-not-found -o jsonpath={.status.installedCSV})
     
+    ${OC} get subscription.operators.coreos.com ${cs_sub} -n ${operator_ns} -o yaml > sub.yaml
+
     existing_channel=$(yq eval '.spec.channel' sub.yaml)
     existing_catalogsource=$(yq eval '.spec.source' sub.yaml)
     compare_semantic_version $existing_channel $channel
@@ -835,11 +858,24 @@ function scale_down() {
     elif [[ $return_channel_value -eq 0 && $return_catsrc_value -eq 0 ]]; then
         info "$cs_sub already has updated channel $existing_channel and catalogsource $existing_catalogsource in the subscription."
     fi
-    # scale down CS and ODLM
-    msg "Scaling down ${cs_sub} deployment in ${operator_ns} namespace to 0"
-    scale_deployment $operator_ns ibm-common-service-operator 0
-    msg "Scaling down operand-deployment-lifecycle-manager deployment in ${operator_ns} namespace to 0"
-    scale_deployment $operator_ns operand-deployment-lifecycle-manager 0
+
+    # Scale down CS
+    msg "Patching CSV ${cs_sub} to scale down deployment in ${operator_ns} namespace to 0..."
+    scale_deployment_csv $operator_ns $cs_CSV 0
+    check_deployment $operator_ns ibm-common-service-operator 0
+    if [[ $? -ne 0 ]]; then
+        msg "Scaling down ibm-common-service-operator deployment in ${operator_ns} namespace to 0..."
+        scale_deployment $operator_ns ibm-common-service-operator 0
+    fi
+    
+    # Scale down ODLM
+    msg "Patching CSV to scale down operand-deployment-lifecycle-manager deployment in ${operator_ns} namespace to 0..."
+    scale_deployment_csv $operator_ns $odlm_CSV 0
+    check_deployment $operator_ns operand-deployment-lifecycle-manager 0
+    if [[ $? -ne 0 ]]; then
+        msg "Scaling down operand-deployment-lifecycle-manager deployment in ${operator_ns} namespace to 0..."
+        scale_deployment $operator_ns operand-deployment-lifecycle-manager 0
+    fi
     
     # delete OperandRegistry
     msg "Deleting OperandRegistry common-service in ${services_ns} namespace..."
@@ -847,20 +883,37 @@ function scale_down() {
     rm sub.yaml 
 }
 
+function wait_for_operand_registry() {
+    local namespace=$1
+    local name=$2
+    local condition="${OC} -n ${namespace} get operandregistry ${name} --no-headers --ignore-not-found"
+    local retries=20
+    local sleep_time=10
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for OperandRegistry ${name} to be present"
+    local success_message="OperandRegistry ${name} is present"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for operand registry ${name} to be present"
+ 
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
 function scale_up() {
     local operator_ns=$1
     local services_ns=$2
-    cs_repliacs=$(${OC} -n ${operator_ns} get deployment ibm-common-service-operator --no-headers --ignore-not-found -o jsonpath='{.status.replicas}')
-    if [[ ${cs_replicas} -ne 1 ]]; then
-        msg "Scaling up ibm-common-service-operator deployment in ${operator_ns} namespace to 1"
-        scale_deployment ${operator_ns} ibm-common-service-operator 1
-    fi
+    local package_name=$3
+    local deployment=$4
+    local sub=$(${OC} get subscription.operators.coreos.com -n ${operator_ns} -l operators.coreos.com/${package_name}.${operator_ns}='' --no-headers | awk '{print $1}')
+    local csv=$(${OC} get subscription.operators.coreos.com ${sub} -n ${operator_ns} --ignore-not-found -o jsonpath={.status.installedCSV})
 
-    odlm_replicas=$(${OC} -n ${operator_ns} get deployment operand-deployment-lifecycle-manager --no-headers --ignore-not-found -o jsonpath='{.status.replicas}')
-    if [[ ${odlm_replicas} -eq 0 ]]; then
+    if [[ "$deployment" == "operand-deployment-lifecycle-manager" ]]; then
         wait_for_operand_registry ${services_ns} common-service
-        msg "Scaling up operand-deployment-lifecycle-manager deployment in ${operator_ns} namespace back to 1"
-        scale_deployment ${operator_ns} operand-deployment-lifecycle-manager 1
+    fi
+    msg "Patching CSV ${csv} to scale up deployment in ${operator_ns} namespace back to 1..."
+    scale_deployment_csv $operator_ns $csv 1
+    check_deployment $operator_ns $deployment 1
+    if [[ $? -ne 0 ]]; then
+        msg "Scaling up ${deployment} deployment in ${operator_ns} namespace back to 1..."
+        scale_deployment $operator_ns $deployment 1
     fi
 }
 
