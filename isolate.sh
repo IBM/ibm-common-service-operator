@@ -244,7 +244,7 @@ function update_tenant() {
 # and namesapces from arguments, to output a unique sorted list of namespaces
 # with excluded namespaces removed
 function gather_csmaps_ns() {
-    local ns_scope=$("${OC}" get cm -n "$MASTER_NS" namespace-scope -o yaml | yq -r '.data.namespaces')
+    local ns_scope=$("${OC}" get cm -n "$MASTER_NS" namespace-scope -o yaml | yq '.data.namespaces')
 
     # excluding namespaces is implemented via duplicate removal with uniq -u,
     # so need to make unique the combined lists of namespaces first to avoid
