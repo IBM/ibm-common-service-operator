@@ -22,8 +22,8 @@ set -o errtrace
 
 OC=oc
 YQ=yq
-FROM_NAMESPACE=
-TO_NAMESPACE=
+FROM_NAMESPACE=$1
+TO_NAMESPACE=$2
 NUM=$#
 TEMPFILE="_TMP.yaml"
 
@@ -49,14 +49,14 @@ function parse_arguments() {
             shift
             yq=$1
             ;;
-        --original-cs-ns)
-            shift
-            FROM_NAMESPACE=$1
-            ;;
-        --target-ns)
-            shift
-            TO_NAMESPACE=$1
-            ;;
+        # --original-cs-ns)
+        #     shift
+        #     FROM_NAMESPACE=$1
+        #     ;;
+        # --target-ns)
+        #     shift
+        #     TO_NAMESPACE=$1
+        #     ;;
         -h | --help)
             print_usage
             exit 1
@@ -71,17 +71,15 @@ function parse_arguments() {
 
 function print_usage() {
     script_name=`basename ${0}`
-    echo "Usage: ${script_name} [OPTIONS]..."
+    echo "Usage: ${script_name} FromNamespace ToNamespace [OPTIONS]..."
     echo ""
-    echo "Install Cloud Pak 3 pre-reqs if they do not already exist: ibm-cert-manager-operator and optionally ibm-licensing-operator"
-    echo "The ibm-cert-manager-operator will be installed in namespace ibm-cert-manager"
-    echo "The ibm-licensing-operator will be installed in namespace ibm-licensing"
+    echo "Preload data and config information from an existing Common Services namespace to a new, empty namespace"
     echo ""
     echo "Options:"
     echo "   --oc string                                    File path to oc CLI. Default uses oc in your PATH"
     echo "   --yq string                                    File path to yq CLI. Default uses yq in your PATH"
-    echo "   --target-ns string                             Namespace to migrate Cloud Pak 2 Foundational services data too"
-    echo "   --original-cs-ns string                        Namespace to migrate Cloud Pak 2 Foundational services data from."
+    # echo "   --target-ns string                             Namespace to migrate Cloud Pak 2 Foundational services data too"
+    # echo "   --original-cs-ns string                        Namespace to migrate Cloud Pak 2 Foundational services data from."
     echo "   -h, --help                                     Print usage information"
     echo ""
 }
