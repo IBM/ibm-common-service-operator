@@ -87,7 +87,7 @@ function print_usage() {
 function prereq() {
     
     if [[ -z "$FROM_NAMESPACE" ]] || [[ -z "$TO_NAMESPACE" ]]; then
-        error "Both --original-cs-ns and --target-ns need to be set for script to execute. Please rerun script with both parameters set. Run with \"-h\" flag for more details"
+        error "Both FromNamespace and ToNamespace need to be set for script to execute. Please rerun script with both parameters set. Run with \"-h\" flag for more details"
         exit 1
     fi
 
