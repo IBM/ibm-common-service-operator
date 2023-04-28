@@ -144,7 +144,7 @@ function pre_req() {
         error "Cert-manager is not found or having more than one\n"
     fi
 
-    if [[ $LICENSE_ACCEPT != 1 ]]; then
+    if [ $LICENSE_ACCEPT -ne 1 ]; then
         error "License not accepted. Rerun script with --license-accept flag set. See https://ibm.biz/integration-licenses for more details"
     fi
 
@@ -211,7 +211,6 @@ function install_nss() {
     fi
 
     wait_for_operator "$OPERATOR_NS" "ibm-namespace-scope-operator"
-    accept_license "namespacescope" "$OPERATOR_NS"
 
     # namespaceMembers should at least have Bedrock operators' namespace
     local ns=$(cat <<EOF
@@ -234,6 +233,7 @@ EOF
     if [ $? -ne 0 ]; then
         error "Failed to create NSS CR in ${OPERATOR_NS}"
     fi
+    accept_license "namespacescope" "$OPERATOR_NS" "common-service"
 }
 
 function authorize_nss() {
@@ -313,7 +313,7 @@ function install_cs_operator() {
         sleep 120
     fi
     wait_for_operator "$OPERATOR_NS" "ibm-common-service-operator"
-    accept_license "commonservice" "$OPERATOR_NS"
+    accept_license "commonservice" "$OPERATOR_NS" "common-service"
     wait_for_nss_patch "$OPERATOR_NS" 
     configure_cs_kind
 }

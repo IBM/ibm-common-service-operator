@@ -79,7 +79,7 @@ function main() {
 
     # Wait for operator upgrade
     wait_for_operator_upgrade "$OPERATOR_NS" "ibm-common-service-operator" "$CHANNEL"
-    accept_license "commonservice" "$OPERATOR_NS"
+    accept_license "commonservice" "$OPERATOR_NS"  "common-service"
     wait_for_operator_upgrade "$OPERATOR_NS" "ibm-odlm" "$CHANNEL"
 
     # Scale up CS and ODLM
@@ -99,7 +99,7 @@ function main() {
     fi
 
     wait_for_operator_upgrade "$OPERATOR_NS" "ibm-namespace-scope-operator" "$CHANNEL"
-    accept_license "namespacescope" "$OPERATOR_NS"
+    accept_license "namespacescope" "$OPERATOR_NS" "common-service"
     # Authroize NSS operator
     for ns in ${NS_LIST//,/ }; do
         if [ "$ns" != "$OPERATOR_NS" ]; then
@@ -216,7 +216,7 @@ function pre_req() {
         success "oc command logged in as ${user}"
     fi
 
-    if [[ $LICENSE_ACCEPT != 1 ]]; then
+    if [ $LICENSE_ACCEPT -ne 1 ]; then
         error "License not accepted. Rerun script with --license-accept flag set. See https://ibm.biz/integration-licenses for more details"
     fi
 
