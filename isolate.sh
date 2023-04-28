@@ -73,10 +73,10 @@ function main() {
     prereq
     local ns_list=$(gather_csmaps_ns)
     pause
-    uninstall_singletons
     create_empty_csmaps
     insert_control_ns
     update_tenant "${MASTER_NS}" "${ns_list}"
+    uninstall_singletons
     check_cm_ns_exist "$ns_list" # debating on turning this off by default since this technically falls outside the scope of isolate
     isolate_odlm "ibm-odlm" $MASTER_NS
     restart
@@ -216,12 +216,12 @@ function update_tenant() {
     local isExists=$(echo "$current_yaml" | "${YQ}" '.namespaceMapping[] | select(.map-to-common-service-namespace == "'$map_to_cs_ns'")')
     if [ -z "$isExists" ]; then
         info "The provided map-to-common-service-namespace: $map_to_cs_ns, does not exist in common-service-maps"
-        info "Adding new map-to-commn-service-namespace"
+        info "Adding new map-to-common-service-namespace"
         updated_yaml=$(echo "$current_yaml" | "${YQ}" eval 'with(.namespaceMapping; . += [{"map-to-common-service-namespace": "'$map_to_cs_ns'"}])')
     fi
 
     local tmp="\"$map_to_cs_ns\","
-
+    # echo "map $map_to_cs_ns namespace $namespaces tmp $tmp"
     for ns in $namespaces; do
         tmp="$tmp\"$ns\","
     done
@@ -237,7 +237,7 @@ function update_tenant() {
 # and namesapces from arguments, to output a unique sorted list of namespaces
 # with excluded namespaces removed
 function gather_csmaps_ns() {
-    local ns_scope=$("${OC}" get cm -n "$MASTER_NS" namespace-scope -o json | jq -r '.data.namespaces')
+    local ns_scope=$("${OC}" get cm -n "$MASTER_NS" namespace-scope -o yaml | yq -r '.data.namespaces')
 
     # excluding namespaces is implemented via duplicate removal with uniq -u,
     # so need to make unique the combined lists of namespaces first to avoid
