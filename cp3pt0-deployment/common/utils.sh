@@ -578,21 +578,27 @@ function cleanup_secretshare() {
 
 # TODO: clean up crossplane sub and CR in operator_ns and service_ns
 function cleanup_crossplane() {
-    # delete CR
-    info "cleanup crossplane CR"
-    ${OC} get configuration.pkg.ibm.crossplane.io -A --no-headers | awk '{print $1}' | xargs ${OC} delete --ignore-not-found configuration.pkg.ibm.crossplane.io
-    ${OC} get lock.pkg.ibm.crossplane.io -A --no-headers | awk '{print $1}' | xargs ${OC} delete --ignore-not-found lock.pkg.ibm.crossplane.io
-    ${OC} get ProviderConfig -A --no-headers | awk '{print $1}' | xargs ${OC} delete --ignore-not-found ProviderConfig
+    #check if crossplane operator is installed or not
+    local is_exist=$($OC get subscription.operators.coreos.com -A --no-headers | (grep ibm-crossplane || echo "fail") | awk '{print $1}')
+    if [[ $is_exist != "fail" ]]; then
+        # delete CR
+        info "cleanup crossplane CR"
+        ${OC} get configuration.pkg.ibm.crossplane.io -A --no-headers | awk '{print $1}' | xargs ${OC} delete --ignore-not-found configuration.pkg.ibm.crossplane.io
+        ${OC} get lock.pkg.ibm.crossplane.io -A --no-headers | awk '{print $1}' | xargs ${OC} delete --ignore-not-found lock.pkg.ibm.crossplane.io
+        ${OC} get ProviderConfig -A --no-headers | awk '{print $1}' | xargs ${OC} delete --ignore-not-found ProviderConfig
 
-    sleep 60
+        sleep 60
 
-    # delete Sub
-    info "cleanup crossplane Subscription and ClusterServiceVersion"
-    local namespace=$($OC get subscription.operators.coreos.com -A --no-headers | (grep ibm-crossplane-operator-app || echo "fail") | awk '{print $1}')
-    if [[ $namesapce != "fail" ]]; then
-        delete_operator "ibm-crossplane-provider-kubernetes-operator-app" $namesapce
-        delete_operator "ibm-crossplane-provider-ibm-cloud-operator-app" $namesapce
-        delete_operator "ibm-crossplane-operator-app" $namesapce
+        # delete Sub
+        info "cleanup crossplane Subscription and ClusterServiceVersion"
+        local namespace=$($OC get subscription.operators.coreos.com -A --no-headers | (grep ibm-crossplane-operator-app || echo "fail") | awk '{print $1}')
+        if [[ $namesapce != "fail" ]]; then
+            delete_operator "ibm-crossplane-provider-kubernetes-operator-app" $namesapce
+            delete_operator "ibm-crossplane-provider-ibm-cloud-operator-app" $namesapce
+            delete_operator "ibm-crossplane-operator-app" $namesapce
+        fi
+    else
+        info "crossplane operator not exist, skip clean crossplane"
     fi
 }
 
