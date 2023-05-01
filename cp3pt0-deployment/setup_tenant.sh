@@ -21,7 +21,7 @@ TETHERED_NS=""
 SIZE_PROFILE="small"
 INSTALL_MODE="Automatic"
 DEBUG=0
-LICENSE_ACCEPT=""
+LICENSE_ACCEPT=0
 
 # ---------- Command variables ----------
 
