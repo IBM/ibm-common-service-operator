@@ -62,7 +62,7 @@ function main() {
     if [[ $ENABLE_PRIVATE_CATALOG -eq 1 ]]; then
         arguments+=" --enable-private-catalog"
     fi
-    ${BASE_DIR}/setup_singleton.sh "--operator-namespace" "$OPERATOR_NS" "-c" "$CHANNEL" "--cert-manager-source" "$CERT_MANAGER_SOURCE" "--licensing-source" "$LICENSING_SOURCE" "$arguments"
+    ${BASE_DIR}/setup_singleton.sh "--operator-namespace" "$OPERATOR_NS" "-c" "$CHANNEL" "--cert-manager-source" "$CERT_MANAGER_SOURCE" "--licensing-source" "$LICENSING_SOURCE" "$arguments" "--license-accept"
 
     # Update CommonService CR with OPERATOR_NS and SERVICES_NS
     # Propogate CommonService CR to every namespace in the tenant
@@ -79,6 +79,7 @@ function main() {
 
     # Wait for CS operator upgrade
     wait_for_operator_upgrade $OPERATOR_NS ibm-common-service-operator $CHANNEL
+    accept_license "commonservice" "$OPERATOR_NS"  "common-service"
     # Scale up CS
     scale_up $OPERATOR_NS $SERVICES_NS ibm-common-service-operator ibm-common-service-operator
 
@@ -101,6 +102,7 @@ function main() {
     fi
 
     wait_for_operator_upgrade "$OPERATOR_NS" "ibm-namespace-scope-operator" "$CHANNEL"
+    accept_license "namespacescope" "$OPERATOR_NS" "common-service"
     # Authroize NSS operator
     for ns in ${NS_LIST//,/ }; do
         if [ "$ns" != "$OPERATOR_NS" ]; then
@@ -149,6 +151,9 @@ function parse_arguments() {
             shift
             LICENSING_SOURCE=$1
             ;;
+        --license-accept)
+            LICENSE_ACCEPT=1
+            ;;
         -c | --channel)
             shift
             CHANNEL=$1
@@ -193,6 +198,7 @@ function print_usage() {
     echo "   --licensing-source string      CatalogSource name of ibm-licensing. This assumes your CatalogSource is already created. Default is ibm-licensing-catalog"
     echo "   --enable-licensing             Set this flag to migrate ibm-licensing-operator"
     echo "   --enable-private-catalog       Set this flag to use namespace scoped CatalogSource. Default is in openshift-marketplace namespace"
+    echo "   --license-accept               Set this flag to accept the license agreement."
     echo "   -c, --channel string           Channel for Subscription(s). Default is v4.0"   
     echo "   -i, --install-mode string      InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
     echo "   -s, --source string            CatalogSource name. This assumes your CatalogSource is already created. Default is opencloud-operators"
@@ -211,6 +217,10 @@ function pre_req() {
         error "You must be logged into the OpenShift Cluster from the oc command line"
     else
         success "oc command logged in as ${user}"
+    fi
+
+    if [ $LICENSE_ACCEPT -ne 1 ]; then
+        error "License not accepted. Rerun script with --license-accept flag set. See https://ibm.biz/integration-licenses for more details"
     fi
 
     if [ "$OPERATOR_NS" == "" ]; then

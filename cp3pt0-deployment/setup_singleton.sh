@@ -22,6 +22,7 @@ CERT_MANAGER_SOURCE="ibm-cert-manager-catalog"
 LICENSING_SOURCE="ibm-licensing-catalog"
 CERT_MANAGER_NAMESPACE="ibm-cert-manager"
 LICENSING_NAMESPACE="ibm-licensing"
+LICENSE_ACCEPT=""
 
 CUSTOMIZED_LICENSING_NAMESPACE=0
 SKIP_INSTALL=0
@@ -81,6 +82,9 @@ function parse_arguments() {
             shift
             LICENSING_SOURCE=$1
             ;;
+        --license-accept)
+            LICENSE_ACCEPT=1
+            ;;
         --check-cert-manager)
             SKIP_INSTALL=1
             ;;
@@ -130,6 +134,7 @@ function print_usage() {
     echo "   --licensing-source string                      CatalogSource name of ibm-licensing. This assumes your CatalogSource is already created. Default is ibm-licensing-catalog"
     echo "   -cmNs, --cert-manager-namespace string         Set custom namespace for ibm-cert-manager-operator. Default is ibm-cert-manager"
     echo "   -licensingNs, --licensing-namespace string     Set custom namespace for ibm-licensing-operator. Default is ibm-licensing"
+    echo "   --license-accept                               Set this flag to accept the license agreement."
     echo "   -c, --channel string                           Channel for Subscription(s). Default is v4.0"   
     echo "   -i, --install-mode string                      InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
     echo "   -h, --help                                     Print usage information"
@@ -163,6 +168,7 @@ function install_cert_manager() {
     create_operator_group "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" "{}"
     create_subscription "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" "$CHANNEL" "ibm-cert-manager-operator" "${CERT_MANAGER_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
     wait_for_operator "${CERT_MANAGER_NAMESPACE}" "ibm-cert-manager-operator"
+    accept_license "certmanagerconfig.operator.ibm.com" "" "default"
 }
 
 function install_licensing() {
@@ -194,6 +200,7 @@ EOF
     create_operator_group "ibm-licensing-operator-app" "${LICENSING_NAMESPACE}" "$target"
     create_subscription "ibm-licensing-operator-app" "${LICENSING_NAMESPACE}" "$CHANNEL" "ibm-licensing-operator-app" "${LICENSING_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
     wait_for_operator "${LICENSING_NAMESPACE}" "ibm-licensing-operator"
+    accept_license "ibmlicensing" "" "instance"
 }
 
 function pre_req() {
@@ -205,6 +212,10 @@ function pre_req() {
         error "You must be logged into the OpenShift Cluster from the oc command line"
     else
         success "oc command logged in as ${user}"
+    fi
+
+    if [ $LICENSE_ACCEPT -ne 1 ]; then
+        error "License not accepted. Rerun script with --license-accept flag set. See https://ibm.biz/integration-licenses for more details"
     fi
 
     if [ "$OPERATOR_NS" == "" ]; then
