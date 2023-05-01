@@ -965,12 +965,10 @@ func (b *Bootstrap) IsBYOCert() (bool, error) {
 	secretName := "cs-ca-certificate-secret"
 	secret := &corev1.Secret{}
 	err := b.Client.Get(context.TODO(), types.NamespacedName{Name: secretName, Namespace: b.CSData.ServicesNs}, secret)
-	klog.V(2).Info("Service NS %s, name %s", b.CSData.ServicesNs, secretName)
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			return false, err
 		}
-		klog.V(2).Info("Not found secret, it is not BYOCA")
 		return false, nil
 	}
 
@@ -985,7 +983,6 @@ func (b *Bootstrap) IsBYOCert() (bool, error) {
 	}
 
 	if len(certList.Items) == 0 {
-		klog.V(2).Info("Not found CERT, it is BYOCA")
 		return true, nil
 	} else if len(certList.Items) == 1 {
 		klog.V(2).Infof("found cs-ca-certificate, it is not BYOCertificate")
