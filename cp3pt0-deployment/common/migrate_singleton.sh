@@ -40,6 +40,10 @@ function main() {
     if [ "$CONTROL_NS" == "$OPERATOR_NS" ]; then
         # Delete CP2.0 Cert-Manager CR
         ${OC} delete certmanager.operator.ibm.com default --ignore-not-found
+        
+        wait_for_no_pod ${CONTROL_NS} "cert-manager-cainjector"
+        wait_for_no_pod ${CONTROL_NS} "cert-manager-controller"
+        wait_for_no_pod ${CONTROL_NS} "cert-manager-webhook"
         # Delete cert-Manager
         delete_operator "ibm-cert-manager-operator" "$CONTROL_NS"
     else
