@@ -587,15 +587,15 @@ function cleanup_crossplane() {
         ${OC} get lock.pkg.ibm.crossplane.io -A --no-headers | awk '{print $1}' | xargs ${OC} delete --ignore-not-found lock.pkg.ibm.crossplane.io
         ${OC} get ProviderConfig -A --no-headers | awk '{print $1}' | xargs ${OC} delete --ignore-not-found ProviderConfig
 
-        sleep 60
+        sleep 30
 
         # delete Sub
         info "cleanup crossplane Subscription and ClusterServiceVersion"
         local namespace=$($OC get subscription.operators.coreos.com -A --no-headers | (grep ibm-crossplane-operator-app || echo "fail") | awk '{print $1}')
-        if [[ $namesapce != "fail" ]]; then
-            delete_operator "ibm-crossplane-provider-kubernetes-operator-app" $namesapce
-            delete_operator "ibm-crossplane-provider-ibm-cloud-operator-app" $namesapce
-            delete_operator "ibm-crossplane-operator-app" $namesapce
+        if [[ $namespace != "fail" ]]; then
+            delete_operator "ibm-crossplane-provider-kubernetes-operator-app" "$namespace"
+            delete_operator "ibm-crossplane-provider-ibm-cloud-operator-app" "$namespace"
+            delete_operator "ibm-crossplane-operator-app" "$namespace"
         fi
     else
         info "crossplane operator not exist, skip clean crossplane"
