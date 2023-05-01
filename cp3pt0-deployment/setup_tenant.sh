@@ -305,6 +305,11 @@ EOF
 function install_cs_operator() {
     msg "Installing IBM Foundational services operator into operator namespace - ${OPERATOR_NS}"
 
+    info "checking if CommonService CRD exist in the cluster"
+    local is_CS_CRD_exist=$($OC get CustomResourceDefinition.apiextensions.k8s.io | (grep "commonservices.operator.ibm.com " || echo "fail"))
+    if [ "$is_CS_CRD_exist" != "fail" ]; then
+        configure_cs_kind
+    fi
     is_sub_exist "ibm-common-service-operator" "$OPERATOR_NS"
     if [ $? -eq 0 ]; then
         info "There is an ibm-common-service-operator Subscription already\n"
@@ -315,7 +320,9 @@ function install_cs_operator() {
     wait_for_operator "$OPERATOR_NS" "ibm-common-service-operator"
     accept_license "commonservice" "$OPERATOR_NS" "common-service"
     wait_for_nss_patch "$OPERATOR_NS" 
-    configure_cs_kind
+    if [ "$is_CS_CRD_exist" == "fail" ]; then
+        configure_cs_kind
+    fi
 }
 
 function configure_nss_kind() {
