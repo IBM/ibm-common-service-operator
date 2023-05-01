@@ -28,7 +28,7 @@ ADDITIONAL_NS=""
 CONTROL_NS=""
 CS_MAPPING_YAML=""
 CM_NAME="common-service-maps"
-cert_manager_migrated="false"
+CERT_MANAGER_MIGRATED="false"
 DEBUG=0
 
 function main() {
@@ -86,7 +86,7 @@ function main() {
     check_cm_ns_exist "$ns_list" # debating on turning this off by default since this technically falls outside the scope of isolate
     isolate_odlm "ibm-odlm" $MASTER_NS
     restart
-    if [[ $cert_manager_migrated == "true" ]]; then
+    if [[ $CERT_MANAGER_MIGRATED == "true" ]]; then
         wait_for_certmanager "$CONTROL_NS"
     else
         info "Cert Manager not migrated, skipping wait."
@@ -290,7 +290,7 @@ function uninstall_singletons() {
     local isExists=$("${OC}" get deployments -n "${MASTER_NS}" --ignore-not-found ibm-cert-manager-operator)
     if [ ! -z "$isExists" ]; then
         "${OC}" delete --ignore-not-found certmanager default
-        cert_manager_migrated="true"
+        CERT_MANAGER_MIGRATED="true"
         debug1 "Cert Manager marked for migration."
     fi
     "${OC}" delete -n "${MASTER_NS}" --ignore-not-found sub ibm-cert-manager-operator
@@ -545,80 +545,41 @@ function wait_for_certmanager() {
     msg "-----------------------------------------------------------------------"
     
     #check cert manager operator pod
-    local check_retries=10
-    local name=$(${OC} get pod -n $namespace | (grep ibm-cert-manager-operator || echo "fail") | awk '{print $1}')
-    while [[ $name == "fail" ]] && [ $check_retries -gt 0 ]; do
-        sleep 15
-        name=$(${OC} get pod -n $namespace | (grep ibm-cert-manager-operator || echo "fail") | awk '{print $1}')
-        debug1 "cert manager operator pod present: $name"
-        check_retries=$(( check_retries - 1 ))
-        if [ $check_retries -eq 0 ]; then
-            error "Cert manager operator pod not found in namespace $namespace"
-        fi
-    done
-    local condition="oc -n ${namespace} get po --no-headers --ignore-not-found | egrep 'Running|Completed|Succeeded' | grep ^${name}"
+    local name="ibm-cert-manager-operator"
+    local condition="${OC} -n ${namespace} get deploy --no-headers --ignore-not-found | egrep '1/1' | grep ^${name} || true"
     local retries=10
     local sleep_time=15
     local total_time_mins=$(( sleep_time * retries / 60))
-    local wait_message="Waiting for pod ${name} in namespace ${namespace} to be running ..."
-    local success_message="Pod ${name} in namespace ${namespace} is running."
-    local error_message="Timeout after ${total_time_mins} minutes waiting for pod ${name} in namespace ${namespace} to be running."
+    local wait_message="Waiting for deployment ${name} in namespace ${namespace} to be running ..."
+    local success_message="Deployment ${name} in namespace ${namespace} is running."
+    local error_message="Timeout after ${total_time_mins} minutes waiting for deployment ${name} in namespace ${namespace} to be running."
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
     
     #check individual pods
     #webhook
-    name=$(${OC} get pod -n $namespace | (grep cert-manager-webhook || echo "fail") | awk '{print $1}')
-    check_retries=10
-    while [[ $name == "fail" ]] && [ $check_retries -gt 0 ]; do
-        sleep 15
-        name=$(${OC} get pod -n $namespace | (grep cert-manager-webhook || echo "fail") | awk '{print $1}')
-        debug1 "cert manager webhook pod present: $name"
-        check_retries=$(( check_retries - 1 ))
-        if [ $check_retries -eq 0 ]; then
-            error "Cert manager webhook pod not found in namespace $namespace"
-        fi
-    done
-    condition="oc -n ${namespace} get po --no-headers --ignore-not-found | egrep 'Running|Completed|Succeeded' | grep ^${name}"
-    wait_message="Waiting for pod ${name} in namespace ${namespace} to be running ..."
-    success_message="Pod ${name} in namespace ${namespace} is running."
-    error_message="Timeout after ${total_time_mins} minutes waiting for pod ${name} in namespace ${namespace} to be running."
+    name="cert-manager-webhook"
+    condition="${OC} -n ${namespace} get deploy --no-headers --ignore-not-found | egrep '1/1' | grep ^${name} || true"
+    wait_message="Waiting for deployment ${name} in namespace ${namespace} to be running ..."
+    success_message="Deployment ${name} in namespace ${namespace} is running."
+    error_message="Timeout after ${total_time_mins} minutes waiting for deployment ${name} in namespace ${namespace} to be running."
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
     
     #controller
-    name=$(${OC} get pod -n $namespace | (grep cert-manager-controller || echo "fail") | awk '{print $1}')
-    check_retries=10
-    while [[ $name == "fail" ]] && [ $check_retries -gt 0 ]; do
-        sleep 15
-        name=$(${OC} get pod -n $namespace | (grep cert-manager-controller || echo "fail") | awk '{print $1}')
-        debug1 "cert manager controller pod present: $name"
-        check_retries=$(( check_retries - 1 ))
-        if [ $check_retries -eq 0 ]; then
-            error "Cert manager controller pod not found in namespace $namespace"
-        fi
-    done
-    condition="oc -n ${namespace} get po --no-headers --ignore-not-found | egrep 'Running|Completed|Succeeded' | grep ^${name}"
-    wait_message="Waiting for pod ${name} in namespace ${namespace} to be running ..."
-    success_message="Pod ${name} in namespace ${namespace} is running."
-    error_message="Timeout after ${total_time_mins} minutes waiting for pod ${name} in namespace ${namespace} to be running."
+    name="cert-manager-controller"
+    condition="${OC} -n ${namespace} get deploy --no-headers --ignore-not-found | egrep '1/1' | grep ^${name} || true"
+    wait_message="Waiting for deployment ${name} in namespace ${namespace} to be running ..."
+    success_message="Deployment ${name} in namespace ${namespace} is running."
+    error_message="Timeout after ${total_time_mins} minutes waiting for deployment ${name} in namespace ${namespace} to be running."
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
     
     #cainjector
-    name=$(${OC} get pod -n $namespace | (grep cert-manager-cainjector || echo "fail") | awk '{print $1}')
-    check_retries=10
-    while [[ $name == "fail" ]] && [ $check_retries -gt 0 ]; do
-        sleep 15
-        name=$(${OC} get pod -n $namespace | (grep cert-manager-cainjector || echo "fail") | awk '{print $1}')
-        debug1 "cert manager cainjector pod present: $name"
-        check_retries=$(( check_retries - 1 ))
-        if [ $check_retries -eq 0 ]; then
-            error "Cert manager cainjector pod not found in namespace $namespace"
-        fi
-    done
-    condition="oc -n ${namespace} get po --no-headers --ignore-not-found | egrep 'Running|Completed|Succeeded' | grep ^${name}"
-    wait_message="Waiting for pod ${name} in namespace ${namespace} to be running ..."
-    success_message="Pod ${name} in namespace ${namespace} is running."
-    error_message="Timeout after ${total_time_mins} minutes waiting for pod ${name} in namespace ${namespace} to be running."
+    name="cert-manager-cainjector"
+    condition="${OC} -n ${namespace} get deploy --no-headers --ignore-not-found | egrep '1/1' | grep ^${name} || true"
+    wait_message="Waiting for deployment ${name} in namespace ${namespace} to be running ..."
+    success_message="Deployment ${name} in namespace ${namespace} is running."
+    error_message="Timeout after ${total_time_mins} minutes waiting for deployment ${name} in namespace ${namespace} to be running."
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+    
     success "Cert Manager ready in namespace $namespace."
 }
 
