@@ -552,7 +552,7 @@ function wait_for_certmanager() {
         name=$(${OC} get pod -n $namespace | (grep ibm-cert-manager-operator || echo "fail") | awk '{print $1}')
         debug1 "cert manager operator pod present: $name"
         check_retries=$(( check_retries - 1 ))
-        if [[ $check_retries -eq 0 ]]; then
+        if [ $check_retries -eq 0 ]; then
             error "Cert manager operator pod not found in namespace $namespace"
         fi
     done
@@ -574,7 +574,7 @@ function wait_for_certmanager() {
         name=$(${OC} get pod -n $namespace | (grep cert-manager-webhook || echo "fail") | awk '{print $1}')
         debug1 "cert manager webhook pod present: $name"
         check_retries=$(( check_retries - 1 ))
-        if [[ $check_retries -eq 0 ]]; then
+        if [ $check_retries -eq 0 ]; then
             error "Cert manager webhook pod not found in namespace $namespace"
         fi
     done
@@ -592,7 +592,7 @@ function wait_for_certmanager() {
         name=$(${OC} get pod -n $namespace | (grep cert-manager-controller || echo "fail") | awk '{print $1}')
         debug1 "cert manager controller pod present: $name"
         check_retries=$(( check_retries - 1 ))
-        if [[ $check_retries -eq 0 ]]; then
+        if [ $check_retries -eq 0 ]; then
             error "Cert manager controller pod not found in namespace $namespace"
         fi
     done
@@ -610,7 +610,7 @@ function wait_for_certmanager() {
         name=$(${OC} get pod -n $namespace | (grep cert-manager-cainjector || echo "fail") | awk '{print $1}')
         debug1 "cert manager cainjector pod present: $name"
         check_retries=$(( check_retries - 1 ))
-        if [[ $check_retries -eq 0 ]]; then
+        if [ $check_retries -eq 0 ]; then
             error "Cert manager cainjector pod not found in namespace $namespace"
         fi
     done
