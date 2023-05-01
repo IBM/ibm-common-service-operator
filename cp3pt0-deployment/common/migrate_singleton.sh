@@ -39,11 +39,20 @@ function main() {
 
     if [ "$CONTROL_NS" == "$OPERATOR_NS" ]; then
         # Delete CP2.0 Cert-Manager CR
-        ${OC} delete certmanager.operator.ibm.com default --ignore-not-found
+        ${OC} delete certmanager.operator.ibm.com default --ignore-not-found --timeout=10s
+        if [ $? -ne 0 ]; then
+            warning "Failed to delete Cert Manager CR, patching its finalizer to null..."
+            ${OC} patch certmanagers.operator.ibm.com default --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+        fi
+        msg ""
+        
+        wait_for_no_pod ${CONTROL_NS} "cert-manager-cainjector"
+        wait_for_no_pod ${CONTROL_NS} "cert-manager-controller"
+        wait_for_no_pod ${CONTROL_NS} "cert-manager-webhook"
         # Delete cert-Manager
         delete_operator "ibm-cert-manager-operator" "$CONTROL_NS"
     else
-        # Delgation of CP2 Cert Manager
+        # Delegation of CP2 Cert Manager
         ${BASE_DIR}/delegate_cp2_cert_manager.sh --control-namespace $CONTROL_NS "--skip-user-vertify"
     fi
     
