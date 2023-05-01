@@ -107,10 +107,10 @@ function parse_arguments() {
 
 function print_usage() {
     script_name=`basename ${0}`
-    echo "Usage: ${script_name} --operator-namespace <bedrock-namespace> [OPTIONS]..."
+    echo "Usage: ${script_name} --license-accept --operator-namespace <bedrock-namespace> [OPTIONS]..."
     echo ""
     echo "Set up an advanced topology tenant for Cloud Pak 3.0 Foundational services."
-    echo "The --operator-namespace must be provided."
+    echo "The --license-accept and --operator-namespace must be provided."
     echo ""
     echo "Options:"
     echo "   --oc string                    File path to oc CLI. Default uses oc in your PATH"

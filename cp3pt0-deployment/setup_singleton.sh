@@ -123,11 +123,12 @@ function parse_arguments() {
 
 function print_usage() {
     script_name=`basename ${0}`
-    echo "Usage: ${script_name} [OPTIONS]..."
+    echo "Usage: ${script_name} --license-accept [OPTIONS]..."
     echo ""
     echo "Install Cloud Pak 3 pre-reqs if they do not already exist: ibm-cert-manager-operator and optionally ibm-licensing-operator"
     echo "The ibm-cert-manager-operator will be installed in namespace ibm-cert-manager"
     echo "The ibm-licensing-operator will be installed in namespace ibm-licensing"
+    echo "The --license-accept must be provided."
     echo ""
     echo "Options:"
     echo "   --oc string                                    File path to oc CLI. Default uses oc in your PATH"
