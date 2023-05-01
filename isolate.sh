@@ -545,11 +545,16 @@ function wait_for_certmanager() {
     msg "-----------------------------------------------------------------------"
     
     #check cert manager operator pod
+    local check_retries=10
     local name=$(${OC} get pod -n $namespace | (grep ibm-cert-manager-operator || echo "fail") | awk '{print $1}')
-    while [[ $name == "fail" ]]; do
+    while [[ $name == "fail" ]] && [ $check_retries -gt 0 ]; do
         sleep 15
         name=$(${OC} get pod -n $namespace | (grep ibm-cert-manager-operator || echo "fail") | awk '{print $1}')
         debug1 "cert manager operator pod present: $name"
+        check_retries=$(( check_retries - 1 ))
+        if [[ $check_retries -eq 0 ]]; then
+            error "Cert manager operator pod not found in namespace $namespace"
+        fi
     done
     local condition="oc -n ${namespace} get po --no-headers --ignore-not-found | egrep 'Running|Completed|Succeeded' | grep ^${name}"
     local retries=10
@@ -563,10 +568,15 @@ function wait_for_certmanager() {
     #check individual pods
     #webhook
     name=$(${OC} get pod -n $namespace | (grep cert-manager-webhook || echo "fail") | awk '{print $1}')
-    while [[ $name == "fail" ]]; do
+    check_retries=10
+    while [[ $name == "fail" ]] && [ $check_retries -gt 0 ]; do
         sleep 15
         name=$(${OC} get pod -n $namespace | (grep cert-manager-webhook || echo "fail") | awk '{print $1}')
-        debug1 "webhook pod present: $name"
+        debug1 "cert manager webhook pod present: $name"
+        check_retries=$(( check_retries - 1 ))
+        if [[ $check_retries -eq 0 ]]; then
+            error "Cert manager webhook pod not found in namespace $namespace"
+        fi
     done
     condition="oc -n ${namespace} get po --no-headers --ignore-not-found | egrep 'Running|Completed|Succeeded' | grep ^${name}"
     wait_message="Waiting for pod ${name} in namespace ${namespace} to be running ..."
@@ -576,10 +586,15 @@ function wait_for_certmanager() {
     
     #controller
     name=$(${OC} get pod -n $namespace | (grep cert-manager-controller || echo "fail") | awk '{print $1}')
-    while [[ $name == "fail" ]]; do
+    check_retries=10
+    while [[ $name == "fail" ]] && [ $check_retries -gt 0 ]; do
         sleep 15
         name=$(${OC} get pod -n $namespace | (grep cert-manager-controller || echo "fail") | awk '{print $1}')
-        debug1 "controller pod present: $name"
+        debug1 "cert manager controller pod present: $name"
+        check_retries=$(( check_retries - 1 ))
+        if [[ $check_retries -eq 0 ]]; then
+            error "Cert manager controller pod not found in namespace $namespace"
+        fi
     done
     condition="oc -n ${namespace} get po --no-headers --ignore-not-found | egrep 'Running|Completed|Succeeded' | grep ^${name}"
     wait_message="Waiting for pod ${name} in namespace ${namespace} to be running ..."
@@ -589,17 +604,21 @@ function wait_for_certmanager() {
     
     #cainjector
     name=$(${OC} get pod -n $namespace | (grep cert-manager-cainjector || echo "fail") | awk '{print $1}')
-    while [[ $name == "fail" ]]; do
+    check_retries=10
+    while [[ $name == "fail" ]] && [ $check_retries -gt 0 ]; do
         sleep 15
         name=$(${OC} get pod -n $namespace | (grep cert-manager-cainjector || echo "fail") | awk '{print $1}')
-        debug1 "cainjector pod present: $name"
+        debug1 "cert manager cainjector pod present: $name"
+        check_retries=$(( check_retries - 1 ))
+        if [[ $check_retries -eq 0 ]]; then
+            error "Cert manager cainjector pod not found in namespace $namespace"
+        fi
     done
     condition="oc -n ${namespace} get po --no-headers --ignore-not-found | egrep 'Running|Completed|Succeeded' | grep ^${name}"
     wait_message="Waiting for pod ${name} in namespace ${namespace} to be running ..."
     success_message="Pod ${name} in namespace ${namespace} is running."
     error_message="Timeout after ${total_time_mins} minutes waiting for pod ${name} in namespace ${namespace} to be running."
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
-    debug1 "post wait"
     success "Cert Manager ready in namespace $namespace."
 }
 
