@@ -28,6 +28,7 @@ ADDITIONAL_NS=""
 CONTROL_NS=""
 CS_MAPPING_YAML=""
 CM_NAME="common-service-maps"
+cert_manager_migrated="false"
 DEBUG=0
 
 function main() {
@@ -86,6 +87,11 @@ function main() {
     check_cm_ns_exist "$ns_list" # debating on turning this off by default since this technically falls outside the scope of isolate
     isolate_odlm "ibm-odlm" $MASTER_NS
     restart
+    if [[ $cert_manager_migrated == "true" ]]; then
+        wait_for_certmanager "$CONTROL_NS"
+    else
+        info "Cert Manager not migrated, skipping wait."
+    fi
 }
 
 function usage() {
@@ -285,6 +291,8 @@ function uninstall_singletons() {
     local isExists=$("${OC}" get deployments -n "${MASTER_NS}" --ignore-not-found ibm-cert-manager-operator)
     if [ ! -z "$isExists" ]; then
         "${OC}" delete --ignore-not-found certmanager default
+        cert_manager_migrated="true"
+        debug1 "Cert Manager marked for migration."
     fi
     "${OC}" delete -n "${MASTER_NS}" --ignore-not-found sub ibm-cert-manager-operator
     local csv=$("${OC}" get -n "${MASTER_NS}" csv | (grep ibm-cert-manager-operator || echo "fail") | awk '{print $1}')
@@ -530,6 +538,30 @@ function cleanup_webhook() {
     info "Deleting ValidatingWebhookConfiguration..."
     ${OC} delete ValidatingWebhookConfiguration ibm-cs-ns-mapping-webhook-configuration --ignore-not-found
 
+}
+
+function wait_for_certmanager() {
+    local namespace=$1
+    local name=$(${OC} get pod -n $namespace | grep ibm-cert-manager-operator | awk '{print $1}')
+    local condition="oc -n ${namespace} get po --no-headers --ignore-not-found | egrep 'Running|Completed|Succeeded' | grep ^${name}"
+    local retries=10
+    local sleep_time=15
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for pod ${name} in namespace ${namespace} to be running ..."
+    local success_message="Pod ${name} in namespace ${namespace} is running."
+    local error_message="Timeout after ${total_time_mins} minutes waiting for pod ${name} in namespace ${namespace} to be running."
+    title " Wait for Cert Manager pods to come ready in namespace $namespace "
+    msg "-----------------------------------------------------------------------"
+
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+    name=$(${OC} get pod -n $namespace | grep cert-manager-webhook | awk '{print $1}')
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+    name=$(${OC} get pod -n $namespace | grep cert-manager-controller | awk '{print $1}')
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+    name=$(${OC} get pod -n $namespace | grep cert-manager-cainjector | awk '{print $1}')
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+
+    success "Cert Manager ready in namespace $namespace."
 }
 
 function msg() {
