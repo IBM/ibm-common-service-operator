@@ -307,7 +307,7 @@ function install_cs_operator() {
 
     info "checking if CommonService CRD exist in the cluster"
     local is_CS_CRD_exist=$($OC get CustomResourceDefinition.apiextensions.k8s.io | (grep "commonservices.operator.ibm.com " || echo "fail"))
-    if [ $is_CS_CRD_exist != "fail" ]; then
+    if [ $is_CS_CRD_exist -ne "fail" ]; then
         configure_cs_kind
     fi
     is_sub_exist "ibm-common-service-operator" "$OPERATOR_NS"
@@ -320,7 +320,7 @@ function install_cs_operator() {
     wait_for_operator "$OPERATOR_NS" "ibm-common-service-operator"
     accept_license "commonservice" "$OPERATOR_NS" "common-service"
     wait_for_nss_patch "$OPERATOR_NS" 
-    if [ $is_CS_CRD_exist == "fail" ]; then
+    if [ $is_CS_CRD_exist -eq "fail" ]; then
         configure_cs_kind
     fi
 }
