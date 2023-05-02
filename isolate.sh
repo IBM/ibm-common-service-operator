@@ -548,7 +548,7 @@ function wait_for_certmanager() {
     #check cert manager operator pod
     local name="ibm-cert-manager-operator"
     local condition="${OC} -n ${namespace} get deploy --no-headers --ignore-not-found | egrep '1/1' | grep ^${name} || true"
-    local retries=10
+    local retries=20
     local sleep_time=15
     local total_time_mins=$(( sleep_time * retries / 60))
     local wait_message="Waiting for deployment ${name} in namespace ${namespace} to be running ..."
@@ -559,26 +559,26 @@ function wait_for_certmanager() {
     #check individual pods
     #webhook
     name="cert-manager-webhook"
-    condition="${OC} -n ${namespace} get deploy --no-headers --ignore-not-found | egrep '1/1' | grep ^${name} || true"
-    wait_message="Waiting for deployment ${name} in namespace ${namespace} to be running ..."
-    success_message="Deployment ${name} in namespace ${namespace} is running."
-    error_message="Timeout after ${total_time_mins} minutes waiting for deployment ${name} in namespace ${namespace} to be running."
+    condition="${OC} get deploy -A --no-headers --ignore-not-found | egrep '1/1' | grep ${name} || true"
+    wait_message="Waiting for deployment ${name} to be running ..."
+    success_message="Deployment ${name} is running."
+    error_message="Timeout after ${total_time_mins} minutes waiting for deployment ${name} to be running."
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
     
     #controller
     name="cert-manager-controller"
-    condition="${OC} -n ${namespace} get deploy --no-headers --ignore-not-found | egrep '1/1' | grep ^${name} || true"
-    wait_message="Waiting for deployment ${name} in namespace ${namespace} to be running ..."
-    success_message="Deployment ${name} in namespace ${namespace} is running."
-    error_message="Timeout after ${total_time_mins} minutes waiting for deployment ${name} in namespace ${namespace} to be running."
+    condition="${OC} get deploy -A --no-headers --ignore-not-found | egrep '1/1' | grep ${name} || true"
+    wait_message="Waiting for deployment ${name} to be running ..."
+    success_message="Deployment ${name} is running."
+    error_message="Timeout after ${total_time_mins} minutes waiting for deployment ${name} to be running."
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
     
     #cainjector
     name="cert-manager-cainjector"
-    condition="${OC} -n ${namespace} get deploy --no-headers --ignore-not-found | egrep '1/1' | grep ^${name} || true"
-    wait_message="Waiting for deployment ${name} in namespace ${namespace} to be running ..."
-    success_message="Deployment ${name} in namespace ${namespace} is running."
-    error_message="Timeout after ${total_time_mins} minutes waiting for deployment ${name} in namespace ${namespace} to be running."
+    condition="${OC} get deploy -A --no-headers --ignore-not-found | egrep '1/1' | grep ${name} || true"
+    wait_message="Waiting for deployment ${name} to be running ..."
+    success_message="Deployment ${name} is running."
+    error_message="Timeout after ${total_time_mins} minutes waiting for deployment ${name} to be running."
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
     
     success "Cert Manager ready in namespace $namespace."
