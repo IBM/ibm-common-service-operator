@@ -1,19 +1,3 @@
-.PHONY: build
-build:
-	docker build -t kgcarr:backup-and-restore -f Dockerfile .
-
-.PHONY: run
-run: build
-	docker run -it -v $(shell pwd)/config/config.json:/scripts/config/config.json kgcarr:backup-and-restore bash
-
-.PHONY: backup
-backup:
-	docker run -v $(shell pwd)/config/config.json:/scripts/config/config.json kgcarr:backup-and-restore ./backup.sh -i
-
-.PHONY: restore
-restore:
-	docker run -v $(shell pwd)/config/config.json:/scripts/config/config.json kgcarr:backup-and-restore ./restore.sh -i
-
 .PHONY: labels
 labels:
 	echo "Label licensing configmaps"
