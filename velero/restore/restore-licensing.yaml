@@ -14,7 +14,7 @@ spec:
   - resticrepositories.velero.io
   hooks: {}
   includedNamespaces:
-  - ibm-common-services
+  - '*'
   labelSelector:
     matchLabels:
       foundationservices.cloudpak.ibm.com: licensing
