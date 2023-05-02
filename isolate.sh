@@ -28,6 +28,8 @@ ADDITIONAL_NS=""
 CONTROL_NS=""
 CS_MAPPING_YAML=""
 CM_NAME="common-service-maps"
+CERT_MANAGER_MIGRATED="false"
+DEBUG=0
 
 function main() {
     while [ "$#" -gt "0" ]
@@ -53,6 +55,9 @@ function main() {
             CONTROL_NS=$2
             shift
             ;;
+        -v | --debug)
+            DEBUG=1
+            ;;
         *)
             error "invalid option -- \`$1\`. Use the -h or --help option for usage info."
             ;;
@@ -73,13 +78,20 @@ function main() {
     prereq
     local ns_list=$(gather_csmaps_ns)
     pause
-    uninstall_singletons
     create_empty_csmaps
     insert_control_ns
     update_tenant "${MASTER_NS}" "${ns_list}"
-    check_cm_ns_exist "$ns_list" # debating on turning this off by default since this technically falls outside the scope of isolate
+    removeNSS
+    uninstall_singletons
+    check_cm_ns_exist "$ns_list $CONTROL_NS" # debating on turning this off by default since this technically falls outside the scope of isolate
     isolate_odlm "ibm-odlm" $MASTER_NS
     restart
+    if [[ $CERT_MANAGER_MIGRATED == "true" ]]; then
+        wait_for_certmanager "$CONTROL_NS"
+    else
+        info "Cert Manager not migrated, skipping wait."
+    fi
+    success "Isolation complete"
 }
 
 function usage() {
@@ -94,7 +106,8 @@ function usage() {
     --original-cs-ns              specify the namespace the original common services installation resides in
     --control-ns                  specify the control namespace value in the common-service-maps configmap
     --excluded-ns                 specify namespaces to be excluded from the common-service-maps configmap. Comma separated no spaces.
-    --insert-ns                 specify namespaces to be inserted into the common-service-maps configmap. Comma separated no spaces.
+    --insert-ns                   specify namespaces to be inserted into the common-service-maps configmap. Comma separated no spaces.
+    -v, --debug integer           Verbosity of logs. Default is 0. Set to 1 for debug logs.
 	EOF
 }
 
@@ -216,12 +229,12 @@ function update_tenant() {
     local isExists=$(echo "$current_yaml" | "${YQ}" '.namespaceMapping[] | select(.map-to-common-service-namespace == "'$map_to_cs_ns'")')
     if [ -z "$isExists" ]; then
         info "The provided map-to-common-service-namespace: $map_to_cs_ns, does not exist in common-service-maps"
-        info "Adding new map-to-commn-service-namespace"
+        info "Adding new map-to-common-service-namespace"
         updated_yaml=$(echo "$current_yaml" | "${YQ}" eval 'with(.namespaceMapping; . += [{"map-to-common-service-namespace": "'$map_to_cs_ns'"}])')
     fi
 
     local tmp="\"$map_to_cs_ns\","
-
+    debug1 "map $map_to_cs_ns namespace $namespaces tmp $tmp"
     for ns in $namespaces; do
         tmp="$tmp\"$ns\","
     done
@@ -237,7 +250,7 @@ function update_tenant() {
 # and namesapces from arguments, to output a unique sorted list of namespaces
 # with excluded namespaces removed
 function gather_csmaps_ns() {
-    local ns_scope=$("${OC}" get cm -n "$MASTER_NS" namespace-scope -o yaml | yq -r '.data.namespaces')
+    local ns_scope=$("${OC}" get cm -n "$MASTER_NS" namespace-scope -o yaml | yq '.data.namespaces')
 
     # excluding namespaces is implemented via duplicate removal with uniq -u,
     # so need to make unique the combined lists of namespaces first to avoid
@@ -259,7 +272,6 @@ function pause() {
     ${OC} delete operandregistry -n ${MASTER_NS} --ignore-not-found common-service 
     ${OC} delete operandconfig -n ${MASTER_NS} --ignore-not-found common-service
     
-    removeNSS
     success "Common Services successfully isolated in namespace ${MASTER_NS}"
 }
 
@@ -279,6 +291,8 @@ function uninstall_singletons() {
     local isExists=$("${OC}" get deployments -n "${MASTER_NS}" --ignore-not-found ibm-cert-manager-operator)
     if [ ! -z "$isExists" ]; then
         "${OC}" delete --ignore-not-found certmanager default
+        CERT_MANAGER_MIGRATED="true"
+        debug1 "Cert Manager marked for migration."
     fi
     "${OC}" delete -n "${MASTER_NS}" --ignore-not-found sub ibm-cert-manager-operator
     local csv=$("${OC}" get -n "${MASTER_NS}" csv | (grep ibm-cert-manager-operator || echo "fail") | awk '{print $1}')
@@ -526,6 +540,50 @@ function cleanup_webhook() {
 
 }
 
+function wait_for_certmanager() {
+    local namespace=$1
+    title " Wait for Cert Manager pods to come ready in namespace $namespace "
+    msg "-----------------------------------------------------------------------"
+    
+    #check cert manager operator pod
+    local name="ibm-cert-manager-operator"
+    local condition="${OC} -n ${namespace} get deploy --no-headers --ignore-not-found | egrep '1/1' | grep ^${name} || true"
+    local retries=20
+    local sleep_time=15
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for deployment ${name} in namespace ${namespace} to be running ..."
+    local success_message="Deployment ${name} in namespace ${namespace} is running."
+    local error_message="Timeout after ${total_time_mins} minutes waiting for deployment ${name} in namespace ${namespace} to be running."
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+    
+    #check individual pods
+    #webhook
+    name="cert-manager-webhook"
+    condition="${OC} get deploy -A --no-headers --ignore-not-found | egrep '1/1' | grep ${name} || true"
+    wait_message="Waiting for deployment ${name} to be running ..."
+    success_message="Deployment ${name} is running."
+    error_message="Timeout after ${total_time_mins} minutes waiting for deployment ${name} to be running."
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+    
+    #controller
+    name="cert-manager-controller"
+    condition="${OC} get deploy -A --no-headers --ignore-not-found | egrep '1/1' | grep ${name} || true"
+    wait_message="Waiting for deployment ${name} to be running ..."
+    success_message="Deployment ${name} is running."
+    error_message="Timeout after ${total_time_mins} minutes waiting for deployment ${name} to be running."
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+    
+    #cainjector
+    name="cert-manager-cainjector"
+    condition="${OC} get deploy -A --no-headers --ignore-not-found | egrep '1/1' | grep ${name} || true"
+    wait_message="Waiting for deployment ${name} to be running ..."
+    success_message="Deployment ${name} is running."
+    error_message="Timeout after ${total_time_mins} minutes waiting for deployment ${name} to be running."
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+    
+    success "Cert Manager ready in namespace $namespace."
+}
+
 function msg() {
     printf '%b\n' "$1"
 }
@@ -551,7 +609,12 @@ function info() {
     msg "[INFO] ${1}"
 }
 
+function debug1() {
+    if [ $DEBUG -eq 1 ]; then
+        msg "[DEBUG] ${1}"
+    fi
+}
+
 # --- Run ---
 
 main $*
-

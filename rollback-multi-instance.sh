@@ -185,6 +185,7 @@ function rollback() {
             fi
         fi
         retries=$(( retries - 1 ))
+        sleep $sleep_time
     done
 
     refresh_zen
