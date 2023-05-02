@@ -17,10 +17,11 @@
 package v3
 
 import (
-	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
