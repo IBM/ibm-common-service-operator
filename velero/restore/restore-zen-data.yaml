@@ -1,7 +1,7 @@
 apiVersion: velero.io/v1
 kind: Restore
 metadata:
-  name: restore-data
+  name: restore-zen-data
   namespace: velero
 spec:
   backupName: __BACKUP_NAME__
@@ -14,7 +14,7 @@ spec:
   - resticrepositories.velero.io
   hooks: {}
   includedNamespaces:
-  - ibm-common-services
+  - '*'
   labelSelector:
     matchLabels:
-      foundationservices.cloudpak.ibm.com: data
+      foundationservices.cloudpak.ibm.com: zen-data

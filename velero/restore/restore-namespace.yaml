@@ -1,7 +1,7 @@
 apiVersion: velero.io/v1
 kind: Restore
 metadata:
-  name: restore-operands
+  name: restore-namespace
   namespace: velero
 spec:
   backupName: __BACKUP_NAME__
@@ -12,9 +12,6 @@ spec:
   - backups.velero.io
   - restores.velero.io
   - resticrepositories.velero.io
-  hooks: {}
-  includedNamespaces:
-  - '*'
   labelSelector:
     matchLabels:
-      foundationservices.cloudpak.ibm.com: operand
+      foundationservices.cloudpak.ibm.com: namespace
