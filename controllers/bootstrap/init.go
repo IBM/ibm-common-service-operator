@@ -1223,8 +1223,8 @@ func IdentifyCPFSNs(r client.Reader, operatorNs string) (string, error) {
 	// Assign .spec.operatorNamespace from existing default CommonSerivce CR to CPFSNs
 
 	cpfsNs := csCR.Spec.OperatorNamespace
-	if csCR.Status.ConfigStatus.OperatorPlane.OperatorNamespace != "" {
-		cpfsNs = csCR.Status.ConfigStatus.OperatorPlane.OperatorNamespace
+	if csCR.Status.ConfigStatus.OperatorNamespace != "" {
+		cpfsNs = csCR.Status.ConfigStatus.OperatorNamespace
 	}
 	return string(cpfsNs), nil
 }

@@ -17,6 +17,7 @@
 package v3
 
 import (
+	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -124,28 +125,22 @@ type CatalogName string
 
 type CatalogNamespace string
 
+type ConfigurableCR struct {
+	ObjectName string `json:"objectName,omitempty"`
+	APIVersion string `json:"apiVersion,omitempty"`
+	Namespace  string `json:"namespace,omitempty"`
+	Kind       string `json:"kind,omitempty"`
+}
+
 type ConfigStatus struct {
-	ServicesPlane ServicesPlane `json:"servicesPlane,omitempty"`
-	OperatorPlane OperatorPlane `json:"operatorPlane,omitempty"`
-	CatalogPlane  CatalogPlane  `json:"catalogPlane,omitempty"`
-}
-
-type ServicesPlane struct {
-	ServicesNamespace  ServicesNamespace            `json:"servicesNamespace,omitempty"`
-	ServicesDeployed   bool                         `json:"servicesDeployed,omitempty"`
-	NonDefaultCRstatus map[string]ServicesNamespace `json:"nonDefaultCRstatus,omitempty"`
-}
-
-type OperatorPlane struct {
-	OperatorNamespace  OperatorNamespace            `json:"operatorNamespace,omitempty"`
-	OperatorDeployed   bool                         `json:"operatorDeployed,omitempty"`
-	NonDefaultCRstatus map[string]OperatorNamespace `json:"nonDefaultCRstatus,omitempty"`
-}
-
-type CatalogPlane struct {
-	CatalogName        CatalogName       `json:"catalogName,omitempty"`
-	CatalogNamespace   CatalogNamespace  `json:"catalogNamespace,omitempty"`
-	NonDefaultCRstatus map[string]string `json:"nonDefaultCRstatus,omitempty"`
+	CatalogName             CatalogName       `json:"catalogName,omitempty"`
+	CatalogNamespace        CatalogNamespace  `json:"catalogNamespace,omitempty"`
+	OperatorNamespace       OperatorNamespace `json:"operatorNamespace,omitempty"`
+	OperatorDeployed        bool              `json:"operatorDeployed,omitempty"`
+	ServicesNamespace       ServicesNamespace `json:"servicesNamespace,omitempty"`
+	ServicesDeployed        bool              `json:"servicesDeployed,omitempty"`
+	Configurable            bool              `json:"configurable"`
+	TopologyConfigurableCRs []ConfigurableCR  `json:"topologyConfigurableCRs,omitempty"`
 }
 
 // CommonServiceStatus defines the observed state of CommonService
@@ -154,7 +149,6 @@ type CommonServiceStatus struct {
 	BedrockOperators []BedrockOperator `json:"bedrockOperators,omitempty"`
 	OverallStatus    string            `json:"overallStatus,omitempty"`
 	ConfigStatus     ConfigStatus      `json:"configStatus,omitempty"`
-	Configurable     bool              `json:"configurable"`
 }
 
 // +kubebuilder:object:root=true
@@ -181,33 +175,59 @@ type CommonServiceList struct {
 }
 
 func (r *CommonService) UpdateConfigStatus(CSData *CSData, operatorDeployed, serviceDeployed bool) {
-	r.Status.ConfigStatus.OperatorPlane.OperatorDeployed = operatorDeployed
+	r.Status.ConfigStatus.OperatorDeployed = operatorDeployed
 	if r.Spec.OperatorNamespace != "" && !operatorDeployed {
-		r.Status.ConfigStatus.OperatorPlane.OperatorNamespace = r.Spec.OperatorNamespace
+		r.Status.ConfigStatus.OperatorNamespace = r.Spec.OperatorNamespace
 	} else {
-		r.Status.ConfigStatus.OperatorPlane.OperatorNamespace = OperatorNamespace(CSData.CPFSNs)
+		r.Status.ConfigStatus.OperatorNamespace = OperatorNamespace(CSData.CPFSNs)
 	}
 
-	r.Status.ConfigStatus.ServicesPlane.ServicesDeployed = serviceDeployed
+	r.Status.ConfigStatus.ServicesDeployed = serviceDeployed
 	if r.Spec.ServicesNamespace != "" && !serviceDeployed {
-		r.Status.ConfigStatus.ServicesPlane.ServicesNamespace = r.Spec.ServicesNamespace
+		r.Status.ConfigStatus.ServicesNamespace = r.Spec.ServicesNamespace
 	} else {
-		r.Status.ConfigStatus.ServicesPlane.ServicesNamespace = ServicesNamespace(CSData.ServicesNs)
+		r.Status.ConfigStatus.ServicesNamespace = ServicesNamespace(CSData.ServicesNs)
 	}
 
 	if r.Spec.CatalogName != "" {
-		r.Status.ConfigStatus.CatalogPlane.CatalogName = r.Spec.CatalogName
+		r.Status.ConfigStatus.CatalogName = r.Spec.CatalogName
 	} else {
-		r.Status.ConfigStatus.CatalogPlane.CatalogName = CatalogName(CSData.CatalogSourceName)
+		r.Status.ConfigStatus.CatalogName = CatalogName(CSData.CatalogSourceName)
 	}
 
 	if r.Spec.CatalogNamespace != "" {
-		r.Status.ConfigStatus.CatalogPlane.CatalogNamespace = r.Spec.CatalogNamespace
+		r.Status.ConfigStatus.CatalogNamespace = r.Spec.CatalogNamespace
 	} else {
-		r.Status.ConfigStatus.CatalogPlane.CatalogNamespace = CatalogNamespace(CSData.CatalogSourceNs)
+		r.Status.ConfigStatus.CatalogNamespace = CatalogNamespace(CSData.CatalogSourceNs)
 	}
-	r.Status.Configurable = true
+	r.Status.ConfigStatus.OperatorDeployed = true
+	r.Status.ConfigStatus.ServicesDeployed = true
+	r.Status.ConfigStatus.Configurable = true
 
+	r.UpdateTopologyCR(CSData)
+}
+
+func (r *CommonService) UpdateNonMasterConfigStatus(CSData *CSData) {
+	r.Status.ConfigStatus.OperatorNamespace = OperatorNamespace(CSData.OperatorNs)
+	r.Status.ConfigStatus.ServicesNamespace = ServicesNamespace(CSData.ServicesNs)
+	r.Status.ConfigStatus.CatalogName = CatalogName(CSData.CatalogSourceName)
+	r.Status.ConfigStatus.CatalogNamespace = CatalogNamespace(CSData.CatalogSourceNs)
+	r.Status.ConfigStatus.OperatorDeployed = true
+	r.Status.ConfigStatus.ServicesDeployed = true
+	r.Status.ConfigStatus.Configurable = false
+
+	r.UpdateTopologyCR(CSData)
+}
+
+func (r *CommonService) UpdateTopologyCR(CSData *CSData) {
+	var masterCRSlice []ConfigurableCR
+	var csCR ConfigurableCR
+	csCR.ObjectName = constant.MasterCR
+	csCR.APIVersion = constant.APIVersion
+	csCR.Namespace = CSData.OperatorNs
+	csCR.Kind = constant.KindCR
+	masterCRSlice = append(masterCRSlice, csCR)
+	r.Status.ConfigStatus.TopologyConfigurableCRs = masterCRSlice
 }
 
 func init() {

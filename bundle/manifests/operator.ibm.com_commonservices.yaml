@@ -142,42 +142,34 @@ spec:
                 type: array
               configStatus:
                 properties:
-                  catalogPlane:
-                    properties:
-                      catalogName:
-                        type: string
-                      catalogNamespace:
-                        type: string
-                      nonDefaultCRstatus:
-                        additionalProperties:
+                  catalogName:
+                    type: string
+                  catalogNamespace:
+                    type: string
+                  configurable:
+                    type: boolean
+                  operatorDeployed:
+                    type: boolean
+                  operatorNamespace:
+                    type: string
+                  servicesDeployed:
+                    type: boolean
+                  servicesNamespace:
+                    type: string
+                  topologyConfigurableCRs:
+                    items:
+                      properties:
+                        apiVersion:
                           type: string
-                        type: object
-                    type: object
-                  operatorPlane:
-                    properties:
-                      nonDefaultCRstatus:
-                        additionalProperties:
+                        kind:
                           type: string
-                        type: object
-                      operatorDeployed:
-                        type: boolean
-                      operatorNamespace:
-                        type: string
-                    type: object
-                  servicesPlane:
-                    properties:
-                      nonDefaultCRstatus:
-                        additionalProperties:
+                        namespace:
                           type: string
-                        type: object
-                      servicesDeployed:
-                        type: boolean
-                      servicesNamespace:
-                        type: string
-                    type: object
+                        objectName:
+                          type: string
+                      type: object
+                    type: array
                 type: object
-              configurable:
-                type: boolean
               overallStatus:
                 type: string
               phase:

@@ -109,10 +109,11 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 	operatorDeployed, servicesDeployed := r.Bootstrap.CheckDeployStatus(ctx)
 	instance.UpdateConfigStatus(&r.Bootstrap.CSData, operatorDeployed, servicesDeployed)
 
-	r.Bootstrap.CSData.CPFSNs = string(instance.Status.ConfigStatus.OperatorPlane.OperatorNamespace)
-	r.Bootstrap.CSData.ServicesNs = string(instance.Status.ConfigStatus.ServicesPlane.ServicesNamespace)
-	r.Bootstrap.CSData.CatalogSourceName = string(instance.Status.ConfigStatus.CatalogPlane.CatalogName)
-	r.Bootstrap.CSData.CatalogSourceNs = string(instance.Status.ConfigStatus.CatalogPlane.CatalogNamespace)
+	r.Bootstrap.CSData.CPFSNs = string(instance.Status.ConfigStatus.OperatorNamespace)
+	r.Bootstrap.CSData.ServicesNs = string(instance.Status.ConfigStatus.ServicesNamespace)
+	r.Bootstrap.CSData.CatalogSourceName = string(instance.Status.ConfigStatus.CatalogName)
+	r.Bootstrap.CSData.CatalogSourceNs = string(instance.Status.ConfigStatus.CatalogNamespace)
+
 	var forceUpdateODLMCRs bool
 	if !reflect.DeepEqual(originalInstance.Status, instance.Status) {
 		forceUpdateODLMCRs = true
@@ -218,6 +219,8 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(ctx context.Context, instan
 		}
 	}
 
+	instance.UpdateNonMasterConfigStatus(&r.Bootstrap.CSData)
+
 	opcon := util.NewUnstructured("operator.ibm.com", "OperandConfig", "v1alpha1")
 	opconKey := types.NamespacedName{
 		Name:      "common-service",
@@ -279,7 +282,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(ctx context.Context, instan
 	return ctrl.Result{}, nil
 }
 
-// ReconileNonConfigurableCR is for setting the cloned Master CR status for advaned topologies
+// ReconileNonConfigurableCR is for setting the cloned Master CR status for advanced topologies
 func (r *CommonServiceReconciler) ReconileNonConfigurableCR(ctx context.Context, instance *apiv3.CommonService) (ctrl.Result, error) {
 
 	if instance.Status.Phase == "" {
@@ -295,12 +298,7 @@ func (r *CommonServiceReconciler) ReconileNonConfigurableCR(ctx context.Context,
 	}
 
 	originalInstance := instance.DeepCopy()
-
-	instance.Status.ConfigStatus.OperatorPlane.OperatorNamespace = apiv3.OperatorNamespace(r.Bootstrap.CSData.OperatorNs)
-	instance.Status.ConfigStatus.ServicesPlane.ServicesNamespace = apiv3.ServicesNamespace(r.Bootstrap.CSData.ServicesNs)
-	instance.Status.ConfigStatus.CatalogPlane.CatalogName = apiv3.CatalogName(r.Bootstrap.CSData.CatalogSourceName)
-	instance.Status.ConfigStatus.CatalogPlane.CatalogNamespace = apiv3.CatalogNamespace(r.Bootstrap.CSData.CatalogSourceNs)
-	instance.Status.Configurable = false
+	instance.UpdateNonMasterConfigStatus(&r.Bootstrap.CSData)
 
 	if !reflect.DeepEqual(originalInstance.Status, instance.Status) {
 		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, this resource is the clone of Common Service CR named %s from namespace %s", constant.MasterCR, r.Bootstrap.CSData.OperatorNs))
