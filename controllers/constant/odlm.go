@@ -243,7 +243,11 @@ spec:
             apiGroup: rbac.authorization.k8s.io
   - name: ibm-bts-operator
     spec:
-      operandRequest: {}
+      operandRequest:
+        requests:
+          - operands:
+              - name: ibm-im-operator
+            registry: common-service
   - name: ibm-zen-operator
     spec:
       operandBindInfo: {}
@@ -753,7 +757,11 @@ spec:
       operandRequest: {}
   - name: ibm-bts-operator
     spec:
-      operandRequest: {}
+      operandRequest:
+        requests:
+          - operands:
+              - name: ibm-im-operator
+            registry: common-service
   - name: ibm-zen-operator
     spec:
       operandBindInfo: {}
