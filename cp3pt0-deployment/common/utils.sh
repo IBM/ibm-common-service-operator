@@ -885,7 +885,10 @@ function scale_down() {
     
     # delete OperandRegistry
     msg "Deleting OperandRegistry common-service in ${services_ns} namespace..."
-    ${OC} delete operandregistry common-service -n ${services_ns} --ignore-not-found  
+    ${OC} delete operandregistry common-service -n ${services_ns} --ignore-not-found
+    # delete validatingwebhookconfiguration
+    msg "Deleting ValidatingWebhookConfiguration ibm-common-service-validating-webhook-${operator_ns} in ${operator_ns} namespace..."
+    ${OC} delete ValidatingWebhookConfiguration ibm-common-service-validating-webhook-${operator_ns} --ignore-not-found
     rm sub.yaml 
 }
 
