@@ -34,6 +34,10 @@ const (
 	MasterCR = "common-service"
 	// CS main namespace
 	MasterNamespace = "ibm-common-services"
+	// CS kind
+	KindCR = "CommonService"
+	// CS api version
+	APIVersion = "operator.ibm.com/v3"
 	// Cluster Operator namespace
 	ClusterOperatorNamespace = "openshift-operators"
 	// CS map configMap

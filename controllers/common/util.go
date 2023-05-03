@@ -237,8 +237,8 @@ func GetCPFSNamespace(r client.Reader) (cpfsNamespace string) {
 		return
 	}
 
-	if string(defaultCsCR.Status.ConfigStatus.OperatorPlane.OperatorNamespace) != "" {
-		cpfsNamespace = string(defaultCsCR.Status.ConfigStatus.OperatorPlane.OperatorNamespace)
+	if string(defaultCsCR.Status.ConfigStatus.OperatorNamespace) != "" {
+		cpfsNamespace = string(defaultCsCR.Status.ConfigStatus.OperatorNamespace)
 	}
 	return
 }
@@ -259,8 +259,8 @@ func GetServicesNamespace(r client.Reader) (servicesNamespace string) {
 	if string(defaultCsCR.Spec.ServicesNamespace) != "" {
 		servicesNamespace = string(defaultCsCR.Spec.ServicesNamespace)
 	}
-	if string(defaultCsCR.Status.ConfigStatus.ServicesPlane.ServicesNamespace) != "" {
-		servicesNamespace = string(defaultCsCR.Status.ConfigStatus.ServicesPlane.ServicesNamespace)
+	if string(defaultCsCR.Status.ConfigStatus.ServicesNamespace) != "" {
+		servicesNamespace = string(defaultCsCR.Status.ConfigStatus.ServicesNamespace)
 	}
 	return
 }
