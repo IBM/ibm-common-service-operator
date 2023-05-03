@@ -255,7 +255,7 @@ function check_IAM(){
         do
             zenservice_exists=$(${OC} get zenservice -n $cp_namespace || echo fail)
             if [[ $zenservice_exists != "fail" ]] && [[ $zenservice_exists != "" ]]; then
-                iam_enabled=$(${OC} get zenservice -n $cp_namespace -o yaml | grep iam | awk '{print $2}')
+                iam_enabled=$(${OC} get zenservice -n $cp_namespace -o yaml | grep iamIntegration | awk '{print $2}')
                 if [[ $iam_enabled == "true" ]]; then
                     if [[ $namespaces == "" ]]; then
                         namespaces="$cs_namespace"
@@ -264,6 +264,8 @@ function check_IAM(){
                         namespaces="$namespaces $cs_namespace"
                         break
                     fi
+                else
+                    info "IAM not requested by zenservice in namespace $cp_namespace, skipping wait."
                 fi
             fi
         done
