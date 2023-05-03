@@ -214,7 +214,7 @@ function pre_req() {
         success "oc command logged in as ${user}"
     fi
 
-    if [ $LICENSE_ACCEPT -ne 1 ]; then
+    if [ "$LICENSE_ACCEPT" -ne 1 ] && [ "$SKIP_INSTALL" -ne 1 ]; then
         error "License not accepted. Rerun script with --license-accept flag set. See https://ibm.biz/integration-licenses for more details"
     fi
 
