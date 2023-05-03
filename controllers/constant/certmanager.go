@@ -78,5 +78,5 @@ spec:
   commonName: cs-ca-certificate
   isCA: true
   duration: 17520h0m0s
-  renewBefore: 720h0m0s
+  renewBefore: 5840h0m0s
 `
