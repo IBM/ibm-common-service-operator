@@ -46,7 +46,7 @@ spec:
       operandRequest: 
         requests:
           - operands:
-              - name: ibm-mongodb-operator
+              - name: ibm-mongodb-operator-v4.0
               - name: ibm-idp-config-ui-operator
             registry: common-service
   - name: ibm-im-operator-v4.0
@@ -463,6 +463,14 @@ spec:
     installMode: no-op
   - name: ibm-mongodb-operator
     namespace: "{{ .CPFSNs }}"
+    channel: v3.23
+    packageName: ibm-mongodb-operator-app
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+    installMode: no-op
+  - name: ibm-mongodb-operator-v4.0
+    namespace: "{{ .CPFSNs }}"
     channel: {{ .Channel }}
     packageName: ibm-mongodb-operator-app
     installPlanApproval: {{ .ApprovalMode }}
@@ -683,7 +691,7 @@ spec:
       operandRequest:
         requests:
           - operands:
-              - name: ibm-mongodb-operator
+              - name: ibm-mongodb-operator-v4.0
               - name: ibm-idp-config-ui-operator
             registry: common-service
   - name: ibm-im-operator-v4.0
@@ -976,6 +984,14 @@ spec:
     sourceNamespace: "{{ .CatalogSourceNs }}"
     installMode: no-op
   - name: ibm-mongodb-operator
+    namespace: "{{ .CPFSNs }}"
+    channel: v3.23
+    packageName: ibm-mongodb-operator-app
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+    installMode: no-op
+  - name: ibm-mongodb-operator-v4.0
     namespace: "{{ .CPFSNs }}"
     channel: {{ .Channel }}
     packageName: ibm-mongodb-operator-app
