@@ -105,6 +105,10 @@ function parse_arguments() {
             shift
             CHANNEL=$1
             ;;
+        -i | --install-mode)
+            shift
+            INSTALL_MODE=$1
+            ;;
         -h | --help)
             print_usage
             exit 1
@@ -206,7 +210,7 @@ EOF
 function pre_req() {
     check_command "${OC}"
 
-    # checking oc command logged in
+    # Checking oc command logged in
     user=$(oc whoami 2> /dev/null)
     if [ $? -ne 0 ]; then
         error "You must be logged into the OpenShift Cluster from the oc command line"
@@ -216,6 +220,11 @@ function pre_req() {
 
     if [ "$LICENSE_ACCEPT" -ne 1 ] && [ "$SKIP_INSTALL" -ne 1 ]; then
         error "License not accepted. Rerun script with --license-accept flag set. See https://ibm.biz/integration-licenses for more details"
+    fi
+
+    # Check INSTALL_MODE
+    if [[ "$INSTALL_MODE" != "Automatic" && "$INSTALL_MODE" != "Manual" ]]; then
+        error "Invalid INSTALL_MODE: $INSTALL_MODE, please try again"
     fi
 
     if [ "$OPERATOR_NS" == "" ]; then

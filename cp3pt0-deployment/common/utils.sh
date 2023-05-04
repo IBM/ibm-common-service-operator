@@ -90,12 +90,16 @@ function wait_for_condition() {
     local wait_message=$4
     local success_message=$5
     local error_message=$6
+    local install_mode=$7
 
     info "${wait_message}"
     while true; do
         result=$(eval "${condition}")
 
         if [[ ( ${retries} -eq 0 ) && ( -z "${result}" ) ]]; then
+            if [[ "${install_mode}" == "Manual" ]]; then
+                info "InstallPlan is not approved yet"
+            fi
             error "${error_message}"
         fi
  
@@ -104,6 +108,9 @@ function wait_for_condition() {
         
         if [[ -z "${result}" ]]; then
             info "RETRYING: ${wait_message} (${retries} left)"
+            if [[ "${install_mode}" == "Manual" ]]; then
+                info "Please manually approve installPlan to make upgrade proceeding..."
+            fi
             retries=$(( retries - 1 ))
         else
             break
@@ -328,6 +335,7 @@ function wait_for_operator_upgrade() {
     local namespace=$1
     local package_name=$2
     local channel=$3
+    local install_mode=$4
     local condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${package_name}.${namespace}='' -n ${namespace} -o yaml -o jsonpath='{.items[*].status.installedCSV}' | grep -w $channel"
 
     local retries=10
@@ -337,7 +345,7 @@ function wait_for_operator_upgrade() {
     local success_message="Operator ${package_name} is upgraded to latest version in channel ${channel}"
     local error_message="Timeout after ${total_time_mins} minutes waiting for operator ${package_name} to be upgraded"
 
-    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}" "${install_mode}"
 }
 
 function is_sub_exist() {
