@@ -98,7 +98,7 @@ function wait_for_condition() {
 
         if [[ ( ${retries} -eq 0 ) && ( -z "${result}" ) ]]; then
             if [[ "${install_mode}" == "Manual" ]]; then
-                info "InstallPlan is not approved yet"
+                warning "InstallPlan is not approved yet"
             fi
             error "${error_message}"
         fi
@@ -109,7 +109,7 @@ function wait_for_condition() {
         if [[ -z "${result}" ]]; then
             info "RETRYING: ${wait_message} (${retries} left)"
             if [[ "${install_mode}" == "Manual" ]]; then
-                info "Please manually approve installPlan to make upgrade proceeding..."
+                warning "Please manually approve installPlan to make upgrade proceeding..."
             fi
             retries=$(( retries - 1 ))
         else

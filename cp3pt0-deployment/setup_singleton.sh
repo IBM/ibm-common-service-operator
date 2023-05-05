@@ -224,7 +224,7 @@ function pre_req() {
 
     # Check INSTALL_MODE
     if [[ "$INSTALL_MODE" != "Automatic" && "$INSTALL_MODE" != "Manual" ]]; then
-        error "Invalid INSTALL_MODE: $INSTALL_MODE, please try again"
+        error "Invalid INSTALL_MODE: $INSTALL_MODE, allowed values are 'Automatic' or 'Manual'"
     fi
 
     if [ "$OPERATOR_NS" == "" ]; then
