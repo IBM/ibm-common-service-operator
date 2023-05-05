@@ -290,7 +290,7 @@ function uninstall_singletons() {
 
     local isExists=$("${OC}" get deployments -n "${MASTER_NS}" --ignore-not-found ibm-cert-manager-operator)
     if [ ! -z "$isExists" ]; then
-        "${OC}" delete --ignore-not-found certmanager default
+        "${OC}" delete --ignore-not-found certmanagers.operator.ibm.com default
         CERT_MANAGER_MIGRATED="true"
         debug1 "Cert Manager marked for migration."
     fi
