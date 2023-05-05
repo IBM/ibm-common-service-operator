@@ -66,7 +66,7 @@ function parse_arguments() {
 
 function print_usage() {
     script_name=`basename ${0}`
-    echo "Usage: ${script_name} FromNamespace ToNamespace [OPTIONS]..."
+    echo "Usage: ${script_name} Original-CommonService-Namespace Services-Namespace [OPTIONS]..."
     echo ""
     echo "Preload data and config information from an existing Common Services namespace to a new, empty namespace"
     echo ""
@@ -80,7 +80,7 @@ function print_usage() {
 function prereq() {
     
     if [[ -z "$FROM_NAMESPACE" ]] || [[ -z "$TO_NAMESPACE" ]]; then
-        error "Both FromNamespace and ToNamespace need to be set for script to execute. Please rerun script with both parameters set. Run with \"-h\" flag for more details"
+        error "Both Original-CommonService-Namespace and Services-Namespace need to be set for script to execute. Please rerun script with both parameters set. Run with \"-h\" flag for more details"
         exit 1
     fi
 
