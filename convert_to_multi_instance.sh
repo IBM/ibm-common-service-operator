@@ -107,7 +107,7 @@ function prepare_cluster() {
     cleanupZenService
 
     # uninstall singleton services
-    "${OC}" delete -n "${master_ns}" --ignore-not-found certmanager default
+    "${OC}" delete -n "${master_ns}" --ignore-not-found certmanagers.operator.ibm.com default
     "${OC}" delete -n "${master_ns}" --ignore-not-found sub ibm-cert-manager-operator
     csv=$("${OC}" get -n "${master_ns}" csv | (grep ibm-cert-manager-operator || echo "fail") | awk '{print $1}')
     "${OC}" delete -n "${master_ns}" --ignore-not-found csv "${csv}"
