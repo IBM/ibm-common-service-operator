@@ -90,16 +90,12 @@ function wait_for_condition() {
     local wait_message=$4
     local success_message=$5
     local error_message=$6
-    local install_mode=$7
 
     info "${wait_message}"
     while true; do
         result=$(eval "${condition}")
 
         if [[ ( ${retries} -eq 0 ) && ( -z "${result}" ) ]]; then
-            if [[ "${install_mode}" == "Manual" ]]; then
-                warning "InstallPlan is not approved yet"
-            fi
             error "${error_message}"
         fi
  
@@ -108,9 +104,6 @@ function wait_for_condition() {
         
         if [[ -z "${result}" ]]; then
             info "RETRYING: ${wait_message} (${retries} left)"
-            if [[ "${install_mode}" == "Manual" ]]; then
-                warning "Please manually approve installPlan to make upgrade proceeding..."
-            fi
             retries=$(( retries - 1 ))
         else
             break
@@ -345,7 +338,12 @@ function wait_for_operator_upgrade() {
     local success_message="Operator ${package_name} is upgraded to latest version in channel ${channel}"
     local error_message="Timeout after ${total_time_mins} minutes waiting for operator ${package_name} to be upgraded"
 
-    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}" "${install_mode}"
+    if [[ "${install_mode}" == "Manual" ]]; then
+        wait_message="Waiting for operator ${package_name} to be upgraded \nPlease manually approve installPlan to make upgrade proceeding..."
+        error_message="Timeout after ${total_time_mins} minutes waiting for operator ${package_name} to be upgraded \nInstallPlan is not manually approved yet"
+    fi
+
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
 function is_sub_exist() {
