@@ -62,10 +62,7 @@ function parse_arguments() {
             exit 1
             ;;
         *) 
-            if [ -z "$FROM_NAMESPACE" ]; then
-                FROM_NAMESPACE=$1
-                TO_NAMESPACE=$2
-            fi
+            warning "$1 not a supported parameter for preload_data.sh"
             ;;
         esac
         shift
@@ -1741,6 +1738,10 @@ function title() {
 
 function info() {
     msg "[INFO] ${1}"
+}
+
+function warning() {
+    msg "\33[33m[✗] ${1}\33[0m"
 }
 
 # --- Run ---
