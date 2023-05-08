@@ -246,6 +246,8 @@ function dumpmongo() {
     error "Cannot switch to $FROM_NAMESPACE"
   fi
 
+  ibm_mongodb_image=$(oc get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
+
   cat <<EOF >$TEMPFILE
 apiVersion: batch/v1
 kind: Job
@@ -259,7 +261,7 @@ spec:
     spec:
       containers:
       - name: cs-mongodb-backup
-        image: quay.io/opencloudio/ibm-mongodb:4.0.24
+        image: $ibm_mongodb_image
         command: ["bash", "-c", "cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongodump --oplog --out /dump/dump --host mongodb:27017 --username \$ADMIN_USER --password \$ADMIN_PASSWORD --authenticationDatabase admin --ssl --sslCAFile /work-dir/ca.pem --sslPEMKeyFile /work-dir/mongo.pem"]
         volumeMounts:
         - mountPath: "/work-dir"
