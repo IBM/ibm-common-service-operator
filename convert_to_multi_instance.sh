@@ -695,7 +695,6 @@ function isolate_odlm() {
         fi
         count=$((count + 1))
     done
-    debug1 "patch string $patch_string"
     #use the patch string to apply the isolate mode patch
     ${OC} patch subscription.operators.coreos.com ${sub_name} -n ${ns} --type=merge -p '{"spec": {"config": {"env": ['"${patch_string}"']}}}'
     if [[ $? -ne 0 ]]; then

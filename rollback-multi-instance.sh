@@ -24,6 +24,7 @@ CONTROL_NS=
 cm_name="common-service-maps"
 OC=oc
 YQ=yq
+DEBUG=0
 
 
 function main() {
@@ -43,6 +44,9 @@ function main() {
         "--control-ns")
             CONTROL_NS=$2
             shift
+            ;;
+        -v | --debug)
+            DEBUG=1
             ;;
         *)
             error "invalid option -- \`$1\`. Use the -h or --help option for usage info."
@@ -72,6 +76,7 @@ function usage() {
 	  -h, --help                    display this help and exit
       --original-cs-ns              specify the original common services namespace
       --control-ns                  specify the existing control namespace
+      -v, --debug integer           Verbosity of logs. Default is 0. Set to 1 for debug logs.
 	EOF
 }
 
@@ -533,6 +538,11 @@ function info() {
     msg "[INFO] ${1}"
 }
 
+function debug1() {
+    if [ $DEBUG -eq 1 ]; then
+        msg "[DEBUG] ${1}"
+    fi
+}
 # --- Run ---
 
 main $*
