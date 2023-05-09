@@ -68,6 +68,7 @@ function main() {
     # Update CommonService CR with OPERATOR_NS and SERVICES_NS
     # Propogate CommonService CR to every namespace in the tenant
     update_cscr "$OPERATOR_NS" "$SERVICES_NS" "$NS_LIST"
+    accept_license "commonservice" "$OPERATOR_NS"  "common-service"
 
     # Update ibm-common-service-operator channel
     for ns in ${NS_LIST//,/ }; do
@@ -80,7 +81,6 @@ function main() {
 
     # Wait for CS operator upgrade
     wait_for_operator_upgrade $OPERATOR_NS ibm-common-service-operator $CHANNEL
-    accept_license "commonservice" "$OPERATOR_NS"  "common-service"
     # Scale up CS
     scale_up $OPERATOR_NS $SERVICES_NS ibm-common-service-operator ibm-common-service-operator
 
