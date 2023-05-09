@@ -49,15 +49,20 @@ function parse_arguments() {
             shift
             yq=$1
             ;;
+        --original-cs-ns)
+            shift
+            FROM_NAMESPACE=$1
+            ;;
+        --services-ns)
+            shift
+            TO_NAMESPACE=$1
+            ;;
         -h | --help)
             print_usage
             exit 1
             ;;
         *) 
-            if [ -z "$FROM_NAMESPACE" ]; then
-                FROM_NAMESPACE=$1
-                TO_NAMESPACE=$2
-            fi
+            warning "$1 not a supported parameter for preload_data.sh"
             ;;
         esac
         shift
@@ -66,13 +71,15 @@ function parse_arguments() {
 
 function print_usage() {
     script_name=`basename ${0}`
-    echo "Usage: ${script_name} Original-CommonService-Namespace Services-Namespace [OPTIONS]..."
+    echo "Usage: ${script_name} --original-cs-ns <Original-CommonService-Namespace> --services-ns <Services-Namespace> [OPTIONS]..."
     echo ""
     echo "Preload data and config information from an existing Common Services namespace to a new, empty namespace"
     echo ""
     echo "Options:"
     echo "   --oc string                                    File path to oc CLI. Default uses oc in your PATH"
     echo "   --yq string                                    File path to yq CLI. Default uses yq in your PATH"
+    echo "   --original-cs-ns string                        Namespace to migrate Cloud Pak 2 Foundational services data from."
+    echo "   --services-ns string                           Namespace to migrate Cloud Pak 2 Foundational services data too"
     echo "   -h, --help                                     Print usage information"
     echo ""
 }
@@ -1731,6 +1738,10 @@ function title() {
 
 function info() {
     msg "[INFO] ${1}"
+}
+
+function warning() {
+    msg "\33[33m[✗] ${1}\33[0m"
 }
 
 # --- Run ---
