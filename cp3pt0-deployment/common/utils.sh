@@ -328,6 +328,7 @@ function wait_for_operator_upgrade() {
     local namespace=$1
     local package_name=$2
     local channel=$3
+    local install_mode=$4
     local condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${package_name}.${namespace}='' -n ${namespace} -o yaml -o jsonpath='{.items[*].status.installedCSV}' | grep -w $channel"
 
     local retries=10
@@ -336,6 +337,11 @@ function wait_for_operator_upgrade() {
     local wait_message="Waiting for operator ${package_name} to be upgraded"
     local success_message="Operator ${package_name} is upgraded to latest version in channel ${channel}"
     local error_message="Timeout after ${total_time_mins} minutes waiting for operator ${package_name} to be upgraded"
+
+    if [[ "${install_mode}" == "Manual" ]]; then
+        wait_message="Waiting for operator ${package_name} to be upgraded \nPlease manually approve installPlan to make upgrade proceeding..."
+        error_message="Timeout after ${total_time_mins} minutes waiting for operator ${package_name} to be upgraded \nInstallPlan is not manually approved yet"
+    fi
 
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
