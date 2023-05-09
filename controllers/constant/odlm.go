@@ -126,6 +126,7 @@ spec:
       - apiVersion: batch/v1
         kind: Job
         name: create-postgres-license-config
+        namespace: "{{ .OperatorNs }}"
         data:
           spec:
             activeDeadlineSeconds: 600
@@ -213,9 +214,11 @@ spec:
       - apiVersion: v1
         kind: ServiceAccount
         name: edb-license-sa
+        namespace: "{{ .OperatorNs }}"
       - apiVersion: rbac.authorization.k8s.io/v1
         kind: Role
         name: edb-license-role
+        namespace: "{{ .OperatorNs }}"
         data:
           rules:
           - apiGroups:
@@ -233,6 +236,7 @@ spec:
       - apiVersion: rbac.authorization.k8s.io/v1
         kind: RoleBinding
         name: edb-license-rolebinding
+        namespace: "{{ .OperatorNs }}"
         data:
           subjects:
           - kind: ServiceAccount
