@@ -10,7 +10,7 @@ metadata:
     nss.operator.ibm.com/managed-operators: cloud-native-postgresql, ibm-bts-operator
     olm.skipRange: ""
     operatorChannel: v3.23
-    operatorVersion: 3.23.3
+    operatorVersion: 3.23.4
     operators.operatorframework.io/builder: operator-sdk-v1.2.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
     repository: https://github.com/IBM/ibm-common-service-operator
@@ -108,7 +108,7 @@ spec:
 
     ## Operator versions
 
-     - 3.23.3
+     - 3.23.4
 
     ## Prerequisites
 
@@ -182,13 +182,13 @@ spec:
   relatedImages:
   - image: icr.io/cpopen/common-service-operator
     name: COMMON_SERVICE_OPERATOR_IMAGE
-  - image: icr.io/cpopen/cpfs/ibm-cs-webhook:1.19.3
+  - image: icr.io/cpopen/cpfs/ibm-cs-webhook:1.19.4
     name: IBM_CS_WEBHOOK_IMAGE
-  - image: icr.io/cpopen/cpfs/ibm-secretshare-operator:1.20.3
+  - image: icr.io/cpopen/cpfs/ibm-secretshare-operator:1.20.4
     name: IBM_SECRETSHARE_OPERATOR_IMAGE
   - image: icr.io/cpopen/ibm-zen-operator:1.8.1
     name: IBM_ZEN_OPERATOR_IMAGE
-  - image: icr.io/cpopen/cpfs/multi-instance-conversion:1.0.4
+  - image: icr.io/cpopen/cpfs/multi-instance-conversion:1.0.5
     name: CS_MULTI_INSTANCE_CONVERSION_IMAGE
   replaces: ibm-common-service-operator.v0.0.0
   version: 0.0.0
