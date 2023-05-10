@@ -116,9 +116,9 @@ function prepare_cluster() {
     # reason for checking again instead of simply deleting the CR when checking
     # for LSR is to avoid deleting anything until the last possible moment.
     # This makes recovery from simple pre-requisite errors easier.
+    migrate_lic_cms $master_ns
     return_value=$(("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
     if [[ $return_value == "exists" ]]; then
-        migrate_lic_cms $master_ns
         "${OC}" delete -n "${master_ns}" --ignore-not-found ibmlicensing instance
     fi
     return_value="reset"
