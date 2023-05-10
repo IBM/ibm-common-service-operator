@@ -243,6 +243,17 @@ function pre_req() {
     # Check INSTALL_MODE
     if [[ "$INSTALL_MODE" != "Automatic" && "$INSTALL_MODE" != "Manual" ]]; then
         error "Invalid INSTALL_MODE: $INSTALL_MODE, allowed values are 'Automatic' or 'Manual'"
+    
+    # Check if channel is semantic vx.y
+    if [[ $CHANNEL =~ ^v[0-9]+\.[0-9]+$ ]]; then
+        # Check if channel is equal or greater than v4.0
+        if [[ $CHANNEL == v[4-9].* || $CHANNEL == v[4-9] ]]; then  
+            success "Channel is valid"
+        else
+            error "Channel is less than v4.0"
+        fi
+    else
+        error "Channel is not semantic vx.y"
     fi
 
     NS_LIST=$(${OC} get configmap namespace-scope -n ${OPERATOR_NS} -o jsonpath='{.data.namespaces}')
