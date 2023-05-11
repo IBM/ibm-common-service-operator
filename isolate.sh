@@ -299,6 +299,10 @@ function uninstall_singletons() {
     local csv=$("${OC}" get -n "${MASTER_NS}" csv | (grep ibm-cert-manager-operator || echo "fail") | awk '{print $1}')
     "${OC}" delete -n "${MASTER_NS}" --ignore-not-found csv "${csv}"
 
+    wait_for_no_pod ${MASTER_NS} "cert-manager-cainjector"
+    wait_for_no_pod ${MASTER_NS} "cert-manager-controller"
+    wait_for_no_pod ${MASTER_NS} "cert-manager-webhook"
+
     migrate_lic_cms $MASTER_NS
     isExists=$("${OC}" get deployments -n "${MASTER_NS}" --ignore-not-found ibm-licensing-operator)
     if [ ! -z "$isExists" ]; then
@@ -555,32 +559,20 @@ function wait_for_certmanager() {
     local success_message="Deployment ${name} in namespace ${namespace} is running."
     local error_message="Timeout after ${total_time_mins} minutes waiting for deployment ${name} in namespace ${namespace} to be running."
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
-    
-    #check individual pods
-    #webhook
+
+    #check webhook pod runnning
     name="cert-manager-webhook"
-    condition="${OC} get deploy -A --no-headers --ignore-not-found | egrep '1/1' | grep ${name} || true"
-    wait_message="Waiting for deployment ${name} to be running ..."
-    success_message="Deployment ${name} is running."
-    error_message="Timeout after ${total_time_mins} minutes waiting for deployment ${name} to be running."
+    condition="${OC} get pod -A --no-headers --ignore-not-found | egrep '1/1' | grep ${name} || true"
+    wait_message="Waiting for pod ${name} to be running ..."
+    success_message="Pod ${name} is running."
+    error_message="Timeout after ${total_time_mins} minutes waiting for pod ${name} to be running."
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
-    
-    #controller
-    name="cert-manager-controller"
-    condition="${OC} get deploy -A --no-headers --ignore-not-found | egrep '1/1' | grep ${name} || true"
-    wait_message="Waiting for deployment ${name} to be running ..."
-    success_message="Deployment ${name} is running."
-    error_message="Timeout after ${total_time_mins} minutes waiting for deployment ${name} to be running."
-    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
-    
-    #cainjector
-    name="cert-manager-cainjector"
-    condition="${OC} get deploy -A --no-headers --ignore-not-found | egrep '1/1' | grep ${name} || true"
-    wait_message="Waiting for deployment ${name} to be running ..."
-    success_message="Deployment ${name} is running."
-    error_message="Timeout after ${total_time_mins} minutes waiting for deployment ${name} to be running."
-    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
-    
+
+    #check no duplicate webhook pod
+    webhook_deployments=$(${OC} get deploy -A --no-headers --ignore-not-found | grep ${name} -c)
+    if [[ $webhook_deployments != "1" ]]; then
+        error "More than one cert-manager-webhook deployment exists on the cluster."
+    fi
     success "Cert Manager ready in namespace $namespace."
 }
 
