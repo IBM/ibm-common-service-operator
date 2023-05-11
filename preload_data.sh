@@ -33,7 +33,8 @@ function main() {
     # run backup preload
     backup_preload_mongo
     # copy im credentials
-    copy_auth_idp_secret
+    copy_secret "platform-auth-idp-credentials"
+    copy_secret "platform-auth-ldaps-ca-cert"
     # any extra config
 }
 
@@ -97,8 +98,8 @@ function prereq() {
     fi
 }
 
-function copy_auth_idp_secret() {
-    local secret="platform-auth-idp-credentials"
+function copy_secret() {
+    local secret=$1
     title " Copying secret $secret from $FROM_NAMESPACE to $TO_NAMESPACE "   
     $OC get secret "$secret" -n $FROM_NAMESPACE -o yaml | \
         $YQ '
