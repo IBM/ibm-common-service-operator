@@ -78,6 +78,7 @@ function main() {
     prereq
     local ns_list=$(gather_csmaps_ns)
     pause
+    cleanup_webhook
     create_empty_csmaps
     insert_control_ns
     update_tenant "${MASTER_NS}" "${ns_list}"
@@ -317,10 +318,9 @@ function uninstall_singletons() {
     "${OC}" delete -n "${MASTER_NS}" --ignore-not-found csv "${csv}"
     csv=$("${OC}" get -n "${MASTER_NS}" csv | (grep ibm-crossplane-provider-kubernetes-operator || echo "fail") | awk '{print $1}')
     "${OC}" delete -n "${MASTER_NS}" --ignore-not-found csv "${csv}"
-
-    cleanup_webhook
+    
     cleanup_deployment "secretshare" "$MASTER_NS"
-
+    
     success "Singletons successfully uninstalled"
 }
 

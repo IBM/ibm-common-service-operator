@@ -80,12 +80,12 @@ function main() {
     done
 
     # Wait for CS operator upgrade
-    wait_for_operator_upgrade $OPERATOR_NS ibm-common-service-operator $CHANNEL
+    wait_for_operator_upgrade $OPERATOR_NS ibm-common-service-operator $CHANNEL $INSTALL_MODE
     # Scale up CS
     scale_up $OPERATOR_NS $SERVICES_NS ibm-common-service-operator ibm-common-service-operator
 
     # Wait for ODLM upgrade
-    wait_for_operator_upgrade $OPERATOR_NS ibm-odlm $CHANNEL
+    wait_for_operator_upgrade $OPERATOR_NS ibm-odlm $CHANNEL $INSTALL_MODE
     # Scale up ODLM
     scale_up $OPERATOR_NS $SERVICES_NS ibm-odlm operand-deployment-lifecycle-manager
 
@@ -102,7 +102,7 @@ function main() {
         update_operator ibm-namespace-scope-operator $OPERATOR_NS $CHANNEL $SOURCE $SOURCE_NS $INSTALL_MODE
     fi
 
-    wait_for_operator_upgrade "$OPERATOR_NS" "ibm-namespace-scope-operator" "$CHANNEL"
+    wait_for_operator_upgrade "$OPERATOR_NS" "ibm-namespace-scope-operator" "$CHANNEL" $INSTALL_MODE
     accept_license "namespacescope" "$OPERATOR_NS" "common-service"
     # Authroize NSS operator
     for ns in ${NS_LIST//,/ }; do
@@ -238,6 +238,11 @@ function pre_req() {
 
     if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
         SOURCE_NS=$OPERATOR_NS
+    fi
+
+    # Check INSTALL_MODE
+    if [[ "$INSTALL_MODE" != "Automatic" && "$INSTALL_MODE" != "Manual" ]]; then
+        error "Invalid INSTALL_MODE: $INSTALL_MODE, allowed values are 'Automatic' or 'Manual'"
     fi
 
     NS_LIST=$(${OC} get configmap namespace-scope -n ${OPERATOR_NS} -o jsonpath='{.data.namespaces}')
