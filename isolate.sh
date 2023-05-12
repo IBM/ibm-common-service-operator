@@ -87,11 +87,7 @@ function main() {
     check_cm_ns_exist "$ns_list $CONTROL_NS" # debating on turning this off by default since this technically falls outside the scope of isolate
     isolate_odlm "ibm-odlm" $MASTER_NS
     restart
-    if [[ $CERT_MANAGER_MIGRATED == "true" ]]; then
-        wait_for_certmanager "$CONTROL_NS"
-    else
-        info "Cert Manager not migrated, skipping wait."
-    fi
+    wait_for_certmanager "$CONTROL_NS"
     success "Isolation complete"
 }
 
@@ -298,10 +294,6 @@ function uninstall_singletons() {
     "${OC}" delete -n "${MASTER_NS}" --ignore-not-found sub ibm-cert-manager-operator
     local csv=$("${OC}" get -n "${MASTER_NS}" csv | (grep ibm-cert-manager-operator || echo "fail") | awk '{print $1}')
     "${OC}" delete -n "${MASTER_NS}" --ignore-not-found csv "${csv}"
-
-    wait_for_no_pod ${MASTER_NS} "cert-manager-cainjector"
-    wait_for_no_pod ${MASTER_NS} "cert-manager-controller"
-    wait_for_no_pod ${MASTER_NS} "cert-manager-webhook"
 
     migrate_lic_cms $MASTER_NS
     isExists=$("${OC}" get deployments -n "${MASTER_NS}" --ignore-not-found ibm-licensing-operator)
