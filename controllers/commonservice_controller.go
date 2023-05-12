@@ -123,6 +123,16 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 		}
 	}
 
+	// Generate Issuer and Certificate CR
+	if err := r.Bootstrap.DeployCertManagerCR(); err != nil {
+		klog.Errorf("Failed to deploy cert manager CRs: %v", err)
+		if err := r.updatePhase(ctx, instance, CRFailed); err != nil {
+			klog.Error(err)
+		}
+		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
+		return ctrl.Result{}, err
+	}
+
 	// Init common service bootstrap resource
 	// Including namespace-scope configmap, nss operator, nss CR
 	// Webhook Operator and Secretshare
@@ -146,16 +156,6 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 	if inScope {
 		if err := r.Bootstrap.CrossplaneOperatorProviderOperator(instance); err != nil {
 			klog.Errorf("Failed to install crossplane or provider operator: %v", err)
-			if err := r.updatePhase(ctx, instance, CRFailed); err != nil {
-				klog.Error(err)
-			}
-			klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
-			return ctrl.Result{}, err
-		}
-
-		// Generate Issuer and Certificate CR
-		if err := r.Bootstrap.DeployCertManagerCR(); err != nil {
-			klog.Errorf("Failed to deploy cert manager CRs: %v", err)
 			if err := r.updatePhase(ctx, instance, CRFailed); err != nil {
 				klog.Error(err)
 			}
