@@ -18,7 +18,7 @@ SOURCE_NS="openshift-marketplace"
 OPERATOR_NS=""
 SERVICES_NS=""
 TETHERED_NS=""
-SIZE_PROFILE="small"
+SIZE_PROFILE="starterset"
 INSTALL_MODE="Automatic"
 DEBUG=0
 LICENSE_ACCEPT=0
@@ -118,13 +118,14 @@ function print_usage() {
     echo "   --operator-namespace string    Required. Namespace to install Foundational services operator"
     echo "   --services-namespace           Namespace to install operands of Foundational services, i.e. 'dataplane'. Default is the same as operator-namespace"
     echo "   --tethered-namespaces string   Additional namespaces for this tenant, comma-delimited, e.g. 'ns1,ns2'"
-    echo "   --license-accept               Set this flag to accept the license agreement."
+    echo "   --license-accept               Set this flag to accept the license agreement"
     echo "   -c, --channel string           Channel for Subscription(s). Default is v4.0"
     echo "   -i, --install-mode string      InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
     echo "   -s, --source string            CatalogSource name. This assumes your CatalogSource is already created. Default is opencloud-operators"
     echo "   -n, --namespace string         Namespace of CatalogSource. Default is openshift-marketplace"
-    echo "   -v, --debug integer            Verbosity of logs. Default is 0. Set to 1 for debug logs."
+    echo "   -v, --debug integer            Verbosity of logs. Default is 0. Set to 1 for debug logs"
     echo "   -h, --help                     Print usage information"
+    echo "   -p, --size-profile             The default profile is starterset. Change the profile to starter, small, medium, or large, if required"
     echo ""
 }
 
@@ -159,6 +160,27 @@ function pre_req() {
     if [[ "$INSTALL_MODE" != "Automatic" && "$INSTALL_MODE" != "Manual" ]]; then
         error "Invalid INSTALL_MODE: $INSTALL_MODE, allowed values are 'Automatic' or 'Manual'"
     fi
+
+    # Check if channel is semantic vx.y
+    if [[ $CHANNEL =~ ^v[0-9]+\.[0-9]+$ ]]; then
+        # Check if channel is equal or greater than v4.0
+        if [[ $CHANNEL == v[4-9].* || $CHANNEL == v[4-9] ]]; then  
+            success "Channel is valid"
+        else
+            error "Channel is less than v4.0"
+        fi
+    else
+        error "Channel is not semantic vx.y"
+    fi
+
+    case "$SIZE_PROFILE" in
+    "starterset"|"starter"|"small"|"medium"|"large")
+        success "Profile size is valid."
+        ;;
+    *)
+        error " '$SIZE_PROFILE' is not a valid value for profile. Allowed values are 'starterset', 'starter', 'small', 'medium', and 'large'."
+        ;;
+    esac
 
     if [ "$OPERATOR_NS" == "" ]; then
         error "Must provide operator namespace, please specify argument --operator-namespace"
