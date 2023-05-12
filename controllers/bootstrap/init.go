@@ -615,8 +615,17 @@ func (b *Bootstrap) InstallOrUpdateOpreg(forceUpdateODLMCRs bool, installPlanApp
 		}
 	}
 
-	var obj []*unstructured.Unstructured
 	var err error
+	constant.CSV3OperandRegistry, err = constant.ConcatenateRegistries(constant.CSV2OpReg, constant.CSV3OpReg, b.CSData)
+	if err != nil {
+		klog.Errorf("failed to concatenate registries CSV3OperandRegistry: %v", err)
+	}
+	constant.CSV3SaasOperandRegistry, err = constant.ConcatenateRegistries(constant.CSV2SaasOpReg, constant.CSV3SaasOpReg, b.CSData)
+	if err != nil {
+		klog.Errorf("failed to concatenate registries CSV3SaasOperandRegistry: %v", err)
+	}
+
+	var obj []*unstructured.Unstructured
 	if b.SaasEnable {
 		// OperandRegistry for SaaS deployment
 		obj, err = b.GetObjs(constant.CSV3SaasOperandRegistry, b.CSData)
