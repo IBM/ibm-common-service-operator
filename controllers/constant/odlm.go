@@ -22,8 +22,9 @@ import (
 	"fmt"
 	"html/template"
 
-	odlm "github.com/IBM/operand-deployment-lifecycle-manager/api/v1alpha1"
 	utilyaml "github.com/ghodss/yaml"
+
+	odlm "github.com/IBM/operand-deployment-lifecycle-manager/api/v1alpha1"
 )
 
 var (
@@ -1205,7 +1206,7 @@ func ConcatenateRegistries(baseRegistryTemplate, insertedRegistryTemplate string
 	return string(opregBytes), nil
 }
 
-func applyTemplate(objectTemplate string, data interface{}, alwaysUpdate ...bool) ([]byte, error) {
+func applyTemplate(objectTemplate string, data interface{}) ([]byte, error) {
 	var buffer bytes.Buffer
 	t := template.Must(template.New("newTemplate").Parse(objectTemplate))
 	if err := t.Execute(&buffer, data); err != nil {
