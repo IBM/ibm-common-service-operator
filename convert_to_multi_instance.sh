@@ -239,6 +239,7 @@ function install_new_CS() {
         install_common_service_operator_sub "${namespace}"
         check_CSCR "${namespace}"
         copy_over_commonservice_cr "${namespace}"
+        copy_over_cpp_config_cm "${namespace}"
     done
     
     success "Common Services Operator is converted to multi_instance mode"
@@ -750,6 +751,25 @@ function copy_over_commonservice_cr() {
     ${OC} apply -f tmp.yaml  || error "Could not apply CommonService CR changes in namespace $namespace"
 
     rm -f tmp.yaml
+}
+
+function copy_over_cpp_config_cm() {
+    local namespace=$1
+    title " Copying existing ibm-cpp-config configmap to new cs instance $namespace "
+    msg "-----------------------------------------------------------------------"
+
+    $OC get cm ibm-cpp-config -n $master_ns -o yaml | \
+        $YQ '
+            del(.metadata.creationTimestamp) | 
+            del(.metadata.resourceVersion) | 
+            del(.metadata.namespace) | 
+            del(.metadata.uid) | 
+            del(.metadata.ownerReferences) |
+            del(.metadata.managedFields) |
+            del(.metadata.labels)
+        ' | \
+        $OC apply -n $namespace -f - || error "Failed to copy over configmap ibm-cpp-config."
+    success "Configmap ibm-cpp-config copied over to $namespace"
 }
 
 function cleanup_deployment() {
