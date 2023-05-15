@@ -640,8 +640,9 @@ func (b *Bootstrap) InstallOrUpdateOpreg(forceUpdateODLMCRs bool, installPlanApp
 		klog.Errorf("failed to concatenate registries CSV3SaasOperandRegistry: %v", err)
 	}
 
-	// Append CP3 operators into CP3 Saas OperandRegistry
+	// Append CP3 operators into CP3 SaaS OperandRegistry
 	Saasregistries := []string{
+		constant.MongoDBOpReg,
 		constant.IMOpReg,
 		constant.PlatformUIOpReg,
 	}
@@ -649,7 +650,7 @@ func (b *Bootstrap) InstallOrUpdateOpreg(forceUpdateODLMCRs bool, installPlanApp
 	for _, reg := range Saasregistries {
 		constant.CSV3SaasOperandRegistry, err = constant.ConcatenateRegistries(constant.CSV3SaasOperandRegistry, reg, b.CSData)
 		if err != nil {
-			klog.Errorf("failed to append CP3 operators into Saas OperandRegistry: %v", err)
+			klog.Errorf("failed to append CP3 operators into SaaS OperandRegistry: %v", err)
 		}
 	}
 
