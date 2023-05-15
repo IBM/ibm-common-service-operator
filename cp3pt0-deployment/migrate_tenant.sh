@@ -212,8 +212,9 @@ function pre_req() {
     check_command "${OC}"
     check_command "${YQ}"
 
-    # checking yq version is v4.30+
-    check_version "${YQ}" "--version" "mikefarah" "4\.([3-9][0-9])\.[0-9]+"
+    # TODO: add more compatibility
+    # # checking yq version is v4.30+
+    # check_version "${YQ}" "--version" "mikefarah" "4\.([3-9][0-9])\.[0-9]+"
 
     # checking oc command logged in
     user=$(${OC} whoami 2> /dev/null)
