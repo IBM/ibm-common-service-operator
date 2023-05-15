@@ -88,7 +88,7 @@ function main() {
     isolate_odlm "ibm-odlm" $MASTER_NS
     restart
     if [[ $CERT_MANAGER_MIGRATED == "true" ]]; then
-        wait_for_certmanager "$CONTROL_NS"
+        wait_for_certmanager "$CONTROL_NS" "${ns_list}"
     else
         info "Cert Manager not migrated, skipping wait."
     fi
@@ -548,11 +548,16 @@ function check_if_certmanager_deployed() {
     local deployed="false"
     for ns in $namespaces
     do
-        local return_value=$(${OC} get opreq -n $ns -o yaml | grep "-name: ibm-cert-manager-operator" || echo "fail")
-        if [[ $return_value != "fail" ]]; then
-            deployed="true"
-            break
-        fi
+        opreqs=$(${OC} get opreq -n $ns --no-headers | awk '{print $1}' | tr '\n' ' ')
+        for opreq in $opreqs
+        do
+            local return_value=$(${OC} get opreq $opreq -n $ns -o yaml | ${YQ} '.spec.requests[]' | grep "name: ibm-cert-manager-operator" || echo "fail")
+            if [[ $return_value != "fail" ]]; then
+                deployed="true"
+                info "Cert manager requested in scope, moving on..."
+                break
+            fi
+        done
     done
 
     if [[ $deployed == "false" ]]; then
