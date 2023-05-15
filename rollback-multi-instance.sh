@@ -296,31 +296,48 @@ function cleanupZenService(){
 function check_IAM(){
     sleep 10
 
-    retries=40
-    sleep_time=30
-    total_time_mins=$(( sleep_time * retries / 60))
-    info "Waiting for IAM to come ready in namespace $MASTER_NS"
-    sleep 10
-    local cm="ibm-common-services-status"
-    local statusName="$MASTER_NS-iamstatus"
-    
-    while true; do
-        if [[ ${retries} -eq 0 ]]; then
-            error "Timeout after ${total_time_mins} minutes waiting for IAM to come ready in namespace $MASTER_NS"
-        fi
-
-        iamReady=$("${OC}" get configmap -n kube-public -o yaml ${cm} | (grep $statusName || echo fail))
-
-        if [[ "${iamReady}" == "fail" ]]; then
-            retries=$(( retries - 1 ))
-            info "RETRYING: Waiting for IAM service to be Ready (${retries} left)"
-            sleep ${sleep_time}
-        else
-            msg "-----------------------------------------------------------------------"    
-            success "IAM Service Ready in $MASTER_NS"
-            break
+    local nsFromNSS=$(${OC} get nss -n $MASTER_NS -o yaml common-service | ${YQ} '.status.validatedMembers[]' | tr '\n' ' ')
+    iam_enabled="false"
+    for cp_namespace in $nsFromNSS
+    do
+        zenservice_exists=$(${OC} get zenservice -n $cp_namespace || echo fail)
+        if [[ $zenservice_exists != "fail" ]] && [[ $zenservice_exists != "" ]]; then
+            iam_enabled=$(${OC} get zenservice -n $cp_namespace -o yaml | grep iamIntegration | awk '{print $2}')
+            if [[ $iam_enabled == "true" ]]; then
+                break
+            else
+                info "IAM not requested by zenservice in namespace $cp_namespace, skipping wait."
+            fi
         fi
     done
+    
+    if [[ $iam_enabled ]]; then
+        retries=40
+        sleep_time=30
+        total_time_mins=$(( sleep_time * retries / 60))
+        info "Waiting for IAM to come ready in namespace $MASTER_NS"
+        sleep 10
+        local cm="ibm-common-services-status"
+        local statusName="$MASTER_NS-iamstatus"
+        
+        while true; do
+            if [[ ${retries} -eq 0 ]]; then
+                error "Timeout after ${total_time_mins} minutes waiting for IAM to come ready in namespace $MASTER_NS"
+            fi
+
+            iamReady=$("${OC}" get configmap -n kube-public -o yaml ${cm} | (grep $statusName || echo fail))
+
+            if [[ "${iamReady}" == "fail" ]]; then
+                retries=$(( retries - 1 ))
+                info "RETRYING: Waiting for IAM service to be Ready (${retries} left)"
+                sleep ${sleep_time}
+            else
+                msg "-----------------------------------------------------------------------"    
+                success "IAM Service Ready in $MASTER_NS"
+                break
+            fi
+        done
+    fi
 }
 
 # update zenservice CRs to be reconciled again
