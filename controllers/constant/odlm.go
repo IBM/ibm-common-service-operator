@@ -595,33 +595,10 @@ metadata:
     excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
 spec:
   operators:
-  - name: ibm-mongodb-operator-v4.0
-    namespace: "{{ .CPFSNs }}"
-    channel: {{ .Channel }}
-    packageName: ibm-mongodb-operator-app
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-im-operator
     namespace: "{{ .CPFSNs }}"
     channel: {{ .Channel }}
     packageName: ibm-iam-operator
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: "{{ .CatalogSourceNs }}"
-  - name: ibm-im-operator-v4.0
-    namespace: "{{ .CPFSNs }}"
-    channel: {{ .Channel }}
-    packageName: ibm-iam-operator
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: "{{ .CatalogSourceNs }}"
-  - name: ibm-idp-config-ui-operator-v4.0
-    namespace: "{{ .CPFSNs }}"
-    channel: {{ .Channel }}
-    packageName: ibm-commonui-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
@@ -643,14 +620,6 @@ spec:
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-platformui-operator
-    namespace: "{{ .CPFSNs }}"
-    channel: {{ .Channel }}
-    packageName: ibm-zen-operator
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: "{{ .CatalogSourceNs }}"
-  - name: ibm-platformui-operator-v4.0
     namespace: "{{ .CPFSNs }}"
     channel: {{ .Channel }}
     packageName: ibm-zen-operator
@@ -694,6 +663,99 @@ spec:
     packageName: zen-cpp-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+`
+)
+
+const (
+	MongoDBOpReg = `
+apiVersion: operator.ibm.com/v1alpha1
+kind: OperandRegistry
+metadata:
+  name: common-service
+  namespace: "{{ .ServicesNs }}"
+  labels:
+    operator.ibm.com/managedByCsOperator: "true"
+  annotations:
+    version: {{ .Version }}
+    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
+spec:
+  operators:
+  - name: ibm-mongodb-operator-v4.0
+    namespace: "{{ .CPFSNs }}"
+    channel: {{ .Channel }}
+    packageName: ibm-mongodb-operator-app
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+`
+
+	IMOpReg = `
+apiVersion: operator.ibm.com/v1alpha1
+kind: OperandRegistry
+metadata:
+  name: common-service
+  namespace: "{{ .ServicesNs }}"
+  labels:
+    operator.ibm.com/managedByCsOperator: "true"
+  annotations:
+    version: {{ .Version }}
+    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
+spec:
+  operators:
+  - name: ibm-im-operator-v4.0
+    namespace: "{{ .CPFSNs }}"
+    channel: {{ .Channel }}
+    packageName: ibm-iam-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+`
+
+	IdpConfigUIOpReg = `
+apiVersion: operator.ibm.com/v1alpha1
+kind: OperandRegistry
+metadata:
+  name: common-service
+  namespace: "{{ .ServicesNs }}"
+  labels:
+    operator.ibm.com/managedByCsOperator: "true"
+  annotations:
+    version: {{ .Version }}
+    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
+spec:
+  operators:
+  - name: ibm-idp-config-ui-operator-v4.0
+    namespace: "{{ .CPFSNs }}"
+    channel: {{ .Channel }}
+    packageName: ibm-commonui-operator-app
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+`
+
+	PlatformUIOpReg = `
+apiVersion: operator.ibm.com/v1alpha1
+kind: OperandRegistry
+metadata:
+  name: common-service
+  namespace: "{{ .ServicesNs }}"
+  labels:
+    operator.ibm.com/managedByCsOperator: "true"
+  annotations:
+    version: {{ .Version }}
+    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
+spec:
+  operators:
+  - name: ibm-platformui-operator-v4.0
+    namespace: "{{ .CPFSNs }}"
+    channel: {{ .Channel }}
+    packageName: ibm-zen-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 )
 
@@ -1089,22 +1151,7 @@ metadata:
     excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
 spec:
   operators:
-  - name: ibm-mongodb-operator-v4.0
-    namespace: "{{ .CPFSNs }}"
-    channel: {{ .Channel }}
-    packageName: ibm-mongodb-operator-app
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-im-operator
-    namespace: "{{ .CPFSNs }}"
-    channel: {{ .Channel }}
-    packageName: ibm-iam-operator
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: "{{ .CatalogSourceNs }}"
-  - name: ibm-im-operator-v4.0
     namespace: "{{ .CPFSNs }}"
     channel: {{ .Channel }}
     packageName: ibm-iam-operator
@@ -1121,14 +1168,6 @@ spec:
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-platformui-operator
-    namespace: "{{ .CPFSNs }}"
-    channel: {{ .Channel }}
-    packageName: ibm-zen-operator
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: "{{ .CatalogSourceNs }}"
-  - name: ibm-platformui-operator-v4.0
     namespace: "{{ .CPFSNs }}"
     channel: {{ .Channel }}
     packageName: ibm-zen-operator

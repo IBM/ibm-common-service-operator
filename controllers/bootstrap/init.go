@@ -620,9 +620,38 @@ func (b *Bootstrap) InstallOrUpdateOpreg(forceUpdateODLMCRs bool, installPlanApp
 	if err != nil {
 		klog.Errorf("failed to concatenate registries CSV3OperandRegistry: %v", err)
 	}
+	// Append CP3 services into CP3 OprandRegistry
+	registries := []string{
+		constant.MongoDBOpReg,
+		constant.IMOpReg,
+		constant.IdpConfigUIOpReg,
+		constant.PlatformUIOpReg,
+	}
+
+	for _, reg := range registries {
+		constant.CSV3OperandRegistry, err = constant.ConcatenateRegistries(constant.CSV3OperandRegistry, reg, b.CSData)
+		if err != nil {
+			klog.Errorf("failed to append CP3 services into OprandRegistry: %v", err)
+		}
+	}
+
 	constant.CSV3SaasOperandRegistry, err = constant.ConcatenateRegistries(constant.CSV2SaasOpReg, constant.CSV3SaasOpReg, b.CSData)
 	if err != nil {
 		klog.Errorf("failed to concatenate registries CSV3SaasOperandRegistry: %v", err)
+	}
+
+	// Append CP3 services into CP3 Saas OprandRegistry
+	Saasregistries := []string{
+		constant.MongoDBOpReg,
+		constant.IMOpReg,
+		constant.IdpConfigUIOpReg,
+	}
+
+	for _, reg := range Saasregistries {
+		constant.CSV3SaasOperandRegistry, err = constant.ConcatenateRegistries(constant.CSV3SaasOperandRegistry, reg, b.CSData)
+		if err != nil {
+			klog.Errorf("failed to append CP3 services into Saas OprandRegistry: %v", err)
+		}
 	}
 
 	var obj []*unstructured.Unstructured
