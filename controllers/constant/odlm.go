@@ -32,6 +32,99 @@ var (
 	CSV3SaasOperandRegistry string
 )
 
+const (
+	MongoDBOpReg = `
+apiVersion: operator.ibm.com/v1alpha1
+kind: OperandRegistry
+metadata:
+  name: common-service
+  namespace: "{{ .ServicesNs }}"
+  labels:
+    operator.ibm.com/managedByCsOperator: "true"
+  annotations:
+    version: {{ .Version }}
+    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
+spec:
+  operators:
+  - name: ibm-mongodb-operator-v4.0
+    namespace: "{{ .CPFSNs }}"
+    channel: {{ .Channel }}
+    packageName: ibm-mongodb-operator-app
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+`
+
+	IMOpReg = `
+apiVersion: operator.ibm.com/v1alpha1
+kind: OperandRegistry
+metadata:
+  name: common-service
+  namespace: "{{ .ServicesNs }}"
+  labels:
+    operator.ibm.com/managedByCsOperator: "true"
+  annotations:
+    version: {{ .Version }}
+    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
+spec:
+  operators:
+  - name: ibm-im-operator-v4.0
+    namespace: "{{ .CPFSNs }}"
+    channel: {{ .Channel }}
+    packageName: ibm-iam-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+`
+
+	IdpConfigUIOpReg = `
+apiVersion: operator.ibm.com/v1alpha1
+kind: OperandRegistry
+metadata:
+  name: common-service
+  namespace: "{{ .ServicesNs }}"
+  labels:
+    operator.ibm.com/managedByCsOperator: "true"
+  annotations:
+    version: {{ .Version }}
+    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
+spec:
+  operators:
+  - name: ibm-idp-config-ui-operator-v4.0
+    namespace: "{{ .CPFSNs }}"
+    channel: {{ .Channel }}
+    packageName: ibm-commonui-operator-app
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+`
+
+	PlatformUIOpReg = `
+apiVersion: operator.ibm.com/v1alpha1
+kind: OperandRegistry
+metadata:
+  name: common-service
+  namespace: "{{ .ServicesNs }}"
+  labels:
+    operator.ibm.com/managedByCsOperator: "true"
+  annotations:
+    version: {{ .Version }}
+    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
+spec:
+  operators:
+  - name: ibm-platformui-operator-v4.0
+    namespace: "{{ .CPFSNs }}"
+    channel: {{ .Channel }}
+    packageName: ibm-zen-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+`
+)
+
 const CSV3OperandConfig = `
 apiVersion: operator.ibm.com/v1alpha1
 kind: OperandConfig
@@ -603,14 +696,6 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
-  - name: ibm-idp-config-ui-operator
-    namespace: "{{ .CPFSNs }}"
-    channel: {{ .Channel }}
-    packageName: ibm-commonui-operator-app
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: v3
     name: ibm-events-operator
     namespace: "{{ .CPFSNs }}"
@@ -663,99 +748,6 @@ spec:
     packageName: zen-cpp-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
-`
-)
-
-const (
-	MongoDBOpReg = `
-apiVersion: operator.ibm.com/v1alpha1
-kind: OperandRegistry
-metadata:
-  name: common-service
-  namespace: "{{ .ServicesNs }}"
-  labels:
-    operator.ibm.com/managedByCsOperator: "true"
-  annotations:
-    version: {{ .Version }}
-    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
-spec:
-  operators:
-  - name: ibm-mongodb-operator-v4.0
-    namespace: "{{ .CPFSNs }}"
-    channel: {{ .Channel }}
-    packageName: ibm-mongodb-operator-app
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: "{{ .CatalogSourceNs }}"
-`
-
-	IMOpReg = `
-apiVersion: operator.ibm.com/v1alpha1
-kind: OperandRegistry
-metadata:
-  name: common-service
-  namespace: "{{ .ServicesNs }}"
-  labels:
-    operator.ibm.com/managedByCsOperator: "true"
-  annotations:
-    version: {{ .Version }}
-    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
-spec:
-  operators:
-  - name: ibm-im-operator-v4.0
-    namespace: "{{ .CPFSNs }}"
-    channel: {{ .Channel }}
-    packageName: ibm-iam-operator
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: "{{ .CatalogSourceNs }}"
-`
-
-	IdpConfigUIOpReg = `
-apiVersion: operator.ibm.com/v1alpha1
-kind: OperandRegistry
-metadata:
-  name: common-service
-  namespace: "{{ .ServicesNs }}"
-  labels:
-    operator.ibm.com/managedByCsOperator: "true"
-  annotations:
-    version: {{ .Version }}
-    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
-spec:
-  operators:
-  - name: ibm-idp-config-ui-operator-v4.0
-    namespace: "{{ .CPFSNs }}"
-    channel: {{ .Channel }}
-    packageName: ibm-commonui-operator-app
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: "{{ .CatalogSourceNs }}"
-`
-
-	PlatformUIOpReg = `
-apiVersion: operator.ibm.com/v1alpha1
-kind: OperandRegistry
-metadata:
-  name: common-service
-  namespace: "{{ .ServicesNs }}"
-  labels:
-    operator.ibm.com/managedByCsOperator: "true"
-  annotations:
-    version: {{ .Version }}
-    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
-spec:
-  operators:
-  - name: ibm-platformui-operator-v4.0
-    namespace: "{{ .CPFSNs }}"
-    channel: {{ .Channel }}
-    packageName: ibm-zen-operator
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 )
 
