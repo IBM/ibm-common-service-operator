@@ -302,16 +302,15 @@ function check_IAM(){
     do
         zenservice_exists=$(${OC} get zenservice -n $cp_namespace || echo fail)
         if [[ $zenservice_exists != "fail" ]] && [[ $zenservice_exists != "" ]]; then
-            iam_enabled=$(${OC} get zenservice -n $cp_namespace -o yaml | grep iamIntegration | awk '{print $2}')
+            zenservice=$(${OC} get zenservice -n $cp_namespace --no-headers | awk '{print $1}')
+            iam_enabled=$(${OC} get zenservice $zenservice -n $cp_namespace -o yaml | ${YQ} '.spec.iamIntegration')
             if [[ $iam_enabled == "true" ]]; then
                 break
-            else
-                info "IAM not requested by zenservice in namespace $cp_namespace, skipping wait."
             fi
         fi
     done
     
-    if [[ $iam_enabled ]]; then
+    if [[ $iam_enabled == "true" ]]; then
         retries=40
         sleep_time=30
         total_time_mins=$(( sleep_time * retries / 60))
@@ -337,6 +336,8 @@ function check_IAM(){
                 break
             fi
         done
+    else
+        info "IAM not requested by zen, skipping wait."
     fi
 }
 
