@@ -536,11 +536,54 @@ function cleanup_webhook() {
 
 }
 
+function check_if_certmanager_deployed() {
+    local namespace=$1
+    shift
+    local namespaces=$@
+    info "checking for cert manager deployed in scope."
+    local deployed="false"
+    for ns in $namespaces
+    do
+        local return_value=$(${OC} get opreq -n $ns -o yaml | grep "-name: ibm-cert-manager-operator" || echo "fail")
+        if [[ $return_value != "fail" ]]; then
+            deployed="true"
+            break
+        fi
+    done
+
+    if [[ $deployed == "false" ]]; then
+        cat <<EOF > tmp-opreq.yaml
+apiVersion: operator.ibm.com/v1alpha1
+kind: OperandRequest
+metadata:
+labels:
+    app.kubernetes.io/instance: operand-deployment-lifecycle-manager
+    app.kubernetes.io/managed-by: operand-deployment-lifecycle-manager
+    app.kubernetes.io/name: odlm
+name: ibm-cert-manager-operator
+namespace: $namespace
+spec:
+requests:
+- operands:
+    - name: ibm-cert-manager-operator
+    registry: common-service
+EOF
+
+    oc apply -f tmp-opreq.yaml
+    rm -f tmp-opreq.yaml
+    fi
+
+}
+
 function wait_for_certmanager() {
     local namespace=$1
+    shift
+    local namespaces=$@
     title " Wait for Cert Manager pods to come ready in namespace $namespace "
     msg "-----------------------------------------------------------------------"
     
+    check_if_certmanager_deployed "${namespace}" "${namespaces}"
+
     #check cert manager operator pod
     local name="ibm-cert-manager-operator"
     local condition="${OC} -n ${namespace} get deploy --no-headers --ignore-not-found | egrep '1/1' | grep ^${name} || true"
