@@ -556,17 +556,17 @@ function check_if_certmanager_deployed() {
 apiVersion: operator.ibm.com/v1alpha1
 kind: OperandRequest
 metadata:
-labels:
-    app.kubernetes.io/instance: operand-deployment-lifecycle-manager
-    app.kubernetes.io/managed-by: operand-deployment-lifecycle-manager
-    app.kubernetes.io/name: odlm
-name: ibm-cert-manager-operator
-namespace: $namespace
+    labels:
+        app.kubernetes.io/instance: operand-deployment-lifecycle-manager
+        app.kubernetes.io/managed-by: operand-deployment-lifecycle-manager
+        app.kubernetes.io/name: odlm
+    name: ibm-cert-manager-operator
+    namespace: $namespace
 spec:
 requests:
 - operands:
     - name: ibm-cert-manager-operator
-    registry: common-service
+  registry: common-service
 EOF
 
     oc apply -f tmp-opreq.yaml
