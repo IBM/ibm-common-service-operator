@@ -87,7 +87,11 @@ function main() {
     check_cm_ns_exist "$ns_list $CONTROL_NS" # debating on turning this off by default since this technically falls outside the scope of isolate
     isolate_odlm "ibm-odlm" $MASTER_NS
     restart
-    wait_for_certmanager "$CONTROL_NS"
+    if [[ $CERT_MANAGER_MIGRATED == "true" ]]; then
+        wait_for_certmanager "$CONTROL_NS" "${ns_list}"
+    else
+        info "Cert Manager not migrated, skipping wait."
+    fi
     success "Isolation complete"
 }
 
@@ -536,10 +540,60 @@ function cleanup_webhook() {
 
 }
 
+function check_if_certmanager_deployed() {
+    local namespace=$1
+    shift
+    local namespaces=$@
+    info "checking for cert manager deployed in scope."
+    local deployed="false"
+    for ns in $namespaces
+    do
+        opreqs=$(${OC} get opreq -n $ns --no-headers | awk '{print $1}' | tr '\n' ' ')
+        for opreq in $opreqs
+        do
+            local return_value=$(${OC} get opreq $opreq -n $ns -o yaml | ${YQ} '.spec.requests[]' | grep "name: ibm-cert-manager-operator" || echo "fail")
+            if [[ $return_value != "fail" ]]; then
+                deployed="true"
+                info "Cert manager requested in scope, moving on..."
+                break
+            fi
+        done
+    done
+
+    if [[ $deployed == "false" ]]; then
+        info "Cert manager not requested in scope, deploying..."
+        cat <<EOF > tmp-opreq.yaml
+apiVersion: operator.ibm.com/v1alpha1
+kind: OperandRequest
+metadata:
+  labels:
+    app.kubernetes.io/instance: operand-deployment-lifecycle-manager
+    app.kubernetes.io/managed-by: operand-deployment-lifecycle-manager
+    app.kubernetes.io/name: odlm
+  name: ibm-cert-manager-operator
+  namespace: $namespace
+spec:
+  requests:
+    - operands:
+        - name: ibm-cert-manager-operator
+      registry: common-service
+      registryNamespace: $MASTER_NS
+EOF
+
+    oc apply -f tmp-opreq.yaml
+    rm -f tmp-opreq.yaml
+    fi
+
+}
+
 function wait_for_certmanager() {
     local namespace=$1
+    shift
+    local namespaces=$@
     title " Wait for Cert Manager pods to come ready in namespace $namespace "
     msg "-----------------------------------------------------------------------"
+    
+    check_if_certmanager_deployed "${namespace}" "${namespaces}"
 
     #check cert manager operator pod
     local name="ibm-cert-manager-operator"
