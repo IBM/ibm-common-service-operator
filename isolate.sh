@@ -87,7 +87,11 @@ function main() {
     check_cm_ns_exist "$ns_list $CONTROL_NS" # debating on turning this off by default since this technically falls outside the scope of isolate
     isolate_odlm "ibm-odlm" $MASTER_NS
     restart
-    wait_for_certmanager "$CONTROL_NS"
+    if [[ $CERT_MANAGER_MIGRATED == "true" ]]; then
+        wait_for_certmanager "$CONTROL_NS"
+    else
+        info "Cert Manager not migrated, skipping wait."
+    fi
     success "Isolation complete"
 }
 
