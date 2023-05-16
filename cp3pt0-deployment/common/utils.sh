@@ -52,6 +52,21 @@ function check_command() {
     fi
 }
 
+function check_version() {
+    local command=$1
+    local version_cmd=$2
+    local variant=$3
+    local version=$4
+
+    result=$(${command} ${version_cmd})
+    echo "$result" | grep -q "${variant}" && echo "$result" | grep -Eq "${version}"
+    if [[ $? -ne 0 ]]; then
+        error "${command} command is not supported"
+    else
+        success "${command} command is supported"
+    fi
+}
+
 function check_return_code() {
     local rc=$1
     local error_message=$2
@@ -241,6 +256,20 @@ function wait_for_operand_request() {
     local wait_message="Waiting for operand request ${name} to be running"
     local success_message="Operand request ${name} is running"
     local error_message="Timeout after ${total_time_mins} minutes waiting for operand request ${name} to be running"
+ 
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
+function wait_for_cs_webhook() {
+    local namespace=$1
+    local name=$2
+    local condition="${OC} -n ${namespace} get service --no-headers | (grep ${name})"
+    local retries=20
+    local sleep_time=10
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for CS webhook service to be ready"
+    local success_message="CS Webhook Service ${name} is ready"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for common service webhook service to be ready"
  
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
