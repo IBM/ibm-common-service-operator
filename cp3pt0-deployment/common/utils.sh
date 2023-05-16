@@ -52,6 +52,21 @@ function check_command() {
     fi
 }
 
+function check_version() {
+    local command=$1
+    local version_cmd=$2
+    local variant=$3
+    local version=$4
+
+    result=$(${command} ${version_cmd})
+    echo "$result" | grep -q "${variant}" && echo "$result" | grep -Eq "${version}"
+    if [[ $? -ne 0 ]]; then
+        error "${command} command is not supported"
+    else
+        success "${command} command is supported"
+    fi
+}
+
 function check_return_code() {
     local rc=$1
     local error_message=$2

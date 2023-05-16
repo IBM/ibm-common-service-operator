@@ -185,10 +185,10 @@ function parse_arguments() {
 
 function print_usage() {
     script_name=`basename ${0}`
-    echo "Usage: ${script_name} --operator-namespace <foundational-services-namespace> [OPTIONS]..."
+    echo "Usage: ${script_name} --license-accept --operator-namespace <foundational-services-namespace> [OPTIONS]..."
     echo ""
     echo "Migrate Cloud Pak 2.0 Foundational services to in Cloud Pak 3.0 Foundational services"
-    echo "The --operator-namespace must be provided."
+    echo "The --license-accept and --operator-namespace <operator-namespace> must be provided."
     echo ""
     echo "Options:"
     echo "   --oc string                    File path to oc CLI. Default uses oc in your PATH"
@@ -211,6 +211,10 @@ function print_usage() {
 function pre_req() {
     check_command "${OC}"
     check_command "${YQ}"
+
+    # TODO: add more compatibility
+    # # checking yq version is v4.30+
+    # check_version "${YQ}" "--version" "mikefarah" "4\.([3-9][0-9])\.[0-9]+"
 
     # checking oc command logged in
     user=$(${OC} whoami 2> /dev/null)
