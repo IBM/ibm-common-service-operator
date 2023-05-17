@@ -541,10 +541,8 @@ function cleanup_webhook() {
 }
 
 function check_if_certmanager_deployed() {
-    local namespace=$1
-    shift
     local namespaces=$@
-    info "checking for cert manager deployed in scope."
+    info "Checking for cert manager deployed in scope."
     local deployed="false"
     for ns in $namespaces
     do
@@ -571,7 +569,7 @@ metadata:
     app.kubernetes.io/managed-by: operand-deployment-lifecycle-manager
     app.kubernetes.io/name: odlm
   name: ibm-cert-manager-operator
-  namespace: $namespace
+  namespace: $MASTER_NS
 spec:
   requests:
     - operands:
@@ -593,7 +591,7 @@ function wait_for_certmanager() {
     title " Wait for Cert Manager pods to come ready in namespace $namespace "
     msg "-----------------------------------------------------------------------"
     
-    check_if_certmanager_deployed "${namespace}" "${namespaces}"
+    check_if_certmanager_deployed "${namespaces}"
 
     #check cert manager operator pod
     local name="ibm-cert-manager-operator"
