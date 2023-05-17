@@ -45,7 +45,7 @@ function parse_arguments() {
             shift
             OC=$1
             ;;
-        --target-namespace)
+        --operator-namespace)
             shift
             OPERATOR_NS=$1
             ;;
@@ -74,8 +74,8 @@ function print_usage() {
     echo ""
     echo "Options:"
     echo "   --oc string                    File path to oc CLI. Default uses oc in your PATH"
-    echo "   --target-namespace string      Required. Namespace to uninstall Foundational services operator"
-    echo "   -f                             Enable force delete"
+    echo "   --operator-namespace string    Required. Namespace to uninstall Foundational services operators and the whole tenant."
+    echo "   -f                             Enable force delete. It will take much more time if you add this label, we suggest run this script without -f label first"
     echo "   -h, --help                     Print usage information"
     echo ""
 }
@@ -92,7 +92,11 @@ function pre_req() {
     fi
 
     if [ "$OPERATOR_NS" == "" ]; then
-        error "Must provide target namespace"
+        error "Must provide operator namespace"
+    fi
+
+    if [ $FORCE_DELETE -eq 1 ]; then
+        warning "It will take much more time"
     fi
 }
 
