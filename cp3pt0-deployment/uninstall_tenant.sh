@@ -45,7 +45,7 @@ function parse_arguments() {
             shift
             OC=$1
             ;;
-        --operator-namespace)
+        --target-namespace)
             shift
             OPERATOR_NS=$1
             ;;
@@ -74,7 +74,7 @@ function print_usage() {
     echo ""
     echo "Options:"
     echo "   --oc string                    File path to oc CLI. Default uses oc in your PATH"
-    echo "   --operator-namespace string    Required. Namespace to install Foundational services operator"
+    echo "   --target-namespace string      Required. Namespace to uninstall Foundational services operator"
     echo "   -f                             Enable force delete"
     echo "   -h, --help                     Print usage information"
     echo ""
