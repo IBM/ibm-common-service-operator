@@ -193,18 +193,18 @@ function uninstall_nss() {
 function delete_webhook() {
     title "Deleting webhookconfigurations in ${TENANT_NAMESPACES}"
     for ns in ${TENANT_NAMESPACES//,/ }; do
-        ${OC} delete ValidatingWebhookConfiguration ibm-cs-ns-mapping-webhook-configuration ibm-common-service-validating-webhook-${ns} --ignore-not-found
+        ${OC} delete ValidatingWebhookConfiguration ibm-common-service-validating-webhook-${ns} --ignore-not-found
         ${OC} delete MutatingWebhookConfiguration ibm-common-service-webhook-configuration ibm-operandrequest-webhook-configuration namespace-admission-config ibm-common-service-validating-webhook-${ns} --ignore-not-found
     done
 }
 
 function delete_rbac_resource() {
     info "delete rbac resource"
-    ${OC} delete ClusterRoleBinding ibm-common-service-webhook secretshare-${OPERATOR_NS} $(${OC} get ClusterRoleBinding | grep nginx-ingress-clusterrole | awk '{print $1}') --ignore-not-found
-    ${OC} delete ClusterRole ibm-common-service-webhook secretshare nginx-ingress-clusterrole --ignore-not-found
-    ${OC} delete RoleBinding ibmcloud-cluster-info ibmcloud-cluster-ca-cert -n kube-public --ignore-not-found
-    ${OC} delete Role ibmcloud-cluster-info ibmcloud-cluster-ca-cert -n kube-public --ignore-not-found
-    ${OC} delete scc nginx-ingress-scc --ignore-not-found
+    for ns in ${TENANT_NAMESPACES//,/ }; do
+        ${OC} delete ClusterRoleBinding ibm-common-service-webhook secretshare-${ns} $(${OC} get ClusterRoleBinding | grep nginx-ingress-clusterrole | awk '{print $1}') --ignore-not-found
+        ${OC} delete ClusterRole ibm-common-service-webhook secretshare nginx-ingress-clusterrole --ignore-not-found
+        ${OC} delete scc nginx-ingress-scc --ignore-not-found
+    done
 }
 
 function delete_unavailable_apiservice() {

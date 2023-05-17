@@ -986,7 +986,7 @@ function delete_operand_finalizer() {
     local crds=$1
     local ns=$2
     for crd in ${crds}; do
-        if [ "${crd}" != "packagemanifests.packages.operators.coreos.com" ]; then
+        if [ "${crd}" != "packagemanifests.packages.operators.coreos.com" ] && [ "${crd}" != "events" ]; then
             crs=$(${OC} get ${crd} --no-headers --ignore-not-found -n ${ns} 2>/dev/null | awk '{print $1}')
             for cr in ${crs}; do
                 msg "Removing the finalizers for resource: ${crd}/${cr}"
