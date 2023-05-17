@@ -92,7 +92,7 @@ function pre_req() {
     fi
 
     if [ "$OPERATOR_NS" == "" ]; then
-        error "Must provide operator namespace"
+        error "Must provide target namespace"
     fi
 }
 
