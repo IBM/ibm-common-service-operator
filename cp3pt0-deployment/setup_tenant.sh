@@ -197,7 +197,7 @@ function pre_req() {
     fi
 
     if [[ "$SERVICES_NS" == "$OPERATOR_NS" && "$TETHERED_NS" == "" && "$EXCLUDED_NS" == "" ]]; then
-        error "Must provide additional namespaces for --tethered-namespaces or --excluded-ns when services-namespace is the same as operator-namespace"
+        error "Must provide additional namespaces for --tethered-namespaces or --excluded-namespaces when services-namespace is the same as operator-namespace"
     fi
 
     if [[ "$TETHERED_NS" == "$OPERATOR_NS" || "$TETHERED_NS" == "$SERVICES_NS" ]]; then
