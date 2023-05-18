@@ -992,13 +992,18 @@ func (b *Bootstrap) IsBYOCert() (bool, error) {
 	}
 }
 
-func (b *Bootstrap) DeployCertManagerCR(isBYOC bool) error {
+func (b *Bootstrap) DeployCertManagerCR() error {
 	klog.V(2).Info("Fetch all the CommonService instances")
 	csObjectList := &apiv3.CommonServiceList{}
 	if err := b.Client.List(ctx, csObjectList); err != nil {
 		return err
 	}
 	csList, err := util.ObjectListToNewUnstructuredList(csObjectList)
+	if err != nil {
+		return err
+	}
+	// If it is BYOCert
+	isBYOC, err := b.IsBYOCert()
 	if err != nil {
 		return err
 	}
