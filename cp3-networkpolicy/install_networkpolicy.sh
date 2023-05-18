@@ -197,12 +197,12 @@ function install_networkpolicy() {
     
     for policyfile in `ls -1 ${BASE_DIR}/services/*.yaml`; do
         info "Installing `basename ${policyfile}` ..."
-        cat ${policyfile} | sed -e "s/csNamespace/${CS_NAMESPACE}/g" | oc apply -f -
+        cat ${policyfile} | sed -e "s/csNamespace/${CS_NAMESPACE}/g" | sed -e "s/opNamespace/${OPERATORS_NAMESPACE}/g" | oc apply -f -
     done
 
     for policyfile in `ls -1 ${BASE_DIR}/operators/*.yaml`; do
         info "Installing `basename ${policyfile}` ..."
-        cat ${policyfile} | sed -e "s/csNamespace/${OPERATORS_NAMESPACE}/g" | oc apply -f -
+        cat ${policyfile} | sed -e "s/csNamespace/${CS_NAMESPACE}/g" | sed -e "s/opNamespace/${OPERATORS_NAMESPACE}/g" | oc apply -f -
     done
 
 }

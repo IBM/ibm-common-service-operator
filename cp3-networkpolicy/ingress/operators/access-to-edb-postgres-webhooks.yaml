@@ -4,7 +4,7 @@ metadata:
   labels:
     component: cpfs3
   name: access-to-edb-postgres-webhooks
-  namespace: "csNamespace"
+  namespace: "opNamespace"
 spec:
   ingress:
   - {}
@@ -13,4 +13,3 @@ spec:
       app.kubernetes.io/name: cloud-native-postgresql
   policyTypes:
   - Ingress
-

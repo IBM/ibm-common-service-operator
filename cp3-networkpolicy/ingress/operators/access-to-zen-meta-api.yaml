@@ -4,7 +4,7 @@ metadata:
   labels:
     component: cpfs3
   name: access-to-zen-meta-api
-  namespace: "csNamespace"
+  namespace: "opNamespace"
 spec:
   ingress:
   - {}

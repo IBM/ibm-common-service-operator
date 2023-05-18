@@ -4,7 +4,7 @@ metadata:
   labels:
     component: cpfs3
   name: allow-webhook-access-from-apiserver
-  namespace: "csNamespace"
+  namespace: "opNamespace"
 spec:
   ingress:
   - from:

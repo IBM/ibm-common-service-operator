@@ -4,7 +4,7 @@ metadata:
   labels:
     component: cpfs3
   name: access-to-ibm-common-service-operator
-  namespace: "csNamespace"
+  namespace: "opNamespace"
 spec:
   ingress:
   - {}
