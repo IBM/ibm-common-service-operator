@@ -198,7 +198,7 @@ function delete_webhook() {
     title "Deleting webhookconfigurations in ${TENANT_NAMESPACES}"
     for ns in ${TENANT_NAMESPACES//,/ }; do
         ${OC} delete ValidatingWebhookConfiguration ibm-common-service-validating-webhook-${ns} --ignore-not-found
-        ${OC} delete MutatingWebhookConfiguration ibm-common-service-webhook-configuration ibm-operandrequest-webhook-configuration namespace-admission-config ibm-common-service-validating-webhook-${ns} --ignore-not-found
+        ${OC} delete MutatingWebhookConfiguration ibm-common-service-webhook-configuration ibm-operandrequest-webhook-configuration namespace-admission-config ibm-operandrequest-webhook-configuration-${ns} --ignore-not-found
     done
 }
 
