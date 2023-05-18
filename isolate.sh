@@ -82,9 +82,9 @@ function main() {
     create_empty_csmaps
     insert_control_ns
     update_tenant "${MASTER_NS}" "${ns_list}"
+    check_cm_ns_exist "$ns_list $CONTROL_NS" # debating on turning this off by default since this technically falls outside the scope of isolate
     removeNSS
     uninstall_singletons
-    check_cm_ns_exist "$ns_list $CONTROL_NS" # debating on turning this off by default since this technically falls outside the scope of isolate
     isolate_odlm "ibm-odlm" $MASTER_NS
     restart
     if [[ $CERT_MANAGER_MIGRATED == "true" ]]; then
