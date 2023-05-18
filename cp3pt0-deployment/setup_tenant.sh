@@ -18,6 +18,7 @@ SOURCE_NS="openshift-marketplace"
 OPERATOR_NS=""
 SERVICES_NS=""
 TETHERED_NS=""
+EXCLUDED_NS=""
 SIZE_PROFILE="starterset"
 INSTALL_MODE="Automatic"
 DEBUG=0
@@ -65,6 +66,10 @@ function parse_arguments() {
         --tethered-namespaces)
             shift
             TETHERED_NS=$1
+            ;;
+        --excluded-namespaces)
+            shift
+            EXCLUDED_NS=$1
             ;;
         --license-accept)
             LICENSE_ACCEPT=1
@@ -117,7 +122,8 @@ function print_usage() {
     echo "   --enable-licensing             Set this flag to install ibm-licensing-operator"
     echo "   --operator-namespace string    Required. Namespace to install Foundational services operator"
     echo "   --services-namespace           Namespace to install operands of Foundational services, i.e. 'dataplane'. Default is the same as operator-namespace"
-    echo "   --tethered-namespaces string   Additional namespaces for this tenant, comma-delimited, e.g. 'ns1,ns2'"
+    echo "   --tethered-namespaces string   Add namespaces to this tenant, comma-delimited, e.g. 'ns1,ns2'"
+    echo "   --excluded-namespaces string   Remove namespaces from this tenant, comma-delimited, e.g. 'ns1,ns2'"
     echo "   --license-accept               Set this flag to accept the license agreement"
     echo "   -c, --channel string           Channel for Subscription(s). Default is v4.0"
     echo "   -i, --install-mode string      InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
@@ -248,7 +254,36 @@ EOF
 
     # add the tethered optional namespaces for a tenant to namespaceMembers
     # ${TETHERED_NS} is comma delimited, so need to replace commas with space
-    for n in $SERVICES_NS ${TETHERED_NS//,/ }; do
+    nss_exists=$(${OC} get nss common-service -n $OPERATOR_NS || echo "fail")
+    if [[ $nss_exists != "fail" ]]; then
+        existing_ns=$(${OC} get nss common-service -n $OPERATOR_NS -o=jsonpath='{.spec.namespaceMembers}' | tr -d \" | tr -d [ | tr -d ])
+        if [[ $existing_ns != "" ]]; then
+            existing_ns="${existing_ns//,/ }"
+            if [[ $EXCLUDED_NS != "" ]]; then
+                #remove excluded ns
+                tmp_ns_list=""
+                for ns in $existing_ns
+                do
+                    contains_ns=$([[ ${EXCLUDED_NS[@]} =~ $ns ]] || echo "false")
+                    if [[ $contains_ns == "false" ]]; then
+                        if [[ $tmp_ns_list == "" ]]; then
+                            tmp_ns_list="${ns}"
+                        else
+                            tmp_ns_list="${tmp_ns_list} ${ns}"
+                        fi
+                    fi
+                done
+                existing_ns="${tmp_ns_list}"
+            fi
+            new_ns_list=$(echo ${existing_ns} ${TETHERED_NS//,/ } | xargs -n1 | sort -u | xargs)
+        else
+            new_ns_list=${TETHERED_NS//,/ }
+        fi
+    else
+        new_ns_list=${TETHERED_NS//,/ }
+    fi
+    
+    for n in $SERVICES_NS ${new_ns_list}; do
         local ns=$ns$(cat <<EOF
 
     - $n
