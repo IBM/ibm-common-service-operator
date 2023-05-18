@@ -312,10 +312,7 @@ function uninstall_singletons() {
     "${OC}" delete -n "${MASTER_NS}" --ignore-not-found csv "${csv}"
 
     migrate_lic_cms $MASTER_NS
-    isExists=$("${OC}" get deployments -n "${MASTER_NS}" --ignore-not-found ibm-licensing-operator)
-    if [ ! -z "$isExists" ]; then
-        "${OC}" delete -n "${MASTER_NS}" --ignore-not-found ibmlicensing instance
-    fi
+
 
     #might need a more robust check for if licensing is installed
     #"${OC}" delete -n "${MASTER_NS}" --ignore-not-found sub ibm-licensing-operator
@@ -323,6 +320,7 @@ function uninstall_singletons() {
     if [[ $csv != "fail" ]]; then
         "${OC}" delete -n "${MASTER_NS}" --ignore-not-found sub ibm-licensing-operator
         "${OC}" delete -n "${MASTER_NS}" --ignore-not-found csv "${csv}"
+        "${OC}" delete -n "${MASTER_NS}" --ignore-not-found OperandBindInfo ibm-licensing-bindinfo
     fi
     "${OC}" delete -n "${MASTER_NS}" --ignore-not-found sub ibm-crossplane-operator-app
     "${OC}" delete -n "${MASTER_NS}" --ignore-not-found sub ibm-crossplane-provider-kubernetes-operator-app
