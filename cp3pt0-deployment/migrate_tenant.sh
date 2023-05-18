@@ -58,7 +58,7 @@ function main() {
 
     # Migrate singleton services
     local arguments="--enable-licensing"
-    arguments=" -licensingNs $CONTROL_NS"
+    arguments+=" -licensingNs $CONTROL_NS"
 
     if [[ $ENABLE_PRIVATE_CATALOG -eq 1 ]]; then
         arguments+=" --enable-private-catalog"
