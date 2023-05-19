@@ -361,6 +361,20 @@ function wait_for_operator_upgrade() {
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
+function wait_for_cs_webhook() {
+    local namespace=$1
+    local name=$2
+    local condition="${OC} -n ${namespace} get service --no-headers | (grep ${name})"
+    local retries=20
+    local sleep_time=10
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for CS webhook service to be ready"
+    local success_message="CS Webhook Service ${name} is ready"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for common service webhook service to be ready"
+
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
 function is_sub_exist() {
     local package_name=$1
     if [ $# -eq 2 ]; then
