@@ -1000,7 +1000,7 @@ func CheckClusterType(mgr manager.Manager, ns string) (bool, error) {
 // if we get secret but not get the cert, it is BYOC
 func (b *Bootstrap) IsBYOCert() (bool, error) {
 	klog.V(2).Info("Detect if it is BYO cert")
-	secretName := "cs-ca-ceritifcate-secret"
+	secretName := "cs-ca-certificate-secret"
 	secret := &corev1.Secret{}
 	err := b.Client.Get(context.TODO(), types.NamespacedName{Name: secretName, Namespace: b.CSData.ServicesNs}, secret)
 	if err != nil {
@@ -1030,13 +1030,18 @@ func (b *Bootstrap) IsBYOCert() (bool, error) {
 	}
 }
 
-func (b *Bootstrap) DeployCertManagerCR(isBYOC bool) error {
+func (b *Bootstrap) DeployCertManagerCR() error {
 	klog.V(2).Info("Fetch all the CommonService instances")
 	csObjectList := &apiv3.CommonServiceList{}
 	if err := b.Client.List(ctx, csObjectList); err != nil {
 		return err
 	}
 	csList, err := util.ObjectListToNewUnstructuredList(csObjectList)
+	if err != nil {
+		return err
+	}
+	// If it is BYOCert
+	isBYOC, err := b.IsBYOCert()
 	if err != nil {
 		return err
 	}
