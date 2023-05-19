@@ -320,8 +320,11 @@ function uninstall_singletons() {
     if [[ $csv != "fail" ]]; then
         "${OC}" delete -n "${MASTER_NS}" --ignore-not-found sub ibm-licensing-operator
         "${OC}" delete -n "${MASTER_NS}" --ignore-not-found csv "${csv}"
-        "${OC}" delete -n "${MASTER_NS}" --ignore-not-found OperandBindInfo ibm-licensing-bindinfo
-        "${OC}" patch  -n "${MASTER_NS}" OperandBindInfo ibm-licensing-bindinfo --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+        local is_deleted=$(("${OC}" delete -n "${MASTER_NS}" --ignore-not-found OperandBindInfo ibm-licensing-bindinfo --timeout=10s > /dev/null && echo "success" ) || echo "fail")
+        if [[ $is_deleted == "fail" ]]; then
+            warning "Failed to delete OperandBindInfo, patching its finalizer to null..."
+            ${OC} patch -n "${MASTER_NS}" OperandBindInfo ibm-licensing-bindinfo --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+        fi
     fi
     "${OC}" delete -n "${MASTER_NS}" --ignore-not-found sub ibm-crossplane-operator-app
     "${OC}" delete -n "${MASTER_NS}" --ignore-not-found sub ibm-crossplane-provider-kubernetes-operator-app

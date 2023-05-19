@@ -60,9 +60,12 @@ function main() {
         if [[ "$CONTROL_NS" == "$OPERATOR_NS" ]]; then
             # Migrate Licensing Services Data
             ${BASE_DIR}/migrate_cp2_licensing.sh --control-namespace $CONTROL_NS "--skip-user-vertify"
+            local is_deleted=$(("${OC}" delete -n "${CONTROL_NS}" --ignore-not-found OperandBindInfo ibm-licensing-bindinfo --timeout=10s > /dev/null && echo "success" ) || echo "fail")
+            if [[ $is_deleted == "fail" ]]; then
+                warning "Failed to delete OperandBindInfo, patching its finalizer to null..."
+                ${OC} patch -n "${CONTROL_NS}" OperandBindInfo ibm-licensing-bindinfo --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+            fi
         fi
-        # Delete IBM Licensing Service instance
-        ${OC} delete --ignore-not-found ibmlicensing instance
         # Delete licensing csv/subscriptions
         delete_operator "ibm-licensing-operator" "$CONTROL_NS"
     fi
