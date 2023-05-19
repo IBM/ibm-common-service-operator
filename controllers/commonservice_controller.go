@@ -60,8 +60,6 @@ const (
 	CRFailed       string = "Failed"
 )
 
-// var ctx = context.Background()
-
 func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 
 	klog.Infof("Reconciling CommonService: %s", req.NamespacedName)

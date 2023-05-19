@@ -206,6 +206,11 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 	// Install/update Opreg and Opcon resources before installing ODLM if CRDs exist
 	if existOpreg && existOpcon {
 
+		klog.Info("Checking OperandRegistry and OperandConfig deployment status")
+		if err := b.ConfigODLMOperandManagedByOperator(ctx); err != nil {
+			return err
+		}
+
 		klog.Info("Installing/Updating OperandRegistry")
 		if err := b.InstallOrUpdateOpreg(forceUpdateODLMCRs, installPlanApproval); err != nil {
 			return err
@@ -222,16 +227,11 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		return err
 	}
 
-	// create and wait ODLM OperandRegistry and OperandConfig CR resources
+	// wait ODLM OperandRegistry and OperandConfig CRD
 	if err := b.waitResourceReady("operator.ibm.com/v1alpha1", "OperandRegistry"); err != nil {
 		return err
 	}
 	if err := b.waitResourceReady("operator.ibm.com/v1alpha1", "OperandConfig"); err != nil {
-		return err
-	}
-
-	klog.Info("Checking OperandRegistry and OperandConfig deployment status")
-	if err := b.ConfigODLMOperandManagedByOperator(ctx); err != nil {
 		return err
 	}
 
@@ -533,6 +533,28 @@ func (b *Bootstrap) ListOperandConfig(ctx context.Context, opts ...client.ListOp
 	}
 
 	return opconfigList
+}
+
+// ListCerts returns the Certificate instance list with "options"
+func (b *Bootstrap) ListCerts(ctx context.Context, opts ...client.ListOption) *certmanagerv1.CertificateList {
+	certList := &certmanagerv1.CertificateList{}
+	if err := b.Client.List(ctx, certList, opts...); err != nil {
+		klog.Errorf("failed to List Cert Manager Certificates: %v", err)
+		return nil
+	}
+
+	return certList
+}
+
+// ListIssuer returns the Iusser instance list with "options"
+func (b *Bootstrap) ListIssuer(ctx context.Context, opts ...client.ListOption) *certmanagerv1.IssuerList {
+	issuerList := &certmanagerv1.IssuerList{}
+	if err := b.Client.List(ctx, issuerList, opts...); err != nil {
+		klog.Errorf("failed to List Cert Manager Issuers: %v", err)
+		return nil
+	}
+
+	return issuerList
 }
 
 func (b *Bootstrap) CheckOperatorCatalog(ns string) error {
@@ -1059,6 +1081,11 @@ func (b *Bootstrap) DeployCertManagerCR(isBYOC bool) error {
 		}
 	}
 
+	klog.Info("Checking Cert Manager Certs and Issuers deployment")
+	if err := b.ConfigCertManagerOperandManagedByOperator(ctx); err != nil {
+		return err
+	}
+
 	for _, cr := range constant.CertManagerIssuers {
 		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.ServicesNs))); err != nil {
 			return err
@@ -1151,6 +1178,42 @@ func (b *Bootstrap) ConfigODLMOperandManagedByOperator(ctx context.Context) erro
 			} else if opconfig.Namespace != b.CSData.ServicesNs && opconfig.Status.Phase != odlm.ServiceInit {
 				klog.Warningf("Skipped deleting OperandConfig %s/%s, its status is %s", opconfig.GetNamespace(), opconfig.GetName(), opconfig.Status.Phase)
 				return fmt.Errorf("please configure the correct ServicesNamespace or uninstall the existing foundational services to configure the correct OperandConfig")
+			}
+		}
+	}
+
+	return nil
+}
+
+func (b *Bootstrap) ConfigCertManagerOperandManagedByOperator(ctx context.Context) error {
+	opts := []client.ListOption{
+		client.MatchingLabels(
+			map[string]string{constant.CsManagedLabel: "true"}),
+	}
+
+	certsList := b.ListCerts(ctx, opts...)
+	if certsList != nil {
+		for _, cert := range certsList.Items {
+			if cert.Namespace != b.CSData.ServicesNs {
+				if err := b.Client.Delete(ctx, &cert); err != nil {
+					klog.Errorf("Failed to delete idle Cert Manager Certificate %s/%s which is managed by CS operator, but not in ServicesNamespace %s", cert.GetNamespace(), cert.GetName(), b.CSData.ServicesNs)
+					return err
+				}
+				klog.Infof("Delete idle Cert Manager Certificate %s/%s which is managed by CS operator, but not in ServicesNamespace %s", cert.GetNamespace(), cert.GetName(), b.CSData.ServicesNs)
+
+			}
+		}
+	}
+
+	issuerList := b.ListIssuer(ctx, opts...)
+	if issuerList != nil {
+		for _, issuer := range issuerList.Items {
+			if issuer.Namespace != b.CSData.ServicesNs {
+				if err := b.Client.Delete(ctx, &issuer); err != nil {
+					klog.Errorf("Failed to delete idle Cert Manager Issuer %s/%s which is managed by CS operator, but not in ServicesNamespace %s", issuer.GetNamespace(), issuer.GetName(), b.CSData.ServicesNs)
+					return err
+				}
+				klog.Infof("Delete idle Cert Manager Issuer %s/%s which is managed by CS operator, but not in ServicesNamespace %s", issuer.GetNamespace(), issuer.GetName(), b.CSData.ServicesNs)
 			}
 		}
 	}

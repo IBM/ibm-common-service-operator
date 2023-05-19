@@ -33,6 +33,7 @@ metadata:
     app.kubernetes.io/instance: cs-ca-issuer
     app.kubernetes.io/managed-by: cert-manager-controller
     app.kubernetes.io/name: Issuer
+    operator.ibm.com/managedByCsOperator: "true"
   name: cs-ca-issuer
   namespace: "placeholder"
 spec:
@@ -49,6 +50,7 @@ metadata:
     app.kubernetes.io/instance: cs-ss-issuer
     app.kubernetes.io/managed-by: cert-manager-controller
     app.kubernetes.io/name: Issuer
+    operator.ibm.com/managedByCsOperator: "true"
   name: cs-ss-issuer
   namespace: "placeholder"
 spec:
@@ -64,6 +66,7 @@ metadata:
     app.kubernetes.io/instance: cs-ca-certificate
     app.kubernetes.io/managed-by: cert-manager-controller
     app.kubernetes.io/name: Certificate
+    operator.ibm.com/managedByCsOperator: "true"
     ibm-cert-manager-operator/refresh-ca-chain: 'true'
   name: cs-ca-certificate
   namespace: "placeholder"
