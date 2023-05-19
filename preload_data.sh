@@ -1052,6 +1052,9 @@ data:
   storageclass.list: 'rook-ceph-block,rook-cephfs'
 EOF
     #icp-mongodb-admin-secret.yaml
+    pass=$(${OC} get secret icp-mongodb-admin -n $FROM_NAMESPACE -o=jsonpath='{.data.password}')
+    user=$(${OC} get secret icp-mongodb-admin -n $FROM_NAMESPACE -o=jsonpath='{.data.user}')
+    
     cat << EOF | oc apply -f -
 kind: Secret
 apiVersion: v1
@@ -1060,8 +1063,8 @@ metadata:
   labels:
     app: icp-mongodb
 data:
-  password: VlZWVlZWVlZWVlZWVg==
-  user: QkJCQkJCQkI=
+  password: $pass
+  user: $user
 type: Opaque
 EOF
     #icp-mongodb-client-cert-cert.yaml
