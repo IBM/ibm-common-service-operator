@@ -394,6 +394,7 @@ function install_cs_operator() {
     wait_for_nss_patch "$OPERATOR_NS" 
     wait_for_cs_webhook "$OPERATOR_NS" "ibm-common-service-webhook"
     if [ "$is_CS_CRD_exist" == "fail" ] || [ $RETRY_CONFIG_CSCR -eq 1 ]; then
+        RETRY_CONFIG_CSCR=1
         configure_cs_kind
     fi
 }
