@@ -43,7 +43,7 @@ metadata:
     operator.ibm.com/managedByCsOperator: "true"
   annotations:
     version: {{ .Version }}
-    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
+    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators,ibm-cp-automation-foundation-catalog
 spec:
   operators:
   - name: ibm-mongodb-operator-v4.0
@@ -65,7 +65,7 @@ metadata:
     operator.ibm.com/managedByCsOperator: "true"
   annotations:
     version: {{ .Version }}
-    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
+    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators,ibm-cp-automation-foundation-catalog
 spec:
   operators:
   - name: ibm-im-operator-v4.0
@@ -88,7 +88,7 @@ metadata:
     operator.ibm.com/managedByCsOperator: "true"
   annotations:
     version: {{ .Version }}
-    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
+    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators,ibm-cp-automation-foundation-catalog
 spec:
   operators:
   - name: ibm-idp-config-ui-operator-v4.0
@@ -111,7 +111,7 @@ metadata:
     operator.ibm.com/managedByCsOperator: "true"
   annotations:
     version: {{ .Version }}
-    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
+    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators,ibm-cp-automation-foundation-catalog
 spec:
   operators:
   - name: ibm-platformui-operator-v4.0
@@ -136,7 +136,7 @@ metadata:
     operator.ibm.com/managedByCsOperator: "true"
   annotations:
     version: "{{ .Version }}"
-    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
+    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators,ibm-cp-automation-foundation-catalog
 spec:
   operators:
   - name: ibm-licensing-operator
@@ -258,7 +258,7 @@ metadata:
     operator.ibm.com/managedByCsOperator: "true"
   annotations:
     version: {{ .Version }}
-    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
+    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators,ibm-cp-automation-foundation-catalog
 spec:
   operators:
   - name: ibm-im-operator
@@ -335,7 +335,7 @@ metadata:
     operator.ibm.com/managedByCsOperator: "true"
   annotations:
     version: {{ .Version }}
-    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
+    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators,ibm-cp-automation-foundation-catalog
 spec:
   operators:
   - name: ibm-licensing-operator
@@ -412,7 +412,7 @@ metadata:
     operator.ibm.com/managedByCsOperator: "true"
   annotations:
     version: {{ .Version }}
-    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators
+    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators,ibm-cp-automation-foundation-catalog
 spec:
   operators:
   - name: ibm-im-operator
