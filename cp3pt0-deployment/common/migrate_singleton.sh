@@ -61,8 +61,6 @@ function main() {
             # Migrate Licensing Services Data
             ${BASE_DIR}/migrate_cp2_licensing.sh --control-namespace $CONTROL_NS "--skip-user-vertify"
         fi
-        # Delete IBM Licensing Service instance
-        ${OC} delete --ignore-not-found ibmlicensing instance
         # Delete licensing csv/subscriptions
         delete_operator "ibm-licensing-operator" "$CONTROL_NS"
     fi
