@@ -20,6 +20,12 @@ CS_NAMESPACE=
 # operators namespace
 OPERATORS_NAMESPACE=
 
+# cert-manager namespace
+CERT_NAMESPACE=
+
+# license-service namespace
+LICSVC_NAMESPACE=
+
 # is uninstall flag?
 UNINSTALL=
 
@@ -91,6 +97,8 @@ function print_usage() {
     echo "Options:"
     echo "   -n, --namespace string       IBM Common Services operand namespace. Default is same namespace for both operators and services"
     echo "   -o, --operators-namespace string   Operators namespace. Default is same namespace as IBM Common Services"
+    echo "   -c, --cert-manager-namespace string   Cert-manager namespace. Default is same namespace as IBM Common Services"
+    echo "   -l, --licensing-namespace string   License Service namespace. Default is same namespace as IBM Common Services"
     echo "   -u, --uninstall              Uninstall IBM Common Services Network Policies"
     echo "   -e, --egress                 Deploy egress NetworkPolicies"
     echo "   -h, --help                   Print usage information"
@@ -108,6 +116,14 @@ function parse_arguments() {
         -o | --operators-namespace)
             shift
             OPERATORS_NAMESPACE=$1
+            ;;
+        -c | --cert-manager-namespace)
+            shift
+            CERT_NAMESPACE=$1
+            ;;
+        -l | --licensing-namespace)
+            shift
+            LICSVC_NAMESPACE=$1
             ;;
         -u | --uninstall)
             shift
@@ -150,34 +166,32 @@ function check_prereqs() {
     fi
 
     # checking for CS_NAMESPACE
-    if [[ -z "${CS_NAMESPACE}" ]]; then
-        CS_NAMESPACE=$(oc project -q)
-    fi
-
-    # check existence of CS_NAMESPACE
-    cs_namespace_exists=$(oc get project "${CS_NAMESPACE}" 2> /dev/null)
-    if [ $? -ne 0 ]; then
-        info "Creating IBM Common Services namespace: ${CS_NAMESPACE}"
-        oc create namespace "${CS_NAMESPACE}"
-    fi
-
-    # checking for ibm-common-service-operator in CS_NAMESPACE
-    if [[ -z "$(oc -n ${OPERATORS_NAMESPACE} get csv --ignore-not-found | grep 'ibm-common-service-operator')" ]]; then
-        info "IBM Common Services are not installed in namespace ${OPERATORS_NAMESPACE}"
-    else
-        success "IBM Common Services found in namespace ${OPERATORS_NAMESPACE}"
+    if [[ ! -z "${CS_NAMESPACE}" ]]; then
+        # check existence of CS_NAMESPACE
+        cs_namespace_exists=$(oc get project "${CS_NAMESPACE}" 2> /dev/null)
+        if [ $? -ne 0 ]; then
+            info "Creating IBM Common Services namespace: ${CS_NAMESPACE}"
+            oc create namespace "${CS_NAMESPACE}"
+        fi
+        
+        # checking for ibm-common-service-operator in CS_NAMESPACE
+        if [[ -z "$(oc -n ${OPERATORS_NAMESPACE} get csv --ignore-not-found | grep 'ibm-common-service-operator')" ]]; then
+            info "IBM Common Services are not installed in namespace ${OPERATORS_NAMESPACE}"
+        else
+            success "IBM Common Services found in namespace ${OPERATORS_NAMESPACE}"
+        fi
     fi
 
     # if OPERATORS_NAMESPACE is not specified, use CS_NAMESPACE
-    if [[ -z "${OPERATORS_NAMESPACE}" ]]; then
+    if [[ -z "${OPERATORS_NAMESPACE}" && ! -z "${CS_NAMESPACE}" ]]; then
         OPERATORS_NAMESPACE=${CS_NAMESPACE}
-    fi
 
-    # check existence of OPERATORS_NAMESPACE
-    operators_namespace_exists=$(oc get project "${OPERATORS_NAMESPACE}" 2> /dev/null)
-    if [ $? -ne 0 ]; then
-        info "Creating operators namespace: ${OPERATORS_NAMESPACE}"
-        oc create namespace "${OPERATORS_NAMESPACE}"
+        # check existence of OPERATORS_NAMESPACE
+        operators_namespace_exists=$(oc get project "${OPERATORS_NAMESPACE}" 2> /dev/null)
+        if [ $? -ne 0 ]; then
+            info "Creating operators namespace: ${OPERATORS_NAMESPACE}"
+            oc create namespace "${OPERATORS_NAMESPACE}"
+        fi
     fi
 
 }
@@ -194,16 +208,36 @@ function install_networkpolicy() {
     else
         BASE_DIR="${BASE_DIR}/ingress"
     fi
-    
-    for policyfile in `ls -1 ${BASE_DIR}/services/*.yaml`; do
-        info "Installing `basename ${policyfile}` ..."
-        cat ${policyfile} | sed -e "s/csNamespace/${CS_NAMESPACE}/g" | sed -e "s/opNamespace/${OPERATORS_NAMESPACE}/g" | oc apply -f -
-    done
 
-    for policyfile in `ls -1 ${BASE_DIR}/operators/*.yaml`; do
-        info "Installing `basename ${policyfile}` ..."
-        cat ${policyfile} | sed -e "s/csNamespace/${CS_NAMESPACE}/g" | sed -e "s/opNamespace/${OPERATORS_NAMESPACE}/g" | oc apply -f -
-    done
+    if [[ ! -z "${CS_NAMESPACE}" ]]; then
+        for policyfile in `ls -1 ${BASE_DIR}/services/*.yaml`; do
+            info "Installing `basename ${policyfile}` ..."
+            cat ${policyfile} | sed -e "s/csNamespace/${CS_NAMESPACE}/g" | sed -e "s/opNamespace/${OPERATORS_NAMESPACE}/g" | oc apply -f -
+        done
+    fi
+
+    if [[ ! -z "${OPERATORS_NAMESPACE}" ]]; then    
+        for policyfile in `ls -1 ${BASE_DIR}/operators/*.yaml`; do
+            info "Installing `basename ${policyfile}` ..."
+            cat ${policyfile} | sed -e "s/csNamespace/${CS_NAMESPACE}/g" | sed -e "s/opNamespace/${OPERATORS_NAMESPACE}/g" | oc apply -f -
+        done
+    fi
+
+    # Installing cert-manager policies
+    if [[ ! -z "${CERT_NAMESPACE}" ]]; then
+        for policyfile in `ls -1 ${BASE_DIR}/cert-manager/*.yaml`; do
+            info "Installing `basename ${policyfile}` ..."
+            cat ${policyfile} | sed -e "s/certNamespace/${CERT_NAMESPACE}/g" | oc apply -f -
+        done
+    fi
+
+    # Installing license-service policies
+    if [[ ! -z "${LICSVC_NAMESPACE}" ]]; then
+        for policyfile in `ls -1 ${BASE_DIR}/license-service/*.yaml`; do
+            info "Installing `basename ${policyfile}` ..."
+            cat ${policyfile} | sed -e "s/licNamespace/${LICSVC_NAMESPACE}/g" | oc apply -f -
+        done
+    fi
 
 }
 
@@ -211,8 +245,21 @@ function delete_networkpolicy() {
     title "[$(translate_step ${STEP})] Removing IBM Common Services Network Policies ..."
     msg "-----------------------------------------------------------------------"
 
-    oc delete networkpolicies -n ${CS_NAMESPACE} --selector=component=cpfs3
-    oc delete networkpolicies -n ${OPERATORS_NAMESPACE} --selector=component=cpfs3
+    if [[ ! -z "${CS_NAMESPACE}" ]]; then
+        oc delete networkpolicies -n ${CS_NAMESPACE} --selector=component=cpfs3
+    fi
+
+    if [[ ! -z "${OPERATORS_NAMESPACE}" ]]; then
+        oc delete networkpolicies -n ${OPERATORS_NAMESPACE} --selector=component=cpfs3
+    fi
+
+    if [[ ! -z "${CERT_NAMESPACE}" ]]; then
+        oc delete networkpolicies -n ${CERT_NAMESPACE} --selector=component=cpfs3
+    fi
+
+    if [[ ! -z "${LICSVC_NAMESPACE}" ]]; then
+        oc delete networkpolicies -n ${LICSVC_NAMESPACE} --selector=component=cpfs3
+    fi
 
 }
 
