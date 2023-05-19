@@ -427,6 +427,8 @@ function loadmongo() {
     error "Cannot switch to $TO_NAMESPACE"
   fi
 
+  ibm_mongodb_image=$(oc get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
+
   cat <<EOF >$TEMPFILE
 apiVersion: batch/v1
 kind: Job
@@ -440,7 +442,7 @@ spec:
     spec:
       containers:
       - name: icp-mongodb-restore
-        image: quay.io/opencloudio/ibm-mongodb:4.0.24
+        image: $ibm_mongodb_image
         command: ["bash", "-c", "cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongorestore --host rs0/icp-mongodb:27017 --username \$ADMIN_USER --password \$ADMIN_PASSWORD --authenticationDatabase admin --ssl --sslCAFile /work-dir/ca.pem --sslPEMKeyFile /work-dir/mongo.pem /dump/dump"]
         volumeMounts:
         - mountPath: "/dump"
