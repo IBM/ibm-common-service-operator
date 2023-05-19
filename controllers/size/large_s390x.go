@@ -63,6 +63,25 @@ const Large = `
           limits:
             cpu: 1000m
             memory: 350Mi
+- name: ibm-mongodb-operator-v4.0
+  spec:
+    mongoDB:
+      replicas: 3
+      resources:
+        limits:
+          cpu: 3000m
+          memory: 3072Mi
+        requests:
+          cpu: 500m
+          memory: 3072Mi
+      metrics:
+        resources:
+          requests:
+            cpu: 100m
+            memory: 300Mi
+          limits:
+            cpu: 1000m
+            memory: 350Mi
 - name: ibm-iam-operator
   spec:
     authentication:
@@ -353,17 +372,6 @@ const Large = `
           cpu: 300m
           memory: 384Mi
 - name: ibm-idp-config-ui-operator-v4.0
-  spec:
-    commonWebUI:
-      replicas: 3
-      resources:
-        limits:
-          cpu: 1000m
-          memory: 430Mi
-        requests:
-          cpu: 300m
-          memory: 384Mi
-- name: ibm-idp-config-ui-operator
   spec:
     commonWebUI:
       replicas: 3

@@ -615,8 +615,46 @@ func (b *Bootstrap) InstallOrUpdateOpreg(forceUpdateODLMCRs bool, installPlanApp
 		}
 	}
 
-	var obj []*unstructured.Unstructured
 	var err error
+	constant.CSV3OperandRegistry, err = constant.ConcatenateRegistries(constant.CSV2OpReg, constant.CSV3OpReg, b.CSData)
+	if err != nil {
+		klog.Errorf("failed to concatenate registries CSV3OperandRegistry: %v", err)
+	}
+	// Append CP3 Operators into CP3 OperandRegistry
+	registries := []string{
+		constant.MongoDBOpReg,
+		constant.IMOpReg,
+		constant.IdpConfigUIOpReg,
+		constant.PlatformUIOpReg,
+	}
+
+	for _, reg := range registries {
+		constant.CSV3OperandRegistry, err = constant.ConcatenateRegistries(constant.CSV3OperandRegistry, reg, b.CSData)
+		if err != nil {
+			klog.Errorf("failed to append CP3 operators into OperandRegistry: %v", err)
+		}
+	}
+
+	constant.CSV3SaasOperandRegistry, err = constant.ConcatenateRegistries(constant.CSV2SaasOpReg, constant.CSV3SaasOpReg, b.CSData)
+	if err != nil {
+		klog.Errorf("failed to concatenate registries CSV3SaasOperandRegistry: %v", err)
+	}
+
+	// Append CP3 operators into CP3 SaaS OperandRegistry
+	Saasregistries := []string{
+		constant.MongoDBOpReg,
+		constant.IMOpReg,
+		constant.PlatformUIOpReg,
+	}
+
+	for _, reg := range Saasregistries {
+		constant.CSV3SaasOperandRegistry, err = constant.ConcatenateRegistries(constant.CSV3SaasOperandRegistry, reg, b.CSData)
+		if err != nil {
+			klog.Errorf("failed to append CP3 operators into SaaS OperandRegistry: %v", err)
+		}
+	}
+
+	var obj []*unstructured.Unstructured
 	if b.SaasEnable {
 		// OperandRegistry for SaaS deployment
 		obj, err = b.GetObjs(constant.CSV3SaasOperandRegistry, b.CSData)
