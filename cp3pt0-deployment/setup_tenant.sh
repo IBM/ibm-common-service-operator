@@ -18,6 +18,7 @@ SOURCE_NS="openshift-marketplace"
 OPERATOR_NS=""
 SERVICES_NS=""
 TETHERED_NS=""
+EXCLUDED_NS=""
 SIZE_PROFILE="starterset"
 INSTALL_MODE="Automatic"
 DEBUG=0
@@ -65,6 +66,10 @@ function parse_arguments() {
         --tethered-namespaces)
             shift
             TETHERED_NS=$1
+            ;;
+        --excluded-namespaces)
+            shift
+            EXCLUDED_NS=$1
             ;;
         --license-accept)
             LICENSE_ACCEPT=1
@@ -117,7 +122,8 @@ function print_usage() {
     echo "   --enable-licensing             Set this flag to install ibm-licensing-operator"
     echo "   --operator-namespace string    Required. Namespace to install Foundational services operator"
     echo "   --services-namespace           Namespace to install operands of Foundational services, i.e. 'dataplane'. Default is the same as operator-namespace"
-    echo "   --tethered-namespaces string   Additional namespaces for this tenant, comma-delimited, e.g. 'ns1,ns2'"
+    echo "   --tethered-namespaces string   Add namespaces to this tenant, comma-delimited, e.g. 'ns1,ns2'"
+    echo "   --excluded-namespaces string   Remove namespaces from this tenant, comma-delimited, e.g. 'ns1,ns2'"
     echo "   --license-accept               Set this flag to accept the license agreement"
     echo "   -c, --channel string           Channel for Subscription(s). Default is v4.0"
     echo "   -i, --install-mode string      InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
@@ -186,12 +192,12 @@ function pre_req() {
         error "Must provide operator namespace, please specify argument --operator-namespace"
     fi
 
-    if [[ "$SERVICES_NS" == "" && "$TETHERED_NS" == "" ]]; then
-        error "Must provide additional namespaces, either --services-namespace or --tethered-namespaces"
+    if [[ "$SERVICES_NS" == "" && "$TETHERED_NS" == "" && "$EXCLUDED_NS" == "" ]]; then
+        error "Must provide additional namespaces, either --services-namespace, --tethered-namespaces, or --excluded-namespaces"
     fi
 
-    if [[ "$SERVICES_NS" == "$OPERATOR_NS" && "$TETHERED_NS" == "" ]]; then
-        error "Must provide additional namespaces for --tethered-namespaces when services-namespace is the same as operator-namespace"
+    if [[ "$SERVICES_NS" == "$OPERATOR_NS" && "$TETHERED_NS" == "" && "$EXCLUDED_NS" == "" ]]; then
+        error "Must provide additional namespaces for --tethered-namespaces or --excluded-namespaces when services-namespace is the same as operator-namespace"
     fi
 
     if [[ "$TETHERED_NS" == "$OPERATOR_NS" || "$TETHERED_NS" == "$SERVICES_NS" ]]; then
@@ -248,13 +254,46 @@ EOF
 
     # add the tethered optional namespaces for a tenant to namespaceMembers
     # ${TETHERED_NS} is comma delimited, so need to replace commas with space
-    for n in $SERVICES_NS ${TETHERED_NS//,/ }; do
+    nss_exists=$(${OC} get nss common-service -n $OPERATOR_NS || echo "fail")
+    if [[ $nss_exists != "fail" ]]; then
+        debug1 "NamspaceScope common-service exists in namespace $OPERATOR_NS."
+        existing_ns=$(${OC} get nss common-service -n $OPERATOR_NS -o=jsonpath='{.spec.namespaceMembers}' | tr -d \" | tr -d [ | tr -d ])
+        existing_ns="${existing_ns//,/ }"
+        if [[ $EXCLUDED_NS != "" ]]; then
+            info "Removing excluded namespaces from common-service NamespaceScope"
+            #remove excluded ns
+            remove_ns="${EXCLUDED_NS//,/ }"
+            tmp_ns_list=""
+            for namespace in $existing_ns
+            do
+                contains_ns=$([[ ${remove_ns[@]} =~ $namespace ]] || echo "false")
+                if [[ $contains_ns == "false" ]]; then
+                    if [[ $tmp_ns_list == "" ]]; then
+                        tmp_ns_list="${namespace}"
+                    else
+                        tmp_ns_list="${tmp_ns_list} ${namespace}"
+                    fi
+                fi
+            done
+            existing_ns="${tmp_ns_list}"
+        fi
+        new_ns_list=$(echo ${existing_ns} ${TETHERED_NS//,/ } ${SERVICES_NS} | xargs -n1 | sort -u | xargs)
+    else
+        new_ns_list=$(echo ${TETHERED_NS//,/ } ${SERVICES_NS} | xargs -n1 | sort -u | xargs)
+    fi
+    debug1 "List of namespaces for common-service NSS ${new_ns_list}"
+    for n in ${new_ns_list}; do
+        if [[ $n == $OPERATOR_NS ]]; then
+            continue
+        fi
         local ns=$ns$(cat <<EOF
 
     - $n
 EOF
     )
     done
+
+    debug1 "Format of namespaceMembers to be added: $ns"
 
     configure_nss_kind "$ns"
     if [ $? -ne 0 ]; then
