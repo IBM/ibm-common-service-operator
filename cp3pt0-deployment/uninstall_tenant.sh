@@ -141,8 +141,6 @@ function uninstall_odlm() {
     local success_message="All tenant OperandRequests deleted"
     local error_message="Timeout after ${total_time_mins} minutes waiting for tenant OperandRequests to be deleted"
 
-    echo "$condition"
-
     # ideally ODLM will ensure OperandRequests are cleaned up neatly
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 
@@ -241,12 +239,11 @@ function cleanup_dedicate_cr() {
 function delete_tenant_ns() {
     title "Deleting tenant namespaces"
     for ns in ${TENANT_NAMESPACES//,/ }; do
-        if [ $FORCE_DELETE -eq 1 ]; then
-            title "Force delete remaining resources"
-            remove_all_finalizers $ns
+        ${OC} delete --ignore-not-found ns "$ns" --timeout=30s
+        if [ $? -ne 0 ] || [ $FORCE_DELETE -eq 1 ]; then
+            warning "Failed to delete namespace $ns, force deleting remaining resources..."
+            remove_all_finalizers $ns && success "Namespace $ns is deleted successfully."
         fi
-        ${OC} patch namespace ${ns} --type=merge -p '{"spec": {"finalizers":null}}'
-        ${OC} delete --ignore-not-found ns "$ns"
     done
     success "Common Services uninstall finished and successfull." 
 }
