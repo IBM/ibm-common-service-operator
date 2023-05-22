@@ -270,6 +270,13 @@ spec:
       containers:
       - name: cs-mongodb-backup
         image: $ibm_mongodb_image
+        resources:
+          limits:
+            cpu: 500m
+            memory: 500Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
         command: ["bash", "-c", "cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongodump --oplog --out /dump/dump --host mongodb:27017 --username \$ADMIN_USER --password \$ADMIN_PASSWORD --authenticationDatabase admin --ssl --sslCAFile /work-dir/ca.pem --sslPEMKeyFile /work-dir/mongo.pem"]
         volumeMounts:
         - mountPath: "/work-dir"
@@ -427,6 +434,8 @@ function loadmongo() {
     error "Cannot switch to $TO_NAMESPACE"
   fi
 
+  ibm_mongodb_image=$(oc get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
+
   cat <<EOF >$TEMPFILE
 apiVersion: batch/v1
 kind: Job
@@ -440,8 +449,15 @@ spec:
     spec:
       containers:
       - name: icp-mongodb-restore
-        image: quay.io/opencloudio/ibm-mongodb:4.0.24
+        image: $ibm_mongodb_image
         command: ["bash", "-c", "cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongorestore --host rs0/icp-mongodb:27017 --username \$ADMIN_USER --password \$ADMIN_PASSWORD --authenticationDatabase admin --ssl --sslCAFile /work-dir/ca.pem --sslPEMKeyFile /work-dir/mongo.pem /dump/dump"]
+        resources:
+          limits:
+            cpu: 500m
+            memory: 500Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
         volumeMounts:
         - mountPath: "/dump"
           name: mongodump
@@ -1036,6 +1052,9 @@ data:
   storageclass.list: 'rook-ceph-block,rook-cephfs'
 EOF
     #icp-mongodb-admin-secret.yaml
+    pass=$(${OC} get secret icp-mongodb-admin -n $FROM_NAMESPACE -o=jsonpath='{.data.password}')
+    user=$(${OC} get secret icp-mongodb-admin -n $FROM_NAMESPACE -o=jsonpath='{.data.user}')
+    
     cat << EOF | oc apply -f -
 kind: Secret
 apiVersion: v1
@@ -1044,8 +1063,8 @@ metadata:
   labels:
     app: icp-mongodb
 data:
-  password: VlZWVlZWVlZWVlZWVg==
-  user: QkJCQkJCQkI=
+  password: $pass
+  user: $user
 type: Opaque
 EOF
     #icp-mongodb-client-cert-cert.yaml

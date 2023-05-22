@@ -23,6 +23,7 @@ SIZE_PROFILE="starterset"
 INSTALL_MODE="Automatic"
 DEBUG=0
 LICENSE_ACCEPT=0
+RETRY_CONFIG_CSCR=0
 
 # ---------- Command variables ----------
 
@@ -391,7 +392,9 @@ function install_cs_operator() {
     wait_for_operator "$OPERATOR_NS" "ibm-common-service-operator"
     accept_license "commonservice" "$OPERATOR_NS" "common-service"
     wait_for_nss_patch "$OPERATOR_NS" 
-    if [ "$is_CS_CRD_exist" == "fail" ]; then
+    wait_for_cs_webhook "$OPERATOR_NS" "ibm-common-service-webhook"
+    if [ "$is_CS_CRD_exist" == "fail" ] || [ $RETRY_CONFIG_CSCR -eq 1 ]; then
+        RETRY_CONFIG_CSCR=1
         configure_cs_kind
     fi
 }
@@ -425,6 +428,8 @@ EOF
 }
 
 function configure_cs_kind() {
+    local retries=5
+    local delay=30
     local object=$(
         cat <<EOF
 apiVersion: operator.ibm.com/v3
@@ -442,9 +447,28 @@ EOF
     echo
     info "Configuring the CommonService object"
     echo "$object"
-    echo "$object" | ${OC} apply -f -
-    if [[ $? -ne 0 ]]; then
-        error "Failed to create CommonService CR in ${OPERATOR_NS}"
+    while [ $retries -gt 0 ]; do
+        
+        echo "$object" | ${OC} apply -f -
+    
+        # Check if the patch was successful
+        if [[ $? -eq 0 ]]; then
+            success "Successfully patched CommonService CR in ${OPERATOR_NS}"
+            break
+        else
+            warning "Failed to patch CommonService CR in ${OPERATOR_NS}, retry it in ${delay} seconds"
+            sleep ${delay}
+            retries=$((retries-1))
+        fi
+    done
+
+    if [ $retries -eq 0 ] && [ $RETRY_CONFIG_CSCR -eq 1 ]; then
+        error "Fail to patch CommonService CR in ${OPERATOR_NS}"
+    fi
+
+    if [ $retries -eq 0 ] && [ $RETRY_CONFIG_CSCR -eq 0 ]; then
+        warning "Fail to patch CommonService CR in ${OPERATOR_NS}, try to install cs-operator first"
+        RETRY_CONFIG_CSCR=1
     fi
 }
 
