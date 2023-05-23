@@ -23,6 +23,7 @@ LICENSING_SOURCE="ibm-licensing-catalog"
 CERT_MANAGER_NAMESPACE="ibm-cert-manager"
 LICENSING_NAMESPACE="ibm-licensing"
 LICENSE_ACCEPT=0
+DEBUG=0
 
 CUSTOMIZED_LICENSING_NAMESPACE=0
 SKIP_INSTALL=0
@@ -33,6 +34,9 @@ CHECK_LICENSING_ONLY=0
 # script base directory
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 
+# log file
+LOG_FILE="${BASE_DIR}/logs/setup_singleton_log_$(date +'%Y%m%d%H%M%S').txt"
+
 # counter to keep track of installation steps
 STEP=0
 
@@ -42,6 +46,7 @@ STEP=0
 
 function main() {
     parse_arguments "$@"
+    save_log
     pre_req
     if [ $MIGRATE_SINGLETON -eq 1 ]; then
         info "Found parameter '--operator-namespace', migrating singleton services"
@@ -54,6 +59,14 @@ function main() {
 
     install_cert_manager
     install_licensing
+    remove_ansi
+}
+
+function save_log(){
+    if [ $DEBUG -eq 1 ]; then
+        # Redirect stdout and stderr to the log file, overwriting it each time
+        exec > >(tee "$LOG_FILE") 2>&1      
+    fi
 }
 
 function parse_arguments() {
@@ -109,6 +122,10 @@ function parse_arguments() {
             shift
             INSTALL_MODE=$1
             ;;
+        -v | --debug)
+            shift
+            DEBUG=$1
+            ;;
         -h | --help)
             print_usage
             exit 1
@@ -142,6 +159,7 @@ function print_usage() {
     echo "   --license-accept                               Set this flag to accept the license agreement."
     echo "   -c, --channel string                           Channel for Subscription(s). Default is v4.0"   
     echo "   -i, --install-mode string                      InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
+    echo "   -v, --debug integer                            Verbosity of logs. Default is 0. Set to 1 for debug logs"
     echo "   -h, --help                                     Print usage information"
     echo ""
 }
@@ -264,6 +282,14 @@ function pre_req() {
                 LICENSING_NAMESPACE="${CONTROL_NS}"
             fi
         fi
+    fi
+}
+
+function remove_ansi() {
+    # Check if the log file already exists
+    if [[ -e $LOG_FILE ]]; then
+        # Remove ANSI escape sequences from log file
+        sed -i 's/\x1B\[[0-9;]\{1,\}[A-Za-z]//g' "$LOG_FILE"
     fi
 }
 
