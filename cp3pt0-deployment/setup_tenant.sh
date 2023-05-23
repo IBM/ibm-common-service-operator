@@ -39,10 +39,19 @@ STEP=0
 
 function main() {
     parse_arguments "$@"
+    save_log
     pre_req
     setup_topology
     setup_nss
     install_cs_operator
+    remove_ansi
+}
+
+function save_log(){
+    if [ $DEBUG -eq 1 ]; then
+        # Redirect stdout and stderr to the log file, overwriting it each time
+        exec > >(tee "setup_tenant.log") 2>&1      
+    fi
 }
 
 function parse_arguments() {
@@ -472,10 +481,8 @@ EOF
     fi
 }
 
-function debug1() {
-    if [ $DEBUG -eq 1 ]; then
-        debug "${1}"
-    fi
+function remove_ansi() {
+    sed -i 's/\x1B\[[0-9;]\{1,\}[A-Za-z]//g' "setup_tenant.log"
 }
 
 main $*
