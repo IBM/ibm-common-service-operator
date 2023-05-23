@@ -30,6 +30,9 @@ RETRY_CONFIG_CSCR=0
 # script base directory
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 
+#log file
+LOG_FILE="setup_tenant_log_$(date +'%Y%m%d%H%M%S').txt"
+
 # counter to keep track of installation steps
 STEP=0
 
@@ -39,6 +42,8 @@ STEP=0
 
 function main() {
     parse_arguments "$@"
+    save_log "logs" "setup_tenant_log" "$DEBUG"
+    trap cleanup_log EXIT
     pre_req
     setup_topology
     setup_nss
@@ -137,9 +142,14 @@ function print_usage() {
 }
 
 function pre_req() {
+    # Check the value of DEBUG
+    if [[ "$DEBUG" != "1" && "$DEBUG" != "0" ]]; then
+        error "Invalid value for DEBUG. Expected 0 or 1."
+    fi
+
     check_command "${OC}"
 
-    # checking oc command logged in
+    # Checking oc command logged in
     user=$($OC whoami 2> /dev/null)
     if [ $? -ne 0 ]; then
         error "You must be logged into the OpenShift Cluster from the oc command line"
@@ -180,6 +190,7 @@ function pre_req() {
         error "Channel is not semantic vx.y"
     fi
 
+    # Check profile size
     case "$SIZE_PROFILE" in
     "starterset"|"starter"|"small"|"medium"|"large")
         success "Profile size is valid."
@@ -469,12 +480,6 @@ EOF
     if [ $retries -eq 0 ] && [ $RETRY_CONFIG_CSCR -eq 0 ]; then
         warning "Fail to patch CommonService CR in ${OPERATOR_NS}, try to install cs-operator first"
         RETRY_CONFIG_CSCR=1
-    fi
-}
-
-function debug1() {
-    if [ $DEBUG -eq 1 ]; then
-        debug "${1}"
     fi
 }
 

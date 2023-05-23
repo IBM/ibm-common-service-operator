@@ -20,6 +20,8 @@ set -o pipefail
 set -o errtrace
 set -o nounset
 
+# ---------- Command arguments ----------
+
 OC=oc
 YQ=yq
 MASTER_NS=
@@ -30,6 +32,18 @@ CS_MAPPING_YAML=""
 CM_NAME="common-service-maps"
 CERT_MANAGER_MIGRATED="false"
 DEBUG=0
+
+# ---------- Command variables ----------
+
+# script base directory
+BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
+
+#log file
+LOG_FILE="isolate_log_$(date +'%Y%m%d%H%M%S').txt"
+
+# ---------- Main functions ----------
+
+. ${BASE_DIR}/cp3pt0-deployment/common/utils.sh
 
 function main() {
     while [ "$#" -gt "0" ]
@@ -56,7 +70,8 @@ function main() {
             shift
             ;;
         -v | --debug)
-            DEBUG=1
+            shift
+            DEBUG=$1
             ;;
         *)
             error "invalid option -- \`$1\`. Use the -h or --help option for usage info."
@@ -64,6 +79,10 @@ function main() {
         esac
         shift
     done
+
+    save_log "cp3pt0-deployment/logs" "isolate_log" "$DEBUG"
+    trap cleanup_log EXIT
+
     which "${OC}" || error "Missing oc CLI"
     which "${YQ}" || error "Missing yq"
 
@@ -126,6 +145,11 @@ Mandatory arguments to long options are mandatory for short options too.
 }
 
 function prereq() {
+    # Check the value of DEBUG
+    if [[ "$DEBUG" != "1" && "$DEBUG" != "0" ]]; then
+        error "Invalid value for DEBUG. Expected 0 or 1."
+    fi
+
     # LicenseServiceReporter should not be installed because it does not support multi-instance mode
     return_value=$(("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
     if [[ $return_value == "exists" ]]; then
