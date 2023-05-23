@@ -35,6 +35,9 @@ LICENSE_ACCEPT=0
 # script base directory
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 
+# log file
+LOG_FILE="${BASE_DIR}/logs/migrate_tenant_log_$(date +'%Y%m%d%H%M%S').txt"
+
 # counter to keep track of installation steps
 STEP=0
 
@@ -45,6 +48,7 @@ STEP=0
 function main() {
     parse_arguments "$@"
     pre_req
+    save_log
     
     # TODO check Cloud Pak compatibility
 
@@ -116,6 +120,14 @@ function main() {
 
     success "Preparation is completed for upgrading Cloud Pak 3.0"
     info "Please update OperandRequest to upgrade foundational core services"
+    remove_ansi
+}
+
+function save_log(){
+    if [ $DEBUG -eq 1 ]; then
+        # Redirect stdout and stderr to the log file, overwriting it each time
+        exec > >(tee "$LOG_FILE") 2>&1      
+    fi
 }
 
 function parse_arguments() {
@@ -269,15 +281,19 @@ function pre_req() {
     get_and_validate_arguments
 }
 
+function remove_ansi() {
+    echo "222"
+    # Check if the log file already exists
+    if [[ -e $LOG_FILE ]]; then
+        echo "111"
+        # Remove ANSI escape sequences from log file
+        sed -i 's/\x1B\[[0-9;]\{1,\}[A-Za-z]//g' "$LOG_FILE"
+    fi
+}
+
 # TODO validate argument
 function get_and_validate_arguments() {
     get_control_namespace
-}
-
-function debug1() {
-    if [ $DEBUG -eq 1 ]; then
-       debug "${1}"
-    fi
 }
 
 main $*
