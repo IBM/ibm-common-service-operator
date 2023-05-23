@@ -9,16 +9,21 @@
 # Please refer to that particular license for additional information. 
 
 # Base on https://github.ibm.com/IBMPrivateCloud/cs-dev-tools/blob/master/install/cp3pt0-install/uninstall_tenant.sh
+
 # ---------- Command arguments ----------
 
 OC=oc
 TENANT_NAMESPACES=""
 FORCE_DELETE=0
+DEBUG=0
 
 # ---------- Command variables ----------
 
 # script base directory
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
+
+# log file
+LOG_FILE="uninstall_tenant_log_$(date +'%Y%m%d%H%M%S').txt"
 
 # ---------- Main functions ----------
 
@@ -26,6 +31,8 @@ BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 
 function main() {
     parse_arguments "$@"
+    save_log
+    trap cleanup_log EXIT
     pre_req
     set_tenant_namespaces
     uninstall_odlm
@@ -35,6 +42,27 @@ function main() {
     delete_webhook
     delete_unavailable_apiservice
     delete_tenant_ns
+}
+
+function save_log(){
+    local LOG_DIR="$BASE_DIR/logs"
+    LOG_FILE="$LOG_DIR/uninstall_tenant_log_$(date +'%Y%m%d%H%M%S').txt"
+
+    if [ $DEBUG -eq 1 ]; then
+        if [[ ! -d $LOG_DIR ]]; then
+            mkdir -p "$LOG_DIR"
+        fi
+        # Redirect stdout and stderr to the log file, overwriting it each time
+        exec > >(tee "$LOG_FILE") 2>&1      
+    fi
+}
+
+function cleanup_log() {
+    # Check if the log file already exists
+    if [[ -e $LOG_FILE ]]; then
+        # Remove ANSI escape sequences from log file
+        sed -i 's/\x1B\[[0-9;]\{1,\}[A-Za-z]//g' "$LOG_FILE"
+    fi
 }
 
 function parse_arguments() {
@@ -52,6 +80,10 @@ function parse_arguments() {
         -f)
             shift
             FORCE_DELETE=1
+            ;;
+        -v | --debug)
+            shift
+            DEBUG=$1
             ;;
         -h | --help)
             print_usage
@@ -76,14 +108,20 @@ function print_usage() {
     echo "   --oc string                    File path to oc CLI. Default uses oc in your PATH"
     echo "   --operator-namespace string    Required. Namespace to uninstall Foundational services operators and the whole tenant."
     echo "   -f                             Enable force delete. It will take much more time if you add this label, we suggest run this script without -f label first"
+    echo "   -v, --debug integer            Verbosity of logs. Default is 0. Set to 1 for debug logs"
     echo "   -h, --help                     Print usage information"
     echo ""
 }
 
 function pre_req() {
+    # Check the value of DEBUG
+    if [[ "$DEBUG" != "1" && "$DEBUG" != "0" ]]; then
+        error "Invalid value for DEBUG. Expected 0 or 1."
+    fi
+
     check_command "${OC}"
 
-    # checking oc command logged in
+    # Checking oc command logged in
     user=$(${OC} whoami 2> /dev/null)
     if [ $? -ne 0 ]; then
         error "You must be logged into the OpenShift Cluster from the oc command line"
