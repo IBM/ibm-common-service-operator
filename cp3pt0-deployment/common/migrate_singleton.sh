@@ -57,6 +57,16 @@ function main() {
     fi
     
     if [[ $ENABLE_LICENSING -eq 1 ]]; then
+        
+        backup_ibmlicensing
+        isExists=$("${OC}" get deployments -n "${CONTROL_NS}" --ignore-not-found ibm-licensing-operator)
+        if [ ! -z "$isExists" ]; then
+            "${OC}" delete  --ignore-not-found ibmlicensing instance
+        fi
+
+        # Delete licensing csv/subscriptions
+        delete_operator "ibm-licensing-operator" "$CONTROL_NS"
+
         if [[ "$CONTROL_NS" == "$OPERATOR_NS" ]]; then
             # Migrate Licensing Services Data
             ${BASE_DIR}/migrate_cp2_licensing.sh --control-namespace $CONTROL_NS "--skip-user-vertify"
@@ -66,11 +76,33 @@ function main() {
                 ${OC} patch -n "${CONTROL_NS}" OperandBindInfo ibm-licensing-bindinfo --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
             fi
         fi
-        # Delete licensing csv/subscriptions
-        delete_operator "ibm-licensing-operator" "$CONTROL_NS"
     fi
 
     success "Migration is completed for Cloud Pak 3.0 Foundational singleton services."
+}
+
+
+function backup_ibmlicensing() {
+
+    instance=`"${OC}" get IBMLicensing instance -o yaml --ignore-not-found | "${YQ}" '
+        with(.; del(.metadata.creationTimestamp) |
+        del(.metadata.managedFields) |
+        del(.metadata.resourceVersion) |
+        del(.metadata.uid) |
+        del(.status)
+        )
+    ' | sed -e 's/^/    /g'`
+cat << _EOF | oc apply -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ibmlicensing-instance-bak
+  namespace: ${CONTROL_NS}
+data:
+  ibmlicensing.yaml: |
+${instance}
+_EOF
+
 }
 
 function parse_arguments() {

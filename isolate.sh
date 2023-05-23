@@ -86,6 +86,7 @@ function main() {
     removeNSS
     uninstall_singletons
     isolate_odlm "ibm-odlm" $MASTER_NS
+    restore_ibmlicensing
     restart
     if [[ $CERT_MANAGER_MIGRATED == "true" ]]; then
         wait_for_certmanager "$CONTROL_NS" "${ns_list}"
@@ -313,6 +314,11 @@ function uninstall_singletons() {
 
     migrate_lic_cms $MASTER_NS
 
+    backup_ibmlicensing
+    isExists=$("${OC}" get deployments -n "${MASTER_NS}" --ignore-not-found ibm-licensing-operator)
+    if [ ! -z "$isExists" ]; then
+        "${OC}" delete -n "${MASTER_NS}" --ignore-not-found ibmlicensing instance
+    fi
 
     #might need a more robust check for if licensing is installed
     #"${OC}" delete -n "${MASTER_NS}" --ignore-not-found sub ibm-licensing-operator
@@ -409,6 +415,37 @@ function migrate_lic_cms() {
     echo "$cleaned_cm_list" | "${OC}" apply -n "$CONTROL_NS" -f -
     success "Licensing configmaps copied from $namespace to $CONTROL_NS"
     "${OC}" delete cm --ignore-not-found -n "${namespace}" "${possible_cms[@]}"
+}
+
+function backup_ibmlicensing() {
+
+    instance=`"${OC}" get IBMLicensing instance -o yaml --ignore-not-found | "${YQ}" '
+        with(.; del(.metadata.creationTimestamp) |
+        del(.metadata.managedFields) |
+        del(.metadata.resourceVersion) |
+        del(.metadata.uid) |
+        del(.status)
+        )
+    ' | sed -e 's/^/    /g'`
+cat << _EOF | oc apply -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ibmlicensing-instance-bak
+  namespace: ${CONTROL_NS}
+data:
+  ibmlicensing.yaml: |
+${instance}
+_EOF
+
+}
+
+function restore_ibmlicensing() {
+
+    # extracts the previously saved IBMLicensing CR from ConfigMap and creates the IBMLicensing CR
+    "${OC}" get cm ibmlicensing-instance-bak -n ${CONTROL_NS} -o yaml --ignore-not-found | "${YQ}" .data | sed -e 's/.*ibmlicensing.yaml.*//' | 
+    sed -e 's/^  //g' | oc apply -f -
+
 }
 
 # export_k8s_list_yaml Takes a k8s list in YAML form,
