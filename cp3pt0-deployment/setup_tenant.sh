@@ -29,6 +29,7 @@ RETRY_CONFIG_CSCR=0
 
 # script base directory
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
+LOG_FILE="${BASE_DIR}/logs/setup_tenant_log_$(date +'%Y%m%d%H%M%S').txt"
 
 # counter to keep track of installation steps
 STEP=0
@@ -50,7 +51,7 @@ function main() {
 function save_log(){
     if [ $DEBUG -eq 1 ]; then
         # Redirect stdout and stderr to the log file, overwriting it each time
-        exec > >(tee "setup_tenant.log") 2>&1      
+        exec > >(tee "$LOG_FILE") 2>&1      
     fi
 }
 
@@ -482,7 +483,11 @@ EOF
 }
 
 function remove_ansi() {
-    sed -i 's/\x1B\[[0-9;]\{1,\}[A-Za-z]//g' "setup_tenant.log"
+    # Check if the log file already exists
+    if [[ -e $LOG_FILE ]]; then
+        # Remove ANSI escape sequences from log file
+        sed -i 's/\x1B\[[0-9;]\{1,\}[A-Za-z]//g' "$LOG_FILE"
+    fi
 }
 
 main $*
