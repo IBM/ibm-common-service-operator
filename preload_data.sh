@@ -38,9 +38,13 @@ BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 #log file
 LOG_FILE="preload_data_log_$(date +'%Y%m%d%H%M%S').txt"
 
+# ---------- Main functions ----------
+
+. ${BASE_DIR}/cp3pt0-deployment/common/utils.sh
+
 function main() {
     parse_arguments "$@"
-    save_log
+    save_log "cp3pt0-deployment/logs" "preload_data_log" "$DEBUG"
     trap cleanup_log EXIT
     prereq
     # run backup preload
@@ -49,27 +53,6 @@ function main() {
     copy_secret "platform-auth-idp-credentials"
     copy_secret "platform-auth-ldaps-ca-cert"
     # any extra config
-}
-
-function save_log(){
-    local LOG_DIR="$BASE_DIR/cp3pt0-deployment/logs"
-    LOG_FILE="$LOG_DIR/preload_data_log_$(date +'%Y%m%d%H%M%S').txt"
-
-    if [ $DEBUG -eq 1 ]; then
-        if [[ ! -d $LOG_DIR ]]; then
-            mkdir -p "$LOG_DIR"
-        fi
-        # Redirect stdout and stderr to the log file, overwriting it each time
-        exec > >(tee "$LOG_FILE") 2>&1      
-    fi
-}
-
-function cleanup_log() {
-    # Check if the log file already exists
-    if [[ -e $LOG_FILE ]]; then
-        # Remove ANSI escape sequences from log file
-        sed -i 's/\x1B\[[0-9;]\{1,\}[A-Za-z]//g' "$LOG_FILE"
-    fi
 }
 
 function parse_arguments() {
