@@ -20,6 +20,8 @@ set -o pipefail
 set -o errtrace
 set -o nounset
 
+# ---------- Command arguments ----------
+
 OC=oc
 YQ=yq
 MASTER_NS=
@@ -30,6 +32,14 @@ CS_MAPPING_YAML=""
 CM_NAME="common-service-maps"
 CERT_MANAGER_MIGRATED="false"
 DEBUG=0
+
+# ---------- Command variables ----------
+
+# script base directory
+BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
+
+#log file
+LOG_FILE="isolate_log_$(date +'%Y%m%d%H%M%S').txt"
 
 function main() {
     while [ "$#" -gt "0" ]
@@ -56,7 +66,8 @@ function main() {
             shift
             ;;
         -v | --debug)
-            DEBUG=1
+            shift
+            DEBUG=$1
             ;;
         *)
             error "invalid option -- \`$1\`. Use the -h or --help option for usage info."
@@ -64,6 +75,10 @@ function main() {
         esac
         shift
     done
+
+    save_log
+    trap cleanup_log EXIT
+
     which "${OC}" || error "Missing oc CLI"
     which "${YQ}" || error "Missing yq"
 
@@ -93,6 +108,28 @@ function main() {
         info "Cert Manager not migrated, skipping wait."
     fi
     success "Isolation complete"
+}
+
+function save_log(){
+    echo "$BASE_DIR"
+    local LOG_DIR="$BASE_DIR/cp3pt0-deployment/logs"
+    LOG_FILE="$LOG_DIR/isolate_log_$(date +'%Y%m%d%H%M%S').txt"
+
+    if [ $DEBUG -eq 1 ]; then
+        if [[ ! -d $LOG_DIR ]]; then
+            mkdir -p "$LOG_DIR"
+        fi
+        # Redirect stdout and stderr to the log file, overwriting it each time
+        exec > >(tee "$LOG_FILE") 2>&1      
+    fi
+}
+
+function cleanup_log() {
+    # Check if the log file already exists
+    if [[ -e $LOG_FILE ]]; then
+        # Remove ANSI escape sequences from log file
+        sed -i 's/\x1B\[[0-9;]\{1,\}[A-Za-z]//g' "$LOG_FILE"
+    fi
 }
 
 function usage() {
@@ -125,6 +162,11 @@ Mandatory arguments to long options are mandatory for short options too.
 }
 
 function prereq() {
+    # Check the value of DEBUG
+    if [[ "$DEBUG" != "1" && "$DEBUG" != "0" ]]; then
+        error "Invalid value for DEBUG. Expected 0 or 1."
+    fi
+
     # LicenseServiceReporter should not be installed because it does not support multi-instance mode
     return_value=$(("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
     if [[ $return_value == "exists" ]]; then

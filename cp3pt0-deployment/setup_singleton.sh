@@ -9,6 +9,7 @@
 # Please refer to that particular license for additional information. 
 
 # ---------- Command arguments ----------
+
 OC=oc
 ENABLE_LICENSING=0
 ENABLE_PRIVATE_CATALOG=0
@@ -35,7 +36,7 @@ CHECK_LICENSING_ONLY=0
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 
 # log file
-LOG_FILE="${BASE_DIR}/logs/setup_singleton_log_$(date +'%Y%m%d%H%M%S').txt"
+LOG_FILE="setup_singleton_log_$(date +'%Y%m%d%H%M%S').txt"
 
 # counter to keep track of installation steps
 STEP=0
@@ -47,6 +48,7 @@ STEP=0
 function main() {
     parse_arguments "$@"
     save_log
+    trap cleanup_log EXIT
     pre_req
     if [ $MIGRATE_SINGLETON -eq 1 ]; then
         info "Found parameter '--operator-namespace', migrating singleton services"
@@ -59,13 +61,26 @@ function main() {
 
     install_cert_manager
     install_licensing
-    remove_ansi
 }
 
 function save_log(){
+    local LOG_DIR="$BASE_DIR/logs"
+    LOG_FILE="$LOG_DIR/setup_singleton_log_$(date +'%Y%m%d%H%M%S').txt"
+
     if [ $DEBUG -eq 1 ]; then
+        if [[ ! -d $LOG_DIR ]]; then
+            mkdir -p "$LOG_DIR"
+        fi
         # Redirect stdout and stderr to the log file, overwriting it each time
         exec > >(tee "$LOG_FILE") 2>&1      
+    fi
+}
+
+function cleanup_log() {
+    # Check if the log file already exists
+    if [[ -e $LOG_FILE ]]; then
+        # Remove ANSI escape sequences from log file
+        sed -i 's/\x1B\[[0-9;]\{1,\}[A-Za-z]//g' "$LOG_FILE"
     fi
 }
 
@@ -239,6 +254,11 @@ function wait_for_license_instance() {
 }
 
 function pre_req() {
+    # Check the value of DEBUG
+    if [[ "$DEBUG" != "1" && "$DEBUG" != "0" ]]; then
+        error "Invalid value for DEBUG. Expected 0 or 1."
+    fi
+
     check_command "${OC}"
 
     # Checking oc command logged in
@@ -282,14 +302,6 @@ function pre_req() {
                 LICENSING_NAMESPACE="${CONTROL_NS}"
             fi
         fi
-    fi
-}
-
-function remove_ansi() {
-    # Check if the log file already exists
-    if [[ -e $LOG_FILE ]]; then
-        # Remove ANSI escape sequences from log file
-        sed -i 's/\x1B\[[0-9;]\{1,\}[A-Za-z]//g' "$LOG_FILE"
     fi
 }
 

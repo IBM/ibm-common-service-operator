@@ -36,7 +36,7 @@ LICENSE_ACCEPT=0
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 
 # log file
-LOG_FILE="${BASE_DIR}/logs/migrate_tenant_log_$(date +'%Y%m%d%H%M%S').txt"
+LOG_FILE="migrate_tenant_log_$(date +'%Y%m%d%H%M%S').txt"
 
 # counter to keep track of installation steps
 STEP=0
@@ -47,8 +47,9 @@ STEP=0
 
 function main() {
     parse_arguments "$@"
-    pre_req
     save_log
+    trap cleanup_log EXIT
+    pre_req
     
     # TODO check Cloud Pak compatibility
 
@@ -120,13 +121,26 @@ function main() {
 
     success "Preparation is completed for upgrading Cloud Pak 3.0"
     info "Please update OperandRequest to upgrade foundational core services"
-    remove_ansi
 }
 
 function save_log(){
+    local LOG_DIR="$BASE_DIR/logs"
+    LOG_FILE="$LOG_DIR/migrate_tenant_log_$(date +'%Y%m%d%H%M%S').txt"
+
     if [ $DEBUG -eq 1 ]; then
+        if [[ ! -d $LOG_DIR ]]; then
+            mkdir -p "$LOG_DIR"
+        fi
         # Redirect stdout and stderr to the log file, overwriting it each time
         exec > >(tee "$LOG_FILE") 2>&1      
+    fi
+}
+
+function cleanup_log() {
+    # Check if the log file already exists
+    if [[ -e $LOG_FILE ]]; then
+        # Remove ANSI escape sequences from log file
+        sed -i 's/\x1B\[[0-9;]\{1,\}[A-Za-z]//g' "$LOG_FILE"
     fi
 }
 
@@ -221,6 +235,11 @@ function print_usage() {
 }
 
 function pre_req() {
+    # Check the value of DEBUG
+    if [[ "$DEBUG" != "1" && "$DEBUG" != "0" ]]; then
+        error "Invalid value for DEBUG. Expected 0 or 1."
+    fi
+
     check_command "${OC}"
     check_command "${YQ}"
 
@@ -228,7 +247,7 @@ function pre_req() {
     # # checking yq version is v4.30+
     # check_version "${YQ}" "--version" "mikefarah" "4\.([3-9][0-9])\.[0-9]+"
 
-    # checking oc command logged in
+    # Checking oc command logged in
     user=$(${OC} whoami 2> /dev/null)
     if [ $? -ne 0 ]; then
         error "You must be logged into the OpenShift Cluster from the oc command line"
@@ -279,16 +298,6 @@ function pre_req() {
     fi
     
     get_and_validate_arguments
-}
-
-function remove_ansi() {
-    echo "222"
-    # Check if the log file already exists
-    if [[ -e $LOG_FILE ]]; then
-        echo "111"
-        # Remove ANSI escape sequences from log file
-        sed -i 's/\x1B\[[0-9;]\{1,\}[A-Za-z]//g' "$LOG_FILE"
-    fi
 }
 
 # TODO validate argument
