@@ -27,6 +27,8 @@ TARGET_NAMESPACE=
 backup="false"
 restore="false"
 cleanup="false"
+backup_path="/velero/backup/mongoDB/"
+restore_path="/velero/restore/mongoDB/"
 
 function main() {
     while [ "$#" -gt "0" ]
@@ -123,14 +125,14 @@ function prep_backup() {
     #TODO add clarifying messages and check response code to make more transparent
     #backup files
     info "Checking for necessary backup files..."
-    if [[ -f "./velero/backup/mongoDB/mongodbbackup.yaml" ]]; then
+    if [[ -f "mongodbbackup.yaml" ]]; then
         info "mongodbbackup.yaml already present"
     else
         info "mongodbbackup.yaml not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongoDB/mongodbbackup.yaml"
         wget -O mongodbbackup.yaml https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongoDB/mongodbbackup.yaml || error "Failed to download mongodbbackup.yaml"
     fi
 
-    if [[ -f "./velero/backup/mongoDB/mongo-backup.sh" ]]; then
+    if [[ -f "mongo-backup.sh" ]]; then
         info "mongo-backup.sh already present"
     else
         info "mongodbbackup.yaml not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongoDB/mongo-backup.sh"
@@ -215,25 +217,25 @@ function prep_restore() {
     
     #Restore files
     info "Checking for necessary restore files..."
-    if [[ -f "./velero/restore/mongoDB/mongodbrestore.yaml" ]]; then
+    if [[ -f "mongodbrestore.yaml" ]]; then
         info "mongodbrestore.yaml already present"
     else
         info "mongodbrestore.yaml not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongodbrestore.yaml"
-        wget https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongodbrestore.yaml || error "Failed to download mongodbrestore.yaml"
+        wget -O mongodbrestore.yaml https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongodbrestore.yaml || error "Failed to download mongodbrestore.yaml"
     fi
 
-    if [[ -f "./velero/restore/mongoDB/set_access.js" ]]; then
+    if [[ -f "set_access.js" ]]; then
         info "set_access.js already present"
     else
         info "set_access.js not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/set_access.js"
-        wget https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/set_access.js || error "Failed to download set_access.js"
+        wget -O set_access.js https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/set_access.js || error "Failed to download set_access.js"
     fi
 
-    if [[ -f "./velero/restore/mongoDB/mongo-restore.sh" ]]; then
+    if [[ -f "mongo-restore.sh" ]]; then
         info "mongo-restore.sh already present"
     else
-        info "set_access.js not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongo-restore.sh"
-        wget https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongo-restore.sh || error "Failed to download mongo-restore.sh"
+        info "mongo-restore.sh not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongo-restore.sh"
+        wget -O mongo-restore.sh https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongo-restore.sh || error "Failed to download mongo-restore.sh"
     fi
     
     ${OC} get pvc -n ${ORIGINAL_NAMESPACE} cs-mongodump -o yaml > cs-mongodump-copy.yaml
@@ -260,12 +262,12 @@ function prep_restore() {
     do
         if [[ "${pvStatus}" != "Available" ]]; then
             retries=$(( $retries - 1 ))
-            info "Persitent Volume ${pvx} not available yet. Retries left: ${retries}. Waiting 30 seconds..."
+            info "Persistent Volume ${pvx} not available yet. Retries left: ${retries}. Waiting 30 seconds..."
             sleep 30s
             pvStatus=$("${OC}" get pv -o yaml ${pvx}| yq '.status.phase' | awk '{print}')
             echo "PVX: ${pvx} PV status: ${pvStatus}"
         else
-            info "Persitent Volume ${pvx} available. Moving on..."
+            info "Persistent Volume ${pvx} available. Moving on..."
             break
         fi
     done
