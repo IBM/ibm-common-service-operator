@@ -20,15 +20,32 @@ set -o pipefail
 set -o errtrace
 # set -o nounset
 
+# ---------- Command arguments ----------
+
 OC=oc
 YQ=yq
 FROM_NAMESPACE=""
 TO_NAMESPACE=""
 NUM=$#
 TEMPFILE="_TMP.yaml"
+DEBUG=0
+
+# ---------- Command variables ----------
+
+# script base directory
+BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
+
+#log file
+LOG_FILE="preload_data_log_$(date +'%Y%m%d%H%M%S').txt"
+
+# ---------- Main functions ----------
+
+. ${BASE_DIR}/cp3pt0-deployment/common/utils.sh
 
 function main() {
     parse_arguments "$@"
+    save_log "cp3pt0-deployment/logs" "preload_data_log" "$DEBUG"
+    trap cleanup_log EXIT
     prereq
     # run backup preload
     backup_preload_mongo
@@ -58,6 +75,10 @@ function parse_arguments() {
             shift
             TO_NAMESPACE=$1
             ;;
+        -v | --debug)
+            shift
+            DEBUG=$1
+            ;;
         -h | --help)
             print_usage
             exit 1
@@ -81,12 +102,17 @@ function print_usage() {
     echo "   --yq string                                    File path to yq CLI. Default uses yq in your PATH"
     echo "   --original-cs-ns string                        Namespace to migrate Cloud Pak 2 Foundational services data from."
     echo "   --services-ns string                           Namespace to migrate Cloud Pak 2 Foundational services data too"
+    echo "   -v, --debug integer                            Verbosity of logs. Default is 0. Set to 1 for debug logs"
     echo "   -h, --help                                     Print usage information"
     echo ""
 }
 
 function prereq() {
-    
+    # Check the value of DEBUG
+    if [[ "$DEBUG" != "1" && "$DEBUG" != "0" ]]; then
+        error "Invalid value for DEBUG. Expected 0 or 1."
+    fi
+
     if [[ -z "$FROM_NAMESPACE" ]] || [[ -z "$TO_NAMESPACE" ]]; then
         error "Both Original-CommonService-Namespace and Services-Namespace need to be set for script to execute. Please rerun script with both parameters set. Run with \"-h\" flag for more details"
         exit 1

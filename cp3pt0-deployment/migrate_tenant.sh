@@ -35,6 +35,9 @@ LICENSE_ACCEPT=0
 # script base directory
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 
+# log file
+LOG_FILE="migrate_tenant_log_$(date +'%Y%m%d%H%M%S').txt"
+
 # counter to keep track of installation steps
 STEP=0
 
@@ -44,6 +47,8 @@ STEP=0
 
 function main() {
     parse_arguments "$@"
+    save_log "logs" "migrate_tenant_log" "$DEBUG"
+    trap cleanup_log EXIT
     pre_req
     
     # TODO check Cloud Pak compatibility
@@ -209,6 +214,11 @@ function print_usage() {
 }
 
 function pre_req() {
+    # Check the value of DEBUG
+    if [[ "$DEBUG" != "1" && "$DEBUG" != "0" ]]; then
+        error "Invalid value for DEBUG. Expected 0 or 1."
+    fi
+
     check_command "${OC}"
     check_command "${YQ}"
 
@@ -216,7 +226,7 @@ function pre_req() {
     # # checking yq version is v4.30+
     # check_version "${YQ}" "--version" "mikefarah" "4\.([3-9][0-9])\.[0-9]+"
 
-    # checking oc command logged in
+    # Checking oc command logged in
     user=$(${OC} whoami 2> /dev/null)
     if [ $? -ne 0 ]; then
         error "You must be logged into the OpenShift Cluster from the oc command line"
@@ -272,12 +282,6 @@ function pre_req() {
 # TODO validate argument
 function get_and_validate_arguments() {
     get_control_namespace
-}
-
-function debug1() {
-    if [ $DEBUG -eq 1 ]; then
-       debug "${1}"
-    fi
 }
 
 main $*

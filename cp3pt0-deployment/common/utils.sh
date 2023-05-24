@@ -1009,3 +1009,25 @@ function delete_operand_finalizer() {
         fi
     done
 }
+
+function save_log(){
+    local LOG_DIR="$BASE_DIR/$1"
+    LOG_FILE="$LOG_DIR/$2_$(date +'%Y%m%d%H%M%S').txt"
+    local debug=$3
+
+    if [ $debug -eq 1 ]; then
+        if [[ ! -d $LOG_DIR ]]; then
+            mkdir -p "$LOG_DIR"
+        fi
+        # Redirect stdout and stderr to the log file, overwriting it each time
+        exec > >(tee "$LOG_FILE") 2>&1      
+    fi
+}
+
+function cleanup_log() {
+    # Check if the log file already exists
+    if [[ -e $LOG_FILE ]]; then
+        # Remove ANSI escape sequences from log file
+        sed -i 's/\x1B\[[0-9;]\{1,\}[A-Za-z]//g' "$LOG_FILE"
+    fi
+}
