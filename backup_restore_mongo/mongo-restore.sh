@@ -1,4 +1,8 @@
 #!/bin/bash
+OLD_CS_NS=""
+if [[ ! -z $1 ]]; then
+  OLD_CS_NS=$1
+fi
 function msg() {
   printf '%b\n' "$1"
 }
@@ -41,7 +45,66 @@ function restore_mongodb () {
     exit -1
   else
     echo Starting restore
-    oc apply -f mongodbrestore.yaml -n $CS_NAMESPACE
+
+    ibm_mongodb_image=$(oc get pod icp-mongodb-0 -n $OLD_CS_NS -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
+
+    cat <<EOF | oc apply -f -
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mongodb-restore
+  namespace: $CS_NAMESPACE
+spec:
+  parallelism: 1
+  completions: 1
+  backoffLimit: 20
+  template:
+    spec:
+      containers:
+      - name: icp-mongodb-restore
+        image: $ibm_mongodb_image
+        command: ["bash", "-c", "cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongorestore --host rs0/icp-mongodb:27017 --username \$ADMIN_USER --password \$ADMIN_PASSWORD --authenticationDatabase admin --ssl --sslCAFile /work-dir/ca.pem --sslPEMKeyFile /work-dir/mongo.pem /dump/dump"]
+        resources:
+          limits:
+            cpu: 500m
+            memory: 500Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        volumeMounts:
+        - mountPath: "/dump"
+          name: mongodump
+        - mountPath: "/work-dir"
+          name: tmp-mongodb
+        - mountPath: "/cred/mongo-certs"
+          name: icp-mongodb-client-cert
+        - mountPath: "/cred/cluster-ca"
+          name: cluster-ca-cert
+        env:
+          - name: ADMIN_USER
+            valueFrom:
+              secretKeyRef:
+                name: icp-mongodb-admin
+                key: user
+          - name: ADMIN_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: icp-mongodb-admin
+                key: password
+      volumes:
+      - name: mongodump
+        persistentVolumeClaim:
+          claimName: cs-mongodump
+      - name: tmp-mongodb
+        emptyDir: {}
+      - name: icp-mongodb-client-cert
+        secret:
+          secretName: icp-mongodb-client-cert
+      - name: cluster-ca-cert
+        secret:
+          secretName: mongodb-root-ca-cert
+      restartPolicy: Never
+EOF
     sleep 20s
 
     LOOK=$(oc get po --no-headers=true -n $CS_NAMESPACE | grep mongodb-restore | awk '{ print $1 }')

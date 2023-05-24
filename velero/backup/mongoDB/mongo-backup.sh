@@ -72,65 +72,7 @@ EOF
   # Start the backup
   #
   msg "Starting backup"
-  ibm_mongodb_image=$(oc get pod icp-mongodb-0 -n $CS_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
-
-  cat <<EOF | oc apply -f -
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: mongodb-backup
-  namespace: $CS_NAMESPACE
-spec:
-  parallelism: 1
-  completions: 1
-  backoffLimit: 20
-  template:
-    spec:
-      containers:
-      - name: cs-mongodb-backup
-        image: $ibm_mongodb_image
-        resources:
-          limits:
-            cpu: 500m
-            memory: 500Mi
-          requests:
-            cpu: 100m
-            memory: 128Mi
-        command: ["bash", "-c", "cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongodump --oplog --out /dump/dump --host mongodb:27017 --username \$ADMIN_USER --password \$ADMIN_PASSWORD --authenticationDatabase admin --ssl --sslCAFile /work-dir/ca.pem --sslPEMKeyFile /work-dir/mongo.pem"]
-        volumeMounts:
-        - mountPath: "/work-dir"
-          name: tmp-mongodb
-        - mountPath: "/dump"
-          name: mongodump
-        - mountPath: "/cred/mongo-certs"
-          name: icp-mongodb-client-cert
-        - mountPath: "/cred/cluster-ca"
-          name: cluster-ca-cert
-        env:
-          - name: ADMIN_USER
-            valueFrom:
-              secretKeyRef:
-                name: icp-mongodb-admin
-                key: user
-          - name: ADMIN_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: icp-mongodb-admin
-                key: password
-      volumes:
-      - name: mongodump
-        persistentVolumeClaim:
-          claimName: cs-mongodump
-      - name: tmp-mongodb
-        emptyDir: {}
-      - name: icp-mongodb-client-cert
-        secret:
-          secretName: icp-mongodb-client-cert
-      - name: cluster-ca-cert
-        secret:
-          secretName: mongodb-root-ca-cert
-      restartPolicy: OnFailure
-EOF
+  oc apply -f mongodbbackup.yaml -n $CS_NAMESPACE
   sleep 15s
 
   LOOK=$(oc get po --no-headers=true -n $CS_NAMESPACE | grep mongodb-backup | awk '{ print $1 }')
