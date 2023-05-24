@@ -1012,7 +1012,7 @@ function delete_operand_finalizer() {
 
 function save_log(){
     local LOG_DIR="$BASE_DIR/$1"
-    LOG_FILE="$LOG_DIR/$2_$(date +'%Y%m%d%H%M%S').txt"
+    LOG_FILE="$LOG_DIR/$2_$(date +'%Y%m%d%H%M%S').log"
     local debug=$3
 
     if [ $debug -eq 1 ]; then
@@ -1028,6 +1028,12 @@ function cleanup_log() {
     # Check if the log file already exists
     if [[ -e $LOG_FILE ]]; then
         # Remove ANSI escape sequences from log file
-        sed -i 's/\x1B\[[0-9;]\{1,\}[A-Za-z]//g' "$LOG_FILE"
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            # macOS (BSD sed)
+            sed -i '' 's/\x1B\[[0-9;]\{1,\}[A-Za-z]//g' "$LOG_FILE"
+        elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+            # Linux (GNU sed)
+            sed -i 's/\x1B\[[0-9;]\{1,\}[A-Za-z]//g' "$LOG_FILE"
+        fi
     fi
 }
