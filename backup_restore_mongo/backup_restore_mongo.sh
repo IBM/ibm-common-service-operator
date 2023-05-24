@@ -281,7 +281,7 @@ function restore () {
     export ibm_mongodb_image=$(${OC} get pod icp-mongodb-0 -n $ORIGINAL_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
 
     chmod +x mongo-restore.sh
-    ./mongo-restore.sh
+    ./mongo-restore.sh "$FROM_NAMESPACE"
 
     local jobPod=$(${OC} get pods -n $TARGET_NAMESPACE | grep mongodb-restore | awk '{ print $1 }')
     local fileName="restore_to_${TARGET_NAMESPACE}_from_${ORIGINAL_NAMESPACE}.log"
