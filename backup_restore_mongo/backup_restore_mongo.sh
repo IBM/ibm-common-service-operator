@@ -128,48 +128,17 @@ function prep_backup() {
     if [[ -f "mongodbbackup.yaml" ]]; then
         info "mongodbbackup.yaml already present"
     else
-        info "mongodbbackup.yaml not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongoDB/mongodbbackup.yaml"
-        wget -O mongodbbackup.yaml https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongoDB/mongodbbackup.yaml || error "Failed to download mongodbbackup.yaml"
+        info "mongodbbackup.yaml not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/backup_restore_mongo/mongodbbackup.yaml"
+        wget -O mongodbbackup.yaml https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/backup_restore_mongo/mongodbbackup.yaml || error "Failed to download mongodbbackup.yaml"
     fi
 
     if [[ -f "mongo-backup.sh" ]]; then
         info "mongo-backup.sh already present"
     else
-        info "mongodbbackup.yaml not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongoDB/mongo-backup.sh"
-        wget -O mongo-backup.sh https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongoDB/mongo-backup.sh
+        info "mongodbbackup.yaml not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/backup_restore_mongo/mongo-backup.sh"
+        wget -O mongo-backup.sh https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/backup_restore_mongo/mongo-backup.sh
     fi
 
-#     local pvx=$(${OC} get pv | grep mongodbdir | awk 'FNR==1 {print $1}')
-#     local storageClassName=$("${OC}" get pv -o yaml ${pvx} | yq '.spec.storageClassName' | awk '{print}')
-    
-#     ${OC} get sc -o yaml ${storageClassName} > sc.yaml
-#     ${YQ} -i '.metadata.name="backup-sc" | .reclaimPolicy = "Retain"' sc.yaml || error "Error changing the name or retentionPolicy for StorageClass"
-    
-#     info "Checking for existing backup Storage Class"
-#     local scExist=$(${OC} get storageclass backup-sc -o yaml || echo "failed")
-
-#     if [[ $scExist == "failed" ]]; then
-#         info "Creating Storage Class for backup"
-#         ${OC} apply -f sc.yaml || error "Error creating StorageClass backup-sc"
-#     else
-#         info "Storage Class backup-sc present from previous attempt. Moving on..."
-#     fi
-    
-#     info "Creating RBAC for backup"
-#     cat <<EOF | tee >(oc apply -f -) | cat
-# kind: ClusterRoleBinding
-# apiVersion: rbac.authorization.k8s.io/v1
-# metadata:
-#   name: cs-br
-# subjects:
-# - kind: ServiceAccount
-#   name: default
-#   namespace: $ORIGINAL_NAMESPACE
-# roleRef:
-#   kind: ClusterRole
-#   name: cluster-admin
-#   apiGroup: rbac.authorization.k8s.io
-# EOF
     success "Backup prep complete"
 }
 
@@ -177,6 +146,7 @@ function backup() {
     title " Backing up MongoDB in namespace $ORIGINAL_NAMESPACE "
     msg "-----------------------------------------------------------------------"
     export CS_NAMESPACE=$ORIGINAL_NAMESPACE
+    export ibm_mongodb_image=$(${OC} get pod icp-mongodb-0 -n $ORIGINAL_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
     local pvx=$(${OC} get pv | grep mongodbdir | awk 'FNR==1 {print $1}')
     local storageClassName=$("${OC}" get pv -o yaml ${pvx} | yq '.spec.storageClassName' | awk '{print}')
     chmod +x mongo-backup.sh
@@ -220,22 +190,22 @@ function prep_restore() {
     if [[ -f "mongodbrestore.yaml" ]]; then
         info "mongodbrestore.yaml already present"
     else
-        info "mongodbrestore.yaml not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongodbrestore.yaml"
-        wget -O mongodbrestore.yaml https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongodbrestore.yaml || error "Failed to download mongodbrestore.yaml"
+        info "mongodbrestore.yaml not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/backup_restore_mongo/mongodbrestore.yaml"
+        wget -O mongodbrestore.yaml https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/backup_restore_mongo/mongodbrestore.yaml || error "Failed to download mongodbrestore.yaml"
     fi
 
     if [[ -f "set_access.js" ]]; then
         info "set_access.js already present"
     else
-        info "set_access.js not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/set_access.js"
-        wget -O set_access.js https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/set_access.js || error "Failed to download set_access.js"
+        info "set_access.js not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/backup_restore_mongo/set_access.js"
+        wget -O set_access.js https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/backup_restore_mongo/set_access.js || error "Failed to download set_access.js"
     fi
 
     if [[ -f "mongo-restore.sh" ]]; then
         info "mongo-restore.sh already present"
     else
-        info "mongo-restore.sh not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongo-restore.sh"
-        wget -O mongo-restore.sh https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongo-restore.sh || error "Failed to download mongo-restore.sh"
+        info "mongo-restore.sh not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/backup_restore_mongo/mongo-restore.sh"
+        wget -O mongo-restore.sh https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/backup_restore_mongo/mongo-restore.sh || error "Failed to download mongo-restore.sh"
     fi
     
     ${OC} get pvc -n ${ORIGINAL_NAMESPACE} cs-mongodump -o yaml > cs-mongodump-copy.yaml
@@ -310,6 +280,7 @@ function restore () {
     #export csnamespace to reflect the new target namespace
     #restore script is setup to look for CS_NAMESPACE and is used in other backup/restore processes unrelated to this script
     export CS_NAMESPACE=$TARGET_NAMESPACE
+    export ibm_mongodb_image=$(${OC} get pod icp-mongodb-0 -n $ORIGINAL_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
 
     chmod +x mongo-restore.sh
     ./mongo-restore.sh
