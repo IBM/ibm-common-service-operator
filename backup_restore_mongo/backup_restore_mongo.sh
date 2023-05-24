@@ -27,8 +27,6 @@ TARGET_NAMESPACE=
 backup="false"
 restore="false"
 cleanup="false"
-backup_path="/velero/backup/mongoDB/"
-restore_path="/velero/restore/mongoDB/"
 
 function main() {
     while [ "$#" -gt "0" ]
