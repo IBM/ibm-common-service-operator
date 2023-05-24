@@ -1028,12 +1028,6 @@ function cleanup_log() {
     # Check if the log file already exists
     if [[ -e $LOG_FILE ]]; then
         # Remove ANSI escape sequences from log file
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            # macOS (BSD sed)
-            sed -i '' 's/\x1B\[[0-9;]\{1,\}[A-Za-z]//g' "$LOG_FILE"
-        elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-            # Linux (GNU sed)
-            sed -i 's/\x1B\[[0-9;]\{1,\}[A-Za-z]//g' "$LOG_FILE"
-        fi
+        sed -E 's/\x1B\[[0-9;]+[A-Za-z]//g' "$LOG_FILE" > "$LOG_FILE.tmp" && mv "$LOG_FILE.tmp" "$LOG_FILE"
     fi
 }
