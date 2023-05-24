@@ -27,6 +27,10 @@ TARGET_NAMESPACE=
 backup="false"
 restore="false"
 cleanup="false"
+
+# script base directory
+BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
+
 function main() {
     while [ "$#" -gt "0" ]
     do
@@ -122,51 +126,51 @@ function prep_backup() {
     #TODO add clarifying messages and check response code to make more transparent
     #backup files
     info "Checking for necessary backup files..."
-    if [[ -f "mongodbbackup.yaml" ]]; then
+    if [[ -f "./${BASE_DIR}/velero/backup/mongoDB/mongodbbackup.yaml" ]]; then
         info "mongodbbackup.yaml already present"
     else
         info "mongodbbackup.yaml not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongoDB/mongodbbackup.yaml"
         wget -O mongodbbackup.yaml https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongoDB/mongodbbackup.yaml || error "Failed to download mongodbbackup.yaml"
     fi
 
-    if [[ -f "mongo-backup.sh" ]]; then
+    if [[ -f "./${BASE_DIR}/velero/backup/mongoDB/mongo-backup.sh" ]]; then
         info "mongo-backup.sh already present"
     else
         info "mongodbbackup.yaml not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongoDB/mongo-backup.sh"
         wget -O mongo-backup.sh https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongoDB/mongo-backup.sh
     fi
 
-    local pvx=$(${OC} get pv | grep mongodbdir | awk 'FNR==1 {print $1}')
-    local storageClassName=$("${OC}" get pv -o yaml ${pvx} | yq '.spec.storageClassName' | awk '{print}')
+#     local pvx=$(${OC} get pv | grep mongodbdir | awk 'FNR==1 {print $1}')
+#     local storageClassName=$("${OC}" get pv -o yaml ${pvx} | yq '.spec.storageClassName' | awk '{print}')
     
-    ${OC} get sc -o yaml ${storageClassName} > sc.yaml
-    ${YQ} -i '.metadata.name="backup-sc" | .reclaimPolicy = "Retain"' sc.yaml || error "Error changing the name or retentionPolicy for StorageClass"
+#     ${OC} get sc -o yaml ${storageClassName} > sc.yaml
+#     ${YQ} -i '.metadata.name="backup-sc" | .reclaimPolicy = "Retain"' sc.yaml || error "Error changing the name or retentionPolicy for StorageClass"
     
-    info "Checking for existing backup Storage Class"
-    local scExist=$(${OC} get storageclass backup-sc -o yaml || echo "failed")
+#     info "Checking for existing backup Storage Class"
+#     local scExist=$(${OC} get storageclass backup-sc -o yaml || echo "failed")
 
-    if [[ $scExist == "failed" ]]; then
-        info "Creating Storage Class for backup"
-        ${OC} apply -f sc.yaml || error "Error creating StorageClass backup-sc"
-    else
-        info "Storage Class backup-sc present from previous attempt. Moving on..."
-    fi
+#     if [[ $scExist == "failed" ]]; then
+#         info "Creating Storage Class for backup"
+#         ${OC} apply -f sc.yaml || error "Error creating StorageClass backup-sc"
+#     else
+#         info "Storage Class backup-sc present from previous attempt. Moving on..."
+#     fi
     
-    info "Creating RBAC for backup"
-    cat <<EOF | tee >(oc apply -f -) | cat
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: cs-br
-subjects:
-- kind: ServiceAccount
-  name: default
-  namespace: $ORIGINAL_NAMESPACE
-roleRef:
-  kind: ClusterRole
-  name: cluster-admin
-  apiGroup: rbac.authorization.k8s.io
-EOF
+#     info "Creating RBAC for backup"
+#     cat <<EOF | tee >(oc apply -f -) | cat
+# kind: ClusterRoleBinding
+# apiVersion: rbac.authorization.k8s.io/v1
+# metadata:
+#   name: cs-br
+# subjects:
+# - kind: ServiceAccount
+#   name: default
+#   namespace: $ORIGINAL_NAMESPACE
+# roleRef:
+#   kind: ClusterRole
+#   name: cluster-admin
+#   apiGroup: rbac.authorization.k8s.io
+# EOF
     success "Backup prep complete"
 }
 
@@ -174,8 +178,10 @@ function backup() {
     title " Backing up MongoDB in namespace $ORIGINAL_NAMESPACE "
     msg "-----------------------------------------------------------------------"
     export CS_NAMESPACE=$ORIGINAL_NAMESPACE
+    local pvx=$(${OC} get pv | grep mongodbdir | awk 'FNR==1 {print $1}')
+    local storageClassName=$("${OC}" get pv -o yaml ${pvx} | yq '.spec.storageClassName' | awk '{print}')
     chmod +x mongo-backup.sh
-    ./mongo-backup.sh true
+    ./mongo-backup.sh "$storageClassName"
 
     local jobPod=$(${OC} get pods -n $ORIGINAL_NAMESPACE | grep mongodb-backup | awk '{ print $1 }')
     local fileName="backup_from_${ORIGINAL_NAMESPACE}_for_${TARGET_NAMESPACE}.log"
@@ -189,13 +195,17 @@ function backup() {
     else
         return_value="reset"
         info "Backup PVC cs-mongodump found"
-        return_value=$("${OC}" get pvc cs-mongodump -n $ORIGINAL_NAMESPACE -o yaml | yq '.spec.storageClassName' | awk '{print}')
-        if [[ "$return_value" != "backup-sc" ]]; then
-            error "Backup PVC cs-mongodump not bound to persistent volume provisioned by correct storage class. Provisioned by \"${return_value}\" instead of \"backup-sc\""
+        
+        VOL=$(${OC} get pvc cs-mongodump -n $ORIGINAL_NAMESPACE  -o=jsonpath='{.spec.volumeName}')
+        ${OC} patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Retain" }}'
+        
+        return_value=$(${OC} get pvc cs-mongodump -n $ORIGINAL_NAMESPACE -o yaml | yq '.spec.storageClassName' | awk '{print}')
+        if [[ "$return_value" != "$storageClassName" ]]; then
+            error "Backup PVC cs-mongodump not bound to persistent volume provisioned by correct storage class. Provisioned by \"${return_value}\" instead of \"$storageClassName\""
             #TODO probably need to handle this situation as the script may not be able to handle it as is
             #should be an edge case though as script is designed to attach to specific pv
         else
-            info "Backup PVC cs-mongodump successfully bound to persistent volume provisioned by backup-sc storage class."
+            info "Backup PVC cs-mongodump successfully bound to persistent volume provisioned by $storageClassName storage class."
         fi
     fi
 
@@ -208,21 +218,21 @@ function prep_restore() {
     
     #Restore files
     info "Checking for necessary restore files..."
-    if [[ -f "mongodbrestore.yaml" ]]; then
+    if [[ -f "./${BASE_DIR}/velero/restore/mongoDB/mongodbrestore.yaml" ]]; then
         info "mongodbrestore.yaml already present"
     else
         info "mongodbrestore.yaml not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongodbrestore.yaml"
         wget https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongodbrestore.yaml || error "Failed to download mongodbrestore.yaml"
     fi
 
-    if [[ -f "set_access.js" ]]; then
+    if [[ -f "./${BASE_DIR}/velero/restore/mongoDB/set_access.js" ]]; then
         info "set_access.js already present"
     else
         info "set_access.js not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/set_access.js"
         wget https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/set_access.js || error "Failed to download set_access.js"
     fi
 
-    if [[ -f "mongo-restore.sh" ]]; then
+    if [[ -f "./${BASE_DIR}/velero/restore/mongoDB/mongo-restore.sh" ]]; then
         info "mongo-restore.sh already present"
     else
         info "set_access.js not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongo-restore.sh"
@@ -376,7 +386,7 @@ function refresh_auth_idp(){
     title " Restarting auth-idp pod in namespace $TARGET_NAMESPACE "
     msg "-----------------------------------------------------------------------"
     local auth_pod=$(${OC} get pods -n $TARGET_NAMESPACE | grep auth-idp | awk '{print $1}')
-    ${OC} delete pod $auth_pod -n $TARGET_NAMESPACE || error "Pod $auth_pod could not be deleted"
+    ${OC} delete pod $auth_pod -n $TARGET_NAMESPACE || warning "Pod $auth_pod could not be deleted, try deleting manually"
     success "Pod $auth_pod deleted. Please allow a few minutes for it to restart."
 }
 
