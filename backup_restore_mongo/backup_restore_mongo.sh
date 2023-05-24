@@ -364,7 +364,7 @@ function check_ldap_secret() {
         certificate=$(${OC} get secret -n $TARGET_NAMESPACE platform-auth-ldaps-ca-cert -o yaml | yq '.data.certificate' )
         og_certificate=$(${OC} get secret -n $ORIGINAL_NAMESPACE platform-auth-ldaps-ca-cert -o yaml | yq '.data.certificate' )
         if [[ $certificate == "" ]] || [[ $certificate != $og_certificate ]]; then
-            ${OC} patch secret -n $TARGET_NAMESPACE platform-auth-ldaps-ca-cert --type=merge -p '{"data": {"certificate":'$og_certificate'}}'
+            ${OC} patch secret -n $TARGET_NAMESPACE platform-auth-ldaps-ca-cert --type=merge -p '{"data": {"certificate": "'$og_certificate'"}}'
             info "Secret platform-auth-ldaps-ca-cert in $TARGET_NAMESPACE patched to match secret in $ORIGINAL_NAMESPACE"
         else
             info "Secret platform-auth-ldaps-ca-cert already populated. Moving on..."
