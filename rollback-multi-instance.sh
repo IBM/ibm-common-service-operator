@@ -24,6 +24,7 @@ CONTROL_NS=
 cm_name="common-service-maps"
 OC=oc
 YQ=yq
+DEBUG=0
 
 
 function main() {
@@ -43,6 +44,9 @@ function main() {
         "--control-ns")
             CONTROL_NS=$2
             shift
+            ;;
+        -v | --debug)
+            DEBUG=1
             ;;
         *)
             error "invalid option -- \`$1\`. Use the -h or --help option for usage info."
@@ -72,6 +76,7 @@ function usage() {
 	  -h, --help                    display this help and exit
       --original-cs-ns              specify the original common services namespace
       --control-ns                  specify the existing control namespace
+      -v, --debug integer           Verbosity of logs. Default is 0. Set to 1 for debug logs.
 	EOF
 }
 
@@ -400,25 +405,41 @@ function scale_up_pod() {
 }
 
 function un_isolate_odlm() {
-    package_name=$1
-    ns=$2
+    local package_name=$1
+    local ns=$2
     # get subscription of ODLM based on namespace 
-    sub_name=$(${OC} get subscription.operators.coreos.com -n ${ns} -l operators.coreos.com/${package_name}.${ns}='' --no-headers | awk '{print $1}')
+    local sub_name=$(${OC} get subscription.operators.coreos.com -n ${ns} -l operators.coreos.com/${package_name}.${ns}='' --no-headers | awk '{print $1}')
     if [ -z "$sub_name" ]; then
         warning "Not found subscription ${package_name} in ${ns}"
         return 0
     fi
-    ${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml > sub.yaml
-
-    # set ISOLATED_MODE to true
-    yq e '.spec.config.env |= (map(select(.name == "ISOLATED_MODE").value |= "false") + [{"name": "ISOLATED_MODE", "value": "false"}] | unique_by(.name))' sub.yaml -i
-
-    # apply updated subscription back to cluster
-    ${OC} apply -f sub.yaml
+    #merge patch overwrites the entire array if you update any values so we need to get any other value specified and make sure it is unchanged
+    #loop through all of the values specified in spec.config.env
+    env_range=$(${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml | yq '.spec.config.env[].name')
+    patch_string=""
+    count=0
+    for name in $env_range
+    do
+        #If isolated mode, set value to true. Otherwise keep name value pairs unchanged.
+        if [[ $name == "ISOLATED_MODE" ]]; then
+            env_value="false"
+        else
+            env_value=$(${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml | yq '.spec.config.env['"${count}"'].value')
+        fi
+        #Add name value pair in json format to the patch string
+        if [[ $patch_string == "" ]]; then
+            patch_string="{\"name\": \"$name\", \"value\": \"$env_value\"}"
+        else
+            patch_string="$patch_string, {\"name\": \"$name\", \"value\": \"$env_value\"}"
+        fi
+        count=$((count + 1))
+    done
+    debug1 "patch string $patch_string"
+    #use the patch string to apply the isolate mode patch
+    ${OC} patch subscription.operators.coreos.com ${sub_name} -n ${ns} --type=merge -p '{"spec": {"config": {"env": ['"${patch_string}"']}}}'
     if [[ $? -ne 0 ]]; then
         error "Failed to update subscription ${package_name} in ${ns}"
     fi
-    rm sub.yaml
 
     check_odlm_env "${ns}" 
 }
@@ -517,6 +538,11 @@ function info() {
     msg "[INFO] ${1}"
 }
 
+function debug1() {
+    if [ $DEBUG -eq 1 ]; then
+        msg "[DEBUG] ${1}"
+    fi
+}
 # --- Run ---
 
 main $*
