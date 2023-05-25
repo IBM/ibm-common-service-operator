@@ -32,6 +32,7 @@ CS_MAPPING_YAML=""
 CM_NAME="common-service-maps"
 CERT_MANAGER_MIGRATED="false"
 DEBUG=0
+BACKUP_LICENSING="false"
 
 # ---------- Command variables ----------
 
@@ -69,7 +70,7 @@ function main() {
             CONTROL_NS=$2
             shift
             ;;
-        -v | --debug)
+        "-v"|"--debug")
             shift
             DEBUG=$1
             ;;
@@ -105,13 +106,18 @@ function main() {
     removeNSS
     uninstall_singletons
     isolate_odlm "ibm-odlm" $MASTER_NS
-    restore_ibmlicensing
+    if [[ $BACKUP_LICENSING == "true" ]]; then
+        restore_ibmlicensing
+    else
+        info "Licensing not marked for backup, skipping."
+    fi
     restart
     if [[ $CERT_MANAGER_MIGRATED == "true" ]]; then
         wait_for_certmanager "$CONTROL_NS" "${ns_list}"
     else
         info "Cert Manager not migrated, skipping wait."
     fi
+    wait_for_nss_update "${ns_list}"
     success "Isolation complete"
 }
 
@@ -341,6 +347,7 @@ function uninstall_singletons() {
     licensing_exists=$(${OC} get IBMLicensing || echo "fail")
     if [[ $licensing_exists != "fail" ]]; then
         backup_ibmlicensing
+        BACKUP_LICENSING="true"
     else
         info "No ibmlicensing resources on cluster, skipping backup."
     fi
@@ -715,6 +722,33 @@ function wait_for_certmanager() {
     fi
     webhook_ns=$(${OC} get deploy -A | grep cert-manager-webhook | awk '{print $1}')
     success "Cert Manager ready in namespace $namespace. Cert Manager operands deployed in $webhook_ns"
+}
+
+function wait_for_nss_update() {
+    local expected_ns_list=${1//$'\n'/ }
+    wait_for_nss_exist
+    
+    local actual_ns_list=$(${OC} get cm namespace-scope -n ${MASTER_NS} -o yaml | ${YQ} '.data.namespaces')
+    actual_ns_list=$(echo "${actual_ns_list//,/ }" | xargs -n1 | sort | xargs)
+    expected_ns_list=$(echo "${expected_ns_list}" | xargs -n1 | sort | xargs)
+    debug1 "expected ns list: $expected_ns_list"
+    debug1 "actual ns list: $actual_ns_list"
+    if [[ "${expected_ns_list}" == "${actual_ns_list}" ]]; then
+        success "Namespaces in namespace-scope configmap match expected output."
+    else
+        error "Namespaces in namespace-scope configmap do not match expected output."
+    fi
+}
+
+function wait_for_nss_exist() {
+    local condition="${OC} get cm namespace-scope -n ${MASTER_NS} || true"
+    local retries=10
+    local sleep_time=15
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for configmap namespace-scope in namespace ${MASTER_NS} to be created ..."
+    local success_message="Namespace-scope configmap created in ${MASTER_NS}."
+    local error_message="Timeout after ${total_time_mins} minutes waiting for namespace-scope configmap to be created."
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
 function msg() {
