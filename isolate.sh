@@ -71,7 +71,8 @@ function main() {
             shift
             ;;
         "-v"|"--debug")
-            DEBUG=1
+            shift
+            DEBUG=$1
             ;;
         *)
             error "invalid option -- \`$1\`. Use the -h or --help option for usage info."
@@ -773,12 +774,6 @@ function title() {
 
 function info() {
     msg "[INFO] ${1}"
-}
-
-function debug1() {
-    if [ $DEBUG -eq 1 ]; then
-        msg "[DEBUG] ${1}"
-    fi
 }
 
 # --- Run ---
