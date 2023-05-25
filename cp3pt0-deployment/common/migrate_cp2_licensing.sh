@@ -164,10 +164,4 @@ function restore_ibmlicensing() {
 
 }
 
-function debug1() {
-    if [ $DEBUG -eq 1 ]; then
-       debug "${1}"
-    fi
-}
-
 main $*
