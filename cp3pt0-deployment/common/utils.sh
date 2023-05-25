@@ -850,8 +850,12 @@ function check_deployment(){
     local count=0
 
     while [ $count -lt $retries ]; do
-        local current_replicas=$(${OC} get deployment ${deployment} -n ${ns} -o jsonpath='{.spec.replicas}')
+        local current_replicas=$(${OC} get deployment ${deployment} -n ${ns} --ignore-not-found -o jsonpath='{.spec.replicas}')
 
+        if [[ -z "$current_replicas" ]]; then
+            current_replicas=0
+        if
+            
         if [ "$current_replicas" -eq "$replicas" ]; then
             success "Replicas count is as expected: $current_replicas"
             return 0
@@ -902,7 +906,9 @@ function scale_down() {
 
     # Scale down CS
     msg "Patching CSV ${cs_sub} to scale down deployment in ${operator_ns} namespace to 0..."
-    scale_deployment_csv $operator_ns $cs_CSV 0
+    if [[ ! -z "$cs_CSV" ]]; then
+        scale_deployment_csv $operator_ns $cs_CSV 0
+    fi
     check_deployment $operator_ns ibm-common-service-operator 0
     if [[ $? -ne 0 ]]; then
         msg "Scaling down ibm-common-service-operator deployment in ${operator_ns} namespace to 0..."
@@ -911,7 +917,9 @@ function scale_down() {
     
     # Scale down ODLM
     msg "Patching CSV to scale down operand-deployment-lifecycle-manager deployment in ${operator_ns} namespace to 0..."
-    scale_deployment_csv $operator_ns $odlm_CSV 0
+    if [[ ! -z "$odlm_CSV" ]]; then
+        scale_deployment_csv $operator_ns $odlm_CSV 0
+    fi
     check_deployment $operator_ns operand-deployment-lifecycle-manager 0
     if [[ $? -ne 0 ]]; then
         msg "Scaling down operand-deployment-lifecycle-manager deployment in ${operator_ns} namespace to 0..."
