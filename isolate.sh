@@ -71,7 +71,7 @@ function main() {
             ;;
         -v | --debug)
             shift
-            DEBUG=$1
+            DEBUG=1
             ;;
         *)
             error "invalid option -- \`$1\`. Use the -h or --help option for usage info."
@@ -112,6 +112,7 @@ function main() {
     else
         info "Cert Manager not migrated, skipping wait."
     fi
+    wait_for_nss_update "${ns_list}"
     success "Isolation complete"
 }
 
@@ -712,6 +713,20 @@ function wait_for_certmanager() {
     success "Cert Manager ready in namespace $namespace. Cert Manager operands deployed in $webhook_ns"
 }
 
+function wait_for_nss_update() {
+    local expected_ns_list=$1
+    local actual_ns_list=$(${OC} get cm namespace-scope -n $MASTER_NS -o yaml | ${YQ} '.data.namespaces')
+    actual_ns_list=$(echo "${actual_ns_list//,/ }" | sort -u)
+    local condition="[[ "${expected_ns_list}" == "${actual_ns_list}" ]] && echo 'true'"
+    local retries=20
+    local sleep_time=15
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for configmap namespace-scope in namespace $MASTER_NS to be updated ..."
+    local success_message="Namespace-scope configmap updated to match expected list of namespaces."
+    local error_message="Timeout after ${total_time_mins} minutes waiting for namespace-scope configmap to be updated."
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
 function msg() {
     printf '%b\n' "$1"
 }
@@ -735,6 +750,12 @@ function title() {
 
 function info() {
     msg "[INFO] ${1}"
+}
+
+function debug1() {
+    if [ $DEBUG -eq 1 ]; then
+        msg "[DEBUG] ${1}"
+    fi
 }
 
 # --- Run ---
