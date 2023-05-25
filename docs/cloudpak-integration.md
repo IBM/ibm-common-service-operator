@@ -119,6 +119,12 @@ spec:
   - name: ibm-mongodb-operator
     spec:
       mongoDB: {}
+  - name: ibm-im-mongodb-operator
+    spec:
+      mongoDB: {}
+  - name: ibm-im-mongodb-operator-v4.0
+    spec:
+      mongoDB: {}
   - name: ibm-cert-manager-operator
     spec:
       certManager: {}

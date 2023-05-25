@@ -609,6 +609,42 @@
     }
   },
   {
+    "name": "ibm-im-mongodb-operator",
+    "spec": {
+      "mongoDB": {
+        "replicas": 3,
+        "resources": {
+          "limits": {
+            "cpu": "3000m",
+            "memory": "3Gi"
+          },
+          "requests": {
+            "cpu": "500m",
+            "memory": "3Gi"
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "ibm-im-mongodb-operator-v4.0",
+    "spec": {
+      "mongoDB": {
+        "replicas": 3,
+        "resources": {
+          "limits": {
+            "cpu": "3000m",
+            "memory": "3Gi"
+          },
+          "requests": {
+            "cpu": "500m",
+            "memory": "3Gi"
+          }
+        }
+      }
+    }
+  },
+  {
     "name": "ibm-monitoring-grafana-operator",
     "spec": {
       "grafana": {

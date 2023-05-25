@@ -46,7 +46,7 @@ metadata:
     excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators,ibm-cp-automation-foundation-catalog
 spec:
   operators:
-  - name: ibm-mongodb-operator-v4.0
+  - name: ibm-im-mongodb-operator-v4.0
     namespace: "{{ .CPFSNs }}"
     channel: {{ .Channel }}
     packageName: ibm-mongodb-operator-app
@@ -269,6 +269,13 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+  - name: ibm-im-mongodb-operator
+    namespace: "{{ .CPFSNs }}"
+    channel: {{ .Channel }}
+    packageName: ibm-mongodb-operator-app
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: v3
     name: ibm-events-operator
     namespace: "{{ .CPFSNs }}"
@@ -281,6 +288,14 @@ spec:
     namespace: "{{ .CPFSNs }}"
     channel: {{ .Channel }}
     packageName: ibm-zen-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+  - name: ibm-idp-config-ui-operator
+    namespace: "{{ .CPFSNs }}"
+    channel: {{ .Channel }}
+    packageName: ibm-commonui-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
@@ -423,6 +438,13 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+  - name: ibm-im-mongodb-operator
+    namespace: "{{ .CPFSNs }}"
+    channel: {{ .Channel }}
+    packageName: ibm-mongodb-operator-app
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: v3
     name: ibm-events-operator
     namespace: "{{ .CPFSNs }}"
@@ -479,7 +501,11 @@ spec:
     spec:
       mongoDB: {}
       operandRequest: {}
-  - name: ibm-mongodb-operator-v4.0
+  - name: ibm-im-mongodb-operator
+    spec:
+      mongoDB: {}
+      operandRequest: {}
+  - name: ibm-im-mongodb-operator-v4.0
     spec:
       mongoDB: {}
       operandRequest: {}
@@ -494,8 +520,8 @@ spec:
       operandRequest: 
         requests:
           - operands:
-              - name: ibm-mongodb-operator-{{ .Channel }}
-              - name: ibm-idp-config-ui-operator-{{ .Channel }}
+              - name: ibm-im-mongodb-operator
+              - name: ibm-idp-config-ui-operator
             registry: common-service
   - name: ibm-im-operator-v4.0
     spec:
@@ -508,7 +534,7 @@ spec:
       operandRequest:
         requests:
           - operands:
-              - name: ibm-mongodb-operator-v4.0
+              - name: ibm-im-mongodb-operator-v4.0
               - name: ibm-idp-config-ui-operator-v4.0
             registry: common-service
   - name: ibm-iam-operator
@@ -910,7 +936,11 @@ spec:
     spec:
       mongoDB: {}
       operandRequest: {}
-  - name: ibm-mongodb-operator-v4.0
+  - name: ibm-im-mongodb-operator
+    spec:
+      mongoDB: {}
+      operandRequest: {}
+  - name: ibm-im-mongodb-operator-v4.0
     spec:
       mongoDB: {}
       operandRequest: {}
@@ -926,8 +956,8 @@ spec:
       operandRequest:
         requests:
           - operands:
-              - name: ibm-mongodb-operator-{{ .Channel }}
-              - name: ibm-idp-config-ui-operator-{{ .Channel }}
+              - name: ibm-im-mongodb-operator
+              - name: ibm-idp-config-ui-operator
             registry: common-service
   - name: ibm-im-operator-v4.0
     spec:
@@ -940,7 +970,7 @@ spec:
       operandRequest:
         requests:
           - operands:
-              - name: ibm-mongodb-operator-v4.0
+              - name: ibm-im-mongodb-operator-v4.0
               - name: ibm-idp-config-ui-operator-v4.0
             registry: common-service
   - name: ibm-iam-operator
