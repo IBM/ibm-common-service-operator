@@ -282,6 +282,10 @@ function pre_req() {
             fi
         fi
     fi
+    
+    local csv=$("$OC" get sub -n "$OPERATOR_NS" -o jsonpath='{.status.currentCSV}' ibm-cert-manager-operator)
+    local version=$("$OC" get csv "$csv" -o jsonpath='{.spec.version}')
+    is_supports_delegation "$version"
 }
 
 # TODO validate argument
