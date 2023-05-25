@@ -67,6 +67,10 @@ function main() {
         # Delete licensing csv/subscriptions
         delete_operator "ibm-licensing-operator" "$CONTROL_NS"
 
+        # restore licensing configuration so that subsequent License Service install will pick them up
+        restore_ibmlicensing
+        
+
         if [[ "$CONTROL_NS" == "$OPERATOR_NS" ]]; then
             # Migrate Licensing Services Data
             ${BASE_DIR}/migrate_cp2_licensing.sh --control-namespace $CONTROL_NS "--skip-user-vertify"
@@ -81,6 +85,14 @@ function main() {
     success "Migration is completed for Cloud Pak 3.0 Foundational singleton services."
 }
 
+
+function restore_ibmlicensing() {
+
+    # extracts the previously saved IBMLicensing CR from ConfigMap and creates the IBMLicensing CR
+    "${OC}" get cm ibmlicensing-instance-bak -n ${CONTROL_NS} -o yaml --ignore-not-found | "${YQ}" .data | sed -e 's/.*ibmlicensing.yaml.*//' | 
+    sed -e 's/^  //g' | oc apply -f -
+
+}
 
 function backup_ibmlicensing() {
 
