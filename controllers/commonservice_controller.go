@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 
@@ -138,6 +139,41 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 			return ctrl.Result{}, err
 		}
 	}
+
+	// Creating/updating common-service-maps, skip when installing in AllNamespace Mode
+	if r.Bootstrap.CSData.WatchNamespaces != "" {
+		cm, err := util.GetCmOfMapCs(r.Reader)
+		if err != nil {
+			// Create new common-service-maps
+			if errors.IsNotFound(err) {
+				klog.Infof("Creating common-service-maps ConfigMap in kube-public")
+				if err = r.Bootstrap.CreateCsMaps(); err != nil {
+					klog.Errorf("Failed to create common-service-maps ConfigMap: %v", err)
+					os.Exit(1)
+				}
+			} else if !errors.IsNotFound(err) {
+				klog.Errorf("Failed to get common-service-maps: %v", err)
+				os.Exit(1)
+			}
+		} else {
+			// Update common-service-maps
+			klog.Infof("Updating common-service-maps ConfigMap in kube-public")
+			if err := util.UpdateCsMaps(cm, r.Bootstrap.CSData.WatchNamespaces, r.Bootstrap.CSData.ServicesNs, r.Bootstrap.CSData.OperatorNs); err != nil {
+				klog.Errorf("Failed to update common-service-maps: %v", err)
+				os.Exit(1)
+			}
+			// Validate common-service-maps
+			if err := util.ValidateCsMaps(cm); err != nil {
+				klog.Errorf("Unsupported common-service-maps: %v", err)
+				os.Exit(1)
+			}
+			if err := r.Client.Update(context.TODO(), cm); err != nil {
+				klog.Errorf("Failed to update namespaceMapping in common-service-maps: %v", err)
+				os.Exit(1)
+			}
+		}
+	}
+
 	// Reconcile the webhooks if it is ocp
 	if r.Bootstrap.CSData.IsOCP {
 		if err := webhooks.Config.Reconcile(context.TODO(), r.Client, instance); err != nil {

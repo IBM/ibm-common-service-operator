@@ -17,7 +17,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"os"
 	"strings"
@@ -27,7 +26,6 @@ import (
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	operatorsv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/package-server/apis/operators/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -163,40 +161,6 @@ func main() {
 		if err != nil {
 			klog.Errorf("Bootstrap failed: %v", err)
 			os.Exit(1)
-		}
-
-		// Skip common-service-maps creating/updating when installing in AllNamespace Mode
-		if bs.CSData.WatchNamespaces != "" {
-			cm, err := util.GetCmOfMapCs(bs.Reader)
-			if err != nil {
-				// Create new common-service-maps
-				if errors.IsNotFound(err) {
-					klog.Infof("Creating common-service-maps ConfigMap in kube-public")
-					if err = bs.CreateCsMaps(); err != nil {
-						klog.Errorf("Failed to create common-service-maps ConfigMap: %v", err)
-						os.Exit(1)
-					}
-				} else if !errors.IsNotFound(err) {
-					klog.Errorf("Failed to get common-service-maps: %v", err)
-					os.Exit(1)
-				}
-			} else {
-				// Update common-service-maps
-				klog.Infof("Updating common-service-maps ConfigMap in kube-public")
-				if err := util.UpdateCsMaps(cm, bs.CSData.WatchNamespaces, bs.CSData.ServicesNs, bs.CSData.OperatorNs); err != nil {
-					klog.Errorf("Failed to update common-service-maps: %v", err)
-					os.Exit(1)
-				}
-				// Validate common-service-maps
-				if err := util.ValidateCsMaps(cm); err != nil {
-					klog.Errorf("Unsupported common-service-maps: %v", err)
-					os.Exit(1)
-				}
-				if err := bs.Client.Update(context.TODO(), cm); err != nil {
-					klog.Errorf("Failed to update namespaceMapping in common-service-maps: %v", err)
-					os.Exit(1)
-				}
-			}
 		}
 
 		validatingWebhookConfiguration := bootstrap.Resource{
