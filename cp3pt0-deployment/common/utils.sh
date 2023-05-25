@@ -854,7 +854,7 @@ function check_deployment(){
 
         if [[ -z "$current_replicas" ]]; then
             current_replicas=0
-        if
+        fi
             
         if [ "$current_replicas" -eq "$replicas" ]; then
             success "Replicas count is as expected: $current_replicas"
