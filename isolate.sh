@@ -39,7 +39,7 @@ DEBUG=0
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 
 #log file
-LOG_FILE="isolate_log_$(date +'%Y%m%d%H%M%S').txt"
+LOG_FILE="isolate_log_$(date +'%Y%m%d%H%M%S').log"
 
 # ---------- Main functions ----------
 
@@ -735,12 +735,6 @@ function title() {
 
 function info() {
     msg "[INFO] ${1}"
-}
-
-function debug1() {
-    if [ $DEBUG -eq 1 ]; then
-        msg "[DEBUG] ${1}"
-    fi
 }
 
 # --- Run ---

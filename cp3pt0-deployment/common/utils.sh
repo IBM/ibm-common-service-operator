@@ -1031,3 +1031,9 @@ function cleanup_log() {
         sed -E 's/\x1B\[[0-9;]+[A-Za-z]//g' "$LOG_FILE" > "$LOG_FILE.tmp" && mv "$LOG_FILE.tmp" "$LOG_FILE"
     fi
 }
+
+function debug1() {
+    if [ $DEBUG -eq 1 ]; then
+       debug "${1}"
+    fi
+}

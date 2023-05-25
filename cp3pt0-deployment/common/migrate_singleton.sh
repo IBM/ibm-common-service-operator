@@ -186,10 +186,4 @@ function get_and_validate_arguments() {
     get_control_namespace
 }
 
-function debug1() {
-    if [ $DEBUG -eq 1 ]; then
-       debug "${1}"
-    fi
-}
-
 main $*

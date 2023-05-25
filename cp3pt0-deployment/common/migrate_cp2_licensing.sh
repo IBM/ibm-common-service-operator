@@ -154,11 +154,4 @@ function migrate_lic_cms() {
     success "Licensing Service ConfigMaps are migrated from $CONTROL_NS to $TARGET_NS"
 }
 
-
-function debug1() {
-    if [ $DEBUG -eq 1 ]; then
-       debug "${1}"
-    fi
-}
-
 main $*

@@ -36,7 +36,7 @@ LICENSE_ACCEPT=0
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 
 # log file
-LOG_FILE="migrate_tenant_log_$(date +'%Y%m%d%H%M%S').txt"
+LOG_FILE="migrate_tenant_log_$(date +'%Y%m%d%H%M%S').log"
 
 # counter to keep track of installation steps
 STEP=0
