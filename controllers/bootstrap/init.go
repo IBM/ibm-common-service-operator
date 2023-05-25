@@ -197,6 +197,16 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		return err
 	}
 
+	// Backward compatible for All Namespace Installation Mode upgrade
+	// Uninstall ODLM in servicesNamespace(ibm-common-services)
+	if b.CSData.CPFSNs != b.CSData.ServicesNs {
+		klog.V(2).Info("Uninstall ODLM in servicesNamespace when the topology is separation of control and data")
+		if err := b.DeleteOperator(constant.IBMODLMPackage, b.CSData.ServicesNs); err != nil {
+			klog.Errorf("Failed to uninstall ODLM in servicesNamespace %s", b.CSData.ServicesNs)
+			return err
+		}
+	}
+
 	// Check if ODLM OperandRegistry and OperandConfig are created
 	dc := discovery.NewDiscoveryClientForConfigOrDie(b.Config)
 	klog.Info("Checking if OperandRegistry and OperandConfig CRD already exist")
