@@ -70,8 +70,7 @@ function main() {
             CONTROL_NS=$2
             shift
             ;;
-        "-v" | "--debug")
-            shift
+        "-v"|"--debug")
             DEBUG=1
             ;;
         *)
