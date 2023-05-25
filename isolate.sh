@@ -70,7 +70,7 @@ function main() {
             CONTROL_NS=$2
             shift
             ;;
-        -v | --debug)
+        "-v" | "--debug")
             shift
             DEBUG=1
             ;;
@@ -725,28 +725,28 @@ function wait_for_certmanager() {
 }
 
 function wait_for_nss_update() {
-    local expected_ns_list=$1
+    local expected_ns_list=${1//$'\n'/ }
     wait_for_nss_exist
     
-    local actual_ns_list=$(${OC} get cm namespace-scope -n $MASTER_NS -o yaml | ${YQ} '.data.namespaces')
-    actual_ns_list=$(echo "${actual_ns_list//,/ }" | sort -u)
-    local condition="[[ "${expected_ns_list}" == "${actual_ns_list}" ]] && echo 'true'"
-    local retries=20
-    local sleep_time=15
-    local total_time_mins=$(( sleep_time * retries / 60))
-    local wait_message="Waiting for configmap namespace-scope in namespace $MASTER_NS to be updated ..."
-    local success_message="Namespace-scope configmap updated to match expected list of namespaces."
-    local error_message="Timeout after ${total_time_mins} minutes waiting for namespace-scope configmap to be updated."
-    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+    local actual_ns_list=$(${OC} get cm namespace-scope -n ${MASTER_NS} -o yaml | ${YQ} '.data.namespaces')
+    actual_ns_list=$(echo "${actual_ns_list//,/ }" | xargs -n1 | sort | xargs)
+    expected_ns_list=$(echo "${expected_ns_list}" | xargs -n1 | sort | xargs)
+    debug1 "expected ns list: $expected_ns_list"
+    debug1 "actual ns list: $actual_ns_list"
+    if [[ "${expected_ns_list}" == "${actual_ns_list}" ]]; then
+        success "Namespaces in namespace-scope configmap match expected output."
+    else
+        error "Namespaces in namespace-scope configmap do not match expected output."
+    fi
 }
 
 function wait_for_nss_exist() {
-    local condition="${OC} get cm namespace-scope -n $MASTER_NS || true"
+    local condition="${OC} get cm namespace-scope -n ${MASTER_NS} || true"
     local retries=10
     local sleep_time=15
     local total_time_mins=$(( sleep_time * retries / 60))
-    local wait_message="Waiting for configmap namespace-scope in namespace $MASTER_NS to be created ..."
-    local success_message="Namespace-scope configmap created in $MASTER_NS."
+    local wait_message="Waiting for configmap namespace-scope in namespace ${MASTER_NS} to be created ..."
+    local success_message="Namespace-scope configmap created in ${MASTER_NS}."
     local error_message="Timeout after ${total_time_mins} minutes waiting for namespace-scope configmap to be created."
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
