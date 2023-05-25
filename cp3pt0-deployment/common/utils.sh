@@ -1056,18 +1056,15 @@ function debug1() {
        debug "${1}"
     fi
 }
-<<<<<<< HEAD
-=======
 
 # check if version of CS supports delegation for ibm-cert-manager-operator
 # >= v3.19.9 if in v3 channel
 # or >= v3.21.0 in any other channel
 function is_supports_delegation() {
     local version=$1
-    major=$(echo "$version" | cut -d '.' -f1)
+    major=$(echo "$version" | cut -d '.' -f1 | cut -d 'v' -f2)
     minor=$(echo "$version" | cut -d '.' -f2)
     patch=$(echo "$version" | cut -d '.' -f3)
-    # echo $major $minor $patch
 
     if [ "$major" -gt 3 ]; then
         echo "Major version is greater than 3, skipping delegation check"
@@ -1091,4 +1088,4 @@ function is_supports_delegation() {
 
     echo "Version: $version supports cert-manager delegation"
 }
->>>>>>> added cert-manager delegation check
+

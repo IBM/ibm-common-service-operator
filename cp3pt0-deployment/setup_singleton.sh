@@ -282,9 +282,10 @@ function pre_req() {
             fi
         fi
     fi
-    
-    local csv=$("$OC" get sub -n "$OPERATOR_NS" -o jsonpath='{.status.currentCSV}' ibm-cert-manager-operator)
-    local version=$("$OC" get csv "$csv" -o jsonpath='{.spec.version}')
+
+    # Check if all CS installations are above 3.19.9
+    local csvs=$("$OC" get csv -A | grep ibm-common-service-operator | awk '{print $2}' | sort -V)
+    local version=$(echo "$csvs" | head -n 1 | cut -d '.' -f2-)
     is_supports_delegation "$version"
 }
 
