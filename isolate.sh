@@ -32,6 +32,7 @@ CS_MAPPING_YAML=""
 CM_NAME="common-service-maps"
 CERT_MANAGER_MIGRATED="false"
 DEBUG=0
+BACKUP_LICENSING="false"
 
 # ---------- Command variables ----------
 
@@ -105,7 +106,11 @@ function main() {
     removeNSS
     uninstall_singletons
     isolate_odlm "ibm-odlm" $MASTER_NS
-    restore_ibmlicensing
+    if [[ $BACKUP_LICENSING == "true" ]]; then
+        restore_ibmlicensing
+    else
+        info "Licensing not marked for backup, skipping."
+    fi
     restart
     if [[ $CERT_MANAGER_MIGRATED == "true" ]]; then
         wait_for_certmanager "$CONTROL_NS" "${ns_list}"
@@ -339,7 +344,13 @@ function uninstall_singletons() {
 
     migrate_lic_cms $MASTER_NS
 
-    backup_ibmlicensing
+    licensing_exists=$(${OC} get IBMLicensing || echo "fail")
+    if [[ $licensing_exists != "fail" ]]; then
+        backup_ibmlicensing
+        BACKUP_LICENSING="true"
+    else
+        info "No ibmlicensing resources on cluster, skipping backup."
+    fi
     isExists=$("${OC}" get deployments -n "${MASTER_NS}" --ignore-not-found ibm-licensing-operator)
     if [ ! -z "$isExists" ]; then
         "${OC}" delete -n "${MASTER_NS}" --ignore-not-found ibmlicensing instance
