@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Licensed Materials - Property of IBM
 # Copyright IBM Corporation 2023. All Rights Reserved
@@ -1027,8 +1027,19 @@ function save_log(){
         if [[ ! -d $LOG_DIR ]]; then
             mkdir -p "$LOG_DIR"
         fi
-        # Redirect stdout and stderr to the log file, overwriting it each time
-        exec > >(tee "$LOG_FILE") 2>&1      
+
+        # Create a named pipe
+        PIPE=$(mktemp -u)
+        mkfifo "$PIPE"
+
+        # Tee the output to both the log file and the terminal
+        tee "$LOG_FILE" < "$PIPE" &
+
+        # Redirect stdout and stderr to the named pipe
+        exec > "$PIPE" 2>&1
+
+        # Remove the named pipe
+        rm "$PIPE"
     fi
 }
 
