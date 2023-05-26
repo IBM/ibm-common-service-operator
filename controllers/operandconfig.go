@@ -26,11 +26,15 @@ import (
 	utilyaml "github.com/ghodss/yaml"
 	"github.com/mohae/deepcopy"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
+	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/controllers/rules"
 )
 
@@ -382,8 +386,14 @@ func checkCRFromOperandConfig(serviceStatus map[string]interface{}, operatorName
 
 func (r *CommonServiceReconciler) getExtremeizes(ctx context.Context, opconServices, ruleSlice []interface{}, extreme Extreme) ([]interface{}, error) {
 	// Fetch all the CommonService instances
+	csReq, err := labels.NewRequirement(constant.CsClonedFromLabel, selection.DoesNotExist, []string{})
+	if err != nil {
+		return []interface{}{}, err
+	}
 	csObjectList := &apiv3.CommonServiceList{}
-	if err := r.Client.List(ctx, csObjectList); err != nil {
+	if err := r.Client.List(ctx, csObjectList, &client.ListOptions{
+		LabelSelector: labels.NewSelector().Add(*csReq),
+	}); err != nil {
 		return []interface{}{}, err
 	}
 	csList, err := util.ObjectListToNewUnstructuredList(csObjectList)
