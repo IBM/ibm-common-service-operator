@@ -275,7 +275,7 @@ spec:
                       - name: IBM_ZEN_OPERATOR_IMAGE
                         value: icr.io/cpopen/ibm-zen-operator:1.7.0
                     image: icr.io/cpopen/common-service-operator:latest
-                    imagePullPolicy: Always
+                    imagePullPolicy: IfNotPresent
                     livenessProbe:
                       failureThreshold: 10
                       httpGet:

@@ -42,7 +42,7 @@ spec:
         - name: IBM_ZEN_OPERATOR_IMAGE
           value: icr.io/cpopen/ibm-zen-operator:1.7.0
         image: siji/operator:cs
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         name: ibm-common-service-operator
         resources:
           limits:
