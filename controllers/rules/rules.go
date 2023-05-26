@@ -64,7 +64,26 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
-- name: ibm-mongodb-operator-v4.0
+- name: ibm-im-mongodb-operator
+  spec:
+    mongoDB:
+      replicas: LARGEST_VALUE
+      resources:
+        limits:
+          cpu: LARGEST_VALUE
+          memory: LARGEST_VALUE
+        requests:
+          cpu: LARGEST_VALUE
+          memory: LARGEST_VALUE
+      metrics:
+        resources:
+          requests:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+- name: ibm-im-mongodb-operator-v4.0
   spec:
     mongoDB:
       replicas: LARGEST_VALUE
@@ -370,6 +389,26 @@ const ConfigurationRules = `
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
 - name: ibm-commonui-operator
+  spec:
+    commonWebUI:
+      replicas: LARGEST_VALUE
+      resources:
+        requests:
+          memory: LARGEST_VALUE
+          cpu: LARGEST_VALUE
+        limits:
+          memory: LARGEST_VALUE
+          cpu: LARGEST_VALUE
+      commonWebUIConfig:
+        dashboardData:
+          resources:
+            limits:
+              cpu: LARGEST_VALUE
+              memory: LARGEST_VALUE
+            requests:
+              cpu: LARGEST_VALUE
+              memory: LARGEST_VALUE
+- name: ibm-idp-config-ui-operator
   spec:
     commonWebUI:
       replicas: LARGEST_VALUE
