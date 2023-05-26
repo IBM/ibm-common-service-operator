@@ -35,6 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	utilwait "k8s.io/apimachinery/pkg/util/wait"
 	discovery "k8s.io/client-go/discovery"
@@ -1064,8 +1065,14 @@ func (b *Bootstrap) IsBYOCert() (bool, error) {
 
 func (b *Bootstrap) DeployCertManagerCR() error {
 	klog.V(2).Info("Fetch all the CommonService instances")
+	csReq, err := labels.NewRequirement(constant.CsClonedFromLabel, selection.DoesNotExist, []string{})
+	if err != nil {
+		return err
+	}
 	csObjectList := &apiv3.CommonServiceList{}
-	if err := b.Client.List(ctx, csObjectList); err != nil {
+	if err := b.Client.List(ctx, csObjectList, &client.ListOptions{
+		LabelSelector: labels.NewSelector().Add(*csReq),
+	}); err != nil {
 		return err
 	}
 	csList, err := util.ObjectListToNewUnstructuredList(csObjectList)
