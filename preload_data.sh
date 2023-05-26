@@ -50,8 +50,11 @@ function main() {
     # run backup preload
     backup_preload_mongo
     # copy im credentials
-    copy_secret "platform-auth-idp-credentials"
-    copy_secret "platform-auth-ldaps-ca-cert"
+    copy_resource "secret" "platform-auth-idp-credentials"
+    copy_resource "secret" "platform-auth-ldaps-ca-cert"
+    copy_resource "configmap" "ibm-cpp-config"
+    copy_resource "configmap" "common-web-ui-config"
+    copy_resource "commonservice" "common-service"
     # any extra config
 }
 
@@ -131,21 +134,27 @@ function prereq() {
     fi
 }
 
-function copy_secret() {
-    local secret=$1
-    title " Copying secret $secret from $FROM_NAMESPACE to $TO_NAMESPACE "   
-    $OC get secret "$secret" -n $FROM_NAMESPACE -o yaml | \
-        $YQ '
-            del(.metadata.creationTimestamp) | 
-            del(.metadata.resourceVersion) | 
-            del(.metadata.namespace) | 
-            del(.metadata.uid) | 
-            del(.metadata.ownerReferences) |
-            del(.metadata.managedFields) |
-            del(.metadata.labels)
-        ' | \
-        $OC apply -n $TO_NAMESPACE -f - || error "Failed to copy over secret $secret."
-    success "Secret $secret copied over to $TO_NAMESPACE"
+function copy_resource() {
+    local resourceType=$1
+    local resourceName=$2
+    title " Copying $resourceType $resourceName from $FROM_NAMESPACE to $TO_NAMESPACE "   
+    resource_exists=$(${OC} get $resourceType $resourceName -n $FROM_NAMESPACE || echo "fail")
+    if [[ $resource_exists != "fail" ]]; then
+      $OC get $resourceType $resourceName -n $FROM_NAMESPACE -o yaml | \
+          $YQ '
+              del(.metadata.creationTimestamp) | 
+              del(.metadata.resourceVersion) | 
+              del(.metadata.namespace) | 
+              del(.metadata.uid) | 
+              del(.metadata.ownerReferences) |
+              del(.metadata.managedFields) |
+              del(.metadata.labels)
+          ' | \
+          $OC apply -n $TO_NAMESPACE -f - || error "Failed to copy over $resourceType $resourceName."
+      success "$resourceType $resourceName copied over to $TO_NAMESPACE"
+    else
+      warning "Resource $resourceType $resourceName not found and not migrated from $FROM_NAMESPACE to $TO_NAMESPACE"
+    fi
 }
 
 #
