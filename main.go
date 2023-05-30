@@ -53,6 +53,7 @@ import (
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/controllers/goroutines"
 	"github.com/IBM/ibm-common-service-operator/controllers/webhooks"
+	operandrequestwebhook "github.com/IBM/ibm-common-service-operator/controllers/webhooks/operandrequest"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -225,6 +226,11 @@ func main() {
 	} else {
 		klog.Infof("Common Service Operator goes dormant in the namespace %s", operatorNs)
 		klog.Infof("Common Service Operator in the namespace %s takes charge of resource management", cpfsNs)
+	}
+
+	if err = (&operandrequestwebhook.Defaulter{}).SetupWebhookWithManager(mgr); err != nil {
+		klog.Errorf("Unable to create OperandRequest webhook: %v", err)
+		os.Exit(1)
 	}
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

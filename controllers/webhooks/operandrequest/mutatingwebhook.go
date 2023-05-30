@@ -28,6 +28,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
@@ -105,5 +107,14 @@ func (r *Defaulter) Default(instance *odlm.OperandRequest) {
 
 func (r *Defaulter) InjectDecoder(decoder *admission.Decoder) error {
 	r.decoder = decoder
+	return nil
+}
+
+func (r *Defaulter) SetupWebhookWithManager(mgr ctrl.Manager) error {
+
+	mgr.GetWebhookServer().
+		Register("/mutate-operator-ibm-com-v1alpha1-operandrequest",
+			&webhook.Admission{Handler: r})
+
 	return nil
 }
