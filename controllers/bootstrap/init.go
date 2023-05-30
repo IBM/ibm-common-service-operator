@@ -731,6 +731,29 @@ func (b *Bootstrap) InstallOrUpdateOpreg(forceUpdateODLMCRs bool, installPlanApp
 
 // InstallOrUpdateOpcon will install or update OperandConfig when Opcon CRD is existent
 func (b *Bootstrap) InstallOrUpdateOpcon(forceUpdateODLMCRs bool) error {
+	var err error
+
+	// Append CP3 Services with suffix into CP3 and SaaS OperandConfig
+	Configs := []string{
+		constant.MongoDBOpCon,
+		constant.IMOpCon,
+		constant.IdpConfigUIOpCon,
+		constant.PlatformUIOpCon,
+	}
+
+	constant.CSV3OperandConfig = constant.CSV3OpCon
+	constant.CSV3SaasOperandConfig = constant.CSV3SaasOpCon
+	for _, con := range Configs {
+		constant.CSV3OperandConfig, err = constant.ConcatenateConfigs(constant.CSV3OperandConfig, con, b.CSData)
+		if err != nil {
+			klog.Errorf("failed to append CP3 services into OperandConfig: %v", err)
+		}
+		constant.CSV3SaasOperandConfig, err = constant.ConcatenateConfigs(constant.CSV3SaasOperandConfig, con, b.CSData)
+		if err != nil {
+			klog.Errorf("failed to append CP3 services into SaaS OperandConfig: %v", err)
+		}
+	}
+
 	if b.SaasEnable {
 		// OperandConfig for SaaS deployment
 		if err := b.renderTemplate(constant.CSV3SaasOperandConfig, b.CSData, forceUpdateODLMCRs); err != nil {

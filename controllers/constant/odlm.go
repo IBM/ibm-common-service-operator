@@ -30,6 +30,8 @@ import (
 var (
 	CSV3OperandRegistry     string
 	CSV3SaasOperandRegistry string
+	CSV3OperandConfig       string
+	CSV3SaasOperandConfig   string
 )
 
 const (
@@ -122,6 +124,150 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+`
+)
+
+const (
+	MongoDBOpCon = `
+apiVersion: operator.ibm.com/v1alpha1
+kind: OperandConfig
+metadata:
+  name: common-service
+  namespace: "{{ .ServicesNs }}"
+  labels:
+    operator.ibm.com/managedByCsOperator: "true"
+  annotations:
+    version: {{ .Version }}
+spec:
+  services:
+  - name: ibm-im-mongodb-operator-v4.0
+    spec:
+      mongoDB: {}
+      operandRequest: {}
+`
+
+	IMOpCon = `
+apiVersion: operator.ibm.com/v1alpha1
+kind: OperandConfig
+metadata:
+  name: common-service
+  namespace: "{{ .ServicesNs }}"
+  labels:
+    operator.ibm.com/managedByCsOperator: "true"
+  annotations:
+    version: {{ .Version }}
+spec:
+  services:
+  - name: ibm-im-operator-v4.0
+    spec:
+      authentication:
+        config:
+          onPremMultipleDeploy: {{ .OnPremMultiEnable }}
+      policydecision: {}
+      operandBindInfo: 
+        operand: ibm-im-operator
+      operandRequest:
+        requests:
+          - operands:
+              - name: ibm-im-mongodb-operator-v4.0
+              - name: ibm-idp-config-ui-operator-v4.0
+            registry: common-service
+`
+
+	IdpConfigUIOpCon = `
+apiVersion: operator.ibm.com/v1alpha1
+kind: OperandConfig
+metadata:
+  name: common-service
+  namespace: "{{ .ServicesNs }}"
+  labels:
+    operator.ibm.com/managedByCsOperator: "true"
+  annotations:
+    version: {{ .Version }}
+spec:
+  services:
+  - name: ibm-idp-config-ui-operator-v4.0
+    spec:
+      commonWebUI: {}
+      switcheritem: {}
+      navconfiguration: {}
+`
+
+	PlatformUIOpCon = `
+apiVersion: operator.ibm.com/v1alpha1
+kind: OperandConfig
+metadata:
+  name: common-service
+  namespace: "{{ .ServicesNs }}"
+  labels:
+    operator.ibm.com/managedByCsOperator: "true"
+  annotations:
+    version: {{ .Version }}
+spec:
+  services:
+  - name: ibm-platformui-operator-v4.0
+    spec:
+      operandBindInfo: {}
+    resources:
+      - apiVersion: batch/v1
+        data:
+          spec:
+            activeDeadlineSeconds: 600
+            backoffLimit: 5
+            template:
+              metadata:
+                annotations:
+                  productID: 068a62892a1e4db39641342e592daa25
+                  productMetric: FREE
+                  productName: IBM Cloud Platform Common Services
+              spec:
+                affinity:
+                  nodeAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                      nodeSelectorTerms:
+                        - matchExpressions:
+                            - key: kubernetes.io/arch
+                              operator: In
+                              values:
+                                - amd64
+                                - ppc64le
+                                - s390x
+                containers:
+                  - command:
+                      - bash
+                      - '-c'
+                      - bash /setup/pre-zen.sh
+                    env:
+                      - name: common_services_namespace
+                        valueFrom:
+                          fieldRef:
+                            fieldPath: metadata.namespace
+                    image: {{ .ZenOperatorImage }}
+                    name: pre-zen-job
+                    resources:
+                      limits:
+                        cpu: 500m
+                        memory: 512Mi
+                      requests:
+                        cpu: 100m
+                        memory: 50Mi
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      capabilities:
+                        drop:
+                          - ALL
+                      privileged: false
+                      readOnlyRootFilesystem: false
+                restartPolicy: OnFailure
+                securityContext:
+                  runAsNonRoot: true
+                serviceAccount: operand-deployment-lifecycle-manager
+                serviceAccountName: operand-deployment-lifecycle-manager
+                terminationGracePeriodSeconds: 30
+        force: true
+        kind: Job
+        name: pre-zen-operand-config-job
+        namespace: "{{ .OperatorNs }}"
 `
 )
 
@@ -482,7 +628,7 @@ spec:
 `
 )
 
-const CSV3OperandConfig = `
+const CSV3OpCon = `
 apiVersion: operator.ibm.com/v1alpha1
 kind: OperandConfig
 metadata:
@@ -505,10 +651,6 @@ spec:
     spec:
       mongoDB: {}
       operandRequest: {}
-  - name: ibm-im-mongodb-operator-v4.0
-    spec:
-      mongoDB: {}
-      operandRequest: {}
   - name: ibm-im-operator
     spec:
       authentication:
@@ -522,20 +664,6 @@ spec:
           - operands:
               - name: ibm-im-mongodb-operator
               - name: ibm-idp-config-ui-operator
-            registry: common-service
-  - name: ibm-im-operator-v4.0
-    spec:
-      authentication:
-        config:
-          onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      policydecision: {}
-      operandBindInfo: 
-        operand: ibm-im-operator
-      operandRequest:
-        requests:
-          - operands:
-              - name: ibm-im-mongodb-operator-v4.0
-              - name: ibm-idp-config-ui-operator-v4.0
             registry: common-service
   - name: ibm-iam-operator
     spec:
@@ -560,11 +688,6 @@ spec:
       commonWebUI: {}
       switcheritem: {}
       operandRequest: {}
-      navconfiguration: {}
-  - name: ibm-idp-config-ui-operator-v4.0
-    spec:
-      commonWebUI: {}
-      switcheritem: {}
       navconfiguration: {}
   - name: ibm-idp-config-ui-operator
     spec:
@@ -852,72 +975,9 @@ spec:
         kind: Job
         name: pre-zen-operand-config-job
         namespace: "{{ .OperatorNs }}"
-  - name: ibm-platformui-operator-v4.0
-    spec:
-      operandBindInfo: {}
-    resources:
-      - apiVersion: batch/v1
-        data:
-          spec:
-            activeDeadlineSeconds: 600
-            backoffLimit: 5
-            template:
-              metadata:
-                annotations:
-                  productID: 068a62892a1e4db39641342e592daa25
-                  productMetric: FREE
-                  productName: IBM Cloud Platform Common Services
-              spec:
-                affinity:
-                  nodeAffinity:
-                    requiredDuringSchedulingIgnoredDuringExecution:
-                      nodeSelectorTerms:
-                        - matchExpressions:
-                            - key: kubernetes.io/arch
-                              operator: In
-                              values:
-                                - amd64
-                                - ppc64le
-                                - s390x
-                containers:
-                  - command:
-                      - bash
-                      - '-c'
-                      - bash /setup/pre-zen.sh
-                    env:
-                      - name: common_services_namespace
-                        valueFrom:
-                          fieldRef:
-                            fieldPath: metadata.namespace
-                    image: {{ .ZenOperatorImage }}
-                    name: pre-zen-job
-                    resources:
-                      limits:
-                        cpu: 500m
-                        memory: 512Mi
-                      requests:
-                        cpu: 100m
-                        memory: 50Mi
-                    securityContext:
-                      allowPrivilegeEscalation: false
-                      capabilities:
-                        drop:
-                          - ALL
-                      privileged: false
-                      readOnlyRootFilesystem: false
-                restartPolicy: OnFailure
-                securityContext:
-                  runAsNonRoot: true
-                serviceAccount: operand-deployment-lifecycle-manager
-                serviceAccountName: operand-deployment-lifecycle-manager
-                terminationGracePeriodSeconds: 30
-        force: true
-        kind: Job
-        name: pre-zen-operand-config-job
-        namespace: "{{ .OperatorNs }}"
 `
 
-const CSV3SaasOperandConfig = `
+const CSV3SaasOpCon = `
 apiVersion: operator.ibm.com/v1alpha1
 kind: OperandConfig
 metadata:
@@ -940,10 +1000,6 @@ spec:
     spec:
       mongoDB: {}
       operandRequest: {}
-  - name: ibm-im-mongodb-operator-v4.0
-    spec:
-      mongoDB: {}
-      operandRequest: {}
   - name: ibm-im-operator
     spec:
       authentication:
@@ -958,20 +1014,6 @@ spec:
           - operands:
               - name: ibm-im-mongodb-operator
               - name: ibm-idp-config-ui-operator
-            registry: common-service
-  - name: ibm-im-operator-v4.0
-    spec:
-      authentication:
-        config:
-          onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      policydecision: {}
-      operandBindInfo: 
-        operand: ibm-im-operator
-      operandRequest:
-        requests:
-          - operands:
-              - name: ibm-im-mongodb-operator-v4.0
-              - name: ibm-idp-config-ui-operator-v4.0
             registry: common-service
   - name: ibm-iam-operator
     spec:
@@ -998,11 +1040,6 @@ spec:
       operandRequest: {}
       navconfiguration: {}
       operandBindInfo: {}
-  - name: ibm-idp-config-ui-operator-v4.0
-    spec:
-      commonWebUI: {}
-      switcheritem: {}
-      navconfiguration: {}
   - name: ibm-idp-config-ui-operator
     spec:
       commonWebUI: {}
@@ -1161,69 +1198,6 @@ spec:
         kind: Job
         name: pre-zen-operand-config-job
         namespace: "{{ .OperatorNs }}"
-  - name: ibm-platformui-operator-v4.0
-    spec:
-      operandBindInfo: {}
-    resources:
-      - apiVersion: batch/v1
-        data:
-          spec:
-            activeDeadlineSeconds: 600
-            backoffLimit: 5
-            template:
-              metadata:
-                annotations:
-                  productID: 068a62892a1e4db39641342e592daa25
-                  productMetric: FREE
-                  productName: IBM Cloud Platform Common Services
-              spec:
-                affinity:
-                  nodeAffinity:
-                    requiredDuringSchedulingIgnoredDuringExecution:
-                      nodeSelectorTerms:
-                        - matchExpressions:
-                            - key: kubernetes.io/arch
-                              operator: In
-                              values:
-                                - amd64
-                                - ppc64le
-                                - s390x
-                containers:
-                  - command:
-                      - bash
-                      - '-c'
-                      - bash /setup/pre-zen.sh
-                    env:
-                      - name: common_services_namespace
-                        valueFrom:
-                          fieldRef:
-                            fieldPath: metadata.namespace
-                    image: {{ .ZenOperatorImage }}
-                    name: pre-zen-job
-                    resources:
-                      limits:
-                        cpu: 500m
-                        memory: 512Mi
-                      requests:
-                        cpu: 100m
-                        memory: 50Mi
-                    securityContext:
-                      allowPrivilegeEscalation: false
-                      capabilities:
-                        drop:
-                          - ALL
-                      privileged: false
-                      readOnlyRootFilesystem: false
-                restartPolicy: OnFailure
-                securityContext:
-                  runAsNonRoot: true
-                serviceAccount: operand-deployment-lifecycle-manager
-                serviceAccountName: operand-deployment-lifecycle-manager
-                terminationGracePeriodSeconds: 30
-        force: true
-        kind: Job
-        name: pre-zen-operand-config-job
-        namespace: "{{ .OperatorNs }}"
 `
 
 const ODLMSubscription = `
@@ -1243,8 +1217,10 @@ spec:
 // ConcatenateRegistries concatenate the two YAML strings and return the new YAML string
 func ConcatenateRegistries(baseRegistryTemplate, insertedRegistryTemplate string, data interface{}) (string, error) {
 	baseRegistry := &odlm.OperandRegistry{}
+	insertedRegistry := &odlm.OperandRegistry{}
 	var template []byte
 	var err error
+
 	// unmarshal first OprandRegistry
 	if template, err = applyTemplate(baseRegistryTemplate, data); err != nil {
 		return "", err
@@ -1254,7 +1230,6 @@ func ConcatenateRegistries(baseRegistryTemplate, insertedRegistryTemplate string
 	}
 
 	// unmarshal second OprandRegistry
-	insertedRegistry := &odlm.OperandRegistry{}
 	if template, err = applyTemplate(insertedRegistryTemplate, data); err != nil {
 		return "", err
 	}
@@ -1273,6 +1248,42 @@ func ConcatenateRegistries(baseRegistryTemplate, insertedRegistryTemplate string
 	}
 
 	return string(opregBytes), nil
+}
+
+// ConcatenateConfigs concatenate the two YAML strings and return the new YAML string
+func ConcatenateConfigs(baseConfigTemplate, insertedConfigTemplate string, data interface{}) (string, error) {
+	baseConfig := &odlm.OperandConfig{}
+	insertedConfig := &odlm.OperandConfig{}
+	var template []byte
+	var err error
+
+	// unmarshal first OprandCongif
+	if template, err = applyTemplate(baseConfigTemplate, data); err != nil {
+		return "", err
+	}
+	if err := utilyaml.Unmarshal(template, &baseConfig); err != nil {
+		return "", fmt.Errorf("failed to fetch data of OprandConfig %v: %v", baseConfig, err)
+	}
+
+	// unmarshal second OprandConfig
+	if template, err = applyTemplate(insertedConfigTemplate, data); err != nil {
+		return "", err
+	}
+	if err := utilyaml.Unmarshal(template, &insertedConfig); err != nil {
+		return "", fmt.Errorf("failed to fetch data of OprandConfig %v: %v", insertedConfig, err)
+	}
+
+	var newServices []odlm.ConfigService
+	newServices = append(newServices, baseConfig.Spec.Services...)
+	newServices = append(newServices, insertedConfig.Spec.Services...)
+
+	baseConfig.Spec.Services = newServices
+	opconBytes, err := json.Marshal(baseConfig)
+	if err != nil {
+		return "", err
+	}
+
+	return string(opconBytes), nil
 }
 
 func applyTemplate(objectTemplate string, data interface{}) ([]byte, error) {
