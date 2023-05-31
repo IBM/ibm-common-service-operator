@@ -391,8 +391,13 @@ function check_cert_manager(){
     if [[ $csv_count == 0 ]]; then
         error "Missing a cert-manager"
     fi
+    # if installed in all namespace mode or alongside cp2 cert manager, 
+    # csv_count will be >1, need to check for multiple deployments
     if [[ $csv_count > 1 ]]; then
-        error "Multiple cert-manager csv found. Only one should be installed per cluster"
+        webhook_deployments=$(${OC} get deploy -A --no-headers --ignore-not-found | grep "cert-manager-webhook" -c)
+        if [[ $webhook_deployments != "1" ]]; then
+            error "Multiple cert-managers found. Only one should be installed per cluster"
+        fi
     fi
 }
 
