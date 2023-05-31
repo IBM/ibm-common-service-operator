@@ -112,11 +112,7 @@ function main() {
         info "Licensing not marked for backup, skipping."
     fi
     restart
-    if [[ $CERT_MANAGER_MIGRATED == "true" ]]; then
-        wait_for_certmanager "$CONTROL_NS" "${ns_list}"
-    else
-        info "Cert Manager not migrated, skipping wait."
-    fi
+    wait_for_certmanager "$CONTROL_NS" "${ns_list}"
     wait_for_nss_update "${ns_list}"
     success "Isolation complete"
 }
