@@ -151,6 +151,9 @@ function prereq() {
     if [[ "$DEBUG" != "1" && "$DEBUG" != "0" ]]; then
         error "Invalid value for DEBUG. Expected 0 or 1."
     fi
+    
+    #verify one and only one cert manager is installed
+    check_cert_manager
 
     # LicenseServiceReporter should not be installed because it does not support multi-instance mode
     return_value=$(("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)

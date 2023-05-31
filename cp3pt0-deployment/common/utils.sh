@@ -387,7 +387,7 @@ function is_sub_exist() {
 }
 
 function check_cert_manager(){
-    csv_count=`$OC get csv |grep "cert-manager"|wc -l`
+    csv_count=$(${OC} get csv -A | grep "cert-manager"| wc -l | tr -d " ")
     if [[ $csv_count == 0 ]]; then
         error "Missing a cert-manager"
     fi
