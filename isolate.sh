@@ -277,12 +277,16 @@ function update_tenant() {
         updated_yaml=$(echo "$current_yaml" | "${YQ}" eval 'with(.namespaceMapping; . += [{"map-to-common-service-namespace": "'$map_to_cs_ns'"}])')
     fi
 
-    local tmp="\"$map_to_cs_ns\","
+    local tmp="\"$map_to_cs_ns\""
     debug1 "map $map_to_cs_ns namespace $namespaces tmp $tmp"
     for ns in $namespaces; do
-        tmp="$tmp\"$ns\","
+        debug1 "ns $ns mapto: $map_to_cs_ns"
+        if [[ $ns != $map_to_cs_ns ]]; then
+            tmp="$tmp,\"$ns\""
+        fi
     done
-    local ns_delimited="${tmp:0:-1}" # substring from 0 to length - 1
+    local ns_delimited="${tmp}"
+    debug1 "ns_delimited: $ns_delimited"
 
     updated_yaml=$(echo "$updated_yaml" | "${YQ}" eval 'with(.namespaceMapping[]; select(.map-to-common-service-namespace == "'$map_to_cs_ns'").requested-from-namespace = ['$ns_delimited'])')
     updated_yaml=$(echo "$updated_yaml" | "${YQ}" eval 'with(.namespaceMapping[]; select(.map-to-common-service-namespace == "'$map_to_cs_ns'").requested-from-namespace |= unique)')
