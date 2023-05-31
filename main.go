@@ -52,7 +52,6 @@ import (
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/controllers/goroutines"
-	"github.com/IBM/ibm-common-service-operator/controllers/webhooks"
 	operandrequestwebhook "github.com/IBM/ibm-common-service-operator/controllers/webhooks/operandrequest"
 	// +kubebuilder:scaffold:imports
 )
@@ -217,12 +216,12 @@ func main() {
 			klog.Error(err, "unable to create controller", "controller", "V1AddLabel")
 			os.Exit(1)
 		}
-		// Start up the webhook server if it is ocp
-		if bs.CSData.IsOCP {
-			if err := webhooks.SetupWebhooks(mgr, bs); err != nil {
-				klog.Error(err, "Error setting up webhook server")
-			}
-		}
+		// // Start up the webhook server if it is ocp
+		// if bs.CSData.IsOCP {
+		// 	if err := webhooks.SetupWebhooks(mgr, bs); err != nil {
+		// 		klog.Error(err, "Error setting up webhook server")
+		// 	}
+		// }
 	} else {
 		klog.Infof("Common Service Operator goes dormant in the namespace %s", operatorNs)
 		klog.Infof("Common Service Operator in the namespace %s takes charge of resource management", cpfsNs)

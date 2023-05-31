@@ -57,7 +57,7 @@ spec:
           timeoutSeconds: 10
           periodSeconds: 60
           failureThreshold: 10
-        image: icr.io/cpopen/common-service-operator:latest
+        image: quay.io/yuchen_li1/common-service-operator-amd64:dev
         imagePullPolicy: IfNotPresent
         name: ibm-common-service-operator
         env:
@@ -93,10 +93,4 @@ spec:
           privileged: false
           readOnlyRootFilesystem: true
           runAsNonRoot: true
-        volumeMounts:
-        - name: webhook-certs
-          mountPath: "/etc/ssl/certs/webhook"
       terminationGracePeriodSeconds: 10
-      volumes:
-      - emptyDir: {}
-        name: webhook-certs
