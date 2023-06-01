@@ -50,14 +50,17 @@ function main() {
     save_log "logs" "setup_singleton_log" "$DEBUG"
     trap cleanup_log EXIT
     pre_req
-    if [ $MIGRATE_SINGLETON -eq 1 ]; then
-        info "Found parameter '--operator-namespace', migrating singleton services"
-        if [ $ENABLE_LICENSING -eq 1 ]; then
-            ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" "--enable-licensing"
-        else
-            ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" 
-        fi
-    fi
+
+    # Debating on whether to keep this or not as a manual override to force migration path
+    # if [ $MIGRATE_SINGLETON -eq 1 ]; then
+    #     info "Found parameter '--operator-namespace', migrating singleton services"
+    #     if [ $ENABLE_LICENSING -eq 1 ]; then
+    #         ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" "--enable-licensing"
+    #     else
+    #         ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" 
+    #     fi
+    # fi
+
 
     install_cert_manager
     install_licensing
