@@ -343,8 +343,10 @@ function uninstall_singletons() {
 
     migrate_lic_cms $MASTER_NS
 
-    licensing_exists=$(${OC} get IBMLicensing || echo "fail")
-    if [[ $licensing_exists != "fail" ]]; then
+    licensing_exists=""
+    licensing_exists=$(${OC} get IBMLicensing)
+    if [[ $licensing_exists != "" ]]; then
+        info "Licensing marked for backup"
         backup_ibmlicensing
         BACKUP_LICENSING="true"
     else
@@ -696,8 +698,8 @@ function wait_for_certmanager() {
     check_if_certmanager_deployed "${namespaces}"
 
     #check cert manager operator pod
-    local name="ibm-cert-manager-operator"
-    local condition="${OC} -n ${namespace} get deploy --no-headers --ignore-not-found | egrep '1/1' | grep ^${name} || true"
+    local name="cert-manager-operator"
+    local condition="${OC} -A get deploy --no-headers --ignore-not-found | egrep '1/1' | grep ^${name} || true"
     local retries=20
     local sleep_time=15
     local total_time_mins=$(( sleep_time * retries / 60))
