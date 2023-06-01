@@ -55,6 +55,7 @@ function main() {
     copy_resource "secret" "platform-oidc-credentials"
     copy_resource "configmap" "ibm-cpp-config"
     copy_resource "configmap" "common-web-ui-config"
+    copy_resource "configmap" "platform-auth-idp"
     copy_resource "commonservice" "common-service"
     # any extra config
 }
