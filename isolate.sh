@@ -153,7 +153,7 @@ function prereq() {
     fi
     
     #verify one and only one cert manager is installed
-    check_cert_manager
+    check_certmanager_count
 
     # LicenseServiceReporter should not be installed because it does not support multi-instance mode
     return_value=$(("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
@@ -721,6 +721,21 @@ function wait_for_certmanager() {
     fi
     webhook_ns=$(${OC} get deploy -A | grep cert-manager-webhook | awk '{print $1}')
     success "Cert Manager ready. Cert Manager operands deployed in $webhook_ns"
+}
+
+function check_certmanager_count(){
+    csv_count=$(${OC} get csv -A | grep "cert-manager"| wc -l | tr -d " ")
+    if [[ $csv_count == 0 ]]; then
+        error "Missing a cert-manager"
+    fi
+    # if installed in all namespace mode or alongside cp2 cert manager, 
+    # csv_count will be >1, need to check for multiple deployments
+    if [[ $csv_count > 1 ]]; then
+        webhook_deployments=$(${OC} get deploy -A --no-headers --ignore-not-found | grep "cert-manager-webhook" -c)
+        if [[ $webhook_deployments != "1" ]]; then
+            error "Multiple cert-managers found. Only one should be installed per cluster"
+        fi
+    fi
 }
 
 function wait_for_nss_update() {
