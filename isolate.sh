@@ -112,7 +112,7 @@ function main() {
         info "Licensing not marked for backup, skipping."
     fi
     restart
-    wait_for_certmanager "$CONTROL_NS" "${ns_list}"
+    wait_for_certmanager "${ns_list}"
     wait_for_nss_update "${ns_list}"
     success "Isolation complete"
 }
@@ -689,10 +689,8 @@ EOF
 }
 
 function wait_for_certmanager() {
-    local namespace=$1
-    shift
     local namespaces=$@
-    title " Wait for Cert Manager pods to come ready in namespace $namespace "
+    title " Wait for Cert Manager pods to come ready "
     msg "-----------------------------------------------------------------------"
     
     check_if_certmanager_deployed "${namespaces}"
@@ -703,9 +701,9 @@ function wait_for_certmanager() {
     local retries=20
     local sleep_time=15
     local total_time_mins=$(( sleep_time * retries / 60))
-    local wait_message="Waiting for deployment ${name} in namespace ${namespace} to be running ..."
-    local success_message="Deployment ${name} in namespace ${namespace} is running."
-    local error_message="Timeout after ${total_time_mins} minutes waiting for deployment ${name} in namespace ${namespace} to be running."
+    local wait_message="Waiting for deployment ${name} to be running ..."
+    local success_message="Deployment ${name} is running."
+    local error_message="Timeout after ${total_time_mins} minutes waiting for deployment ${name} to be running."
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 
     #check webhook pod runnning
@@ -722,7 +720,7 @@ function wait_for_certmanager() {
         error "More than one cert-manager-webhook deployment exists on the cluster."
     fi
     webhook_ns=$(${OC} get deploy -A | grep cert-manager-webhook | awk '{print $1}')
-    success "Cert Manager ready in namespace $namespace. Cert Manager operands deployed in $webhook_ns"
+    success "Cert Manager ready. Cert Manager operands deployed in $webhook_ns"
 }
 
 function wait_for_nss_update() {
