@@ -33,22 +33,22 @@ spec:
     resources:
     - apiVersion: operator.ibm.com/v1alpha1
       kind: OperandBindInfo
-      metadata:
-        name: ibm-licensing-bindinfo
-        namespace: "{{ .MasterNs }}"
-      spec:
-        operand: ibm-licensing-operator
-        registry: common-service
-        description: Binding information that should be accessible to licensing adopters
-        bindings:
-          public-api-data:
-            secret: ibm-licensing-token
-            configmap: ibm-licensing-info
-          public-api-token:
-            secret: ibm-licensing-token
-          public-api-upload:
-            secret: ibm-licensing-upload-token
-            configmap: ibm-licensing-upload-config
+      name: ibm-licensing-bindinfo
+      namespace: "{{ .MasterNs }}"
+      data:
+        spec:
+          operand: ibm-licensing-operator
+          registry: common-service
+          description: Binding information that should be accessible to licensing adopters
+          bindings:
+            public-api-data:
+              secret: ibm-licensing-token
+              configmap: ibm-licensing-info
+            public-api-token:
+              secret: ibm-licensing-token
+            public-api-upload:
+              secret: ibm-licensing-upload-token
+              configmap: ibm-licensing-upload-config
   - name: ibm-mongodb-operator
     spec:
       mongoDB: {}
@@ -490,22 +490,22 @@ spec:
     resources:
     - apiVersion: operator.ibm.com/v1alpha1
       kind: OperandBindInfo
-      metadata:
-        name: ibm-licensing-bindinfo
-        namespace: "{{ .MasterNs }}"
-      spec:
-        operand: ibm-licensing-operator
-        registry: common-service
-        description: Binding information that should be accessible to licensing adopters
-        bindings:
-          public-api-data:
-            secret: ibm-licensing-token
-            configmap: ibm-licensing-info
-          public-api-token:
-            secret: ibm-licensing-token
-          public-api-upload:
-            secret: ibm-licensing-upload-token
-            configmap: ibm-licensing-upload-config
+      name: ibm-licensing-bindinfo
+      namespace: "{{ .MasterNs }}"
+      data:
+        spec:
+          operand: ibm-licensing-operator
+          registry: common-service
+          description: Binding information that should be accessible to licensing adopters
+          bindings:
+            public-api-data:
+              secret: ibm-licensing-token
+              configmap: ibm-licensing-info
+            public-api-token:
+              secret: ibm-licensing-token
+            public-api-upload:
+              secret: ibm-licensing-upload-token
+              configmap: ibm-licensing-upload-config
   - name: ibm-mongodb-operator
     spec:
       mongoDB: {}
