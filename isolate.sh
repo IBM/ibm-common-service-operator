@@ -176,18 +176,26 @@ function prereq() {
         error "Missing operand-deployment-lifecycle-manager deployment (ODLM) in namespace $MASTER_NS"
     fi
 
-    local cs_version=$("${OC}" get csv -n ${MASTER_NS} | grep common-service-operator | grep 3.2 || echo fail)
-    if [[ $cs_version == "fail" ]]; then
-        cs_LTSR_version=$("${OC}" get csv -n ${MASTER_NS} | grep common-service-operator | grep 3.19 || echo fail)
-        if [[ $cs_LTSR_version != "fail" ]]; then
-            version=$(${OC} get csv -n ${MASTER_NS} | grep common-service-operator | awk '{print $7}')
-            IFS='.' read -a z_version <<< "$version"
-            if [[ $((${z_version[2]})) -lt 9 ]]; then 
-                error "Foundational Services installation does not meet the minimum version requirement. Upgrade to either 3.20+ or 3.19.9+"
+    cs_operator_found=false
+
+    while read -r ns; do
+        cs_version=$("${OC}" get csv -n "${ns}" | grep common-service-operator | awk '{print $7}')
+        if [[ -n "${cs_version}" ]]; then
+            IFS='.' read -r major minor patch <<< "${cs_version}"
+            if [[ ${major} -lt 3 || (${major} -eq 3 && ${minor} -lt 19) || (${major} -eq 3 && ${minor} -eq 19 && ${patch} -lt 9) ]]; then
+                error "Version of Foundational Services is $cs_version in namespace ${ns} does not meet the minimum version requirement. Upgrade to 3.19.9+"
             fi
-        else
-            error "Foundational Services installation does not meet the minimum version requirement. Upgrade to either 3.20+ or 3.19.9+"
+            if [[ "${ns}" == "${MASTER_NS}" ]]; then
+                if [[ ${major} -gt 3 ]]; then
+                    error "Version of Foundational Services is $cs_version in namespace ${ns} does not meet the version requirement. Should be either 3.20+ or 3.19.9+"
+                fi
+            fi
+            cs_operator_found=true
         fi
+    done < <("${OC}" get subscription.operators.coreos.com --all-namespaces --ignore-not-found | grep ibm-common-service-operator | awk '{print $1}' )
+
+    if [[ "${cs_operator_found}" == false ]]; then
+        error "No ibm-common-service-operator subscription found in any namespace."
     fi
 }
 
