@@ -709,7 +709,7 @@ function wait_for_certmanager() {
 
     #check cert manager operator pod
     local name="cert-manager-operator"
-    local condition="${OC} -A get deploy --no-headers --ignore-not-found | egrep '1/1' | grep ^${name} || true"
+    local condition="${OC} get deploy -A --no-headers --ignore-not-found | egrep '1/1' | grep ${name} || true"
     local retries=20
     local sleep_time=15
     local total_time_mins=$(( sleep_time * retries / 60))
