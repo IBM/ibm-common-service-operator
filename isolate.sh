@@ -740,6 +740,7 @@ function wait_for_certmanager() {
 function check_certmanager_count(){
     info "Verifying cert manager is deployed"
     csv_count=$(${OC} get csv -A | grep "cert-manager"| wc -l | tr -d " " || echo "none")
+    debug1 "cert manager csv count output: $csv_count"
     if [[ "$csv_count" == "0" ]] || [[ "$csv_count" == "none" ]]; then
         error "Missing a cert-manager"
     fi
@@ -789,7 +790,7 @@ function prev_fail_check() {
     local cs_operator_scaled=$(${OC} get deploy -n $MASTER_NS | egrep '1/1'| grep ibm-common-service-operator || echo "false")
     debug1 "cs op scaled output: $cs_operator_scaled"
     local cs_op_scale_needed="false"
-    if [[ "$cs_operator_scaled" != "false" ]]; then 
+    if [[ "$cs_operator_scaled" == "false" ]]; then 
         ${OC} scale deploy ibm-common-service-operator -n $MASTER_NS --replicas=1
         info "Common Service Operator scaled back to 1"
         cs_op_scale_needed="true"
@@ -798,7 +799,7 @@ function prev_fail_check() {
     fi
     local odlm_scaled=$(${OC} get deploy -n $MASTER_NS | egrep '1/1'| grep operand-deployment-lifecycle-manager || echo "false")
     debug1 "odlm scaled output: $odlm_scaled"
-    if [[ "$odlm_scaled" != "false" ]]; then 
+    if [[ "$odlm_scaled" == "false" ]]; then 
         ${OC} scale deploy operand-deployment-lifecycle-manager -n $MASTER_NS --replicas=1
         info "ODLM scaled back to 1"
     else
