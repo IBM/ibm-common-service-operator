@@ -94,6 +94,8 @@ function main() {
         usage
         error "Required parameters missing. Please re-run specifying original and control namespace values. Use -h for help."
     fi
+    #make sure cs op and odlm are scaled back to 1 before starting
+    prev_fail_check
     #need to get the namespaces for csmaps generation before pausing cs, otherwise namespace-scope cm does not include all namespaces
     prereq
     local ns_list=$(gather_csmaps_ns)
@@ -151,7 +153,7 @@ function prereq() {
     if [[ "$DEBUG" != "1" && "$DEBUG" != "0" ]]; then
         error "Invalid value for DEBUG. Expected 0 or 1."
     fi
-    
+
     #verify one and only one cert manager is installed
     check_certmanager_count
 
@@ -288,7 +290,7 @@ function update_tenant() {
     debug1 "map $map_to_cs_ns namespace $namespaces tmp $tmp"
     for ns in $namespaces; do
         debug1 "ns $ns mapto: $map_to_cs_ns"
-        if [[ $ns != $map_to_cs_ns ]]; then
+        if [[ "$ns" != "$map_to_cs_ns" ]]; then
             tmp="$tmp,\"$ns\""
         fi
     done
@@ -736,8 +738,9 @@ function wait_for_certmanager() {
 }
 
 function check_certmanager_count(){
-    csv_count=$(${OC} get csv -A | grep "cert-manager"| wc -l | tr -d " ")
-    if [[ $csv_count == 0 ]]; then
+    info "Verifying cert manager is deployed"
+    csv_count=$(${OC} get csv -A | grep "cert-manager"| wc -l | tr -d " " || echo "none")
+    if [[ "$csv_count" == "0" ]] || [[ "$csv_count" == "none" ]]; then
         error "Missing a cert-manager"
     fi
     # if installed in all namespace mode or alongside cp2 cert manager, 
@@ -748,6 +751,7 @@ function check_certmanager_count(){
             error "Multiple cert-managers found. Only one should be installed per cluster"
         fi
     fi
+    success "Cert manager deployment verified."
 }
 
 function wait_for_nss_update() {
@@ -775,6 +779,34 @@ function wait_for_nss_exist() {
     local success_message="Namespace-scope configmap created in ${MASTER_NS}."
     local error_message="Timeout after ${total_time_mins} minutes waiting for namespace-scope configmap to be created."
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
+#this function checks to see if the cluster is in an error state due to a previous failed run
+#specifically, looks to see if cs operator and odlm have been rescaled back to 1 replica each
+#also checks for cert manager to be deployed before failing in the case that cert manager is uninstalled in a previous run but previous run failed before reinstalling
+function prev_fail_check() {
+    info "Checking for common service operator and odlm pods"
+    local cs_operator_scaled=$(${OC} get deploy -n $MASTER_NS | egrep '1/1'| grep ibm-common-service-operator || echo "false")
+    local cs_op_scale_needed="false"
+    if [[ "$cs_operator_scaled" != "false" ]]; then 
+        ${OC} scale deploy ibm-common-service-operator -n $MASTER_NS --replicas=1
+        info "Common Service Operator scaled back to 1"
+        cs_op_scale_needed="true"
+    else
+        info "Common Service Operator already scaled, skipping."
+    fi
+    local odlm_scaled=$(${OC} get deploy -n $MASTER_NS | egrep '1/1'| grep operand-deployment-lifecycle-manager || echo "false")
+    if [[ "$odlm_scaled" != "false" ]]; then 
+        ${OC} scale deploy operand-deployment-lifecycle-manager -n $MASTER_NS --replicas=1
+        info "ODLM scaled back to 1"
+    else
+        info "ODLM already scaled, skipping."
+    fi
+
+    if [[ $cs_op_scale_needed == "true" ]]; then
+        check_CSCR "$MASTER_NS"
+    fi
+
 }
 
 function msg() {
