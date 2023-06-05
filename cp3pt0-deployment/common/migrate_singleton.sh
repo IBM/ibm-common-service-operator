@@ -97,7 +97,7 @@ function main() {
 function restore_ibmlicensing() {
 
     # extracts the previously saved IBMLicensing CR from ConfigMap and creates the IBMLicensing CR
-    "${OC}" get cm ibmlicensing-instance-bak -n ${CONTROL_NS} -o yaml --ignore-not-found | "${YQ}" .data | sed -e 's/.*ibmlicensing.yaml.*//' | 
+    "${OC}" get cm ibmlicensing-instance-bak -n ${LICENSING_NS} -o yaml --ignore-not-found | "${YQ}" .data | sed -e 's/.*ibmlicensing.yaml.*//' | 
     sed -e 's/^  //g' | oc apply -f -
 
 }
@@ -117,7 +117,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: ibmlicensing-instance-bak
-  namespace: ${CONTROL_NS}
+  namespace: ${LICENSING_NS}
 data:
   ibmlicensing.yaml: |
 ${instance}
