@@ -140,22 +140,19 @@ EOF
     fi
     msg ""
 
-    info "Restarting IBM Cloud Pak 2.0 Cert Manager to provide cert-rotation only..."
-    oc delete pod -l name=ibm-cert-manager-operator -n ${CONTROL_NS} --ignore-not-found
-    msg ""
-
+    is_exist=$(${OC} get pod -l name=ibm-cert-manager-operator -n ${CONTROL_NS} --ignore-not-found | grep "ibm-cert-manager-operator" || echo "failed")
+    if  [[ $is_exist != "failed" ]]; then
+        info "Restarting IBM Cloud Pak 2.0 Cert Manager to provide cert-rotation only..."
+            ${OC} delete pod -l name=ibm-cert-manager-operator -n ${CONTROL_NS} --ignore-not-found
+        msg ""
+        wait_for_pod ${CONTROL_NS} "ibm-cert-manager-operator"
+    else
+        warning "IBM Cloud Pak 2.0 Cert Manager does not exist in namespace ${CONTROL_NS}, skip restarting cert manager pod..."
+    fi
     wait_for_no_pod ${CONTROL_NS} "cert-manager-cainjector"
     wait_for_no_pod ${CONTROL_NS} "cert-manager-controller"
     wait_for_no_pod ${CONTROL_NS} "cert-manager-webhook"
 
-    wait_for_pod ${CONTROL_NS} "ibm-cert-manager-operator"
-
-}
-
-function debug1() {
-    if [ $DEBUG -eq 1 ]; then
-       debug "${1}"
-    fi
 }
 
 main $*

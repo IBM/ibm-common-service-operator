@@ -1,7 +1,7 @@
 apiVersion: velero.io/v1
 kind: Restore
 metadata:
-  name: restore-operands
+  name: restore-mongo-data
   namespace: velero
 spec:
   backupName: __BACKUP_NAME__
@@ -17,4 +17,4 @@ spec:
   - '*'
   labelSelector:
     matchLabels:
-      foundationservices.cloudpak.ibm.com: operand
+      foundationservices.cloudpak.ibm.com: mongo-data

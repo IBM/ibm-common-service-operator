@@ -18,14 +18,20 @@ SOURCE_NS="openshift-marketplace"
 OPERATOR_NS=""
 SERVICES_NS=""
 TETHERED_NS=""
-SIZE_PROFILE="small"
+EXCLUDED_NS=""
+SIZE_PROFILE="starterset"
 INSTALL_MODE="Automatic"
 DEBUG=0
+LICENSE_ACCEPT=0
+RETRY_CONFIG_CSCR=0
 
 # ---------- Command variables ----------
 
 # script base directory
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
+
+#log file
+LOG_FILE="setup_tenant_log_$(date +'%Y%m%d%H%M%S').log"
 
 # counter to keep track of installation steps
 STEP=0
@@ -36,6 +42,8 @@ STEP=0
 
 function main() {
     parse_arguments "$@"
+    save_log "logs" "setup_tenant_log" "$DEBUG"
+    trap cleanup_log EXIT
     pre_req
     setup_topology
     setup_nss
@@ -64,6 +72,13 @@ function parse_arguments() {
         --tethered-namespaces)
             shift
             TETHERED_NS=$1
+            ;;
+        --excluded-namespaces)
+            shift
+            EXCLUDED_NS=$1
+            ;;
+        --license-accept)
+            LICENSE_ACCEPT=1
             ;;
         -c | --channel)
             shift
@@ -103,30 +118,38 @@ function parse_arguments() {
 
 function print_usage() {
     script_name=`basename ${0}`
-    echo "Usage: ${script_name} --operator-namespace <bedrock-namespace> [OPTIONS]..."
+    echo "Usage: ${script_name} --license-accept --operator-namespace <bedrock-namespace> [OPTIONS]..."
     echo ""
     echo "Set up an advanced topology tenant for Cloud Pak 3.0 Foundational services."
-    echo "The --operator-namespace must be provided."
+    echo "The --license-accept and --operator-namespace must be provided."
     echo ""
     echo "Options:"
     echo "   --oc string                    File path to oc CLI. Default uses oc in your PATH"
     echo "   --enable-licensing             Set this flag to install ibm-licensing-operator"
     echo "   --operator-namespace string    Required. Namespace to install Foundational services operator"
     echo "   --services-namespace           Namespace to install operands of Foundational services, i.e. 'dataplane'. Default is the same as operator-namespace"
-    echo "   --tethered-namespaces string   Additional namespaces for this tenant, comma-delimited, e.g. 'ns1,ns2'"
+    echo "   --tethered-namespaces string   Add namespaces to this tenant, comma-delimited, e.g. 'ns1,ns2'"
+    echo "   --excluded-namespaces string   Remove namespaces from this tenant, comma-delimited, e.g. 'ns1,ns2'"
+    echo "   --license-accept               Set this flag to accept the license agreement"
     echo "   -c, --channel string           Channel for Subscription(s). Default is v4.0"
     echo "   -i, --install-mode string      InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
     echo "   -s, --source string            CatalogSource name. This assumes your CatalogSource is already created. Default is opencloud-operators"
     echo "   -n, --namespace string         Namespace of CatalogSource. Default is openshift-marketplace"
-    echo "   -v, --debug integer            Verbosity of logs. Default is 0. Set to 1 for debug logs."
+    echo "   -v, --debug integer            Verbosity of logs. Default is 0. Set to 1 for debug logs"
     echo "   -h, --help                     Print usage information"
+    echo "   -p, --size-profile             The default profile is starterset. Change the profile to starter, small, medium, or large, if required"
     echo ""
 }
 
 function pre_req() {
+    # Check the value of DEBUG
+    if [[ "$DEBUG" != "1" && "$DEBUG" != "0" ]]; then
+        error "Invalid value for DEBUG. Expected 0 or 1."
+    fi
+
     check_command "${OC}"
 
-    # checking oc command logged in
+    # Checking oc command logged in
     user=$($OC whoami 2> /dev/null)
     if [ $? -ne 0 ]; then
         error "You must be logged into the OpenShift Cluster from the oc command line"
@@ -139,6 +162,10 @@ function pre_req() {
         error "Cert-manager is not found or having more than one\n"
     fi
 
+    if [ $LICENSE_ACCEPT -ne 1 ]; then
+        error "License not accepted. Rerun script with --license-accept flag set. See https://ibm.biz/integration-licenses for more details"
+    fi
+
     if [ $ENABLE_LICENSING -eq 1 ]; then
         check_licensing
         if [ $? -ne 0 ]; then
@@ -146,16 +173,43 @@ function pre_req() {
         fi
     fi
 
+    # Check INSTALL_MODE
+    if [[ "$INSTALL_MODE" != "Automatic" && "$INSTALL_MODE" != "Manual" ]]; then
+        error "Invalid INSTALL_MODE: $INSTALL_MODE, allowed values are 'Automatic' or 'Manual'"
+    fi
+
+    # Check if channel is semantic vx.y
+    if [[ $CHANNEL =~ ^v[0-9]+\.[0-9]+$ ]]; then
+        # Check if channel is equal or greater than v4.0
+        if [[ $CHANNEL == v[4-9].* || $CHANNEL == v[4-9] ]]; then  
+            success "Channel is valid"
+        else
+            error "Channel is less than v4.0"
+        fi
+    else
+        error "Channel is not semantic vx.y"
+    fi
+
+    # Check profile size
+    case "$SIZE_PROFILE" in
+    "starterset"|"starter"|"small"|"medium"|"large")
+        success "Profile size is valid."
+        ;;
+    *)
+        error " '$SIZE_PROFILE' is not a valid value for profile. Allowed values are 'starterset', 'starter', 'small', 'medium', and 'large'."
+        ;;
+    esac
+
     if [ "$OPERATOR_NS" == "" ]; then
         error "Must provide operator namespace, please specify argument --operator-namespace"
     fi
 
-    if [[ "$SERVICES_NS" == "" && "$TETHERED_NS" == "" ]]; then
-        error "Must provide additional namespaces, either --services-namespace or --tethered-namespaces"
+    if [[ "$SERVICES_NS" == "" && "$TETHERED_NS" == "" && "$EXCLUDED_NS" == "" ]]; then
+        error "Must provide additional namespaces, either --services-namespace, --tethered-namespaces, or --excluded-namespaces"
     fi
 
-    if [[ "$SERVICES_NS" == "$OPERATOR_NS" && "$TETHERED_NS" == "" ]]; then
-        error "Must provide additional namespaces for --tethered-namespaces when services-namespace is the same as operator-namespace"
+    if [[ "$SERVICES_NS" == "$OPERATOR_NS" && "$TETHERED_NS" == "" && "$EXCLUDED_NS" == "" ]]; then
+        error "Must provide additional namespaces for --tethered-namespaces or --excluded-namespaces when services-namespace is the same as operator-namespace"
     fi
 
     if [[ "$TETHERED_NS" == "$OPERATOR_NS" || "$TETHERED_NS" == "$SERVICES_NS" ]]; then
@@ -212,7 +266,38 @@ EOF
 
     # add the tethered optional namespaces for a tenant to namespaceMembers
     # ${TETHERED_NS} is comma delimited, so need to replace commas with space
-    for n in $SERVICES_NS ${TETHERED_NS//,/ }; do
+    nss_exists=$(${OC} get nss common-service -n $OPERATOR_NS || echo "fail")
+    if [[ $nss_exists != "fail" ]]; then
+        debug1 "NamspaceScope common-service exists in namespace $OPERATOR_NS."
+        existing_ns=$(${OC} get nss common-service -n $OPERATOR_NS -o=jsonpath='{.spec.namespaceMembers}' | tr -d \" | tr -d [ | tr -d ])
+        existing_ns="${existing_ns//,/ }"
+        if [[ $EXCLUDED_NS != "" ]]; then
+            info "Removing excluded namespaces from common-service NamespaceScope"
+            #remove excluded ns
+            remove_ns="${EXCLUDED_NS//,/ }"
+            tmp_ns_list=""
+            for namespace in $existing_ns
+            do
+                contains_ns=$([[ ${remove_ns[@]} =~ $namespace ]] || echo "false")
+                if [[ $contains_ns == "false" ]]; then
+                    if [[ $tmp_ns_list == "" ]]; then
+                        tmp_ns_list="${namespace}"
+                    else
+                        tmp_ns_list="${tmp_ns_list} ${namespace}"
+                    fi
+                fi
+            done
+            existing_ns="${tmp_ns_list}"
+        fi
+        new_ns_list=$(echo ${existing_ns} ${TETHERED_NS//,/ } ${SERVICES_NS} | xargs -n1 | sort -u | xargs)
+    else
+        new_ns_list=$(echo ${TETHERED_NS//,/ } ${SERVICES_NS} | xargs -n1 | sort -u | xargs)
+    fi
+    debug1 "List of namespaces for common-service NSS ${new_ns_list}"
+    for n in ${new_ns_list}; do
+        if [[ $n == $OPERATOR_NS ]]; then
+            continue
+        fi
         local ns=$ns$(cat <<EOF
 
     - $n
@@ -220,10 +305,13 @@ EOF
     )
     done
 
+    debug1 "Format of namespaceMembers to be added: $ns"
+
     configure_nss_kind "$ns"
     if [ $? -ne 0 ]; then
         error "Failed to create NSS CR in ${OPERATOR_NS}"
     fi
+    accept_license "namespacescope" "$OPERATOR_NS" "common-service"
 }
 
 function authorize_nss() {
@@ -295,6 +383,16 @@ EOF
 function install_cs_operator() {
     msg "Installing IBM Foundational services operator into operator namespace - ${OPERATOR_NS}"
 
+    info "checking if CommonService CRD exist in the cluster"
+    local is_CS_CRD_exist=$(($OC get commonservice -n "$OPERATOR_NS" --ignore-not-found > /dev/null && echo exists) || echo fail)
+
+    if [ "$is_CS_CRD_exist" == "exists" ]; then
+        info "CommonService CRD exist"
+        configure_cs_kind
+    else
+        info "CommonService CRD does not exist, installing ibm-common-service-operator first"
+    fi
+
     is_sub_exist "ibm-common-service-operator" "$OPERATOR_NS"
     if [ $? -eq 0 ]; then
         info "There is an ibm-common-service-operator Subscription already\n"
@@ -303,8 +401,13 @@ function install_cs_operator() {
         sleep 120
     fi
     wait_for_operator "$OPERATOR_NS" "ibm-common-service-operator"
+    accept_license "commonservice" "$OPERATOR_NS" "common-service"
     wait_for_nss_patch "$OPERATOR_NS" 
-    configure_cs_kind
+    wait_for_cs_webhook "$OPERATOR_NS" "ibm-common-service-webhook"
+    if [ "$is_CS_CRD_exist" == "fail" ] || [ $RETRY_CONFIG_CSCR -eq 1 ]; then
+        RETRY_CONFIG_CSCR=1
+        configure_cs_kind
+    fi
 }
 
 function configure_nss_kind() {
@@ -336,6 +439,8 @@ EOF
 }
 
 function configure_cs_kind() {
+    local retries=5
+    local delay=30
     local object=$(
         cat <<EOF
 apiVersion: operator.ibm.com/v3
@@ -353,15 +458,28 @@ EOF
     echo
     info "Configuring the CommonService object"
     echo "$object"
-    echo "$object" | ${OC} apply -f -
-    if [[ $? -ne 0 ]]; then
-        error "Failed to create CommonService CR in ${OPERATOR_NS}"
-    fi
-}
+    while [ $retries -gt 0 ]; do
+        
+        echo "$object" | ${OC} apply -f -
+    
+        # Check if the patch was successful
+        if [[ $? -eq 0 ]]; then
+            success "Successfully patched CommonService CR in ${OPERATOR_NS}"
+            break
+        else
+            warning "Failed to patch CommonService CR in ${OPERATOR_NS}, retry it in ${delay} seconds"
+            sleep ${delay}
+            retries=$((retries-1))
+        fi
+    done
 
-function debug1() {
-    if [ $DEBUG -eq 1 ]; then
-        debug "${1}"
+    if [ $retries -eq 0 ] && [ $RETRY_CONFIG_CSCR -eq 1 ]; then
+        error "Fail to patch CommonService CR in ${OPERATOR_NS}"
+    fi
+
+    if [ $retries -eq 0 ] && [ $RETRY_CONFIG_CSCR -eq 0 ]; then
+        warning "Fail to patch CommonService CR in ${OPERATOR_NS}, try to install cs-operator first"
+        RETRY_CONFIG_CSCR=1
     fi
 }
 

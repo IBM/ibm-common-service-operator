@@ -14,8 +14,7 @@ spec:
   - resticrepositories.velero.io
   hooks: {}
   includedNamespaces:
-  - ibm-common-services
-  - openshift-marketplace
+  - '*'
   labelSelector:
     matchLabels:
       foundationservices.cloudpak.ibm.com: catalog
