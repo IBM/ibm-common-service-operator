@@ -356,13 +356,13 @@ function uninstall_singletons() {
     migrate_lic_cms $MASTER_NS
 
     licensing_exists=""
-    licensing_exists=$(${OC} get IBMLicensing)
-    if [[ $licensing_exists != "" ]]; then
+    licensing_exists=$(${OC} get IBMLicensing || echo "not found")
+    if [[ $licensing_exists == "" || $licensing_exists == "not found" ]]; then
+        info "No ibmlicensing resources on cluster, skipping backup."
+    else
         info "Licensing marked for backup"
         backup_ibmlicensing
         BACKUP_LICENSING="true"
-    else
-        info "No ibmlicensing resources on cluster, skipping backup."
     fi
     isExists=$("${OC}" get deployments -n "${MASTER_NS}" --ignore-not-found ibm-licensing-operator)
     if [ ! -z "$isExists" ]; then
