@@ -787,6 +787,7 @@ function wait_for_nss_exist() {
 function prev_fail_check() {
     info "Checking for common service operator and odlm pods"
     local cs_operator_scaled=$(${OC} get deploy -n $MASTER_NS | egrep '1/1'| grep ibm-common-service-operator || echo "false")
+    debug1 "cs op scaled output: $cs_operator_scaled"
     local cs_op_scale_needed="false"
     if [[ "$cs_operator_scaled" != "false" ]]; then 
         ${OC} scale deploy ibm-common-service-operator -n $MASTER_NS --replicas=1
@@ -796,6 +797,7 @@ function prev_fail_check() {
         info "Common Service Operator already scaled, skipping."
     fi
     local odlm_scaled=$(${OC} get deploy -n $MASTER_NS | egrep '1/1'| grep operand-deployment-lifecycle-manager || echo "false")
+    debug1 "odlm scaled output: $odlm_scaled"
     if [[ "$odlm_scaled" != "false" ]]; then 
         ${OC} scale deploy operand-deployment-lifecycle-manager -n $MASTER_NS --replicas=1
         info "ODLM scaled back to 1"
