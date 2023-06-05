@@ -16,6 +16,7 @@ OPERATOR_NS=""
 CONTROL_NS=""
 SOURCE_NS="openshift-marketplace"
 ENABLE_LICENSING=0
+LICENSING_NS=""
 NEW_MAPPING=""
 NEW_TENANT=0
 DEBUG=0
@@ -34,10 +35,20 @@ STEP=0
 . ${BASE_DIR}/utils.sh
 
 function main() {
+
+    # delegate certmanager cr if control namespace exists
+    # delete certmanager operator if control namespace does not exist
+    # if enable licensing and licensing operator is in operator ns
+    #   migrate licensing to LICENSING_NS
+    #   delete operator
+
     parse_arguments "$@"
     pre_req
 
-    if [ "$CONTROL_NS" == "$OPERATOR_NS" ]; then
+    if [ ! -z "$CONTROL_NS" ]; then
+        # Delegation of CP2 Cert Manager
+        ${BASE_DIR}/delegate_cp2_cert_manager.sh --control-namespace $CONTROL_NS "--skip-user-vertify"
+
         # Delete CP2.0 Cert-Manager CR
         ${OC} delete certmanager.operator.ibm.com default --ignore-not-found --timeout=10s
         if [ $? -ne 0 ]; then
@@ -49,14 +60,22 @@ function main() {
         wait_for_no_pod ${CONTROL_NS} "cert-manager-cainjector"
         wait_for_no_pod ${CONTROL_NS} "cert-manager-controller"
         wait_for_no_pod ${CONTROL_NS} "cert-manager-webhook"
-        # Delete cert-Manager
-        delete_operator "ibm-cert-manager-operator" "$CONTROL_NS"
-    else
-        # Delegation of CP2 Cert Manager
-        ${BASE_DIR}/delegate_cp2_cert_manager.sh --control-namespace $CONTROL_NS "--skip-user-vertify"
     fi
+
+    delete_operator "ibm-cert-manager-operator" "$OPERATOR_NS"
     
     if [[ $ENABLE_LICENSING -eq 1 ]]; then
+
+        is_exists=$("$OC" get deployments ibm-licensing-operator -n "$OPERATOR_NS")
+        if [ ! -z "is_exists" ]; then
+            # Migrate Licensing Services Data
+            ${BASE_DIR}/migrate_cp2_licensing.sh --control-namespace "$OPERATOR_NS" --target-namespace "$LICENSING_NS" "--skip-user-vertify"
+            local is_deleted=$(("${OC}" delete -n "${CONTROL_NS}" --ignore-not-found OperandBindInfo ibm-licensing-bindinfo --timeout=10s > /dev/null && echo "success" ) || echo "fail")
+            if [[ $is_deleted == "fail" ]]; then
+                warning "Failed to delete OperandBindInfo, patching its finalizer to null..."
+                ${OC} patch -n "${CONTROL_NS}" OperandBindInfo ibm-licensing-bindinfo --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+            fi
+        fi
         
         backup_ibmlicensing
         isExists=$("${OC}" get deployments -n "${CONTROL_NS}" --ignore-not-found ibm-licensing-operator)
@@ -65,21 +84,10 @@ function main() {
         fi
 
         # Delete licensing csv/subscriptions
-        delete_operator "ibm-licensing-operator" "$CONTROL_NS"
+        delete_operator "ibm-licensing-operator" "$OPERATOR_NS"
 
         # restore licensing configuration so that subsequent License Service install will pick them up
         restore_ibmlicensing
-        
-
-        if [[ "$CONTROL_NS" == "$OPERATOR_NS" ]]; then
-            # Migrate Licensing Services Data
-            ${BASE_DIR}/migrate_cp2_licensing.sh --control-namespace $CONTROL_NS "--skip-user-vertify"
-            local is_deleted=$(("${OC}" delete -n "${CONTROL_NS}" --ignore-not-found OperandBindInfo ibm-licensing-bindinfo --timeout=10s > /dev/null && echo "success" ) || echo "fail")
-            if [[ $is_deleted == "fail" ]]; then
-                warning "Failed to delete OperandBindInfo, patching its finalizer to null..."
-                ${OC} patch -n "${CONTROL_NS}" OperandBindInfo ibm-licensing-bindinfo --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
-            fi
-        fi
     fi
 
     success "Migration is completed for Cloud Pak 3.0 Foundational singleton services."
@@ -133,6 +141,14 @@ function parse_arguments() {
             shift
             OPERATOR_NS=$1
             ;;
+        --control-namespace)
+            shift
+            CONTROL_NS=$1
+            ;;
+        --licensing-namespace)
+            shift
+            LICENSING_NS=$1
+            ;;
         --enable-licensing)
             ENABLE_LICENSING=1
             ;;
@@ -176,14 +192,7 @@ function pre_req() {
 
     if [ "$CONTROL_NS" == "" ]; then
         CONTROL_NS=$OPERATOR_NS
-    fi
-    
-    get_and_validate_arguments
-}
-
-# TODO validate argument
-function get_and_validate_arguments() {
-    get_control_namespace
+    fi    
 }
 
 main $*
