@@ -264,8 +264,7 @@ function install_licensing() {
     title "Installing licensing\n"
     is_sub_exist "ibm-licensing-operator-app" # this will catch the packagenames of all ibm-licensing-operator-app
     if [ $? -eq 0 ]; then
-        warning "There is an ibm-licensing-operator-app Subscription already\n"
-        return 0
+        warning "There is an ibm-licensing-operator-app Subscription already, so will upgrade it\n"
     elif [ $SKIP_INSTALL -eq 1 ]; then
         error "There is no ibm-licensing-operator-app Subscription installed\n"
     fi
