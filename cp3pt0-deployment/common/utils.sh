@@ -1066,8 +1066,13 @@ function is_supports_delegation() {
     minor=$(echo "$version" | cut -d '.' -f2)
     patch=$(echo "$version" | cut -d '.' -f3)
 
+    if [ -z "$version" ]; then
+        info "No ibm-common-service-operator found on the cluster, skipping delegation check"
+        return 0
+    fi
+
     if [ "$major" -gt 3 ]; then
-        echo "Major version is greater than 3, skipping delegation check"
+        info "Major version is greater than 3, skipping delegation check"
         return 0
     fi
 
