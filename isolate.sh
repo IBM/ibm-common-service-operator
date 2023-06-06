@@ -808,6 +808,9 @@ function prev_fail_check() {
 
     if [[ $cs_op_scale_needed == "true" ]]; then
         check_CSCR "$MASTER_NS"
+        #wait for cert manager to come back ready after scaling up
+        local ns_list=$(gather_csmaps_ns)
+        wait_for_certmanager "${ns_list}"
     fi
 
 }
