@@ -239,14 +239,17 @@ function install_cert_manager() {
     fi
 
     local api_version=$("$OC" get deployments -n "$webhook_ns" cert-manager-webhook -o jsonpath='{.metadata.ownerReferences[*].apiVersion}')
-    if [ "$api_version" == "$CERT_MANAGER_V1ALPHA1_OWNER" ]; then
+    if [ ! -z "$api_version" ]; then
+        if [ "$api_version" == "$CERT_MANAGER_V1ALPHA1_OWNER" ]; then
         error "Cluster has not deactivated LTSR ibm-cert-manager-operator yet, please re-run this script"
-    fi
-    if [ "$api_version" != "$CERT_MANAGER_V1_OWNER" ]; then
-        warning "Cluster has a non ibm-cert-manager-operator already installed, skipping"
-        return 0
-    fi
+        fi
 
+        if [ "$api_version" != "$CERT_MANAGER_V1_OWNER" ]; then
+            warning "Cluster has a non ibm-cert-manager-operator already installed, skipping"
+            return 0
+        fi
+    fi
+    
     create_namespace "${CERT_MANAGER_NAMESPACE}"
     create_operator_group "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" "{}"
     create_subscription "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" "$CHANNEL" "ibm-cert-manager-operator" "${CERT_MANAGER_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
