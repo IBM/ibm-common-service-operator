@@ -58,7 +58,7 @@ function main() {
 
     if [ $MIGRATE_SINGLETON -eq 1 ]; then
         if [ $ENABLE_LICENSING -eq 1 ]; then
-            ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" --control-namespace "$CONTROL_NS" "--enable-licensing" --licensing-namespace "$LICENSING_NS"
+            ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" --control-namespace "$CONTROL_NS" "--enable-licensing" --licensing-namespace "$LICENSING_NAMESPACE"
         else
             ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" --control-namespace "$CONTROL_NS"
         fi
@@ -176,7 +176,6 @@ function is_migrate_cert_manager() {
         return 0
     fi
     MIGRATE_SINGLETON=1
-    ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS"
 }
 
 function is_migrate_licensing() {
@@ -356,4 +355,4 @@ function get_and_validate_arguments() {
     get_control_namespace
 }
 
-main $*
+main "$@"

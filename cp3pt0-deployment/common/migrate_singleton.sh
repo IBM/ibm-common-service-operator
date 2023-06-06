@@ -195,4 +195,4 @@ function pre_req() {
     fi    
 }
 
-main $*
+main "$@"
