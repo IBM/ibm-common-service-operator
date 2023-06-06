@@ -739,9 +739,9 @@ function wait_for_certmanager() {
 
 function check_certmanager_count(){
     info "Verifying cert manager is deployed"
-    csv_count=$(${OC} get csv -A | grep "cert-manager"| wc -l | tr -d " " || echo "none")
+    csv_count=$(${OC} get csv -A | grep "cert-manager"| wc -l | tr -d " " || echo "")
     debug1 "cert manager csv count output: $csv_count"
-    if [[ "$csv_count" == "0" ]] || [[ "$csv_count" == "none" ]]; then
+    if [[ "$csv_count" == "0" ]] || [[ "$csv_count" == "" ]]; then
         error "Missing a cert-manager"
     fi
     # if installed in all namespace mode or alongside cp2 cert manager, 
