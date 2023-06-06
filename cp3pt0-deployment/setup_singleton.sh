@@ -188,7 +188,7 @@ function is_migrate_licensing() {
     
     local version=$("$OC" get ibmlicensing instance -o jsonpath='{.spec.version}')
     if [ -z "$version" ]; then
-        warn "No version field in ibmlicensing CR, skipping"
+        warning "No version field in ibmlicensing CR, skipping"
         return 0
     fi
     local major=$(echo "$version" | cut -d '.' -f1)
