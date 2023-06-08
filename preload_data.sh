@@ -143,6 +143,7 @@ function prereq() {
       if [[ $mongo_op_scaled == "false" ]]; then
         debug1 "Mongo operator still scaled down, scaling up."
         ${OC} scale deploy -n $FROM_NAMESPACE ibm-mongodb-operator --repilcas=1
+        delete_mongo_pods "$FROM_NAMESPACE"
       fi
     fi
 }
