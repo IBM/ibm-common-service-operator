@@ -479,7 +479,7 @@ EOF
     while [ $retries > 0 ]
     do
       info "waiting for completion"
-      status=$(${OC} get po | grep mongodb-backup | awk '{print $3}')
+      status=$(${OC} get po | grep mongodb-backup | grep Completed | awk '{print $3}' || echo "Unknown")
       ${OC} get po | grep mongodb-backup
       if [[ "$status" == "Completed" ]]; then
         break
@@ -728,7 +728,7 @@ EOF
     while [ $retries > 0 ]
     do
       info "waiting for completion"
-      status=$(${OC} get po | grep mongodb-restore | awk '{print $3}')
+      status=$(${OC} get po | grep mongodb-restore | grep Completed | awk '{print $3}' || echo "Unknown")
       ${OC} get po | grep mongodb-restore
       if [[ "$status" == "Completed" ]] || [[ "$status" == "" ]]; then
         break
