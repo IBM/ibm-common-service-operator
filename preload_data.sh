@@ -1516,7 +1516,7 @@ metadata:
     app.kubernetes.io/name: mongodbs.operator.ibm.com
     release: mongodb
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: icp-mongodb
