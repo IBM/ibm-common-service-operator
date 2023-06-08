@@ -397,7 +397,7 @@ data:
       bindIpAll: true
       port: 27017
       ssl:
-        mode: diasbled
+        mode: preferSSL
         CAFile: /data/configdb/tls.crt
         PEMKeyFile: /work-dir/mongo.pem
     replication:
