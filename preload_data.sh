@@ -29,6 +29,7 @@ TO_NAMESPACE=""
 NUM=$#
 TEMPFILE="_TMP.yaml"
 DEBUG=0
+s390x_ENV="false"
 
 # ---------- Command variables ----------
 
@@ -133,6 +134,11 @@ function prereq() {
     if [[ -z "$exists" ]]; then
         error "Namespace $TO_NAMESPACE does not exist (or oc command line is not logged in)"
         exit 1
+    fi
+    mongo_node=$(${OC} get pods -n $FROM_NAMESPACE -o wide | grep icp-mongodb-0 | awk '{print $7}')
+    architecture=$(${OC} describe node $mongo_node | grep "Architecture:" | awk '{print $2}')
+    if [[ $architecture == "s390x" ]]; then
+      s390x_ENV="true"
     fi
 }
 
@@ -292,8 +298,8 @@ function dumpmongo() {
   fi
 
   ibm_mongodb_image=$(oc get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
-
-  cat <<EOF >$TEMPFILE
+  if [[ $s390x_ENV == "false" ]]; then
+    cat <<EOF >$TEMPFILE
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -349,6 +355,111 @@ spec:
           secretName: mongodb-root-ca-cert
       restartPolicy: OnFailure
 EOF
+  else #s390x environments do not recognize --ssl options
+    info "Z cluster detected"
+    info "Scaling down MongoDB operator"
+    ${OC} scale deploy -n $FROM_NAMESPACE ibm-mongodb-operator --replicas=0
+    
+    #save cm to reapply later
+    ${OC} get cm icp-mongodb -o yaml -n $FROM_NAMESPACE > tmp_icp-mongodb_cm.yaml
+    #get cache size value
+    cacheSizeGB=$(${OC} get cm icp-mongodb -n $FROM_NAMESPACE -o yaml | grep cacheSizeGB | awk '{print $2}')
+    
+    info "Editing configmap icp-mongodb"
+    cat << EOF | oc apply -f -
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: icp-mongodb
+  labels:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/instance: icp-mongodb
+    app.kubernetes.io/managed-by: operator
+    app.kubernetes.io/name: icp-mongodb
+    app.kubernetes.io/part-of: common-services-cloud-pak
+    app.kubernetes.io/version: 4.0.12-build.3
+    release: mongodb
+data:
+  mongod.conf: |-
+    storage:
+      dbPath: /data/db
+      wiredTiger:
+        engineConfig:
+          cacheSizeGB: $cacheSizeGB
+    net:
+      bindIpAll: true
+      port: 27017
+      ssl:
+        mode: preferSSL
+        CAFile: /data/configdb/tls.crt
+        PEMKeyFile: /work-dir/mongo.pem
+    replication:
+      replSetName: rs0
+    # Uncomment for TLS support or keyfile access control without TLS
+    security:
+      authorization: enabled
+      keyFile: /data/configdb/key.txt
+EOF
+    #need to delete the mongo pods one at a time
+    delete_mongo_pods "$FROM_NAMESPACE"
+
+    cat <<EOF >$TEMPFILE
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mongodb-backup
+spec:
+  parallelism: 1
+  completions: 1
+  backoffLimit: 20
+  template:
+    spec:
+      containers:
+      - name: cs-mongodb-backup
+        image: $ibm_mongodb_image
+        resources:
+          limits:
+            cpu: 500m
+            memory: 500Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        command: ["bash", "-c", "cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongodump --oplog --out /dump/dump --host mongodb:27017 --username \$ADMIN_USER --password \$ADMIN_PASSWORD --authenticationDatabase admin"]
+        volumeMounts:
+        - mountPath: "/work-dir"
+          name: tmp-mongodb
+        - mountPath: "/dump"
+          name: mongodump
+        - mountPath: "/cred/mongo-certs"
+          name: icp-mongodb-client-cert
+        - mountPath: "/cred/cluster-ca"
+          name: cluster-ca-cert
+        env:
+          - name: ADMIN_USER
+            valueFrom:
+              secretKeyRef:
+                name: icp-mongodb-admin
+                key: user
+          - name: ADMIN_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: icp-mongodb-admin
+                key: password
+      volumes:
+      - name: mongodump
+        persistentVolumeClaim:
+          claimName: cs-mongodump
+      - name: tmp-mongodb
+        emptyDir: {}
+      - name: icp-mongodb-client-cert
+        secret:
+          secretName: icp-mongodb-client-cert
+      - name: cluster-ca-cert
+        secret:
+          secretName: mongodb-root-ca-cert
+      restartPolicy: OnFailure
+EOF
+  fi
 
   status="Unknown"
   info "Running Backup" 
@@ -382,6 +493,14 @@ EOF
   done
 
   dumplogs mongodb-backup
+  if [[ $s390x_ENV == "true" ]]; then
+    #reset changes for z environment
+    info "Reverting change to icp-mongodb configmap"
+    ${OC} apply -f tmp_icp-mongodb_cm.yaml -n $FROM_NAMESPACE || warning "Configmap icp-mongodb could not be reverted. Make sure to change net.ssl.mode value back to requireSSL."
+    rm -f tmp_icp-mongodb_cm.yaml
+    delete_mongo_pods "$FROM_NAMESPACE"
+    info "Scale mongo operator back up to 1"
+    ${OC} scale deploy -n $FROM_NAMESPACE ibm-mongodb-operator --replicas=1
   success "Backup Complete"
 } # dumpmongo
 
@@ -472,8 +591,8 @@ function loadmongo() {
   fi
 
   ibm_mongodb_image=$(oc get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
-
-  cat <<EOF >$TEMPFILE
+  if [[ $s390x_ENV == "false" ]]; then
+    cat <<EOF >$TEMPFILE
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -529,6 +648,65 @@ spec:
           secretName: mongodb-root-ca-cert
       restartPolicy: Never
 EOF
+  else
+    debug1 "Applying z restore job"
+    cat <<EOF >$TEMPFILE
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mongodb-restore
+spec:
+  parallelism: 1
+  completions: 1
+  backoffLimit: 20
+  template:
+    spec:
+      containers:
+      - name: icp-mongodb-restore
+        image: $ibm_mongodb_image
+        command: ["bash", "-c", "cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongorestore --host rs0/icp-mongodb:27017 --username \$ADMIN_USER --password \$ADMIN_PASSWORD --authenticationDatabase admin /dump/dump"]
+        resources:
+          limits:
+            cpu: 500m
+            memory: 500Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        volumeMounts:
+        - mountPath: "/dump"
+          name: mongodump
+        - mountPath: "/work-dir"
+          name: tmp-mongodb
+        - mountPath: "/cred/mongo-certs"
+          name: icp-mongodb-client-cert
+        - mountPath: "/cred/cluster-ca"
+          name: cluster-ca-cert
+        env:
+          - name: ADMIN_USER
+            valueFrom:
+              secretKeyRef:
+                name: icp-mongodb-admin
+                key: user
+          - name: ADMIN_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: icp-mongodb-admin
+                key: password
+      volumes:
+      - name: mongodump
+        persistentVolumeClaim:
+          claimName: cs-mongodump
+      - name: tmp-mongodb
+        emptyDir: {}
+      - name: icp-mongodb-client-cert
+        secret:
+          secretName: icp-mongodb-client-cert
+      - name: cluster-ca-cert
+        secret:
+          secretName: mongodb-root-ca-cert
+      restartPolicy: Never
+EOF
+  fi
 
   status="Unknown"
   info "Running Restore" 
@@ -1146,7 +1324,7 @@ data:
       bindIpAll: true
       port: 27017
       ssl:
-        mode: requireSSL
+        mode: preferSSL
         CAFile: /data/configdb/tls.crt
         PEMKeyFile: /work-dir/mongo.pem
     replication:
@@ -1551,84 +1729,6 @@ spec:
           terminationMessagePolicy: File
           image: >-
             $ibm_mongodb_image
-        - resources:
-            limits:
-              cpu: '1'
-              memory: 350Mi
-            requests:
-              cpu: 100m
-              memory: 300Mi
-          readinessProbe:
-            exec:
-              command:
-                - sh
-                - '-ec'
-                - >-
-                  /bin/mongodb_exporter --mongodb.uri
-                  mongodb://$METRICS_USER:$METRICS_PASSWORD@localhost:27017
-                  --mongodb.tls --mongodb.tls-ca=/data/configdb/tls.crt
-                  --mongodb.tls-cert=/work-dir/mongo.pem --test
-            timeoutSeconds: 1
-            periodSeconds: 10
-            successThreshold: 1
-            failureThreshold: 3
-          terminationMessagePath: /dev/termination-log
-          name: metrics
-          command:
-            - sh
-            - '-ec'
-            - >-
-              /bin/mongodb_exporter --mongodb.uri
-              mongodb://$METRICS_USER:$METRICS_PASSWORD@localhost:27017
-              --mongodb.tls --mongodb.tls-ca=/data/configdb/tls.crt
-              --mongodb.tls-cert=/work-dir/mongo.pem --mongodb.socket-timeout=3s
-              --mongodb.sync-timeout=1m --web.telemetry-path=/metrics
-              --web.listen-address=:9216
-          livenessProbe:
-            exec:
-              command:
-                - sh
-                - '-ec'
-                - >-
-                  /bin/mongodb_exporter --mongodb.uri
-                  mongodb://$METRICS_USER:$METRICS_PASSWORD@localhost:27017
-                  --mongodb.tls --mongodb.tls-ca=/data/configdb/tls.crt
-                  --mongodb.tls-cert=/work-dir/mongo.pem --test
-            initialDelaySeconds: 30
-            timeoutSeconds: 10
-            periodSeconds: 30
-            successThreshold: 1
-            failureThreshold: 10
-          env:
-            - name: METRICS_USER
-              valueFrom:
-                secretKeyRef:
-                  name: icp-mongodb-metrics
-                  key: user
-            - name: METRICS_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: icp-mongodb-metrics
-                  key: password
-          securityContext:
-            readOnlyRootFilesystem: true
-            allowPrivilegeEscalation: false
-          ports:
-            - name: metrics
-              containerPort: 9216
-              protocol: TCP
-          imagePullPolicy: IfNotPresent
-          volumeMounts:
-            - name: configdir
-              mountPath: /data/configdb
-            - name: mongodbdir
-              mountPath: /work-dir
-              subPath: workdir
-            - name: tmp-metrics
-              mountPath: /tmp
-          terminationMessagePolicy: File
-          image: >-
-            $ibm_mongodb_exporter_image
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: topology.kubernetes.io/zone
@@ -1778,6 +1878,23 @@ function deletemongocopy {
   success "MongoDB restored to new namespace $TO_NAMESPACE"
 
 } # deletemongocopy
+
+function delete_mongo_pods() {
+  local namespace=$1
+  local pods=$(${OC} get pods -n $namespace | grep icp-mongodb | awk '{print $1}' | tr -d "\n" " ")
+  for pod in $pods
+  do
+    debug1 "Deleting pod $pod"
+    local condition="${OC} get pod -n $namespace --no-headers --ignore-not-found | egrep '1/1' | grep ${pod} || true"
+    local retries=10
+    local sleep_time=12
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for mongo pod $pod to restart "
+    local success_message="Pod $pod restarted with new mongo config"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for pod $pod "
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+  done
+}
 
 function msg() {
     printf '%b\n' "$1"
