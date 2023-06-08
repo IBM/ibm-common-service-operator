@@ -139,6 +139,7 @@ function prereq() {
     architecture=$(${OC} describe node $mongo_node | grep "Architecture:" | awk '{print $2}')
     if [[ $architecture == "s390x" ]]; then
       s390x_ENV="true"
+      info "Z cluster detected, be prepared for multiple restarts of mongo pods. This is expected behavior."
       mongo_op_scaled=$(${OC} get deploy -n $FROM_NAMESPACE | grep ibm-mongodb-operator | egrep '1/1' || echo false)
       if [[ $mongo_op_scaled == "false" ]]; then
         info "Mongo operator still scaled down, scaling up."
@@ -1515,7 +1516,7 @@ metadata:
     app.kubernetes.io/name: mongodbs.operator.ibm.com
     release: mongodb
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: icp-mongodb
