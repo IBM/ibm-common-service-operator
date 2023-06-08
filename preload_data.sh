@@ -195,7 +195,7 @@ function pre_req_bpm() {
 
   runningmongo=$(oc get po icp-mongodb-0 --no-headers --ignore-not-found -n $TO_NAMESPACE | awk '{print $3}')
   if [[ ! -z "$runningmongo" ]]; then
-    error "Mongodb is deployedoc g in Namespace $TO_NAMESPACE - this copy depends on mongo being uninitialzed in the target namespace"
+    error "Mongodb is deployed in namespace $TO_NAMESPACE - this script depends on mongo being uninitialzed in the target namespace"
     exit -1
   fi
 } # parse
@@ -359,9 +359,7 @@ EOF
     info "Z cluster detected"
     info "Scaling down MongoDB operator"
     ${OC} scale deploy -n $FROM_NAMESPACE ibm-mongodb-operator --replicas=0
-    
-    #save cm to reapply later
-    ${OC} get cm icp-mongodb -o yaml -n $FROM_NAMESPACE > tmp_icp-mongodb_cm.yaml
+
     #get cache size value
     cacheSizeGB=$(${OC} get cm icp-mongodb -n $FROM_NAMESPACE -o yaml | grep cacheSizeGB | awk '{print $2}')
     
@@ -495,11 +493,10 @@ EOF
   dumplogs mongodb-backup
   if [[ $s390x_ENV == "true" ]]; then
     #reset changes for z environment
-    info "Reverting change to icp-mongodb configmap"
-    ${OC} apply -f tmp_icp-mongodb_cm.yaml -n $FROM_NAMESPACE || warning "Configmap icp-mongodb could not be reverted. Make sure to change net.ssl.mode value back to requireSSL."
-    rm -f tmp_icp-mongodb_cm.yaml
+    info "Reverting change to icp-mongodb configmap" 
     delete_mongo_pods "$FROM_NAMESPACE"
     info "Scale mongo operator back up to 1"
+    #scaling back up to one will reset the icp-mongodb configmap
     ${OC} scale deploy -n $FROM_NAMESPACE ibm-mongodb-operator --replicas=1
   fi
   success "Backup Complete"
@@ -1882,13 +1879,14 @@ function deletemongocopy {
 
 function delete_mongo_pods() {
   local namespace=$1
-  local pods=$(${OC} get pods -n $namespace | grep icp-mongodb | awk '{print $1}' | tr -d "\n" " ")
+  local pods=$(${OC} get pods -n $namespace | grep icp-mongodb | awk '{print $1}' | tr "\n" " ")
   for pod in $pods
   do
     debug1 "Deleting pod $pod"
-    local condition="${OC} get pod -n $namespace --no-headers --ignore-not-found | egrep '1/1' | grep ${pod} || true"
-    local retries=10
-    local sleep_time=12
+    ${OC} delete pod $pod -n $FROM_NAMESPACE --ignore-not-found
+    local condition="${OC} get pod -n $namespace --no-headers --ignore-not-found | grep ${pod} | egrep '2/2'  || true"
+    local retries=25
+    local sleep_time=15
     local total_time_mins=$(( sleep_time * retries / 60))
     local wait_message="Waiting for mongo pod $pod to restart "
     local success_message="Pod $pod restarted with new mongo config"
