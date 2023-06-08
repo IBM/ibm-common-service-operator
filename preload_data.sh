@@ -142,7 +142,7 @@ function prereq() {
       mongo_op_scaled=$(${OC} get deploy -n $FROM_NAMESPACE | grep ibm-mongodb-operator | egrep '1/1' || echo false)
       if [[ $mongo_op_scaled == "false" ]]; then
         debug1 "Mongo operator still scaled down, scaling up."
-        ${OC} scale deploy -n $FROM_NAMESPACE ibm-mongodb-operator --repilcas=1
+        ${OC} scale deploy -n $FROM_NAMESPACE ibm-mongodb-operator --replicas=1
         delete_mongo_pods "$FROM_NAMESPACE"
       fi
     fi
