@@ -139,6 +139,11 @@ function prereq() {
     architecture=$(${OC} describe node $mongo_node | grep "Architecture:" | awk '{print $2}')
     if [[ $architecture == "s390x" ]]; then
       s390x_ENV="true"
+      mongo_op_scaled=$(${OC} get deploy -n $FROM_NAMESPACE | grep ibm-mongodb-operator | egrep '1/1' || echo false)
+      if [[ $mongo_op_scaled == "false" ]]; then
+        debug1 "Mongo operator still scaled down, scaling up."
+        ${OC} scale deploy -n $FROM_NAMESPACE ibm-mongodb-operator --repilcas=1
+      fi
     fi
 }
 
@@ -1493,7 +1498,6 @@ EOF
     #get images from cp2 namespace
     ibm_mongodb_install_image=$(oc get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.initContainers[0]}{.image}{end}')
     ibm_mongodb_image=$(oc get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
-    ibm_mongodb_exporter_image=$(oc get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[1]}{.image}{end}')
     #icp-mongodb-ss.yaml
     cat << EOF | oc apply -f -
 kind: StatefulSet
@@ -1884,7 +1888,7 @@ function delete_mongo_pods() {
   do
     debug1 "Deleting pod $pod"
     ${OC} delete pod $pod -n $FROM_NAMESPACE --ignore-not-found
-    local condition="${OC} get pod -n $namespace --no-headers --ignore-not-found | grep ${pod} | egrep '2/2'  || true"
+    local condition="${OC} get pod -n $namespace --no-headers --ignore-not-found | grep ${pod} | egrep '2/2' || ${OC} get pod -n $namespace --no-headers --ignore-not-found | grep ${pod} | egrep '1/1' || true"
     local retries=25
     local sleep_time=15
     local total_time_mins=$(( sleep_time * retries / 60))
