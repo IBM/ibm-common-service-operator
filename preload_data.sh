@@ -501,6 +501,7 @@ EOF
     delete_mongo_pods "$FROM_NAMESPACE"
     info "Scale mongo operator back up to 1"
     ${OC} scale deploy -n $FROM_NAMESPACE ibm-mongodb-operator --replicas=1
+  fi
   success "Backup Complete"
 } # dumpmongo
 
