@@ -470,34 +470,37 @@ EOF
 
   status="Unknown"
   info "Running Backup" 
+  ${OC} apply -f $TEMPFILE -n $FROM_NAMESPACE
+  ${OC} get pods -n $FROM_NAMESPACE | grep mongodb-backup || echo ""
+  wait_for_job_complete "mongodb-backup" "$FROM_NAMESPACE"
 
-  while [[ "$status" != "Completed" ]]
-  do
-    ${OC} apply -f $TEMPFILE
-    sleep 10
-    retries=10
-    while [ $retries > 0 ]
-    do
-      info "waiting for completion"
-      status=$(${OC} get po | grep mongodb-backup | grep Completed | awk '{print $3}' || echo "Unknown")
-      ${OC} get po | grep mongodb-backup
-      if [[ "$status" == "Completed" ]]; then
-        break
-      elif [[ "$status" == "Running" ]]; then
-        retries=10
-        sleep 10
-      elif [[ "$status" == "" ]]; then
-        break
-      else
-        retries=$(( $retries - 1 ))
-        sleep 10
-      fi  
-    done
-    if [[ "$status" != "Completed" ]]; then
-      info "Retrying mongodb-backup"
-      ${OC} delete job mongodb-backup
-    fi
-  done
+  # while [[ "$status" != "Completed" ]]
+  # do
+  #   ${OC} apply -f $TEMPFILE
+  #   sleep 10
+  #   retries=10
+  #   while [ $retries > 0 ]
+  #   do
+  #     info "waiting for completion"
+  #     status=$(${OC} get po | grep mongodb-backup | grep Completed | awk '{print $3}' || echo "Unknown")
+  #     ${OC} get po | grep mongodb-backup
+  #     if [[ "$status" == "Completed" ]]; then
+  #       break
+  #     elif [[ "$status" == "Running" ]]; then
+  #       retries=10
+  #       sleep 10
+  #     elif [[ "$status" == "" ]]; then
+  #       break
+  #     else
+  #       retries=$(( $retries - 1 ))
+  #       sleep 10
+  #     fi  
+  #   done
+  #   if [[ "$status" != "Completed" ]]; then
+  #     info "Retrying mongodb-backup"
+  #     ${OC} delete job mongodb-backup
+  #   fi
+  # done
 
   dumplogs mongodb-backup
   if [[ $s390x_ENV == "true" ]]; then
@@ -717,35 +720,37 @@ EOF
   fi
 
   status="Unknown"
-  info "Running Restore" 
+  info "Running Restore"
+  ${OC} apply -f $TEMPFILE -n $TO_NAMESPACE
+  wait_for_job_complete "mongodb-restore" "$TO_NAMESPACE"
   
-  while [[ "$status" != "Completed" ]]
-  do
-    info "Starting MongoDB Restore Job "
-    ${OC} apply -f $TEMPFILE
-    sleep 10
-    retries=10
-    while [ $retries > 0 ]
-    do
-      info "waiting for completion"
-      status=$(${OC} get po | grep mongodb-restore | grep Completed | awk '{print $3}' || echo "Unknown")
-      ${OC} get po | grep mongodb-restore
-      if [[ "$status" == "Completed" ]] || [[ "$status" == "" ]]; then
-        break
-      elif [[ "$status" == "Running" ]]; then
-        retries=10
-        sleep 10
-      else
-        retries=$(( $retries - 1 ))
-        sleep 10
-      fi  
-    done
-    if [[ "$status" != "Completed" ]]; then
-      info "Retrying MongoDB Restore"
-      ${OC} delete job mongodb-restore
-    fi
-  done
-  dumplogs mongodb-restore
+  # while [[ "$status" != "Completed" ]]
+  # do
+  #   info "Starting MongoDB Restore Job "
+  #   ${OC} apply -f $TEMPFILE
+  #   sleep 10
+  #   retries=10
+  #   while [ $retries > 0 ]
+  #   do
+  #     info "waiting for completion"
+  #     status=$(${OC} get po | grep mongodb-restore | grep Completed | awk '{print $3}' || echo "Unknown")
+  #     ${OC} get po | grep mongodb-restore
+  #     if [[ "$status" == "Completed" ]] || [[ "$status" == "" ]]; then
+  #       break
+  #     elif [[ "$status" == "Running" ]]; then
+  #       retries=10
+  #       sleep 10
+  #     else
+  #       retries=$(( $retries - 1 ))
+  #       sleep 10
+  #     fi  
+  #   done
+  #   if [[ "$status" != "Completed" ]]; then
+  #     info "Retrying MongoDB Restore"
+  #     ${OC} delete job mongodb-restore
+  #   fi
+  # done
+  # dumplogs mongodb-restore
   success "Restore Complete"
 } # loadmongo
 
@@ -1902,6 +1907,22 @@ function delete_mongo_pods() {
     local error_message="Timeout after ${total_time_mins} minutes waiting for pod $pod "
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
   done
+}
+
+function wait_for_job_complete() {
+  local job_name=$1
+  local namespace=$2
+  local condition="${OC} get pod -n $namespace --no-headers --ignore-not-found | grep ${job_name} | grep 'Completed' || true"
+  local retries=15
+  local sleep_time=15
+  local total_time_mins=$(( sleep_time * retries / 60))
+  local wait_message="Waiting for job pod $job_name to complete"
+  local success_message="Job $job_name completed in namespace $namespace"
+  local error_message="Timeout after ${total_time_mins} minutes waiting for pod $pod "
+  wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+  dumplogs $job_name
+  info "Deleting job $job_name"
+  ${OC} delete job $job_name -n $namespace
 }
 
 function msg() {
