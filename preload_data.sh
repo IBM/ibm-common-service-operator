@@ -468,41 +468,11 @@ spec:
 EOF
   fi
 
-  status="Unknown"
   info "Running Backup" 
   ${OC} apply -f $TEMPFILE -n $FROM_NAMESPACE
   ${OC} get pods -n $FROM_NAMESPACE | grep mongodb-backup || echo ""
   wait_for_job_complete "mongodb-backup" "$FROM_NAMESPACE"
 
-  # while [[ "$status" != "Completed" ]]
-  # do
-  #   ${OC} apply -f $TEMPFILE
-  #   sleep 10
-  #   retries=10
-  #   while [ $retries > 0 ]
-  #   do
-  #     info "waiting for completion"
-  #     status=$(${OC} get po | grep mongodb-backup | grep Completed | awk '{print $3}' || echo "Unknown")
-  #     ${OC} get po | grep mongodb-backup
-  #     if [[ "$status" == "Completed" ]]; then
-  #       break
-  #     elif [[ "$status" == "Running" ]]; then
-  #       retries=10
-  #       sleep 10
-  #     elif [[ "$status" == "" ]]; then
-  #       break
-  #     else
-  #       retries=$(( $retries - 1 ))
-  #       sleep 10
-  #     fi  
-  #   done
-  #   if [[ "$status" != "Completed" ]]; then
-  #     info "Retrying mongodb-backup"
-  #     ${OC} delete job mongodb-backup
-  #   fi
-  # done
-
-  dumplogs mongodb-backup
   if [[ $s390x_ENV == "true" ]]; then
     #reset changes for z environment
     info "Reverting change to icp-mongodb configmap" 
@@ -719,38 +689,9 @@ spec:
 EOF
   fi
 
-  status="Unknown"
   info "Running Restore"
   ${OC} apply -f $TEMPFILE -n $TO_NAMESPACE
   wait_for_job_complete "mongodb-restore" "$TO_NAMESPACE"
-  
-  # while [[ "$status" != "Completed" ]]
-  # do
-  #   info "Starting MongoDB Restore Job "
-  #   ${OC} apply -f $TEMPFILE
-  #   sleep 10
-  #   retries=10
-  #   while [ $retries > 0 ]
-  #   do
-  #     info "waiting for completion"
-  #     status=$(${OC} get po | grep mongodb-restore | grep Completed | awk '{print $3}' || echo "Unknown")
-  #     ${OC} get po | grep mongodb-restore
-  #     if [[ "$status" == "Completed" ]] || [[ "$status" == "" ]]; then
-  #       break
-  #     elif [[ "$status" == "Running" ]]; then
-  #       retries=10
-  #       sleep 10
-  #     else
-  #       retries=$(( $retries - 1 ))
-  #       sleep 10
-  #     fi  
-  #   done
-  #   if [[ "$status" != "Completed" ]]; then
-  #     info "Retrying MongoDB Restore"
-  #     ${OC} delete job mongodb-restore
-  #   fi
-  # done
-  # dumplogs mongodb-restore
   success "Restore Complete"
 } # loadmongo
 
