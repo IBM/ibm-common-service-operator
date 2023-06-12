@@ -30,6 +30,7 @@ metadata:
     operatorVersion: 3.23.5
     operators.operatorframework.io/builder: operator-sdk-v1.7.1+git
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
+    operators.openshift.io/infrastructure-features: '["disconnected"]'
     repository: https://github.com/IBM/ibm-common-service-operator
     support: IBM
   labels:
