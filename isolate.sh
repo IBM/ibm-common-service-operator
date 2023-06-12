@@ -20,6 +20,8 @@ set -o pipefail
 set -o errtrace
 set -o nounset
 
+# ---------- Command arguments ----------
+
 OC=oc
 YQ=yq
 MASTER_NS=
@@ -30,6 +32,19 @@ CS_MAPPING_YAML=""
 CM_NAME="common-service-maps"
 CERT_MANAGER_MIGRATED="false"
 DEBUG=0
+BACKUP_LICENSING="false"
+
+# ---------- Command variables ----------
+
+# script base directory
+BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
+
+#log file
+LOG_FILE="isolate_log_$(date +'%Y%m%d%H%M%S').log"
+
+# ---------- Main functions ----------
+
+. ${BASE_DIR}/cp3pt0-deployment/common/utils.sh
 
 function main() {
     while [ "$#" -gt "0" ]
@@ -55,8 +70,9 @@ function main() {
             CONTROL_NS=$2
             shift
             ;;
-        -v | --debug)
-            DEBUG=1
+        "-v"|"--debug")
+            shift
+            DEBUG=$1
             ;;
         *)
             error "invalid option -- \`$1\`. Use the -h or --help option for usage info."
@@ -64,6 +80,10 @@ function main() {
         esac
         shift
     done
+
+    save_log "cp3pt0-deployment/logs" "isolate_log" "$DEBUG"
+    trap cleanup_log EXIT
+
     which "${OC}" || error "Missing oc CLI"
     which "${YQ}" || error "Missing yq"
 
@@ -74,6 +94,8 @@ function main() {
         usage
         error "Required parameters missing. Please re-run specifying original and control namespace values. Use -h for help."
     fi
+    #make sure cs op and odlm are scaled back to 1 before starting
+    prev_fail_check
     #need to get the namespaces for csmaps generation before pausing cs, otherwise namespace-scope cm does not include all namespaces
     prereq
     local ns_list=$(gather_csmaps_ns)
@@ -86,13 +108,14 @@ function main() {
     removeNSS
     uninstall_singletons
     isolate_odlm "ibm-odlm" $MASTER_NS
-    restore_ibmlicensing
-    restart
-    if [[ $CERT_MANAGER_MIGRATED == "true" ]]; then
-        wait_for_certmanager "$CONTROL_NS" "${ns_list}"
+    if [[ $BACKUP_LICENSING == "true" ]]; then
+        restore_ibmlicensing
     else
-        info "Cert Manager not migrated, skipping wait."
+        info "Licensing not marked for backup, skipping."
     fi
+    restart
+    wait_for_certmanager "${ns_list}"
+    wait_for_nss_update "${ns_list}"
     success "Isolation complete"
 }
 
@@ -126,6 +149,14 @@ Mandatory arguments to long options are mandatory for short options too.
 }
 
 function prereq() {
+    # Check the value of DEBUG
+    if [[ "$DEBUG" != "1" && "$DEBUG" != "0" ]]; then
+        error "Invalid value for DEBUG. Expected 0 or 1."
+    fi
+
+    #verify one and only one cert manager is installed
+    check_certmanager_count
+
     # LicenseServiceReporter should not be installed because it does not support multi-instance mode
     return_value=$(("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
     if [[ $return_value == "exists" ]]; then
@@ -147,18 +178,26 @@ function prereq() {
         error "Missing operand-deployment-lifecycle-manager deployment (ODLM) in namespace $MASTER_NS"
     fi
 
-    local cs_version=$("${OC}" get csv -n ${MASTER_NS} | grep common-service-operator | grep 3.2 || echo fail)
-    if [[ $cs_version == "fail" ]]; then
-        cs_LTSR_version=$("${OC}" get csv -n ${MASTER_NS} | grep common-service-operator | grep 3.19 || echo fail)
-        if [[ $cs_LTSR_version != "fail" ]]; then
-            version=$(${OC} get csv -n ${MASTER_NS} | grep common-service-operator | awk '{print $7}')
-            IFS='.' read -a z_version <<< "$version"
-            if [[ $((${z_version[2]})) -lt 9 ]]; then 
-                error "Foundational Services installation does not meet the minimum version requirement. Upgrade to either 3.20+ or 3.19.9+"
+    cs_operator_found=false
+
+    while read -r ns; do
+        cs_version=$("${OC}" get csv -n "${ns}" | grep common-service-operator | awk '{print $7}')
+        if [[ -n "${cs_version}" ]]; then
+            IFS='.' read -r major minor patch <<< "${cs_version}"
+            if [[ ${major} -lt 3 || (${major} -eq 3 && ${minor} -lt 19) || (${major} -eq 3 && ${minor} -eq 19 && ${patch} -lt 9) ]]; then
+                error "Version of Foundational Services is $cs_version in namespace ${ns} does not meet the minimum version requirement. Upgrade to 3.19.9+"
             fi
-        else
-            error "Foundational Services installation does not meet the minimum version requirement. Upgrade to either 3.20+ or 3.19.9+"
+            if [[ "${ns}" == "${MASTER_NS}" ]]; then
+                if [[ ${major} -gt 3 ]]; then
+                    error "Version of Foundational Services is $cs_version in namespace ${ns} does not meet the version requirement. Should be either 3.20+ or 3.19.9+"
+                fi
+            fi
+            cs_operator_found=true
         fi
+    done < <("${OC}" get subscription.operators.coreos.com --all-namespaces --ignore-not-found | grep ibm-common-service-operator | awk '{print $1}' )
+
+    if [[ "${cs_operator_found}" == false ]]; then
+        error "No ibm-common-service-operator subscription found in any namespace."
     fi
 }
 
@@ -247,12 +286,16 @@ function update_tenant() {
         updated_yaml=$(echo "$current_yaml" | "${YQ}" eval 'with(.namespaceMapping; . += [{"map-to-common-service-namespace": "'$map_to_cs_ns'"}])')
     fi
 
-    local tmp="\"$map_to_cs_ns\","
+    local tmp="\"$map_to_cs_ns\""
     debug1 "map $map_to_cs_ns namespace $namespaces tmp $tmp"
     for ns in $namespaces; do
-        tmp="$tmp\"$ns\","
+        debug1 "ns $ns mapto: $map_to_cs_ns"
+        if [[ "$ns" != "$map_to_cs_ns" ]]; then
+            tmp="$tmp,\"$ns\""
+        fi
     done
-    local ns_delimited="${tmp:0:-1}" # substring from 0 to length - 1
+    local ns_delimited="${tmp}"
+    debug1 "ns_delimited: $ns_delimited"
 
     updated_yaml=$(echo "$updated_yaml" | "${YQ}" eval 'with(.namespaceMapping[]; select(.map-to-common-service-namespace == "'$map_to_cs_ns'").requested-from-namespace = ['$ns_delimited'])')
     updated_yaml=$(echo "$updated_yaml" | "${YQ}" eval 'with(.namespaceMapping[]; select(.map-to-common-service-namespace == "'$map_to_cs_ns'").requested-from-namespace |= unique)')
@@ -314,7 +357,15 @@ function uninstall_singletons() {
 
     migrate_lic_cms $MASTER_NS
 
-    backup_ibmlicensing
+    licensing_exists=""
+    licensing_exists=$(${OC} get IBMLicensing || echo "not found")
+    if [[ $licensing_exists == "" || $licensing_exists == "not found" ]]; then
+        info "No ibmlicensing resources on cluster, skipping backup."
+    else
+        info "Licensing marked for backup"
+        backup_ibmlicensing
+        BACKUP_LICENSING="true"
+    fi
     isExists=$("${OC}" get deployments -n "${MASTER_NS}" --ignore-not-found ibm-licensing-operator)
     if [ ! -z "$isExists" ]; then
         "${OC}" delete -n "${MASTER_NS}" --ignore-not-found ibmlicensing instance
@@ -502,17 +553,33 @@ function isolate_odlm() {
         warning "Not found subscription ${package_name} in ${ns}"
         return 0
     fi
-    ${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml > sub.yaml
-
-    # set ISOLATED_MODE to true
-    yq e '.spec.config.env |= (map(select(.name == "ISOLATED_MODE").value |= "true") + [{"name": "ISOLATED_MODE", "value": "true"}] | unique_by(.name))' sub.yaml -i
-
-    # apply updated subscription back to cluster
-    ${OC} apply -f sub.yaml
+    #merge patch overwrites the entire array if you update any values so we need to get any other value specified and make sure it is unchanged
+    #loop through all of the values specified in spec.config.env
+    env_range=$(${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml | yq '.spec.config.env[].name')
+    patch_string=""
+    count=0
+    for name in $env_range
+    do
+        #If isolated mode, set value to true. Otherwise keep name value pairs unchanged.
+        if [[ $name == "ISOLATED_MODE" ]]; then
+            env_value="true"
+        else
+            env_value=$(${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml | yq '.spec.config.env['"${count}"'].value')
+        fi
+        #Add name value pair in json format to the patch string
+        if [[ $patch_string == "" ]]; then
+            patch_string="{\"name\": \"$name\", \"value\": \"$env_value\"}"
+        else
+            patch_string="$patch_string, {\"name\": \"$name\", \"value\": \"$env_value\"}"
+        fi
+        count=$((count + 1))
+    done
+    debug1 "patch string $patch_string"
+    #use the patch string to apply the isolate mode patch
+    ${OC} patch subscription.operators.coreos.com ${sub_name} -n ${ns} --type=merge -p '{"spec": {"config": {"env": ['"${patch_string}"']}}}'
     if [[ $? -ne 0 ]]; then
         error "Failed to update subscription ${package_name} in ${ns}"
     fi
-    rm sub.yaml
 
     check_odlm_env "${ns}" 
 }
@@ -636,23 +703,21 @@ EOF
 }
 
 function wait_for_certmanager() {
-    local namespace=$1
-    shift
     local namespaces=$@
-    title " Wait for Cert Manager pods to come ready in namespace $namespace "
+    title " Wait for Cert Manager pods to come ready "
     msg "-----------------------------------------------------------------------"
     
     check_if_certmanager_deployed "${namespaces}"
 
     #check cert manager operator pod
-    local name="ibm-cert-manager-operator"
-    local condition="${OC} -n ${namespace} get deploy --no-headers --ignore-not-found | egrep '1/1' | grep ^${name} || true"
+    local name="cert-manager-operator"
+    local condition="${OC} get deploy -A --no-headers --ignore-not-found | egrep '1/1' | grep ${name} || true"
     local retries=20
     local sleep_time=15
     local total_time_mins=$(( sleep_time * retries / 60))
-    local wait_message="Waiting for deployment ${name} in namespace ${namespace} to be running ..."
-    local success_message="Deployment ${name} in namespace ${namespace} is running."
-    local error_message="Timeout after ${total_time_mins} minutes waiting for deployment ${name} in namespace ${namespace} to be running."
+    local wait_message="Waiting for deployment ${name} to be running ..."
+    local success_message="Deployment ${name} is running."
+    local error_message="Timeout after ${total_time_mins} minutes waiting for deployment ${name} to be running."
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 
     #check webhook pod runnning
@@ -669,7 +734,85 @@ function wait_for_certmanager() {
         error "More than one cert-manager-webhook deployment exists on the cluster."
     fi
     webhook_ns=$(${OC} get deploy -A | grep cert-manager-webhook | awk '{print $1}')
-    success "Cert Manager ready in namespace $namespace. Cert Manager operands deployed in $webhook_ns"
+    success "Cert Manager ready. Cert Manager operands deployed in $webhook_ns"
+}
+
+function check_certmanager_count(){
+    info "Verifying cert manager is deployed"
+    csv_count=$(${OC} get csv -A | grep "cert-manager"| wc -l | tr -d " " || echo "")
+    debug1 "cert manager csv count output: $csv_count"
+    if [[ "$csv_count" == "0" ]] || [[ "$csv_count" == "" ]]; then
+        error "Missing a cert-manager"
+    fi
+    # if installed in all namespace mode or alongside cp2 cert manager, 
+    # csv_count will be >1, need to check for multiple deployments
+    if [[ $csv_count > 1 ]]; then
+        webhook_deployments=$(${OC} get deploy -A --no-headers --ignore-not-found | grep "cert-manager-webhook" -c)
+        if [[ $webhook_deployments != "1" ]]; then
+            error "Multiple cert-managers found. Only one should be installed per cluster"
+        fi
+    fi
+    success "Cert manager deployment verified."
+}
+
+function wait_for_nss_update() {
+    local expected_ns_list=${1//$'\n'/ }
+    wait_for_nss_exist
+    
+    local actual_ns_list=$(${OC} get cm namespace-scope -n ${MASTER_NS} -o yaml | ${YQ} '.data.namespaces')
+    actual_ns_list=$(echo "${actual_ns_list//,/ }" | xargs -n1 | sort | xargs)
+    expected_ns_list=$(echo "${expected_ns_list}" | xargs -n1 | sort | xargs)
+    debug1 "expected ns list: $expected_ns_list"
+    debug1 "actual ns list: $actual_ns_list"
+    if [[ "${expected_ns_list}" == "${actual_ns_list}" ]]; then
+        success "Namespaces in namespace-scope configmap match expected output."
+    else
+        error "Namespaces in namespace-scope configmap do not match expected output."
+    fi
+}
+
+function wait_for_nss_exist() {
+    local condition="${OC} get cm namespace-scope -n ${MASTER_NS} || true"
+    local retries=10
+    local sleep_time=15
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for configmap namespace-scope in namespace ${MASTER_NS} to be created ..."
+    local success_message="Namespace-scope configmap created in ${MASTER_NS}."
+    local error_message="Timeout after ${total_time_mins} minutes waiting for namespace-scope configmap to be created."
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
+#this function checks to see if the cluster is in an error state due to a previous failed run
+#specifically, looks to see if cs operator and odlm have been rescaled back to 1 replica each
+#also checks for cert manager to be deployed before failing in the case that cert manager is uninstalled in a previous run but previous run failed before reinstalling
+function prev_fail_check() {
+    info "Checking for common service operator and odlm pods"
+    local cs_operator_scaled=$(${OC} get deploy -n $MASTER_NS | egrep '1/1'| grep ibm-common-service-operator || echo "false")
+    debug1 "cs op scaled output: $cs_operator_scaled"
+    local cs_op_scale_needed="false"
+    if [[ "$cs_operator_scaled" == "false" ]]; then 
+        ${OC} scale deploy ibm-common-service-operator -n $MASTER_NS --replicas=1
+        info "Common Service Operator scaled back to 1"
+        cs_op_scale_needed="true"
+    else
+        info "Common Service Operator already scaled, skipping."
+    fi
+    local odlm_scaled=$(${OC} get deploy -n $MASTER_NS | egrep '1/1'| grep operand-deployment-lifecycle-manager || echo "false")
+    debug1 "odlm scaled output: $odlm_scaled"
+    if [[ "$odlm_scaled" == "false" ]]; then 
+        ${OC} scale deploy operand-deployment-lifecycle-manager -n $MASTER_NS --replicas=1
+        info "ODLM scaled back to 1"
+    else
+        info "ODLM already scaled, skipping."
+    fi
+
+    if [[ $cs_op_scale_needed == "true" ]]; then
+        check_CSCR "$MASTER_NS"
+        #wait for cert manager to come back ready after scaling up
+        local ns_list=$(gather_csmaps_ns)
+        wait_for_certmanager "${ns_list}"
+    fi
+
 }
 
 function msg() {
@@ -695,12 +838,6 @@ function title() {
 
 function info() {
     msg "[INFO] ${1}"
-}
-
-function debug1() {
-    if [ $DEBUG -eq 1 ]; then
-        msg "[DEBUG] ${1}"
-    fi
 }
 
 # --- Run ---

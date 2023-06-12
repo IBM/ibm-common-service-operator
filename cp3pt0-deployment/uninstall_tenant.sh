@@ -9,16 +9,21 @@
 # Please refer to that particular license for additional information. 
 
 # Base on https://github.ibm.com/IBMPrivateCloud/cs-dev-tools/blob/master/install/cp3pt0-install/uninstall_tenant.sh
+
 # ---------- Command arguments ----------
 
 OC=oc
 TENANT_NAMESPACES=""
 FORCE_DELETE=0
+DEBUG=0
 
 # ---------- Command variables ----------
 
 # script base directory
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
+
+# log file
+LOG_FILE="uninstall_tenant_log_$(date +'%Y%m%d%H%M%S').log"
 
 # ---------- Main functions ----------
 
@@ -26,6 +31,8 @@ BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 
 function main() {
     parse_arguments "$@"
+    save_log "logs" "uninstall_tenant_log" "$DEBUG"
+    trap cleanup_log EXIT
     pre_req
     set_tenant_namespaces
     uninstall_odlm
@@ -53,6 +60,10 @@ function parse_arguments() {
             shift
             FORCE_DELETE=1
             ;;
+        -v | --debug)
+            shift
+            DEBUG=$1
+            ;;
         -h | --help)
             print_usage
             exit 1
@@ -76,14 +87,20 @@ function print_usage() {
     echo "   --oc string                    File path to oc CLI. Default uses oc in your PATH"
     echo "   --operator-namespace string    Required. Namespace to uninstall Foundational services operators and the whole tenant."
     echo "   -f                             Enable force delete. It will take much more time if you add this label, we suggest run this script without -f label first"
+    echo "   -v, --debug integer            Verbosity of logs. Default is 0. Set to 1 for debug logs"
     echo "   -h, --help                     Print usage information"
     echo ""
 }
 
 function pre_req() {
+    # Check the value of DEBUG
+    if [[ "$DEBUG" != "1" && "$DEBUG" != "0" ]]; then
+        error "Invalid value for DEBUG. Expected 0 or 1."
+    fi
+
     check_command "${OC}"
 
-    # checking oc command logged in
+    # Checking oc command logged in
     user=$(${OC} whoami 2> /dev/null)
     if [ $? -ne 0 ]; then
         error "You must be logged into the OpenShift Cluster from the oc command line"
@@ -140,8 +157,6 @@ function uninstall_odlm() {
     local wait_message="Waiting for all OperandRequests in tenant namespaces to be deleted"
     local success_message="All tenant OperandRequests deleted"
     local error_message="Timeout after ${total_time_mins} minutes waiting for tenant OperandRequests to be deleted"
-
-    echo "$condition"
 
     # ideally ODLM will ensure OperandRequests are cleaned up neatly
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
@@ -241,12 +256,11 @@ function cleanup_dedicate_cr() {
 function delete_tenant_ns() {
     title "Deleting tenant namespaces"
     for ns in ${TENANT_NAMESPACES//,/ }; do
-        if [ $FORCE_DELETE -eq 1 ]; then
-            title "Force delete remaining resources"
-            remove_all_finalizers $ns
+        ${OC} delete --ignore-not-found ns "$ns" --timeout=30s
+        if [ $? -ne 0 ] || [ $FORCE_DELETE -eq 1 ]; then
+            warning "Failed to delete namespace $ns, force deleting remaining resources..."
+            remove_all_finalizers $ns && success "Namespace $ns is deleted successfully."
         fi
-        ${OC} patch namespace ${ns} --type=merge -p '{"spec": {"finalizers":null}}'
-        ${OC} delete --ignore-not-found ns "$ns"
     done
     success "Common Services uninstall finished and successfull." 
 }

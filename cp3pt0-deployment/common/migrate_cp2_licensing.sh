@@ -33,7 +33,6 @@ function main() {
     parse_arguments "$@"
     pre_req
     create_namespace $TARGET_NS
-    restore_ibmlicensing
     migrate_lic_cms
     # TODO: restore ibm-license-service Secrets
 }
@@ -153,21 +152,6 @@ function migrate_lic_cms() {
         fi
     done
     success "Licensing Service ConfigMaps are migrated from $CONTROL_NS to $TARGET_NS"
-}
-
-
-function restore_ibmlicensing() {
-
-    # extracts the previously saved IBMLicensing CR from ConfigMap and creates the IBMLicensing CR
-    "${OC}" get cm ibmlicensing-instance-bak -n ${CONTROL_NS} -o yaml --ignore-not-found | "${YQ}" .data | sed -e 's/.*ibmlicensing.yaml.*//' | 
-    sed -e 's/^  //g' | oc apply -f -
-
-}
-
-function debug1() {
-    if [ $DEBUG -eq 1 ]; then
-       debug "${1}"
-    fi
 }
 
 main $*

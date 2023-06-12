@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Licensed Materials - Property of IBM
 # Copyright IBM Corporation 2023. All Rights Reserved
@@ -850,8 +850,12 @@ function check_deployment(){
     local count=0
 
     while [ $count -lt $retries ]; do
-        local current_replicas=$(${OC} get deployment ${deployment} -n ${ns} -o jsonpath='{.spec.replicas}')
+        local current_replicas=$(${OC} get deployment ${deployment} -n ${ns} --ignore-not-found -o jsonpath='{.spec.replicas}')
 
+        if [[ -z "$current_replicas" ]]; then
+            current_replicas=0
+        fi
+            
         if [ "$current_replicas" -eq "$replicas" ]; then
             success "Replicas count is as expected: $current_replicas"
             return 0
@@ -902,7 +906,9 @@ function scale_down() {
 
     # Scale down CS
     msg "Patching CSV ${cs_sub} to scale down deployment in ${operator_ns} namespace to 0..."
-    scale_deployment_csv $operator_ns $cs_CSV 0
+    if [[ ! -z "$cs_CSV" ]]; then
+        scale_deployment_csv $operator_ns $cs_CSV 0
+    fi
     check_deployment $operator_ns ibm-common-service-operator 0
     if [[ $? -ne 0 ]]; then
         msg "Scaling down ibm-common-service-operator deployment in ${operator_ns} namespace to 0..."
@@ -911,7 +917,9 @@ function scale_down() {
     
     # Scale down ODLM
     msg "Patching CSV to scale down operand-deployment-lifecycle-manager deployment in ${operator_ns} namespace to 0..."
-    scale_deployment_csv $operator_ns $odlm_CSV 0
+    if [[ ! -z "$odlm_CSV" ]]; then
+        scale_deployment_csv $operator_ns $odlm_CSV 0
+    fi
     check_deployment $operator_ns operand-deployment-lifecycle-manager 0
     if [[ $? -ne 0 ]]; then
         msg "Scaling down operand-deployment-lifecycle-manager deployment in ${operator_ns} namespace to 0..."
@@ -1008,4 +1016,43 @@ function delete_operand_finalizer() {
             done
         fi
     done
+}
+
+function save_log(){
+    local LOG_DIR="$BASE_DIR/$1"
+    LOG_FILE="$LOG_DIR/$2_$(date +'%Y%m%d%H%M%S').log"
+    local debug=$3
+
+    if [ $debug -eq 1 ]; then
+        if [[ ! -d $LOG_DIR ]]; then
+            mkdir -p "$LOG_DIR"
+        fi
+
+        # Create a named pipe
+        PIPE=$(mktemp -u)
+        mkfifo "$PIPE"
+
+        # Tee the output to both the log file and the terminal
+        tee "$LOG_FILE" < "$PIPE" &
+
+        # Redirect stdout and stderr to the named pipe
+        exec > "$PIPE" 2>&1
+
+        # Remove the named pipe
+        rm "$PIPE"
+    fi
+}
+
+function cleanup_log() {
+    # Check if the log file already exists
+    if [[ -e $LOG_FILE ]]; then
+        # Remove ANSI escape sequences from log file
+        sed -E 's/\x1B\[[0-9;]+[A-Za-z]//g' "$LOG_FILE" > "$LOG_FILE.tmp" && mv "$LOG_FILE.tmp" "$LOG_FILE"
+    fi
+}
+
+function debug1() {
+    if [ $DEBUG -eq 1 ]; then
+       debug "${1}"
+    fi
 }
