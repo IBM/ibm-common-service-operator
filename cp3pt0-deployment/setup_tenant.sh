@@ -464,8 +464,12 @@ EOF
     
         # Check if the patch was successful
         if [[ $? -eq 0 ]]; then
-            success "Successfully patched CommonService CR in ${OPERATOR_NS}"
-            break
+            checkOperatorNS=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | yq '.spec.operatorNamespace=="'${OPERATOR_NS}'"')
+            checkServicesNS=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | yq '.servicesNamespace=="'${SERVICES_NS}'"')
+            if [ $checkOperatorNS ] && [ $checkServicesNS ]; then
+                success "Successfully patched CommonService CR in ${OPERATOR_NS}"
+                break
+            fi
         else
             warning "Failed to patch CommonService CR in ${OPERATOR_NS}, retry it in ${delay} seconds"
             sleep ${delay}
