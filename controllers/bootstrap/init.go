@@ -1726,6 +1726,17 @@ func (b *Bootstrap) DeployCertManagerCR() error {
 	}
 
 	if !certExist || !issuerExist {
+		// subscription should not exist so it should always return isNotFound Error
+		_, subErr := b.GetSubscription(ctx, constant.CertManagerSub, b.CSData.ControlNs)
+		if subErr != nil {
+			if !errors.IsNotFound(subErr) {
+				return subErr
+			}
+		}
+		if subErr == nil {
+			return fmt.Errorf("ERROR, IBM cert manager operator subscription exist but CRD is not exist, REQUEUING")
+		}
+
 		klog.Infof("Skipped deploying cert manager CRs, CustomResourceDefinition not exist in the cluster.")
 	} else {
 		klog.V(2).Info("Fetch all the CommonService instances")
