@@ -1728,12 +1728,9 @@ func (b *Bootstrap) DeployCertManagerCR() error {
 	if !certExist || !issuerExist {
 		// subscription should not exist so it should always return isNotFound Error
 		_, subErr := b.GetSubscription(ctx, constant.CertManagerSub, b.CSData.ControlNs)
-		if subErr != nil {
-			if !errors.IsNotFound(subErr) {
-				return subErr
-			}
-		}
-		if subErr == nil {
+		if subErr != nil && !errors.IsNotFound(subErr) {
+			return subErr
+		} else if subErr == nil {
 			return fmt.Errorf("ERROR, IBM cert manager operator subscription exist but CRD is not exist, REQUEUING")
 		}
 
