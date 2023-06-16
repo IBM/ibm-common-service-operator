@@ -35,13 +35,13 @@ function main() {
     trap cleanup_log EXIT
     pre_req
     set_tenant_namespaces
-    uninstall_odlm
-    uninstall_cs_operator
-    uninstall_nss
-    delete_rbac_resource
-    delete_webhook
-    delete_unavailable_apiservice
-    delete_tenant_ns
+    # uninstall_odlm
+    # uninstall_cs_operator
+    # uninstall_nss
+    # delete_rbac_resource
+    # delete_webhook
+    # delete_unavailable_apiservice
+    # delete_tenant_ns
 }
 
 function parse_arguments() {
@@ -118,7 +118,17 @@ function pre_req() {
 }
 
 function set_tenant_namespaces() {
-    TENANT_NAMESPACES=$(${OC} get -n "$OPERATOR_NS" configmap namespace-scope -o jsonpath='{.data.namespaces}')
+    for ns in ${OPERATOR_NS//,/ }; do
+        temp_namespace=$(${OC} get -n "$ns" configmap namespace-scope -o jsonpath='{.data.namespaces}' --ignore-not-found)
+        if [ "$temp_namespace" != "" ]; then
+            if [ "$TENANT_NAMESPACES" == "" ]; then
+                TENANT_NAMESPACES=$temp_namespace
+            else
+                TENANT_NAMESPACES="${TENANT_NAMESPACES},${temp_namespace}"
+            fi
+        fi
+    done
+
     if [ "$TENANT_NAMESPACES" == "" ]; then
         TENANT_NAMESPACES=$OPERATOR_NS
     fi
@@ -194,8 +204,8 @@ function uninstall_nss() {
     ${OC} delete --ignore-not-found nss -n "$OPERATOR_NS" common-service
 
     for ns in ${TENANT_NAMESPACES//,/ }; do
-        ${OC} delete --ignore-not-found rolebinding "nss-managed-role-from-$OPERATOR_NS"
-        ${OC} delete --ignore-not-found role "nss-managed-role-from-$OPERATOR_NS"
+        ${OC} delete --ignore-not-found rolebinding "nss-managed-role-from-$ns"
+        ${OC} delete --ignore-not-found role "nss-managed-role-from-$ns"
     done
 
     sub=$(fetch_sub_from_package ibm-namespace-scope-operator "$OPERATOR_NS")
@@ -264,7 +274,5 @@ function delete_tenant_ns() {
     done
     success "Common Services uninstall finished and successfull." 
 }
-
-
 
 main $*
