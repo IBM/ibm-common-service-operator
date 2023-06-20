@@ -144,7 +144,7 @@ function migrate_lic_cms() {
     title "Copying over Licensing Configmaps"
     msg "-----------------------------------------------------------------------"
     local namespace=$1
-    local control_ns=$2
+    local controlNs=$2
     POSSIBLE_CONFIGMAPS=("ibm-licensing-config"
 "ibm-licensing-annotations"
 "ibm-licensing-products"
