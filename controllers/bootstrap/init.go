@@ -1715,15 +1715,26 @@ func CheckClusterType(mgr manager.Manager, ns string) (bool, error) {
 }
 
 func (b *Bootstrap) DeployCertManagerCR() error {
-	deployedNs := b.CSData.MasterNs
-	if b.MultiInstancesEnable {
-		deployedNs = b.CSData.ControlNs
+	dc := discovery.NewDiscoveryClientForConfigOrDie(b.Config)
+	certExist, certErr := b.ResourceExists(dc, constant.CertManagerAPIGroupVersionV1, "Certificate")
+	if certErr != nil {
+		klog.Errorf("Failed to get certificate CustomResourceDefinition : %s", certErr)
 	}
-	_, err := b.GetSubscription(ctx, constant.CertManagerSub, deployedNs)
-	if errors.IsNotFound(err) {
-		klog.Infof("Skipped deploying cert manager CRs, %s not installed yet.", constant.CertManagerSub)
-	} else if err != nil {
-		klog.Errorf("Failed to get subscription %s/%s", deployedNs, constant.CertManagerSub)
+	issuerExist, issuerErr := b.ResourceExists(dc, constant.CertManagerAPIGroupVersionV1, "Issuer")
+	if issuerErr != nil {
+		klog.Errorf("Failed to get issuer CustomResourceDefinition: %s", certErr)
+	}
+
+	if !certExist || !issuerExist {
+		// subscription should not exist so it should always return isNotFound Error
+		_, subErr := b.GetSubscription(ctx, constant.CertManagerSub, b.CSData.ControlNs)
+		if subErr != nil && !errors.IsNotFound(subErr) {
+			return subErr
+		} else if subErr == nil {
+			return fmt.Errorf("ERROR, IBM cert manager operator subscription exist but CRD is not exist, REQUEUING")
+		}
+
+		klog.Infof("Skipped deploying cert manager CRs, CustomResourceDefinition not exist in the cluster.")
 	} else {
 		klog.V(2).Info("Fetch all the CommonService instances")
 		csList := util.NewUnstructuredList("operator.ibm.com", "CommonService", "v3")
