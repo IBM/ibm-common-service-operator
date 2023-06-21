@@ -46,6 +46,7 @@ function main() {
     trap cleanup_log EXIT
     pre_req
     setup_topology
+    check_singleton_service
     setup_nss
     install_cs_operator
 }
@@ -142,6 +143,7 @@ function print_usage() {
 }
 
 function pre_req() {
+    title "Start to validate necessary functional prerequisite... "
     # Check the value of DEBUG
     if [[ "$DEBUG" != "1" && "$DEBUG" != "0" ]]; then
         error "Invalid value for DEBUG. Expected 0 or 1."
@@ -156,22 +158,13 @@ function pre_req() {
     else
         success "oc command logged in as ${user}"
     fi
-
-    create_ns_list
-    check_cert_manager "cert-manager" "$OPERATOR_NS"
+    
     if [ $? -ne 0 ]; then
         error "Cert-manager is not found or having more than one\n"
     fi
 
     if [ $LICENSE_ACCEPT -ne 1 ]; then
         error "License not accepted. Rerun script with --license-accept flag set. See https://ibm.biz/integration-licenses for more details"
-    fi
-
-    if [ $ENABLE_LICENSING -eq 1 ]; then
-        check_licensing
-        if [ $? -ne 0 ]; then
-            error "ibm-licensing is not found or having more than one\n"
-        fi
     fi
 
     # Check INSTALL_MODE
@@ -238,6 +231,16 @@ EOF
     create_operator_group "common-service" "$OPERATOR_NS" "$target"
     if [ $? -ne 0 ]; then
         error "Operatorgroup cannot be created in namespace $OPERATOR_NS, please ensure user $user has proper permission to create Operatorgroup\n"
+    fi
+}
+
+function check_singleton_service() {
+    check_cert_manager "cert-manager" "$OPERATOR_NS"
+    if [ $ENABLE_LICENSING -eq 1 ]; then
+        check_licensing
+        if [ $? -ne 0 ]; then
+            error "ibm-licensing is not found or having more than one\n"
+        fi
     fi
 }
 

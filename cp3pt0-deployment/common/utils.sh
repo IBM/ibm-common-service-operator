@@ -126,7 +126,7 @@ function wait_for_condition() {
     done
 
     if [[ ! -z "${success_message}" ]]; then
-        success "${success_message}"
+        success "${success_message}\n"
     fi
 }
 
@@ -387,7 +387,10 @@ function is_sub_exist() {
 }
 
 function check_cert_manager(){
-    csv_count=`$OC get csv -n "$2" | grep "$1" | wc -l`
+    local service_name=$1    
+    local namespace=$2
+    title " Checking whether Cert Manager exist...\n" 
+    csv_count=`$OC get csv -n "$namespace" | grep "$service_name" | wc -l`
     if [[ $csv_count == 0 ]]; then
         error "Missing a cert-manager"
     fi
@@ -397,6 +400,7 @@ function check_cert_manager(){
 }
 
 function check_licensing(){
+    title " Checking IBMLicensing...\n"
     [[ ! $($OC get IBMLicensing) ]] && error "User does not have proper permission to get IBMLicensing or IBMLicensing is not installed"
     instance_count=`$OC get IBMLicensing -o name | wc -l`
     if [[ $instance_count == 0 ]]; then
@@ -410,9 +414,8 @@ function check_licensing(){
 
 function create_namespace() {
     local namespace=$1
-    
     if [[ -z "$(${OC} get namespace ${namespace} --ignore-not-found)" ]]; then
-        title "Creating namespace ${namespace}\n"
+        title "Creating namespace ${namespace}"
         ${OC} create namespace ${namespace}
         if [[ $? -ne 0 ]]; then
             error "Error creating namespace ${namespace}"
