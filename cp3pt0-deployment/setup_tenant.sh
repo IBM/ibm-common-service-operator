@@ -157,6 +157,7 @@ function pre_req() {
         success "oc command logged in as ${user}"
     fi
 
+    create_ns_list
     check_cert_manager "cert-manager" "$OPERATOR_NS"
     if [ $? -ne 0 ]; then
         error "Cert-manager is not found or having more than one\n"

@@ -208,7 +208,7 @@ function wait_for_no_pod() {
 function wait_for_project() {
     local name=$1
     local condition="${OC} get project ${name} --no-headers --ignore-not-found"
-    local retries=50
+    local retries=12
     local sleep_time=10
     local total_time_mins=$(( sleep_time * retries / 60))
     local wait_message="Waiting for project ${name} to be created"
@@ -417,6 +417,7 @@ function create_namespace() {
         if [[ $? -ne 0 ]]; then
             error "Error creating namespace ${namespace}"
         fi
+        wait_for_project ${namespace}
     else
         info "Namespace ${namespace} already exists. Skip creating"
     fi
