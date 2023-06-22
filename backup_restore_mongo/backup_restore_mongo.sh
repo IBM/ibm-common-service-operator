@@ -28,6 +28,7 @@ backup="false"
 restore="false"
 cleanup="false"
 s390x_ENV="false"
+DEBUG=0
 
 # script base directory
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
@@ -60,6 +61,10 @@ function main() {
             ;;
         "-c")
             cleanup="true"
+            ;;
+        "-v | --debug")
+            shift
+            DEBUG=$1
             ;;
         *)
             error "invalid option -- \`$1\`. Use the -h or --help option for usage info."
@@ -95,11 +100,12 @@ function usage() {
 	Options:
 	Mandatory arguments to long options are mandatory for short options too.
 	  -h, --help                    display this help and exit
-      --bns                          specify the namespace to backup/where the backup exists
-      --rns                          specify the namespace where data is to be restored
+      --bns                         specify the namespace to backup/where the backup exists
+      --rns                         specify the namespace where data is to be restored
       -b                            run the backup process
       -r                            run the restore process
       -c                            cleanup resources used or created by this script
+      -v, --debug integer           verbosity of logs. Default is 0. Set to 1 for debug logs
 	EOF
 }
 
