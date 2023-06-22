@@ -62,7 +62,7 @@ function main() {
         "-c")
             cleanup="true"
             ;;
-        "-v | --debug")
+        "-v")
             shift
             DEBUG=$1
             ;;
