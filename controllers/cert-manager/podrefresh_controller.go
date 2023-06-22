@@ -79,7 +79,7 @@ func (r *PodRefreshReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	if cert.Status.NotBefore != nil && cert.Status.NotAfter != nil {
-		if err := r.restart(cert.Spec.SecretName, cert.Name, cert.Namespace, cert.Status.NotBefore.Format("2006-1-2.1504")); err != nil {
+		if err := r.restart(cert.Spec.SecretName, cert.Name, cert.Namespace, cert.Status.NotBefore.Format("2006-1-2.150405")); err != nil {
 			reqLogger.Error(err, "Failed to fresh pod")
 			return ctrl.Result{}, err
 		}
@@ -93,7 +93,7 @@ func (r *PodRefreshReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 // pod refresh is enabled. It will edit the deployments, statefulsets, and daemonsets
 // that use the secret being updated, which will trigger the pod to be restarted.
 func (r *PodRefreshReconciler) restart(secret, cert, namespace string, lastUpdated string) error {
-	timeNow := time.Now().Format("2006-1-2.1504")
+	timeNow := time.Now().Format("2006-1-2.150405")
 	deployments := &appsv1.DeploymentList{}
 	if err := r.Client.List(context.TODO(), deployments); err != nil {
 		return fmt.Errorf("error getting deployments: %v", err)
@@ -138,11 +138,11 @@ func (r *PodRefreshReconciler) getDeploymentsNeedUpdate(secret, namespace, lastU
 NEXT_DEPLOYMENT:
 	for _, deployment := range deployments.Items {
 		if deployment.ObjectMeta.Labels != nil && deployment.ObjectMeta.Labels[restartLabel] != "" {
-			lastUpdatedTime, err := time.Parse("2006-1-2.1504", lastUpdated)
+			lastUpdatedTime, err := time.Parse("2006-1-2.150405", lastUpdated)
 			if err != nil {
 				return deploymentsToUpdate, fmt.Errorf("error parsing NotAfter time: %v", err)
 			}
-			restartedTime, err := time.Parse("2006-1-2.1504", deployment.ObjectMeta.Labels[restartLabel])
+			restartedTime, err := time.Parse("2006-1-2.150405", deployment.ObjectMeta.Labels[restartLabel])
 			if err != nil {
 				return deploymentsToUpdate, fmt.Errorf("error parsing time-restarted: %v", err)
 			}
@@ -189,11 +189,11 @@ func (r *PodRefreshReconciler) getStsNeedUpdate(secret, namespace, lastUpdated s
 NEXT_STATEFULSET:
 	for _, statefulset := range statefulsets.Items {
 		if statefulset.ObjectMeta.Labels != nil && statefulset.ObjectMeta.Labels[restartLabel] != "" {
-			lastUpdatedTime, err := time.Parse("2006-1-2.1504", lastUpdated)
+			lastUpdatedTime, err := time.Parse("2006-1-2.150405", lastUpdated)
 			if err != nil {
 				return statefulsetsToUpdate, fmt.Errorf("error parsing NotAfter time: %v", err)
 			}
-			restartedTime, err := time.Parse("2006-1-2.1504", statefulset.ObjectMeta.Labels[restartLabel])
+			restartedTime, err := time.Parse("2006-1-2.150405", statefulset.ObjectMeta.Labels[restartLabel])
 			if err != nil {
 				return statefulsetsToUpdate, fmt.Errorf("error parsing time-restarted: %v", err)
 			}
@@ -239,11 +239,11 @@ func (r *PodRefreshReconciler) getDaemonSetNeedUpdate(secret, namespace, lastUpd
 NEXT_DAEMONSET:
 	for _, daemonset := range daemonsets.Items {
 		if daemonset.ObjectMeta.Labels != nil && daemonset.ObjectMeta.Labels[restartLabel] != "" {
-			lastUpdatedTime, err := time.Parse("2006-1-2.1504", lastUpdated)
+			lastUpdatedTime, err := time.Parse("2006-1-2.150405", lastUpdated)
 			if err != nil {
 				return daemonsetsToUpdate, fmt.Errorf("error parsing NotAfter time: %v", err)
 			}
-			restartedTime, err := time.Parse("2006-1-2.1504", daemonset.ObjectMeta.Labels[restartLabel])
+			restartedTime, err := time.Parse("2006-1-2.150405", daemonset.ObjectMeta.Labels[restartLabel])
 			if err != nil {
 				return daemonsetsToUpdate, fmt.Errorf("error parsing time-restarted: %v", err)
 			}
