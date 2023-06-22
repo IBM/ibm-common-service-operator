@@ -151,7 +151,7 @@ spec:
                     data:
                       EDB_LICENSE_KEY: $(base64 /license_keys/edb/EDB_LICENSE_KEY | tr -d '\n')
                     EOF
-                  image: cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:fd8339c382e1c5d69184d9c3f299a3da5c9a12a579e0db5e76e86d65be9190fd
+                  image: cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:e683c4bfceb5a99f7971409d4028cf326cdedb007f9cf3daf28b8141835535f1
                   name: edb-license
                   resources:
                     limits:
@@ -174,7 +174,7 @@ spec:
                   - >-
                     kubectl delete pods -l app.kubernetes.io/name=cloud-native-postgresql
                   image: >-
-                    cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:fd8339c382e1c5d69184d9c3f299a3da5c9a12a579e0db5e76e86d65be9190fd
+                    cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:e683c4bfceb5a99f7971409d4028cf326cdedb007f9cf3daf28b8141835535f1
                   name: restart-edb-pod
                   resources:
                     limits:
