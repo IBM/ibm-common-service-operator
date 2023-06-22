@@ -35,13 +35,13 @@ function main() {
     trap cleanup_log EXIT
     pre_req
     set_tenant_namespaces
-    # uninstall_odlm
-    # uninstall_cs_operator
-    # uninstall_nss
-    # delete_rbac_resource
-    # delete_webhook
-    # delete_unavailable_apiservice
-    # delete_tenant_ns
+    uninstall_odlm
+    uninstall_cs_operator
+    uninstall_nss
+    delete_rbac_resource
+    delete_webhook
+    delete_unavailable_apiservice
+    delete_tenant_ns
 }
 
 function parse_arguments() {
@@ -271,25 +271,30 @@ function delete_tenant_ns() {
             warning "Failed to delete namespace $ns, force deleting remaining resources..."
             remove_all_finalizers $ns && success "Namespace $ns is deleted successfully."
         fi
+        update_namespaceMapping $ns
     done
+
+    cleanup_cs_contorl
+
     success "Common Services uninstall finished and successfull." 
 }
 
-function update_cs_map() {
+function update_namespaceMapping() {
     namespace=$1
     title "Updating common-service-maps $namespace"
     msg "-----------------------------------------------------------------------"
-    local current_yaml=$("${OC}" get -n kube-public cm "$CM_NAME" -o yaml | yq '.data.["common-service-maps.yaml"]')
-    ${OC} get cm common-service-maps -n kube-public -o yaml > tmp.yaml
+    local current_yaml=$("${OC}" get -n kube-public cm common-service-maps -o yaml | yq '.data.["common-service-maps.yaml"]')
+    local isExists=$(echo "$current_yaml" | yq '.namespaceMapping[] | select(.map-to-common-service-namespace == "'$namespace'")')
 
-    yq -i 'del(.metadata.creationTimestamp)' tmp.yaml
-    yq -i 'del(.metadata.resourceVersion)' tmp.yaml
-    yq -i 'del(.metadata.uid)' tmp.yaml
-    yq -i 'del(.metadata.generation)' tmp.yaml
-    yq -i '.metadata.namespace = "'${namespace}'"' tmp.yaml
-    ${OC} apply -f tmp.yaml  || error "Could not apply CommonService CR changes in namespace $namespace"
-
-    rm -f tmp.yaml
+    if [ "$isExists" ]; then
+        info "The map-to-common-service-namespace: $namespace, exist in common-service-maps"
+        info "Deleting this tenant in common-service-maps"
+        updated_yaml=$(echo "$current_yaml" | yq 'del(.namespaceMapping[] | select(.map-to-common-service-namespace == "'$namespace'"))')
+        local padded_yaml=$(echo "$updated_yaml" | awk '$0="    "$0')
+        update_cs_maps "$padded_yaml"
+    else
+        info "Namespace: $namespace does not exist in common-service-maps, or it is not operatorNamespace, skipping"
+    fi
 }
 
 # update_cs_maps Updates the common-service-maps with the given yaml. Note that
@@ -313,5 +318,51 @@ EOF
 )"
     echo "$object" | oc apply -f -
 }
+
+# check if we need to cleanup contorl namespace and clean it
+function cleanup_cs_contorl() {
+    title "Clean up control namespace"
+    msg "-----------------------------------------------------------------------"
+    local current_yaml=$("${OC}" get -n kube-public cm common-service-maps -o yaml | yq '.data.["common-service-maps.yaml"]')
+    local isExist=$(echo "$current_yaml" | yq '.namespaceMapping[] | has("map-to-common-service-namespace")' )
+    if [ "$isExists" ]; then
+        info "map-to-common-service-namespace exist in common-service-maps, don't clean up control namespace"
+    else
+        info "Cleanning up control namespace"
+        get_control_namespace
+        # cleanup namespaceScope in Control namespace
+        cleanup_NamespaceScope $CONTROL_NS
+        # cleanup webhook
+        cleanup_webhook $CONTROL_NS ""
+        # cleanup secretshare
+        cleanup_secretshare $CONTROL_NS ""
+        # cleanup crossplane    
+        cleanup_crossplane
+
+        success "Control namespace: ${CONTROL_NS} is cleanup"
+    fi
+
+
+    # title "Checking ibm-common-service-operator channel ..."
+    # cs_namespace=$(${OC} -n kube-public get cm common-service-maps -o jsonpath='{.data.common-service-maps\.yaml}' | (grep 'map-to-common-service-namespace' || echo "fail") | awk '{print $2}')
+    # if [[ $cs_namespace == "fail" ]]; then
+    #     info "no operatorNamespace found, start cleanup contorl namespace"
+    # else
+    #     for ns in $cs_namespace
+    #     do
+    #         csv=$(${OC} get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.${ns}='' -n ${ns} -o yaml -o jsonpath='{.items[*].status.installedCSV}')
+    #         if [[ "${csv}" != "null" ]] && [[ "${csv}" != "" ]]; then
+    #             info "found ibm-common-service-operator, checking the channel"
+    #             channel=$(echo ${csv} | cut -d "." -f 2 | awk '{print $1}')
+    #             if [[ "${channel}" == "v3" ]]; then
+    #                 error "Found ibm-common-service-operator in v3.x version, user need to remove it before running this script"
+    #             fi
+    #         fi
+    #     done
+    # fi
+    # info "no operatorNamespace found, start cleanup contorl namespace"
+    
+}
+
 
 main $*
