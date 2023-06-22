@@ -10,7 +10,7 @@ metadata:
     nss.operator.ibm.com/managed-operators: ibm-common-service-operator
     olm.skipRange: ""
     operatorChannel: v4.0
-    operatorVersion: 4.0.0
+    operatorVersion: 4.1.0
     operators.operatorframework.io/builder: operator-sdk-v1.2.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
     repository: https://github.com/IBM/ibm-common-service-operator
@@ -108,7 +108,7 @@ spec:
 
     ## Operator versions
 
-     - 4.0.0
+     - 4.1.0
 
     ## Prerequisites
 
@@ -180,8 +180,8 @@ spec:
   provider:
     name: IBM
   relatedImages:
-  - image: icr.io/cpopen/common-service-operator:4.0.0
+  - image: icr.io/cpopen/common-service-operator:4.1.0
     name: COMMON_SERVICE_OPERATOR_IMAGE
-  - image: icr.io/cpopen/cpfs/cpfs-utils:4.0.0
+  - image: icr.io/cpopen/cpfs/cpfs-utils:4.1.0
     name: CPFS_UTILS_IMAGE
   version: 0.0.0
