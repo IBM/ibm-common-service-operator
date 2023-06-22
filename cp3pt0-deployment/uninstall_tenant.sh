@@ -85,7 +85,7 @@ function print_usage() {
     echo ""
     echo "Options:"
     echo "   --oc string                    File path to oc CLI. Default uses oc in your PATH"
-    echo "   --operator-namespace string    Required. Namespace to uninstall Foundational services operators and the whole tenant."
+    echo "   --operator-namespace string    Required. Namespace to uninstall Foundational services operators and the whole tenant. User can input more than one namespace split by comma: ns1,ns2,ns3"
     echo "   -f                             Enable force delete. It will take much more time if you add this label, we suggest run this script without -f label first"
     echo "   -v, --debug integer            Verbosity of logs. Default is 0. Set to 1 for debug logs"
     echo "   -h, --help                     Print usage information"
@@ -273,6 +273,45 @@ function delete_tenant_ns() {
         fi
     done
     success "Common Services uninstall finished and successfull." 
+}
+
+function update_cs_map() {
+    namespace=$1
+    title "Updating common-service-maps $namespace"
+    msg "-----------------------------------------------------------------------"
+    local current_yaml=$("${OC}" get -n kube-public cm "$CM_NAME" -o yaml | yq '.data.["common-service-maps.yaml"]')
+    ${OC} get cm common-service-maps -n kube-public -o yaml > tmp.yaml
+
+    yq -i 'del(.metadata.creationTimestamp)' tmp.yaml
+    yq -i 'del(.metadata.resourceVersion)' tmp.yaml
+    yq -i 'del(.metadata.uid)' tmp.yaml
+    yq -i 'del(.metadata.generation)' tmp.yaml
+    yq -i '.metadata.namespace = "'${namespace}'"' tmp.yaml
+    ${OC} apply -f tmp.yaml  || error "Could not apply CommonService CR changes in namespace $namespace"
+
+    rm -f tmp.yaml
+}
+
+# update_cs_maps Updates the common-service-maps with the given yaml. Note that
+# the given yaml should have the right indentation/padding, minimum 2 spaces per
+# line. If there are multiple lines in the yaml, ensure that each line has
+# correct indentation.
+function update_cs_maps() {
+    local yaml=$1
+
+    local object="$(
+        cat <<EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: common-service-maps
+  namespace: kube-public
+data:
+  common-service-maps.yaml: |
+${yaml}
+EOF
+)"
+    echo "$object" | oc apply -f -
 }
 
 main $*
