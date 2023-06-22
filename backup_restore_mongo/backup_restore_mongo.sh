@@ -401,7 +401,7 @@ function restore () {
         ${OC} scale deploy -n $TARGET_NAMESPACE ibm-mongodb-operator --replicas=0
 
         #get cache size value
-        cacheSizeGB=$(${OC} get cm icp-mongodb -n $TARGET_NAMESPACE yaml | grep cacheSizeGB | awk '{print $2}')
+        cacheSizeGB=$(${OC} get cm icp-mongodb -n $TARGET_NAMESPACE -o yaml | grep cacheSizeGB | awk '{print $2}')
         
         info "Editing configmap icp-mongodb"
         cat << EOF | ${OC} apply -f -
