@@ -143,7 +143,7 @@ function print_usage() {
 }
 
 function pre_req() {
-    title "Start to validate necessary functional prerequisite... "
+    title "Start to validate the parameters passed into script... "
     # Check the value of DEBUG
     if [[ "$DEBUG" != "1" && "$DEBUG" != "0" ]]; then
         error "Invalid value for DEBUG. Expected 0 or 1."
