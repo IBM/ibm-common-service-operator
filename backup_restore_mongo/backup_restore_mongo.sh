@@ -211,7 +211,7 @@ function backup() {
         cacheSizeGB=$(${OC} get cm icp-mongodb -n $ORIGINAL_NAMESPACE -o yaml | grep cacheSizeGB | awk '{print $2}')
         
         info "Editing configmap icp-mongodb"
-        cat << EOF | ${OC} apply -f -
+        cat << EOF | ${OC} apply -n $ORIGINAL_NAMESPACE -f -
 kind: ConfigMap
 apiVersion: v1
 metadata:
