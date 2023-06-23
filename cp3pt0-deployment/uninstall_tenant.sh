@@ -8,8 +8,6 @@
 # This is an internal component, bundled with an official IBM product. 
 # Please refer to that particular license for additional information. 
 
-# Base on https://github.ibm.com/IBMPrivateCloud/cs-dev-tools/blob/master/install/cp3pt0-install/uninstall_tenant.sh
-
 # ---------- Command arguments ----------
 
 OC=oc
