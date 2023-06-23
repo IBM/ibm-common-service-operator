@@ -730,37 +730,27 @@ function update_cscr() {
         if [[ $? -ne 0 ]]; then
             error "Failed to apply CommonService CR in ${namespace}"
         fi
-        wait_for_cscr_status "${namespace}" "common-service"
     done
 
     rm common-service.yaml
 }
 
 # Check CommonService CR
-function check_cscr() {
-    local operator_ns=$1
-    local service_ns=$2
-    local nss_list=$3
+function check_cscr_status() {
+    local nss_list=$1
 
     for namespace in ${nss_list//,/ }
     do
+        # Check the existence of CS CR in each namespace under the scope
+        info "Checking CommonService CR common-service in $namespace"
         result=$("${OC}" get commonservice common-service -n ${namespace} --ignore-not-found)
         if [[ -z "${result}" ]]; then
-            info "Creating CommonService CR common-service in $namespace"
-            # copy commonservice from operator namespace
-            ${OC} get commonservice common-service -n "${operator_ns}" -o yaml | ${YQ} eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
-            
-            yq eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.namespace = "'${namespace}'"' common-service.yaml | ${OC} apply --overwrite=true -f -
-            if [[ $? -ne 0 ]]; then
-                error "Failed to apply CommonService CR in ${namespace}"
-            fi
+            error "Failed to find CommonService CR in ${namespace}"
         fi
 
-        info "Checking CommonService CR common-service in $namespace"
+        # Check the status of each CS CR
         wait_for_cscr_status "${namespace}" "common-service"
     done
-
-    rm common-service.yaml
 }
 
 # Update nss cr

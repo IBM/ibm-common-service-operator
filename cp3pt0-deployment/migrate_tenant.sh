@@ -137,7 +137,7 @@ function main() {
     update_nss_kind "$OPERATOR_NS" "$NS_LIST"
 
     # Check each CommonService CR status
-    check_cscr "$OPERATOR_NS" "$SERVICES_NS" "$NS_LIST"
+    check_cscr_status "$NS_LIST"
     
     success "Preparation is completed for upgrading Cloud Pak 3.0"
     info "Please update OperandRequest to upgrade foundational core services"
