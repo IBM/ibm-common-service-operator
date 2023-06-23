@@ -404,7 +404,7 @@ function restore () {
         cacheSizeGB=$(${OC} get cm icp-mongodb -n $TARGET_NAMESPACE -o yaml | grep cacheSizeGB | awk '{print $2}')
         
         info "Editing configmap icp-mongodb"
-        cat << EOF | ${OC} apply -f -
+        cat << EOF | ${OC} apply -n $TARGET_NAMESPACE -f -
 kind: ConfigMap
 apiVersion: v1
 metadata:
