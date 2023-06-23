@@ -339,6 +339,12 @@ function cleanup_cs_contorl() {
         # cleanup crossplane    
         cleanup_crossplane
 
+        ${OC} delete --ignore-not-found ns "$CONTROL_NS" --timeout=30s
+        if [ $? -ne 0 ] || [ $FORCE_DELETE -eq 1 ]; then
+            warning "Failed to delete namespace $CONTROL_NS, force deleting remaining resources..."
+            remove_all_finalizers $ns && success "Namespace $CONTROL_NS is deleted successfully."
+        fi
+
         success "Control namespace: ${CONTROL_NS} is cleanup"
     fi
 
