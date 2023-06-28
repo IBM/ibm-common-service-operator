@@ -63,7 +63,7 @@ const Large = `
           limits:
             cpu: 1000m
             memory: 350Mi
- - name: ibm-im-mongodb-operator
+- name: ibm-im-mongodb-operator
   spec:
     mongoDB:
       replicas: 3
