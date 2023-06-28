@@ -571,6 +571,7 @@ function loadmongo() {
   fi
 
   ibm_mongodb_image=$(${OC} get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
+
   if [[ $s390x_ENV == "false" ]]; then
     cat <<EOF >$TEMPFILE
 apiVersion: batch/v1
@@ -1449,6 +1450,7 @@ EOF
     #get images from cp2 namespace
     ibm_mongodb_install_image=$(${OC} get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.initContainers[0]}{.image}{end}')
     ibm_mongodb_image=$(${OC} get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
+    
     #icp-mongodb-ss.yaml
     cat << EOF | ${OC} apply -f -
 kind: StatefulSet
