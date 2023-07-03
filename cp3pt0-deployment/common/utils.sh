@@ -278,7 +278,7 @@ function wait_for_nss_patch() {
         result=$(eval "${condition}")
 
         # restart namespace scope operator pod to reconcilie
-        if [[ ( ${retries} -eq 0 ) && ( ! -z "${result}" ) ]]; then
+        if [[ ( ${retries} -eq 0 ) && ( -z "${result}" ) ]]; then
             info "Reconciling namespace scope operator"
             echo "deleting pod ${pod_name}"
             $OC delete pod ${pod_name} -n ${namespace}    
