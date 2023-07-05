@@ -1,0 +1,33 @@
+name: Shell Script Linter
+
+on:
+  pull_request_target:
+    types:
+      - labeled
+
+jobs:
+  lint:
+    name: Lint Shell Scripts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Install ShellCheck
+        run: sudo apt-get install shellcheck -y
+
+      - name: Check Label
+        id: label
+        run: echo "::set-output name=label::${{ github.event.label.name }}"
+
+      - name: Run ShellCheck
+        if: ${{ steps.label.outputs.label == 'ok-to-test' }}
+        run: shellcheck -e SC1090,SC1091 -f checkstyle **/*.sh | tee shellcheck.xml
+
+      - name: Upload ShellCheck Results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: shellcheck-results
+          path: shellcheck.xml
