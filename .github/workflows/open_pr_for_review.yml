@@ -1,0 +1,37 @@
+name: Open PR for scripts review
+
+on:
+  push:
+    branches:
+      - scripts-dev
+
+jobs:
+  open-pr-for-review:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Git
+        run: |
+          git config --global user.name "${{ github.actor }}"
+          git config --global user.email "${{ github.actor }}@users.noreply.github.com"
+
+      - name: Create PR
+        run: |
+          git checkout scripts-dev
+          timestamp=$(date +%Y-%m-%d-%H-%M-%S)
+          message="common service installer automation on $timestamp"
+          base_branch="scripts-adopter"
+          branch_to_merge="scripts-dev"
+          result=$(gh pr list --search "base:scripts-adopter head:scripts-dev is:open")
+          if [ -z "$result" ]; then
+            echo "No PR found, creating a new one"
+            gh pr create -B $base_branch -H $branch_to_merge --title "Review changes from $branch_to_merge to $base_branch" --body "$message"
+          else
+            echo "PR already exists, skipping gh pr create"
+            exit 0
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
