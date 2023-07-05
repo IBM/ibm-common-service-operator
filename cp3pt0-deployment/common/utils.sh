@@ -404,11 +404,11 @@ function check_cert_manager(){
 
 function check_licensing(){
     title " Checking IBMLicensing..."
-    [[ ! $($OC get IBMLicensing) ]] && error "User does not have proper permission to get IBMLicensing or IBMLicensing is not installed"
     if [ $PREVIEW_MODE -eq 1 ]; then
         info "Preview mode is on, skip checking IBMLicensing\n"
         return 0
     fi
+    [[ ! $($OC get IBMLicensing) ]] && error "User does not have proper permission to get IBMLicensing or IBMLicensing is not installed"
     instance_count=`$OC get IBMLicensing -o name | wc -l`
     if [[ $instance_count == 1 ]]; then
         success "Found only one IBMLicensing\n"
