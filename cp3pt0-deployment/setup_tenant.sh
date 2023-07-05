@@ -21,6 +21,8 @@ TETHERED_NS=""
 EXCLUDED_NS=""
 SIZE_PROFILE="starterset"
 INSTALL_MODE="Automatic"
+PREVIEW_MODE=0
+OC_CMD="oc"
 DEBUG=0
 LICENSE_ACCEPT=0
 RETRY_CONFIG_CSCR=0
@@ -36,6 +38,9 @@ LOG_FILE="setup_tenant_log_$(date +'%Y%m%d%H%M%S').log"
 # counter to keep track of installation steps
 STEP=0
 
+# preview mode directory
+PREVIEW_DIR="/tmp/preview"
+
 # ---------- Main functions ----------
 
 . ${BASE_DIR}/common/utils.sh
@@ -45,6 +50,7 @@ function main() {
     save_log "logs" "setup_tenant_log" "$DEBUG"
     trap cleanup_log EXIT
     pre_req
+    prepare_preview_mode
     setup_topology
     check_singleton_service
     setup_nss
@@ -101,6 +107,9 @@ function parse_arguments() {
             shift
             SIZE_PROFILE=$1
             ;;
+        --preview)
+            PREVIEW_MODE=1
+            ;;
         -v | --debug)
             shift
             DEBUG=$1
@@ -115,6 +124,7 @@ function parse_arguments() {
         esac
         shift
     done
+    echo ""
 }
 
 function print_usage() {
@@ -136,6 +146,7 @@ function print_usage() {
     echo "   -i, --install-mode string      InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
     echo "   -s, --source string            CatalogSource name. This assumes your CatalogSource is already created. Default is opencloud-operators"
     echo "   -n, --namespace string         Namespace of CatalogSource. Default is openshift-marketplace"
+    echo "   --preview                      Enable preview mode (dry run)"
     echo "   -v, --debug integer            Verbosity of logs. Default is 0. Set to 1 for debug logs"
     echo "   -h, --help                     Print usage information"
     echo "   -p, --size-profile             The default profile is starterset. Change the profile to starter, small, medium, or large, if required"
@@ -147,6 +158,10 @@ function pre_req() {
     # Check the value of DEBUG
     if [[ "$DEBUG" != "1" && "$DEBUG" != "0" ]]; then
         error "Invalid value for DEBUG. Expected 0 or 1."
+    fi
+
+    if [ $PREVIEW_MODE -eq 1 ]; then
+        info "Running in preview mode. No actual changes will be made."
     fi
 
     check_command "${OC}"
@@ -209,6 +224,14 @@ function pre_req() {
     if [[ "$TETHERED_NS" == "$OPERATOR_NS" || "$TETHERED_NS" == "$SERVICES_NS" ]]; then
         error "Must provide additional namespaces for --tethered-namespaces, different from operator-namespace and services-namespace"
     fi
+    echo ""
+}
+
+function prepare_preview_mode() {
+    mkdir -p ${PREVIEW_DIR}
+    if [ $PREVIEW_MODE -eq 1 ]; then
+        OC_CMD="oc --dry-run=client" # a redirect to the file is needed too
+    fi
 }
 
 function create_ns_list() {
@@ -244,13 +267,8 @@ function check_singleton_service() {
     fi
 }
 
-function setup_nss() {
-    install_nss
-    authorize_nss
-}
-
 function install_nss() {
-    title "Installing Namespace Scope operator\n"
+    title "Checking whether Namespace Scope operator exist..."
 
     is_sub_exist "ibm-namespace-scope-operator" "$OPERATOR_NS"
     if [ $? -eq 0 ]; then
@@ -259,8 +277,10 @@ function install_nss() {
         create_subscription "ibm-namespace-scope-operator" "$OPERATOR_NS" "$CHANNEL" "ibm-namespace-scope-operator" "${SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
     fi
 
-    wait_for_operator "$OPERATOR_NS" "ibm-namespace-scope-operator"
-
+    if [ $PREVIEW_MODE -eq 0 ]; then
+        wait_for_operator "$OPERATOR_NS" "ibm-namespace-scope-operator" 
+    fi
+    
     # namespaceMembers should at least have Bedrock operators' namespace
     local ns=$(cat <<EOF
 
@@ -268,20 +288,27 @@ function install_nss() {
 EOF
     )
 
+    title "Adding the tethered optional namespaces and removing excluded namespaces for a tenant to namespaceMembers..."
     # add the tethered optional namespaces for a tenant to namespaceMembers
     # ${TETHERED_NS} is comma delimited, so need to replace commas with space
-    nss_exists=$(${OC} get nss common-service -n $OPERATOR_NS || echo "fail")
+    local nss_exists="fail"
+    if [ $PREVIEW_MODE -eq 0 ]; then
+        nss_exists=$(${OC} get nss common-service -n $OPERATOR_NS || echo "fail")
+    fi 
+
     if [[ $nss_exists != "fail" ]]; then
         debug1 "NamspaceScope common-service exists in namespace $OPERATOR_NS."
         existing_ns=$(${OC} get nss common-service -n $OPERATOR_NS -o=jsonpath='{.spec.namespaceMembers}' | tr -d \" | tr -d [ | tr -d ])
         existing_ns="${existing_ns//,/ }"
+
+        # remove the excluded namespaces from the list
         if [[ $EXCLUDED_NS != "" ]]; then
             info "Removing excluded namespaces from common-service NamespaceScope"
-            #remove excluded ns
             remove_ns="${EXCLUDED_NS//,/ }"
             tmp_ns_list=""
             for namespace in $existing_ns
             do
+                # check if namespace is in the list of excluded namespaces
                 contains_ns=$([[ ${remove_ns[@]} =~ $namespace ]] || echo "false")
                 if [[ $contains_ns == "false" ]]; then
                     if [[ $tmp_ns_list == "" ]]; then
@@ -298,6 +325,8 @@ EOF
         new_ns_list=$(echo ${TETHERED_NS//,/ } ${SERVICES_NS} | xargs -n1 | sort -u | xargs)
     fi
     debug1 "List of namespaces for common-service NSS ${new_ns_list}"
+    
+    # add the new namespaces from list of common-service NSS to namespaceMembers
     for n in ${new_ns_list}; do
         if [[ $n == $OPERATOR_NS ]]; then
             continue
@@ -309,7 +338,7 @@ EOF
     )
     done
 
-    debug1 "Format of namespaceMembers to be added: $ns"
+    debug1 "Format of namespaceMembers to be added: $ns\n"
 
     configure_nss_kind "$ns"
     if [ $? -ne 0 ]; then
@@ -320,8 +349,7 @@ EOF
 
 function authorize_nss() {
 
-    local role=$(
-        cat <<EOF
+    cat <<EOF > ${PREVIEW_DIR}/role.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -342,10 +370,8 @@ rules:
   - watch
   - deletecollection
 EOF
-)
 
-    local rb=$(
-        cat <<EOF
+    cat <<EOF > ${PREVIEW_DIR}/rolebinding.yaml
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -360,54 +386,68 @@ roleRef:
   name: nss-managed-role-from-$OPERATOR_NS
   apiGroup: rbac.authorization.k8s.io
 EOF
-)
-    title "Checking and authorizing NSS to all namespaces in tenant\n"
+
+    title "Checking and authorizing NSS to all namespaces in tenant..."
     for ns in $SERVICES_NS ${TETHERED_NS//,/ }; do
 
         if [[ $($OC get RoleBinding nss-managed-role-from-$OPERATOR_NS -n $ns 2>/dev/null) != "" ]];then
-            info "RoleBinding nss-managed-role-from-$OPERATOR_NS is already existed in $ns, skip creating"
+            info "RoleBinding nss-managed-role-from-$OPERATOR_NS is already existed in $ns, skip creating\n"
         else
             debug1 "Creating following Role:\n"
-            debug1 "${role//ns_to_replace/$ns}\n"
-            echo "${role//ns_to_replace/$ns}" | ${OC} apply -f -
+            cat ${PREVIEW_DIR}/role.yaml | sed "s/ns_to_replace/$ns/g"
+            echo ""
+            cat ${PREVIEW_DIR}/role.yaml | sed "s/ns_to_replace/$ns/g" | ${OC_CMD} apply -f -
             if [[ $? -ne 0 ]]; then
-                error "Failed to create Role for NSS in namespace $ns, please check if user has proper permission to create role"
+                error "Failed to create Role for NSS in namespace $ns, please check if user has proper permission to create role\n"
             fi
 
             debug1 "Creating following RoleBinding:\n"
-            debug1 "${rb//ns_to_replace/$ns}\n"
-            echo "${rb//ns_to_replace/$ns}" | ${OC} apply -f -
+            cat ${PREVIEW_DIR}/rolebinding.yaml | sed "s/ns_to_replace/$ns/g"
+            echo ""
+            cat ${PREVIEW_DIR}/rolebinding.yaml | sed "s/ns_to_replace/$ns/g" | ${OC_CMD} apply -f -
             if [[ $? -ne 0 ]]; then
-                error "Failed to create RoleBinding for NSS in namespace $ns, please check if user has proper permission to create rolebinding"
+                error "Failed to create RoleBinding for NSS in namespace $ns, please check if user has proper permission to create rolebinding\n"
             fi
         fi
     done
 }
 
-function install_cs_operator() {
-    msg "Installing IBM Foundational services operator into operator namespace - ${OPERATOR_NS}"
+function setup_nss() {
+    install_nss
+    authorize_nss
+}
 
-    info "checking if CommonService CRD exist in the cluster"
+function install_cs_operator() {
+    title "Installing IBM Foundational services operator into operator namespace ${OPERATOR_NS}..."
+
+    title "checking if CommonService CRD exists in the cluster..."
     local is_CS_CRD_exist=$(($OC get commonservice -n "$OPERATOR_NS" --ignore-not-found > /dev/null && echo exists) || echo fail)
 
     if [ "$is_CS_CRD_exist" == "exists" ]; then
-        info "CommonService CRD exist"
+        info "CommonService CRD exist\n"
         configure_cs_kind
     else
-        info "CommonService CRD does not exist, installing ibm-common-service-operator first"
+        info "CommonService CRD does not exist, installing ibm-common-service-operator first\n"
     fi
 
+    title "Checking whether IBM Common Service operator exist..."
     is_sub_exist "ibm-common-service-operator" "$OPERATOR_NS"
     if [ $? -eq 0 ]; then
         info "There is an ibm-common-service-operator Subscription already\n"
     else
         create_subscription "ibm-common-service-operator" "$OPERATOR_NS" "$CHANNEL" "ibm-common-service-operator" "${SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
-        sleep 120
+        # sleep 120
     fi
-    wait_for_operator "$OPERATOR_NS" "ibm-common-service-operator"
-    accept_license "commonservice" "$OPERATOR_NS" "common-service"
-    wait_for_nss_patch "$OPERATOR_NS" 
-    wait_for_cs_webhook "$OPERATOR_NS" "ibm-common-service-webhook"
+
+    if [ $PREVIEW_MODE -eq 0 ]; then
+        wait_for_operator "$OPERATOR_NS" "ibm-common-service-operator"
+        accept_license "commonservice" "$OPERATOR_NS" "common-service"
+        wait_for_nss_patch "$OPERATOR_NS" 
+        wait_for_cs_webhook "$OPERATOR_NS" "ibm-common-service-webhook"
+    else
+        info "Preview mode is on, skip waiting for operator and webhook being ready\n"
+    fi
+    
     if [ "$is_CS_CRD_exist" == "fail" ] || [ $RETRY_CONFIG_CSCR -eq 1 ]; then
         RETRY_CONFIG_CSCR=1
         configure_cs_kind
@@ -417,13 +457,14 @@ function install_cs_operator() {
 function configure_nss_kind() {
     local members=$1
 
+    title "Configuring NamespaceScope CR in $OPERATOR_NS..."
     if [[ $($OC get NamespaceScope common-service -n $OPERATOR_NS 2>/dev/null) != "" ]];then
-        title "NamespaceScope CR is already deployed in $OPERATOR_NS"
+        info "NamespaceScope CR is already deployed in $OPERATOR_NS\n"
     else
-        title "Creating the NamespaceScope object"
+        info "Creating the NamespaceScope object:\n"
     fi
-    local object=$(
-    cat <<EOF
+
+    cat <<EOF > ${PREVIEW_DIR}/namespacescope.yaml
 apiVersion: operator.ibm.com/v1
 kind: NamespaceScope
 metadata:
@@ -436,17 +477,24 @@ spec:
   restartLabels:
     intent: projected
 EOF
-    )
-    echo
-    echo "$object"
-    echo "$object" | ${OC} apply -f -
+
+    cat ${PREVIEW_DIR}/namespacescope.yaml
+    echo ""
+    cat "${PREVIEW_DIR}/namespacescope.yaml" | ${OC_CMD} apply -f -
 }
 
 function configure_cs_kind() {
     local retries=5
     local delay=30
-    local object=$(
-        cat <<EOF
+
+    title "Configuring CommonService CR in $OPERATOR_NS..."
+    if [[ $($OC get CommonService common-service -n $OPERATOR_NS 2>/dev/null) != "" ]];then
+        info "CommonService CR is already deployed in $OPERATOR_NS\n"
+    else
+        info "Creating the CommonService object:\n"
+    fi
+
+    cat <<EOF > ${PREVIEW_DIR}/commonservice.yaml
 apiVersion: operator.ibm.com/v3
 kind: CommonService
 metadata:
@@ -457,28 +505,27 @@ spec:
   servicesNamespace: $SERVICES_NS
   size: $SIZE_PROFILE
 EOF
-    )
 
-    echo
-    info "Configuring the CommonService object"
-    echo "$object"
+    cat ${PREVIEW_DIR}/commonservice.yaml
+    echo ""
+
     while [ $retries -gt 0 ]; do
         
-        echo "$object" | ${OC} apply -f -
+        cat "${PREVIEW_DIR}/commonservice.yaml" | ${OC_CMD} apply -f -
     
         # Check if the patch was successful
         if [[ $? -eq 0 ]]; then
-            success "Successfully patched CommonService CR in ${OPERATOR_NS}"
+            success "Successfully patched CommonService CR in ${OPERATOR_NS}\n"
             break
         else
-            warning "Failed to patch CommonService CR in ${OPERATOR_NS}, retry it in ${delay} seconds"
+            warning "Failed to patch CommonService CR in ${OPERATOR_NS}, retry it in ${delay} seconds..."
             sleep ${delay}
             retries=$((retries-1))
         fi
     done
 
     if [ $retries -eq 0 ] && [ $RETRY_CONFIG_CSCR -eq 1 ]; then
-        error "Fail to patch CommonService CR in ${OPERATOR_NS}"
+        error "Fail to patch CommonService CR in ${OPERATOR_NS}\n"
     fi
 
     if [ $retries -eq 0 ] && [ $RETRY_CONFIG_CSCR -eq 0 ]; then

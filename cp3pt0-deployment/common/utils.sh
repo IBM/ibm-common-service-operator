@@ -8,7 +8,7 @@
 # This is an internal component, bundled with an official IBM product. 
 # Please refer to that particular license for additional information. 
 
-# ---------- Info functions ----------
+# ---------- Info functions ----------#
 
 function msg() {
     printf '%b\n' "$1"
@@ -39,8 +39,7 @@ function debug() {
     msg "\33[33m[DEBUG] ${1}\33[0m"
 }
 
-
-# ---------- Check functions ----------
+# ---------- Check functions start ----------#
 
 function check_command() {
     local command=$1
@@ -129,7 +128,6 @@ function wait_for_condition() {
         success "${success_message}\n"
     fi
 }
-
 
 function wait_for_not_condition() {
     local condition=$1
@@ -298,7 +296,7 @@ function wait_for_nss_patch() {
     done
 
     if [[ ! -z "${success_message}" ]]; then
-        success "${success_message}"
+        success "${success_message}\n"
     fi
     
     # wait for deployment to be ready
@@ -389,40 +387,55 @@ function is_sub_exist() {
 function check_cert_manager(){
     local service_name=$1    
     local namespace=$2
-    title " Checking whether Cert Manager exist...\n" 
-    csv_count=`$OC get csv -n "$namespace" | grep "$service_name" | wc -l`
-    if [[ $csv_count == 0 ]]; then
-        error "Missing a cert-manager"
+    title " Checking whether Cert Manager exist..." 
+    if [ $PREVIEW_MODE -eq 1 ]; then
+        info "Preview mode is on, skip checking whether Cert Manager exist\n"
+        return 0       
     fi
-    if [[ $csv_count > 1 ]]; then
-        error "Multiple cert-manager csv found. Only one should be installed per cluster"
+    csv_count=`$OC get csv -n "$namespace" | grep "$service_name" | wc -l`
+    if [[ $csv_count == 1 ]]; then
+        success "Found only one Cert Manager exists in namespace "$namespace"\n"
+    elif [[ $csv_count == 0 ]]; then
+        error "Missing a Cert Manager\n"
+    elif [[ $csv_count > 1 ]]; then
+        error "Multiple Cert Manager csv found. Only one should be installed per cluster\n"
     fi
 }
 
 function check_licensing(){
-    title " Checking IBMLicensing...\n"
+    title " Checking IBMLicensing..."
+    if [ $PREVIEW_MODE -eq 1 ]; then
+        info "Preview mode is on, skip checking IBMLicensing\n"
+        return 0
+    fi
     [[ ! $($OC get IBMLicensing) ]] && error "User does not have proper permission to get IBMLicensing or IBMLicensing is not installed"
     instance_count=`$OC get IBMLicensing -o name | wc -l`
-    if [[ $instance_count == 0 ]]; then
-        error "Missing IBMLicensing"
-    fi
-    if [[ $instance_count > 1 ]]; then
-        error "Multiple IBMLicensing are found. Only one should be installed per cluster"
+    if [[ $instance_count == 1 ]]; then
+        success "Found only one IBMLicensing\n"
+    elif [[ $instance_count == 0 ]]; then
+        error "Missing IBMLicensing\n"
+    elif [[ $instance_count > 1 ]]; then
+        error "Multiple IBMLicensing are found. Only one should be installed per cluster\n"
     fi
 }
-# ---------- creation functions ----------
+# ---------- Check functions end ----------#
+
+# ---------- creation functions start ----------#
 
 function create_namespace() {
     local namespace=$1
+    title "Checking whether Namespace $namespace exist..."
     if [[ -z "$(${OC} get namespace ${namespace} --ignore-not-found)" ]]; then
-        title "Creating namespace ${namespace}"
-        ${OC} create namespace ${namespace}
+        info "Creating namespace ${namespace}"
+        ${OC_CMD} create namespace ${namespace}
         if [[ $? -ne 0 ]]; then
             error "Error creating namespace ${namespace}"
         fi
-        wait_for_project ${namespace}
+        if [ $PREVIEW_MODE -eq 0 ]; then
+            wait_for_project ${namespace}
+        fi
     else
-        info "Namespace ${namespace} already exists. Skip creating"
+        success "Namespace ${namespace} already exists. Skip creating\n"
     fi
 }
 
@@ -430,8 +443,7 @@ function create_operator_group() {
     local name=$1
     local ns=$2
     local target=$3
-    local og=$(
-        cat <<EOF
+    cat <<EOF > ${PREVIEW_DIR}/operatorgroup.yaml
 apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
 metadata:
@@ -439,20 +451,19 @@ metadata:
   namespace: $ns
 spec: $target
 EOF
-    )
 
-    info "Checking existing OperatorGroup in $ns:\n"
+    title "Checking whether OperatorGroup in $ns exist..."
     existing_og=$(${OC} get operatorgroup -n $ns --no-headers --ignore-not-found | wc -l)
     if [[ ${existing_og} -ne 0 ]]; then
-        info "OperatorGroup already exists in $ns. Skip creating"
+        success "OperatorGroup already exists in $ns. Skip creating\n"
         return 0
     fi
-    echo
     info "Creating following OperatorGroup:\n"
-    echo "$og"
-    echo "$og" | ${OC} apply -f -
+    cat ${PREVIEW_DIR}/operatorgroup.yaml
+    echo ""
+    cat "${PREVIEW_DIR}/operatorgroup.yaml" | ${OC_CMD} apply -f -
     if [[ $? -ne 0 ]]; then
-        error "Failed to create OperatorGroup ${name} in ${ns}"
+        error "Failed to create OperatorGroup ${name} in ${ns}\n"
     fi
 }
 
@@ -464,8 +475,7 @@ function create_subscription() {
     local source=$5
     local source_ns=$6
     local install_mode=$7
-    local sub=$(
-        cat <<EOF
+    cat <<EOF > ${PREVIEW_DIR}/${name}-subscription.yaml
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
@@ -478,14 +488,13 @@ spec:
   source: $source
   sourceNamespace: $source_ns
 EOF
-    )
-    
-    echo
+
     info "Creating following Subscription:\n"
-    echo "$sub"
-    echo "$sub" | ${OC} apply -f -
+    cat ${PREVIEW_DIR}/${name}-subscription.yaml
+    echo ""
+    cat ${PREVIEW_DIR}/${name}-subscription.yaml | ${OC_CMD} apply -f -
     if [[ $? -ne 0 ]]; then
-        error "Failed to create subscription ${name} in ${ns}"
+        error "Failed to create subscription ${name} in ${ns}\n"
     fi
 }
 
@@ -553,8 +562,10 @@ EOF
         error "Failed to create NSS CR in ${OPERATOR_NS}"
     fi
 }
+# ---------- creation functions end----------#
 
-# ---------- cleanup functions ----------
+# ---------- cleanup functions start----------#
+
 function cleanup_cp2() {
     local operator_ns=$1
     local control_ns=$2
@@ -664,6 +675,7 @@ function cleanup_deployment() {
 
     wait_for_no_pod ${namespace} ${name}
 }
+# ---------- cleanup functions end ----------#
 
 function get_control_namespace() {
     # Define the ConfigMap name and namespace
@@ -977,11 +989,16 @@ function accept_license() {
     local kind=$1
     local namespace=$2
     local cr_name=$3
+    title "Accepting license for $kind $cr_name in namespace $namespace..."
+    if [ $PREVIEW_MODE -eq 1 ]; then
+        info "Preview mode is on, skip patching license acceptance\n"
+        return 0       
+    fi
     ${OC} patch "$kind" "$cr_name" -n "$namespace" --type='merge' -p '{"spec":{"license":{"accept":true}}}' || export fail="true"
     if [[ $fail == "true" ]]; then
-        warning "Failed to update license acceptance for $kind CR $cr_name"
+        warning "Failed to update license acceptance for $kind CR $cr_name\n"
     else
-        info "License accepted for $kind $cr_name."
+        success "License accepted for $kind $cr_name\n"
     fi
 }
 
