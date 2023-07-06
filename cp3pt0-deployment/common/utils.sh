@@ -388,7 +388,7 @@ function check_cert_manager(){
     local service_name=$1    
     local namespace=$2
     title " Checking whether Cert Manager exist..." 
-    if [ $PREVIEW_MODE -eq 1 ]; then
+    if [[ $PREVIEW_MODE -eq 1 ]]; then
         info "Preview mode is on, skip checking whether Cert Manager exist\n"
         return 0       
     fi
@@ -404,7 +404,7 @@ function check_cert_manager(){
 
 function check_licensing(){
     title " Checking IBMLicensing..."
-    if [ $PREVIEW_MODE -eq 1 ]; then
+    if [[ $PREVIEW_MODE -eq 1 ]]; then
         info "Preview mode is on, skip checking IBMLicensing\n"
         return 0
     fi
@@ -431,7 +431,7 @@ function create_namespace() {
         if [[ $? -ne 0 ]]; then
             error "Error creating namespace ${namespace}"
         fi
-        if [ $PREVIEW_MODE -eq 0 ]; then
+        if [[ $PREVIEW_MODE -eq 0 ]]; then
             wait_for_project ${namespace}
         fi
     else
@@ -991,7 +991,7 @@ function accept_license() {
     local namespace=$2
     local cr_name=$3
     title "Accepting license for $kind $cr_name in namespace $namespace..."
-    if [ $PREVIEW_MODE -eq 1 ]; then
+    if [[ $PREVIEW_MODE -eq 1 ]]; then
         info "Preview mode is on, skip patching license acceptance\n"
         return 0       
     fi
