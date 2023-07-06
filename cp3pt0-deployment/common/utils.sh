@@ -427,7 +427,7 @@ function create_namespace() {
     title "Checking whether Namespace $namespace exist..."
     if [[ -z "$(${OC} get namespace ${namespace} --ignore-not-found)" ]]; then
         info "Creating namespace ${namespace}"
-        ${OC_CMD} create namespace ${namespace}
+        ${OC} create namespace ${namespace}
         if [[ $? -ne 0 ]]; then
             error "Error creating namespace ${namespace}"
         fi
@@ -461,7 +461,7 @@ EOF
     info "Creating following OperatorGroup:\n"
     cat ${PREVIEW_DIR}/operatorgroup.yaml
     echo ""
-    cat "${PREVIEW_DIR}/operatorgroup.yaml" | ${OC_CMD} apply -f -
+    cat "${PREVIEW_DIR}/operatorgroup.yaml" | ${OC} apply -f -
     if [[ $? -ne 0 ]]; then
         error "Failed to create OperatorGroup ${name} in ${ns}\n"
     fi
@@ -492,7 +492,7 @@ EOF
     info "Creating following Subscription:\n"
     cat ${PREVIEW_DIR}/${name}-subscription.yaml
     echo ""
-    cat ${PREVIEW_DIR}/${name}-subscription.yaml | ${OC_CMD} apply -f -
+    cat ${PREVIEW_DIR}/${name}-subscription.yaml | ${OC} apply -f -
     if [[ $? -ne 0 ]]; then
         error "Failed to create subscription ${name} in ${ns}\n"
     fi
