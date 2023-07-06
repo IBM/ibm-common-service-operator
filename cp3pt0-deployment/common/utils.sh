@@ -388,7 +388,7 @@ function check_cert_manager(){
     local service_name=$1    
     local namespace=$2
     title " Checking whether Cert Manager exist..." 
-    if [ $PREVIEW_MODE -eq 1 ]; then
+    if [[ $PREVIEW_MODE -eq 1 ]]; then
         info "Preview mode is on, skip checking whether Cert Manager exist\n"
         return 0       
     fi
@@ -404,7 +404,7 @@ function check_cert_manager(){
 
 function check_licensing(){
     title " Checking IBMLicensing..."
-    if [ $PREVIEW_MODE -eq 1 ]; then
+    if [[ $PREVIEW_MODE -eq 1 ]]; then
         info "Preview mode is on, skip checking IBMLicensing\n"
         return 0
     fi
@@ -427,11 +427,11 @@ function create_namespace() {
     title "Checking whether Namespace $namespace exist..."
     if [[ -z "$(${OC} get namespace ${namespace} --ignore-not-found)" ]]; then
         info "Creating namespace ${namespace}"
-        ${OC_CMD} create namespace ${namespace}
+        ${OC} create namespace ${namespace}
         if [[ $? -ne 0 ]]; then
             error "Error creating namespace ${namespace}"
         fi
-        if [ $PREVIEW_MODE -eq 0 ]; then
+        if [[ $PREVIEW_MODE -eq 0 ]]; then
             wait_for_project ${namespace}
         fi
     else
@@ -461,7 +461,7 @@ EOF
     info "Creating following OperatorGroup:\n"
     cat ${PREVIEW_DIR}/operatorgroup.yaml
     echo ""
-    cat "${PREVIEW_DIR}/operatorgroup.yaml" | ${OC_CMD} apply -f -
+    cat "${PREVIEW_DIR}/operatorgroup.yaml" | ${OC} apply -f -
     if [[ $? -ne 0 ]]; then
         error "Failed to create OperatorGroup ${name} in ${ns}\n"
     fi
@@ -492,7 +492,7 @@ EOF
     info "Creating following Subscription:\n"
     cat ${PREVIEW_DIR}/${name}-subscription.yaml
     echo ""
-    cat ${PREVIEW_DIR}/${name}-subscription.yaml | ${OC_CMD} apply -f -
+    cat ${PREVIEW_DIR}/${name}-subscription.yaml | ${OC} apply -f -
     if [[ $? -ne 0 ]]; then
         error "Failed to create subscription ${name} in ${ns}\n"
     fi
@@ -991,7 +991,7 @@ function accept_license() {
     local namespace=$2
     local cr_name=$3
     title "Accepting license for $kind $cr_name in namespace $namespace..."
-    if [ $PREVIEW_MODE -eq 1 ]; then
+    if [[ $PREVIEW_MODE -eq 1 ]]; then
         info "Preview mode is on, skip patching license acceptance\n"
         return 0       
     fi
