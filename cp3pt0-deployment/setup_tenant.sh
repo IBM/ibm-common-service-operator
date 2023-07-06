@@ -12,7 +12,7 @@
 
 OC=oc
 ENABLE_LICENSING=0
-CHANNEL="v4.0"
+CHANNEL="v4.1"
 SOURCE="opencloud-operators"
 SOURCE_NS="openshift-marketplace"
 OPERATOR_NS=""
@@ -273,6 +273,10 @@ function install_nss() {
     is_sub_exist "ibm-namespace-scope-operator" "$OPERATOR_NS"
     if [ $? -eq 0 ]; then
         warning "There is an ibm-namespace-scope-operator subscription already deployed\n"
+        if [ $PREVIEW_MODE -eq 0 ]; then
+            update_operator "ibm-namespace-scope-operator" "$OPERATOR_NS" $CHANNEL $SOURCE $SOURCE_NS $INSTALL_MODE
+            wait_for_operator_upgrade $OPERATOR_NS "ibm-namespace-scope-operator" $CHANNEL $INSTALL_MODE
+        fi
     else
         create_subscription "ibm-namespace-scope-operator" "$OPERATOR_NS" "$CHANNEL" "ibm-namespace-scope-operator" "${SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
     fi
@@ -420,7 +424,7 @@ function setup_nss() {
 function install_cs_operator() {
     title "Installing IBM Foundational services operator into operator namespace ${OPERATOR_NS}..."
 
-    title "checking if CommonService CRD exists in the cluster..."
+    title "Checking if CommonService CRD exists in the cluster..."
     local is_CS_CRD_exist=$(($OC get commonservice -n "$OPERATOR_NS" --ignore-not-found > /dev/null && echo exists) || echo fail)
 
     if [ "$is_CS_CRD_exist" == "exists" ]; then
@@ -434,9 +438,12 @@ function install_cs_operator() {
     is_sub_exist "ibm-common-service-operator" "$OPERATOR_NS"
     if [ $? -eq 0 ]; then
         info "There is an ibm-common-service-operator Subscription already\n"
+        if [ $PREVIEW_MODE -eq 0 ]; then
+            update_operator "ibm-common-service-operator" "$OPERATOR_NS" $CHANNEL $SOURCE $SOURCE_NS $INSTALL_MODE
+            wait_for_operator_upgrade $OPERATOR_NS "ibm-common-service-operator" $CHANNEL $INSTALL_MODE
+        fi
     else
         create_subscription "ibm-common-service-operator" "$OPERATOR_NS" "$CHANNEL" "ibm-common-service-operator" "${SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
-        # sleep 120
     fi
 
     if [ $PREVIEW_MODE -eq 0 ]; then
