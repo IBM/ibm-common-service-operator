@@ -785,6 +785,7 @@ function update_operator() {
         return 0
     fi
 
+    title "Updating ${sub_name} in namesapce ${ns}..."
     while [ $retries -gt 0 ]; do
         # Retrieve the latest version of the subscription
         ${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml > sub.yaml
