@@ -164,7 +164,7 @@ function print_usage() {
 }
 
 function is_migrate_cert_manager() {
-    title "Migrating and deactivating LTSR ibm-cert-manager-operator"
+    title "Check migrating and deactivating LTSR ibm-cert-manager-operator"
     local webhook_ns=$("$OC" get deployments -A | grep cert-manager-webhook | cut -d ' ' -f1)
     if [ -z "$webhook_ns" ]; then
         info "No cert-manager-webhook found, skipping migration"
@@ -176,6 +176,7 @@ function is_migrate_cert_manager() {
         return 0
     fi
     MIGRATE_SINGLETON=1
+    get_and_validate_arguments
 }
 
 function is_migrate_licensing() {
@@ -183,7 +184,7 @@ function is_migrate_licensing() {
         return
     fi
 
-    title "Migrating LTSR ibm-licensing-operator"
+    title "Check migrating LTSR ibm-licensing-operator"
     
     local version=$("$OC" get ibmlicensing instance -o jsonpath='{.spec.version}')
     if [ -z "$version" ]; then
@@ -227,8 +228,7 @@ function install_cert_manager() {
     local webhook_ns=$("$OC" get deployments -A | grep cert-manager-webhook | cut -d ' ' -f1)
     if [ ! -z "$webhook_ns" ]; then
         warning "There is a cert-manager-webhook pod Running, so most likely another cert-manager is already installed\n"
-        # TODO: for 4.1, do not return, but continue and upgrade (needs more testing before implementation)
-        return 0
+        info "Continue to upgrade check\n"
     elif [ $SKIP_INSTALL -eq 1 ]; then
         error "There is no cert-manager-webhook pod running\n"
     fi
@@ -240,13 +240,15 @@ function install_cert_manager() {
     local api_version=$("$OC" get deployments -n "$webhook_ns" cert-manager-webhook -o jsonpath='{.metadata.ownerReferences[*].apiVersion}')
     if [ ! -z "$api_version" ]; then
         if [ "$api_version" == "$CERT_MANAGER_V1ALPHA1_OWNER" ]; then
-        error "Cluster has not deactivated LTSR ibm-cert-manager-operator yet, please re-run this script"
+            error "Cluster has not deactivated LTSR ibm-cert-manager-operator yet, please re-run this script"
         fi
 
         if [ "$api_version" != "$CERT_MANAGER_V1_OWNER" ]; then
             warning "Cluster has a non ibm-cert-manager-operator already installed, skipping"
             return 0
         fi
+        
+        info "Upgrading ibm-cert-manager-operator to channel: $CHANNEL\n"
     fi
     
     create_namespace "${CERT_MANAGER_NAMESPACE}"

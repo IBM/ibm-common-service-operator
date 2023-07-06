@@ -35,13 +35,6 @@ STEP=0
 . ${BASE_DIR}/utils.sh
 
 function main() {
-
-    # delegate certmanager cr if control namespace exists
-    # delete certmanager operator if control namespace does not exist
-    # if enable licensing and licensing operator is in operator ns
-    #   migrate licensing to LICENSING_NS
-    #   delete operator
-
     parse_arguments "$@"
     pre_req
 
@@ -186,10 +179,6 @@ function print_usage() {
 }
 
 function pre_req() {
-    if [ "$OPERATOR_NS" == "" ]; then
-        error "Must provide operator namespace"
-    fi
-
     if [ "$CONTROL_NS" == "" ]; then
         CONTROL_NS=$OPERATOR_NS
     fi    
