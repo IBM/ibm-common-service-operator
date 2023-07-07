@@ -16,7 +16,7 @@ ENABLE_PRIVATE_CATALOG=0
 MIGRATE_SINGLETON=0
 OPERATOR_NS=""
 CONTROL_NS=""
-CHANNEL="v4.0"
+CHANNEL="v4.1"
 SOURCE_NS="openshift-marketplace"
 INSTALL_MODE="Automatic"
 CERT_MANAGER_SOURCE="ibm-cert-manager-catalog"
@@ -29,6 +29,8 @@ DEBUG=0
 CUSTOMIZED_LICENSING_NAMESPACE=0
 SKIP_INSTALL=0
 CHECK_LICENSING_ONLY=0
+CERT_MANAGER_V1_OWNER="operator.ibm.com/v1"
+CERT_MANAGER_V1ALPHA1_OWNER="operator.ibm.com/v1alpha1"
 
 # ---------- Command variables ----------
 
@@ -50,12 +52,15 @@ function main() {
     save_log "logs" "setup_singleton_log" "$DEBUG"
     trap cleanup_log EXIT
     pre_req
+
+    is_migrate_licensing
+    is_migrate_cert_manager
+
     if [ $MIGRATE_SINGLETON -eq 1 ]; then
-        info "Found parameter '--operator-namespace', migrating singleton services"
         if [ $ENABLE_LICENSING -eq 1 ]; then
-            ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" "--enable-licensing"
+            ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" --control-namespace "$CONTROL_NS" "--enable-licensing" --licensing-namespace "$LICENSING_NAMESPACE"
         else
-            ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" 
+            ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" --control-namespace "$CONTROL_NS"
         fi
     fi
 
@@ -158,6 +163,57 @@ function print_usage() {
     echo ""
 }
 
+function is_migrate_cert_manager() {
+    title "Check migrating and deactivating LTSR ibm-cert-manager-operator"
+    local webhook_ns=$("$OC" get deployments -A | grep cert-manager-webhook | cut -d ' ' -f1)
+    if [ -z "$webhook_ns" ]; then
+        info "No cert-manager-webhook found, skipping migration"
+        return 0
+    fi
+    local api_version=$("$OC" get deployments -n "$webhook_ns" cert-manager-webhook -o jsonpath='{.metadata.ownerReferences[*].apiVersion}')
+    if [ "$api_version" != "$CERT_MANAGER_V1ALPHA1_OWNER" ]; then
+        info "LTSR ibm-cert-manager-operator already deactivated, skipping"
+        return 0
+    fi
+    MIGRATE_SINGLETON=1
+    get_and_validate_arguments
+}
+
+function is_migrate_licensing() {
+    if [ $ENABLE_LICENSING -ne 1 ] && [ $CHECK_LICENSING_ONLY -ne 1 ]; then
+        return
+    fi
+
+    title "Check migrating LTSR ibm-licensing-operator"
+    
+    local version=$("$OC" get ibmlicensing instance -o jsonpath='{.spec.version}')
+    if [ -z "$version" ]; then
+        warning "No version field in ibmlicensing CR, skipping"
+        return 0
+    fi
+    local major=$(echo "$version" | cut -d '.' -f1)
+    if [ "$major" -ge 4 ]; then
+        info "There is no LTSR ibm-licensing-operator to migrate, skipping"
+        return 0
+    fi
+
+    local ns=$("$OC" get deployments -A | grep ibm-licensing-operator | cut -d ' ' -f1)
+    if [ -z "$ns" ]; then
+        info "No LTSR ibm-licensing-operator to migrate, skipping"
+        return 0
+    fi
+
+    get_and_validate_arguments
+    if [ ! -z "$CONTROL_NS" ]; then
+        if [[ "$CUSTOMIZED_LICENSING_NAMESPACE" -eq 1 ]] && [[ "$CONTROL_NS" != "$LICENSING_NAMESPACE" ]]; then
+            error "Licensing Migration could only be done in $CONTROL_NS, please do not set parameter '-licensingNs $LICENSING_NAMESPACE'"
+        fi
+        LICENSING_NAMESPACE="$CONTROL_NS"
+    fi
+
+    MIGRATE_SINGLETON=1
+}
+
 function install_cert_manager() {
     if [ $CHECK_LICENSING_ONLY -eq 1 ]; then
         return
@@ -169,10 +225,10 @@ function install_cert_manager() {
         warning "There is a cert-manager Subscription already\n"
     fi
 
-    pods_exist=$(${OC} get pods -A | grep -w cert-manager-webhook)
-    if [ $? -eq 0 ]; then
+    local webhook_ns=$("$OC" get deployments -A | grep cert-manager-webhook | cut -d ' ' -f1)
+    if [ ! -z "$webhook_ns" ]; then
         warning "There is a cert-manager-webhook pod Running, so most likely another cert-manager is already installed\n"
-        return 0
+        info "Continue to upgrade check\n"
     elif [ $SKIP_INSTALL -eq 1 ]; then
         error "There is no cert-manager-webhook pod running\n"
     fi
@@ -181,9 +237,28 @@ function install_cert_manager() {
         SOURCE_NS="${CERT_MANAGER_NAMESPACE}"
     fi
 
+    local api_version=$("$OC" get deployments -n "$webhook_ns" cert-manager-webhook -o jsonpath='{.metadata.ownerReferences[*].apiVersion}')
+    if [ ! -z "$api_version" ]; then
+        if [ "$api_version" == "$CERT_MANAGER_V1ALPHA1_OWNER" ]; then
+            error "Cluster has not deactivated LTSR ibm-cert-manager-operator yet, please re-run this script"
+        fi
+
+        if [ "$api_version" != "$CERT_MANAGER_V1_OWNER" ]; then
+            warning "Cluster has a non ibm-cert-manager-operator already installed, skipping"
+            return 0
+        fi
+        
+        info "Upgrading ibm-cert-manager-operator to channel: $CHANNEL\n"
+    fi
+    
     create_namespace "${CERT_MANAGER_NAMESPACE}"
     create_operator_group "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" "{}"
-    create_subscription "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" "$CHANNEL" "ibm-cert-manager-operator" "${CERT_MANAGER_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
+    is_sub_exist "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" # this will catch the packagenames of all cert-manager-operators
+    if [ $? -eq 0 ]; then
+        update_operator "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" "$CHANNEL" "${CERT_MANAGER_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
+    else
+        create_subscription "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" "$CHANNEL" "ibm-cert-manager-operator" "${CERT_MANAGER_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
+    fi
     wait_for_operator "${CERT_MANAGER_NAMESPACE}" "ibm-cert-manager-operator"
     accept_license "certmanagerconfig.operator.ibm.com" "" "default"
 }
@@ -196,14 +271,20 @@ function install_licensing() {
     title "Installing licensing\n"
     is_sub_exist "ibm-licensing-operator-app" # this will catch the packagenames of all ibm-licensing-operator-app
     if [ $? -eq 0 ]; then
-        warning "There is an ibm-licensing-operator-app Subscription already\n"
-        return 0
+        warning "There is an ibm-licensing-operator-app Subscription already, so will upgrade it\n"
     elif [ $SKIP_INSTALL -eq 1 ]; then
         error "There is no ibm-licensing-operator-app Subscription installed\n"
     fi
 
     if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
         SOURCE_NS="${LICENSING_NAMESPACE}"
+    fi
+
+    local ns=$("$OC" get deployments -A | grep ibm-licensing-operator | cut -d ' ' -f1)
+    if [ ! -z "$ns" ]; then
+        if [ "$ns" != "$LICENSING_NAMESPACE" ]; then
+            error "An ibm-licensing-operator already installed in namespace: $ns, expected namespace is: $LICENSING_NAMESPACE"
+        fi
     fi
 
     create_namespace "${LICENSING_NAMESPACE}"
@@ -215,7 +296,12 @@ function install_licensing() {
 EOF
 )
     create_operator_group "ibm-licensing-operator-app" "${LICENSING_NAMESPACE}" "$target"
-    create_subscription "ibm-licensing-operator-app" "${LICENSING_NAMESPACE}" "$CHANNEL" "ibm-licensing-operator-app" "${LICENSING_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
+    is_sub_exist "ibm-licensing-operator-app" # this will catch the packagenames of all ibm-licensing-operator-app
+    if [ $? -eq 0 ]; then
+        update_operator "ibm-licensing-operator-app" "${LICENSING_NAMESPACE}" "$CHANNEL" "${LICENSING_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
+    else
+        create_subscription "ibm-licensing-operator-app" "${LICENSING_NAMESPACE}" "$CHANNEL" "ibm-licensing-operator-app" "${LICENSING_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
+    fi
     wait_for_operator "${LICENSING_NAMESPACE}" "ibm-licensing-operator"
     wait_for_license_instance
     accept_license "ibmlicensing" "" "instance"
@@ -269,18 +355,13 @@ function pre_req() {
         error "Channel is not semantic vx.y"
     fi
 
-    if [ "$OPERATOR_NS" == "" ]; then
-        MIGRATE_SINGLETON=0
-    else
-        MIGRATE_SINGLETON=1
-        get_and_validate_arguments
-        if [[ "$ENABLE_LICENSING" == 1 ]];then
-            if [[ "$CUSTOMIZED_LICENSING_NAMESPACE" -eq 1 ]] && [[ "$CONTROL_NS" != "$LICENSING_NAMESPACE" ]] && [[ "$CONTROL_NS" != "" ]]; then
-                error "Licensing Migration could only be done in $CONTROL_NS, please do not set parameter '-licensingNs $LICENSING_NAMESPACE'"
-            elif [[ "$CONTROL_NS" != "" ]]; then
-                LICENSING_NAMESPACE="${CONTROL_NS}"
-            fi
-        fi
+    # Check if all CS installations are above 3.19.9
+    local csvs=$("$OC" get csv -A | grep ibm-common-service-operator | awk '{print $2}' | sort -V)
+    local version=$(echo "$csvs" | head -n 1 | cut -d '.' -f2-)
+    is_supports_delegation "$version"
+
+    if [ -z "$OPERATOR_NS" ]; then
+        OPERATOR_NS=$("$OC" project --short)
     fi
 }
 
@@ -289,4 +370,4 @@ function get_and_validate_arguments() {
     get_control_namespace
 }
 
-main $*
+main "$@"

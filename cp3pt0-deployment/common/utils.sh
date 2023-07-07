@@ -1078,3 +1078,41 @@ function debug1() {
        debug "${1}"
     fi
 }
+
+# check if version of CS supports delegation for ibm-cert-manager-operator
+# >= v3.19.9 if in v3 channel
+# or >= v3.21.0 in any other channel
+function is_supports_delegation() {
+    local version=$1
+    major=$(echo "$version" | cut -d '.' -f1 | cut -d 'v' -f2)
+    minor=$(echo "$version" | cut -d '.' -f2)
+    patch=$(echo "$version" | cut -d '.' -f3)
+
+    if [ -z "$version" ]; then
+        info "No ibm-common-service-operator found on the cluster, skipping delegation check"
+        return 0
+    fi
+
+    if [ "$major" -gt 3 ]; then
+        info "Major version is greater than 3, skipping delegation check"
+        return 0
+    fi
+
+    if [ "$major" -lt 3 ]; then
+        return 1
+    fi
+
+    if [ "$minor" -lt 19 ]; then
+        return 1
+    fi
+
+    # only LTSR starting from 3.19.9 supported delegation
+    if [ "$minor" -eq 19 ]; then
+        if [ "$patch" -lt 9 ]; then
+            return 1
+        fi
+    fi
+
+    echo "Version: $version supports cert-manager delegation"
+}
+
