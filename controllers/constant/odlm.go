@@ -50,7 +50,7 @@ spec:
   operators:
   - name: ibm-im-mongodb-operator-v4.0
     namespace: "{{ .CPFSNs }}"
-    channel: {{ .Channel }}
+    channel: v4.0
     packageName: ibm-mongodb-operator-app
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
@@ -72,7 +72,7 @@ spec:
   operators:
   - name: ibm-im-operator-v4.0
     namespace: "{{ .CPFSNs }}"
-    channel: {{ .Channel }}
+    channel: v4.0
     packageName: ibm-iam-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -95,7 +95,7 @@ spec:
   operators:
   - name: ibm-idp-config-ui-operator-v4.0
     namespace: "{{ .CPFSNs }}"
-    channel: {{ .Channel }}
+    channel: v4.0
     packageName: ibm-commonui-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -118,7 +118,7 @@ spec:
   operators:
   - name: ibm-platformui-operator-v4.0
     namespace: "{{ .CPFSNs }}"
-    channel: {{ .Channel }}
+    channel: v4.0
     packageName: ibm-zen-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
