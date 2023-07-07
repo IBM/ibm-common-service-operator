@@ -644,7 +644,7 @@ function cleanup_OperandBindInfo() {
 
 function cleanup_NamespaceScope() {
     local namespace=$1
-    ${OC} delete namespacescope odlm-scope-managedby-odlm nss-odlm-scope nss-managedby-odlm -n ${namespace} --ignore-not-found
+    ${OC} delete namespacescope odlm-scope-managedby-odlm nss-odlm-scope nss-managedby-odlm common-service -n ${namespace} --ignore-not-found
 }
 
 function cleanup_OperandRequest() {
