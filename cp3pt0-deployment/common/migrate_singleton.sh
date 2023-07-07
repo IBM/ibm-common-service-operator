@@ -38,21 +38,16 @@ function main() {
     parse_arguments "$@"
     pre_req
 
+    # Delete CP2.0 Cert-Manager CR
+    ${OC} delete certmanager.operator.ibm.com default --ignore-not-found --timeout=10s
+    if [ $? -ne 0 ]; then
+        warning "Failed to delete Cert Manager CR, patching its finalizer to null..."
+        ${OC} patch certmanagers.operator.ibm.com default --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+    fi
+
     if [ ! -z "$CONTROL_NS" ]; then
         # Delegation of CP2 Cert Manager
         ${BASE_DIR}/delegate_cp2_cert_manager.sh --control-namespace $CONTROL_NS "--skip-user-vertify"
-
-        # Delete CP2.0 Cert-Manager CR
-        ${OC} delete certmanager.operator.ibm.com default --ignore-not-found --timeout=10s
-        if [ $? -ne 0 ]; then
-            warning "Failed to delete Cert Manager CR, patching its finalizer to null..."
-            ${OC} patch certmanagers.operator.ibm.com default --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
-        fi
-        msg ""
-        
-        wait_for_no_pod ${CONTROL_NS} "cert-manager-cainjector"
-        wait_for_no_pod ${CONTROL_NS} "cert-manager-controller"
-        wait_for_no_pod ${CONTROL_NS} "cert-manager-webhook"
     fi
 
     delete_operator "ibm-cert-manager-operator" "$OPERATOR_NS"
@@ -60,7 +55,7 @@ function main() {
     if [[ $ENABLE_LICENSING -eq 1 ]]; then
 
         is_exists=$("$OC" get deployments ibm-licensing-operator -n "$OPERATOR_NS")
-        if [ ! -z "is_exists" ]; then
+        if [ ! -z "$is_exists" ]; then
             # Migrate Licensing Services Data
             ${BASE_DIR}/migrate_cp2_licensing.sh --control-namespace "$OPERATOR_NS" --target-namespace "$LICENSING_NS" "--skip-user-vertify"
             local is_deleted=$(("${OC}" delete -n "${CONTROL_NS}" --ignore-not-found OperandBindInfo ibm-licensing-bindinfo --timeout=10s > /dev/null && echo "success" ) || echo "fail")
