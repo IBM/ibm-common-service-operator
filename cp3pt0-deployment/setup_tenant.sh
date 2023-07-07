@@ -11,6 +11,7 @@
 # ---------- Command arguments ----------
 
 OC=oc
+YQ=yq
 ENABLE_LICENSING=0
 CHANNEL="v4.1"
 SOURCE="opencloud-operators"
@@ -64,6 +65,10 @@ function parse_arguments() {
         --oc)
             shift
             OC=$1
+            ;;
+        --yq)
+            shift
+            YQ=$1
             ;;
         --enable-licensing)
             ENABLE_LICENSING=1
@@ -136,6 +141,7 @@ function print_usage() {
     echo ""
     echo "Options:"
     echo "   --oc string                    File path to oc CLI. Default uses oc in your PATH"
+    echo "   --yq string                    File path to yq CLI. Default uses yq in your PATH"
     echo "   --enable-licensing             Set this flag to install ibm-licensing-operator"
     echo "   --operator-namespace string    Required. Namespace to install Foundational services operator"
     echo "   --services-namespace           Namespace to install operands of Foundational services, i.e. 'dataplane'. Default is the same as operator-namespace"
@@ -165,6 +171,7 @@ function pre_req() {
     fi
 
     check_command "${OC}"
+    check_command "${YQ}"
 
     # Checking oc command logged in
     user=$($OC whoami 2> /dev/null)

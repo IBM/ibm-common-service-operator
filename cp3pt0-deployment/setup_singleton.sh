@@ -11,6 +11,7 @@
 # ---------- Command arguments ----------
 
 OC=oc
+YQ=yq
 ENABLE_LICENSING=0
 ENABLE_PRIVATE_CATALOG=0
 MIGRATE_SINGLETON=0
@@ -148,6 +149,7 @@ function print_usage() {
     echo ""
     echo "Options:"
     echo "   --oc string                                    File path to oc CLI. Default uses oc in your PATH"
+    echo "   --yq string                                    File path to yq CLI. Default uses yq in your PATH"
     echo "   --operator-namespace string                    Namespace to migrate Cloud Pak 2 Foundational services"
     echo "   --enable-licensing                             Set this flag to install ibm-licensing-operator"
     echo "   --enable-private-catalog                       Set this flag to use namespace scoped CatalogSource. Default is in openshift-marketplace namespace"
@@ -313,6 +315,7 @@ function wait_for_license_instance() {
     local retries=20
     local sleep_time=15
     local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for ibmlicensing ${name} to be present."
     local success_message="ibmlicensing ${name} present"
     local error_message="Timeout after ${total_time_mins} minutes waiting for ibmlicensing ${name} to be present."
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
@@ -325,6 +328,7 @@ function pre_req() {
     fi
 
     check_command "${OC}"
+    check_command "${YQ}"
 
     # Checking oc command logged in
     user=$(oc whoami 2> /dev/null)

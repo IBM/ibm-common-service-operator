@@ -20,7 +20,7 @@ LICENSING_NS=""
 NEW_MAPPING=""
 NEW_TENANT=0
 DEBUG=0
-PREVIEW_MODE=1
+PREVIEW_MODE=0
 
 # ---------- Command variables ----------
 

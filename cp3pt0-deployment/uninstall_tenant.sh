@@ -11,6 +11,7 @@
 # ---------- Command arguments ----------
 
 OC=oc
+YQ=yq
 TENANT_NAMESPACES=""
 FORCE_DELETE=0
 DEBUG=0
@@ -50,6 +51,10 @@ function parse_arguments() {
             shift
             OC=$1
             ;;
+        --yq)
+            shift
+            YQ=$1
+            ;;
         --operator-namespace)
             shift
             OPERATOR_NS=$1
@@ -83,6 +88,7 @@ function print_usage() {
     echo ""
     echo "Options:"
     echo "   --oc string                    File path to oc CLI. Default uses oc in your PATH"
+    echo "   --yq string                    File path to yq CLI. Default uses yq in your PATH"
     echo "   --operator-namespace string    Required. Namespace to uninstall Foundational services operators and the whole tenant."
     echo "   -f                             Enable force delete. It will take much more time if you add this label, we suggest run this script without -f label first"
     echo "   -v, --debug integer            Verbosity of logs. Default is 0. Set to 1 for debug logs"

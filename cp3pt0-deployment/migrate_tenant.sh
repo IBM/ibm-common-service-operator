@@ -27,7 +27,7 @@ ENABLE_PRIVATE_CATALOG=0
 NEW_MAPPING=""
 NEW_TENANT=0
 DEBUG=0
-PREVIEW_MODE=1
+PREVIEW_MODE=0
 LICENSE_ACCEPT=0
 
 # ---------- Command variables ----------
@@ -60,15 +60,25 @@ function main() {
     # Scale down CS, ODLM and delete OperandReigsrty
     # It helps to prevent re-installing licensing and cert-manager services
     scale_down $OPERATOR_NS $SERVICES_NS $CHANNEL $SOURCE
-
+    local arguments=""
     # Migrate singleton services
-    local arguments="--enable-licensing"
-    arguments+=" -licensingNs $CONTROL_NS"
+    if [[ $ENABLE_LICENSING -eq 1 ]]; then
+        arguments+="--enable-licensing"
+        if [[ "$CONTROL_NS" != "$OPERATOR_NS" ]]; then
+            arguments+=" -licensingNs $CONTROL_NS"
+        fi
+    fi
+
 
     if [[ $ENABLE_PRIVATE_CATALOG -eq 1 ]]; then
         arguments+=" --enable-private-catalog"
     fi
-    ${BASE_DIR}/setup_singleton.sh "--operator-namespace" "$OPERATOR_NS" "-c" "$CHANNEL" "--cert-manager-source" "$CERT_MANAGER_SOURCE" "--licensing-source" "$LICENSING_SOURCE" "$arguments" "--license-accept"
+    
+    ${BASE_DIR}/setup_singleton.sh "--operator-namespace" "$OPERATOR_NS" "-c" "$CHANNEL" "--cert-manager-source" "$CERT_MANAGER_SOURCE" "--licensing-source" "$LICENSING_SOURCE" "--license-accept" $arguments
+    if [ $? -ne 0 ]; then
+        error "Failed to migrate singleton services"
+        exit 1
+    fi
 
     # Update CommonService CR with OPERATOR_NS and SERVICES_NS
     # Propogate CommonService CR to every namespace in the tenant
