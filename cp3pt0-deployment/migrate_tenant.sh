@@ -38,6 +38,9 @@ BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 # log file
 LOG_FILE="migrate_tenant_log_$(date +'%Y%m%d%H%M%S').log"
 
+# preview mode directory
+PREVIEW_DIR="/tmp/preview"
+
 # counter to keep track of installation steps
 STEP=0
 
@@ -50,7 +53,8 @@ function main() {
     save_log "logs" "migrate_tenant_log" "$DEBUG"
     trap cleanup_log EXIT
     pre_req
-    
+    prepare_preview_mode
+
     # TODO check Cloud Pak compatibility
 
 

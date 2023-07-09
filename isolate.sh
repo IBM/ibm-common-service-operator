@@ -42,6 +42,9 @@ BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 #log file
 LOG_FILE="isolate_log_$(date +'%Y%m%d%H%M%S').log"
 
+# preview mode directory
+PREVIEW_DIR="/tmp/preview"
+
 # ---------- Main functions ----------
 
 . ${BASE_DIR}/cp3pt0-deployment/common/utils.sh
@@ -83,6 +86,7 @@ function main() {
 
     save_log "cp3pt0-deployment/logs" "isolate_log" "$DEBUG"
     trap cleanup_log EXIT
+    prepare_preview_mode
 
     which "${OC}" || error "Missing oc CLI"
     which "${YQ}" || error "Missing yq"

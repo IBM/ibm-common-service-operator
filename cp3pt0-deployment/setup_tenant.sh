@@ -234,13 +234,6 @@ function pre_req() {
     echo ""
 }
 
-function prepare_preview_mode() {
-    mkdir -p ${PREVIEW_DIR}
-    if [ $PREVIEW_MODE -eq 1 ]; then
-        OC_CMD="oc --dry-run=client" # a redirect to the file is needed too
-    fi
-}
-
 function create_ns_list() {
     for ns in $OPERATOR_NS $SERVICES_NS ${TETHERED_NS//,/ }; do
         create_namespace $ns
