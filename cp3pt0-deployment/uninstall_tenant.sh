@@ -13,6 +13,7 @@
 OC=oc
 YQ=yq
 TENANT_NAMESPACES=""
+OPERATOR_NS_LIST=""
 FORCE_DELETE=0
 DEBUG=0
 
@@ -127,8 +128,10 @@ function set_tenant_namespaces() {
         if [ "$temp_namespace" != "" ]; then
             if [ "$TENANT_NAMESPACES" == "" ]; then
                 TENANT_NAMESPACES=$temp_namespace
+                OPERATOR_NS_LIST=$ns
             else
                 TENANT_NAMESPACES="${TENANT_NAMESPACES},${temp_namespace}"
+                OPERATOR_NS_LIST="${OPERATOR_NS_LIST},${ns}"
             fi
         fi
     done
@@ -201,9 +204,13 @@ function uninstall_nss() {
     title "Uninstall ibm-namespace-scope-operator"
 
     for ns in ${TENANT_NAMESPACES//,/ }; do
-        ${OC} delete --ignore-not-found rolebinding "nss-managed-role-from-$ns"
-        ${OC} delete --ignore-not-found role "nss-managed-role-from-$ns"
         ${OC} delete --ignore-not-found nss -n "$ns" common-service
+        for op_ns in ${OPERATOR_NS_LIST//,/ }; do
+            ${OC} delete --ignore-not-found rolebinding -n "$ns" "nss-managed-role-from-$op_ns"
+            ${OC} delete --ignore-not-found role -n "$ns" "nss-managed-role-from-$op_ns"
+            ${OC} delete --ignore-not-found rolebinding -n "$ns" "nss-runtime-managed-role-from-$op_ns"
+            ${OC} delete --ignore-not-found role -n "$ns" "nss-runtime-managed-role-from-$op_ns"
+        done
 
         sub=$(fetch_sub_from_package ibm-namespace-scope-operator "$ns")
         if [ "$sub" != "" ]; then
