@@ -42,6 +42,9 @@ BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 #log file
 LOG_FILE="isolate_log_$(date +'%Y%m%d%H%M%S').log"
 
+# preview mode directory
+PREVIEW_DIR="/tmp/preview"
+
 # ---------- Main functions ----------
 
 . ${BASE_DIR}/cp3pt0-deployment/common/utils.sh
@@ -83,6 +86,7 @@ function main() {
 
     save_log "cp3pt0-deployment/logs" "isolate_log" "$DEBUG"
     trap cleanup_log EXIT
+    prepare_preview_mode
 
     which "${OC}" || error "Missing oc CLI"
     which "${YQ}" || error "Missing yq"
@@ -307,7 +311,7 @@ function update_tenant() {
 # and namesapces from arguments, to output a unique sorted list of namespaces
 # with excluded namespaces removed
 function gather_csmaps_ns() {
-    local ns_scope=$("${OC}" get cm -n "$MASTER_NS" namespace-scope -o yaml | yq '.data.namespaces')
+    local ns_scope=$("${OC}" get cm -n "$MASTER_NS" namespace-scope -o yaml | "${YQ}" '.data.namespaces')
 
     # excluding namespaces is implemented via duplicate removal with uniq -u,
     # so need to make unique the combined lists of namespaces first to avoid
@@ -555,7 +559,7 @@ function isolate_odlm() {
     fi
     #merge patch overwrites the entire array if you update any values so we need to get any other value specified and make sure it is unchanged
     #loop through all of the values specified in spec.config.env
-    env_range=$(${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml | yq '.spec.config.env[].name')
+    env_range=$(${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml | "${YQ}" '.spec.config.env[].name')
     patch_string=""
     count=0
     for name in $env_range
@@ -564,7 +568,7 @@ function isolate_odlm() {
         if [[ $name == "ISOLATED_MODE" ]]; then
             env_value="true"
         else
-            env_value=$(${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml | yq '.spec.config.env['"${count}"'].value')
+            env_value=$(${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml | "${YQ}" '.spec.config.env['"${count}"'].value')
         fi
         #Add name value pair in json format to the patch string
         if [[ $patch_string == "" ]]; then

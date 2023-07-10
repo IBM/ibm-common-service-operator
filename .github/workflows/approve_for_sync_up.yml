@@ -1,0 +1,36 @@
+name: Sync up branches for scripts
+
+on:
+  pull_request:
+    branches:
+      - scripts-adopter
+    types:
+      - labeled
+      - unlabeled
+      - opened
+      - synchronize
+      - reopened
+
+jobs:
+  push-for-sync-up:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Git
+        run: |
+          git config --global user.name "${{ github.actor }}"
+          git config --global user.email "${{ github.actor }}@users.noreply.github.com"
+
+      - name: Push to scripts-adopter branch
+        if: |
+          contains(github.event.pull_request.labels.*.name, 'ok-to-sync') &&
+          !contains(toJson(github.event.pull_request.labels.*.name), 'do-not-merge') &&
+          github.event.pull_request.head.ref == 'scripts-dev' &&
+          github.event.pull_request.base.ref == 'scripts-adopter'
+        run: |
+          git fetch origin
+          git checkout scripts-dev
+          git push origin scripts-dev:scripts-adopter
