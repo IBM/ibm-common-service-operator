@@ -517,7 +517,7 @@ function update_cscr() {
             ${OC} get commonservice common-service -n "${namespace}" -o yaml | ${YQ} eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
             
         fi  
-        yq eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.namespace = "'${namespace}'"' common-service.yaml | ${OC} apply --overwrite=true -f -
+        ${YQ} eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.namespace = "'${namespace}'"' common-service.yaml | ${OC} apply --overwrite=true -f -
         if [[ $? -ne 0 ]]; then
             error "Failed to apply CommonService CR in ${namespace}"
         fi
@@ -682,14 +682,14 @@ function get_control_namespace() {
     local config_map_name="common-service-maps"
 
     # Get the ConfigMap data
-    config_map_data=$(${OC} get configmap "${config_map_name}" -n kube-public -o yaml | yq '.data[]')
+    config_map_data=$(${OC} get configmap "${config_map_name}" -n kube-public -o yaml | ${YQ} '.data[]')
 
     # Check if the ConfigMap exists
     if [[ -z "${config_map_data}" ]]; then
         warning "Not found common-serivce-maps ConfigMap in kube-public namespace. It is a single shared Common Service instance upgrade"
     else
         # Get the controlNamespace value
-        control_namespace=$(echo "${config_map_data}" | yq -r '.controlNamespace')
+        control_namespace=$(echo "${config_map_data}" | ${YQ} -r '.controlNamespace')
 
         # Check if the controlNamespace key exists
         if [[ "${control_namespace}" == "null" ]] || [[ "${control_namespace}" == "" ]]; then
@@ -790,8 +790,8 @@ function update_operator() {
         # Retrieve the latest version of the subscription
         ${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml > sub.yaml
     
-        existing_channel=$(yq eval '.spec.channel' sub.yaml)
-        existing_catalogsource=$(yq eval '.spec.source' sub.yaml)
+        existing_channel=$(${YQ} eval '.spec.channel' sub.yaml)
+        existing_catalogsource=$(${YQ} eval '.spec.source' sub.yaml)
 
         compare_semantic_version $existing_channel $channel
         return_channel_value=$?
@@ -808,10 +808,10 @@ function update_operator() {
         fi
 
         # Update the subscription with the desired changes
-        yq -i eval 'select(.kind == "Subscription") | .spec += {"channel": "'${channel}'"}' sub.yaml
-        yq -i eval 'select(.kind == "Subscription") | .spec += {"source": "'${source}'"}' sub.yaml
-        yq -i eval 'select(.kind == "Subscription") | .spec += {"sourceNamespace": "'${source_ns}'"}' sub.yaml
-        yq -i eval 'select(.kind == "Subscription") | .spec += {"installPlanApproval": "'${install_mode}'"}' sub.yaml
+        ${YQ} -i eval 'select(.kind == "Subscription") | .spec += {"channel": "'${channel}'"}' sub.yaml
+        ${YQ} -i eval 'select(.kind == "Subscription") | .spec += {"source": "'${source}'"}' sub.yaml
+        ${YQ} -i eval 'select(.kind == "Subscription") | .spec += {"sourceNamespace": "'${source_ns}'"}' sub.yaml
+        ${YQ} -i eval 'select(.kind == "Subscription") | .spec += {"installPlanApproval": "'${install_mode}'"}' sub.yaml
 
         # Apply the patch
         ${OC} apply -f sub.yaml
@@ -905,8 +905,8 @@ function scale_down() {
     
     ${OC} get subscription.operators.coreos.com ${cs_sub} -n ${operator_ns} -o yaml > sub.yaml
 
-    existing_channel=$(yq eval '.spec.channel' sub.yaml)
-    existing_catalogsource=$(yq eval '.spec.source' sub.yaml)
+    existing_channel=$(${YQ} eval '.spec.channel' sub.yaml)
+    existing_catalogsource=$(${YQ} eval '.spec.source' sub.yaml)
     compare_semantic_version $existing_channel $channel
     return_channel_value=$?
 
@@ -1076,5 +1076,49 @@ function cleanup_log() {
 function debug1() {
     if [ $DEBUG -eq 1 ]; then
        debug "${1}"
+    fi
+}
+
+# check if version of CS supports delegation for ibm-cert-manager-operator
+# >= v3.19.9 if in v3 channel
+# or >= v3.21.0 in any other channel
+function is_supports_delegation() {
+    local version=$1
+    major=$(echo "$version" | cut -d '.' -f1 | cut -d 'v' -f2)
+    minor=$(echo "$version" | cut -d '.' -f2)
+    patch=$(echo "$version" | cut -d '.' -f3)
+
+    if [ -z "$version" ]; then
+        info "No ibm-common-service-operator found on the cluster, skipping delegation check"
+        return 0
+    fi
+
+    if [ "$major" -gt 3 ]; then
+        info "Major version is greater than 3, skipping delegation check"
+        return 0
+    fi
+
+    if [ "$major" -lt 3 ]; then
+        return 1
+    fi
+
+    if [ "$minor" -lt 19 ]; then
+        return 1
+    fi
+
+    # only LTSR starting from 3.19.9 supported delegation
+    if [ "$minor" -eq 19 ]; then
+        if [ "$patch" -lt 9 ]; then
+            return 1
+        fi
+    fi
+
+    echo "Version: $version supports cert-manager delegation"
+}
+
+function prepare_preview_mode() {
+    mkdir -p ${PREVIEW_DIR}
+    if [ $PREVIEW_MODE -eq 1 ]; then
+        OC_CMD="oc --dry-run=client" # a redirect to the file is needed too
     fi
 }
