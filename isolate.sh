@@ -141,7 +141,7 @@ isolate.sh --original-cs-ns ibm-common-services --control-ns cs-control --exclud
 # add cloudpak-1 and cloudpak-2 namespace into the existing instance scope in ibm-common-services
 isolate.sh --original-cs-ns ibm-common-services --control-ns cs-control --insert-ns cloudpak-1,cloudpak-2
 
-"Existing instance scope" refers to the existing common services installation and its attached cloud paks.
+"Existing instance scope" refers to the existing common services installation and its attached cloud paks and other workloads.
 
 Options:
     -h, --help                    Display this help and exit
