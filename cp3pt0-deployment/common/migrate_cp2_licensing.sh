@@ -11,10 +11,11 @@
 # ---------- Command arguments ----------
 
 OC=oc
+YQ=yq
 CONTROL_NS=""
 TARGET_NS=ibm-licensing
 DEBUG=0
-PREVIEW_MODE=1
+PREVIEW_MODE=0
 SKIP_USER_VERIFY=0
 
 # ---------- Command variables ----------
@@ -85,6 +86,7 @@ function print_usage() {
     echo ""
     echo "Options:"
     echo "   --oc string                    File path to oc CLI. Default uses oc in your PATH"
+    echo "   --yq string                    File path to yq CLI. Default uses yq in your PATH"
     echo "   --control-namespace string     Required. Source Namespace where Cloud Pak 2.0 Licensing Data is located."
     echo "   --target-namespace string      Target Namespace where Cloud Pak 3.0 Licensing Operator is located. Default is ibm-licensing"
     echo "   -v, --debug integer            Verbosity of logs. Default is 0. Set to 1 for debug logs."
@@ -136,8 +138,8 @@ function migrate_lic_cms() {
         if [ $? -eq 0 ]
         then
             info "Copying Licensing Services ConfigMap $cm from $CONTROL_NS to $TARGET_NS"
-            ${OC} get configmap "${configmap}" -n "${CONTROL_NS}" -o yaml | yq -e '.metadata.namespace = "'${TARGET_NS}'"' > ${configmap}.yaml
-            yq eval 'select(.kind == "ConfigMap") | del(.metadata.resourceVersion) | del(.metadata.uid)' ${configmap}.yaml | ${OC} apply -f -
+            ${OC} get configmap "${configmap}" -n "${CONTROL_NS}" -o yaml | ${YQ} -e '.metadata.namespace = "'${TARGET_NS}'"' > ${configmap}.yaml
+            ${YQ} eval 'select(.kind == "ConfigMap") | del(.metadata.resourceVersion) | del(.metadata.uid)' ${configmap}.yaml | ${OC} apply -f -
 
             if [[ $? -eq 0 ]]; then
                 info "Licensing Services ConfigMap $configmap is copied from $CONTROL_NS to $TARGET_NS"

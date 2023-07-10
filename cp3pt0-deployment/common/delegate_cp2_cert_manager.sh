@@ -14,7 +14,7 @@ OC=oc
 YQ=yq
 CONTROL_NS=""
 DEBUG=0
-PREVIEW_MODE=1
+PREVIEW_MODE=0
 SKIP_USER_VERIFY=0
 
 # ---------- Command variables ----------
@@ -79,6 +79,7 @@ function print_usage() {
     echo ""
     echo "Options:"
     echo "   --oc string                    File path to oc CLI. Default uses oc in your PATH"
+    echo "   --yq string                    File path to yq CLI. Default uses yq in your PATH"
     echo "   --control-namespace string     Required. Namespace to de-activate Cloud Pak 2.0 Cert Manager services."
     echo "   -v, --debug integer            Verbosity of logs. Default is 0. Set to 1 for debug logs."
     echo "   --skip-user-vertify string     Skip checking user logged into oc command"
