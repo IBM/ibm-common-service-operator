@@ -124,27 +124,28 @@ function usage() {
 
 	while read -r ; do echo "${REPLY}" ; done <<-EOF
 Usage: ${script} [OPTION]...
-Isolate and prepare Cloud Pak 2.0 Foundational Services for upgrade
+Isolate and prepare Cloud Pak 2.0 Foundational Services for upgrade to or additional installation of Cloud Pak 3.0 Foundational Services
+See https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.0?topic=4x-isolated-migration for more information.
 
 Examples:
-
-# isolate the existing insance scope in ibm-common-serivces namespace and re-deploy cluster sigleton services in cs-control namespace
-isolated.sh --original-cs-ns ibm-common-services --control-ns cs-control
+# isolate the existing instance scope in ibm-common-serivces namespace and re-deploy cluster sigleton services in cs-control namespace
+isolate.sh --original-cs-ns ibm-common-services --control-ns cs-control
 
 # remove cloudpak-1 and cloudpak-2 namespace from the existing instance scope in ibm-common-services
-isolated.sh --original-cs-ns ibm-common-services --control-ns cs-control --excluded-ns cloudpak-1,cloudpak-2
+isolate.sh --original-cs-ns ibm-common-services --control-ns cs-control --excluded-ns cloudpak-1,cloudpak-2
 
 # add cloudpak-1 and cloudpak-2 namespace into the existing instance scope in ibm-common-services
-isolated.sh --original-cs-ns ibm-common-services --control-ns cs-control --insert-ns cloudpak-1,cloudpak-2
+isolate.sh --original-cs-ns ibm-common-services --control-ns cs-control --insert-ns cloudpak-1,cloudpak-2
+
+"Existing instance scope" refers to the existing common services installation and its attached cloud paks.
 
 Options:
-Mandatory arguments to long options are mandatory for short options too.
-    -h, --help                    display this help and exit
-    --original-cs-ns              specify the namespace the original common services installation resides in
-    --control-ns                  specify the control namespace value in the common-service-maps configmap
-    --excluded-ns                 specify namespaces to be excluded from the instance scope in original-cs-ns. Comma separated no spaces.
-    --insert-ns                   specify namespaces to be inserted into the instance scope in original-cs-ns. Comma separated no spaces.
-    -v, --debug integer           Verbosity of logs. Default is 0. Set to 1 for debug logs.
+    -h, --help                    Display this help and exit
+    --original-cs-ns              Required. Specify the namespace the original common services installation resides in
+    --control-ns                  Required. Specify the control namespace value in the common-service-maps configmap
+    --excluded-ns                 Optional. Specify namespaces to be excluded from the instance scope in original-cs-ns. Comma separated no spaces.
+    --insert-ns                   Optional. Specify namespaces to be inserted into the instance scope in original-cs-ns. Comma separated no spaces.
+    -v, --debug integer           Optional. Verbosity of logs. Default is 0. Set to 1 for debug logs.
 	EOF
 }
 

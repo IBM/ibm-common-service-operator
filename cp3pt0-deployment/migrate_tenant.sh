@@ -192,7 +192,7 @@ function print_usage() {
     script_name=`basename ${0}`
     echo "Usage: ${script_name} --license-accept --operator-namespace <foundational-services-namespace> [OPTIONS]..."
     echo ""
-    echo "Migrate Cloud Pak 2.0 Foundational services to in Cloud Pak 3.0 Foundational services"
+    echo "Migrate Cloud Pak 2.0 Foundational services to Cloud Pak 3.0 Foundational services"
     echo "The --license-accept and --operator-namespace <operator-namespace> must be provided."
     echo ""
     echo "Options:"
