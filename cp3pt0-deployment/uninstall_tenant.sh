@@ -137,13 +137,6 @@ function set_tenant_namespaces() {
         TENANT_NAMESPACES=$OPERATOR_NS
     fi
     info "Tenant namespaces are: $TENANT_NAMESPACES"
-
-    # TODO: have a fallback to populate TENANT_NAMESPACES, so that script
-    # can be run multiple times, i.e. handle case where NSS configmap has been
-    # deleted, but script hits error before namespace cleanup
-    # if [ "$TENANT_NAMESPACES" == "" ]; then
-    #     error "Failed to get tenant namespaces"
-    # fi
 }
 
 function uninstall_odlm() {
@@ -162,28 +155,30 @@ function uninstall_odlm() {
         grep_args='no-operand-requests'
     fi
 
-    local namespace=$1
-    local name=$2
-    local condition="${OC} get operandrequests -A --no-headers | cut -d ' ' -f1 | grep -w ${grep_args} || echo Success"
-    local retries=20
-    local sleep_time=10
-    local total_time_mins=$(( sleep_time * retries / 60))
-    local wait_message="Waiting for all OperandRequests in tenant namespaces to be deleted"
-    local success_message="All tenant OperandRequests deleted"
-    local error_message="Timeout after ${total_time_mins} minutes waiting for tenant OperandRequests to be deleted"
+    for ns in ${TENANT_NAMESPACES//,/ }; do
+        local condition="${OC} get operandrequests -n ${ns} --no-headers | cut -d ' ' -f1 | grep -w ${grep_args} || echo Success"
+        local retries=20
+        local sleep_time=10
+        local total_time_mins=$(( sleep_time * retries / 60))
+        local wait_message="Waiting for all OperandRequests in tenant namespaces:${ns} to be deleted"
+        local success_message="This tenant OperandRequests deleted"
+        local error_message="Timeout after ${total_time_mins} minutes waiting for tenant OperandRequests to be deleted"
 
-    # ideally ODLM will ensure OperandRequests are cleaned up neatly
-    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+        # ideally ODLM will ensure OperandRequests are cleaned up neatly
+        wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+    done
 
-    local sub=$(fetch_sub_from_package ibm-odlm $OPERATOR_NS)
-    if [ "$sub" != "" ]; then
-        ${OC} delete --ignore-not-found -n "$OPERATOR_NS" sub "$sub"
-    fi
+        for ns in ${TENANT_NAMESPACES//,/ }; do
+        local sub=$(fetch_sub_from_package ibm-odlm $ns)
+        if [ "$sub" != "" ]; then
+            ${OC} delete --ignore-not-found -n "$ns" sub "$sub"
+        fi
 
-    local csv=$(fetch_csv_from_sub operand-deployment-lifecycle-manager "$OPERATOR_NS")
-    if [ "$csv" != "" ]; then
-        ${OC} delete --ignore-not-found -n "$OPERATOR_NS" csv "$csv"
-    fi
+        local csv=$(fetch_csv_from_sub operand-deployment-lifecycle-manager "$ns")
+        if [ "$csv" != "" ]; then
+            ${OC} delete --ignore-not-found -n "$ns" csv "$csv"
+        fi
+    done
 }
 
 function uninstall_cs_operator() {
@@ -205,22 +200,20 @@ function uninstall_cs_operator() {
 function uninstall_nss() {
     title "Uninstall ibm-namespace-scope-operator"
 
-    ${OC} delete --ignore-not-found nss -n "$OPERATOR_NS" common-service
-
     for ns in ${TENANT_NAMESPACES//,/ }; do
         ${OC} delete --ignore-not-found rolebinding "nss-managed-role-from-$ns"
         ${OC} delete --ignore-not-found role "nss-managed-role-from-$ns"
+        ${OC} delete --ignore-not-found nss -n "$ns" common-service
+
+        sub=$(fetch_sub_from_package ibm-namespace-scope-operator "$ns")
+        if [ "$sub" != "" ]; then
+            ${OC} delete --ignore-not-found -n "$ns" sub "$sub"
+        fi
+        csv=$(fetch_csv_from_sub "$sub" "$ns")
+        if [ "$csv" != "" ]; then
+            ${OC} delete --ignore-not-found -n "$ns" csv "$csv"
+        fi
     done
-
-    sub=$(fetch_sub_from_package ibm-namespace-scope-operator "$OPERATOR_NS")
-    if [ "$sub" != "" ]; then
-        ${OC} delete --ignore-not-found -n "$OPERATOR_NS" sub "$sub"
-    fi
-
-    csv=$(fetch_csv_from_sub "$sub" "$OPERATOR_NS")
-    if [ "$csv" != "" ]; then
-        ${OC} delete --ignore-not-found -n "$OPERATOR_NS" csv "$csv"
-    fi
 }
 
 function delete_webhook() {
@@ -297,7 +290,7 @@ function update_namespaceMapping() {
         local padded_yaml=$(echo "$updated_yaml" | awk '$0="    "$0')
         update_cs_maps "$padded_yaml"
     else
-        info "Namespace: $namespace does not exist in common-service-maps, or it is not operatorNamespace, skipping"
+        info "Namespace: $namespace does not exist in .map-to-common-service-namespace, skipping"
     fi
 }
 
@@ -325,13 +318,13 @@ EOF
 
 # check if we need to cleanup contorl namespace and clean it
 function cleanup_cs_contorl() {
-    title "Clean up control namespace"
-    msg "-----------------------------------------------------------------------"
     local current_yaml=$("${OC}" get -n kube-public cm common-service-maps -o yaml | yq '.data.["common-service-maps.yaml"]')
     local isExist=$(echo "$current_yaml" | yq '.namespaceMapping[] | has("map-to-common-service-namespace")' )
     if [ "$isExists" ]; then
         info "map-to-common-service-namespace exist in common-service-maps, don't clean up control namespace"
     else
+        title "Clean up control namespace"
+        msg "-----------------------------------------------------------------------"
         info "Cleanning up control namespace"
         get_control_namespace
         # cleanup namespaceScope in Control namespace
@@ -352,26 +345,6 @@ function cleanup_cs_contorl() {
         success "Control namespace: ${CONTROL_NS} is cleanup"
     fi
 
-
-    # title "Checking ibm-common-service-operator channel ..."
-    # cs_namespace=$(${OC} -n kube-public get cm common-service-maps -o jsonpath='{.data.common-service-maps\.yaml}' | (grep 'map-to-common-service-namespace' || echo "fail") | awk '{print $2}')
-    # if [[ $cs_namespace == "fail" ]]; then
-    #     info "no operatorNamespace found, start cleanup contorl namespace"
-    # else
-    #     for ns in $cs_namespace
-    #     do
-    #         csv=$(${OC} get subscription.operators.coreos.com -l operators.coreos.com/ibm-common-service-operator.${ns}='' -n ${ns} -o yaml -o jsonpath='{.items[*].status.installedCSV}')
-    #         if [[ "${csv}" != "null" ]] && [[ "${csv}" != "" ]]; then
-    #             info "found ibm-common-service-operator, checking the channel"
-    #             channel=$(echo ${csv} | cut -d "." -f 2 | awk '{print $1}')
-    #             if [[ "${channel}" == "v3" ]]; then
-    #                 error "Found ibm-common-service-operator in v3.x version, user need to remove it before running this script"
-    #             fi
-    #         fi
-    #     done
-    # fi
-    # info "no operatorNamespace found, start cleanup contorl namespace"
-    
 }
 
 
