@@ -129,7 +129,6 @@ function usage() {
 	while read -r ; do echo "${REPLY}" ; done <<-EOF
 Usage: ${script} [OPTION]...
 Isolate and prepare Cloud Pak 2.0 Foundational Services for upgrade to or additional installation of Cloud Pak 3.0 Foundational Services
-See https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.0?topic=4x-isolated-migration for more information.
 
 Examples:
 # isolate the existing instance scope in ibm-common-serivces namespace and re-deploy cluster sigleton services in cs-control namespace
@@ -142,6 +141,7 @@ isolate.sh --original-cs-ns ibm-common-services --control-ns cs-control --exclud
 isolate.sh --original-cs-ns ibm-common-services --control-ns cs-control --insert-ns cloudpak-1,cloudpak-2
 
 "Existing instance scope" refers to the existing common services installation and its attached cloud paks and other workloads.
+See https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.0?topic=4x-isolated-migration for more information.
 
 Options:
     -h, --help                    Display this help and exit

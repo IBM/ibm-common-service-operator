@@ -205,10 +205,10 @@ function parse_arguments() {
 function print_usage() {
     script_name=`basename ${0}`
     echo "Usage: ${script_name} --license-accept --operator-namespace <foundational-services-namespace> [OPTIONS]..."
-    echo "See https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.0?topic=4x-in-place-migration for more information."
     echo ""
     echo "Migrate Cloud Pak 2.0 Foundational services to Cloud Pak 3.0 Foundational services"
     echo "The --license-accept and --operator-namespace <operator-namespace> must be provided."
+    echo "See https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.0?topic=4x-in-place-migration for more information."
     echo ""
     echo "Options:"
     echo "   --oc string                    Optional. File path to oc CLI. Default uses oc in your PATH"
