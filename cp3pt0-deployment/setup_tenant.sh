@@ -133,6 +133,7 @@ function print_usage() {
     echo ""
     echo "Set up an advanced topology tenant for Cloud Pak 3.0 Foundational services."
     echo "The --license-accept and --operator-namespace must be provided."
+    echo "See https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.0?topic=online-installing-foundational-services-by-using-script for more information."
     echo ""
     echo "Options:"
     echo "   --oc string                    File path to oc CLI. Default uses oc in your PATH"

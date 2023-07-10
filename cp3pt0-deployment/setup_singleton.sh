@@ -140,6 +140,7 @@ function print_usage() {
     echo "The ibm-cert-manager-operator will be installed in namespace ibm-cert-manager"
     echo "The ibm-licensing-operator will be installed in namespace ibm-licensing"
     echo "The --license-accept must be provided."
+    echo "See https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.0?topic=manager-installing-cert-licensing-by-script for more information."
     echo ""
     echo "Options:"
     echo "   --oc string                                    File path to oc CLI. Default uses oc in your PATH"
