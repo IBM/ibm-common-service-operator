@@ -33,6 +33,7 @@ CM_NAME="common-service-maps"
 CERT_MANAGER_MIGRATED="false"
 DEBUG=0
 BACKUP_LICENSING="false"
+PREVIEW_MODE=0
 
 # ---------- Command variables ----------
 
@@ -105,6 +106,7 @@ function main() {
     local ns_list=$(gather_csmaps_ns)
     pause
     cleanup_webhook
+    cleanup_secretshare
     create_empty_csmaps
     insert_control_ns
     update_tenant "${MASTER_NS}" "${ns_list}"
@@ -646,7 +648,7 @@ function cleanup_webhook() {
     podpreset_exist=$(${OC} get podpresets.operator.ibm.com -n $MASTER_NS --no-headers || echo "false")
     if [[ $podpreset_exist != "false" ]] && [[ $podpreset_exist != "" ]]; then
         info "Deleting podpresets in namespace $MASTER_NS..."
-	${OC} get podpresets.operator.ibm.com -n $MASTER_NS --no-headers --ignore-not-found | awk '{print $1}' | xargs ${OC} delete -n $MASTER_NS --ignore-not-found podpresets.operator.ibm.com
+	    ${OC} get podpresets.operator.ibm.com -n $MASTER_NS --no-headers --ignore-not-found | awk '{print $1}' | xargs ${OC} delete -n $MASTER_NS --ignore-not-found podpresets.operator.ibm.com
         msg ""
     fi
 
@@ -660,6 +662,18 @@ function cleanup_webhook() {
     info "Deleting ValidatingWebhookConfiguration..."
     ${OC} delete ValidatingWebhookConfiguration ibm-cs-ns-mapping-webhook-configuration --ignore-not-found
 
+}
+
+function cleanup_secretshare() {
+    secretshare_exist="true"
+    secretshare_exist=$(${OC} get secretshares.ibmcpcs.ibm.com -n $MASTER_NS --no-headers || echo "false")
+    if [[ $secretshare_exist != "false" ]] && [[ $secretshare_exist != "" ]]; then
+        info "Deleting secretshares in namespace $MASTER_NS..."
+	    ${OC} get secretshares.ibmcpcs.ibm.com -n $MASTER_NS --no-headers --ignore-not-found | awk '{print $1}' | xargs ${OC} delete -n $MASTER_NS --ignore-not-found secretshares.ibmcpcs.ibm.com 
+        msg ""
+    fi
+
+    cleanup_deployment "secretshare" $MASTER_NS
 }
 
 function check_if_certmanager_deployed() {
