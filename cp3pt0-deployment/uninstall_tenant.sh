@@ -140,9 +140,7 @@ function set_tenant_namespaces() {
 
         # if this namespace is servicesNamespace
         operator_ns=$(${OC} get -n "$ns" commonservice common-service -o jsonpath='{.spec.operatorNamespace}' --ignore-not-found)
-        echo "$operator_ns"
         services_ns=$(${OC} get -n "$ns" commonservice common-service -o jsonpath='{.spec.servicesNamespace}' --ignore-not-found)
-        echo "$services_ns"
         if [ "$services_ns" == "$ns" ]; then
             temp_namespace=$(${OC} get -n "$operator_ns" configmap namespace-scope -o jsonpath='{.data.namespaces}' --ignore-not-found)
             if [ "$TENANT_NAMESPACES" == "" ]; then
@@ -164,8 +162,8 @@ function set_tenant_namespaces() {
     done
 
     # delete duplicate namespace in TENANT_NAMESPACES and OPERATOR_NS_LIST
-    TENANT_NAMESPACES=$(echo "$TENANT_NAMESPACES" | sed -e 's/,/\n/g' | sort -u | tr "\r\n" ","  | sed 's/\r\n/,/g' | sed '$ s/,$//')
-    OPERATOR_NS_LIST=$(echo "$OPERATOR_NS_LIST" | sed -e 's/,/\n/g' | sort -u | tr "\r\n" ","  | sed 's/\r\n/,/g' | sed '$ s/,$//')
+    TENANT_NAMESPACES=$(echo "$TENANT_NAMESPACES" | sed -e 's/,/\n/g' | sort -u | tr "\r\n" "," | sed '$ s/,$//')
+    OPERATOR_NS_LIST=$(echo "$OPERATOR_NS_LIST" | sed -e 's/,/\n/g' | sort -u | tr "\r\n" "," | sed '$ s/,$//')
     info "Tenant namespaces are: $TENANT_NAMESPACES"
 }
 
