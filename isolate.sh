@@ -648,7 +648,7 @@ function cleanup_webhook() {
     podpreset_exist=$(${OC} get podpresets.operator.ibm.com -n $MASTER_NS --no-headers || echo "false")
     if [[ $podpreset_exist != "false" ]] && [[ $podpreset_exist != "" ]]; then
         info "Deleting podpresets in namespace $MASTER_NS..."
-	    ${OC} get podpresets.operator.ibm.com -n $MASTER_NS --no-headers --ignore-not-found | awk '{print $1}' | xargs ${OC} delete -n $MASTER_NS --ignore-not-found podpresets.operator.ibm.com
+        ${OC} get podpresets.operator.ibm.com -n $MASTER_NS --no-headers --ignore-not-found | awk '{print $1}' | xargs ${OC} delete -n $MASTER_NS --ignore-not-found podpresets.operator.ibm.com
         msg ""
     fi
 
