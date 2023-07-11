@@ -239,6 +239,9 @@ function pre_req() {
     if [[ "$TETHERED_NS" == "$OPERATOR_NS" || "$TETHERED_NS" == "$SERVICES_NS" ]]; then
         error "Must provide additional namespaces for --tethered-namespaces, different from operator-namespace and services-namespace"
     fi
+
+    # Check catalogsource
+    check_cs_catalogsource
     echo ""
 }
 
@@ -309,6 +312,24 @@ function determine_topology() {
         warning "It is all namespaces topology\n"
         return
     fi
+    
+function check_cs_catalogsource(){
+    local pm="ibm-common-service-operator"
+    correct_result=$(catalogsource_correction $SOURCE $SOURCE_NS $pm $OPERATOR_NS $CHANNEL)
+    if [[ $? -eq 1 ]]; then
+        echo "$correct_result"
+        error "Multiple CatalogSource are available for $pm in $OPERATOR_NS namespace, please specify the correct CatalogSource name and namespace"
+    elif [[ $? -eq 2 ]]; then
+        echo "$correct_result"
+        error "No CatalogSource is available for $pm in $OPERATOR_NS namespace"
+    fi
+
+    echo "$correct_result"
+    echo ""
+
+    correct_result=${correct_result//$'\n'/,}
+    SOURCE=$(echo "$correct_result" | awk -F',' '{print $NF}' | awk -F' ' '{print $1}' )
+    SOURCE_NS=$(echo "$correct_result" | awk -F',' '{print $NF}' | awk -F' ' '{print $2}' )
 }
 
 function create_ns_list() {

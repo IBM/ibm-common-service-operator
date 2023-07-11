@@ -61,6 +61,7 @@ function main() {
 
     is_migrate_licensing
     is_migrate_cert_manager
+    check_singleton_catalogsource
 
     if [ $MIGRATE_SINGLETON -eq 1 ]; then
         if [ $ENABLE_LICENSING -eq 1 ]; then
@@ -226,6 +227,47 @@ function is_migrate_licensing() {
     MIGRATE_SINGLETON=1
 }
 
+function check_singleton_catalogsource() {
+    local cm_ns="${SOURCE_NS}"
+    local lis_ns="${SOURCE_NS}"
+    local sources=("$CERT_MANAGER_SOURCE,$cm_ns,ibm-cert-manager-operator,$OPERATOR_NS,$CHANNEL" "$LICENSING_SOURCE,$lis_ns,ibm-licensing-operator-app,$OPERATOR_NS,$CHANNEL")
+    
+    for source_info in "${sources[@]}"; do
+
+        IFS="," read -r source source_ns pm operator_ns channel <<< "$source_info"
+        correct_result=$(catalogsource_correction "$source" "$source_ns" "$pm" "$operator_ns" "$channel")
+        if [[ $? -eq 1 ]]; then
+            echo "$correct_result"
+            error "Multiple CatalogSource are available for $pm in $operator_ns namespace, please specify the correct CatalogSource name and namespace"
+        elif [[ $? -eq 2 ]]; then
+            echo "$correct_result"
+            error "No CatalogSource is available for $pm in $operator_ns namespace"
+        fi
+        
+        echo "$correct_result"
+        echo ""
+        correct_result=${correct_result//$'\n'/,}
+        correct_source=$(echo "$correct_result" | awk -F',' '{print $NF}' | awk -F' ' '{print $1}' )
+        correct_source_ns=$(echo "$correct_result" | awk -F',' '{print $NF}' | awk -F' ' '{print $2}' )
+        
+        if [[ $pm == "ibm-cert-manager-operator" ]]; then
+            CERT_MANAGER_SOURCE=$correct_source
+            if [[ $correct_source_ns == "openshift-marketplace" ]]; then
+                SOURCE_NS=$correct_source_ns
+            else
+                CERT_MANAGER_NAMESPACE=$correct_source_ns
+            fi
+        else
+            LICENSING_SOURCE=$correct_source
+            if [[ $correct_source_ns == "openshift-marketplace" ]]; then
+                SOURCE_NS=$correct_source_ns
+            else
+                LICENSING_NAMESPACE=$correct_source_ns
+            fi
+        fi 
+    done
+}
+
 function install_cert_manager() {
     if [ $CHECK_LICENSING_ONLY -eq 1 ]; then
         return
@@ -379,6 +421,7 @@ function pre_req() {
     if [ -z "$OPERATOR_NS" ]; then
         OPERATOR_NS=$("$OC" project --short)
     fi
+    echo ""
 }
 
 # TODO validate argument
