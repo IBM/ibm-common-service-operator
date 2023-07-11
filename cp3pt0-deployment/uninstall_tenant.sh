@@ -123,7 +123,9 @@ function pre_req() {
 }
 
 function set_tenant_namespaces() {
+    # check if user want to cleanup operatorNamespace
     for ns in ${OPERATOR_NS//,/ }; do
+        # if this namespace is operatorNamespace
         temp_namespace=$(${OC} get -n "$ns" configmap namespace-scope -o jsonpath='{.data.namespaces}' --ignore-not-found)
         if [ "$temp_namespace" != "" ]; then
             if [ "$TENANT_NAMESPACES" == "" ]; then
@@ -133,12 +135,37 @@ function set_tenant_namespaces() {
                 TENANT_NAMESPACES="${TENANT_NAMESPACES},${temp_namespace}"
                 OPERATOR_NS_LIST="${OPERATOR_NS_LIST},${ns}"
             fi
+            continue
+        fi
+
+        # if this namespace is servicesNamespace
+        operator_ns=$(${OC} get -n "$ns" commonservice common-service -o jsonpath='{.spec.operatorNamespace}' --ignore-not-found)
+        echo "$operator_ns"
+        services_ns=$(${OC} get -n "$ns" commonservice common-service -o jsonpath='{.spec.servicesNamespace}' --ignore-not-found)
+        echo "$services_ns"
+        if [ "$services_ns" == "$ns" ]; then
+            temp_namespace=$(${OC} get -n "$operator_ns" configmap namespace-scope -o jsonpath='{.data.namespaces}' --ignore-not-found)
+            if [ "$TENANT_NAMESPACES" == "" ]; then
+                TENANT_NAMESPACES=$temp_namespace
+                OPERATOR_NS_LIST=$operator_ns
+            else
+                TENANT_NAMESPACES="${TENANT_NAMESPACES},${temp_namespace}"
+                OPERATOR_NS_LIST="${OPERATOR_NS_LIST},${operator_ns}"
+            fi
+            continue
+        fi
+
+        # if this namespace neither operatorNamespace nor serviceNamsespace
+        if [ "$TENANT_NAMESPACES" == "" ]; then
+            TENANT_NAMESPACES=$ns
+        else
+            TENANT_NAMESPACES="${TENANT_NAMESPACES},${ns}"
         fi
     done
 
-    if [ "$TENANT_NAMESPACES" == "" ]; then
-        TENANT_NAMESPACES=$OPERATOR_NS
-    fi
+    # delete duplicate namespace in TENANT_NAMESPACES and OPERATOR_NS_LIST
+    TENANT_NAMESPACES=$(echo "$TENANT_NAMESPACES" | sed -e 's/,/\n/g' | sort -u | tr "\r\n" ","  | sed 's/\r\n/,/g' | sed '$ s/,$//')
+    OPERATOR_NS_LIST=$(echo "$OPERATOR_NS_LIST" | sed -e 's/,/\n/g' | sort -u | tr "\r\n" ","  | sed 's/\r\n/,/g' | sed '$ s/,$//')
     info "Tenant namespaces are: $TENANT_NAMESPACES"
 }
 
