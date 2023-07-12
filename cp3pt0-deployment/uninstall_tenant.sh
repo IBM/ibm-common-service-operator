@@ -366,7 +366,9 @@ function cleanup_cs_control() {
         cleanup_secretshare $CONTROL_NS ""
         # cleanup crossplane    
         cleanup_crossplane
-
+        # delete common-service-maps 
+        ${OC} delete configmap common-service-maps -n kube-public
+        # delete namespace
         ${OC} delete --ignore-not-found ns "$CONTROL_NS" --timeout=30s
         if [ $? -ne 0 ] || [ $FORCE_DELETE -eq 1 ]; then
             warning "Failed to delete namespace $CONTROL_NS, force deleting remaining resources..."
