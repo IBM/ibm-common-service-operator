@@ -313,9 +313,9 @@ function update_namespaceMapping() {
     title "Updating common-service-maps $namespace"
     msg "-----------------------------------------------------------------------"
     local current_yaml=$("${OC}" get -n kube-public cm common-service-maps -o yaml | yq '.data.["common-service-maps.yaml"]')
-    local isExists=$(echo "$current_yaml" | yq '.namespaceMapping[] | select(.map-to-common-service-namespace == "'$namespace'")')
+    local isExist=$(echo "$current_yaml" | yq '.namespaceMapping[] | select(.map-to-common-service-namespace == "'$namespace'")')
 
-    if [ "$isExists" ]; then
+    if [ "$isExist" ]; then
         info "The map-to-common-service-namespace: $namespace, exist in common-service-maps"
         info "Deleting this tenant in common-service-maps"
         updated_yaml=$(echo "$current_yaml" | yq 'del(.namespaceMapping[] | select(.map-to-common-service-namespace == "'$namespace'"))')
@@ -352,12 +352,11 @@ EOF
 function cleanup_cs_control() {
     local current_yaml=$("${OC}" get -n kube-public cm common-service-maps -o yaml | yq '.data.["common-service-maps.yaml"]')
     local isExist=$(echo "$current_yaml" | yq '.namespaceMapping[] | has("map-to-common-service-namespace")' )
-    if [ $isExists=="true" ]; then
+    if [ "$isExist" ]; then
         info "map-to-common-service-namespace exist in common-service-maps, don't clean up control namespace"
     else
         title "Clean up control namespace"
         msg "-----------------------------------------------------------------------"
-        info "Cleanning up control namespace"
         get_control_namespace
         # cleanup namespaceScope in Control namespace
         cleanup_NamespaceScope $CONTROL_NS
