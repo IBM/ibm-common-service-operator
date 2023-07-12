@@ -20,13 +20,14 @@ OPERATOR_NS=""
 SERVICES_NS=""
 TETHERED_NS=""
 EXCLUDED_NS=""
-SIZE_PROFILE="starterset"
+SIZE_PROFILE=""
 INSTALL_MODE="Automatic"
 PREVIEW_MODE=0
 OC_CMD="oc"
 DEBUG=0
 LICENSE_ACCEPT=0
 RETRY_CONFIG_CSCR=0
+IS_UPGRADE=0
 
 # ---------- Command variables ----------
 
@@ -180,10 +181,6 @@ function pre_req() {
     else
         success "oc command logged in as ${user}"
     fi
-    
-    if [ $? -ne 0 ]; then
-        error "Cert-manager is not found or having more than one\n"
-    fi
 
     if [ $LICENSE_ACCEPT -ne 1 ]; then
         error "License not accepted. Rerun script with --license-accept flag set. See https://ibm.biz/integration-licenses for more details"
@@ -206,10 +203,17 @@ function pre_req() {
         error "Channel is not semantic vx.y"
     fi
 
+    # Check original configurations in main CommonService CR
+    default_arguments
+
     # Check profile size
     case "$SIZE_PROFILE" in
     "starterset"|"starter"|"small"|"medium"|"large")
         success "Profile size is valid."
+        ;;
+    "")
+        SIZE_PROFILE="starterset"
+        success "Profile size is not specified. Use default value: $SIZE_PROFILE"
         ;;
     *)
         error " '$SIZE_PROFILE' is not a valid value for profile. Allowed values are 'starterset', 'starter', 'small', 'medium', and 'large'."
@@ -220,11 +224,11 @@ function pre_req() {
         error "Must provide operator namespace, please specify argument --operator-namespace"
     fi
 
-    if [[ "$SERVICES_NS" == "" && "$TETHERED_NS" == "" && "$EXCLUDED_NS" == "" ]]; then
+    if [[ "$SERVICES_NS" == "" && "$TETHERED_NS" == "" && "$EXCLUDED_NS" == "" && $IS_UPGRADE -eq 0 ]]; then
         error "Must provide additional namespaces, either --services-namespace, --tethered-namespaces, or --excluded-namespaces"
     fi
 
-    if [[ "$SERVICES_NS" == "$OPERATOR_NS" && "$TETHERED_NS" == "" && "$EXCLUDED_NS" == "" ]]; then
+    if [[ "$SERVICES_NS" == "$OPERATOR_NS" && "$TETHERED_NS" == "" && "$EXCLUDED_NS" == "" && $IS_UPGRADE -eq 0 ]]; then
         error "Must provide additional namespaces for --tethered-namespaces or --excluded-namespaces when services-namespace is the same as operator-namespace"
     fi
 
@@ -232,6 +236,37 @@ function pre_req() {
         error "Must provide additional namespaces for --tethered-namespaces, different from operator-namespace and services-namespace"
     fi
     echo ""
+}
+
+function default_arguments() {
+    # check if CommonService CRD exists in cluster
+    local is_CS_CRD_exist=$((${OC} get commonservice -n ${OPERATOR_NS} --ignore-not-found > /dev/null && echo exists) || echo fail)
+    if [[ "$is_CS_CRD_exist" == "exists" ]]; then
+        result=$("${OC}" get commonservice common-service -n ${OPERATOR_NS} -o yaml --ignore-not-found)
+        if [[ ! -z "$result" ]]; then
+
+            tmp_services_ns=$("${YQ}" eval '.spec.servicesNamespace' - <<< "$result")
+            tmp_size_profile=$("${YQ}" eval '.spec.size' - <<< "$result")
+
+            if [[ "$SERVICES_NS" == "" ]] && [[ "$tmp_services_ns" != "" ]] && [[ "$tmp_services_ns" != "null" ]]; then
+                SERVICES_NS=$("${YQ}" eval '.spec.servicesNamespace' - <<< "$result")
+            fi
+            if [[ "$SIZE_PROFILE" == "" ]] && [[ "$tmp_size_profile" != "" ]] && [[ "$tmp_size_profile" != "null" ]]; then
+                SIZE_PROFILE=$("${YQ}" eval '.spec.size' - <<< "$result")
+            fi
+            # if main CommonService CR exists, then defaulting from it, and it is a upgrade scenario, simple topology will be accepted
+            IS_UPGRADE=1
+        else
+            info "CommonService CRD exists but main CommonService CR does not exist, skipping defaulting from original CommonService CR\n"
+        fi
+    else
+        info "CommonService CRD does not exist, skipping defaulting from original CommonService CR\n"
+    fi
+
+    # Assign default values when not specified
+    if [[ "$SERVICES_NS" == "" ]]; then
+        SERVICES_NS=$OPERATOR_NS
+    fi
 }
 
 function create_ns_list() {
@@ -495,13 +530,14 @@ function configure_cs_kind() {
     local delay=30
 
     title "Configuring CommonService CR in $OPERATOR_NS..."
-    if [[ $($OC get CommonService common-service -n $OPERATOR_NS 2>/dev/null) != "" ]];then
-        info "CommonService CR is already deployed in $OPERATOR_NS\n"
+    result=$("${OC}" get commonservice common-service -n ${OPERATOR_NS} -o yaml --ignore-not-found)
+    if [[ ! -z "${result}" ]]; then
+        info "Configuring CommonService CR common-service in $OPERATOR_NS\n"
+        ${OC} get commonservice common-service -n "${OPERATOR_NS}" -o yaml | ${YQ} eval '.spec += {"operatorNamespace": "'${OPERATOR_NS}'", "servicesNamespace": "'${SERVICES_NS}'", "size": "'${SIZE_PROFILE}'"}' > ${PREVIEW_DIR}/commonservice.yaml
+        ${YQ} -i eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | del(.metadata.creationTimestamp) | del(.metadata.generation)' ${PREVIEW_DIR}/commonservice.yaml
     else
         info "Creating the CommonService object:\n"
-    fi
-
-    cat <<EOF > ${PREVIEW_DIR}/commonservice.yaml
+        cat <<EOF > ${PREVIEW_DIR}/commonservice.yaml
 apiVersion: operator.ibm.com/v3
 kind: CommonService
 metadata:
@@ -512,6 +548,7 @@ spec:
   servicesNamespace: $SERVICES_NS
   size: $SIZE_PROFILE
 EOF
+    fi
 
     cat ${PREVIEW_DIR}/commonservice.yaml
     echo ""
