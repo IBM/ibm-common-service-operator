@@ -27,7 +27,7 @@ ENABLE_PRIVATE_CATALOG=0
 NEW_MAPPING=""
 NEW_TENANT=0
 DEBUG=0
-PREVIEW_MODE=1
+PREVIEW_MODE=0
 LICENSE_ACCEPT=0
 
 # ---------- Command variables ----------
@@ -37,6 +37,9 @@ BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 
 # log file
 LOG_FILE="migrate_tenant_log_$(date +'%Y%m%d%H%M%S').log"
+
+# preview mode directory
+PREVIEW_DIR="/tmp/preview"
 
 # counter to keep track of installation steps
 STEP=0
@@ -50,7 +53,8 @@ function main() {
     save_log "logs" "migrate_tenant_log" "$DEBUG"
     trap cleanup_log EXIT
     pre_req
-    
+    prepare_preview_mode
+
     # TODO check Cloud Pak compatibility
 
 
@@ -60,15 +64,25 @@ function main() {
     # Scale down CS, ODLM and delete OperandReigsrty
     # It helps to prevent re-installing licensing and cert-manager services
     scale_down $OPERATOR_NS $SERVICES_NS $CHANNEL $SOURCE
-
+    local arguments=""
     # Migrate singleton services
-    local arguments="--enable-licensing"
-    arguments+=" -licensingNs $CONTROL_NS"
+    if [[ $ENABLE_LICENSING -eq 1 ]]; then
+        arguments+="--enable-licensing"
+        if [[ "$CONTROL_NS" != "$OPERATOR_NS" ]]; then
+            arguments+=" -licensingNs $CONTROL_NS"
+        fi
+    fi
+
 
     if [[ $ENABLE_PRIVATE_CATALOG -eq 1 ]]; then
         arguments+=" --enable-private-catalog"
     fi
-    ${BASE_DIR}/setup_singleton.sh "--operator-namespace" "$OPERATOR_NS" "-c" "$CHANNEL" "--cert-manager-source" "$CERT_MANAGER_SOURCE" "--licensing-source" "$LICENSING_SOURCE" "$arguments" "--license-accept"
+    
+    ${BASE_DIR}/setup_singleton.sh "--operator-namespace" "$OPERATOR_NS" "-c" "$CHANNEL" "--cert-manager-source" "$CERT_MANAGER_SOURCE" "--licensing-source" "$LICENSING_SOURCE" "--license-accept" $arguments
+    if [ $? -ne 0 ]; then
+        error "Failed to migrate singleton services"
+        exit 1
+    fi
 
     # Update CommonService CR with OPERATOR_NS and SERVICES_NS
     # Propogate CommonService CR to every namespace in the tenant
@@ -192,23 +206,24 @@ function print_usage() {
     script_name=`basename ${0}`
     echo "Usage: ${script_name} --license-accept --operator-namespace <foundational-services-namespace> [OPTIONS]..."
     echo ""
-    echo "Migrate Cloud Pak 2.0 Foundational services to in Cloud Pak 3.0 Foundational services"
+    echo "Migrate Cloud Pak 2.0 Foundational services to Cloud Pak 3.0 Foundational services"
     echo "The --license-accept and --operator-namespace <operator-namespace> must be provided."
+    echo "See https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.0?topic=4x-in-place-migration for more information."
     echo ""
     echo "Options:"
-    echo "   --oc string                    File path to oc CLI. Default uses oc in your PATH"
-    echo "   --yq string                    File path to yq CLI. Default uses yq in your PATH"
+    echo "   --oc string                    Optional. File path to oc CLI. Default uses oc in your PATH"
+    echo "   --yq string                    Optional. File path to yq CLI. Default uses yq in your PATH"
     echo "   --operator-namespace string    Required. Namespace to migrate Foundational services operator"
-    echo "   --services-namespace           Namespace to migrate operands of Foundational services, i.e. 'dataplane'. Default is the same as operator-namespace"
-    echo "   --cert-manager-source string   CatalogSource name of ibm-cert-manager-operator. This assumes your CatalogSource is already created. Default is ibm-cert-manager-catalog"
-    echo "   --licensing-source string      CatalogSource name of ibm-licensing. This assumes your CatalogSource is already created. Default is ibm-licensing-catalog"
-    echo "   --enable-licensing             Set this flag to migrate ibm-licensing-operator"
-    echo "   --enable-private-catalog       Set this flag to use namespace scoped CatalogSource. Default is in openshift-marketplace namespace"
-    echo "   --license-accept               Set this flag to accept the license agreement."
-    echo "   -c, --channel string           Channel for Subscription(s). Default is v4.0"   
-    echo "   -i, --install-mode string      InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
-    echo "   -s, --source string            CatalogSource name. This assumes your CatalogSource is already created. Default is opencloud-operators"
-    echo "   -v, --debug integer            Verbosity of logs. Default is 0. Set to 1 for debug logs."
+    echo "   --services-namespace           Optional. Namespace to migrate operands of Foundational services, i.e. 'dataplane'. Default is the same as operator-namespace"
+    echo "   --cert-manager-source string   Optional. CatalogSource name of ibm-cert-manager-operator. This assumes your CatalogSource is already created. Default is ibm-cert-manager-catalog"
+    echo "   --licensing-source string      Optional. CatalogSource name of ibm-licensing. This assumes your CatalogSource is already created. Default is ibm-licensing-catalog"
+    echo "   --enable-licensing             Optional. Set this flag to migrate ibm-licensing-operator"
+    echo "   --enable-private-catalog       Optional. Set this flag to use namespace scoped CatalogSource. Default is in openshift-marketplace namespace"
+    echo "   --license-accept               Required. Set this flag to accept the license agreement."
+    echo "   -c, --channel string           Optional. Channel for Subscription(s). Default is v4.0"   
+    echo "   -i, --install-mode string      Optional. InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
+    echo "   -s, --source string            Optional. CatalogSource name. This assumes your CatalogSource is already created. Default is opencloud-operators"
+    echo "   -v, --debug integer            Optional. Verbosity of logs. Default is 0. Set to 1 for debug logs."
     echo "   -h, --help                     Print usage information"
     echo ""
 }

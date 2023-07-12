@@ -33,6 +33,7 @@ CM_NAME="common-service-maps"
 CERT_MANAGER_MIGRATED="false"
 DEBUG=0
 BACKUP_LICENSING="false"
+PREVIEW_MODE=0
 
 # ---------- Command variables ----------
 
@@ -41,6 +42,9 @@ BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 
 #log file
 LOG_FILE="isolate_log_$(date +'%Y%m%d%H%M%S').log"
+
+# preview mode directory
+PREVIEW_DIR="/tmp/preview"
 
 # ---------- Main functions ----------
 
@@ -83,6 +87,7 @@ function main() {
 
     save_log "cp3pt0-deployment/logs" "isolate_log" "$DEBUG"
     trap cleanup_log EXIT
+    prepare_preview_mode
 
     which "${OC}" || error "Missing oc CLI"
     which "${YQ}" || error "Missing yq"
@@ -101,6 +106,7 @@ function main() {
     local ns_list=$(gather_csmaps_ns)
     pause
     cleanup_webhook
+    cleanup_secretshare
     create_empty_csmaps
     insert_control_ns
     update_tenant "${MASTER_NS}" "${ns_list}"
@@ -124,27 +130,28 @@ function usage() {
 
 	while read -r ; do echo "${REPLY}" ; done <<-EOF
 Usage: ${script} [OPTION]...
-Isolate and prepare Cloud Pak 2.0 Foundational Services for upgrade
+Isolate and prepare Cloud Pak 2.0 Foundational Services for upgrade to or additional installation of Cloud Pak 3.0 Foundational Services
 
 Examples:
-
-# isolate the existing insance scope in ibm-common-serivces namespace and re-deploy cluster sigleton services in cs-control namespace
-isolated.sh --original-cs-ns ibm-common-services --control-ns cs-control
+# isolate the existing instance scope in ibm-common-serivces namespace and re-deploy cluster sigleton services in cs-control namespace
+isolate.sh --original-cs-ns ibm-common-services --control-ns cs-control
 
 # remove cloudpak-1 and cloudpak-2 namespace from the existing instance scope in ibm-common-services
-isolated.sh --original-cs-ns ibm-common-services --control-ns cs-control --excluded-ns cloudpak-1,cloudpak-2
+isolate.sh --original-cs-ns ibm-common-services --control-ns cs-control --excluded-ns cloudpak-1,cloudpak-2
 
 # add cloudpak-1 and cloudpak-2 namespace into the existing instance scope in ibm-common-services
-isolated.sh --original-cs-ns ibm-common-services --control-ns cs-control --insert-ns cloudpak-1,cloudpak-2
+isolate.sh --original-cs-ns ibm-common-services --control-ns cs-control --insert-ns cloudpak-1,cloudpak-2
+
+"Existing instance scope" refers to the existing common services installation and its attached cloud paks and other workloads.
+See https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.0?topic=4x-isolated-migration for more information.
 
 Options:
-Mandatory arguments to long options are mandatory for short options too.
-    -h, --help                    display this help and exit
-    --original-cs-ns              specify the namespace the original common services installation resides in
-    --control-ns                  specify the control namespace value in the common-service-maps configmap
-    --excluded-ns                 specify namespaces to be excluded from the instance scope in original-cs-ns. Comma separated no spaces.
-    --insert-ns                   specify namespaces to be inserted into the instance scope in original-cs-ns. Comma separated no spaces.
-    -v, --debug integer           Verbosity of logs. Default is 0. Set to 1 for debug logs.
+    -h, --help                    Display this help and exit
+    --original-cs-ns              Required. Specify the namespace the original common services installation resides in
+    --control-ns                  Required. Specify the control namespace value in the common-service-maps configmap
+    --excluded-ns                 Optional. Specify namespaces to be excluded from the instance scope in original-cs-ns. Comma separated no spaces.
+    --insert-ns                   Optional. Specify namespaces to be inserted into the instance scope in original-cs-ns. Comma separated no spaces.
+    -v, --debug integer           Optional. Verbosity of logs. Default is 0. Set to 1 for debug logs.
 	EOF
 }
 
@@ -307,7 +314,7 @@ function update_tenant() {
 # and namesapces from arguments, to output a unique sorted list of namespaces
 # with excluded namespaces removed
 function gather_csmaps_ns() {
-    local ns_scope=$("${OC}" get cm -n "$MASTER_NS" namespace-scope -o yaml | yq '.data.namespaces')
+    local ns_scope=$("${OC}" get cm -n "$MASTER_NS" namespace-scope -o yaml | "${YQ}" '.data.namespaces')
 
     # excluding namespaces is implemented via duplicate removal with uniq -u,
     # so need to make unique the combined lists of namespaces first to avoid
@@ -555,7 +562,7 @@ function isolate_odlm() {
     fi
     #merge patch overwrites the entire array if you update any values so we need to get any other value specified and make sure it is unchanged
     #loop through all of the values specified in spec.config.env
-    env_range=$(${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml | yq '.spec.config.env[].name')
+    env_range=$(${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml | "${YQ}" '.spec.config.env[].name')
     patch_string=""
     count=0
     for name in $env_range
@@ -564,7 +571,7 @@ function isolate_odlm() {
         if [[ $name == "ISOLATED_MODE" ]]; then
             env_value="true"
         else
-            env_value=$(${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml | yq '.spec.config.env['"${count}"'].value')
+            env_value=$(${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml | "${YQ}" '.spec.config.env['"${count}"'].value')
         fi
         #Add name value pair in json format to the patch string
         if [[ $patch_string == "" ]]; then
@@ -642,7 +649,7 @@ function cleanup_webhook() {
     podpreset_exist=$(${OC} get podpresets.operator.ibm.com -n $MASTER_NS --no-headers || echo "false")
     if [[ $podpreset_exist != "false" ]] && [[ $podpreset_exist != "" ]]; then
         info "Deleting podpresets in namespace $MASTER_NS..."
-	${OC} get podpresets.operator.ibm.com -n $MASTER_NS --no-headers --ignore-not-found | awk '{print $1}' | xargs ${OC} delete -n $MASTER_NS --ignore-not-found podpresets.operator.ibm.com
+        ${OC} get podpresets.operator.ibm.com -n $MASTER_NS --no-headers --ignore-not-found | awk '{print $1}' | xargs ${OC} delete -n $MASTER_NS --ignore-not-found podpresets.operator.ibm.com
         msg ""
     fi
 
@@ -656,6 +663,18 @@ function cleanup_webhook() {
     info "Deleting ValidatingWebhookConfiguration..."
     ${OC} delete ValidatingWebhookConfiguration ibm-cs-ns-mapping-webhook-configuration --ignore-not-found
 
+}
+
+function cleanup_secretshare() {
+    secretshare_exist="true"
+    secretshare_exist=$(${OC} get secretshares.ibmcpcs.ibm.com -n $MASTER_NS --no-headers || echo "false")
+    if [[ $secretshare_exist != "false" ]] && [[ $secretshare_exist != "" ]]; then
+        info "Deleting secretshares in namespace $MASTER_NS..."
+	    ${OC} get secretshares.ibmcpcs.ibm.com -n $MASTER_NS --no-headers --ignore-not-found | awk '{print $1}' | xargs ${OC} delete -n $MASTER_NS --ignore-not-found secretshares.ibmcpcs.ibm.com 
+        msg ""
+    fi
+
+    cleanup_deployment "secretshare" $MASTER_NS
 }
 
 function check_if_certmanager_deployed() {

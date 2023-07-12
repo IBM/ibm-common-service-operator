@@ -8,7 +8,7 @@
 # This is an internal component, bundled with an official IBM product. 
 # Please refer to that particular license for additional information. 
 
-# ---------- Info functions ----------
+# ---------- Info functions ----------#
 
 function msg() {
     printf '%b\n' "$1"
@@ -39,8 +39,7 @@ function debug() {
     msg "\33[33m[DEBUG] ${1}\33[0m"
 }
 
-
-# ---------- Check functions ----------
+# ---------- Check functions start ----------#
 
 function check_command() {
     local command=$1
@@ -126,10 +125,9 @@ function wait_for_condition() {
     done
 
     if [[ ! -z "${success_message}" ]]; then
-        success "${success_message}"
+        success "${success_message}\n"
     fi
 }
-
 
 function wait_for_not_condition() {
     local condition=$1
@@ -208,7 +206,7 @@ function wait_for_no_pod() {
 function wait_for_project() {
     local name=$1
     local condition="${OC} get project ${name} --no-headers --ignore-not-found"
-    local retries=50
+    local retries=12
     local sleep_time=10
     local total_time_mins=$(( sleep_time * retries / 60))
     local wait_message="Waiting for project ${name} to be created"
@@ -278,7 +276,7 @@ function wait_for_nss_patch() {
         result=$(eval "${condition}")
 
         # restart namespace scope operator pod to reconcilie
-        if [[ ( ${retries} -eq 0 ) && ( ! -z "${result}" ) ]]; then
+        if [[ ( ${retries} -eq 0 ) && ( -z "${result}" ) ]]; then
             info "Reconciling namespace scope operator"
             echo "deleting pod ${pod_name}"
             $OC delete pod ${pod_name} -n ${namespace}    
@@ -298,7 +296,7 @@ function wait_for_nss_patch() {
     done
 
     if [[ ! -z "${success_message}" ]]; then
-        success "${success_message}"
+        success "${success_message}\n"
     fi
     
     # wait for deployment to be ready
@@ -387,38 +385,57 @@ function is_sub_exist() {
 }
 
 function check_cert_manager(){
-    csv_count=`$OC get csv |grep "cert-manager"|wc -l`
-    if [[ $csv_count == 0 ]]; then
-        error "Missing a cert-manager"
+    local service_name=$1    
+    local namespace=$2
+    title " Checking whether Cert Manager exist..." 
+    if [[ $PREVIEW_MODE -eq 1 ]]; then
+        info "Preview mode is on, skip checking whether Cert Manager exist\n"
+        return 0       
     fi
-    if [[ $csv_count > 1 ]]; then
-        error "Multiple cert-manager csv found. Only one should be installed per cluster"
+    csv_count=`$OC get csv -n "$namespace" | grep "$service_name" | wc -l`
+    if [[ $csv_count == 1 ]]; then
+        success "Found only one Cert Manager exists in namespace "$namespace"\n"
+    elif [[ $csv_count == 0 ]]; then
+        error "Missing a Cert Manager\n"
+    elif [[ $csv_count > 1 ]]; then
+        error "Multiple Cert Manager csv found. Only one should be installed per cluster\n"
     fi
 }
 
 function check_licensing(){
+    title " Checking IBMLicensing..."
+    if [[ $PREVIEW_MODE -eq 1 ]]; then
+        info "Preview mode is on, skip checking IBMLicensing\n"
+        return 0
+    fi
     [[ ! $($OC get IBMLicensing) ]] && error "User does not have proper permission to get IBMLicensing or IBMLicensing is not installed"
     instance_count=`$OC get IBMLicensing -o name | wc -l`
-    if [[ $instance_count == 0 ]]; then
-        error "Missing IBMLicensing"
-    fi
-    if [[ $instance_count > 1 ]]; then
-        error "Multiple IBMLicensing are found. Only one should be installed per cluster"
+    if [[ $instance_count == 1 ]]; then
+        success "Found only one IBMLicensing\n"
+    elif [[ $instance_count == 0 ]]; then
+        error "Missing IBMLicensing\n"
+    elif [[ $instance_count > 1 ]]; then
+        error "Multiple IBMLicensing are found. Only one should be installed per cluster\n"
     fi
 }
-# ---------- creation functions ----------
+# ---------- Check functions end ----------#
+
+# ---------- creation functions start ----------#
 
 function create_namespace() {
     local namespace=$1
-    
+    title "Checking whether Namespace $namespace exist..."
     if [[ -z "$(${OC} get namespace ${namespace} --ignore-not-found)" ]]; then
-        title "Creating namespace ${namespace}\n"
+        info "Creating namespace ${namespace}"
         ${OC} create namespace ${namespace}
         if [[ $? -ne 0 ]]; then
             error "Error creating namespace ${namespace}"
         fi
+        if [[ $PREVIEW_MODE -eq 0 ]]; then
+            wait_for_project ${namespace}
+        fi
     else
-        info "Namespace ${namespace} already exists. Skip creating"
+        success "Namespace ${namespace} already exists. Skip creating\n"
     fi
 }
 
@@ -426,8 +443,7 @@ function create_operator_group() {
     local name=$1
     local ns=$2
     local target=$3
-    local og=$(
-        cat <<EOF
+    cat <<EOF > ${PREVIEW_DIR}/operatorgroup.yaml
 apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
 metadata:
@@ -435,20 +451,19 @@ metadata:
   namespace: $ns
 spec: $target
 EOF
-    )
 
-    info "Checking existing OperatorGroup in $ns:\n"
+    title "Checking whether OperatorGroup in $ns exist..."
     existing_og=$(${OC} get operatorgroup -n $ns --no-headers --ignore-not-found | wc -l)
     if [[ ${existing_og} -ne 0 ]]; then
-        info "OperatorGroup already exists in $ns. Skip creating"
+        success "OperatorGroup already exists in $ns. Skip creating\n"
         return 0
     fi
-    echo
     info "Creating following OperatorGroup:\n"
-    echo "$og"
-    echo "$og" | ${OC} apply -f -
+    cat ${PREVIEW_DIR}/operatorgroup.yaml
+    echo ""
+    cat "${PREVIEW_DIR}/operatorgroup.yaml" | ${OC} apply -f -
     if [[ $? -ne 0 ]]; then
-        error "Failed to create OperatorGroup ${name} in ${ns}"
+        error "Failed to create OperatorGroup ${name} in ${ns}\n"
     fi
 }
 
@@ -460,8 +475,7 @@ function create_subscription() {
     local source=$5
     local source_ns=$6
     local install_mode=$7
-    local sub=$(
-        cat <<EOF
+    cat <<EOF > ${PREVIEW_DIR}/${name}-subscription.yaml
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
@@ -474,14 +488,13 @@ spec:
   source: $source
   sourceNamespace: $source_ns
 EOF
-    )
-    
-    echo
+
     info "Creating following Subscription:\n"
-    echo "$sub"
-    echo "$sub" | ${OC} apply -f -
+    cat ${PREVIEW_DIR}/${name}-subscription.yaml
+    echo ""
+    cat ${PREVIEW_DIR}/${name}-subscription.yaml | ${OC} apply -f -
     if [[ $? -ne 0 ]]; then
-        error "Failed to create subscription ${name} in ${ns}"
+        error "Failed to create subscription ${name} in ${ns}\n"
     fi
 }
 
@@ -504,7 +517,7 @@ function update_cscr() {
             ${OC} get commonservice common-service -n "${namespace}" -o yaml | ${YQ} eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
             
         fi  
-        yq eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.namespace = "'${namespace}'"' common-service.yaml | ${OC} apply --overwrite=true -f -
+        ${YQ} eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.namespace = "'${namespace}'"' common-service.yaml | ${OC} apply --overwrite=true -f -
         if [[ $? -ne 0 ]]; then
             error "Failed to apply CommonService CR in ${namespace}"
         fi
@@ -549,8 +562,10 @@ EOF
         error "Failed to create NSS CR in ${OPERATOR_NS}"
     fi
 }
+# ---------- creation functions end----------#
 
-# ---------- cleanup functions ----------
+# ---------- cleanup functions start----------#
+
 function cleanup_cp2() {
     local operator_ns=$1
     local control_ns=$2
@@ -644,7 +659,7 @@ function cleanup_OperandBindInfo() {
 
 function cleanup_NamespaceScope() {
     local namespace=$1
-    ${OC} delete namespacescope odlm-scope-managedby-odlm nss-odlm-scope nss-managedby-odlm -n ${namespace} --ignore-not-found
+    ${OC} delete namespacescope odlm-scope-managedby-odlm nss-odlm-scope nss-managedby-odlm common-service -n ${namespace} --ignore-not-found
 }
 
 function cleanup_OperandRequest() {
@@ -660,20 +675,21 @@ function cleanup_deployment() {
 
     wait_for_no_pod ${namespace} ${name}
 }
+# ---------- cleanup functions end ----------#
 
 function get_control_namespace() {
     # Define the ConfigMap name and namespace
     local config_map_name="common-service-maps"
 
     # Get the ConfigMap data
-    config_map_data=$(${OC} get configmap "${config_map_name}" -n kube-public -o yaml | yq '.data[]')
+    config_map_data=$(${OC} get configmap "${config_map_name}" -n kube-public -o yaml | ${YQ} '.data[]')
 
     # Check if the ConfigMap exists
     if [[ -z "${config_map_data}" ]]; then
         warning "Not found common-serivce-maps ConfigMap in kube-public namespace. It is a single shared Common Service instance upgrade"
     else
         # Get the controlNamespace value
-        control_namespace=$(echo "${config_map_data}" | yq -r '.controlNamespace')
+        control_namespace=$(echo "${config_map_data}" | ${YQ} -r '.controlNamespace')
 
         # Check if the controlNamespace key exists
         if [[ "${control_namespace}" == "null" ]] || [[ "${control_namespace}" == "" ]]; then
@@ -769,12 +785,13 @@ function update_operator() {
         return 0
     fi
 
+    title "Updating ${sub_name} in namesapce ${ns}..."
     while [ $retries -gt 0 ]; do
         # Retrieve the latest version of the subscription
         ${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml > sub.yaml
     
-        existing_channel=$(yq eval '.spec.channel' sub.yaml)
-        existing_catalogsource=$(yq eval '.spec.source' sub.yaml)
+        existing_channel=$(${YQ} eval '.spec.channel' sub.yaml)
+        existing_catalogsource=$(${YQ} eval '.spec.source' sub.yaml)
 
         compare_semantic_version $existing_channel $channel
         return_channel_value=$?
@@ -791,10 +808,10 @@ function update_operator() {
         fi
 
         # Update the subscription with the desired changes
-        yq -i eval 'select(.kind == "Subscription") | .spec += {"channel": "'${channel}'"}' sub.yaml
-        yq -i eval 'select(.kind == "Subscription") | .spec += {"source": "'${source}'"}' sub.yaml
-        yq -i eval 'select(.kind == "Subscription") | .spec += {"sourceNamespace": "'${source_ns}'"}' sub.yaml
-        yq -i eval 'select(.kind == "Subscription") | .spec += {"installPlanApproval": "'${install_mode}'"}' sub.yaml
+        ${YQ} -i eval 'select(.kind == "Subscription") | .spec += {"channel": "'${channel}'"}' sub.yaml
+        ${YQ} -i eval 'select(.kind == "Subscription") | .spec += {"source": "'${source}'"}' sub.yaml
+        ${YQ} -i eval 'select(.kind == "Subscription") | .spec += {"sourceNamespace": "'${source_ns}'"}' sub.yaml
+        ${YQ} -i eval 'select(.kind == "Subscription") | .spec += {"installPlanApproval": "'${install_mode}'"}' sub.yaml
 
         # Apply the patch
         ${OC} apply -f sub.yaml
@@ -888,8 +905,8 @@ function scale_down() {
     
     ${OC} get subscription.operators.coreos.com ${cs_sub} -n ${operator_ns} -o yaml > sub.yaml
 
-    existing_channel=$(yq eval '.spec.channel' sub.yaml)
-    existing_catalogsource=$(yq eval '.spec.source' sub.yaml)
+    existing_channel=$(${YQ} eval '.spec.channel' sub.yaml)
+    existing_catalogsource=$(${YQ} eval '.spec.source' sub.yaml)
     compare_semantic_version $existing_channel $channel
     return_channel_value=$?
 
@@ -973,11 +990,16 @@ function accept_license() {
     local kind=$1
     local namespace=$2
     local cr_name=$3
+    title "Accepting license for $kind $cr_name in namespace $namespace..."
+    if [[ $PREVIEW_MODE -eq 1 ]]; then
+        info "Preview mode is on, skip patching license acceptance\n"
+        return 0       
+    fi
     ${OC} patch "$kind" "$cr_name" -n "$namespace" --type='merge' -p '{"spec":{"license":{"accept":true}}}' || export fail="true"
     if [[ $fail == "true" ]]; then
-        warning "Failed to update license acceptance for $kind CR $cr_name"
+        warning "Failed to update license acceptance for $kind CR $cr_name\n"
     else
-        info "License accepted for $kind $cr_name."
+        success "License accepted for $kind $cr_name\n"
     fi
 }
 
@@ -1009,7 +1031,7 @@ function delete_operand_finalizer() {
     local ns=$2
     for crd in ${crds}; do
         if [ "${crd}" != "packagemanifests.packages.operators.coreos.com" ] && [ "${crd}" != "events" ] && [ "${crd}" != "events.events.k8s.io" ]; then
-            crs=$(${OC} get ${crd} --no-headers --ignore-not-found -n ${ns} 2>/dev/null | awk '{print $1}')
+            crs=$(${OC} get "${crd}" --no-headers --ignore-not-found -n "${ns}" 2>/dev/null | awk '{print $1}')
             for cr in ${crs}; do
                 msg "Removing the finalizers for resource: ${crd}/${cr}"
                 ${OC} patch ${crd} ${cr} -n ${ns} --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]' 2>/dev/null
@@ -1054,5 +1076,49 @@ function cleanup_log() {
 function debug1() {
     if [ $DEBUG -eq 1 ]; then
        debug "${1}"
+    fi
+}
+
+# check if version of CS supports delegation for ibm-cert-manager-operator
+# >= v3.19.9 if in v3 channel
+# or >= v3.21.0 in any other channel
+function is_supports_delegation() {
+    local version=$1
+    major=$(echo "$version" | cut -d '.' -f1 | cut -d 'v' -f2)
+    minor=$(echo "$version" | cut -d '.' -f2)
+    patch=$(echo "$version" | cut -d '.' -f3)
+
+    if [ -z "$version" ]; then
+        info "No ibm-common-service-operator found on the cluster, skipping delegation check"
+        return 0
+    fi
+
+    if [ "$major" -gt 3 ]; then
+        info "Major version is greater than 3, skipping delegation check"
+        return 0
+    fi
+
+    if [ "$major" -lt 3 ]; then
+        return 1
+    fi
+
+    if [ "$minor" -lt 19 ]; then
+        return 1
+    fi
+
+    # only LTSR starting from 3.19.9 supported delegation
+    if [ "$minor" -eq 19 ]; then
+        if [ "$patch" -lt 9 ]; then
+            return 1
+        fi
+    fi
+
+    echo "Version: $version supports cert-manager delegation"
+}
+
+function prepare_preview_mode() {
+    mkdir -p ${PREVIEW_DIR}
+    if [ $PREVIEW_MODE -eq 1 ]; then
+        OC_CMD="oc --dry-run=client" # a redirect to the file is needed too
     fi
 }

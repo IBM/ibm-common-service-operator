@@ -102,13 +102,14 @@ function print_usage() {
     echo "Usage: ${script_name} --original-cs-ns <Original-CommonService-Namespace> --services-ns <Services-Namespace> [OPTIONS]..."
     echo ""
     echo "Preload data and config information from an existing Common Services namespace to a new, empty namespace"
+    echo "See step 4 here https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.0?topic=4x-isolated-migration for more information."
     echo ""
     echo "Options:"
-    echo "   --oc string                                    File path to oc CLI. Default uses oc in your PATH"
-    echo "   --yq string                                    File path to yq CLI. Default uses yq in your PATH"
-    echo "   --original-cs-ns string                        Namespace to migrate Cloud Pak 2 Foundational services data from."
-    echo "   --services-ns string                           Namespace to migrate Cloud Pak 2 Foundational services data too"
-    echo "   -v, --debug integer                            Verbosity of logs. Default is 0. Set to 1 for debug logs"
+    echo "   --oc string                                    Optional. File path to oc CLI. Default uses oc in your PATH"
+    echo "   --yq string                                    Optional. File path to yq CLI. Default uses yq in your PATH"
+    echo "   --original-cs-ns string                        Required. Namespace to migrate Cloud Pak 2 Foundational services data from."
+    echo "   --services-ns string                           Required. Namespace to migrate Cloud Pak 2 Foundational services data too"
+    echo "   -v, --debug integer                            Optional. Verbosity of logs. Default is 0. Set to 1 for debug logs"
     echo "   -h, --help                                     Print usage information"
     echo ""
 }
@@ -571,6 +572,7 @@ function loadmongo() {
   fi
 
   ibm_mongodb_image=$(${OC} get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
+
   if [[ $s390x_ENV == "false" ]]; then
     cat <<EOF >$TEMPFILE
 apiVersion: batch/v1
@@ -1449,6 +1451,7 @@ EOF
     #get images from cp2 namespace
     ibm_mongodb_install_image=$(${OC} get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.initContainers[0]}{.image}{end}')
     ibm_mongodb_image=$(${OC} get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
+    
     #icp-mongodb-ss.yaml
     cat << EOF | ${OC} apply -f -
 kind: StatefulSet

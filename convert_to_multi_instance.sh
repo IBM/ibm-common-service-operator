@@ -144,7 +144,7 @@ function migrate_lic_cms() {
     title "Copying over Licensing Configmaps"
     msg "-----------------------------------------------------------------------"
     local namespace=$1
-    local control_ns=$2
+    local controlNs=$2
     POSSIBLE_CONFIGMAPS=("ibm-licensing-config"
 "ibm-licensing-annotations"
 "ibm-licensing-products"
@@ -256,7 +256,8 @@ function check_IAM(){
         do
             zenservice_exists=$(${OC} get zenservice -n $cp_namespace || echo fail)
             if [[ $zenservice_exists != "fail" ]] && [[ $zenservice_exists != "" ]]; then
-                iam_enabled=$(${OC} get zenservice -n $cp_namespace -o yaml | grep iamIntegration | awk '{print $2}')
+                zenservice=$(${OC} get zenservice -n $cp_namespace --no-headers | awk '{print $1}')
+                iam_enabled=$(${OC} get zenservice $zenservice -n $cp_namespace -o yaml | ${YQ} '.spec.iamIntegration')
                 if [[ $iam_enabled == "true" ]]; then
                     if [[ $namespaces == "" ]]; then
                         namespaces="$cs_namespace"
