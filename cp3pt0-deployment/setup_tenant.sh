@@ -469,6 +469,11 @@ EOF
             if [ $checkOperatorNS ] && [ $checkServicesNS ]; then
                 success "Successfully patched CommonService CR in ${OPERATOR_NS}"
                 break
+            else
+                operatorNSinCR=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | yq '.spec.operatorNamespace')
+                servicesNSinCR=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | yq '.spec.servicesNamespace')
+                info "OperatorNamespace in CommonService cr should be ${OPERATOR_NS}, but it is ${operatorNSinCR}"
+                info "ServicesNamespace in CommonService cr should be ${SERVICES_NS}, but it is ${servicesNSinCR}"
             fi
         else
             warning "Failed to patch CommonService CR in ${OPERATOR_NS}, retry it in ${delay} seconds"
