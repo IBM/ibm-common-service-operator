@@ -101,6 +101,25 @@ const Medium = `
           limits:
             cpu: 1000m
             memory: 350Mi
+- name: ibm-im-mongodb-operator-v4.1
+  spec:
+    mongoDB:
+      replicas: 3
+      resources:
+        limits:
+          cpu: 2000m
+          memory: 2048Mi
+        requests:
+          cpu: 500m
+          memory: 2048Mi
+      metrics:
+        resources:
+          requests:
+            cpu: 100m
+            memory: 300Mi
+          limits:
+            cpu: 1000m
+            memory: 350Mi
 - name: ibm-iam-operator
   spec:
     authentication:
@@ -312,6 +331,50 @@ const Medium = `
             cpu: 320m
             memory: 250Mi
       replicas: 2
+- name: ibm-im-operator-v4.1
+  spec:
+    authentication:
+      auditService:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 50Mi
+          requests:
+            cpu: 50m
+            memory: 50Mi
+      authService:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 745Mi
+          requests:
+            cpu: 230m
+            memory: 695Mi
+      clientRegistration:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 50Mi
+          requests:
+            cpu: 20m
+            memory: 50Mi
+      identityManager:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 525Mi
+          requests:
+            cpu: 100m
+            memory: 140Mi
+      identityProvider:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 355Mi
+          requests:
+            cpu: 320m
+            memory: 250Mi
+      replicas: 2
 - name: ibm-management-ingress-operator
   spec:
     managementIngress:
@@ -402,6 +465,17 @@ const Medium = `
           cpu: 300m
           memory: 376Mi
 - name: ibm-idp-config-ui-operator-v4.0
+  spec:
+    commonWebUI:
+      replicas: 2
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 430Mi
+        requests:
+          cpu: 300m
+          memory: 376Mi
+- name: ibm-idp-config-ui-operator-v4.1
   spec:
     commonWebUI:
       replicas: 2
