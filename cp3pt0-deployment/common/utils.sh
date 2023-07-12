@@ -659,7 +659,7 @@ function cleanup_OperandBindInfo() {
 
 function cleanup_NamespaceScope() {
     local namespace=$1
-    ${OC} delete namespacescope odlm-scope-managedby-odlm nss-odlm-scope nss-managedby-odlm -n ${namespace} --ignore-not-found
+    ${OC} delete namespacescope odlm-scope-managedby-odlm nss-odlm-scope nss-managedby-odlm common-service -n ${namespace} --ignore-not-found
 }
 
 function cleanup_OperandRequest() {
@@ -1031,7 +1031,7 @@ function delete_operand_finalizer() {
     local ns=$2
     for crd in ${crds}; do
         if [ "${crd}" != "packagemanifests.packages.operators.coreos.com" ] && [ "${crd}" != "events" ] && [ "${crd}" != "events.events.k8s.io" ]; then
-            crs=$(${OC} get ${crd} --no-headers --ignore-not-found -n ${ns} 2>/dev/null | awk '{print $1}')
+            crs=$(${OC} get "${crd}" --no-headers --ignore-not-found -n "${ns}" 2>/dev/null | awk '{print $1}')
             for cr in ${crs}; do
                 msg "Removing the finalizers for resource: ${crd}/${cr}"
                 ${OC} patch ${crd} ${cr} -n ${ns} --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]' 2>/dev/null
