@@ -21,6 +21,7 @@
 
 function help() {
     echo "authorize-namespace.sh - Authorize a namespace to be manageable from another namespace through the NamespaceScope operator"
+    echo "See https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.0?topic=co-authorizing-foundational-services-perform-operations-workloads-in-namespace for more information."
     echo "SYNTAX:"
     echo "authorize-namespace.sh [namespace | default current namespace] [-to namespace | default ibm-common-services] [-delete]"
     echo "WHERE:"
