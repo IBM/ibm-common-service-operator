@@ -101,6 +101,25 @@ const StarterSet = `
           limits:
             cpu: 1000m
             memory: 350Mi
+- name: ibm-im-mongodb-operator-v4.1
+  spec:
+    mongoDB:
+      replicas: 1
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 640Mi
+        requests:
+          cpu: 500m
+          memory: 640Mi
+      metrics:
+        resources:
+          requests:
+            cpu: 100m
+            memory: 300Mi
+          limits:
+            cpu: 1000m
+            memory: 350Mi
 - name: ibm-iam-operator
   spec:
     authentication:
@@ -312,6 +331,50 @@ const StarterSet = `
           requests:
             cpu: 570m
             memory: 250Mi
+- name: ibm-im-operator-v4.1
+  spec:
+    authentication:
+      replicas: 1
+      auditService:
+        resources:
+          limits:
+            cpu: 20m
+            memory: 40Mi
+          requests:
+            cpu: 10m
+            memory: 20Mi
+      authService:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1090Mi
+          requests:
+            cpu: 600m
+            memory: 650Mi
+      clientRegistration:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 50Mi
+          requests:
+            cpu: 20m
+            memory: 50Mi
+      identityManager:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 410Mi
+          requests:
+            cpu: 260m
+            memory: 240Mi
+      identityProvider:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 420Mi
+          requests:
+            cpu: 570m
+            memory: 250Mi
 - name: ibm-management-ingress-operator
   spec:
     managementIngress:
@@ -402,6 +465,17 @@ const StarterSet = `
           memory: 440Mi
           cpu: 1000m
 - name: ibm-idp-config-ui-operator-v4.0
+  spec:
+    commonWebUI:
+      replicas: 1
+      resources:
+        requests:
+          memory: 256Mi
+          cpu: 130m
+        limits:
+          memory: 440Mi
+          cpu: 1000m
+- name: ibm-idp-config-ui-operator-v4.1
   spec:
     commonWebUI:
       replicas: 1

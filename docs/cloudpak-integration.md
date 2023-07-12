@@ -125,6 +125,9 @@ spec:
   - name: ibm-im-mongodb-operator-v4.0
     spec:
       mongoDB: {}
+  - name: ibm-im-mongodb-operator-v4.1
+    spec:
+      mongoDB: {}
   - name: ibm-cert-manager-operator
     spec:
       certManager: {}
@@ -145,6 +148,9 @@ spec:
   - name: ibm-im-operator-v4.0
     spec:
       authentication: {}
+  - name: ibm-im-operator-v4.1
+    spec:
+      authentication: {}
   - name: ibm-healthcheck-operator
     spec:
       healthService: {}
@@ -154,6 +160,11 @@ spec:
       legacyHeader: {}
       navconfiguration: {}
   - name: ibm-idp-config-ui-operator-v4.0
+    spec:
+      commonWebUI: {}
+      legacyHeader: {}
+      navconfiguration: {}
+  - name: ibm-idp-config-ui-operator-v4.1
     spec:
       commonWebUI: {}
       legacyHeader: {}

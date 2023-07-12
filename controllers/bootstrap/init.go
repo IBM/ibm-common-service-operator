@@ -132,6 +132,7 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		ZenOperatorImage:  util.GetImage("IBM_ZEN_OPERATOR_IMAGE"),
 		IsOCP:             isOCP,
 		WatchNamespaces:   util.GetWatchNamespace(),
+		OnPremMultiEnable: strconv.FormatBool(util.CheckMultiInstances(mgr.GetAPIReader())),
 	}
 
 	bs = &Bootstrap{
@@ -761,7 +762,6 @@ func (b *Bootstrap) InstallOrUpdateOpcon(forceUpdateODLMCRs bool) error {
 		}
 	} else {
 		// OperandConfig for on-prem deployment
-		b.CSData.OnPremMultiEnable = strconv.FormatBool(b.MultiInstancesEnable)
 		if err := b.renderTemplate(constant.CSV3OperandConfig, b.CSData, forceUpdateODLMCRs); err != nil {
 			return err
 		}
