@@ -303,7 +303,7 @@ function delete_tenant_ns() {
         update_namespaceMapping $ns
     done
 
-    cleanup_cs_contorl
+    cleanup_cs_control
 
     success "Common Services uninstall finished and successfull." 
 }
@@ -349,10 +349,10 @@ EOF
 }
 
 # check if we need to cleanup contorl namespace and clean it
-function cleanup_cs_contorl() {
+function cleanup_cs_control() {
     local current_yaml=$("${OC}" get -n kube-public cm common-service-maps -o yaml | yq '.data.["common-service-maps.yaml"]')
     local isExist=$(echo "$current_yaml" | yq '.namespaceMapping[] | has("map-to-common-service-namespace")' )
-    if [ "$isExists" ]; then
+    if [ $isExists=="true" ]; then
         info "map-to-common-service-namespace exist in common-service-maps, don't clean up control namespace"
     else
         title "Clean up control namespace"
