@@ -58,9 +58,34 @@ metadata:
   name: ibm-common-service-operator
 rules:
 - apiGroups:
-  - '*'
+  - cert-manager.io
   resources:
-  - '*'
+  - certificates
+  - issuers
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - statefulsets
+  - daemonsets
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - operator.ibm.com
+  resources:
+  - commonservices
+  - commonservices/finalizers
+  - commonservices/status
+  - operandconfigs
+  - operandregistries
   verbs:
   - create
   - delete
@@ -69,3 +94,85 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - operators.coreos.com
+  resources:
+  - subscriptions
+  - clusterserviceversions
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ''
+  resources:
+  - namespaces
+  verbs:
+  - get
+- apiGroups:
+  - ''
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - delete
+- apiGroups:
+  - ''
+  resources:
+  - secrets
+  - services
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ''
+  resources:
+  - events
+  verbs:
+  - create
+  - get
+  - patch
+  - update
+
+
+# handle clean up of deprecated objects
+- apiGroups:
+  - certmanager.k8s.io
+  resources:
+  - certificates
+  - issuers
+  verbs:
+  - delete
+- apiGroups:
+  - monitoring.operator.ibm.com
+  resources:
+  - exporters
+  - prometheusexts
+  verbs:
+  - delete
+- apiGroups:
+  - operator.ibm.com
+  resources:
+  - operandrequests
+  - operandbindinfos
+  - cataloguis
+  - helmapis
+  - helmrepos
+  verbs:
+  - delete
+- apiGroups:
+  - elasticstack.ibm.com
+  resources:
+  - elasticstacks
+  verbs:
+  - delete
