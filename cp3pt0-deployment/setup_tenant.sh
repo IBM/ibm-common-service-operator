@@ -28,6 +28,7 @@ DEBUG=0
 LICENSE_ACCEPT=0
 RETRY_CONFIG_CSCR=0
 IS_UPGRADE=0
+IS_NOT_COMPLEX_TOPOLOGY=0
 
 # ---------- Command variables ----------
 
@@ -206,6 +207,8 @@ function pre_req() {
 
     # Check original configurations in main CommonService CR
     default_arguments
+    # Determine deployment topology
+    determine_topology
 
     # Check profile size
     case "$SIZE_PROFILE" in
@@ -267,6 +270,44 @@ function default_arguments() {
     # Assign default values when not specified
     if [[ "$SERVICES_NS" == "" ]]; then
         SERVICES_NS=$OPERATOR_NS
+    fi
+}
+
+# It is a simple topology if and only if:
+# operator namespace is the same as services namespace or services namespace is empty
+# there is no tethered namespaces, then it is a simple topology
+# there is no excluded namespaces, then it is a simple topology
+
+# It is a complex topology as long as:
+# number of nss in ConfigMap is greater than 1
+function determine_topology() {
+    local is_all_ns=0
+    local nss_cm=$(${OC} get configmap namespace-scope -n ${OPERATOR_NS} -o yaml --ignore-not-found)
+    if [[ ! -z "$nss_cm" ]]; then
+        local nss=$("${YQ}" eval '.data.namespaces' - <<< "$nss_cm")
+        if [[ "$nss" == "" ]]; then
+            is_all_ns=1
+        fi
+        # check number of elements in nss string which is comma separated
+        local nss_count=$(echo $nss | tr "," "\n" | wc -l)
+        # if nss_count is greater than 1, then it is a complex topology
+        if [[ $nss_count -gt 1 ]]; then
+            IS_NOT_COMPLEX_TOPOLOGY=0
+            return
+        fi
+    fi
+
+    # if nss_count is not greater than 1 and services namespace is the same as operator namespace, then it is a simple topology
+    if [[ "$SERVICES_NS" == "$OPERATOR_NS" || "$SERVICES_NS" == "" ]] && [[ "$TETHERED_NS" == "" ]] && [[ "$EXCLUDED_NS" == "" ]]; then
+        IS_NOT_COMPLEX_TOPOLOGY=1
+        warning "It is simple topology or all namespaces topology\n"
+        return
+    fi
+    # if nss is empty, nss_count is not greater than 1 and services namespace is different operator namespace, then it is a all namespaces topology
+    if [[ $is_all_ns -eq 1 ]] && [[ "$SERVICES_NS" != "$OPERATOR_NS" ]] && [[ "$TETHERED_NS" == "" ]] && [[ "$EXCLUDED_NS" == "" ]]; then
+        IS_NOT_COMPLEX_TOPOLOGY=1
+        warning "It is all namespaces topology\n"
+        return
     fi
 }
 
@@ -453,6 +494,10 @@ EOF
 }
 
 function setup_nss() {
+    if [[ "$IS_NOT_COMPLEX_TOPOLOGY" -eq 1 ]]; then
+        warning "NamespaceScope Configuration is not needed for simple or all namespaces topology, skip NamespaceScope setup\n"
+        return
+    fi
     install_nss
     authorize_nss
 }
@@ -485,7 +530,9 @@ function install_cs_operator() {
     if [ $PREVIEW_MODE -eq 0 ]; then
         wait_for_operator "$OPERATOR_NS" "ibm-common-service-operator"
         accept_license "commonservice" "$OPERATOR_NS" "common-service"
-        wait_for_nss_patch "$OPERATOR_NS" 
+        if [[ $IS_NOT_COMPLEX_TOPOLOGY -eq 0 ]]; then
+            wait_for_nss_patch "$OPERATOR_NS" 
+        fi
         wait_for_cs_webhook "$OPERATOR_NS" "ibm-common-service-webhook"
     else
         info "Preview mode is on, skip waiting for operator and webhook being ready\n"
