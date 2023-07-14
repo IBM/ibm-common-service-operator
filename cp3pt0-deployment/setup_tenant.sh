@@ -151,7 +151,7 @@ function print_usage() {
     echo "   --tethered-namespaces string   Optional. Add namespaces to this tenant, comma-delimited, e.g. 'ns1,ns2'"
     echo "   --excluded-namespaces string   Optional. Remove namespaces from this tenant, comma-delimited, e.g. 'ns1,ns2'"
     echo "   --license-accept               Required. Set this flag to accept the license agreement"
-    echo "   -c, --channel string           Channel for Subscription(s). Default is v4.1"
+    echo "   -c, --channel string           Optional. Channel for Subscription(s). Default is v4.1"
     echo "   -i, --install-mode string      Optional. InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
     echo "   -s, --source string            Optional. CatalogSource name. This assumes your CatalogSource is already created. Default is opencloud-operators"
     echo "   -n, --namespace string         Optional. Namespace of CatalogSource. Default is openshift-marketplace"
