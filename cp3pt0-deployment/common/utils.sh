@@ -230,6 +230,20 @@ function wait_for_operator() {
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
+function wait_for_csv() {
+    local namespace=$1
+    local operator_name=$2
+    local condition="${OC} -n ${namespace} get csv --no-headers --ignore-not-found | grep ^${operator_name}"
+    local retries=30
+    local sleep_time=10
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for operator ${operator_name} CSV in namespace ${namespace} to be generated"
+    local success_message="Operator ${operator_name} CSV in namespace ${namespace} is generated"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for ${operator_name} CSV in namespace ${namespace} to be generated"
+ 
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
 function wait_for_service_account() {
     local namespace=$1
     local name=$2
@@ -260,14 +274,18 @@ function wait_for_operand_request() {
 
 function wait_for_nss_patch() {
     local namespace=$1
-    local csv_name=$($OC get subscription.operators.coreos.com ibm-common-service-operator -n ${namespace} -o jsonpath='{.status.installedCSV}')
-    local condition="${OC} -n ${namespace}  get csv ${csv_name} -o jsonpath='{.spec.install.spec.deployments[0].spec.template.spec.containers[0].env[?(@.name==\"WATCH_NAMESPACE\")].valueFrom.configMapKeyRef.name}'| grep 'namespace-scope'"
-    local retries=10
+    local package_name=$2
+
+    local sub_name=$(${OC} get subscription.operators.coreos.com -n ${namespace} -l operators.coreos.com/${package_name}.${namespace}='' --no-headers | awk '{print $1}')
+    local csv_name=$(${OC} get subscription.operators.coreos.com ${sub_name} -n ${namespace} --ignore-not-found -o jsonpath={.status.installedCSV})
+
+    local condition="${OC} -n ${namespace} get csv ${csv_name} -o jsonpath='{.spec.install.spec.deployments[0].spec.template.spec.containers[0].env[?(@.name==\"WATCH_NAMESPACE\")].valueFrom.configMapKeyRef.name}'| grep 'namespace-scope'"
+    local retries=30
     local sleep_time=10
     local total_time_mins=$(( sleep_time * retries / 60))
-    local wait_message="Waiting for cs-operator CSV to be patched with NSS configmap"
-    local success_message="cs-operator CSV is patched with NSS configmap"
-    local error_message="Timeout after ${total_time_mins} minutes waiting for cs-operator CSV to be patched with NSS configmap"
+    local wait_message="Waiting for operator ${package_name} CSV to be patched with NamespaceScope ConfigMap"
+    local success_message="operator ${package_name} CSV is patched with NamespaceScope ConfigMap"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for operator ${package_name} CSV to be patched with NamespaceScope ConfigMap"
     local pod_name=$($OC get pod -n ${namespace} | grep namespace-scope | awk '{print $1}')
 
     # wait for nss patch
@@ -277,9 +295,10 @@ function wait_for_nss_patch() {
 
         # restart namespace scope operator pod to reconcilie
         if [[ ( ${retries} -eq 0 ) && ( -z "${result}" ) ]]; then
-            info "Reconciling namespace scope operator"
-            echo "deleting pod ${pod_name}"
-            $OC delete pod ${pod_name} -n ${namespace}    
+            warning "Deleting pod ${pod_name} in namespace ${namespace} to trigger NamespaceScope reconciliaiton"
+            $OC delete pod ${pod_name} -n ${namespace}
+            # reset retries to 6 times to wait one minute
+            retries=6
             wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
             break
         fi
@@ -300,24 +319,87 @@ function wait_for_nss_patch() {
     fi
     
     # wait for deployment to be ready
-    deployment_name=$($OC get deployment -n ${namespace} | grep common-service-operator | awk '{print $1}')
-    wait_for_env_var ${namespace} ${deployment_name}
+    local deployment_name=$(${OC} get deployment -n ${namespace} -l operators.coreos.com/${package_name}.${namespace}='' --no-headers | awk '{print $1}')
+    wait_for_nss_env_var ${namespace} ${deployment_name}
     wait_for_deployment ${namespace} ${deployment_name}
     
 }
 
-function wait_for_env_var() {
+function wait_for_nss_env_var() {
     local namespace=$1
     local name=$2
     local condition="${OC} -n ${namespace} get deployment ${name} -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name==\"WATCH_NAMESPACE\")].valueFrom.configMapKeyRef.name}'| grep 'namespace-scope'"
     local retries=10
     local sleep_time=30
     local total_time_mins=$(( sleep_time * retries / 60))
-    local wait_message="Waiting for OLM to update Deployment ${name} "
-    local success_message="Deployment ${name} is updated"
-    local error_message="Timeout after ${total_time_mins} minutes waiting for OLM to update Deployment ${name} "
+    local wait_message="Waiting for OLM to update Deployment ${name} in namespace ${namespace} with NamespaceScope ConfigMap"
+    local success_message="Deployment ${name} is updated with NamespaceScope ConfigMap"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for OLM to update Deployment ${name} in namespace ${namespace} with NamespaceScope ConfigMap"
 
-    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+
+    # wait for OLM to patch deployment
+    info "${wait_message}"
+    while true; do
+        result=$(eval "${condition}")
+
+        # patch deployment directly when OLM fails to do so
+        if [[ ( ${retries} -eq 0 ) && ( -z "${result}" ) ]]; then
+            patch_watch_namespace ${namespace} ${name}
+            retries=6
+            wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+            break
+        fi
+ 
+        
+        if [ -z "${result}" ]; then
+            info "RETRYING: ${wait_message} (${retries} left)"
+            retries=$(( retries - 1 ))
+        else
+            break
+        fi
+
+        sleep ${sleep_time}
+    done
+
+    if [[ ! -z "${success_message}" ]]; then
+        success "${success_message}\n"
+    fi
+}
+
+function patch_watch_namespace() {
+    local namespace=$1
+    local name=$2
+    local retries=5 # Number of retries
+    local delay=5 # Delay between retries in seconds
+
+    while [ $retries -gt 0 ]; do
+        ${OC} get deployment ${name} -n ${namespace} -o yaml > /tmp/deployment.yaml
+
+        # Delete original reference for WATCH_NAMESPACE in deployment
+        # ${YQ} -i 'del(.spec.template.spec.containers[0].env[] | select(.name == "WATCH_NAMESPACE")).valueFrom' /tmp/deployment.yaml
+        # The above command does not work because of the error: invalid: spec.template.spec.containers[0].env[1].valueFrom: Invalid value: "": may not have more than one field specified at a time
+        # This happens because we need to set the valueFrom.fieldRef to null, to explicitly tell k8s to delete that field
+        ${YQ} -i eval '(.spec.template.spec.containers[0].env[] | select(.name == "WATCH_NAMESPACE")).valueFrom.fieldRef = null' /tmp/deployment.yaml
+        # Add new reference for WATCH_NAMESPACE in deployment from NamespaceScope ConfigMap
+        ${YQ} -i eval '(.spec.template.spec.containers[0].env[] | select(.name == "WATCH_NAMESPACE")).valueFrom.configMapKeyRef.name = "namespace-scope"' /tmp/deployment.yaml
+        ${YQ} -i eval '(.spec.template.spec.containers[0].env[] | select(.name == "WATCH_NAMESPACE")).valueFrom.configMapKeyRef.key = "namespaces"' /tmp/deployment.yaml
+        ${YQ} -i eval '(.spec.template.spec.containers[0].env[] | select(.name == "WATCH_NAMESPACE")).valueFrom.configMapKeyRef.optional = true' /tmp/deployment.yaml
+
+        # Apply the patch for deployment
+        ${OC} apply -f /tmp/deployment.yaml
+        if [[ $? -eq 0 ]]; then
+            success "Successfully patched WATCH_NAMESPACE in Deployment ${name} in ${namespace}\n"
+            rm /tmp/deployment.yaml
+            return 0
+        else
+            warning "Failed to patch WATCH_NAMESPACE in Deployment ${name} in ${namespace}. Retrying in ${delay} seconds..."
+            sleep ${delay}
+            retries=$((retries - 1))            
+        fi
+    done
+    rm /tmp/deployment.yaml
+    error "Maximum retries reached. Failed to patch Deployment ${name} in ${namespace}"
+    return 1
 }
 
 function wait_for_deployment() {

@@ -25,6 +25,7 @@ LICENSING_SOURCE="ibm-licensing-catalog"
 CERT_MANAGER_NAMESPACE="ibm-cert-manager"
 LICENSING_NAMESPACE="ibm-licensing"
 LICENSE_ACCEPT=0
+PREVIEW_MODE=0
 DEBUG=0
 
 CUSTOMIZED_LICENSING_NAMESPACE=0
@@ -118,6 +119,9 @@ function parse_arguments() {
             LICENSING_NAMESPACE=$1
             CUSTOMIZED_LICENSING_NAMESPACE=1
             ;;
+        --preview)
+            PREVIEW_MODE=1
+            ;;
         -c | --channel)
             shift
             CHANNEL=$1
@@ -163,7 +167,8 @@ function print_usage() {
     echo "   -cmNs, --cert-manager-namespace string         Optional. Set custom namespace for ibm-cert-manager-operator. Default is ibm-cert-manager"
     echo "   -licensingNs, --licensing-namespace string     Optional. Set custom namespace for ibm-licensing-operator. Default is ibm-licensing"
     echo "   --license-accept                               Required. Set this flag to accept the license agreement."
-    echo "   -c, --channel string                           Optional. Channel for Subscription(s). Default is v4.0"   
+    echo "   --preview                                      Enable preview mode (dry run)"
+    echo "   -c, --channel string                           Optional. Channel for Subscription(s). Default is v4.1"
     echo "   -i, --install-mode string                      Optional. InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
     echo "   -v, --debug integer                            Optional. Verbosity of logs. Default is 0. Set to 1 for debug logs"
     echo "   -h, --help                                     Print usage information"
@@ -263,6 +268,7 @@ function install_cert_manager() {
     is_sub_exist "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" # this will catch the packagenames of all cert-manager-operators
     if [ $? -eq 0 ]; then
         update_operator "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" "$CHANNEL" "${CERT_MANAGER_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
+        wait_for_operator_upgrade "${CERT_MANAGER_NAMESPACE}" "ibm-cert-manager-operator" "$CHANNEL" "${INSTALL_MODE}"
     else
         create_subscription "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" "$CHANNEL" "ibm-cert-manager-operator" "${CERT_MANAGER_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
     fi
@@ -306,6 +312,7 @@ EOF
     is_sub_exist "ibm-licensing-operator-app" # this will catch the packagenames of all ibm-licensing-operator-app
     if [ $? -eq 0 ]; then
         update_operator "ibm-licensing-operator-app" "${LICENSING_NAMESPACE}" "$CHANNEL" "${LICENSING_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
+        wait_for_operator_upgrade "${LICENSING_NAMESPACE}" "ibm-licensing-operator-app" "$CHANNEL" "${INSTALL_MODE}"
     else
         create_subscription "ibm-licensing-operator-app" "${LICENSING_NAMESPACE}" "$CHANNEL" "ibm-licensing-operator-app" "${LICENSING_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
     fi
@@ -356,12 +363,12 @@ function pre_req() {
     if [[ $CHANNEL =~ ^v[0-9]+\.[0-9]+$ ]]; then
         # Check if channel is equal or greater than v4.0
         if [[ $CHANNEL == v[4-9].* || $CHANNEL == v[4-9] ]]; then  
-            success "Channel is valid"
+            success "Channel $CHANNEL is valid"
         else
-            error "Channel is less than v4.0"
+            error "Channel $CHANNEL is less than v4.0"
         fi
     else
-        error "Channel is not semantic vx.y"
+        error "Channel $CHANNEL is not semantic vx.y"
     fi
 
     # Check if all CS installations are above 3.19.9
