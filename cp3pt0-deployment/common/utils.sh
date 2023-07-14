@@ -238,7 +238,7 @@ function wait_for_csv() {
     local sleep_time=10
     local total_time_mins=$(( sleep_time * retries / 60))
     local wait_message="Waiting for operator ${operator_name} CSV in namespace ${namespace} to be generated"
-    local success_message="Operator ${operator_name} CSV in namespace ${namespace} is not generated"
+    local success_message="Operator ${operator_name} CSV in namespace ${namespace} is generated"
     local error_message="Timeout after ${total_time_mins} minutes waiting for ${operator_name} CSV in namespace ${namespace} to be generated"
  
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
@@ -277,10 +277,10 @@ function wait_for_nss_patch() {
     local package_name=$2
 
     local sub_name=$(${OC} get subscription.operators.coreos.com -n ${namespace} -l operators.coreos.com/${package_name}.${namespace}='' --no-headers | awk '{print $1}')
-    local csv_name=$(${OC} get subscription.operators.coreos.com ${sub_name} -n ${operator_ns} --ignore-not-found -o jsonpath={.status.installedCSV})
+    local csv_name=$(${OC} get subscription.operators.coreos.com ${sub_name} -n ${namespace} --ignore-not-found -o jsonpath={.status.installedCSV})
 
     local condition="${OC} -n ${namespace} get csv ${csv_name} -o jsonpath='{.spec.install.spec.deployments[0].spec.template.spec.containers[0].env[?(@.name==\"WATCH_NAMESPACE\")].valueFrom.configMapKeyRef.name}'| grep 'namespace-scope'"
-    local retries=18
+    local retries=30
     local sleep_time=10
     local total_time_mins=$(( sleep_time * retries / 60))
     local wait_message="Waiting for operator ${package_name} CSV to be patched with NamespaceScope ConfigMap"
