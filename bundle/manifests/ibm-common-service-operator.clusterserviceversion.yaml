@@ -22,7 +22,7 @@ metadata:
       ]
     capabilities: Seamless Upgrades
     containerImage: icr.io/cpopen/common-service-operator:latest
-    createdAt: "2023-07-13T21:50:01Z"
+    createdAt: "2023-07-14T01:05:02Z"
     description: The IBM Common Service Operator is used to deploy IBM Common Services
     nss.operator.ibm.com/managed-operators: ibm-common-service-operator
     olm.skipRange: ">=3.3.0 <4.1.0"
@@ -325,6 +325,7 @@ spec:
                 - certificates
                 - issuers
               verbs:
+                - create
                 - get
                 - list
                 - watch
