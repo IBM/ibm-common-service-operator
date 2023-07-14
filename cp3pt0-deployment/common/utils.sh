@@ -344,9 +344,7 @@ function wait_for_nss_env_var() {
 
         # restart namespace scope operator pod to reconcilie
         if [[ ( ${retries} -eq 0 ) && ( -z "${result}" ) ]]; then
-            warning "Deleting Deployment ${name} in namespace ${namespace} to trigger OLM reconciliation"
-            ${OC} delete deployment ${name} -n ${namespace}
-            # reset retries to 6 times to wait one minute
+            patch_watch_namespace ${namespace} ${name}
             retries=6
             wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
             break
@@ -366,6 +364,42 @@ function wait_for_nss_env_var() {
     if [[ ! -z "${success_message}" ]]; then
         success "${success_message}\n"
     fi
+}
+
+function patch_watch_namespace() {
+    local namespace=$1
+    local name=$2
+    local retries=5 # Number of retries
+    local delay=5 # Delay between retries in seconds
+
+    while [ $retries -gt 0 ]; do
+        ${OC} get deployment ${name} -n ${namespace} -o yaml > /tmp/deployment.yaml
+
+        # Delete original reference for WATCH_NAMESPACE in deployment
+        # ${YQ} -i 'del(.spec.template.spec.containers[0].env[] | select(.name == "WATCH_NAMESPACE")).valueFrom' /tmp/deployment.yaml
+        # The above command does not work because of the error: invalid: spec.template.spec.containers[0].env[1].valueFrom: Invalid value: "": may not have more than one field specified at a time
+        # This happens because we need to set the valueFrom.fieldRef to null, to explicitly tell k8s to delete that field
+        ${YQ} -i eval '(.spec.template.spec.containers[0].env[] | select(.name == "WATCH_NAMESPACE")).valueFrom.fieldRef = null' /tmp/deployment.yaml
+        # Add new reference for WATCH_NAMESPACE in deployment from NamespaceScope ConfigMap
+        ${YQ} -i eval '(.spec.template.spec.containers[0].env[] | select(.name == "WATCH_NAMESPACE")).valueFrom.configMapKeyRef.name = "namespace-scope"' /tmp/deployment.yaml
+        ${YQ} -i eval '(.spec.template.spec.containers[0].env[] | select(.name == "WATCH_NAMESPACE")).valueFrom.configMapKeyRef.key = "namespaces"' /tmp/deployment.yaml
+        ${YQ} -i eval '(.spec.template.spec.containers[0].env[] | select(.name == "WATCH_NAMESPACE")).valueFrom.configMapKeyRef.optional = true' /tmp/deployment.yaml
+
+        # Apply the patch for deployment
+        ${OC} apply -f /tmp/deployment.yaml
+        if [[ $? -eq 0 ]]; then
+            success "Successfully patched WATCH_NAMESPACE in Deployment ${name} in ${namespace}\n"
+            rm /tmp/deployment.yaml
+            return 0
+        else
+            warning "Failed to patch WATCH_NAMESPACE in Deployment ${name} in ${namespace}. Retrying in ${delay} seconds..."
+            sleep ${delay}
+            retries=$((retries - 1))            
+        fi
+    done
+    rm /tmp/deployment.yaml
+    error "Maximum retries reached. Failed to patch Deployment ${name} in ${namespace}"
+    return 1
 }
 
 function wait_for_deployment() {
