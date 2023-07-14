@@ -151,7 +151,7 @@ function print_usage() {
     echo "   --tethered-namespaces string   Optional. Add namespaces to this tenant, comma-delimited, e.g. 'ns1,ns2'"
     echo "   --excluded-namespaces string   Optional. Remove namespaces from this tenant, comma-delimited, e.g. 'ns1,ns2'"
     echo "   --license-accept               Required. Set this flag to accept the license agreement"
-    echo "   -c, --channel string           Optional. Channel for Subscription(s). Default is v4.0"
+    echo "   -c, --channel string           Channel for Subscription(s). Default is v4.1"
     echo "   -i, --install-mode string      Optional. InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
     echo "   -s, --source string            Optional. CatalogSource name. This assumes your CatalogSource is already created. Default is opencloud-operators"
     echo "   -n, --namespace string         Optional. Namespace of CatalogSource. Default is openshift-marketplace"
@@ -197,12 +197,12 @@ function pre_req() {
     if [[ $CHANNEL =~ ^v[0-9]+\.[0-9]+$ ]]; then
         # Check if channel is equal or greater than v4.0
         if [[ $CHANNEL == v[4-9].* || $CHANNEL == v[4-9] ]]; then  
-            success "Channel is valid"
+            success "Channel $CHANNEL is valid"
         else
-            error "Channel is less than v4.0"
+            error "Channel $CHANNEL is less than v4.0"
         fi
     else
-        error "Channel is not semantic vx.y"
+        error "Channel $CHANNEL is not semantic vx.y"
     fi
 
     # Check original configurations in main CommonService CR
@@ -528,11 +528,12 @@ function install_cs_operator() {
     fi
 
     if [ $PREVIEW_MODE -eq 0 ]; then
+        wait_for_csv "$OPERATOR_NS" "ibm-common-service-operator"
+        if [[ $IS_NOT_COMPLEX_TOPOLOGY -eq 0 ]]; then
+            wait_for_nss_patch "$OPERATOR_NS" "ibm-common-service-operator"
+        fi
         wait_for_operator "$OPERATOR_NS" "ibm-common-service-operator"
         accept_license "commonservice" "$OPERATOR_NS" "common-service"
-        if [[ $IS_NOT_COMPLEX_TOPOLOGY -eq 0 ]]; then
-            wait_for_nss_patch "$OPERATOR_NS" 
-        fi
         wait_for_cs_webhook "$OPERATOR_NS" "ibm-common-service-webhook"
     else
         info "Preview mode is on, skip waiting for operator and webhook being ready\n"
