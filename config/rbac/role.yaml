@@ -63,6 +63,7 @@ rules:
   - certificates
   - issuers
   verbs:
+  - create
   - get
   - list
   - watch
