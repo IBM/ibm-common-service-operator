@@ -337,12 +337,12 @@ function wait_for_nss_env_var() {
     local error_message="Timeout after ${total_time_mins} minutes waiting for OLM to update Deployment ${name} in namespace ${namespace} with NamespaceScope ConfigMap"
 
 
-    # wait for NamespaceScope to patch deployment
+    # wait for OLM to patch deployment
     info "${wait_message}"
     while true; do
         result=$(eval "${condition}")
 
-        # restart namespace scope operator pod to reconcilie
+        # patch deployment directly when OLM fails to do so
         if [[ ( ${retries} -eq 0 ) && ( -z "${result}" ) ]]; then
             patch_watch_namespace ${namespace} ${name}
             retries=6
