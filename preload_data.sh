@@ -53,7 +53,6 @@ function main() {
     # copy im credentials
     copy_resource "secret" "platform-auth-idp-credentials"
     copy_resource "secret" "platform-auth-ldaps-ca-cert"
-    copy_resource "secret" "platform-oidc-credentials"
     copy_resource "configmap" "ibm-cpp-config"
     copy_resource "configmap" "common-web-ui-config"
     copy_resource "configmap" "platform-auth-idp"
