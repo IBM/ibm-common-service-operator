@@ -18,8 +18,9 @@ MIGRATE_SINGLETON=0
 OPERATOR_NS=""
 CONTROL_NS=""
 CHANNEL="v4.1"
-SOURCE_NS="openshift-marketplace"
 INSTALL_MODE="Automatic"
+CM_SOURCE_NS="openshift-marketplace"
+LIS_SOURCE_NS="openshift-marketplace"
 CERT_MANAGER_SOURCE="ibm-cert-manager-catalog"
 LICENSING_SOURCE="ibm-licensing-catalog"
 CERT_MANAGER_NAMESPACE="ibm-cert-manager"
@@ -228,42 +229,41 @@ function is_migrate_licensing() {
 }
 
 function check_singleton_catalogsource() {
-    local cm_ns="${SOURCE_NS}"
-    local lis_ns="${SOURCE_NS}"
-    local sources=("$CERT_MANAGER_SOURCE,$cm_ns,ibm-cert-manager-operator,$OPERATOR_NS,$CHANNEL" "$LICENSING_SOURCE,$lis_ns,ibm-licensing-operator-app,$OPERATOR_NS,$CHANNEL")
+
+    title "Check singleton services CatalogSource..."
+    if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
+        CM_SOURCE_NS="${CERT_MANAGER_NAMESPACE}"
+        LIS_SOURCE_NS="${LICENSING_NAMESPACE}"
+    fi
+    
+    local sources=("$CERT_MANAGER_SOURCE,$CM_SOURCE_NS,ibm-cert-manager-operator,$OPERATOR_NS,$CHANNEL" "$LICENSING_SOURCE,$LIS_SOURCE_NS,ibm-licensing-operator-app,$OPERATOR_NS,$CHANNEL")
     
     for source_info in "${sources[@]}"; do
 
         IFS="," read -r source source_ns pm operator_ns channel <<< "$source_info"
         correct_result=$(catalogsource_correction "$source" "$source_ns" "$pm" "$operator_ns" "$channel")
-        if [[ $? -eq 1 ]]; then
-            echo "$correct_result"
+        IFS=" " read -r return_value correct_source correct_source_ns <<< "$correct_result"
+
+        # return_value: 0 - correct, 1 - multiple, 2 - none, 3 - wrong and corrected
+        if [[ $return_value -eq 0 ]]; then
+            success "CatalogSource $source from $source_ns CatalogSourceNamespace is available for $pm in $operator_ns namespace"
+        elif [[ $return_value -eq 1 ]]; then
+            warning "CatalogSource $source from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace"
             error "Multiple CatalogSource are available for $pm in $operator_ns namespace, please specify the correct CatalogSource name and namespace"
-        elif [[ $? -eq 2 ]]; then
-            echo "$correct_result"
+        elif [[ $return_value -eq 2 ]]; then
+            warning "CatalogSource $source from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace"
             error "No CatalogSource is available for $pm in $operator_ns namespace"
+        elif [[ $return_value -eq 3 ]]; then
+            warning "CatalogSource $source from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace"
+            success "CatalogSource $correct_source from $correct_source_ns CatalogSourceNamespace is available for $pm in $operator_ns namespace"
         fi
-        
-        echo "$correct_result"
-        echo ""
-        correct_result=${correct_result//$'\n'/,}
-        correct_source=$(echo "$correct_result" | awk -F',' '{print $NF}' | awk -F' ' '{print $1}' )
-        correct_source_ns=$(echo "$correct_result" | awk -F',' '{print $NF}' | awk -F' ' '{print $2}' )
         
         if [[ $pm == "ibm-cert-manager-operator" ]]; then
             CERT_MANAGER_SOURCE=$correct_source
-            if [[ $correct_source_ns == "openshift-marketplace" ]]; then
-                SOURCE_NS=$correct_source_ns
-            else
-                CERT_MANAGER_NAMESPACE=$correct_source_ns
-            fi
+            CM_SOURCE_NS=$correct_source_ns
         else
             LICENSING_SOURCE=$correct_source
-            if [[ $correct_source_ns == "openshift-marketplace" ]]; then
-                SOURCE_NS=$correct_source_ns
-            else
-                LICENSING_NAMESPACE=$correct_source_ns
-            fi
+            LIS_SOURCE_NS=$correct_source_ns
         fi 
     done
 }
@@ -287,10 +287,6 @@ function install_cert_manager() {
         error "There is no cert-manager-webhook pod running\n"
     fi
 
-    if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
-        SOURCE_NS="${CERT_MANAGER_NAMESPACE}"
-    fi
-
     local api_version=$("$OC" get deployments -n "$webhook_ns" cert-manager-webhook -o jsonpath='{.metadata.ownerReferences[*].apiVersion}')
     if [ ! -z "$api_version" ]; then
         if [ "$api_version" == "$CERT_MANAGER_V1ALPHA1_OWNER" ]; then
@@ -309,10 +305,10 @@ function install_cert_manager() {
     create_operator_group "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" "{}"
     is_sub_exist "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" # this will catch the packagenames of all cert-manager-operators
     if [ $? -eq 0 ]; then
-        update_operator "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" "$CHANNEL" "${CERT_MANAGER_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
+        update_operator "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" "$CHANNEL" "${CERT_MANAGER_SOURCE}" "${CM_SOURCE_NS}" "${INSTALL_MODE}"
         wait_for_operator_upgrade "${CERT_MANAGER_NAMESPACE}" "ibm-cert-manager-operator" "$CHANNEL" "${INSTALL_MODE}"
     else
-        create_subscription "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" "$CHANNEL" "ibm-cert-manager-operator" "${CERT_MANAGER_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
+        create_subscription "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" "$CHANNEL" "ibm-cert-manager-operator" "${CERT_MANAGER_SOURCE}" "${CM_SOURCE_NS}" "${INSTALL_MODE}"
     fi
     wait_for_operator "${CERT_MANAGER_NAMESPACE}" "ibm-cert-manager-operator"
     accept_license "certmanagerconfig.operator.ibm.com" "" "default"
@@ -329,10 +325,6 @@ function install_licensing() {
         warning "There is an ibm-licensing-operator-app Subscription already, so will upgrade it\n"
     elif [ $SKIP_INSTALL -eq 1 ]; then
         error "There is no ibm-licensing-operator-app Subscription installed\n"
-    fi
-
-    if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
-        SOURCE_NS="${LICENSING_NAMESPACE}"
     fi
 
     local ns=$("$OC" get deployments -A | grep ibm-licensing-operator | cut -d ' ' -f1)
@@ -353,10 +345,10 @@ EOF
     create_operator_group "ibm-licensing-operator-app" "${LICENSING_NAMESPACE}" "$target"
     is_sub_exist "ibm-licensing-operator-app" # this will catch the packagenames of all ibm-licensing-operator-app
     if [ $? -eq 0 ]; then
-        update_operator "ibm-licensing-operator-app" "${LICENSING_NAMESPACE}" "$CHANNEL" "${LICENSING_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
+        update_operator "ibm-licensing-operator-app" "${LICENSING_NAMESPACE}" "$CHANNEL" "${LICENSING_SOURCE}" "${LIS_SOURCE_NS}" "${INSTALL_MODE}"
         wait_for_operator_upgrade "${LICENSING_NAMESPACE}" "ibm-licensing-operator-app" "$CHANNEL" "${INSTALL_MODE}"
     else
-        create_subscription "ibm-licensing-operator-app" "${LICENSING_NAMESPACE}" "$CHANNEL" "ibm-licensing-operator-app" "${LICENSING_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
+        create_subscription "ibm-licensing-operator-app" "${LICENSING_NAMESPACE}" "$CHANNEL" "ibm-licensing-operator-app" "${LICENSING_SOURCE}" "${LIS_SOURCE_NS}" "${INSTALL_MODE}"
     fi
     wait_for_operator "${LICENSING_NAMESPACE}" "ibm-licensing-operator"
     wait_for_license_instance

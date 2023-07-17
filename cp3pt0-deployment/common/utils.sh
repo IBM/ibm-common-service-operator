@@ -501,25 +501,28 @@ function catalogsource_correction() {
     local channel="$5"
     local catalog_source=$source
     local catalog_namespace=$source_ns
+    local return_value=0
 
     result=$(check_catalogsource $source $source_ns $pm $operator_ns $channel)
+    # if the given catalogsource is not available for selected packagemanifest and channel (result is 1), then find the available catalogsource
     if [[ $result == "1" ]]; then
-        warning "CatalogSource $source from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace"
+        # get the available catalogsource
         result=$(get_catalogsource $pm $operator_ns $channel)
         IFS=" " read -r count catalog catalog_ns <<< "$result"
+        # if the available catalogsource is more than one, then return error
+        # if the available catalogsource is zero, then return error
+        # if the available catalogsource is one, then use the available catalogsource
         if [[ $count -gt 1 ]]; then
-            return 1
+            return_value=1
         elif [[ $count -eq 0 ]]; then
-            return 2
+            return_value=2
         else
             catalog_source="$catalog"
             catalog_namespace="$catalog_ns"
-            success "CatalogSource $catalog_source from $catalog_namespace CatalogSourceNamespace is available for $pm in $operator_ns namespace"
+            return_value=3
         fi
-    else
-        success "CatalogSource $source from $source_ns CatalogSourceNamespace is available for $pm in $operator_ns namespace"
     fi
-    echo "$catalog_source $catalog_namespace"
+    echo "$return_value $catalog_source $catalog_namespace"
 }
 
 function is_sub_exist() {
