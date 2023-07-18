@@ -57,7 +57,7 @@ function main() {
     copy_resource "configmap" "ibm-cpp-config"
     copy_resource "configmap" "common-web-ui-config"
     copy_resource "configmap" "platform-auth-idp"
-    copy_resource "commonservice" "common-service"
+    copy_resource "commonservice" "common-service" "common-service-from-$FROM_NAMESPACE"
     # any extra config
 }
 
@@ -155,11 +155,13 @@ function prereq() {
 function copy_resource() {
     local resourceType=$1
     local resourceName=$2
+    local newResourceName=${3:-$resourceName}
     title " Copying $resourceType $resourceName from $FROM_NAMESPACE to $TO_NAMESPACE "   
     resource_exists=$(${OC} get $resourceType $resourceName -n $FROM_NAMESPACE || echo "fail")
     if [[ $resource_exists != "fail" ]]; then
       $OC get $resourceType $resourceName -n $FROM_NAMESPACE -o yaml | \
           $YQ '
+              .metadata.name = "'$newResourceName'" |
               del(.metadata.creationTimestamp) | 
               del(.metadata.resourceVersion) | 
               del(.metadata.namespace) | 
@@ -169,7 +171,7 @@ function copy_resource() {
               del(.metadata.labels)
           ' | \
           $OC apply -n $TO_NAMESPACE -f - || error "Failed to copy over $resourceType $resourceName."
-      success "$resourceType $resourceName copied over to $TO_NAMESPACE"
+      success "$resourceType $resourceName copied over to $TO_NAMESPACE as $newResourceName"
     else
       warning "Resource $resourceType $resourceName not found and not migrated from $FROM_NAMESPACE to $TO_NAMESPACE"
     fi
