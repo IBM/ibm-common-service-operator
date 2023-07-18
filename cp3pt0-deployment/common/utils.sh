@@ -384,6 +384,8 @@ function patch_watch_namespace() {
         ${YQ} -i eval '(.spec.template.spec.containers[0].env[] | select(.name == "WATCH_NAMESPACE")).valueFrom.configMapKeyRef.name = "namespace-scope"' /tmp/deployment.yaml
         ${YQ} -i eval '(.spec.template.spec.containers[0].env[] | select(.name == "WATCH_NAMESPACE")).valueFrom.configMapKeyRef.key = "namespaces"' /tmp/deployment.yaml
         ${YQ} -i eval '(.spec.template.spec.containers[0].env[] | select(.name == "WATCH_NAMESPACE")).valueFrom.configMapKeyRef.optional = true' /tmp/deployment.yaml
+        # Add new labels intent: projected in deployment template to trigger pod restart by NamespaceScope Operator
+        ${YQ} -i eval '.spec.template.metadata.labels.intent = "projected"' /tmp/deployment.yaml
 
         # Apply the patch for deployment
         ${OC} apply -f /tmp/deployment.yaml
