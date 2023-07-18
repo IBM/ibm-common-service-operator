@@ -525,6 +525,48 @@ function catalogsource_correction() {
     echo "$return_value $catalog_source $catalog_namespace"
 }
 
+function check_cs_catalogsource(){
+    title "Check Foundational services CatalogSource..."
+
+    local pm="ibm-common-service-operator"
+    if [ $ENABLE_PRIVATE_CATALOG -eq 0 ]; then
+        local source_ns=$SOURCE_NS
+        local operator_ns=$OPERATOR_NS
+    else
+        local source_ns=$PRIVATE_NS
+        local operator_ns=$PRIVATE_NS
+        local sub_name=$(${OC} get subscription.operators.coreos.com -n ${ns} -l operators.coreos.com/${pm}.${operator_ns}='' --no-headers | awk '{print $1}')
+        if [ -z "$sub_name" ]; then
+            warning "Not found subscription ${pm} in ${operator_ns}"
+            return 0
+        fi
+    fi
+    
+    correct_result=$(catalogsource_correction $SOURCE $source_ns $pm $operator_ns $CHANNEL)
+    IFS=" " read -r return_value correct_source correct_source_ns <<< "$correct_result"
+    
+    # return_value: 0 - correct, 1 - multiple, 2 - none, 3 - wrong and corrected
+    if [[ $return_value -eq 0 ]]; then
+        success "CatalogSource $SOURCE from $source_ns CatalogSourceNamespace is available for $pm in $operator_ns namespace"
+    elif [[ $return_value -eq 1 ]]; then
+        warning "CatalogSource $SOURCE from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace"
+        error "Multiple CatalogSource are available for $pm in $operator_ns namespace, please specify the correct CatalogSource name and namespace"
+    elif [[ $return_value -eq 2 ]]; then
+        warning "CatalogSource $SOURCE from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace"
+        error "No CatalogSource is available for $pm in $operator_ns namespace"
+    elif [[ $return_value -eq 3 ]]; then
+        warning "CatalogSource $SOURCE from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace"
+        success "CatalogSource $correct_source from $correct_source_ns CatalogSourceNamespace is available for $pm in $operator_ns namespace"
+    fi
+
+    SOURCE=$correct_source
+    if [ $ENABLE_PRIVATE_CATALOG -eq 0 ]; then
+        SOURCE_NS=$correct_source_ns
+    else
+        PRIVATE_NS=$correct_source_ns
+    fi
+}
+
 function is_sub_exist() {
     local package_name=$1
     if [ $# -eq 2 ]; then

@@ -23,6 +23,7 @@ EXCLUDED_NS=""
 SIZE_PROFILE=""
 INSTALL_MODE="Automatic"
 PREVIEW_MODE=0
+ENABLE_PRIVATE_CATALOG=0
 OC_CMD="oc"
 DEBUG=0
 LICENSE_ACCEPT=0
@@ -312,30 +313,6 @@ function determine_topology() {
         warning "It is all namespaces topology\n"
         return
     fi
-}
-    
-function check_cs_catalogsource(){
-    title "Check Foundational services CatalogSource..."
-    local pm="ibm-common-service-operator"
-    correct_result=$(catalogsource_correction $SOURCE $SOURCE_NS $pm $OPERATOR_NS $CHANNEL)
-    IFS=" " read -r return_value correct_source correct_source_ns <<< "$correct_result"
-    
-    # return_value: 0 - correct, 1 - multiple, 2 - none, 3 - wrong and corrected
-    if [[ $return_value -eq 0 ]]; then
-        success "CatalogSource $SOURCE from $SOURCE_NS CatalogSourceNamespace is available for $pm in $OPERATOR_NS namespace"
-    elif [[ $return_value -eq 1 ]]; then
-        warning "CatalogSource $SOURCE from $SOURCE_NS CatalogSourceNamespace is not available for $pm in $OPERATOR_NS namespace"
-        error "Multiple CatalogSource are available for $pm in $OPERATOR_NS namespace, please specify the correct CatalogSource name and namespace"
-    elif [[ $return_value -eq 2 ]]; then
-        warning "CatalogSource $SOURCE from $SOURCE_NS CatalogSourceNamespace is not available for $pm in $OPERATOR_NS namespace"
-        error "No CatalogSource is available for $pm in $OPERATOR_NS namespace"
-    elif [[ $return_value -eq 3 ]]; then
-        warning "CatalogSource $SOURCE from $SOURCE_NS CatalogSourceNamespace is not available for $pm in $OPERATOR_NS namespace"
-        success "CatalogSource $correct_source from $correct_source_ns CatalogSourceNamespace is available for $pm in $OPERATOR_NS namespace"
-    fi
-
-    SOURCE=$correct_source
-    SOURCE_NS=$correct_source_ns
 }
 
 function create_ns_list() {
