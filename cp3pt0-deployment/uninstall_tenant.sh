@@ -35,9 +35,11 @@ function main() {
     trap cleanup_log EXIT
     pre_req
     set_tenant_namespaces
-    uninstall_odlm
-    uninstall_cs_operator
-    uninstall_nss
+    if [ $FORCE_DELETE -eq 0 ]; then
+        uninstall_odlm
+        uninstall_cs_operator
+        uninstall_nss
+    fi
     delete_rbac_resource
     delete_webhook
     delete_unavailable_apiservice
@@ -175,7 +177,7 @@ function uninstall_odlm() {
     for ns in ${TENANT_NAMESPACES//,/ }; do
         local opreq=$(${OC} get -n "$ns" operandrequests --no-headers | cut -d ' ' -f1)
         if [ "$opreq" != "" ]; then
-            ${OC} delete -n "$ns" operandrequests ${opreq//$'\n'/ }
+            ${OC} delete -n "$ns" operandrequests ${opreq//$'\n'/ } --timeout=30s
         fi
         grep_args="${grep_args}-e $ns "
     done
@@ -230,7 +232,7 @@ function uninstall_nss() {
     title "Uninstall ibm-namespace-scope-operator"
 
     for ns in ${TENANT_NAMESPACES//,/ }; do
-        ${OC} delete --ignore-not-found nss -n "$ns" common-service
+        ${OC} delete --ignore-not-found nss -n "$ns" common-service --timeout=30s
         for op_ns in ${OPERATOR_NS_LIST//,/ }; do
             ${OC} delete --ignore-not-found rolebinding -n "$ns" "nss-managed-role-from-$op_ns"
             ${OC} delete --ignore-not-found role -n "$ns" "nss-managed-role-from-$op_ns"
