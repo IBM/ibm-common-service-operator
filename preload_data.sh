@@ -57,7 +57,7 @@ function main() {
     copy_resource "configmap" "ibm-cpp-config"
     copy_resource "configmap" "common-web-ui-config"
     copy_resource "configmap" "platform-auth-idp"
-    copy_resource "commonservice" "common-service" "common-service-from-$FROM_NAMESPACE"
+    copy_resource "commonservice" "common-service" "preload-common-service-from-$FROM_NAMESPACE"
     # any extra config
 }
 
