@@ -232,14 +232,14 @@ function wait_for_operator() {
 
 function wait_for_csv() {
     local namespace=$1
-    local operator_name=$2
-    local condition="${OC} -n ${namespace} get csv --no-headers --ignore-not-found | grep ^${operator_name}"
+    local package_name=$2
+    local condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${package_name}.${namespace}='' -n ${namespace} -o yaml -o jsonpath='{.items[*].status.installedCSV}' | grep ^${package_name}"
     local retries=30
     local sleep_time=10
     local total_time_mins=$(( sleep_time * retries / 60))
-    local wait_message="Waiting for operator ${operator_name} CSV in namespace ${namespace} to be generated"
-    local success_message="Operator ${operator_name} CSV in namespace ${namespace} is generated"
-    local error_message="Timeout after ${total_time_mins} minutes waiting for ${operator_name} CSV in namespace ${namespace} to be generated"
+    local wait_message="Waiting for operator ${package_name} CSV in namespace ${namespace} to be generated"
+    local success_message="Operator ${package_name} CSV in namespace ${namespace} is generated"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for ${package_name} CSV in namespace ${namespace} to be generated"
  
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
@@ -297,8 +297,8 @@ function wait_for_nss_patch() {
         if [[ ( ${retries} -eq 0 ) && ( -z "${result}" ) ]]; then
             warning "Deleting pod ${pod_name} in namespace ${namespace} to trigger NamespaceScope reconciliaiton"
             $OC delete pod ${pod_name} -n ${namespace}
-            # reset retries to 6 times to wait one minute
-            retries=6
+            # reset retries to 30 times to wait 5 minutes
+            retries=30
             wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
             break
         fi
