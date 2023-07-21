@@ -236,7 +236,7 @@ function check_singleton_catalogsource() {
         LIS_SOURCE_NS="${LICENSING_NAMESPACE}"
     fi
     
-    local sources=("$CERT_MANAGER_SOURCE,$CM_SOURCE_NS,ibm-cert-manager-operator,$OPERATOR_NS,$CHANNEL" "$LICENSING_SOURCE,$LIS_SOURCE_NS,ibm-licensing-operator-app,$OPERATOR_NS,$CHANNEL")
+    local sources=("$CERT_MANAGER_SOURCE,$CM_SOURCE_NS,ibm-cert-manager-operator,$CERT_MANAGER_NAMESPACE,$CHANNEL" "$LICENSING_SOURCE,$LIS_SOURCE_NS,ibm-licensing-operator-app,$LICENSING_NAMESPACE,$CHANNEL")
     
     for source_info in "${sources[@]}"; do
 
