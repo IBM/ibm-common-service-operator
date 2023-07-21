@@ -21,6 +21,7 @@ SOURCE="opencloud-operators"
 CERT_MANAGER_SOURCE="ibm-cert-manager-catalog"
 LICENSING_SOURCE="ibm-licensing-catalog"
 SOURCE_NS="openshift-marketplace"
+PRIVATE_NS=""
 INSTALL_MODE="Automatic"
 ENABLE_LICENSING=0
 ENABLE_PRIVATE_CATALOG=0
@@ -73,7 +74,6 @@ function main() {
         fi
     fi
 
-
     if [[ $ENABLE_PRIVATE_CATALOG -eq 1 ]]; then
         arguments+=" --enable-private-catalog"
     fi
@@ -92,9 +92,12 @@ function main() {
     # Update ibm-common-service-operator channel
     for ns in ${NS_LIST//,/ }; do
         if [ $ENABLE_PRIVATE_CATALOG -eq 0 ]; then
+            check_cs_catalogsource
             update_operator ibm-common-service-operator $ns $CHANNEL $SOURCE $SOURCE_NS $INSTALL_MODE
         else
-            update_operator ibm-common-service-operator $ns $CHANNEL $SOURCE $ns $INSTALL_MODE
+            PRIVATE_NS=$ns
+            check_cs_catalogsource
+            update_operator ibm-common-service-operator $PRIVATE_NS $CHANNEL $SOURCE $PRIVATE_NS $INSTALL_MODE
         fi
     done
 

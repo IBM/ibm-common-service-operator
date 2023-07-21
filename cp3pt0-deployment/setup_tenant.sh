@@ -23,6 +23,7 @@ EXCLUDED_NS=""
 SIZE_PROFILE=""
 INSTALL_MODE="Automatic"
 PREVIEW_MODE=0
+ENABLE_PRIVATE_CATALOG=0
 OC_CMD="oc"
 DEBUG=0
 LICENSE_ACCEPT=0
@@ -239,6 +240,9 @@ function pre_req() {
     if [[ "$TETHERED_NS" == "$OPERATOR_NS" || "$TETHERED_NS" == "$SERVICES_NS" ]]; then
         error "Must provide additional namespaces for --tethered-namespaces, different from operator-namespace and services-namespace"
     fi
+
+    # Check catalogsource
+    check_cs_catalogsource
     echo ""
 }
 

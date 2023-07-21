@@ -457,6 +457,118 @@ function wait_for_cs_webhook() {
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
+# check_catalogsource check if the given catalogsource is available for selected packagemanifest and channel
+function check_catalogsource() {
+    local catalog_source=$1
+    local catalog_namespace=$2
+    local package_manifest=$3
+    local operator_namespace=$4
+    local channel=$5
+    local return_value=0
+    local result=$(${OC} get packagemanifest -n $operator_namespace -o yaml | ${YQ} eval '.items[] | select(.status.catalogSource == "'${catalog_source}'" and .status.catalogSourceNamespace == "'${catalog_namespace}'" and .status.packageName == "'${package_manifest}'" and .status.channels[].name == "'${channel}'") | .status.catalogSource')
+    if [[ -z "$result" || "$result" == "null" ]]; then
+        return_value=1
+    fi
+    echo "$return_value"
+}
+
+# get_catalogsource returns the catalogsource and catalognamespace for the given packagemanifest and channel
+function get_catalogsource() {
+    local package_manifest=$1
+    local operator_namespace=$2
+    local channel=$3
+    local count=0
+    local catalog_source=""
+    local catalog_namespace=""
+
+    local result=$(${OC} get packagemanifest -n $operator_namespace -o yaml | ${YQ} eval '.items[] | select(.status.packageName == "'${package_manifest}'" and .status.channels[].name == "'${channel}'") | {"name": .status.catalogSource, "namespace": .status.catalogSourceNamespace}')
+    local total_count=$(wc -w <<< "$result")
+    count=$((total_count / 4))
+    if [[ count -eq 1 ]]; then
+        # Remove the new line characters
+        result=${result//$'\n'/,}
+        # Extracting the values using string manipulation
+        catalog_source=$(echo "$result" | awk -F': ' '{print $2}' | awk -F',' '{print $1}')
+        catalog_namespace=$(echo "$result" | awk -F': ' '{print $NF}')
+    fi
+    echo "$count $catalog_source $catalog_namespace"
+}
+
+# catalogsource_correction corrects the catalogsource and catalogsource namespace if the given catalogsource is not available for selected packagemanifest and channel
+function catalogsource_correction() {
+    local source="$1"
+    local source_ns="$2"
+    local pm="$3"
+    local operator_ns="$4"
+    local channel="$5"
+    local catalog_source=$source
+    local catalog_namespace=$source_ns
+    local return_value=0
+
+    result=$(check_catalogsource $source $source_ns $pm $operator_ns $channel)
+    # if the given catalogsource is not available for selected packagemanifest and channel (result is 1), then find the available catalogsource
+    if [[ $result == "1" ]]; then
+        # get the available catalogsource
+        result=$(get_catalogsource $pm $operator_ns $channel)
+        IFS=" " read -r count catalog catalog_ns <<< "$result"
+        # if the available catalogsource is more than one, then return error
+        # if the available catalogsource is zero, then return error
+        # if the available catalogsource is one, then use the available catalogsource
+        if [[ $count -gt 1 ]]; then
+            return_value=1
+        elif [[ $count -eq 0 ]]; then
+            return_value=2
+        else
+            catalog_source="$catalog"
+            catalog_namespace="$catalog_ns"
+            return_value=3
+        fi
+    fi
+    echo "$return_value $catalog_source $catalog_namespace"
+}
+
+function check_cs_catalogsource(){
+    title "Check Foundational services CatalogSource..."
+
+    local pm="ibm-common-service-operator"
+    if [ $ENABLE_PRIVATE_CATALOG -eq 0 ]; then
+        local source_ns=$SOURCE_NS
+        local operator_ns=$OPERATOR_NS
+    else
+        local source_ns=$PRIVATE_NS
+        local operator_ns=$PRIVATE_NS
+        local sub_name=$(${OC} get subscription.operators.coreos.com -n ${ns} -l operators.coreos.com/${pm}.${operator_ns}='' --no-headers | awk '{print $1}')
+        if [ -z "$sub_name" ]; then
+            warning "Not found subscription ${pm} in ${operator_ns}"
+            return 0
+        fi
+    fi
+    
+    correct_result=$(catalogsource_correction $SOURCE $source_ns $pm $operator_ns $CHANNEL)
+    IFS=" " read -r return_value correct_source correct_source_ns <<< "$correct_result"
+    
+    # return_value: 0 - correct, 1 - multiple, 2 - none, 3 - wrong and corrected
+    if [[ $return_value -eq 0 ]]; then
+        success "CatalogSource $SOURCE from $source_ns CatalogSourceNamespace is available for $pm in $operator_ns namespace"
+    elif [[ $return_value -eq 1 ]]; then
+        warning "CatalogSource $SOURCE from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace"
+        error "Multiple CatalogSource are available for $pm in $operator_ns namespace, please specify the correct CatalogSource name and namespace"
+    elif [[ $return_value -eq 2 ]]; then
+        warning "CatalogSource $SOURCE from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace"
+        error "No CatalogSource is available for $pm in $operator_ns namespace"
+    elif [[ $return_value -eq 3 ]]; then
+        warning "CatalogSource $SOURCE from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace"
+        success "CatalogSource $correct_source from $correct_source_ns CatalogSourceNamespace is available for $pm in $operator_ns namespace"
+    fi
+
+    SOURCE=$correct_source
+    if [ $ENABLE_PRIVATE_CATALOG -eq 0 ]; then
+        SOURCE_NS=$correct_source_ns
+    else
+        PRIVATE_NS=$correct_source_ns
+    fi
+}
+
 function is_sub_exist() {
     local package_name=$1
     if [ $# -eq 2 ]; then
@@ -1202,7 +1314,7 @@ function is_supports_delegation() {
 
 function prepare_preview_mode() {
     mkdir -p ${PREVIEW_DIR}
-    if [ $PREVIEW_MODE -eq 1 ]; then
+    if [[ $PREVIEW_MODE -eq 1 ]]; then
         OC_CMD="oc --dry-run=client" # a redirect to the file is needed too
     fi
 }
