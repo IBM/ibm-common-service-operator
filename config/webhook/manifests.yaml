@@ -11,7 +11,7 @@ webhooks:
   clientConfig:
     service:
       name: webhook-service
-      namespace: system
+      namespace: default
       path: /mutate-operator-ibm-com-v1alpha1-operandrequest
   failurePolicy: Fail
   name: moperandrequest.kb.io
@@ -31,7 +31,7 @@ webhooks:
   clientConfig:
     service:
       name: webhook-service
-      namespace: system
+      namespace: default
       path: /mutate-operator-ibm-com-v1alpha1-operandrequest
   failurePolicy: Fail
   name: moperandrequest.kb.io
