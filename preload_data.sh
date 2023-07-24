@@ -149,6 +149,8 @@ function prereq() {
         delete_mongo_pods "$FROM_NAMESPACE"
       fi
     fi
+
+    cert_manager_readiness_test
 }
 
 function copy_resource() {
@@ -1868,6 +1870,50 @@ function wait_for_job_complete() {
   dumplogs $job_name
   info "Deleting job $job_name"
   ${OC} delete job $job_name -n $namespace
+}
+
+function cert_manager_readiness_test(){
+  info "Checking cert manager readiness."
+  debug1 "Creating test issuer in namespace $FROM_NAMESPACE."
+  cat << EOF | ${OC} apply -f -
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: test-issuer
+  namespace: $FROM_NAMESPACE
+spec:
+  selfSigned: {}
+EOF
+  return_value_issuer=$(${OC} get issuer -n $FROM_NAMESPACE --ignore-not-found | grep test-issuer || echo "false")
+  if [[ $return_value_issuer == "false" ]]; then
+    error "Failed to create test issuer. Verify cert manager is installed and ready on the cluster then re-run the preload script."
+  else
+    debug1 "Creating test certificate in namespace $FROM_NAMESPACE."
+    cat << EOF | ${OC} apply -f -
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: test-certificate
+  namespace: $FROM_NAMESPACE
+spec:
+  commonName: test-certificate
+  duration: 17520h0m0s
+  issuerRef:
+    kind: Issuer
+    name: test-issuer
+  renewBefore: 720h0m0s
+  secretName: test-certificate-secret
+EOF
+    return_value_cert=$(${OC} get certificate -n $FROM_NAMESPACE --ignore-not-found | grep test-certificate || echo "false")
+    if [[ $return_value_cert == "false" ]]; then
+      ${OC} delete issuer test-issuer -n $OPERATOR_NS --ignore-not-found
+      error "Failed to create test certificate. Verify cert manager is installed and ready on the cluster then re-run the preload script."
+    else
+      ${OC} delete certificate test-certificate -n $FROM_NAMESPACE --ignore-not-found
+      ${OC} delete issuer test-issuer -n $FROM_NAMESPACE --ignore-not-found
+    fi
+  fi  
+  success "Cert manager is ready, preload can proceed."
 }
 
 function msg() {
