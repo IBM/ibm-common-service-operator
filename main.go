@@ -227,7 +227,9 @@ func main() {
 		klog.Infof("Common Service Operator in the namespace %s takes charge of resource management", cpfsNs)
 	}
 
-	if err = (&operandrequestwebhook.Defaulter{}).SetupWebhookWithManager(mgr); err != nil {
+	if err = (&operandrequestwebhook.Defaulter{
+		Client: mgr.GetClient(),
+		Reader: mgr.GetAPIReader()}).SetupWebhookWithManager(mgr); err != nil {
 		klog.Errorf("Unable to create OperandRequest webhook: %v", err)
 		os.Exit(1)
 	}

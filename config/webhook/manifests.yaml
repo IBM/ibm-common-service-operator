@@ -26,23 +26,3 @@ webhooks:
     resources:
     - operandrequests
   sideEffects: None
-- admissionReviewVersions:
-  - v1
-  clientConfig:
-    service:
-      name: webhook-service
-      namespace: default
-      path: /mutate-operator-ibm-com-v1alpha1-operandrequest
-  failurePolicy: Fail
-  name: moperandrequest.kb.io
-  rules:
-  - apiGroups:
-    - operator.ibm.com
-    apiVersions:
-    - v1alpha1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - operandrequests
-  sideEffects: None
