@@ -17,7 +17,19 @@
 package constant
 
 const StorageClassTemplate = `
-- name: ibm-mongodb-operator
+- name: ibm-im-mongodb-operator
+  spec:
+    mongoDB:
+      storageClass: placeholder
+- name: ibm-im-mongodb-operator-v4.0
+  spec:
+    mongoDB:
+      storageClass: placeholder
+- name: ibm-im-mongodb-operator-v4.1
+  spec:
+    mongoDB:
+      storageClass: placeholder
+- name: ibm-im-mongodb-operator-v4.2
   spec:
     mongoDB:
       storageClass: placeholder
