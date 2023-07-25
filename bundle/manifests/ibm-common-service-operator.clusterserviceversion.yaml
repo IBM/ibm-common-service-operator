@@ -22,7 +22,7 @@ metadata:
       ]
     capabilities: Seamless Upgrades
     containerImage: icr.io/cpopen/common-service-operator:latest
-    createdAt: "2023-07-14T01:05:02Z"
+    createdAt: "2023-07-26T17:27:50Z"
     description: The IBM Common Service Operator is used to deploy IBM Common Services
     nss.operator.ibm.com/managed-operators: ibm-common-service-operator
     olm.skipRange: ">=3.3.0 <4.1.0"
@@ -275,7 +275,7 @@ spec:
                         value: icr.io/cpopen/cpfs/ibm-secretshare-operator:1.19.0
                       - name: IBM_ZEN_OPERATOR_IMAGE
                         value: icr.io/cpopen/ibm-zen-operator:1.7.0
-                    image: icr.io/cpopen/common-service-operator:latest
+                    image: icr.io/cpopen/common-service-operator:latest 
                     imagePullPolicy: IfNotPresent
                     livenessProbe:
                       failureThreshold: 10
@@ -286,6 +286,10 @@ spec:
                       periodSeconds: 60
                       timeoutSeconds: 10
                     name: ibm-common-service-operator
+                    ports:
+                      - containerPort: 9443
+                        name: webhook-server
+                        protocol: TCP
                     readinessProbe:
                       failureThreshold: 10
                       httpGet:
@@ -310,13 +314,16 @@ spec:
                       readOnlyRootFilesystem: true
                       runAsNonRoot: true
                     volumeMounts:
-                      - mountPath: /etc/ssl/certs/webhook
-                        name: webhook-certs
+                      - mountPath: /tmp/k8s-webhook-server/serving-certs
+                        name: cert
+                        readOnly: true
                 serviceAccountName: ibm-common-service-operator
                 terminationGracePeriodSeconds: 10
                 volumes:
-                  - emptyDir: {}
-                    name: webhook-certs
+                  - name: cert
+                    secret:
+                      defaultMode: 420
+                      secretName: webhook-server-cert
       permissions:
         - rules:
             - apiGroups:
@@ -467,3 +474,44 @@ spec:
   - image: icr.io/cpopen/cpfs/cpfs-utils:4.1.0
     name: CPFS_UTILS_IMAGE
   version: 4.1.0
+  webhookdefinitions:
+    - admissionReviewVersions:
+        - v1
+      containerPort: 443
+      deploymentName: ibm-common-service-operator
+      failurePolicy: Fail
+      generateName: moperandrequest.kb.io
+      rules:
+        - apiGroups:
+            - operator.ibm.com
+          apiVersions:
+            - v1alpha1
+          operations:
+            - CREATE
+            - UPDATE
+          resources:
+            - operandrequests
+      sideEffects: None
+      targetPort: 9443
+      type: MutatingAdmissionWebhook
+      webhookPath: /mutate-operator-ibm-com-v1alpha1-operandrequest
+    - admissionReviewVersions:
+        - v1
+      containerPort: 443
+      deploymentName: ibm-common-service-operator
+      failurePolicy: Fail
+      generateName: vcommonservice.kb.io
+      rules:
+        - apiGroups:
+            - operator.ibm.com
+          apiVersions:
+            - v3
+          operations:
+            - CREATE
+            - UPDATE
+          resources:
+            - commonservices
+      sideEffects: None
+      targetPort: 9443
+      type: ValidatingAdmissionWebhook
+      webhookPath: /validate-operator-ibm-com-v3-commonservice

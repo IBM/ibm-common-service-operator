@@ -52,7 +52,8 @@ import (
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/controllers/goroutines"
-	"github.com/IBM/ibm-common-service-operator/controllers/webhooks"
+	commonservicewebhook "github.com/IBM/ibm-common-service-operator/controllers/webhooks/commonservice"
+	operandrequestwebhook "github.com/IBM/ibm-common-service-operator/controllers/webhooks/operandrequest"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -176,16 +177,12 @@ func main() {
 			os.Exit(1)
 		}
 
-		klog.Infof("Creating CommonService CR in the namespace %s", bs.CSData.OperatorNs)
-		if err = bs.CreateCsCR(); err != nil {
-			klog.Errorf("Failed to create CommonService CR: %v", err)
-			os.Exit(1)
-		}
-
 		// Create or Update CPP configuration
 		go goroutines.CreateUpdateConfig(bs)
 		// Update CS CR Status
 		go goroutines.UpdateCsCrStatus(bs)
+		// Create CS CR
+		go goroutines.WaitToCreateCsCR(bs)
 
 		if err = (&controllers.CommonServiceReconciler{
 			Bootstrap: bs,
@@ -218,8 +215,20 @@ func main() {
 		}
 		// Start up the webhook server if it is ocp
 		if bs.CSData.IsOCP {
-			if err := webhooks.SetupWebhooks(mgr, bs); err != nil {
-				klog.Error(err, "Error setting up webhook server")
+			if err = (&commonservicewebhook.Defaulter{
+				Client: mgr.GetClient(),
+				Reader: mgr.GetAPIReader(),
+			}).SetupWebhookWithManager(mgr); err != nil {
+				klog.Errorf("Unable to create CommonService webhook: %v", err)
+				os.Exit(1)
+			}
+
+			if err = (&operandrequestwebhook.Defaulter{
+				Client: mgr.GetClient(),
+				Reader: mgr.GetAPIReader(),
+			}).SetupWebhookWithManager(mgr); err != nil {
+				klog.Errorf("Unable to create OperandRequest webhook: %v", err)
+				os.Exit(1)
 			}
 		}
 	} else {

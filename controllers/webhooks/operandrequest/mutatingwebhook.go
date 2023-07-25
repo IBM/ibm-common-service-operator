@@ -28,9 +28,11 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/api/v1alpha1"
 )
@@ -39,7 +41,8 @@ import (
 
 // OperandRequestDefaulter points to correct RegistryNamespace
 type Defaulter struct {
-	*bootstrap.Bootstrap
+	Reader  client.Reader
+	Client  client.Client
 	decoder *admission.Decoder
 }
 
@@ -72,6 +75,7 @@ func (r *Defaulter) Handle(ctx context.Context, req admission.Request) admission
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
 func (r *Defaulter) Default(instance *odlm.OperandRequest) {
+	watchNamespaces := util.GetWatchNamespace()
 	for i, req := range instance.Spec.Requests {
 		if req.RegistryNamespace == "" {
 			continue
@@ -79,7 +83,7 @@ func (r *Defaulter) Default(instance *odlm.OperandRequest) {
 		regNs := req.RegistryNamespace
 		isDefaulting := false
 		// watchNamespace is empty in All namespace mode
-		if len(r.Bootstrap.CSData.WatchNamespaces) == 0 {
+		if len(watchNamespaces) == 0 {
 			ctx := context.Background()
 			ns := &corev1.Namespace{}
 			nsKey := types.NamespacedName{
@@ -93,17 +97,27 @@ func (r *Defaulter) Default(instance *odlm.OperandRequest) {
 					klog.Errorf("Failed to get namespace %v: %v", regNs, err)
 				}
 			}
-		} else if len(r.Bootstrap.CSData.WatchNamespaces) != 0 && !util.Contains(strings.Split(r.Bootstrap.CSData.WatchNamespaces, ","), regNs) {
+		} else if len(watchNamespaces) != 0 && !util.Contains(strings.Split(watchNamespaces, ","), regNs) {
 			isDefaulting = true
 		}
 		if isDefaulting {
-			instance.Spec.Requests[i].RegistryNamespace = r.Bootstrap.CSData.ServicesNs
-			klog.V(2).Infof("Setting %vth RegistryNamespace for OperandRequest %v/%v to %v", i, instance.Namespace, instance.Name, r.Bootstrap.CSData.ServicesNs)
+			serviceNs := util.GetServicesNamespace(r.Reader)
+			instance.Spec.Requests[i].RegistryNamespace = serviceNs
+			klog.V(2).Infof("Setting %vth RegistryNamespace for OperandRequest %v/%v to %v", i, instance.Namespace, instance.Name, serviceNs)
 		}
 	}
 }
 
 func (r *Defaulter) InjectDecoder(decoder *admission.Decoder) error {
 	r.decoder = decoder
+	return nil
+}
+
+func (r *Defaulter) SetupWebhookWithManager(mgr ctrl.Manager) error {
+
+	mgr.GetWebhookServer().
+		Register("/mutate-operator-ibm-com-v1alpha1-operandrequest",
+			&webhook.Admission{Handler: r})
+
 	return nil
 }
