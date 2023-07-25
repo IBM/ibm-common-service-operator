@@ -29,6 +29,7 @@ NEW_MAPPING=""
 NEW_TENANT=0
 DEBUG=0
 PREVIEW_MODE=0
+DRY_RUN=""
 LICENSE_ACCEPT=0
 
 # ---------- Command variables ----------

@@ -24,7 +24,7 @@ SIZE_PROFILE=""
 INSTALL_MODE="Automatic"
 PREVIEW_MODE=0
 ENABLE_PRIVATE_CATALOG=0
-OC_CMD="oc"
+DRY_RUN=""
 DEBUG=0
 LICENSE_ACCEPT=0
 RETRY_CONFIG_CSCR=0
@@ -481,7 +481,7 @@ EOF
             debug1 "Creating following Role:\n"
             cat ${PREVIEW_DIR}/role.yaml | sed "s/ns_to_replace/$ns/g"
             echo ""
-            cat ${PREVIEW_DIR}/role.yaml | sed "s/ns_to_replace/$ns/g" | ${OC_CMD} apply -f -
+            cat ${PREVIEW_DIR}/role.yaml | sed "s/ns_to_replace/$ns/g" | ${OC} ${DRY_RUN} apply -f -
             if [[ $? -ne 0 ]]; then
                 error "Failed to create Role for NSS in namespace $ns, please check if user has proper permission to create role\n"
             fi
@@ -489,7 +489,7 @@ EOF
             debug1 "Creating following RoleBinding:\n"
             cat ${PREVIEW_DIR}/rolebinding.yaml | sed "s/ns_to_replace/$ns/g"
             echo ""
-            cat ${PREVIEW_DIR}/rolebinding.yaml | sed "s/ns_to_replace/$ns/g" | ${OC_CMD} apply -f -
+            cat ${PREVIEW_DIR}/rolebinding.yaml | sed "s/ns_to_replace/$ns/g" | ${OC} ${DRY_RUN} apply -f -
             if [[ $? -ne 0 ]]; then
                 error "Failed to create RoleBinding for NSS in namespace $ns, please check if user has proper permission to create rolebinding\n"
             fi
@@ -575,7 +575,7 @@ EOF
 
     cat ${PREVIEW_DIR}/namespacescope.yaml
     echo ""
-    cat "${PREVIEW_DIR}/namespacescope.yaml" | ${OC_CMD} apply -f -
+    cat "${PREVIEW_DIR}/namespacescope.yaml" | ${OC} ${DRY_RUN} apply -f -
 }
 
 function configure_cs_kind() {
@@ -608,7 +608,7 @@ EOF
 
     while [ $retries -gt 0 ]; do
         
-        cat "${PREVIEW_DIR}/commonservice.yaml" | ${OC_CMD} apply -f -
+        cat "${PREVIEW_DIR}/commonservice.yaml" | ${OC} ${DRY_RUN} apply -f -
     
         # Check if the patch was successful
         if [[ $? -eq 0 ]]; then

@@ -623,7 +623,7 @@ function create_namespace() {
     title "Checking whether Namespace $namespace exist..."
     if [[ -z "$(${OC} get namespace ${namespace} --ignore-not-found)" ]]; then
         info "Creating namespace ${namespace}"
-        ${OC} create namespace ${namespace}
+        ${OC} ${DRY_RUN} create namespace ${namespace}
         if [[ $? -ne 0 ]]; then
             error "Error creating namespace ${namespace}"
         fi
@@ -657,7 +657,7 @@ EOF
     info "Creating following OperatorGroup:\n"
     cat ${PREVIEW_DIR}/operatorgroup.yaml
     echo ""
-    cat "${PREVIEW_DIR}/operatorgroup.yaml" | ${OC} apply -f -
+    cat "${PREVIEW_DIR}/operatorgroup.yaml" | ${OC} ${DRY_RUN} apply -f -
     if [[ $? -ne 0 ]]; then
         error "Failed to create OperatorGroup ${name} in ${ns}\n"
     fi
@@ -688,7 +688,7 @@ EOF
     info "Creating following Subscription:\n"
     cat ${PREVIEW_DIR}/${name}-subscription.yaml
     echo ""
-    cat ${PREVIEW_DIR}/${name}-subscription.yaml | ${OC} apply -f -
+    cat ${PREVIEW_DIR}/${name}-subscription.yaml | ${OC} ${DRY_RUN} apply -f -
     if [[ $? -ne 0 ]]; then
         error "Failed to create subscription ${name} in ${ns}\n"
     fi
@@ -1315,6 +1315,6 @@ function is_supports_delegation() {
 function prepare_preview_mode() {
     mkdir -p ${PREVIEW_DIR}
     if [[ $PREVIEW_MODE -eq 1 ]]; then
-        OC_CMD="oc --dry-run=client" # a redirect to the file is needed too
+        DRY_RUN="--dry-run=client" # a redirect to the file is needed too
     fi
 }
