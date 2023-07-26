@@ -841,6 +841,7 @@ function update_opreqs(){
                 ${YQ} -i '.spec.requests[0].registryNamespace = "'${csns}'"' tmp.yaml    
                 ${OC} apply -n $ns -f tmp.yaml || error "Failed to update registryNamespace value for operand request $opreq in namespace $ns."
                 info "Operand request $opreq in namespace $ns updated to use $csns as registryNamespace."
+                rm -f tmp.yaml
             done
         done
     done
