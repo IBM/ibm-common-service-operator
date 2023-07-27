@@ -22,7 +22,7 @@ metadata:
       ]
     capabilities: Seamless Upgrades
     containerImage: icr.io/cpopen/common-service-operator:latest
-    createdAt: "2023-07-14T01:05:02Z"
+    createdAt: "2020-10-19T21:38:33Z"
     description: The IBM Common Service Operator is used to deploy IBM Common Services
     nss.operator.ibm.com/managed-operators: ibm-common-service-operator
     olm.skipRange: ">=3.3.0 <4.1.0"
@@ -217,6 +217,12 @@ spec:
                 - patch
                 - update
                 - watch
+            - apiGroups:
+                - config.openshift.io
+              resources:
+                - infrastructures
+              verbs:
+                - get
           serviceAccountName: ibm-common-service-operator
       deployments:
         - label:

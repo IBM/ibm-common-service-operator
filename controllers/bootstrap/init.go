@@ -1022,7 +1022,26 @@ func CheckClusterType(mgr manager.Manager, ns string) (bool, error) {
 				}
 			}
 		}
+		// check if the cluster is OCP by checking if the cluster has Infrastructure CR
+		if apiList.GroupVersion == "config.openshift.io/v1" {
+			for _, r := range apiList.APIResources {
+				if r.Kind == "Infrastructure" {
+					infraObj := &unstructured.Unstructured{}
+					infraObj.SetGroupVersionKind(schema.GroupVersionKind{
+						Group:   "config.openshift.io",
+						Version: "v1",
+						Kind:    "Infrastructure",
+					})
+					if err := mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: "cluster"}, infraObj); err == nil {
+						isOCP = true
+					} else {
+						klog.Errorf("Fail to get Infrastructure resource named cluster: %v", err)
+					}
+				}
+			}
+		}
 	}
+	klog.Infof("Cluster type is OCP: %v", isOCP)
 
 	config := &corev1.ConfigMap{}
 	if err := mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: constant.IBMCPPCONFIG, Namespace: ns}, config); err != nil && !errors.IsNotFound(err) {
