@@ -838,9 +838,9 @@ function update_opreqs(){
                 ${YQ} -i 'del(.metadata.uid)' tmp.yaml
                 ${YQ} -i 'del(.metadata.generation)' tmp.yaml
                 ${YQ} -i 'del(.metadata.managedFields)' tmp.yaml
-                ${YQ} -i '.spec.requests[0].registryNamespace = "'${csns}'"' tmp.yaml    
+                ${YQ} -i '.spec.requests[0].registryNamespace = "ibm-common-services"' tmp.yaml    
                 ${OC} apply -n $ns -f tmp.yaml || error "Failed to update registryNamespace value for operand request $opreq in namespace $ns."
-                info "Operand request $opreq in namespace $ns updated to use $csns as registryNamespace."
+                info "Operand request $opreq in namespace $ns updated to use ibm-common-services as registryNamespace."
                 rm -f tmp.yaml
             done
         done
