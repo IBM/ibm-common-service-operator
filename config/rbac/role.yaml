@@ -190,17 +190,17 @@ rules:
   - update
   - watch
 - apiGroups:
-    - operator.ibm.com
+  - operator.ibm.com
   resources:
-    - namespacescopes
+  - namespacescopes
   verbs:
-    - create
-    - delete
-    - get
-    - list
-    - patch
-    - update
-    - watch
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - storage.k8s.io
   resources:
@@ -210,12 +210,18 @@ rules:
   - list
   - watch
 - apiGroups:
-    - operator.ibm.com
+  - operator.ibm.com
   resources:
-    - meteringreportservers
+  - meteringreportservers
   verbs:
-    - delete
-    - get
+  - delete
+  - get
+- apiGroups:
+  - config.openshift.io
+  resources:
+  - infrastructures
+  verbs:
+  - get
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
