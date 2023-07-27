@@ -21,7 +21,8 @@ CONTROLLER_GEN ?= $(shell which controller-gen)
 KUSTOMIZE ?= $(shell which kustomize)
 YQ_VERSION=v4.3.1
 KUSTOMIZE_VERSION=v3.8.7
-OPERATOR_SDK_VERSION=v1.8.0
+OPERATOR_SDK_VERSION=v1.24.0
+CONTROLLER_TOOLS_VERSION ?= v0.6.1
 
 CSV_PATH=bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
 
@@ -229,10 +230,10 @@ test-profile: yq
 
 ##@ Generate code and manifests
 
-manifests: ## Generate manifests e.g. CRD, RBAC etc.
+manifests: controller-gen ## Generate manifests e.g. CRD, RBAC etc.
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=ibm-common-service-operator webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
-generate: ## Generate code e.g. API etc.
+generate: controller-gen ## Generate code e.g. API etc.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 bundle-manifests: clis
