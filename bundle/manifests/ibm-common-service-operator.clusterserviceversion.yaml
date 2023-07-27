@@ -28,9 +28,9 @@ metadata:
     olm.skipRange: ">=3.3.0 <3.19.14"
     operatorChannel: v3
     operatorVersion: 3.19.14
-    operators.operatorframework.io/builder: operator-sdk-v1.7.1+git
-    operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     operators.openshift.io/infrastructure-features: '["disconnected"]'
+    operators.operatorframework.io/builder: operator-sdk-v1.24.0
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/IBM/ibm-common-service-operator
     support: IBM
   labels:
@@ -377,6 +377,12 @@ spec:
               verbs:
                 - delete
                 - get
+            - apiGroups:
+                - config.openshift.io
+              resources:
+                - infrastructures
+              verbs:
+                - get
           serviceAccountName: ibm-common-service-operator
       deployments:
         - label:
@@ -389,7 +395,7 @@ spec:
             selector:
               matchLabels:
                 name: ibm-common-service-operator
-            strategy: 
+            strategy:
               type: Recreate
             template:
               metadata:
