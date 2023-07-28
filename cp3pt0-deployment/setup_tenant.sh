@@ -57,6 +57,7 @@ function main() {
     prepare_preview_mode
     setup_topology
     check_singleton_service
+    upgrade_mitigation
     setup_nss
     install_cs_operator
 }
@@ -628,6 +629,25 @@ EOF
     if [ $retries -eq 0 ] && [ $RETRY_CONFIG_CSCR -eq 0 ]; then
         warning "Fail to patch CommonService CR in ${OPERATOR_NS}, try to install cs-operator first"
         RETRY_CONFIG_CSCR=1
+    fi
+}
+
+# Delete release 4.0.x CSV to unblock the upgrade from v4.0.0 -> v4.0.1 -> v4.1.0
+function upgrade_mitigation() {
+    # When it is upgrade scenario, and it is complex toppology, then do the mitigation
+    if [[ $IS_UPGRADE -eq 1 && $IS_NOT_COMPLEX_TOPOLOGY -eq 0 ]]; then
+        local sub_name=$(${OC} get subscription.operators.coreos.com -n ${OPERATOR_NS} -l operators.coreos.com/ibm-common-service-operator.${OPERATOR_NS}='' --no-headers | awk '{print $1}')
+        local csv_name=$(${OC} get subscription.operators.coreos.com ${sub_name} -n ${OPERATOR_NS} --ignore-not-found -o jsonpath={.status.installedCSV})
+        if [[ ! -z ${csv_name} ]]; then
+            local csv_deleted=$(${OC} get csv -n ${OPERATOR_NS} --ignore-not-found -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | grep ibm-common-service-operator | grep -v ${csv_name})
+            for csv in ${csv_deleted}; do
+                # only delete csv named ibm-common-service-operator.v4.0.1 or ibm-common-service-operator.v4.0.0 for upgrade mitigation
+                if [[ ${csv} == *"ibm-common-service-operator.v4.0.1"* ]] || [[ ${csv} == *"ibm-common-service-operator.v4.0.0"* ]]; then
+                    warning "Delete CSV ${csv} in ${OPERATOR_NS} for upgrade mitigation\n"
+                    ${OC} delete csv ${csv} -n ${OPERATOR_NS}
+                fi
+            done
+        fi
     fi
 }
 
