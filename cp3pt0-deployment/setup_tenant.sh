@@ -634,8 +634,8 @@ EOF
 
 # Delete release 4.0.x CSV to unblock the upgrade from v4.0.0 -> v4.0.1 -> v4.1.0
 function upgrade_mitigation() {
-    # When it is upgrade scenario, and it is complex toppology, and it is not v4.0 channel, then do the mitigation
-    if [ $IS_UPGRADE -eq 1 ] && [ $IS_NOT_COMPLEX_TOPOLOGY -eq 0 ] && [[ $CHANNEL != "v4.0" ]]; then
+    # When it is upgrade scenario, and it is complex toppology, then do the mitigation
+    if [[ $IS_UPGRADE -eq 1 && $IS_NOT_COMPLEX_TOPOLOGY -eq 0 ]]; then
         local sub_name=$(${OC} get subscription.operators.coreos.com -n ${OPERATOR_NS} -l operators.coreos.com/ibm-common-service-operator.${OPERATOR_NS}='' --no-headers | awk '{print $1}')
         local csv_name=$(${OC} get subscription.operators.coreos.com ${sub_name} -n ${OPERATOR_NS} --ignore-not-found -o jsonpath={.status.installedCSV})
         if [[ ! -z ${csv_name} ]]; then
