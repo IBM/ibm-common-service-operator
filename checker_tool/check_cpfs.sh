@@ -59,9 +59,9 @@ function print_usage() {
     echo -e "\t[--groups|-g <groups>], the case groups should be like --groups='group1,group2'."
     echo -e "\t[--groups|-g -l], list the current supported groups."
     echo -e "\t[--ignore_groups|-ng <groups>], skip the cases groups, like -ng group1,group2."
-#    echo -e "\t[--cases|-c <cases>], the cases should be like --cases='case1,case2'."
-#    echo -e "\t[--cases|-c -l], list the current supported cases."
-#    echo -e "\t[--ignore_cases|-nc <cases>], skip the cases groups, like -nc case1,case2."
+    echo -e "\t[--cases|-c <cases>], the cases should be like --cases='case1,case2'."
+    echo -e "\t[--cases|-c -l], list the current supported cases."
+    echo -e "\t[--ignore_cases|-nc <cases>], skip the cases groups, like -nc case1,case2."
     echo ""
 }
 
@@ -89,6 +89,23 @@ function run_checks() {
         fi
     fi
 
+    if [[ $1 == 'cases' ]]; then
+        if [[ $2 == '-l' ]]; then
+            echo "The supported cases are: "
+            find ./suites -name *.bats | awk -F '/' '{print $4}' | awk -F . '{print $1}'
+            exit 0
+        else
+            data=$2
+            temp_data=`echo ${data//,/|}`
+            for case in $temp_data
+            do 
+                file_full_path=( $(ls ${CHECKS_ROOT}/*/${case}.bats) )
+                group_name=$(basename $( dirname ${file_full_path} ))
+                bats_files+=( $(ls ${CHECKS_ROOT}/*/${case}.bats) )
+            done
+        fi
+    fi
+
     if [[ $1 == 'ignore_groups' ]]; then
         data=$2
         temp_data=`echo ${data//,/|}`
@@ -96,17 +113,34 @@ function run_checks() {
         not_run_groups=$temp_data
     fi
 
-    for group in ${test_groups[*]}; do
-        for test in $(ls ${CHECKS_ROOT}/${group}/*.bats); do
-            if [[ ! " ${ignore_cases[@]} " =~ " ${test} " ]]; then
-                bats_files+=( ${test} )
-            fi
+    if [[ $1 == 'ignore_cases' ]]; then
+        data=$2
+        test_suites=$(ls ${CHECKS_ROOT})
+        while read -d ',' case ; do
+            not_run_cases+=( $(ls ${CHECKS_ROOT}/*/${case}.bats) )
+        done < <(echo ${data},)
+
+        for group in $test_suites; do
+            test_groups="$group $test_groups"
         done
-    done
+    fi
+
+    # generate test list
+    if [[ $1 != 'cases' ]]; then
+        for group in ${test_groups[*]}; do
+            for test in $(ls ${CHECKS_ROOT}/${group}/*.bats); do
+                for case in ${not_run_cases}; do
+                    if [[ "${test}" != "${case}" ]]; then
+                        bats_files+=( ${test} )
+                    fi
+                done
+            done
+        done
+    fi
 
 
 
-    # Create the final command depending on the logging parameters
+    # run the command
     command='bats --timing'
     command+=' ${bats_files[*]}'
     eval $command
