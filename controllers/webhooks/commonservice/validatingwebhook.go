@@ -64,6 +64,11 @@ func (r *Defaulter) Handle(ctx context.Context, req admission.Request) admission
 
 	cs := &operatorv3.CommonService{}
 
+	// if this pod is not running in the operatorNamespace
+	if operatorNs != string(cs.Spec.OperatorNamespace) {
+		return admission.Allowed("")
+	}
+
 	err := r.decoder.Decode(req, cs)
 	if err != nil {
 		return admission.Errored(http.StatusBadRequest, err)
