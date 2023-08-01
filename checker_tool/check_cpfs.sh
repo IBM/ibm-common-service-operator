@@ -51,7 +51,7 @@ function parse_arguments() {
 
 function print_usage() {
     script_name=`basename ${0}`
-    echo "Usage: ${script_name} --license-accept [OPTIONS]..."
+    echo "Usage: ${script_name} [OPTIONS]..."
     echo ""
     echo "Accepted cli arguments are:"
     echo -e "\t[--help|-h], prints this help."
@@ -66,6 +66,13 @@ function print_usage() {
 }
 
 function run_checks() {
+
+    declare -a bats_files
+    declare -a test_groups
+    declare -a ignore_cases
+    declare -a not_run_groups
+    declare -a not_run_cases
+
     if [[ $1 == 'all' ]]; then
         test_suites=$(ls ${CHECKS_ROOT})
         for group in $test_suites
@@ -92,16 +99,17 @@ function run_checks() {
     if [[ $1 == 'cases' ]]; then
         if [[ $2 == '-l' ]]; then
             echo "The supported cases are: "
-            find ./suites -name *.bats | awk -F '/' '{print $4}' | awk -F . '{print $1}'
+            find ./suites -name *.sh | awk -F '/' '{print $4}' | awk -F . '{print $1}'
             exit 0
         else
             data=$2
             temp_data=`echo ${data//,/|}`
             for case in $temp_data
             do 
-                file_full_path=( $(ls ${CHECKS_ROOT}/*/${case}.bats) )
+                file_full_path=( $(ls ${CHECKS_ROOT}/*/${case}.sh) )
                 group_name=$(basename $( dirname ${file_full_path} ))
-                bats_files+=( $(ls ${CHECKS_ROOT}/*/${case}.bats) )
+                bash_files+=( $(ls ${CHECKS_ROOT}/*/${case}.sh) )
+                bash "${CHECKS_ROOT}/${group_name}/${case}.sh"
             done
         fi
     fi
@@ -116,9 +124,11 @@ function run_checks() {
     if [[ $1 == 'ignore_cases' ]]; then
         data=$2
         test_suites=$(ls ${CHECKS_ROOT})
-        while read -d ',' case ; do
-            not_run_cases+=( $(ls ${CHECKS_ROOT}/*/${case}.bats) )
-        done < <(echo ${data},)
+        temp_data=`echo ${data//,/|}`
+        for nc in $temp_data
+        do
+            not_run_cases+=( $(ls ${CHECKS_ROOT}/*/${nc}.sh) )
+        done
 
         for group in $test_suites; do
             test_groups="$group $test_groups"
@@ -128,12 +138,18 @@ function run_checks() {
     # generate test list
     if [[ $1 != 'cases' ]]; then
         for group in ${test_groups[*]}; do
-            for test in $(ls ${CHECKS_ROOT}/${group}/*.bats); do
-                for case in ${not_run_cases}; do
-                    if [[ "${test}" != "${case}" ]]; then
-                        bats_files+=( ${test} )
-                    fi
-                done
+            for test in $(ls ${CHECKS_ROOT}/${group}/*.sh); do
+                if [[ ${not_run_cases} ]]; then
+                    for case in ${not_run_cases}; do
+                        if [[ "${test}" != "${case}" ]]; then
+                            bash_files+=( ${test} )
+                            bash "${test}"
+                        fi
+                    done
+                else
+                    bash_files+=( ${test} )
+                    bash "${test}"
+                fi
             done
         done
     fi
@@ -141,8 +157,8 @@ function run_checks() {
 
 
     # run the command
-    command='bats --timing'
-    command+=' ${bats_files[*]}'
+    command='sh'
+    command+=' .${bats_files[*]}'
     eval $command
 }
 
