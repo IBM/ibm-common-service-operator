@@ -164,19 +164,11 @@ func main() {
 			os.Exit(1)
 		}
 
-		validatingWebhookConfiguration := bootstrap.Resource{
-			Name:    "ibm-common-service-validating-webhook-" + bs.CSData.OperatorNs,
-			Version: "v1",
-			Group:   "admissionregistration.k8s.io",
-			Kind:    "ValidatingWebhookConfiguration",
-			Scope:   "clusterScope",
-		}
-
-		if err = bs.Cleanup(bs.CSData.OperatorNs, &validatingWebhookConfiguration); err != nil {
-			klog.Errorf("Failed to cleanup validatingWebhookConfig: %v", err)
-			os.Exit(1)
-		}
-
+		ch := make(chan bool)
+		// Clean up webhook resources
+		go goroutines.CleanUpWebhook(ch, bs)
+		// wait for cleanup finish
+		<-ch
 		// Create or Update CPP configuration
 		go goroutines.CreateUpdateConfig(bs)
 		// Update CS CR Status
