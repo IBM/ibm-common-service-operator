@@ -85,7 +85,7 @@ function switch_to_continous_delivery() {
         oc patch sub ${cssub} -n ${ns} --type="json" -p '[{"op": "replace", "path":"/spec/channel", "value":"v3"}]' 2> /dev/null
 
         msg ""
-    done < <(oc get sub --all-namespaces | grep ibm-common-service-operator | awk '{print $1" "$2}')
+    done < <(oc get subscription.operators.coreos.com --all-namespaces | grep ibm-common-service-operator | awk '{print $1" "$2}')
 
     success "Updated all ibm-common-service-operator subscriptions successfully."
     msg ""
@@ -115,7 +115,7 @@ function switch_to_continous_delivery() {
         oc patch sub ${sub} -n ibm-common-services --type="json" -p '[{"op": "replace", "path":"/spec/channel", "value":"v3"}]' 2> /dev/null
 
         msg ""
-    done < <(oc get sub -n ibm-common-services | awk '{print $1}')
+    done < <(oc get subscription.operators.coreos.com -n ibm-common-services | awk '{print $1}')
 
 
     msg "Creating namespace scope config in namespace ibm-common-services..."
@@ -153,12 +153,12 @@ function check_switch_complete() {
         msg "Checking subscription ${sub} in namespace ibm-common-services..."
         msg "-----------------------------------------------------------------------"
         
-        channel=$(oc get sub ${sub} -n ibm-common-services -o jsonpath='{.spec.channel}')
+        channel=$(oc get subscription.operators.coreos.com ${sub} -n ibm-common-services -o jsonpath='{.spec.channel}')
         if [[ "$channel" != "v3" ]]; then
             error "the channel of subscription ${sub} in namespace ibm-common-services is not v3, please try to re-run the script"
         fi
 
-    done < <(oc get sub -n ibm-common-services | awk '{print $1}')
+    done < <(oc get subscription.operators.coreos.com -n ibm-common-services | awk '{print $1}')
 
     success "Updated all operator subscriptions in namespace ibm-common-services successfully."
 }
@@ -169,7 +169,7 @@ function delete_operator() {
     for sub in ${subs}; do
         msg "Deleting ${sub} in namesapce ${ns}, it will be re-installed after the upgrade is successful ..."
         msg "-----------------------------------------------------------------------"
-        csv=$(oc get sub ${sub} -n ${ns} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
+        csv=$(oc get subscription.operators.coreos.com ${sub} -n ${ns} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
         in_step=1
         msg "[${in_step}] Removing the subscription of ${sub} in namesapce ${ns} ..."
         oc delete sub ${sub} -n ${ns} --ignore-not-found

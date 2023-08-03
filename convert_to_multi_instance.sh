@@ -199,9 +199,9 @@ function collect_data() {
     msg "-----------------------------------------------------------------------"
     
     info "MasterNS:${master_ns}"
-    cs_operator_channel=$(${OC} get sub ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.channel") 
+    cs_operator_channel=$(${OC} get subscription.operators.coreos.com ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.channel") 
     info "channel:${cs_operator_channel}"   
-    catalog_source=$(${OC} get sub ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.source")
+    catalog_source=$(${OC} get subscription.operators.coreos.com ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.source")
     info "catalog_source:${catalog_source}"
 
     #this command gets all of the ns listed in requested from namesapce fields
@@ -377,10 +377,10 @@ function cleanupCSOperators(){
     msg "-----------------------------------------------------------------------"
     for namespace in $requested_ns
     do
-        return_value=$(${OC} get sub -n ${namespace} | (grep ibm-common-service-operator || echo "fail"))
+        return_value=$(${OC} get subscription.operators.coreos.com -n ${namespace} | (grep ibm-common-service-operator || echo "fail"))
         if [[ $return_value != "fail" ]]; then
-            local sub=$(${OC} get sub -n ${namespace} | grep ibm-common-service-operator | awk '{print $1}')
-            ${OC} get sub ${sub} -n ${namespace} -o yaml > tmp.yaml 
+            local sub=$(${OC} get subscription.operators.coreos.com -n ${namespace} | grep ibm-common-service-operator | awk '{print $1}')
+            ${OC} get subscription.operators.coreos.com ${sub} -n ${namespace} -o yaml > tmp.yaml 
             ${YQ} -i '.spec.source = "'${catalog_source}'"' tmp.yaml || error "Could not replace catalog source for CS operator in namespace ${namespace}"
             ${YQ} -i '.spec.channel = "'${cs_operator_channel}'"' tmp.yaml || error "Could not replace channel for CS operator in namespace ${namespace}"
             ${YQ} -i 'del(.metadata.creationTimestamp) | del(.metadata.managedFields) | del(.metadata.resourceVersion) | del(.metadata.uid) | del(.status)' tmp.yaml || error "Failed to remove metadata fields from temp cs operator yaml for namespace ${namespace}."
