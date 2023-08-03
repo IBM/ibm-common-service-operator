@@ -158,6 +158,7 @@ function rollback() {
 
     removeNSS
     cleanupZenService
+    update_opreqs
     un_isolate_odlm "ibm-odlm" $MASTER_NS
 
     # scale back up
@@ -533,6 +534,34 @@ function cleanup_webhook() {
     info "Deleting ValidatingWebhookConfiguration..."
     ${OC} delete ValidatingWebhookConfiguration ibm-cs-ns-mapping-webhook-configuration --ignore-not-found
 
+}
+
+function update_opreqs(){
+    title "Updating Operand Requests to use Operand Registry in new CS namespace"
+    #check map to namespaces, get list of requested from ns from there
+    #update opreq in list of namespaces from common-service-maps configmap
+
+    #this command gets all of the ns listed in requested from namesapce fields
+    requested_ns=$("${OC}" get configmap -n kube-public -o yaml common-service-maps | yq '.data[]' | yq '.namespaceMapping[].requested-from-namespace' | awk '{print $2}' | tr '\n' ' ')
+    
+    for ns in $requested_ns
+    do
+        opreqs=$(${OC} get operandrequests -n $ns --no-headers | awk '{print $1}' | tr '\n' ' ')
+        for opreq in $opreqs
+        do
+            ${OC} get opreq $opreq -n $ns -o yaml > tmp.yaml
+            ${YQ} -i 'del(.metadata.creationTimestamp)' tmp.yaml
+            ${YQ} -i 'del(.metadata.resourceVersion)' tmp.yaml
+            ${YQ} -i 'del(.metadata.uid)' tmp.yaml
+            ${YQ} -i 'del(.metadata.generation)' tmp.yaml
+            ${YQ} -i 'del(.metadata.managedFields)' tmp.yaml
+            ${YQ} -i '.spec.requests[0].registryNamespace = "ibm-common-services"' tmp.yaml    
+            ${OC} apply -n $ns -f tmp.yaml || error "Failed to update registryNamespace value for operand request $opreq in namespace $ns."
+            info "Operand request $opreq in namespace $ns updated to use ibm-common-services as registryNamespace."
+            rm -f tmp.yaml
+        done
+    done
+    success "Operand requests' registryNamespace values updated."
 }
 
 function msg() {
