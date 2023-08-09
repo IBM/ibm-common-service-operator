@@ -92,14 +92,14 @@ function checking_operator_status() {
 function checking_sub_status() {
   local namespace=$1
   output "List Subscriptions: ${OC} -n ${namespace} get sub"
-  ${OC} -n ${namespace} get sub | tee -a $logfile
+  ${OC} -n ${namespace} get subscription.operators.coreos.com | tee -a $logfile
   rc=0
-  ${OC} -n ${namespace} get sub -o=jsonpath='{range .items[*]}{.metadata.name}{" "}{.status.state}{"\n"}{end}' | while read -r line; do
+  ${OC} -n ${namespace} get subscription.operators.coreos.com -o=jsonpath='{range .items[*]}{.metadata.name}{" "}{.status.state}{"\n"}{end}' | while read -r line; do
     sub=$(echo $line | awk '{print $1}')
     state=$(echo $line | awk '{print $2}')
     if [[ "$state" != "AtLatestKnown" ]]; then
-      output "Check subscription: ${OC} -n ${namespace} get sub ${sub} -oyaml"
-      ${OC} -n ${namespace} get sub ${sub} -oyaml | tee -a $logfile
+      output "Check subscription: ${OC} -n ${namespace} get subscription.operators.coreos.com ${sub} -oyaml"
+      ${OC} -n ${namespace} get subscription.operators.coreos.com ${sub} -oyaml | tee -a $logfile
       ((rc++))
     fi
   done

@@ -85,9 +85,9 @@ function collect_data() {
     msg "-----------------------------------------------------------------------"
     
     # info "MasterNS:${master_ns}"
-    # cs_operator_channel=$(${OC} get sub ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.channel") 
+    # cs_operator_channel=$(${OC} get subscription.operators.coreos.com ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.channel") 
     # info "channel:${cs_operator_channel}"   
-    # catalog_source=$(${OC} get sub ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.source")
+    # catalog_source=$(${OC} get subscription.operators.coreos.com ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.source")
     # info "catalog_source:${catalog_source}" 
     #this command gets all of the ns listed in requested from namesapce fields
     requested_ns=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].requested-from-namespace' | awk '{print $2}' | tr '\n' ' ')

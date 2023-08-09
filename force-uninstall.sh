@@ -130,7 +130,7 @@ function delete_operator() {
   local subs=$1
   local namespace=$2
   for sub in ${subs}; do
-    csv=$(${KUBECTL} get sub ${sub} -n ${namespace} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
+    csv=$(${KUBECTL} get subscription.operators.coreos.com ${sub} -n ${namespace} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
     if [[ "X${csv}" != "X" ]]; then
       msg "Delete operator ${sub} from namespace ${namespace}"
       ${KUBECTL} delete csv ${csv} -n ${namespace} --ignore-not-found
@@ -194,7 +194,7 @@ function delete_rbac_resource() {
 
 function cleanup_cluster() {
   # Delete the previous version ODLM operator
-  if ${KUBECTL} get sub operand-deployment-lifecycle-manager-app -n openshift-operators &>/dev/null; then
+  if ${KUBECTL} get subscription.operators.coreos.com operand-deployment-lifecycle-manager-app -n openshift-operators &>/dev/null; then
     title "Deleting ODLM Operator"
     delete_operator "operand-deployment-lifecycle-manager-app" "openshift-operators"
   fi
@@ -314,7 +314,7 @@ if [[ "$FORCE_DELETE" == "false" ]]; then
   delete_unavailable_apiservice
 
   title "Deleting ibm-common-service-operator"
-  for sub in $(${KUBECTL} get sub --all-namespaces --ignore-not-found | awk '{if ($3 =="ibm-common-service-operator") print $1"/"$2}'); do
+  for sub in $(${KUBECTL} get subscription.operators.coreos.com --all-namespaces --ignore-not-found | awk '{if ($3 =="ibm-common-service-operator") print $1"/"$2}'); do
     namespace=$(echo $sub | awk -F'/' '{print $1}')
     name=$(echo $sub | awk -F'/' '{print $2}')
     delete_operator "$name" "$namespace"

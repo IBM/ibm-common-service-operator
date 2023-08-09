@@ -1204,7 +1204,7 @@ function fetch_sub_from_package() {
     local package=$1
     local ns=$2
 
-    ${OC} get sub -n "$ns" -o jsonpath="{.items[?(@.spec.name=='$package')].metadata.name}"
+    ${OC} get subscription.operators.coreos.com -n "$ns" -o jsonpath="{.items[?(@.spec.name=='$package')].metadata.name}"
 }
 
 function fetch_csv_from_sub() {
