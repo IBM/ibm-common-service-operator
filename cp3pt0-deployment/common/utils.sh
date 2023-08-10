@@ -735,24 +735,6 @@ function update_cscr() {
     rm common-service.yaml
 }
 
-# Check CommonService CR
-function check_cscr_status() {
-    local nss_list=$1
-
-    for namespace in ${nss_list//,/ }
-    do
-        # Check the existence of CS CR in each namespace under the scope
-        info "Checking CommonService CR common-service in $namespace"
-        result=$("${OC}" get commonservice common-service -n ${namespace} --ignore-not-found)
-        if [[ -z "${result}" ]]; then
-            error "Failed to find CommonService CR in ${namespace}"
-        fi
-
-        # Check the status of each CS CR
-        wait_for_cscr_status "${namespace}" "common-service"
-    done
-}
-
 # Update nss cr
 function update_nss_kind() {
     local operator_ns=$1

@@ -548,15 +548,9 @@ function install_cs_operator() {
         RETRY_CONFIG_CSCR=1
         configure_cs_kind
     fi
-
-    # Finding scoped namespaces
-    local ns_list=$(${OC} get configmap namespace-scope -n ${OPERATOR_NS} -o jsonpath='{.data.namespaces}')
-    if [[ -z "$ns_list" ]]; then
-        error "Failed to get tenant scope from ConfigMap namespace-scope in namespace ${OPERATOR_NS}"
-    fi
     
-    # Checking master and copied CommonService CR status
-    check_cscr_status "$ns_list"
+    # Checking master CommonService CR status
+    wait_for_cscr_status "$OPERATOR_NS" "common-service"
 }
 
 function configure_nss_kind() {
