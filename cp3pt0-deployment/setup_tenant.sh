@@ -548,6 +548,9 @@ function install_cs_operator() {
         RETRY_CONFIG_CSCR=1
         configure_cs_kind
     fi
+    
+    # Checking master CommonService CR status
+    wait_for_cscr_status "$OPERATOR_NS" "common-service"
 }
 
 function configure_nss_kind() {

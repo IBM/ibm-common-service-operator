@@ -258,6 +258,20 @@ function wait_for_service_account() {
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
+function wait_for_cscr_status(){
+    local namespace=$1
+    local name=$2
+    local condition="${OC} -n ${namespace} get commonservice ${name} --no-headers --ignore-not-found -o jsonpath='{.status.phase}' | grep 'Succeeded'"
+    local retries=20
+    local sleep_time=6
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for CommonService ${name} in ${namespace} to be ready"
+    local success_message="CommonService in ${namespace} is succeeded"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for CommonService in ${namespace} to be ready"
+ 
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
 function wait_for_operand_request() {
     local namespace=$1
     local name=$2
@@ -694,7 +708,7 @@ EOF
     fi
 }
 
-# update/create cs cr
+# Update/create cs cr
 function update_cscr() {
     local operator_ns=$1
     local service_ns=$2
@@ -711,7 +725,6 @@ function update_cscr() {
         else
             info "Configuring CommonService CR common-service in $namespace"
             ${OC} get commonservice common-service -n "${namespace}" -o yaml | ${YQ} eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
-            
         fi  
         ${YQ} eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.namespace = "'${namespace}'"' common-service.yaml | ${OC} apply --overwrite=true -f -
         if [[ $? -ne 0 ]]; then

@@ -136,6 +136,9 @@ function main() {
     # Update NamespaceScope CR common-service
     update_nss_kind "$OPERATOR_NS" "$NS_LIST"
 
+    # Check master CommonService CR status
+    wait_for_cscr_status "$OPERATOR_NS" "common-service"
+    
     success "Preparation is completed for upgrading Cloud Pak 3.0"
     info "Please update OperandRequest to upgrade foundational core services"
 }
