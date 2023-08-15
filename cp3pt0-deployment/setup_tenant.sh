@@ -251,7 +251,7 @@ function default_arguments() {
     # check if CommonService CRD exists in cluster
     local is_CS_CRD_exist=$((${OC} get commonservice -n ${OPERATOR_NS} --ignore-not-found > /dev/null && echo exists) || echo fail)
     if [[ "$is_CS_CRD_exist" == "exists" ]]; then
-        result=$("${OC}" get commonservice common-service -n ${OPERATOR_NS} -o yaml --ignore-not-found)
+        local result=$("${OC}" get commonservice common-service -n ${OPERATOR_NS} -o yaml --ignore-not-found)
         if [[ ! -z "$result" ]]; then
 
             tmp_services_ns=$("${YQ}" eval '.spec.servicesNamespace' - <<< "$result")
@@ -267,6 +267,13 @@ function default_arguments() {
             IS_UPGRADE=1
         else
             info "CommonService CRD exists but main CommonService CR does not exist, skipping defaulting from original CommonService CR\n"
+        fi
+
+        # if CommonService CRD exists and subscription of common-service-operator exists, simple topology will be accepted
+        local cs_sub=$(fetch_sub_from_package ibm-common-service-operator ${OPERATOR_NS})
+        if [[ "$cs_sub" != "" ]]; then
+            info "ibm-common-service-operator subscription exists, it is upgrade scenario\n"
+            IS_UPGRADE=1
         fi
     else
         info "CommonService CRD does not exist, skipping defaulting from original CommonService CR\n"
