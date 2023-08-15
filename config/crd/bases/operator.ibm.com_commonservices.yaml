@@ -22,10 +22,14 @@ spec:
         description: CommonService is the Schema for the commonservices API
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
             type: string
           metadata:
             type: object
@@ -55,7 +59,8 @@ spec:
               fipsEnabled:
                 type: boolean
               installPlanApproval:
-                description: Approval is the user approval policy for an InstallPlan. It must be one of "Automatic" or "Manual".
+                description: Approval is the user approval policy for an InstallPlan.
+                  It must be one of "Automatic" or "Manual".
                 type: string
               license:
                 description: LicenseList defines the license specification in CSV
@@ -67,7 +72,8 @@ spec:
                     description: The license key for this deployment.
                     type: string
                   license:
-                    description: The license being accepted where the component has multiple.
+                    description: The license being accepted where the component has
+                      multiple.
                     type: string
                   use:
                     description: The type of license being accepted.
@@ -127,6 +133,7 @@ spec:
               phase:
                 type: string
             type: object
+            x-kubernetes-preserve-unknown-fields: true
         type: object
     served: true
     storage: true
