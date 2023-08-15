@@ -38,8 +38,4 @@ const StorageClassTemplate = `
     mustgatherService:
       persistentVolumeClaim:
         storageClassName: placeholder
-- name: ibm-monitoring-prometheusext-operator
-  spec:
-    prometheusExt:
-      storageClassName: placeholder
 `
