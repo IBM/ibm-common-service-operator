@@ -33,3 +33,4 @@ spec:
         - cert-manager
         - namespace
         - configmap
+        - nss
