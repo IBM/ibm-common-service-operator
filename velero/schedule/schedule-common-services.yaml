@@ -32,3 +32,4 @@ spec:
         - licensing
         - cert-manager
         - namespace
+        - configmap
