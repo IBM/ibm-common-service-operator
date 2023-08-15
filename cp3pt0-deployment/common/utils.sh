@@ -333,7 +333,7 @@ function wait_for_nss_patch() {
     fi
     
     # wait for deployment to be ready
-    local deployment_name=$(${OC} get deployment -n ${namespace} -l operators.coreos.com/${package_name}.${namespace}='' --no-headers | awk '{print $1}')
+    local deployment_name="ibm-common-service-operator"
     wait_for_nss_env_var ${namespace} ${deployment_name}
     wait_for_deployment ${namespace} ${deployment_name}
     
