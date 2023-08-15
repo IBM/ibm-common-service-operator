@@ -20,20 +20,43 @@ set -o pipefail
 set -o errtrace
 # set -o nounset
 
+# ---------- Command arguments ----------
+
 OC=oc
 YQ=yq
 FROM_NAMESPACE=""
 TO_NAMESPACE=""
 NUM=$#
 TEMPFILE="_TMP.yaml"
+DEBUG=0
+s390x_ENV="false"
+
+# ---------- Command variables ----------
+
+# script base directory
+BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
+
+#log file
+LOG_FILE="preload_data_log_$(date +'%Y%m%d%H%M%S').log"
+
+# ---------- Main functions ----------
+
+. ${BASE_DIR}/cp3pt0-deployment/common/utils.sh
 
 function main() {
     parse_arguments "$@"
+    save_log "cp3pt0-deployment/logs" "preload_data_log" "$DEBUG"
+    trap cleanup_log EXIT
     prereq
     # run backup preload
     backup_preload_mongo
     # copy im credentials
-    copy_auth_idp_secret
+    copy_resource "secret" "platform-auth-idp-credentials"
+    copy_resource "secret" "platform-auth-ldaps-ca-cert"
+    copy_resource "configmap" "ibm-cpp-config"
+    copy_resource "configmap" "common-web-ui-config"
+    copy_resource "configmap" "platform-auth-idp"
+    copy_resource "commonservice" "common-service" "preload-common-service-from-$FROM_NAMESPACE"
     # any extra config
 }
 
@@ -57,6 +80,10 @@ function parse_arguments() {
             shift
             TO_NAMESPACE=$1
             ;;
+        -v | --debug)
+            shift
+            DEBUG=$1
+            ;;
         -h | --help)
             print_usage
             exit 1
@@ -74,51 +101,79 @@ function print_usage() {
     echo "Usage: ${script_name} --original-cs-ns <Original-CommonService-Namespace> --services-ns <Services-Namespace> [OPTIONS]..."
     echo ""
     echo "Preload data and config information from an existing Common Services namespace to a new, empty namespace"
+    echo "See step 4 here https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.0?topic=4x-isolated-migration for more information."
     echo ""
     echo "Options:"
-    echo "   --oc string                                    File path to oc CLI. Default uses oc in your PATH"
-    echo "   --yq string                                    File path to yq CLI. Default uses yq in your PATH"
-    echo "   --original-cs-ns string                        Namespace to migrate Cloud Pak 2 Foundational services data from."
-    echo "   --services-ns string                           Namespace to migrate Cloud Pak 2 Foundational services data too"
+    echo "   --oc string                                    Optional. File path to oc CLI. Default uses oc in your PATH"
+    echo "   --yq string                                    Optional. File path to yq CLI. Default uses yq in your PATH"
+    echo "   --original-cs-ns string                        Required. Namespace to migrate Cloud Pak 2 Foundational services data from."
+    echo "   --services-ns string                           Required. Namespace to migrate Cloud Pak 2 Foundational services data too"
+    echo "   -v, --debug integer                            Optional. Verbosity of logs. Default is 0. Set to 1 for debug logs"
     echo "   -h, --help                                     Print usage information"
     echo ""
 }
 
 function prereq() {
-    
+    # Check the value of DEBUG
+    if [[ "$DEBUG" != "1" && "$DEBUG" != "0" ]]; then
+        error "Invalid value for DEBUG. Expected 0 or 1."
+    fi
+
     if [[ -z "$FROM_NAMESPACE" ]] || [[ -z "$TO_NAMESPACE" ]]; then
         error "Both Original-CommonService-Namespace and Services-Namespace need to be set for script to execute. Please rerun script with both parameters set. Run with \"-h\" flag for more details"
         exit 1
     fi
 
-    exists=$(oc get ns $FROM_NAMESPACE --no-headers --ignore-not-found)
+    exists=$(${OC} get ns $FROM_NAMESPACE --no-headers --ignore-not-found)
     if [[ -z "$exists" ]]; then
         error "Namespace $FROM_NAMESPACE does not exist (or oc command line is not logged in)"
         exit 1
     fi 
 
-    exists=$(oc get ns $TO_NAMESPACE --no-headers --ignore-not-found)
+    exists=$(${OC} get ns $TO_NAMESPACE --no-headers --ignore-not-found)
     if [[ -z "$exists" ]]; then
         error "Namespace $TO_NAMESPACE does not exist (or oc command line is not logged in)"
         exit 1
     fi
+    mongo_node=$(${OC} get pods -n $FROM_NAMESPACE -o wide | grep icp-mongodb-0 | awk '{print $7}')
+    architecture=$(${OC} describe node $mongo_node | grep "Architecture:" | awk '{print $2}')
+    if [[ $architecture == "s390x" ]]; then
+      s390x_ENV="true"
+      info "Z cluster detected, be prepared for multiple restarts of mongo pods. This is expected behavior."
+      mongo_op_scaled=$(${OC} get deploy -n $FROM_NAMESPACE | grep ibm-mongodb-operator | egrep '1/1' || echo false)
+      if [[ $mongo_op_scaled == "false" ]]; then
+        info "Mongo operator still scaled down, scaling up."
+        ${OC} scale deploy -n $FROM_NAMESPACE ibm-mongodb-operator --replicas=1
+        info "Wait for mongo operator to reconcile resources"
+        sleep 60
+        delete_mongo_pods "$FROM_NAMESPACE"
+      fi
+    fi
 }
 
-function copy_auth_idp_secret() {
-    local secret="platform-auth-idp-credentials"
-    title " Copying secret $secret from $FROM_NAMESPACE to $TO_NAMESPACE "   
-    $OC get secret "$secret" -n $FROM_NAMESPACE -o yaml | \
-        $YQ '
-            del(.metadata.creationTimestamp) | 
-            del(.metadata.resourceVersion) | 
-            del(.metadata.namespace) | 
-            del(.metadata.uid) | 
-            del(.metadata.ownerReferences) |
-            del(.metadata.managedFields) |
-            del(.metadata.labels)
-        ' | \
-        $OC apply -n $TO_NAMESPACE -f - || error "Failed to copy over secret $secret."
-    success "Secret $secret copied over to $TO_NAMESPACE"
+function copy_resource() {
+    local resourceType=$1
+    local resourceName=$2
+    local newResourceName=${3:-$resourceName}
+    title " Copying $resourceType $resourceName from $FROM_NAMESPACE to $TO_NAMESPACE "   
+    resource_exists=$(${OC} get $resourceType $resourceName -n $FROM_NAMESPACE || echo "fail")
+    if [[ $resource_exists != "fail" ]]; then
+      $OC get $resourceType $resourceName -n $FROM_NAMESPACE -o yaml | \
+          $YQ '
+              .metadata.name = "'$newResourceName'" |
+              del(.metadata.creationTimestamp) | 
+              del(.metadata.resourceVersion) | 
+              del(.metadata.namespace) | 
+              del(.metadata.uid) | 
+              del(.metadata.ownerReferences) |
+              del(.metadata.managedFields) |
+              del(.metadata.labels)
+          ' | \
+          $OC apply -n $TO_NAMESPACE -f - || error "Failed to copy over $resourceType $resourceName."
+      success "$resourceType $resourceName copied over to $TO_NAMESPACE as $newResourceName"
+    else
+      warning "Resource $resourceType $resourceName not found and not migrated from $FROM_NAMESPACE to $TO_NAMESPACE"
+    fi
 }
 
 #
@@ -143,15 +198,15 @@ function pre_req_bpm() {
 
   info "Copying mongodb from namespace $FROM_NAMESPACE to namespace $TO_NAMESPACE"
  
-  runningmongo=$(oc get po icp-mongodb-0 --no-headers --ignore-not-found -n $FROM_NAMESPACE | awk '{print $3}')
+  runningmongo=$(${OC} get po icp-mongodb-0 --no-headers --ignore-not-found -n $FROM_NAMESPACE | awk '{print $3}')
   if [[ -z "$runningmongo" ]] || [[ "$runningmongo" != "Running" ]]; then
     error "Mongodb is not running in Namespace $FROM_NAMESPACE"
     exit -1
   fi
 
-  runningmongo=$(oc get po icp-mongodb-0 --no-headers --ignore-not-found -n $TO_NAMESPACE | awk '{print $3}')
+  runningmongo=$(${OC} get po icp-mongodb-0 --no-headers --ignore-not-found -n $TO_NAMESPACE | awk '{print $3}')
   if [[ ! -z "$runningmongo" ]]; then
-    error "Mongodb is deployedoc g in Namespace $TO_NAMESPACE - this copy depends on mongo being uninitialzed in the target namespace"
+    error "Mongodb is deployed in namespace $TO_NAMESPACE - this script depends on mongo being uninitialzed in the target namespace"
     exit -1
   fi
 } # parse
@@ -164,31 +219,31 @@ function cleanup() {
   title "Cleaning up any previous copy operations..."
   msg "-----------------------------------------------------------------------"
   rm $TEMPFILE
-  oc delete job mongodb-backup -n $FROM_NAMESPACE
-  oc delete job mongodb-restore -n $TO_NAMESPACE
-  pvcexists=$(oc get pvc cs-mongodump -n $FROM_NAMESPACE --no-headers --ignore-not-found | awk '{print $2}')
+  ${OC} delete job mongodb-backup -n $FROM_NAMESPACE
+  ${OC} delete job mongodb-restore -n $TO_NAMESPACE
+  pvcexists=$(${OC} get pvc cs-mongodump -n $FROM_NAMESPACE --no-headers --ignore-not-found | awk '{print $2}')
   if [[ -n "$pvcexists" ]]; then
     if [[ "$pvcexists" == "Bound" ]]; then
-      dv=$(oc get pvc cs-mongodump -n $FROM_NAMESPACE -o=jsonpath='{.spec.volumeName}')
-      oc patch pv $dv -p '{"spec": { "persistentVolumeReclaimPolicy" : "Delete" }}'
+      dv=$(${OC} get pvc cs-mongodump -n $FROM_NAMESPACE -o=jsonpath='{.spec.volumeName}')
+      ${OC} patch pv $dv -p '{"spec": { "persistentVolumeReclaimPolicy" : "Delete" }}'
     fi
     #TODO remove finalizers before deleting
-    oc delete pvc cs-mongodump -n $FROM_NAMESPACE --ignore-not-found --timeout=10s
+    ${OC} delete pvc cs-mongodump -n $FROM_NAMESPACE --ignore-not-found --timeout=10s
     if [ $? -ne 0 ]; then
         info "Failed to delete pvc cs-mongodump, patching its finalizer to null..."
-        oc patch pvc cs-mongodump -n $FROM_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+        ${OC} patch pvc cs-mongodump -n $FROM_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
     fi
   fi
-  pvcexists=$(oc get pvc cs-mongodump -n $TO_NAMESPACE --no-headers --ignore-not-found | awk '{print $2}')
+  pvcexists=$(${OC} get pvc cs-mongodump -n $TO_NAMESPACE --no-headers --ignore-not-found | awk '{print $2}')
   if [[ -n "$pvcexists" ]]; then
     if [[ "$pvcexists" == "Bound" ]]; then
-      dv=$(oc get pvc cs-mongodump -n $TO_NAMESPACE -o=jsonpath='{.spec.volumeName}')
-      oc patch pv $dv -p '{"spec": { "persistentVolumeReclaimPolicy" : "Delete" }}'
+      dv=$(${OC} get pvc cs-mongodump -n $TO_NAMESPACE -o=jsonpath='{.spec.volumeName}')
+      ${OC} patch pv $dv -p '{"spec": { "persistentVolumeReclaimPolicy" : "Delete" }}'
     fi
-    oc delete pvc cs-mongodump -n $TO_NAMESPACE --ignore-not-found --timeout=10s
+    ${OC} delete pvc cs-mongodump -n $TO_NAMESPACE --ignore-not-found --timeout=10s
     if [ $? -ne 0 ]; then
         info "Failed to delete pvc cs-mongodump, patching its finalizer to null..."
-        oc patch pvc cs-mongodump -n $TO_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+        ${OC} patch pvc cs-mongodump -n $TO_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
     fi
   fi
   success "Previous run cleaned up."
@@ -201,13 +256,13 @@ function cleanup() {
 function createdumppvc() {
   title "Creating a PVC for the MongoDB dump"
   msg "-----------------------------------------------------------------------"
-  oc project $FROM_NAMESPACE
-  currentns=$(oc project -q)
+  ${OC} project $FROM_NAMESPACE
+  currentns=$(${OC} project -q)
   if [[ "$currentns" -ne "$FROM_NAMESPACE" ]]; then
     error "Cannot switch to $FROM_NAMESPACE"
   fi
 
-  stgclass=$(oc get pvc mongodbdir-icp-mongodb-0 -o=jsonpath='{.spec.storageClassName}')
+  stgclass=$(${OC} get pvc mongodbdir-icp-mongodb-0 -o=jsonpath='{.spec.storageClassName}')
   if [[ -z $stgclass ]]; then
     error "Cannnot get storage class name from PVC mongodbdir-icp-mongodb-0 in $FROM_NAMESPACE"
   fi
@@ -228,14 +283,14 @@ spec:
   volumeMode: Filesystem
 EOF
 
-  oc apply -f $TEMPFILE
+  ${OC} apply -f $TEMPFILE
 
-  status=$(oc get pvc cs-mongodump --no-headers | awk '{print $2}')
+  status=$(${OC} get pvc cs-mongodump --no-headers | awk '{print $2}')
   while [[ "$status" != "Bound" ]]
   do
     info "Waiting for pvc cs-mongodump to bind"
     sleep 10
-    status=$(oc get pvc cs-mongodump --no-headers | awk '{print $2}')
+    status=$(${OC} get pvc cs-mongodump --no-headers | awk '{print $2}')
   done
   success "MongoDB PVC ready"
 
@@ -248,14 +303,14 @@ EOF
 function dumpmongo() {
   title "Backing up MongoDB in namespace $FROM_NAMESPACE"
   msg "-----------------------------------------------------------------------"
-  currentns=$(oc project $FROM_NAMESPACE -q)
+  currentns=$(${OC} project $FROM_NAMESPACE -q)
   if [[ "$currentns" -ne "$FROM_NAMESPACE" ]]; then
     error "Cannot switch to $FROM_NAMESPACE"
   fi
 
-  ibm_mongodb_image=$(oc get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
-
-  cat <<EOF >$TEMPFILE
+  ibm_mongodb_image=$(${OC} get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
+  if [[ $s390x_ENV == "false" ]]; then
+    cat <<EOF >$TEMPFILE
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -269,6 +324,13 @@ spec:
       containers:
       - name: cs-mongodb-backup
         image: $ibm_mongodb_image
+        resources:
+          limits:
+            cpu: 500m
+            memory: 500Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
         command: ["bash", "-c", "cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongodump --oplog --out /dump/dump --host mongodb:27017 --username \$ADMIN_USER --password \$ADMIN_PASSWORD --authenticationDatabase admin --ssl --sslCAFile /work-dir/ca.pem --sslPEMKeyFile /work-dir/mongo.pem"]
         volumeMounts:
         - mountPath: "/work-dir"
@@ -304,39 +366,123 @@ spec:
           secretName: mongodb-root-ca-cert
       restartPolicy: OnFailure
 EOF
+  else #s390x environments do not recognize --ssl options
+    info "Z cluster detected"
+    info "Scaling down MongoDB operator"
+    ${OC} scale deploy -n $FROM_NAMESPACE ibm-mongodb-operator --replicas=0
 
-  status="Unknown"
+    #get cache size value
+    cacheSizeGB=$(${OC} get cm icp-mongodb -n $FROM_NAMESPACE -o yaml | grep cacheSizeGB | awk '{print $2}')
+    
+    info "Editing configmap icp-mongodb"
+    cat << EOF | ${OC} apply -f -
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: icp-mongodb
+  labels:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/instance: icp-mongodb
+    app.kubernetes.io/managed-by: operator
+    app.kubernetes.io/name: icp-mongodb
+    app.kubernetes.io/part-of: common-services-cloud-pak
+    app.kubernetes.io/version: 4.0.12-build.3
+    release: mongodb
+data:
+  mongod.conf: |-
+    storage:
+      dbPath: /data/db
+      wiredTiger:
+        engineConfig:
+          cacheSizeGB: $cacheSizeGB
+    net:
+      bindIpAll: true
+      port: 27017
+      ssl:
+        mode: preferSSL
+        CAFile: /data/configdb/tls.crt
+        PEMKeyFile: /work-dir/mongo.pem
+    replication:
+      replSetName: rs0
+    # Uncomment for TLS support or keyfile access control without TLS
+    security:
+      authorization: enabled
+      keyFile: /data/configdb/key.txt
+EOF
+    #need to delete the mongo pods one at a time
+    delete_mongo_pods "$FROM_NAMESPACE"
+    ${OC} delete job mongodb-backup -n $FROM_NAMESPACE --ignore-not-found
+    cat <<EOF >$TEMPFILE
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mongodb-backup
+spec:
+  parallelism: 1
+  completions: 1
+  backoffLimit: 20
+  template:
+    spec:
+      containers:
+      - name: cs-mongodb-backup
+        image: $ibm_mongodb_image
+        resources:
+          limits:
+            cpu: 500m
+            memory: 500Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        command: ["bash", "-c", "cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongodump --oplog --out /dump/dump --host mongodb:27017 --username \$ADMIN_USER --password \$ADMIN_PASSWORD --authenticationDatabase admin"]
+        volumeMounts:
+        - mountPath: "/work-dir"
+          name: tmp-mongodb
+        - mountPath: "/dump"
+          name: mongodump
+        - mountPath: "/cred/mongo-certs"
+          name: icp-mongodb-client-cert
+        - mountPath: "/cred/cluster-ca"
+          name: cluster-ca-cert
+        env:
+          - name: ADMIN_USER
+            valueFrom:
+              secretKeyRef:
+                name: icp-mongodb-admin
+                key: user
+          - name: ADMIN_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: icp-mongodb-admin
+                key: password
+      volumes:
+      - name: mongodump
+        persistentVolumeClaim:
+          claimName: cs-mongodump
+      - name: tmp-mongodb
+        emptyDir: {}
+      - name: icp-mongodb-client-cert
+        secret:
+          secretName: icp-mongodb-client-cert
+      - name: cluster-ca-cert
+        secret:
+          secretName: mongodb-root-ca-cert
+      restartPolicy: OnFailure
+EOF
+  fi
+
   info "Running Backup" 
+  ${OC} apply -f $TEMPFILE -n $FROM_NAMESPACE
+  ${OC} get pods -n $FROM_NAMESPACE | grep mongodb-backup || echo ""
+  wait_for_job_complete "mongodb-backup" "$FROM_NAMESPACE"
 
-  while [[ "$status" != "Completed" ]]
-  do
-    oc apply -f $TEMPFILE
-    sleep 10
-    retries=10
-    while [ $retries > 0 ]
-    do
-      info "waiting for completion"
-      status=$(oc get po | grep mongodb-backup | awk '{print $3}')
-      oc get po | grep mongodb-backup
-      if [[ "$status" == "Completed" ]]; then
-        break
-      elif [[ "$status" == "Running" ]]; then
-        retries=10
-        sleep 10
-      elif [[ "$status" == "" ]]; then
-        break
-      else
-        retries=$(( $retries - 1 ))
-        sleep 10
-      fi  
-    done
-    if [[ "$status" != "Completed" ]]; then
-      info "Retrying mongodb-backup"
-      oc delete job mongodb-backup
-    fi
-  done
-
-  dumplogs mongodb-backup
+  if [[ $s390x_ENV == "true" ]]; then
+    #reset changes for z environment
+    info "Reverting change to icp-mongodb configmap" 
+    delete_mongo_pods "$FROM_NAMESPACE"
+    info "Scale mongo operator back up to 1"
+    #scaling back up to one will reset the icp-mongodb configmap
+    ${OC} scale deploy -n $FROM_NAMESPACE ibm-mongodb-operator --replicas=1
+  fi
   success "Backup Complete"
 } # dumpmongo
 
@@ -348,34 +494,35 @@ function swapmongopvc() {
   title "Moving restored mongodb volume to $TO_NAMESPACE"
   msg "-----------------------------------------------------------------------"
 
-  status=$(oc get pvc cs-mongodump -n $FROM_NAMESPACE)
+  status=$(${OC} get pvc cs-mongodump -n $FROM_NAMESPACE)
   if [[ -z "$status" ]]; then
     error "PVC cs-mongodump not found in $FROM_NAMESPACE"
   fi
 
-  VOL=$(oc get pvc cs-mongodump -n $FROM_NAMESPACE  -o=jsonpath='{.spec.volumeName}')
+  VOL=$(${OC} get pvc cs-mongodump -n $FROM_NAMESPACE  -o=jsonpath='{.spec.volumeName}')
   if [[ -z "$VOL" ]]; then
     error "Volume for pvc  cs-mongodump not found in $FROM_NAMESPACE"
   fi
 
-  IMAGE=$(oc get pod icp-mongodb-0 -n $FROM_NAMESPACE  -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
-  if [[ -z "$IMAGE" ]]; then
-    error "IMAGE for pod icp-mongodb-0 not found in $FROM_NAMESPACE"
+  ${OC} patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Retain" }}'
+  ${OC} patch pv $VOL --type=merge -p '{"spec": {"claimRef":null}}'
+  ${OC} patch pv $VOL --type json -p '[{ "op": "remove", "path": "/spec/claimRef" }]'
+  
+  ${OC} delete pvc cs-mongodump -n $FROM_NAMESPACE --ignore-not-found --timeout=10s
+  if [ $? -ne 0 ]; then
+      info "Failed to delete pvc cs-mongodump, patching its finalizer to null..."
+      ${OC} patch pvc cs-mongodump -n $FROM_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
   fi
 
-  oc patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Retain" }}'
-  oc patch pv $VOL --type=merge -p '{"spec": {"claimRef":null}}'
-  oc patch pv $VOL --type json -p '[{ "op": "remove", "path": "/spec/claimRef" }]'
-  
-  oc delete pvc cs-mongodump -n $FROM_NAMESPACE --ignore-not-found --timeout=10s
-    if [ $? -ne 0 ]; then
-        info "Failed to delete pvc cs-mongodump, patching its finalizer to null..."
-        oc patch pvc cs-mongodump -n $FROM_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+  roks=$(${OC} cluster-info | grep 'containers.cloud.ibm.com')
+  if [[ -z $roks ]]; then
+    stgclass=$(${OC} get pvc mongodbdir-icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{.spec.storageClassName}')
+    if [[ -z $stgclass ]]; then
+      error "Cannnot get storage class name from PVC mongodbdir-icp-mongodb-0 in $FROM_NAMESPACE"
     fi
-
-  stgclass=$(oc get pvc mongodbdir-icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{.spec.storageClassName}')
-  if [[ -z $stgclass ]]; then
-    error "Cannnot get storage class name from PVC mongodbdir-icp-mongodb-0 in $FROM_NAMESPACE"
+  else
+    debug1 "Preload run on ROKS, not setting storageclass name"
+    stgclass=""
   fi
 
   cat <<EOF >$TEMPFILE
@@ -390,23 +537,23 @@ spec:
   resources:
     requests:
       storage: 20Gi
-  storageClassName: $stgclass
+  storageClassName: "$stgclass"
   volumeMode: Filesystem
   volumeName: $VOL
 EOF
 
-  oc create -f $TEMPFILE
+  ${OC} create -f $TEMPFILE
 
-  status=$(oc get pvc cs-mongodump -n $TO_NAMESPACE --no-headers | awk '{print $2}')
+  status=$(${OC} get pvc cs-mongodump -n $TO_NAMESPACE --no-headers | awk '{print $2}')
   while [[ "$status" != "Bound" ]]
   do
-    namespace=$(oc get pv $VOL -o=jsonpath='{.spec.claimRef.namespace}')
+    namespace=$(${OC} get pv $VOL -o=jsonpath='{.spec.claimRef.namespace}')
     if [[ $namespace != $TO_NAMESPACE ]]; then
-      oc patch pv $VOL --type=merge -p '{"spec": {"claimRef":null}}'
+      ${OC} patch pv $VOL --type=merge -p '{"spec": {"claimRef":null}}'
     fi
     info "Waiting for pvc cs-mongodump to bind"
     sleep 10
-    status=$(oc get pvc cs-mongodump -n $TO_NAMESPACE --no-headers | awk '{print $2}')
+    status=$(${OC} get pvc cs-mongodump -n $TO_NAMESPACE --no-headers | awk '{print $2}')
   done
 
   success "Restored MongoDB volume moved to namespace $TO_NAMESPACE"
@@ -420,12 +567,15 @@ function loadmongo() {
   title "Restoring MongoDB to copy in namespace $TO_NAMESPACE"
   msg "-----------------------------------------------------------------------"
 
-  currentns=$(oc project $TO_NAMESPACE -q)
+  currentns=$(${OC} project $TO_NAMESPACE -q)
   if [[ "$currentns" -ne "$TO_NAMESPACE" ]]; then
     error "Cannot switch to $TO_NAMESPACE"
   fi
 
-  cat <<EOF >$TEMPFILE
+  ibm_mongodb_image=$(${OC} get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
+
+  if [[ $s390x_ENV == "false" ]]; then
+    cat <<EOF >$TEMPFILE
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -438,8 +588,15 @@ spec:
     spec:
       containers:
       - name: icp-mongodb-restore
-        image: quay.io/opencloudio/ibm-mongodb:4.0.24
+        image: $ibm_mongodb_image
         command: ["bash", "-c", "cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongorestore --host rs0/icp-mongodb:27017 --username \$ADMIN_USER --password \$ADMIN_PASSWORD --authenticationDatabase admin --ssl --sslCAFile /work-dir/ca.pem --sslPEMKeyFile /work-dir/mongo.pem /dump/dump"]
+        resources:
+          limits:
+            cpu: 500m
+            memory: 500Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
         volumeMounts:
         - mountPath: "/dump"
           name: mongodump
@@ -474,37 +631,70 @@ spec:
           secretName: mongodb-root-ca-cert
       restartPolicy: Never
 EOF
+  else
+    debug1 "Applying z restore job"
+    ${OC} delete job mongodb-restore -n $TO_NAMESPACE --ignore-not-found
+    cat <<EOF >$TEMPFILE
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mongodb-restore
+spec:
+  parallelism: 1
+  completions: 1
+  backoffLimit: 20
+  template:
+    spec:
+      containers:
+      - name: icp-mongodb-restore
+        image: $ibm_mongodb_image
+        command: ["bash", "-c", "cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongorestore --host rs0/icp-mongodb:27017 --username \$ADMIN_USER --password \$ADMIN_PASSWORD --authenticationDatabase admin /dump/dump"]
+        resources:
+          limits:
+            cpu: 500m
+            memory: 500Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        volumeMounts:
+        - mountPath: "/dump"
+          name: mongodump
+        - mountPath: "/work-dir"
+          name: tmp-mongodb
+        - mountPath: "/cred/mongo-certs"
+          name: icp-mongodb-client-cert
+        - mountPath: "/cred/cluster-ca"
+          name: cluster-ca-cert
+        env:
+          - name: ADMIN_USER
+            valueFrom:
+              secretKeyRef:
+                name: icp-mongodb-admin
+                key: user
+          - name: ADMIN_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: icp-mongodb-admin
+                key: password
+      volumes:
+      - name: mongodump
+        persistentVolumeClaim:
+          claimName: cs-mongodump
+      - name: tmp-mongodb
+        emptyDir: {}
+      - name: icp-mongodb-client-cert
+        secret:
+          secretName: icp-mongodb-client-cert
+      - name: cluster-ca-cert
+        secret:
+          secretName: mongodb-root-ca-cert
+      restartPolicy: Never
+EOF
+  fi
 
-  status="Unknown"
-  info "Running Restore" 
-  
-  while [[ "$status" != "Completed" ]]
-  do
-    info "Starting MongoDB Restore Job "
-    oc apply -f $TEMPFILE
-    sleep 10
-    retries=10
-    while [ $retries > 0 ]
-    do
-      info "waiting for completion"
-      status=$(oc get po | grep mongodb-restore | awk '{print $3}')
-      oc get po | grep mongodb-restore
-      if [[ "$status" == "Completed" ]] || [[ "$status" == "" ]]; then
-        break
-      elif [[ "$status" == "Running" ]]; then
-        retries=10
-        sleep 10
-      else
-        retries=$(( $retries - 1 ))
-        sleep 10
-      fi  
-    done
-    if [[ "$status" != "Completed" ]]; then
-      info "Retrying MongoDB Restore"
-      oc delete job mongodb-restore
-    fi
-  done
-  dumplogs mongodb-restore
+  info "Running Restore"
+  ${OC} apply -f $TEMPFILE -n $TO_NAMESPACE
+  wait_for_job_complete "mongodb-restore" "$TO_NAMESPACE"
   success "Restore Complete"
 } # loadmongo
 
@@ -514,9 +704,9 @@ EOF
 #
 function dumplogs() {
   info "Saving $1 logs in _${1}.log"
-  pod=$(oc get po | grep $1 | awk '{print $1}')
+  pod=$(${OC} get po | grep $1 | awk '{print $1}')
   if [[ -n "$pod" ]]; then
-    oc logs $pod >_${1}.log
+    ${OC} logs $pod >_${1}.log
   else
     echo "No pod" >_${1}.log
   fi
@@ -529,12 +719,12 @@ function dumplogs() {
 function deploymongocopy {
   title "Deploying a temporary mongodb in $TO_NAMESPACE"
   msg "-----------------------------------------------------------------------"
-  currentns=$(oc project $TO_NAMESPACE -q)
+  currentns=$(${OC} project $TO_NAMESPACE -q)
   if [[ "$currentns" -ne "$TO_NAMESPACE" ]]; then
     error "Cannot switch to $TO_NAMESPACE"
   fi
 
-  STGCLASS=$(oc get pvc mongodbdir-icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{.spec.storageClassName}')
+  STGCLASS=$(${OC} get pvc mongodbdir-icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{.spec.storageClassName}')
   if [[ -z $STGCLASS ]]; then
     error "Cannnot get storage class name from PVC mongodbdir-icp-mongodb-0 in $FROM_NAMESPACE"
   fi
@@ -1004,14 +1194,14 @@ data:
 
     # chmod -R 777 /tmp
 EOF
-    oc apply -f mongo-install-cm.yaml
+    ${OC} apply -f mongo-install-cm.yaml
     rm -f mongo-install-cm.yaml
 
-    oc apply -f mongo-init-cm.yaml
+    ${OC} apply -f mongo-init-cm.yaml
     rm -f mongo-init-cm.yaml
 
     #god-issuer-issuer.yaml
-    cat << EOF | oc apply -f -
+    cat << EOF | ${OC} apply -f -
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
@@ -1024,7 +1214,7 @@ spec:
   selfSigned: {}
 EOF
     #ibm-cpp-config-cm.yaml
-    cat << EOF | oc apply -f -
+    cat << EOF | ${OC} apply -f -
 kind: ConfigMap
 apiVersion: v1
 metadata:
@@ -1034,7 +1224,10 @@ data:
   storageclass.list: 'rook-ceph-block,rook-cephfs'
 EOF
     #icp-mongodb-admin-secret.yaml
-    cat << EOF | oc apply -f -
+    pass=$(${OC} get secret icp-mongodb-admin -n $FROM_NAMESPACE -o=jsonpath='{.data.password}')
+    user=$(${OC} get secret icp-mongodb-admin -n $FROM_NAMESPACE -o=jsonpath='{.data.user}')
+    
+    cat << EOF | ${OC} apply -f -
 kind: Secret
 apiVersion: v1
 metadata:
@@ -1042,12 +1235,12 @@ metadata:
   labels:
     app: icp-mongodb
 data:
-  password: VlZWVlZWVlZWVlZWVg==
-  user: QkJCQkJCQkI=
+  password: $pass
+  user: $user
 type: Opaque
 EOF
     #icp-mongodb-client-cert-cert.yaml
-    cat << EOF | oc apply -f -
+    cat << EOF | ${OC} apply -f -
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -1064,7 +1257,7 @@ spec:
   secretName: icp-mongodb-client-cert
 EOF
     #icp-mongodb-cm.yaml
-    cat << EOF | oc apply -f -
+    cat << EOF | ${OC} apply -f -
 kind: ConfigMap
 apiVersion: v1
 metadata:
@@ -1088,7 +1281,7 @@ data:
       bindIpAll: true
       port: 27017
       ssl:
-        mode: requireSSL
+        mode: preferSSL
         CAFile: /data/configdb/tls.crt
         PEMKeyFile: /work-dir/mongo.pem
     replication:
@@ -1099,7 +1292,7 @@ data:
       keyFile: /data/configdb/key.txt
 EOF
     #icp-mongodb-keyfile-secret.yaml
-    cat << EOF | oc apply -f -
+    cat << EOF | ${OC} apply -f -
 kind: Secret
 apiVersion: v1
 metadata:
@@ -1115,7 +1308,7 @@ data:
 type: Opaque
 EOF
     #icp-mongodb-metrics-secret.yaml
-    cat << EOF | oc apply -f -
+    cat << EOF | ${OC} apply -f -
 kind: Secret
 apiVersion: v1
 metadata:
@@ -1132,7 +1325,7 @@ data:
 type: Opaque
 EOF
     #mongo-rbac.yaml
-    cat << EOF | oc apply -f -
+    cat << EOF | ${OC} apply -f -
 kind: ServiceAccount
 apiVersion: v1
 metadata:
@@ -1147,7 +1340,7 @@ imagePullSecrets:
   - name: ibm-mongodb-operand-dockercfg-x7n5t
 EOF
     #mongo-service.yaml
-    cat << EOF | oc apply -f -
+    cat << EOF | ${OC} apply -f -
 kind: Service
 apiVersion: v1
 metadata:
@@ -1178,7 +1371,7 @@ status:
   loadBalancer: {}
 EOF
     #mongo-service2.yaml
-    cat << EOF | oc apply -f -
+    cat << EOF | ${OC} apply -f -
 kind: Service
 apiVersion: v1
 metadata:
@@ -1212,7 +1405,7 @@ spec:
     release: mongodb
 EOF
     #mongodb-root-ca-cert-certificate.yaml
-    cat << EOF | oc apply -f -
+    cat << EOF | ${OC} apply -f -
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -1233,7 +1426,7 @@ spec:
   secretName: mongodb-root-ca-cert
 EOF
     #mongodb-root-ca-issuer-issuer.yaml
-    cat << EOF | oc apply -f -
+    cat << EOF | ${OC} apply -f -
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
@@ -1247,7 +1440,7 @@ spec:
     secretName: mongodb-root-ca-cert
 EOF
     #namespace-scope-cm.yaml
-    cat << EOF | oc apply -f -
+    cat << EOF | ${OC} apply -f -
 kind: ConfigMap
 apiVersion: v1
 metadata:
@@ -1257,11 +1450,11 @@ data:
 EOF
     #apply statefulset (in same dir)
     #get images from cp2 namespace
-    ibm_mongodb_install_image=$(oc get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.initContainers[0]}{.image}{end}')
-    ibm_mongodb_image=$(oc get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
-    ibm_mongodb_exporter_image=$(oc get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[1]}{.image}{end}')
+    ibm_mongodb_install_image=$(${OC} get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.initContainers[0]}{.image}{end}')
+    ibm_mongodb_image=$(${OC} get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
+    
     #icp-mongodb-ss.yaml
-    cat << EOF | oc apply -f -
+    cat << EOF | ${OC} apply -f -
 kind: StatefulSet
 apiVersion: apps/v1
 metadata:
@@ -1493,84 +1686,6 @@ spec:
           terminationMessagePolicy: File
           image: >-
             $ibm_mongodb_image
-        - resources:
-            limits:
-              cpu: '1'
-              memory: 350Mi
-            requests:
-              cpu: 100m
-              memory: 300Mi
-          readinessProbe:
-            exec:
-              command:
-                - sh
-                - '-ec'
-                - >-
-                  /bin/mongodb_exporter --mongodb.uri
-                  mongodb://$METRICS_USER:$METRICS_PASSWORD@localhost:27017
-                  --mongodb.tls --mongodb.tls-ca=/data/configdb/tls.crt
-                  --mongodb.tls-cert=/work-dir/mongo.pem --test
-            timeoutSeconds: 1
-            periodSeconds: 10
-            successThreshold: 1
-            failureThreshold: 3
-          terminationMessagePath: /dev/termination-log
-          name: metrics
-          command:
-            - sh
-            - '-ec'
-            - >-
-              /bin/mongodb_exporter --mongodb.uri
-              mongodb://$METRICS_USER:$METRICS_PASSWORD@localhost:27017
-              --mongodb.tls --mongodb.tls-ca=/data/configdb/tls.crt
-              --mongodb.tls-cert=/work-dir/mongo.pem --mongodb.socket-timeout=3s
-              --mongodb.sync-timeout=1m --web.telemetry-path=/metrics
-              --web.listen-address=:9216
-          livenessProbe:
-            exec:
-              command:
-                - sh
-                - '-ec'
-                - >-
-                  /bin/mongodb_exporter --mongodb.uri
-                  mongodb://$METRICS_USER:$METRICS_PASSWORD@localhost:27017
-                  --mongodb.tls --mongodb.tls-ca=/data/configdb/tls.crt
-                  --mongodb.tls-cert=/work-dir/mongo.pem --test
-            initialDelaySeconds: 30
-            timeoutSeconds: 10
-            periodSeconds: 30
-            successThreshold: 1
-            failureThreshold: 10
-          env:
-            - name: METRICS_USER
-              valueFrom:
-                secretKeyRef:
-                  name: icp-mongodb-metrics
-                  key: user
-            - name: METRICS_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: icp-mongodb-metrics
-                  key: password
-          securityContext:
-            readOnlyRootFilesystem: true
-            allowPrivilegeEscalation: false
-          ports:
-            - name: metrics
-              containerPort: 9216
-              protocol: TCP
-          imagePullPolicy: IfNotPresent
-          volumeMounts:
-            - name: configdir
-              mountPath: /data/configdb
-            - name: mongodbdir
-              mountPath: /work-dir
-              subPath: workdir
-            - name: tmp-metrics
-              mountPath: /tmp
-          terminationMessagePolicy: File
-          image: >-
-            $ibm_mongodb_exporter_image
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: topology.kubernetes.io/zone
@@ -1660,8 +1775,8 @@ EOF
   do
     info "Waiting for MongoDB copy to initialize"
     sleep 10
-    oc get po icp-mongodb-0 --no-headers
-    status=$(oc get po icp-mongodb-0 --no-headers | awk '{print $3}')
+    ${OC} get po icp-mongodb-0 --no-headers
+    status=$(${OC} get po icp-mongodb-0 --no-headers | awk '{print $3}')
   done
 
   success "Temporary Mongo copy deployed to namespace $TO_NAMESPACE"
@@ -1676,50 +1791,84 @@ function deletemongocopy {
   title "Deleting the stand up mongodb statefulset in $TO_NAMESPACE"
   msg "-----------------------------------------------------------------------"
 
-  currentns=$(oc project $TO_NAMESPACE -q)
+  currentns=$(${OC} project $TO_NAMESPACE -q)
   if [[ "$currentns" -ne "$TO_NAMESPACE" ]]; then
     error "Cannot switch to $TO_NAMESPACE"
   fi
 
   #delete all other resources EXCEPT icp-mongodb-admin
-  oc delete statefulset icp-mongodb --ignore-not-found
-  oc delete service icp-mongodb --ignore-not-found
-  oc delete issuer god-issuer --ignore-not-found
-  oc delete cm ibm-cpp-config --ignore-not-found
-  oc delete certificate icp-mongodb-client-cert --ignore-not-found
-  oc delete cm icp-mongodb --ignore-not-found
-  oc delete cm icp-mongodb-init --ignore-not-found
-  oc delete cm icp-mongodb-install --ignore-not-found
-  oc delete secret icp-mongodb-keyfile --ignore-not-found
-  oc delete secret icp-mongodb-metrics --ignore-not-found
-  oc delete sa ibm-mongodb-operand --ignore-not-found
-  oc delete service mongodb --ignore-not-found
-  oc delete certificate mongodb-root-ca-cert --ignore-not-found
-  oc delete issuer mongodb-root-ca-issuer --ignore-not-found
-  oc delete cm namespace-scope --ignore-not-found
+  ${OC} delete statefulset icp-mongodb --ignore-not-found
+  ${OC} delete service icp-mongodb --ignore-not-found
+  ${OC} delete issuer god-issuer --ignore-not-found
+  ${OC} delete cm ibm-cpp-config --ignore-not-found
+  ${OC} delete certificate icp-mongodb-client-cert --ignore-not-found
+  ${OC} delete cm icp-mongodb --ignore-not-found
+  ${OC} delete cm icp-mongodb-init --ignore-not-found
+  ${OC} delete cm icp-mongodb-install --ignore-not-found
+  ${OC} delete secret icp-mongodb-keyfile --ignore-not-found
+  ${OC} delete secret icp-mongodb-metrics --ignore-not-found
+  ${OC} delete sa ibm-mongodb-operand --ignore-not-found
+  ${OC} delete service mongodb --ignore-not-found
+  ${OC} delete certificate mongodb-root-ca-cert --ignore-not-found
+  ${OC} delete issuer mongodb-root-ca-issuer --ignore-not-found
+  ${OC} delete cm namespace-scope --ignore-not-found
   
   #delete mongodump pvc and pv
-  VOL=$(oc get pvc cs-mongodump -o=jsonpath='{.spec.volumeName}')
+  VOL=$(${OC} get pvc cs-mongodump -o=jsonpath='{.spec.volumeName}')
   if [[ -z "$VOL" ]]; then
     error "Volume for pvc cs-mongodump not found in $TO_NAMESPACE"
   fi
 
-  oc patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Delete" }}'
+  ${OC} patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Delete" }}'
   
-  oc delete pvc cs-mongodump -n $TO_NAMESPACE --ignore-not-found --timeout=10s
+  ${OC} delete pvc cs-mongodump -n $TO_NAMESPACE --ignore-not-found --timeout=10s
   if [ $? -ne 0 ]; then
     info "Failed to delete pvc cs-mongodump, patching its finalizer to null..."
-    oc patch pvc cs-mongodump -n $TO_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+    ${OC} patch pvc cs-mongodump -n $TO_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
   fi
-  oc delete pv $VOL --ignore-not-found --timeout=10s
+  ${OC} delete pv $VOL --ignore-not-found --timeout=10s
   if [ $? -ne 0 ]; then
     info "Failed to delete pv $VOL, patching its finalizer to null..."
-    oc patch pv $VOL --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+    ${OC} patch pv $VOL --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
   fi
 
   success "MongoDB restored to new namespace $TO_NAMESPACE"
 
 } # deletemongocopy
+
+function delete_mongo_pods() {
+  local namespace=$1
+  local pods=$(${OC} get pods -n $namespace | grep icp-mongodb | awk '{print $1}' | tr "\n" " ")
+  for pod in $pods
+  do
+    debug1 "Deleting pod $pod"
+    ${OC} delete pod $pod -n $FROM_NAMESPACE --ignore-not-found
+    local condition="${OC} get pod -n $namespace --no-headers --ignore-not-found | grep ${pod} | egrep '2/2' || ${OC} get pod -n $namespace --no-headers --ignore-not-found | grep ${pod} | egrep '1/1' || true"
+    local retries=15
+    local sleep_time=15
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for mongo pod $pod to restart "
+    local success_message="Pod $pod restarted with new mongo config"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for pod $pod "
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+  done
+}
+
+function wait_for_job_complete() {
+  local job_name=$1
+  local namespace=$2
+  local condition="${OC} get pod -n $namespace --no-headers --ignore-not-found | grep ${job_name} | grep 'Completed' || true"
+  local retries=15
+  local sleep_time=15
+  local total_time_mins=$(( sleep_time * retries / 60))
+  local wait_message="Waiting for job pod $job_name to complete"
+  local success_message="Job $job_name completed in namespace $namespace"
+  local error_message="Timeout after ${total_time_mins} minutes waiting for pod $pod "
+  wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+  dumplogs $job_name
+  info "Deleting job $job_name"
+  ${OC} delete job $job_name -n $namespace
+}
 
 function msg() {
     printf '%b\n' "$1"

@@ -14,7 +14,7 @@ OC=oc
 YQ=yq
 CONTROL_NS=""
 DEBUG=0
-PREVIEW_MODE=1
+PREVIEW_MODE=0
 SKIP_USER_VERIFY=0
 
 # ---------- Command variables ----------
@@ -79,6 +79,7 @@ function print_usage() {
     echo ""
     echo "Options:"
     echo "   --oc string                    File path to oc CLI. Default uses oc in your PATH"
+    echo "   --yq string                    File path to yq CLI. Default uses yq in your PATH"
     echo "   --control-namespace string     Required. Namespace to de-activate Cloud Pak 2.0 Cert Manager services."
     echo "   -v, --debug integer            Verbosity of logs. Default is 0. Set to 1 for debug logs."
     echo "   --skip-user-vertify string     Skip checking user logged into oc command"
@@ -140,22 +141,19 @@ EOF
     fi
     msg ""
 
-    info "Restarting IBM Cloud Pak 2.0 Cert Manager to provide cert-rotation only..."
-    oc delete pod -l name=ibm-cert-manager-operator -n ${CONTROL_NS} --ignore-not-found
-    msg ""
-
+    is_exist=$(${OC} get pod -l name=ibm-cert-manager-operator -n ${CONTROL_NS} --ignore-not-found | grep "ibm-cert-manager-operator" || echo "failed")
+    if  [[ $is_exist != "failed" ]]; then
+        info "Restarting IBM Cloud Pak 2.0 Cert Manager to provide cert-rotation only..."
+            ${OC} delete pod -l name=ibm-cert-manager-operator -n ${CONTROL_NS} --ignore-not-found
+        msg ""
+        wait_for_pod ${CONTROL_NS} "ibm-cert-manager-operator"
+    else
+        warning "IBM Cloud Pak 2.0 Cert Manager does not exist in namespace ${CONTROL_NS}, skip restarting cert manager pod..."
+    fi
     wait_for_no_pod ${CONTROL_NS} "cert-manager-cainjector"
     wait_for_no_pod ${CONTROL_NS} "cert-manager-controller"
     wait_for_no_pod ${CONTROL_NS} "cert-manager-webhook"
 
-    wait_for_pod ${CONTROL_NS} "ibm-cert-manager-operator"
-
-}
-
-function debug1() {
-    if [ $DEBUG -eq 1 ]; then
-       debug "${1}"
-    fi
 }
 
 main $*

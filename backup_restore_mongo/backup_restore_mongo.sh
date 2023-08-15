@@ -27,6 +27,16 @@ TARGET_NAMESPACE=
 backup="false"
 restore="false"
 cleanup="false"
+s390x_ENV="false"
+DEBUG=0
+
+# script base directory
+BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
+
+# ---------- Main functions ----------
+
+. ../cp3pt0-deployment/common/utils.sh
+
 function main() {
     while [ "$#" -gt "0" ]
     do
@@ -52,6 +62,10 @@ function main() {
         "-c")
             cleanup="true"
             ;;
+        "-v")
+            shift
+            DEBUG=$1
+            ;;
         *)
             error "invalid option -- \`$1\`. Use the -h or --help option for usage info."
             ;;
@@ -69,6 +83,7 @@ function main() {
     if [[ $restore == "true" ]]; then
         prep_restore
         restore
+        check_ldap_secret
         refresh_auth_idp
     fi
     if [[ $cleanup == "true" ]]; then
@@ -85,11 +100,12 @@ function usage() {
 	Options:
 	Mandatory arguments to long options are mandatory for short options too.
 	  -h, --help                    display this help and exit
-      --bns                          specify the namespace to backup/where the backup exists
-      --rns                          specify the namespace where data is to be restored
+      --bns                         specify the namespace to backup/where the backup exists
+      --rns                         specify the namespace where data is to be restored
       -b                            run the backup process
       -r                            run the restore process
       -c                            cleanup resources used or created by this script
+      -v, --debug integer           verbosity of logs. Default is 0. Set to 1 for debug logs
 	EOF
 }
 
@@ -110,6 +126,39 @@ function prereq() {
         error "Neither backup nor restore processes were triggered. Use -h or --help to see script usage options"
     fi
 
+    mongo_node=$(${OC} get pods -n $ORIGINAL_NAMESPACE -o wide | grep icp-mongodb-0 | awk '{print $7}')
+    architecture=$(${OC} describe node $mongo_node | grep "Architecture:" | awk '{print $2}')
+    if [[ $architecture == "s390x" ]]; then
+      s390x_ENV="true"
+      info "Z cluster detected, be prepared for multiple restarts of mongo pods. This is expected behavior."
+      mongo_op_scaled_original=$(${OC} get deploy -n $ORIGINAL_NAMESPACE | grep ibm-mongodb-operator | egrep '1/1' || echo false)
+      if [[ $mongo_op_scaled_original == "false" ]]; then
+        info "Mongo operator in $ORIGINAL_NAMESPACE still scaled down, scaling up."
+        ${OC} scale deploy -n $ORIGINAL_NAMESPACE ibm-mongodb-operator --replicas=1
+        info "Wait for mongo operator to reconcile resources"
+        sleep 60
+        delete_mongo_pods "$ORIGINAL_NAMESPACE"
+      fi
+      mongo_op_scaled_target=$(${OC} get deploy -n $TARGET_NAMESPACE | grep ibm-mongodb-operator | egrep '1/1' || echo false)
+      if [[ $mongo_op_scaled_target == "false" ]]; then
+        info "Mongo operator in $TARGET_NAMESPACE still scaled down, scaling up."
+        ${OC} scale deploy -n $TARGET_NAMESPACE ibm-mongodb-operator --replicas=1
+        info "Wait for mongo operator to reconcile resources"
+        sleep 60
+        delete_mongo_pods "$TARGET_NAMESPACE"
+      fi
+    fi
+
+    runningmongo_original=$(${OC} get po icp-mongodb-0 --no-headers --ignore-not-found -n $ORIGINAL_NAMESPACE | awk '{print $3}')
+    if [[ -z "$runningmongo_original" ]] || [[ "$runningmongo_original" != "Running" ]]; then
+        error "Mongodb is not running in Namespace $ORIGINAL_NAMESPACE"
+    fi
+
+    runningmongo_target=$(${OC} get po icp-mongodb-0 --no-headers --ignore-not-found -n $TARGET_NAMESPACE | awk '{print $3}')
+    if [[ -z "$runningmongo_target" ]] || [[ "$runningmongo_target" != "Running" ]]; then
+        error "Mongodb is not running in Namespace $TARGET_NAMESPACE"
+    fi
+
     success "Prerequisites present."
 }
 
@@ -121,51 +170,29 @@ function prep_backup() {
     #TODO add clarifying messages and check response code to make more transparent
     #backup files
     info "Checking for necessary backup files..."
-    if [[ -f "mongodbbackup.yaml" ]]; then
-        info "mongodbbackup.yaml already present"
+    if [[ $s390x_ENV == "false" ]]; then
+        if [[ -f "mongodbbackup.yaml" ]]; then
+            info "mongodbbackup.yaml already present"
+        else
+            info "mongodbbackup.yaml not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/backup_restore_mongo/mongodbbackup.yaml"
+            wget -O mongodbbackup.yaml https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/backup_restore_mongo/mongodbbackup.yaml || error "Failed to download mongodbbackup.yaml"
+        fi
     else
-        info "mongodbbackup.yaml not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongoDB/mongodbbackup.yaml"
-        wget -O mongodbbackup.yaml https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongoDB/mongodbbackup.yaml || error "Failed to download mongodbbackup.yaml"
+        if [[ -f "mongodbbackup-z.yaml" ]]; then
+            info "mongodbbackup-z.yaml already present"
+        else
+            info "mongodbbackup-z.yaml not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/backup_restore_mongo/mongodbbackup-z.yaml"
+            wget -O mongodbbackup-z.yaml https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/backup_restore_mongo/mongodbbackup-z.yaml || error "Failed to download mongodbbackup-z.yaml"
+        fi
     fi
 
     if [[ -f "mongo-backup.sh" ]]; then
         info "mongo-backup.sh already present"
     else
-        info "mongodbbackup.yaml not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongoDB/mongo-backup.sh"
-        wget -O mongo-backup.sh https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongoDB/mongo-backup.sh
+        info "mongo-backup.sh not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/backup_restore_mongo/mongo-backup.sh"
+        wget -O mongo-backup.sh https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/backup_restore_mongo/mongo-backup.sh
     fi
 
-    local pvx=$(${OC} get pv | grep mongodbdir | awk 'FNR==1 {print $1}')
-    local storageClassName=$("${OC}" get pv -o yaml ${pvx} | yq '.spec.storageClassName' | awk '{print}')
-    
-    ${OC} get sc -o yaml ${storageClassName} > sc.yaml
-    ${YQ} -i '.metadata.name="backup-sc" | .reclaimPolicy = "Retain"' sc.yaml || error "Error changing the name or retentionPolicy for StorageClass"
-    
-    info "Checking for existing backup Storage Class"
-    local scExist=$(${OC} get storageclass backup-sc -o yaml || echo "failed")
-
-    if [[ $scExist == "failed" ]]; then
-        info "Creating Storage Class for backup"
-        ${OC} apply -f sc.yaml || error "Error creating StorageClass backup-sc"
-    else
-        info "Storage Class backup-sc present from previous attempt. Moving on..."
-    fi
-    
-    info "Creating RBAC for backup"
-    cat <<EOF | tee >(oc apply -f -) | cat
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: cs-br
-subjects:
-- kind: ServiceAccount
-  name: default
-  namespace: $ORIGINAL_NAMESPACE
-roleRef:
-  kind: ClusterRole
-  name: cluster-admin
-  apiGroup: rbac.authorization.k8s.io
-EOF
     success "Backup prep complete"
 }
 
@@ -173,8 +200,55 @@ function backup() {
     title " Backing up MongoDB in namespace $ORIGINAL_NAMESPACE "
     msg "-----------------------------------------------------------------------"
     export CS_NAMESPACE=$ORIGINAL_NAMESPACE
+    export ibm_mongodb_image=$(${OC} get pod icp-mongodb-0 -n $ORIGINAL_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
+    local pvx=$(${OC} get pv | grep mongodbdir | awk 'FNR==1 {print $1}')
+    local storageClassName=$("${OC}" get pv -o yaml ${pvx} | yq '.spec.storageClassName' | awk '{print}')
+    if [[ $s390x_ENV == "true" ]]; then
+        info "Z cluster detected"
+        info "Scaling down MongoDB operator"
+        ${OC} scale deploy -n $ORIGINAL_NAMESPACE ibm-mongodb-operator --replicas=0
+        #get cache size value
+        cacheSizeGB=$(${OC} get cm icp-mongodb -n $ORIGINAL_NAMESPACE -o yaml | grep cacheSizeGB | awk '{print $2}')
+        
+        info "Editing configmap icp-mongodb"
+        cat << EOF | ${OC} apply -n $ORIGINAL_NAMESPACE -f -
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: icp-mongodb
+  labels:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/instance: icp-mongodb
+    app.kubernetes.io/managed-by: operator
+    app.kubernetes.io/name: icp-mongodb
+    app.kubernetes.io/part-of: common-services-cloud-pak
+    app.kubernetes.io/version: 4.0.12-build.3
+    release: mongodb
+data:
+  mongod.conf: |-
+    storage:
+      dbPath: /data/db
+      wiredTiger:
+        engineConfig:
+          cacheSizeGB: $cacheSizeGB
+    net:
+      bindIpAll: true
+      port: 27017
+      ssl:
+        mode: preferSSL
+        CAFile: /data/configdb/tls.crt
+        PEMKeyFile: /work-dir/mongo.pem
+    replication:
+      replSetName: rs0
+    # Uncomment for TLS support or keyfile access control without TLS
+    security:
+      authorization: enabled
+      keyFile: /data/configdb/key.txt
+EOF
+        delete_mongo_pods "$ORIGINAL_NAMESPACE"
+    fi
     chmod +x mongo-backup.sh
-    ./mongo-backup.sh true
+    ./mongo-backup.sh "$storageClassName" "$s390x_ENV"
 
     local jobPod=$(${OC} get pods -n $ORIGINAL_NAMESPACE | grep mongodb-backup | awk '{ print $1 }')
     local fileName="backup_from_${ORIGINAL_NAMESPACE}_for_${TARGET_NAMESPACE}.log"
@@ -188,16 +262,27 @@ function backup() {
     else
         return_value="reset"
         info "Backup PVC cs-mongodump found"
-        return_value=$("${OC}" get pvc cs-mongodump -n $ORIGINAL_NAMESPACE -o yaml | yq '.spec.storageClassName' | awk '{print}')
-        if [[ "$return_value" != "backup-sc" ]]; then
-            error "Backup PVC cs-mongodump not bound to persistent volume provisioned by correct storage class. Provisioned by \"${return_value}\" instead of \"backup-sc\""
+        
+        VOL=$(${OC} get pvc cs-mongodump -n $ORIGINAL_NAMESPACE  -o=jsonpath='{.spec.volumeName}')
+        ${OC} patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Retain" }}'
+        
+        return_value=$(${OC} get pvc cs-mongodump -n $ORIGINAL_NAMESPACE -o yaml | yq '.spec.storageClassName' | awk '{print}')
+        if [[ "$return_value" != "$storageClassName" ]]; then
+            error "Backup PVC cs-mongodump not bound to persistent volume provisioned by correct storage class. Provisioned by \"${return_value}\" instead of \"$storageClassName\""
             #TODO probably need to handle this situation as the script may not be able to handle it as is
             #should be an edge case though as script is designed to attach to specific pv
         else
-            info "Backup PVC cs-mongodump successfully bound to persistent volume provisioned by backup-sc storage class."
+            info "Backup PVC cs-mongodump successfully bound to persistent volume provisioned by $storageClassName storage class."
         fi
     fi
-
+    if [[ $s390x_ENV == "true" ]]; then
+        #reset changes for z environment
+        info "Reverting change to icp-mongodb configmap" 
+        delete_mongo_pods "$ORIGINAL_NAMESPACE"
+        info "Scale mongo operator back up to 1"
+        #scaling back up to one will reset the icp-mongodb configmap
+        ${OC} scale deploy -n $ORIGINAL_NAMESPACE ibm-mongodb-operator --replicas=1
+    fi
     success "MongoDB successfully backed up"
 }
 
@@ -207,25 +292,34 @@ function prep_restore() {
     
     #Restore files
     info "Checking for necessary restore files..."
-    if [[ -f "mongodbrestore.yaml" ]]; then
-        info "mongodbrestore.yaml already present"
+    if [[ $s390x_ENV == "false" ]]; then
+        if [[ -f "mongodbrestore.yaml" ]]; then
+            info "mongodbrestore.yaml already present"
+        else
+            info "mongodbrestore.yaml not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/backup_restore_mongo/mongodbrestore.yaml"
+            wget -O mongodbrestore.yaml https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/backup_restore_mongo/mongodbrestore.yaml || error "Failed to download mongodbrestore.yaml"
+        fi
     else
-        info "mongodbrestore.yaml not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongodbrestore.yaml"
-        wget https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongodbrestore.yaml || error "Failed to download mongodbrestore.yaml"
+        if [[ -f "mongodbrestore-z.yaml" ]]; then
+            info "mongodbrestore-z.yaml already present"
+        else
+            info "mongodbrestore-z.yaml not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/backup_restore_mongo/mongodbrestore-z.yaml"
+            wget -O mongodbrestore-z.yaml https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/backup_restore_mongo/mongodbrestore-z.yaml || error "Failed to download mongodbrestore-z.yaml"
+        fi
     fi
 
     if [[ -f "set_access.js" ]]; then
         info "set_access.js already present"
     else
-        info "set_access.js not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/set_access.js"
-        wget https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/set_access.js || error "Failed to download set_access.js"
+        info "set_access.js not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/backup_restore_mongo/set_access.js"
+        wget -O set_access.js https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/backup_restore_mongo/set_access.js || error "Failed to download set_access.js"
     fi
 
     if [[ -f "mongo-restore.sh" ]]; then
         info "mongo-restore.sh already present"
     else
-        info "set_access.js not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongo-restore.sh"
-        wget https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/restore/mongoDB/mongo-restore.sh || error "Failed to download mongo-restore.sh"
+        info "mongo-restore.sh not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/backup_restore_mongo/mongo-restore.sh"
+        wget -O mongo-restore.sh https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/backup_restore_mongo/mongo-restore.sh || error "Failed to download mongo-restore.sh"
     fi
     
     ${OC} get pvc -n ${ORIGINAL_NAMESPACE} cs-mongodump -o yaml > cs-mongodump-copy.yaml
@@ -252,12 +346,12 @@ function prep_restore() {
     do
         if [[ "${pvStatus}" != "Available" ]]; then
             retries=$(( $retries - 1 ))
-            info "Persitent Volume ${pvx} not available yet. Retries left: ${retries}. Waiting 30 seconds..."
+            info "Persistent Volume ${pvx} not available yet. Retries left: ${retries}. Waiting 30 seconds..."
             sleep 30s
             pvStatus=$("${OC}" get pv -o yaml ${pvx}| yq '.status.phase' | awk '{print}')
             echo "PVX: ${pvx} PV status: ${pvStatus}"
         else
-            info "Persitent Volume ${pvx} available. Moving on..."
+            info "Persistent Volume ${pvx} available. Moving on..."
             break
         fi
     done
@@ -300,15 +394,68 @@ function restore () {
     #export csnamespace to reflect the new target namespace
     #restore script is setup to look for CS_NAMESPACE and is used in other backup/restore processes unrelated to this script
     export CS_NAMESPACE=$TARGET_NAMESPACE
+    export ibm_mongodb_image=$(${OC} get pod icp-mongodb-0 -n $ORIGINAL_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
+    if [[ $s390x_ENV == "true" ]]; then
+        info "Z cluster detected"
+        info "Scaling down MongoDB operator"
+        ${OC} scale deploy -n $TARGET_NAMESPACE ibm-mongodb-operator --replicas=0
 
+        #get cache size value
+        cacheSizeGB=$(${OC} get cm icp-mongodb -n $TARGET_NAMESPACE -o yaml | grep cacheSizeGB | awk '{print $2}')
+        
+        info "Editing configmap icp-mongodb"
+        cat << EOF | ${OC} apply -n $TARGET_NAMESPACE -f -
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: icp-mongodb
+  labels:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/instance: icp-mongodb
+    app.kubernetes.io/managed-by: operator
+    app.kubernetes.io/name: icp-mongodb
+    app.kubernetes.io/part-of: common-services-cloud-pak
+    app.kubernetes.io/version: 4.0.12-build.3
+    release: mongodb
+data:
+  mongod.conf: |-
+    storage:
+      dbPath: /data/db
+      wiredTiger:
+        engineConfig:
+          cacheSizeGB: $cacheSizeGB
+    net:
+      bindIpAll: true
+      port: 27017
+      ssl:
+        mode: preferSSL
+        CAFile: /data/configdb/tls.crt
+        PEMKeyFile: /work-dir/mongo.pem
+    replication:
+      replSetName: rs0
+    # Uncomment for TLS support or keyfile access control without TLS
+    security:
+      authorization: enabled
+      keyFile: /data/configdb/key.txt
+EOF
+        #need to delete the mongo pods one at a time
+        delete_mongo_pods "$TARGET_NAMESPACE"
+    fi
     chmod +x mongo-restore.sh
-    ./mongo-restore.sh
+    ./mongo-restore.sh "$ORIGINAL_NAMESPACE" "$s390x_ENV"
 
     local jobPod=$(${OC} get pods -n $TARGET_NAMESPACE | grep mongodb-restore | awk '{ print $1 }')
     local fileName="restore_to_${TARGET_NAMESPACE}_from_${ORIGINAL_NAMESPACE}.log"
     ${OC} logs $jobPod -n $TARGET_NAMESPACE > $fileName
     info "Restore logs can be found in $fileName. Job pod will be cleaned up."
-
+    if [[ $s390x_ENV == "true" ]]; then
+        #reset changes for z environment
+        info "Reverting change to icp-mongodb configmap" 
+        delete_mongo_pods "$TARGET_NAMESPACE"
+        info "Scale mongo operator back up to 1"
+        #scaling back up to one will reset the icp-mongodb configmap
+        ${OC} scale deploy -n $TARGET_NAMESPACE ibm-mongodb-operator --replicas=1
+    fi
     success "Restore completed successfully in namespace $TARGET_NAMESPACE"
 
 }
@@ -375,8 +522,40 @@ function refresh_auth_idp(){
     title " Restarting auth-idp pod in namespace $TARGET_NAMESPACE "
     msg "-----------------------------------------------------------------------"
     local auth_pod=$(${OC} get pods -n $TARGET_NAMESPACE | grep auth-idp | awk '{print $1}')
-    ${OC} delete pod $auth_pod -n $TARGET_NAMESPACE || error "Pod $auth_pod could not be deleted"
+    ${OC} delete pod $auth_pod -n $TARGET_NAMESPACE || warning "Pod $auth_pod could not be deleted, try deleting manually"
     success "Pod $auth_pod deleted. Please allow a few minutes for it to restart."
+}
+
+function check_ldap_secret() {
+    exists=$(${OC} get secret -n $TARGET_NAMESPACE | (grep platform-auth-ldaps-ca-cert || echo fail))
+    if [[ $exists != "fail" ]]; then
+        certificate=$(${OC} get secret -n $TARGET_NAMESPACE platform-auth-ldaps-ca-cert -o yaml | yq '.data.certificate' )
+        og_certificate=$(${OC} get secret -n $ORIGINAL_NAMESPACE platform-auth-ldaps-ca-cert -o yaml | yq '.data.certificate' )
+        if [[ $certificate == "" ]] || [[ $certificate != $og_certificate ]]; then
+            ${OC} patch secret -n $TARGET_NAMESPACE platform-auth-ldaps-ca-cert --type=merge -p '{"data": {"certificate": "'$og_certificate'"}}'
+            info "Secret platform-auth-ldaps-ca-cert in $TARGET_NAMESPACE patched to match secret in $ORIGINAL_NAMESPACE"
+        else
+            info "Secret platform-auth-ldaps-ca-cert already populated. Moving on..."
+        fi
+    fi
+}
+
+function delete_mongo_pods() {
+  local namespace=$1
+  local pods=$(${OC} get pods -n $namespace | grep icp-mongodb | awk '{print $1}' | tr "\n" " ")
+  for pod in $pods
+  do
+    debug1 "Deleting pod $pod"
+    ${OC} delete pod $pod -n $ORIGINAL_NAMESPACE --ignore-not-found
+    local condition="${OC} get pod -n $namespace --no-headers --ignore-not-found | grep ${pod} | egrep '2/2' || ${OC} get pod -n $namespace --no-headers --ignore-not-found | grep ${pod} | egrep '1/1' || true"
+    local retries=15
+    local sleep_time=15
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for mongo pod $pod to restart "
+    local success_message="Pod $pod restarted with new mongo config"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for pod $pod "
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+  done
 }
 
 function msg() {

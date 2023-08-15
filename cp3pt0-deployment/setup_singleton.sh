@@ -9,29 +9,42 @@
 # Please refer to that particular license for additional information. 
 
 # ---------- Command arguments ----------
+
 OC=oc
+YQ=yq
 ENABLE_LICENSING=0
 ENABLE_PRIVATE_CATALOG=0
 MIGRATE_SINGLETON=0
 OPERATOR_NS=""
 CONTROL_NS=""
-CHANNEL="v4.0"
-SOURCE_NS="openshift-marketplace"
+CHANNEL="v4.1"
 INSTALL_MODE="Automatic"
+CM_SOURCE_NS="openshift-marketplace"
+LIS_SOURCE_NS="openshift-marketplace"
 CERT_MANAGER_SOURCE="ibm-cert-manager-catalog"
 LICENSING_SOURCE="ibm-licensing-catalog"
 CERT_MANAGER_NAMESPACE="ibm-cert-manager"
 LICENSING_NAMESPACE="ibm-licensing"
 LICENSE_ACCEPT=0
+PREVIEW_MODE=0
+DEBUG=0
 
 CUSTOMIZED_LICENSING_NAMESPACE=0
 SKIP_INSTALL=0
 CHECK_LICENSING_ONLY=0
+CERT_MANAGER_V1_OWNER="operator.ibm.com/v1"
+CERT_MANAGER_V1ALPHA1_OWNER="operator.ibm.com/v1alpha1"
 
 # ---------- Command variables ----------
 
 # script base directory
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
+
+# log file
+LOG_FILE="setup_singleton_log_$(date +'%Y%m%d%H%M%S').log"
+
+# preview mode directory
+PREVIEW_DIR="/tmp/preview"
 
 # counter to keep track of installation steps
 STEP=0
@@ -42,13 +55,20 @@ STEP=0
 
 function main() {
     parse_arguments "$@"
+    save_log "logs" "setup_singleton_log" "$DEBUG"
+    trap cleanup_log EXIT
     pre_req
+    prepare_preview_mode
+
+    is_migrate_licensing
+    is_migrate_cert_manager
+    check_singleton_catalogsource
+
     if [ $MIGRATE_SINGLETON -eq 1 ]; then
-        info "Found parameter '--operator-namespace', migrating singleton services"
         if [ $ENABLE_LICENSING -eq 1 ]; then
-            ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" "--enable-licensing"
+            ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" --control-namespace "$CONTROL_NS" "--enable-licensing" --licensing-namespace "$LICENSING_NAMESPACE"
         else
-            ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" 
+            ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" --control-namespace "$CONTROL_NS"
         fi
     fi
 
@@ -101,6 +121,9 @@ function parse_arguments() {
             LICENSING_NAMESPACE=$1
             CUSTOMIZED_LICENSING_NAMESPACE=1
             ;;
+        --preview)
+            PREVIEW_MODE=1
+            ;;
         -c | --channel)
             shift
             CHANNEL=$1
@@ -108,6 +131,10 @@ function parse_arguments() {
         -i | --install-mode)
             shift
             INSTALL_MODE=$1
+            ;;
+        -v | --debug)
+            shift
+            DEBUG=$1
             ;;
         -h | --help)
             print_usage
@@ -123,26 +150,122 @@ function parse_arguments() {
 
 function print_usage() {
     script_name=`basename ${0}`
-    echo "Usage: ${script_name} [OPTIONS]..."
+    echo "Usage: ${script_name} --license-accept [OPTIONS]..."
     echo ""
     echo "Install Cloud Pak 3 pre-reqs if they do not already exist: ibm-cert-manager-operator and optionally ibm-licensing-operator"
     echo "The ibm-cert-manager-operator will be installed in namespace ibm-cert-manager"
     echo "The ibm-licensing-operator will be installed in namespace ibm-licensing"
+    echo "The --license-accept must be provided."
+    echo "See https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.0?topic=manager-installing-cert-licensing-by-script for more information."
     echo ""
     echo "Options:"
-    echo "   --oc string                                    File path to oc CLI. Default uses oc in your PATH"
-    echo "   --operator-namespace string                    Namespace to migrate Cloud Pak 2 Foundational services"
-    echo "   --enable-licensing                             Set this flag to install ibm-licensing-operator"
-    echo "   --enable-private-catalog                       Set this flag to use namespace scoped CatalogSource. Default is in openshift-marketplace namespace"
-    echo "   --cert-manager-source string                   CatalogSource name of ibm-cert-manager-operator. This assumes your CatalogSource is already created. Default is ibm-cert-manager-catalog"
-    echo "   --licensing-source string                      CatalogSource name of ibm-licensing. This assumes your CatalogSource is already created. Default is ibm-licensing-catalog"
-    echo "   -cmNs, --cert-manager-namespace string         Set custom namespace for ibm-cert-manager-operator. Default is ibm-cert-manager"
-    echo "   -licensingNs, --licensing-namespace string     Set custom namespace for ibm-licensing-operator. Default is ibm-licensing"
-    echo "   --license-accept                               Set this flag to accept the license agreement."
-    echo "   -c, --channel string                           Channel for Subscription(s). Default is v4.0"   
-    echo "   -i, --install-mode string                      InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
+    echo "   --oc string                                    Optional. File path to oc CLI. Default uses oc in your PATH"
+    echo "   --yq string                                    Optional. File path to yq CLI. Default uses yq in your PATH"
+    echo "   --operator-namespace string                    Optional. Namespace to migrate Cloud Pak 2 Foundational services"
+    echo "   --enable-licensing                             Optional. Set this flag to install ibm-licensing-operator"
+    echo "   --enable-private-catalog                       Optional. Set this flag to use namespace scoped CatalogSource. Default is in openshift-marketplace namespace"
+    echo "   --cert-manager-source string                   Optional. CatalogSource name of ibm-cert-manager-operator. This assumes your CatalogSource is already created. Default is ibm-cert-manager-catalog"
+    echo "   --licensing-source string                      Optional. CatalogSource name of ibm-licensing. This assumes your CatalogSource is already created. Default is ibm-licensing-catalog"
+    echo "   -cmNs, --cert-manager-namespace string         Optional. Set custom namespace for ibm-cert-manager-operator. Default is ibm-cert-manager"
+    echo "   -licensingNs, --licensing-namespace string     Optional. Set custom namespace for ibm-licensing-operator. Default is ibm-licensing"
+    echo "   --license-accept                               Required. Set this flag to accept the license agreement."
+    echo "   --preview                                      Enable preview mode (dry run)"
+    echo "   -c, --channel string                           Optional. Channel for Subscription(s). Default is v4.1"
+    echo "   -i, --install-mode string                      Optional. InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
+    echo "   -v, --debug integer                            Optional. Verbosity of logs. Default is 0. Set to 1 for debug logs"
     echo "   -h, --help                                     Print usage information"
     echo ""
+}
+
+function is_migrate_cert_manager() {
+    title "Check migrating and deactivating LTSR ibm-cert-manager-operator"
+    local webhook_ns=$("$OC" get deployments -A | grep cert-manager-webhook | cut -d ' ' -f1)
+    if [ -z "$webhook_ns" ]; then
+        info "No cert-manager-webhook found, skipping migration"
+        return 0
+    fi
+    local api_version=$("$OC" get deployments -n "$webhook_ns" cert-manager-webhook -o jsonpath='{.metadata.ownerReferences[*].apiVersion}')
+    if [ "$api_version" != "$CERT_MANAGER_V1ALPHA1_OWNER" ]; then
+        info "LTSR ibm-cert-manager-operator already deactivated, skipping"
+        return 0
+    fi
+    MIGRATE_SINGLETON=1
+    get_and_validate_arguments
+}
+
+function is_migrate_licensing() {
+    if [ $ENABLE_LICENSING -ne 1 ] && [ $CHECK_LICENSING_ONLY -ne 1 ]; then
+        return
+    fi
+
+    title "Check migrating LTSR ibm-licensing-operator"
+    
+    local version=$("$OC" get ibmlicensing instance -o jsonpath='{.spec.version}')
+    if [ -z "$version" ]; then
+        warning "No version field in ibmlicensing CR, skipping"
+        return 0
+    fi
+    local major=$(echo "$version" | cut -d '.' -f1)
+    if [ "$major" -ge 4 ]; then
+        info "There is no LTSR ibm-licensing-operator to migrate, skipping"
+        return 0
+    fi
+
+    local ns=$("$OC" get deployments -A | grep ibm-licensing-operator | cut -d ' ' -f1)
+    if [ -z "$ns" ]; then
+        info "No LTSR ibm-licensing-operator to migrate, skipping"
+        return 0
+    fi
+
+    get_and_validate_arguments
+    if [ ! -z "$CONTROL_NS" ]; then
+        if [[ "$CUSTOMIZED_LICENSING_NAMESPACE" -eq 1 ]] && [[ "$CONTROL_NS" != "$LICENSING_NAMESPACE" ]]; then
+            error "Licensing Migration could only be done in $CONTROL_NS, please do not set parameter '-licensingNs $LICENSING_NAMESPACE'"
+        fi
+        LICENSING_NAMESPACE="$CONTROL_NS"
+    fi
+
+    MIGRATE_SINGLETON=1
+}
+
+function check_singleton_catalogsource() {
+
+    title "Check singleton services CatalogSource..."
+    if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
+        CM_SOURCE_NS="${CERT_MANAGER_NAMESPACE}"
+        LIS_SOURCE_NS="${LICENSING_NAMESPACE}"
+    fi
+    
+    local sources=("$CERT_MANAGER_SOURCE,$CM_SOURCE_NS,ibm-cert-manager-operator,$CERT_MANAGER_NAMESPACE,$CHANNEL" "$LICENSING_SOURCE,$LIS_SOURCE_NS,ibm-licensing-operator-app,$LICENSING_NAMESPACE,$CHANNEL")
+    
+    for source_info in "${sources[@]}"; do
+
+        IFS="," read -r source source_ns pm operator_ns channel <<< "$source_info"
+        correct_result=$(catalogsource_correction "$source" "$source_ns" "$pm" "$operator_ns" "$channel")
+        IFS=" " read -r return_value correct_source correct_source_ns <<< "$correct_result"
+
+        # return_value: 0 - correct, 1 - multiple, 2 - none, 3 - wrong and corrected
+        if [[ $return_value -eq 0 ]]; then
+            success "CatalogSource $source from $source_ns CatalogSourceNamespace is available for $pm in $operator_ns namespace"
+        elif [[ $return_value -eq 1 ]]; then
+            warning "CatalogSource $source from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace"
+            error "Multiple CatalogSource are available for $pm in $operator_ns namespace, please specify the correct CatalogSource name and namespace"
+        elif [[ $return_value -eq 2 ]]; then
+            warning "CatalogSource $source from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace"
+            error "No CatalogSource is available for $pm in $operator_ns namespace"
+        elif [[ $return_value -eq 3 ]]; then
+            warning "CatalogSource $source from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace"
+            success "CatalogSource $correct_source from $correct_source_ns CatalogSourceNamespace is available for $pm in $operator_ns namespace"
+        fi
+        
+        if [[ $pm == "ibm-cert-manager-operator" ]]; then
+            CERT_MANAGER_SOURCE=$correct_source
+            CM_SOURCE_NS=$correct_source_ns
+        else
+            LICENSING_SOURCE=$correct_source
+            LIS_SOURCE_NS=$correct_source_ns
+        fi 
+    done
 }
 
 function install_cert_manager() {
@@ -156,21 +279,37 @@ function install_cert_manager() {
         warning "There is a cert-manager Subscription already\n"
     fi
 
-    pods_exist=$(${OC} get pods -A | grep -w cert-manager-webhook)
-    if [ $? -eq 0 ]; then
+    local webhook_ns=$("$OC" get deployments -A | grep cert-manager-webhook | cut -d ' ' -f1)
+    if [ ! -z "$webhook_ns" ]; then
         warning "There is a cert-manager-webhook pod Running, so most likely another cert-manager is already installed\n"
-        return 0
+        info "Continue to upgrade check\n"
     elif [ $SKIP_INSTALL -eq 1 ]; then
         error "There is no cert-manager-webhook pod running\n"
     fi
 
-    if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
-        SOURCE_NS="${CERT_MANAGER_NAMESPACE}"
-    fi
+    local api_version=$("$OC" get deployments -n "$webhook_ns" cert-manager-webhook -o jsonpath='{.metadata.ownerReferences[*].apiVersion}')
+    if [ ! -z "$api_version" ]; then
+        if [ "$api_version" == "$CERT_MANAGER_V1ALPHA1_OWNER" ]; then
+            error "Cluster has not deactivated LTSR ibm-cert-manager-operator yet, please re-run this script"
+        fi
 
+        if [ "$api_version" != "$CERT_MANAGER_V1_OWNER" ]; then
+            warning "Cluster has a non ibm-cert-manager-operator already installed, skipping"
+            return 0
+        fi
+        
+        info "Upgrading ibm-cert-manager-operator to channel: $CHANNEL\n"
+    fi
+    
     create_namespace "${CERT_MANAGER_NAMESPACE}"
     create_operator_group "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" "{}"
-    create_subscription "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" "$CHANNEL" "ibm-cert-manager-operator" "${CERT_MANAGER_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
+    is_sub_exist "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" # this will catch the packagenames of all cert-manager-operators
+    if [ $? -eq 0 ]; then
+        update_operator "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" "$CHANNEL" "${CERT_MANAGER_SOURCE}" "${CM_SOURCE_NS}" "${INSTALL_MODE}"
+        wait_for_operator_upgrade "${CERT_MANAGER_NAMESPACE}" "ibm-cert-manager-operator" "$CHANNEL" "${INSTALL_MODE}"
+    else
+        create_subscription "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" "$CHANNEL" "ibm-cert-manager-operator" "${CERT_MANAGER_SOURCE}" "${CM_SOURCE_NS}" "${INSTALL_MODE}"
+    fi
     wait_for_operator "${CERT_MANAGER_NAMESPACE}" "ibm-cert-manager-operator"
     accept_license "certmanagerconfig.operator.ibm.com" "" "default"
 }
@@ -183,14 +322,16 @@ function install_licensing() {
     title "Installing licensing\n"
     is_sub_exist "ibm-licensing-operator-app" # this will catch the packagenames of all ibm-licensing-operator-app
     if [ $? -eq 0 ]; then
-        warning "There is an ibm-licensing-operator-app Subscription already\n"
-        return 0
+        warning "There is an ibm-licensing-operator-app Subscription already, so will upgrade it\n"
     elif [ $SKIP_INSTALL -eq 1 ]; then
         error "There is no ibm-licensing-operator-app Subscription installed\n"
     fi
 
-    if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
-        SOURCE_NS="${LICENSING_NAMESPACE}"
+    local ns=$("$OC" get deployments -A | grep ibm-licensing-operator | cut -d ' ' -f1)
+    if [ ! -z "$ns" ]; then
+        if [ "$ns" != "$LICENSING_NAMESPACE" ]; then
+            error "An ibm-licensing-operator already installed in namespace: $ns, expected namespace is: $LICENSING_NAMESPACE"
+        fi
     fi
 
     create_namespace "${LICENSING_NAMESPACE}"
@@ -202,13 +343,38 @@ function install_licensing() {
 EOF
 )
     create_operator_group "ibm-licensing-operator-app" "${LICENSING_NAMESPACE}" "$target"
-    create_subscription "ibm-licensing-operator-app" "${LICENSING_NAMESPACE}" "$CHANNEL" "ibm-licensing-operator-app" "${LICENSING_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
+    is_sub_exist "ibm-licensing-operator-app" # this will catch the packagenames of all ibm-licensing-operator-app
+    if [ $? -eq 0 ]; then
+        update_operator "ibm-licensing-operator-app" "${LICENSING_NAMESPACE}" "$CHANNEL" "${LICENSING_SOURCE}" "${LIS_SOURCE_NS}" "${INSTALL_MODE}"
+        wait_for_operator_upgrade "${LICENSING_NAMESPACE}" "ibm-licensing-operator-app" "$CHANNEL" "${INSTALL_MODE}"
+    else
+        create_subscription "ibm-licensing-operator-app" "${LICENSING_NAMESPACE}" "$CHANNEL" "ibm-licensing-operator-app" "${LICENSING_SOURCE}" "${LIS_SOURCE_NS}" "${INSTALL_MODE}"
+    fi
     wait_for_operator "${LICENSING_NAMESPACE}" "ibm-licensing-operator"
+    wait_for_license_instance
     accept_license "ibmlicensing" "" "instance"
 }
 
+function wait_for_license_instance() {
+    local name="instance"
+    local condition="${OC} get ibmlicensing -A --no-headers --ignore-not-found | grep ${name} || true"
+    local retries=20
+    local sleep_time=15
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for ibmlicensing ${name} to be present."
+    local success_message="ibmlicensing ${name} present"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for ibmlicensing ${name} to be present."
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
 function pre_req() {
+    # Check the value of DEBUG
+    if [[ "$DEBUG" != "1" && "$DEBUG" != "0" ]]; then
+        error "Invalid value for DEBUG. Expected 0 or 1."
+    fi
+
     check_command "${OC}"
+    check_command "${YQ}"
 
     # Checking oc command logged in
     user=$(oc whoami 2> /dev/null)
@@ -226,20 +392,28 @@ function pre_req() {
     if [[ "$INSTALL_MODE" != "Automatic" && "$INSTALL_MODE" != "Manual" ]]; then
         error "Invalid INSTALL_MODE: $INSTALL_MODE, allowed values are 'Automatic' or 'Manual'"
     fi
-
-    if [ "$OPERATOR_NS" == "" ]; then
-        MIGRATE_SINGLETON=0
-    else
-        MIGRATE_SINGLETON=1
-        get_and_validate_arguments
-        if [[ "$ENABLE_LICENSING" == 1 ]];then
-            if [[ "$CUSTOMIZED_LICENSING_NAMESPACE" -eq 1 ]] && [[ "$CONTROL_NS" != "$LICENSING_NAMESPACE" ]]; then
-                error "Licensing Migration could only be done in $CONTROL_NS, please do not set parameter '-licensingNs $LICENSING_NAMESPACE'"
-            else 
-                LICENSING_NAMESPACE="${CONTROL_NS}"
-            fi
+    
+    # Check if channel is semantic vx.y
+    if [[ $CHANNEL =~ ^v[0-9]+\.[0-9]+$ ]]; then
+        # Check if channel is equal or greater than v4.0
+        if [[ $CHANNEL == v[4-9].* || $CHANNEL == v[4-9] ]]; then  
+            success "Channel $CHANNEL is valid"
+        else
+            error "Channel $CHANNEL is less than v4.0"
         fi
+    else
+        error "Channel $CHANNEL is not semantic vx.y"
     fi
+
+    # Check if all CS installations are above 3.19.9
+    local csvs=$("$OC" get csv -A | grep ibm-common-service-operator | awk '{print $2}' | sort -V)
+    local version=$(echo "$csvs" | head -n 1 | cut -d '.' -f2-)
+    is_supports_delegation "$version"
+
+    if [ -z "$OPERATOR_NS" ]; then
+        OPERATOR_NS=$("$OC" project --short)
+    fi
+    echo ""
 }
 
 # TODO validate argument
@@ -247,4 +421,4 @@ function get_and_validate_arguments() {
     get_control_namespace
 }
 
-main $*
+main "$@"

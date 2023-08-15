@@ -73,7 +73,7 @@ function delete_all(){
     fi
   done
   #delete automation foundation subs and csvs
-  auto_ops=$(${KUBECTL} get sub -n ${namespace} --ignore-not-found | (grep automation-foundation || echo fail) | awk '{print $1}')
+  auto_ops=$(${KUBECTL} get subscription.operators.coreos.com -n ${namespace} --ignore-not-found | (grep automation-foundation || echo fail) | awk '{print $1}')
   for af_op in $auto_ops; do
     delete_operator "${namespace}" "$af_op"
   done
@@ -271,7 +271,7 @@ function delete_operator() {
   local subs=$2 
   local namespace=$1 
   for sub in ${subs}; do
-    csv=$(${KUBECTL} get sub ${sub} -n ${namespace} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
+    csv=$(${KUBECTL} get subscription.operators.coreos.com ${sub} -n ${namespace} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
     if [[ "X${csv}" != "X" ]]; then
       msg "Delete operator ${sub} from namespace ${namespace}"
       ${KUBECTL} delete csv ${csv} -n ${namespace} --ignore-not-found
@@ -424,19 +424,19 @@ fi
 
 if [[ "$FORCE_DELETE" == "false" ]]; then
   title "Deleting ibm-common-service-operator in namespace ${COMMON_SERVICES_NS}"
-  for sub in $(${KUBECTL} get sub --all-namespaces --ignore-not-found | grep ${COMMON_SERVICES_NS} | awk '{if ($3 =="ibm-common-service-operator") print $1"/"$2}'); do
+  for sub in $(${KUBECTL} get subscription.operators.coreos.com --all-namespaces --ignore-not-found | grep ${COMMON_SERVICES_NS} | awk '{if ($3 =="ibm-common-service-operator") print $1"/"$2}'); do
     namespace=$(echo $sub | awk -F'/' '{print $1}')
     name=$(echo $sub | awk -F'/' '{print $2}')
     delete_operator "${COMMON_SERVICES_NS}" "$name" 
   done
   title "Deleting ODLM in namespace ${COMMON_SERVICES_NS}"
-  for sub in $(${KUBECTL} get sub --all-namespaces --ignore-not-found | grep ${COMMON_SERVICES_NS} | awk '{if ($3 =="ibm-odlm") print $1"/"$2}'); do
+  for sub in $(${KUBECTL} get subscription.operators.coreos.com --all-namespaces --ignore-not-found | grep ${COMMON_SERVICES_NS} | awk '{if ($3 =="ibm-odlm") print $1"/"$2}'); do
     namespace=$(echo $sub | awk -F'/' '{print $1}')
     name=$(echo $sub | awk -F'/' '{print $2}')
     delete_operator "${COMMON_SERVICES_NS}" "$name" 
   done
   title "Deleting ibm-namespace-scope-operator in namespace ${COMMON_SERVICES_NS}"
-  for sub in $(${KUBECTL} get sub --all-namespaces --ignore-not-found | grep ${COMMON_SERVICES_NS} | awk '{if ($3 =="ibm-namespace-scope-operator") print $1"/"$2}'); do
+  for sub in $(${KUBECTL} get subscription.operators.coreos.com --all-namespaces --ignore-not-found | grep ${COMMON_SERVICES_NS} | awk '{if ($3 =="ibm-namespace-scope-operator") print $1"/"$2}'); do
     namespace=$(echo $sub | awk -F'/' '{print $1}')
     name=$(echo $sub | awk -F'/' '{print $2}')
     delete_operator "${COMMON_SERVICES_NS}" "$name" 
@@ -455,13 +455,13 @@ fi
 if [[ "$REMOVE_IAM_CP_NS" == "true" ]]; then
   for ns in $cloudpak_ns; do
     title "Deleting ibm-common-service-operator in namespace ${ns}"
-    for sub in $(${KUBECTL} get sub --all-namespaces --ignore-not-found | grep ${ns} | awk '{if ($3 =="ibm-common-service-operator") print $1"/"$2}'); do
+    for sub in $(${KUBECTL} get subscription.operators.coreos.com --all-namespaces --ignore-not-found | grep ${ns} | awk '{if ($3 =="ibm-common-service-operator") print $1"/"$2}'); do
         namespace=$(echo $sub | awk -F'/' '{print $1}')
         name=$(echo $sub | awk -F'/' '{print $2}')
         delete_operator "${ns}" "$name" 
     done
     title "Deleting ibm-namespace-scope-operator in namespace ${ns}"
-    for sub in $(${KUBECTL} get sub --all-namespaces --ignore-not-found | grep ${ns} | awk '{if ($3 =="ibm-namespace-scope-operator") print $1"/"$2}'); do
+    for sub in $(${KUBECTL} get subscription.operators.coreos.com --all-namespaces --ignore-not-found | grep ${ns} | awk '{if ($3 =="ibm-namespace-scope-operator") print $1"/"$2}'); do
       namespace=$(echo $sub | awk -F'/' '{print $1}')
       name=$(echo $sub | awk -F'/' '{print $2}')
       delete_operator "${ns}" "$name" 

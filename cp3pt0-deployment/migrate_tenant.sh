@@ -18,22 +18,29 @@ NS_LIST=""
 CONTROL_NS=""
 CHANNEL="v4.0"
 SOURCE="opencloud-operators"
-CERT_MANAGER_SOURCE="ibm-cert-manager-operator-catalog"
+CERT_MANAGER_SOURCE="ibm-cert-manager-catalog"
 LICENSING_SOURCE="ibm-licensing-catalog"
 SOURCE_NS="openshift-marketplace"
+PRIVATE_NS=""
 INSTALL_MODE="Automatic"
 ENABLE_LICENSING=0
 ENABLE_PRIVATE_CATALOG=0
 NEW_MAPPING=""
 NEW_TENANT=0
 DEBUG=0
-PREVIEW_MODE=1
+PREVIEW_MODE=0
 LICENSE_ACCEPT=0
 
 # ---------- Command variables ----------
 
 # script base directory
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
+
+# log file
+LOG_FILE="migrate_tenant_log_$(date +'%Y%m%d%H%M%S').log"
+
+# preview mode directory
+PREVIEW_DIR="/tmp/preview"
 
 # counter to keep track of installation steps
 STEP=0
@@ -44,8 +51,11 @@ STEP=0
 
 function main() {
     parse_arguments "$@"
+    save_log "logs" "migrate_tenant_log" "$DEBUG"
+    trap cleanup_log EXIT
     pre_req
-    
+    prepare_preview_mode
+
     # TODO check Cloud Pak compatibility
 
 
@@ -55,32 +65,44 @@ function main() {
     # Scale down CS, ODLM and delete OperandReigsrty
     # It helps to prevent re-installing licensing and cert-manager services
     scale_down $OPERATOR_NS $SERVICES_NS $CHANNEL $SOURCE
-
+    local arguments=""
     # Migrate singleton services
-    local arguments="--enable-licensing"
-    arguments=" -licensingNs $CONTROL_NS"
+    if [[ $ENABLE_LICENSING -eq 1 ]]; then
+        arguments+="--enable-licensing"
+        if [[ "$CONTROL_NS" != "$OPERATOR_NS" ]]; then
+            arguments+=" -licensingNs $CONTROL_NS"
+        fi
+    fi
 
     if [[ $ENABLE_PRIVATE_CATALOG -eq 1 ]]; then
         arguments+=" --enable-private-catalog"
     fi
-    ${BASE_DIR}/setup_singleton.sh "--operator-namespace" "$OPERATOR_NS" "-c" "$CHANNEL" "--cert-manager-source" "$CERT_MANAGER_SOURCE" "--licensing-source" "$LICENSING_SOURCE" "$arguments" "--license-accept"
+    
+    ${BASE_DIR}/setup_singleton.sh "--operator-namespace" "$OPERATOR_NS" "-c" "$CHANNEL" "--cert-manager-source" "$CERT_MANAGER_SOURCE" "--licensing-source" "$LICENSING_SOURCE" "--license-accept" $arguments
+    if [ $? -ne 0 ]; then
+        error "Failed to migrate singleton services"
+        exit 1
+    fi
 
     # Update CommonService CR with OPERATOR_NS and SERVICES_NS
     # Propogate CommonService CR to every namespace in the tenant
     update_cscr "$OPERATOR_NS" "$SERVICES_NS" "$NS_LIST"
+    accept_license "commonservice" "$OPERATOR_NS"  "common-service"
 
     # Update ibm-common-service-operator channel
     for ns in ${NS_LIST//,/ }; do
         if [ $ENABLE_PRIVATE_CATALOG -eq 0 ]; then
+            check_cs_catalogsource
             update_operator ibm-common-service-operator $ns $CHANNEL $SOURCE $SOURCE_NS $INSTALL_MODE
         else
-            update_operator ibm-common-service-operator $ns $CHANNEL $SOURCE $ns $INSTALL_MODE
+            PRIVATE_NS=$ns
+            check_cs_catalogsource
+            update_operator ibm-common-service-operator $PRIVATE_NS $CHANNEL $SOURCE $PRIVATE_NS $INSTALL_MODE
         fi
     done
 
     # Wait for CS operator upgrade
     wait_for_operator_upgrade $OPERATOR_NS ibm-common-service-operator $CHANNEL $INSTALL_MODE
-    accept_license "commonservice" "$OPERATOR_NS"  "common-service"
     # Scale up CS
     scale_up $OPERATOR_NS $SERVICES_NS ibm-common-service-operator ibm-common-service-operator
 
@@ -114,6 +136,9 @@ function main() {
     # Update NamespaceScope CR common-service
     update_nss_kind "$OPERATOR_NS" "$NS_LIST"
 
+    # Check master CommonService CR status
+    wait_for_cscr_status "$OPERATOR_NS" "common-service"
+    
     success "Preparation is completed for upgrading Cloud Pak 3.0"
     info "Please update OperandRequest to upgrade foundational core services"
 }
@@ -185,34 +210,44 @@ function parse_arguments() {
 
 function print_usage() {
     script_name=`basename ${0}`
-    echo "Usage: ${script_name} --operator-namespace <foundational-services-namespace> [OPTIONS]..."
+    echo "Usage: ${script_name} --license-accept --operator-namespace <foundational-services-namespace> [OPTIONS]..."
     echo ""
-    echo "Migrate Cloud Pak 2.0 Foundational services to in Cloud Pak 3.0 Foundational services"
-    echo "The --operator-namespace must be provided."
+    echo "Migrate Cloud Pak 2.0 Foundational services to Cloud Pak 3.0 Foundational services"
+    echo "The --license-accept and --operator-namespace <operator-namespace> must be provided."
+    echo "See https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.0?topic=4x-in-place-migration for more information."
     echo ""
     echo "Options:"
-    echo "   --oc string                    File path to oc CLI. Default uses oc in your PATH"
-    echo "   --yq string                    File path to yq CLI. Default uses yq in your PATH"
+    echo "   --oc string                    Optional. File path to oc CLI. Default uses oc in your PATH"
+    echo "   --yq string                    Optional. File path to yq CLI. Default uses yq in your PATH"
     echo "   --operator-namespace string    Required. Namespace to migrate Foundational services operator"
-    echo "   --services-namespace           Namespace to migrate operands of Foundational services, i.e. 'dataplane'. Default is the same as operator-namespace"
-    echo "   --cert-manager-source string   CatalogSource name of ibm-cert-manager-operator. This assumes your CatalogSource is already created. Default is ibm-cert-manager-catalog"
-    echo "   --licensing-source string      CatalogSource name of ibm-licensing. This assumes your CatalogSource is already created. Default is ibm-licensing-catalog"
-    echo "   --enable-licensing             Set this flag to migrate ibm-licensing-operator"
-    echo "   --enable-private-catalog       Set this flag to use namespace scoped CatalogSource. Default is in openshift-marketplace namespace"
-    echo "   --license-accept               Set this flag to accept the license agreement."
-    echo "   -c, --channel string           Channel for Subscription(s). Default is v4.0"   
-    echo "   -i, --install-mode string      InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
-    echo "   -s, --source string            CatalogSource name. This assumes your CatalogSource is already created. Default is opencloud-operators"
-    echo "   -v, --debug integer            Verbosity of logs. Default is 0. Set to 1 for debug logs."
+    echo "   --services-namespace           Optional. Namespace to migrate operands of Foundational services, i.e. 'dataplane'. Default is the same as operator-namespace"
+    echo "   --cert-manager-source string   Optional. CatalogSource name of ibm-cert-manager-operator. This assumes your CatalogSource is already created. Default is ibm-cert-manager-catalog"
+    echo "   --licensing-source string      Optional. CatalogSource name of ibm-licensing. This assumes your CatalogSource is already created. Default is ibm-licensing-catalog"
+    echo "   --enable-licensing             Optional. Set this flag to migrate ibm-licensing-operator"
+    echo "   --enable-private-catalog       Optional. Set this flag to use namespace scoped CatalogSource. Default is in openshift-marketplace namespace"
+    echo "   --license-accept               Required. Set this flag to accept the license agreement."
+    echo "   -c, --channel string           Optional. Channel for Subscription(s). Default is v4.0"   
+    echo "   -i, --install-mode string      Optional. InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
+    echo "   -s, --source string            Optional. CatalogSource name. This assumes your CatalogSource is already created. Default is opencloud-operators"
+    echo "   -v, --debug integer            Optional. Verbosity of logs. Default is 0. Set to 1 for debug logs."
     echo "   -h, --help                     Print usage information"
     echo ""
 }
 
 function pre_req() {
+    # Check the value of DEBUG
+    if [[ "$DEBUG" != "1" && "$DEBUG" != "0" ]]; then
+        error "Invalid value for DEBUG. Expected 0 or 1."
+    fi
+
     check_command "${OC}"
     check_command "${YQ}"
 
-    # checking oc command logged in
+    # TODO: add more compatibility
+    # # checking yq version is v4.30+
+    # check_version "${YQ}" "--version" "mikefarah" "4\.([3-9][0-9])\.[0-9]+"
+
+    # Checking oc command logged in
     user=$(${OC} whoami 2> /dev/null)
     if [ $? -ne 0 ]; then
         error "You must be logged into the OpenShift Cluster from the oc command line"
@@ -244,6 +279,18 @@ function pre_req() {
     if [[ "$INSTALL_MODE" != "Automatic" && "$INSTALL_MODE" != "Manual" ]]; then
         error "Invalid INSTALL_MODE: $INSTALL_MODE, allowed values are 'Automatic' or 'Manual'"
     fi
+    
+    # Check if channel is semantic vx.y
+    if [[ $CHANNEL =~ ^v[0-9]+\.[0-9]+$ ]]; then
+        # Check if channel is equal or greater than v4.0
+        if [[ $CHANNEL == v[4-9].* || $CHANNEL == v[4-9] ]]; then  
+            success "Channel is valid"
+        else
+            error "Channel is less than v4.0"
+        fi
+    else
+        error "Channel is not semantic vx.y"
+    fi
 
     NS_LIST=$(${OC} get configmap namespace-scope -n ${OPERATOR_NS} -o jsonpath='{.data.namespaces}')
     if [[ -z "$NS_LIST" ]]; then
@@ -256,12 +303,6 @@ function pre_req() {
 # TODO validate argument
 function get_and_validate_arguments() {
     get_control_namespace
-}
-
-function debug1() {
-    if [ $DEBUG -eq 1 ]; then
-       debug "${1}"
-    fi
 }
 
 main $*

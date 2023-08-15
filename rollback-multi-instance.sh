@@ -24,6 +24,7 @@ CONTROL_NS=
 cm_name="common-service-maps"
 OC=oc
 YQ=yq
+DEBUG=0
 
 
 function main() {
@@ -43,6 +44,9 @@ function main() {
         "--control-ns")
             CONTROL_NS=$2
             shift
+            ;;
+        -v | --debug)
+            DEBUG=1
             ;;
         *)
             error "invalid option -- \`$1\`. Use the -h or --help option for usage info."
@@ -72,6 +76,7 @@ function usage() {
 	  -h, --help                    display this help and exit
       --original-cs-ns              specify the original common services namespace
       --control-ns                  specify the existing control namespace
+      -v, --debug integer           Verbosity of logs. Default is 0. Set to 1 for debug logs.
 	EOF
 }
 
@@ -80,9 +85,9 @@ function collect_data() {
     msg "-----------------------------------------------------------------------"
     
     # info "MasterNS:${master_ns}"
-    # cs_operator_channel=$(${OC} get sub ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.channel") 
+    # cs_operator_channel=$(${OC} get subscription.operators.coreos.com ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.channel") 
     # info "channel:${cs_operator_channel}"   
-    # catalog_source=$(${OC} get sub ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.source")
+    # catalog_source=$(${OC} get subscription.operators.coreos.com ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.source")
     # info "catalog_source:${catalog_source}" 
     #this command gets all of the ns listed in requested from namesapce fields
     requested_ns=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].requested-from-namespace' | awk '{print $2}' | tr '\n' ' ')
@@ -153,6 +158,7 @@ function rollback() {
 
     removeNSS
     cleanupZenService
+    update_opreqs
     un_isolate_odlm "ibm-odlm" $MASTER_NS
 
     # scale back up
@@ -296,31 +302,49 @@ function cleanupZenService(){
 function check_IAM(){
     sleep 10
 
-    retries=40
-    sleep_time=30
-    total_time_mins=$(( sleep_time * retries / 60))
-    info "Waiting for IAM to come ready in namespace $MASTER_NS"
-    sleep 10
-    local cm="ibm-common-services-status"
-    local statusName="$MASTER_NS-iamstatus"
-    
-    while true; do
-        if [[ ${retries} -eq 0 ]]; then
-            error "Timeout after ${total_time_mins} minutes waiting for IAM to come ready in namespace $MASTER_NS"
-        fi
-
-        iamReady=$("${OC}" get configmap -n kube-public -o yaml ${cm} | (grep $statusName || echo fail))
-
-        if [[ "${iamReady}" == "fail" ]]; then
-            retries=$(( retries - 1 ))
-            info "RETRYING: Waiting for IAM service to be Ready (${retries} left)"
-            sleep ${sleep_time}
-        else
-            msg "-----------------------------------------------------------------------"    
-            success "IAM Service Ready in $MASTER_NS"
-            break
+    local nsFromNSS=$(${OC} get nss -n $MASTER_NS -o yaml common-service | ${YQ} '.status.validatedMembers[]' | tr '\n' ' ')
+    iam_enabled="false"
+    for cp_namespace in $nsFromNSS
+    do
+        zenservice_exists=$(${OC} get zenservice -n $cp_namespace || echo fail)
+        if [[ $zenservice_exists != "fail" ]] && [[ $zenservice_exists != "" ]]; then
+            zenservice=$(${OC} get zenservice -n $cp_namespace --no-headers | awk '{print $1}')
+            iam_enabled=$(${OC} get zenservice $zenservice -n $cp_namespace -o yaml | ${YQ} '.spec.iamIntegration')
+            if [[ $iam_enabled == "true" ]]; then
+                break
+            fi
         fi
     done
+    
+    if [[ $iam_enabled == "true" ]]; then
+        retries=40
+        sleep_time=30
+        total_time_mins=$(( sleep_time * retries / 60))
+        info "Waiting for IAM to come ready in namespace $MASTER_NS"
+        sleep 10
+        local cm="ibm-common-services-status"
+        local statusName="$MASTER_NS-iamstatus"
+        
+        while true; do
+            if [[ ${retries} -eq 0 ]]; then
+                error "Timeout after ${total_time_mins} minutes waiting for IAM to come ready in namespace $MASTER_NS"
+            fi
+
+            iamReady=$("${OC}" get configmap -n kube-public -o yaml ${cm} | (grep $statusName || echo fail))
+
+            if [[ "${iamReady}" == "fail" ]]; then
+                retries=$(( retries - 1 ))
+                info "RETRYING: Waiting for IAM service to be Ready (${retries} left)"
+                sleep ${sleep_time}
+            else
+                msg "-----------------------------------------------------------------------"    
+                success "IAM Service Ready in $MASTER_NS"
+                break
+            fi
+        done
+    else
+        info "IAM not requested by zen, skipping wait."
+    fi
 }
 
 # update zenservice CRs to be reconciled again
@@ -400,25 +424,41 @@ function scale_up_pod() {
 }
 
 function un_isolate_odlm() {
-    package_name=$1
-    ns=$2
+    local package_name=$1
+    local ns=$2
     # get subscription of ODLM based on namespace 
-    sub_name=$(${OC} get subscription.operators.coreos.com -n ${ns} -l operators.coreos.com/${package_name}.${ns}='' --no-headers | awk '{print $1}')
+    local sub_name=$(${OC} get subscription.operators.coreos.com -n ${ns} -l operators.coreos.com/${package_name}.${ns}='' --no-headers | awk '{print $1}')
     if [ -z "$sub_name" ]; then
         warning "Not found subscription ${package_name} in ${ns}"
         return 0
     fi
-    ${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml > sub.yaml
-
-    # set ISOLATED_MODE to true
-    yq e '.spec.config.env |= (map(select(.name == "ISOLATED_MODE").value |= "false") + [{"name": "ISOLATED_MODE", "value": "false"}] | unique_by(.name))' sub.yaml -i
-
-    # apply updated subscription back to cluster
-    ${OC} apply -f sub.yaml
+    #merge patch overwrites the entire array if you update any values so we need to get any other value specified and make sure it is unchanged
+    #loop through all of the values specified in spec.config.env
+    env_range=$(${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml | yq '.spec.config.env[].name')
+    patch_string=""
+    count=0
+    for name in $env_range
+    do
+        #If isolated mode, set value to true. Otherwise keep name value pairs unchanged.
+        if [[ $name == "ISOLATED_MODE" ]]; then
+            env_value="false"
+        else
+            env_value=$(${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml | yq '.spec.config.env['"${count}"'].value')
+        fi
+        #Add name value pair in json format to the patch string
+        if [[ $patch_string == "" ]]; then
+            patch_string="{\"name\": \"$name\", \"value\": \"$env_value\"}"
+        else
+            patch_string="$patch_string, {\"name\": \"$name\", \"value\": \"$env_value\"}"
+        fi
+        count=$((count + 1))
+    done
+    debug1 "patch string $patch_string"
+    #use the patch string to apply the isolate mode patch
+    ${OC} patch subscription.operators.coreos.com ${sub_name} -n ${ns} --type=merge -p '{"spec": {"config": {"env": ['"${patch_string}"']}}}'
     if [[ $? -ne 0 ]]; then
         error "Failed to update subscription ${package_name} in ${ns}"
     fi
-    rm sub.yaml
 
     check_odlm_env "${ns}" 
 }
@@ -496,6 +536,34 @@ function cleanup_webhook() {
 
 }
 
+function update_opreqs(){
+    title "Updating Operand Requests to use Operand Registry in new CS namespace"
+    #check map to namespaces, get list of requested from ns from there
+    #update opreq in list of namespaces from common-service-maps configmap
+
+    #this command gets all of the ns listed in requested from namesapce fields
+    requested_ns=$("${OC}" get configmap -n kube-public -o yaml common-service-maps | yq '.data[]' | yq '.namespaceMapping[].requested-from-namespace' | awk '{print $2}' | tr '\n' ' ')
+    
+    for ns in $requested_ns
+    do
+        opreqs=$(${OC} get operandrequests -n $ns --no-headers | awk '{print $1}' | tr '\n' ' ')
+        for opreq in $opreqs
+        do
+            ${OC} get opreq $opreq -n $ns -o yaml > tmp.yaml
+            ${YQ} -i 'del(.metadata.creationTimestamp)' tmp.yaml
+            ${YQ} -i 'del(.metadata.resourceVersion)' tmp.yaml
+            ${YQ} -i 'del(.metadata.uid)' tmp.yaml
+            ${YQ} -i 'del(.metadata.generation)' tmp.yaml
+            ${YQ} -i 'del(.metadata.managedFields)' tmp.yaml
+            ${YQ} -i '.spec.requests[0].registryNamespace = "ibm-common-services"' tmp.yaml    
+            ${OC} apply -n $ns -f tmp.yaml || error "Failed to update registryNamespace value for operand request $opreq in namespace $ns."
+            info "Operand request $opreq in namespace $ns updated to use ibm-common-services as registryNamespace."
+            rm -f tmp.yaml
+        done
+    done
+    success "Operand requests' registryNamespace values updated."
+}
+
 function msg() {
     printf '%b\n' "$1"
 }
@@ -517,6 +585,11 @@ function info() {
     msg "[INFO] ${1}"
 }
 
+function debug1() {
+    if [ $DEBUG -eq 1 ]; then
+        msg "[DEBUG] ${1}"
+    fi
+}
 # --- Run ---
 
 main $*
