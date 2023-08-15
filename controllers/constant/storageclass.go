@@ -17,7 +17,19 @@
 package constant
 
 const StorageClassTemplate = `
-- name: ibm-mongodb-operator
+- name: ibm-im-mongodb-operator
+  spec:
+    mongoDB:
+      storageClass: placeholder
+- name: ibm-im-mongodb-operator-v4.0
+  spec:
+    mongoDB:
+      storageClass: placeholder
+- name: ibm-im-mongodb-operator-v4.1
+  spec:
+    mongoDB:
+      storageClass: placeholder
+- name: ibm-im-mongodb-operator-v4.2
   spec:
     mongoDB:
       storageClass: placeholder
@@ -26,8 +38,4 @@ const StorageClassTemplate = `
     mustgatherService:
       persistentVolumeClaim:
         storageClassName: placeholder
-- name: ibm-monitoring-prometheusext-operator
-  spec:
-    prometheusExt:
-      storageClassName: placeholder
 `
