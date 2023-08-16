@@ -41,15 +41,19 @@ import (
 
 // CommonServiceDefaulter points to correct ServiceNamespace
 type Defaulter struct {
-	Reader  client.Reader
-	Client  client.Client
-	decoder *admission.Decoder
+	Reader    client.Reader
+	Client    client.Client
+	IsDormant bool
+	decoder   *admission.Decoder
 }
 
 // podAnnotator adds an annotation to every incoming pods.
 func (r *Defaulter) Handle(ctx context.Context, req admission.Request) admission.Response {
 	klog.Infof("Webhook is invoked by Commonservice %s/%s", req.AdmissionRequest.Namespace, req.AdmissionRequest.Name)
 
+	if r.IsDormant {
+		return admission.Allowed("")
+	}
 	serviceNs := util.GetServicesNamespace(r.Reader)
 	operatorNs, operatorNsErr := util.GetOperatorNamespace()
 	if operatorNsErr != nil {
@@ -63,11 +67,6 @@ func (r *Defaulter) Handle(ctx context.Context, req admission.Request) admission
 	}
 
 	cs := &operatorv3.CommonService{}
-
-	// if this pod is not running in the operatorNamespace
-	if operatorNs != string(cs.Spec.OperatorNamespace) {
-		return admission.Allowed("")
-	}
 
 	err := r.decoder.Decode(req, cs)
 	if err != nil {

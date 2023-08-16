@@ -41,15 +41,15 @@ import (
 
 // OperandRequestDefaulter points to correct RegistryNamespace
 type Defaulter struct {
-	Reader  client.Reader
-	Client  client.Client
-	decoder *admission.Decoder
+	Reader    client.Reader
+	Client    client.Client
+	IsDormant bool
+	decoder   *admission.Decoder
 }
 
 // podAnnotator adds an annotation to every incoming pods.
 func (r *Defaulter) Handle(ctx context.Context, req admission.Request) admission.Response {
 	klog.Infof("Webhook is invoked by OperandRequest %s/%s", req.AdmissionRequest.Namespace, req.AdmissionRequest.Name)
-
 	opreq := &odlm.OperandRequest{}
 
 	err := r.decoder.Decode(req, opreq)
@@ -59,7 +59,9 @@ func (r *Defaulter) Handle(ctx context.Context, req admission.Request) admission
 
 	copy := opreq.DeepCopy()
 
-	r.Default(copy)
+	if !r.IsDormant {
+		r.Default(copy)
+	}
 
 	marshaledCopy, err := json.Marshal(copy)
 	if err != nil {

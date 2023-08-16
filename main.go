@@ -205,27 +205,28 @@ func main() {
 			klog.Error(err, "unable to create controller", "controller", "V1AddLabel")
 			os.Exit(1)
 		}
-		// Start up the webhook server if it is ocp
-		if bs.CSData.IsOCP {
-			if err = (&commonservicewebhook.Defaulter{
-				Client: mgr.GetClient(),
-				Reader: mgr.GetAPIReader(),
-			}).SetupWebhookWithManager(mgr); err != nil {
-				klog.Errorf("Unable to create CommonService webhook: %v", err)
-				os.Exit(1)
-			}
-
-			if err = (&operandrequestwebhook.Defaulter{
-				Client: mgr.GetClient(),
-				Reader: mgr.GetAPIReader(),
-			}).SetupWebhookWithManager(mgr); err != nil {
-				klog.Errorf("Unable to create OperandRequest webhook: %v", err)
-				os.Exit(1)
-			}
-		}
 	} else {
 		klog.Infof("Common Service Operator goes dormant in the namespace %s", operatorNs)
 		klog.Infof("Common Service Operator in the namespace %s takes charge of resource management", cpfsNs)
+	}
+
+	// Start up the webhook server if it is ocp
+	if err = (&commonservicewebhook.Defaulter{
+		Client:    mgr.GetClient(),
+		Reader:    mgr.GetAPIReader(),
+		IsDormant: operatorNs != cpfsNs,
+	}).SetupWebhookWithManager(mgr); err != nil {
+		klog.Errorf("Unable to create CommonService webhook: %v", err)
+		os.Exit(1)
+	}
+
+	if err = (&operandrequestwebhook.Defaulter{
+		Client:    mgr.GetClient(),
+		Reader:    mgr.GetAPIReader(),
+		IsDormant: operatorNs != cpfsNs,
+	}).SetupWebhookWithManager(mgr); err != nil {
+		klog.Errorf("Unable to create OperandRequest webhook: %v", err)
+		os.Exit(1)
 	}
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
