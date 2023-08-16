@@ -25,7 +25,7 @@ import (
 )
 
 // CreateUpdateConfig deploys config builder for global cpp configmap
-func CleanUpWebhook(ch chan<- bool, bs *bootstrap.Bootstrap) {
+func CleanUpWebhook(finish chan<- struct{}, bs *bootstrap.Bootstrap) {
 	validatingWebhookConfiguration := bootstrap.Resource{
 		Name:    "ibm-common-service-validating-webhook-" + bs.CSData.OperatorNs,
 		Version: "v1",
@@ -65,6 +65,6 @@ func CleanUpWebhook(ch chan<- bool, bs *bootstrap.Bootstrap) {
 		os.Exit(1)
 	}
 
-	ch <- true
+	close(finish)
 
 }

@@ -164,11 +164,11 @@ func main() {
 			os.Exit(1)
 		}
 
-		ch := make(chan bool)
+		finish := make(chan struct{})
 		// Clean up webhook resources
-		go goroutines.CleanUpWebhook(ch, bs)
+		go goroutines.CleanUpWebhook(finish, bs)
 		// wait for cleanup finish
-		<-ch
+		<-finish
 		// Create or Update CPP configuration
 		go goroutines.CreateUpdateConfig(bs)
 		// Update CS CR Status
