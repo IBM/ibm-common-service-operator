@@ -28,6 +28,7 @@ catalog_source=
 requested_ns=
 map_to_cs_ns=
 master_ns=$1
+control_ns=
 cm_name="common-service-maps"
     
 function main() {
@@ -816,6 +817,14 @@ function cleanup_webhook() {
     info "Deleting ValidatingWebhookConfiguration..."
     ${OC} delete ValidatingWebhookConfiguration ibm-cs-ns-mapping-webhook-configuration --ignore-not-found
 
+    local webhook_pod_in_control_ns=$(${OC} get pods -n $control_ns | grep common-service-webhook || echo "fail")
+    if [[ $webhook_pod_in_control_ns != "fail" ]]; then
+        info "Webhook pod in control namespace, restarting."
+        local pod_name=$(${OC} get pods -n $control_ns | grep common-service-webhook | awk '{print $1}')
+        ${OC} delete pod $pod_name -n $control_ns
+    else
+        info "Webhook pod not in control namespace, skipping restart."
+    fi
 }
 
 function update_opreqs(){
