@@ -144,10 +144,8 @@ NEXT_DEPLOYMENT:
 				return deploymentsToUpdate, fmt.Errorf("error parsing NotAfter time: %v", err)
 			}
 			labelTime := deployment.ObjectMeta.Labels[restartLabel]
-			t := strings.Split(labelTime, ".")
-			second := "00"
-			if len(t[1]) == 4 {
-				labelTime = labelTime + string(second)
+			if t := strings.Split(labelTime, "."); len(t[len(t)-1]) == 4 {
+				labelTime = labelTime + string("00")
 			}
 			restartedTime, err := time.Parse("2006-1-2.150405", labelTime)
 			if err != nil {
