@@ -19,6 +19,7 @@ package certmanager
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -142,7 +143,13 @@ NEXT_DEPLOYMENT:
 			if err != nil {
 				return deploymentsToUpdate, fmt.Errorf("error parsing NotAfter time: %v", err)
 			}
-			restartedTime, err := time.Parse("2006-1-2.150405", deployment.ObjectMeta.Labels[restartLabel])
+			labelTime := deployment.ObjectMeta.Labels[restartLabel]
+			t := strings.Split(labelTime, ".")
+			second := "00"
+			if len(t[1]) == 4 {
+				labelTime = labelTime + string(second)
+			}
+			restartedTime, err := time.Parse("2006-1-2.150405", labelTime)
 			if err != nil {
 				return deploymentsToUpdate, fmt.Errorf("error parsing time-restarted: %v", err)
 			}
