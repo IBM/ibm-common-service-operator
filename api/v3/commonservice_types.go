@@ -137,10 +137,10 @@ type ConfigStatus struct {
 	CatalogName             CatalogName       `json:"catalogName,omitempty"`
 	CatalogNamespace        CatalogNamespace  `json:"catalogNamespace,omitempty"`
 	OperatorNamespace       OperatorNamespace `json:"operatorNamespace,omitempty"`
-	OperatorDeployed        bool              `json:"operatorDeployed"`
+	OperatorDeployed        bool              `json:"operatorDeployed,omitempty"`
 	ServicesNamespace       ServicesNamespace `json:"servicesNamespace,omitempty"`
-	ServicesDeployed        bool              `json:"servicesDeployed"`
-	Configurable            bool              `json:"configurable"`
+	ServicesDeployed        bool              `json:"servicesDeployed,omitempty"`
+	Configurable            bool              `json:"configurable,omitempty"`
 	TopologyConfigurableCRs []ConfigurableCR  `json:"topologyConfigurableCRs,omitempty"`
 }
 

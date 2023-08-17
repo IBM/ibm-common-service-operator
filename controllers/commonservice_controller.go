@@ -173,13 +173,6 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 		}
 	}
 
-	// Reconcile the webhooks if it is ocp
-	// if r.Bootstrap.CSData.IsOCP {
-	// 	if err := webhooks.Config.Reconcile(context.TODO(), r.Client, instance); err != nil {
-	// 		return ctrl.Result{}, err
-	// 	}
-	// }
-
 	// Init common service bootstrap resource
 	// Including namespace-scope configmap
 	// Deploy OperandConfig and OperandRegistry
