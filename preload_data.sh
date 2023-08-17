@@ -285,13 +285,18 @@ EOF
 
   ${OC} apply -f $TEMPFILE
 
-  status=$(${OC} get pvc cs-mongodump --no-headers | awk '{print $2}')
-  while [[ "$status" != "Bound" ]]
-  do
-    info "Waiting for pvc cs-mongodump to bind"
-    sleep 10
+  wait_trigger=$(${OC} get sc $NEW_STORAGE_CLASS -o yaml | grep volumeBindingMode: | awk '{print $2}')
+  if [[ $wait_trigger == "WaitForFirstConsumer" ]]; then
+    info "StorageClass waits for pod to claim PVC, skipping wait for binding."
+  else
     status=$(${OC} get pvc cs-mongodump --no-headers | awk '{print $2}')
-  done
+    while [[ "$status" != "Bound" ]]
+    do
+      info "Waiting for pvc cs-mongodump to bind"
+      sleep 10
+      status=$(${OC} get pvc cs-mongodump --no-headers | awk '{print $2}')
+    done
+  fi
   success "MongoDB PVC ready"
 
 } # createdumppvc
