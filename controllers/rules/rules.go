@@ -121,6 +121,25 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+- name: ibm-im-mongodb-operator-v4.2
+  spec:
+    mongoDB:
+      replicas: LARGEST_VALUE
+      resources:
+        limits:
+          cpu: LARGEST_VALUE
+          memory: LARGEST_VALUE
+        requests:
+          cpu: LARGEST_VALUE
+          memory: LARGEST_VALUE
+      metrics:
+        resources:
+          requests:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
 - name: ibm-iam-operator
   spec:
     authentication:
@@ -384,6 +403,52 @@ const ConfigurationRules = `
           requests:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+- name: ibm-im-operator-v4.2
+  spec:
+    authentication:
+      config:
+        fipsEnabled: LARGEST_VALUE
+      replicas: LARGEST_VALUE
+      auditService:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      authService:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      clientRegistration:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      identityManager:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      identityProvider:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
 - name: ibm-management-ingress-operator
   spec:
     managementIngress:
@@ -514,6 +579,26 @@ const ConfigurationRules = `
               cpu: LARGEST_VALUE
               memory: LARGEST_VALUE
 - name: ibm-idp-config-ui-operator-v4.1
+  spec:
+    commonWebUI:
+      replicas: LARGEST_VALUE
+      resources:
+        requests:
+          memory: LARGEST_VALUE
+          cpu: LARGEST_VALUE
+        limits:
+          memory: LARGEST_VALUE
+          cpu: LARGEST_VALUE
+      commonWebUIConfig:
+        dashboardData:
+          resources:
+            limits:
+              cpu: LARGEST_VALUE
+              memory: LARGEST_VALUE
+            requests:
+              cpu: LARGEST_VALUE
+              memory: LARGEST_VALUE
+- name: ibm-idp-config-ui-operator-v4.2
   spec:
     commonWebUI:
       replicas: LARGEST_VALUE

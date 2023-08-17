@@ -162,7 +162,8 @@ type CommonService struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// +kubebuilder:pruning:PreserveUnknownFields
-	Spec   CommonServiceSpec   `json:"spec,omitempty"`
+	Spec CommonServiceSpec `json:"spec,omitempty"`
+	// +kubebuilder:pruning:PreserveUnknownFields
 	Status CommonServiceStatus `json:"status,omitempty"`
 }
 
