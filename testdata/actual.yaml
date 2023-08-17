@@ -158,6 +158,38 @@
     }
   },
   {
+    "name": "ibm-idp-config-ui-operator-v4.2",
+    "spec": {
+      "commonWebUI": {
+        "commonWebUIConfig": {
+          "dashboardData": {
+            "resources": {
+              "limits": {
+                "cpu": "3000m",
+                "memory": "600Mi"
+              },
+              "requests": {
+                "cpu": "390m",
+                "memory": "380Mi"
+              }
+            }
+          }
+        },
+        "replicas": 3,
+        "resources": {
+          "limits": {
+            "cpu": "1000m",
+            "memory": "660Mi"
+          },
+          "requests": {
+            "cpu": "450m",
+            "memory": "490Mi"
+          }
+        }
+      }
+    }
+  },
+  {
     "name": "ibm-idp-config-ui-operator",
     "spec": {
       "commonWebUI": {
@@ -611,6 +643,74 @@
     }
   },
   {
+    "name": "ibm-im-operator-v4.2",
+    "spec": {
+      "authentication": {
+        "auditService": {
+          "resources": {
+            "limits": {
+              "cpu": "1000m",
+              "memory": "50Mi"
+            },
+            "requests": {
+              "cpu": "10m",
+              "memory": "40Mi"
+            }
+          }
+        },
+        "authService": {
+          "resources": {
+            "limits": {
+              "cpu": "2000m",
+              "memory": "1090Mi"
+            },
+            "requests": {
+              "cpu": "400m",
+              "memory": "540Mi"
+            }
+          }
+        },
+        "clientRegistration": {
+          "resources": {
+            "limits": {
+              "cpu": "1000m",
+              "memory": "50Mi"
+            },
+            "requests": {
+              "cpu": "20m",
+              "memory": "50Mi"
+            }
+          }
+        },
+        "identityManager": {
+          "resources": {
+            "limits": {
+              "cpu": "1000m",
+              "memory": "1270Mi"
+            },
+            "requests": {
+              "cpu": "260m",
+              "memory": "210Mi"
+            }
+          }
+        },
+        "identityProvider": {
+          "resources": {
+            "limits": {
+              "cpu": "1000m",
+              "memory": "920Mi"
+            },
+            "requests": {
+              "cpu": "570m",
+              "memory": "210Mi"
+            }
+          }
+        },
+        "replicas": 3
+      }
+    }
+  },
+  {
     "name": "ibm-ingress-nginx-operator",
     "spec": {
       "nginxIngress": {
@@ -746,6 +846,24 @@
   },
   {
     "name": "ibm-im-mongodb-operator-v4.1",
+    "spec": {
+      "mongoDB": {
+        "replicas": 3,
+        "resources": {
+          "limits": {
+            "cpu": "3000m",
+            "memory": "3Gi"
+          },
+          "requests": {
+            "cpu": "500m",
+            "memory": "3Gi"
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "ibm-im-mongodb-operator-v4.2",
     "spec": {
       "mongoDB": {
         "replicas": 3,
