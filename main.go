@@ -164,11 +164,44 @@ func main() {
 			os.Exit(1)
 		}
 
-		finish := make(chan struct{})
-		// Clean up webhook resources
-		go goroutines.CleanUpWebhook(finish, bs)
-		// wait for cleanup finish
-		<-finish
+		validatingWebhookConfiguration := bootstrap.Resource{
+			Name:    "ibm-common-service-validating-webhook-" + bs.CSData.OperatorNs,
+			Version: "v1",
+			Group:   "admissionregistration.k8s.io",
+			Kind:    "ValidatingWebhookConfiguration",
+			Scope:   "clusterScope",
+		}
+
+		mutatingWebhookConfiguration := bootstrap.Resource{
+			Name:    "ibm-operandrequest-webhook-configuration-" + bs.CSData.OperatorNs,
+			Version: "v1",
+			Group:   "admissionregistration.k8s.io",
+			Kind:    "MutatingWebhookConfiguration",
+			Scope:   "clusterScope",
+		}
+
+		webhookService := bootstrap.Resource{
+			Name:    "webhook-service",
+			Version: "v1",
+			Group:   "",
+			Kind:    "Service",
+			Scope:   "namespaceScope",
+		}
+		// cleanup old webhookconfigurations and services
+		if err := bs.Cleanup(bs.CSData.OperatorNs, &validatingWebhookConfiguration); err != nil {
+			klog.Errorf("Failed to cleanup validatingWebhookConfig: %v", err)
+			os.Exit(1)
+		}
+
+		if err := bs.Cleanup(bs.CSData.OperatorNs, &mutatingWebhookConfiguration); err != nil {
+			klog.Errorf("Failed to cleanup mutatingWebhookConfiguration: %v", err)
+			os.Exit(1)
+		}
+
+		if err := bs.Cleanup(bs.CSData.OperatorNs, &webhookService); err != nil {
+			klog.Errorf("Failed to cleanup webhookService: %v", err)
+			os.Exit(1)
+		}
 		// Create or Update CPP configuration
 		go goroutines.CreateUpdateConfig(bs)
 		// Update CS CR Status

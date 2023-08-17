@@ -169,10 +169,6 @@ spec:
                           type: string
                       type: object
                     type: array
-                required:
-                - configurable
-                - operatorDeployed
-                - servicesDeployed
                 type: object
               overallStatus:
                 type: string
