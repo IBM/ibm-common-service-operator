@@ -25,6 +25,7 @@ metadata:
     createdAt: "2023-07-26T17:27:50Z"
     description: The IBM Common Service Operator is used to deploy IBM Common Services
     nss.operator.ibm.com/managed-operators: ibm-common-service-operator
+    nss.operator.ibm.com/managed-webhooks: ""
     olm.skipRange: ">=3.3.0 <4.2.0"
     operatorChannel: v4.2
     operatorVersion: 4.2.0
