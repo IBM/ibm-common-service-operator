@@ -449,6 +449,14 @@ function wait_for_operator_upgrade() {
     local success_message="Operator ${package_name} is upgraded to latest version in channel ${channel}"
     local error_message="Timeout after ${total_time_mins} minutes waiting for operator ${package_name} to be upgraded"
 
+    # if channel is not set, skip the wait
+    if [[ "${channel}" == "null" ]]; then
+        info "${wait_message}"
+        sleep ${sleep_time}
+        warning "Channel is not set for operator ${package_name}. Skipping wait for operator upgrade"
+        return 0
+    fi
+
     if [[ "${install_mode}" == "Manual" ]]; then
         wait_message="Waiting for operator ${package_name} to be upgraded \nPlease manually approve installPlan to make upgrade proceeding..."
         error_message="Timeout after ${total_time_mins} minutes waiting for operator ${package_name} to be upgraded \nInstallPlan is not manually approved yet"
@@ -519,23 +527,26 @@ function catalogsource_correction() {
     local catalog_namespace=$source_ns
     local return_value=0
 
-    result=$(check_catalogsource $source $source_ns $pm $operator_ns $channel)
-    # if the given catalogsource is not available for selected packagemanifest and channel (result is 1), then find the available catalogsource
-    if [[ $result == "1" ]]; then
-        # get the available catalogsource
-        result=$(get_catalogsource $pm $operator_ns $channel)
-        IFS=" " read -r count catalog catalog_ns <<< "$result"
-        # if the available catalogsource is more than one, then return error
-        # if the available catalogsource is zero, then return error
-        # if the available catalogsource is one, then use the available catalogsource
-        if [[ $count -gt 1 ]]; then
-            return_value=1
-        elif [[ $count -eq 0 ]]; then
-            return_value=2
-        else
-            catalog_source="$catalog"
-            catalog_namespace="$catalog_ns"
-            return_value=3
+    # if the given channel is not default, then check if the given catalogsource is available for selected packagemanifest and channel
+    if [[ $channel != "null" ]]; then
+        result=$(check_catalogsource $source $source_ns $pm $operator_ns $channel)
+        # if the given catalogsource is not available for selected packagemanifest and channel (result is 1), then find the available catalogsource
+        if [[ $result == "1" ]]; then
+            # get the available catalogsource
+            result=$(get_catalogsource $pm $operator_ns $channel)
+            IFS=" " read -r count catalog catalog_ns <<< "$result"
+            # if the available catalogsource is more than one, then return error
+            # if the available catalogsource is zero, then return error
+            # if the available catalogsource is one, then use the available catalogsource
+            if [[ $count -gt 1 ]]; then
+                return_value=1
+            elif [[ $count -eq 0 ]]; then
+                return_value=2
+            else
+                catalog_source="$catalog"
+                catalog_namespace="$catalog_ns"
+                return_value=3
+            fi
         fi
     fi
     echo "$return_value $catalog_source $catalog_namespace"
@@ -910,6 +921,16 @@ function get_control_namespace() {
 }
 
 function compare_semantic_version() {
+    # if any channel is not set, return 2
+    if [[ "$1" == "null" ]]; then
+        info "Existing channel is not set, skip channel check"
+        return 2
+    fi
+    if [[ "$2" == "null" ]]; then
+        info "New channel is not set, skip channel check"
+        return 2
+    fi
+
     # Extract major, minor, and patch versions from the arguments
     regex='^v([0-9]+)\.?([0-9]*)\.?([0-9]*)?$'
     if [[ $1 =~ $regex ]]; then
@@ -1017,7 +1038,11 @@ function update_operator() {
         fi
 
         # Update the subscription with the desired changes
-        ${YQ} -i eval 'select(.kind == "Subscription") | .spec += {"channel": "'${channel}'"}' sub.yaml
+        if [[ "$channel" == "null" ]]; then
+            ${YQ} -i eval 'select(.kind == "Subscription") | .spec += {"channel": null}' sub.yaml
+        else
+            ${YQ} -i eval 'select(.kind == "Subscription") | .spec += {"channel": "'${channel}'"}' sub.yaml
+        fi
         ${YQ} -i eval 'select(.kind == "Subscription") | .spec += {"source": "'${source}'"}' sub.yaml
         ${YQ} -i eval 'select(.kind == "Subscription") | .spec += {"sourceNamespace": "'${source_ns}'"}' sub.yaml
         ${YQ} -i eval 'select(.kind == "Subscription") | .spec += {"installPlanApproval": "'${install_mode}'"}' sub.yaml
