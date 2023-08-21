@@ -401,6 +401,8 @@ function pre_req() {
         else
             error "Channel $CHANNEL is less than v4.0"
         fi
+    elif [[ $CHANNEL == "null" ]]; then
+        warning "Channel is not set, default channel from operator bundle will be used"
     else
         error "Channel $CHANNEL is not semantic vx.y"
     fi
