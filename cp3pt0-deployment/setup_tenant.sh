@@ -492,7 +492,7 @@ EOF
 }
 
 function configure_cs_kind() {
-    local retries=5
+    local retries=10
     local delay=30
 
     title "Configuring CommonService CR in $OPERATOR_NS..."
@@ -531,8 +531,9 @@ EOF
             else
                 operatorNSinCR=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | yq '.spec.operatorNamespace')
                 servicesNSinCR=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | yq '.spec.servicesNamespace')
-                info "OperatorNamespace in CommonService cr should be ${OPERATOR_NS}, but it is ${operatorNSinCR}"
-                info "ServicesNamespace in CommonService cr should be ${SERVICES_NS}, but it is ${servicesNSinCR}"
+                warning "OperatorNamespace in CommonService cr should be ${OPERATOR_NS}, but it is ${operatorNSinCR}"
+                warning "ServicesNamespace in CommonService cr should be ${SERVICES_NS}, but it is ${servicesNSinCR}"
+                retries=$((retries-1))
             fi
         else
             warning "Failed to patch CommonService CR in ${OPERATOR_NS}, retry it in ${delay} seconds..."
