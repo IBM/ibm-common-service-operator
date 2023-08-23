@@ -548,7 +548,6 @@ function install_cs_operator() {
         fi
         wait_for_operator "$OPERATOR_NS" "ibm-common-service-operator"
         accept_license "commonservice" "$OPERATOR_NS" "common-service"
-        wait_for_cs_webhook "$OPERATOR_NS" "ibm-common-service-webhook"
     else
         info "Preview mode is on, skip waiting for operator and webhook being ready\n"
     fi
