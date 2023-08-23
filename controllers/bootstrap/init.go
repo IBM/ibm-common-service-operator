@@ -1436,3 +1436,45 @@ func (b *Bootstrap) PropagateCPPConfig(instance *corev1.ConfigMap) error {
 	}
 	return nil
 }
+
+func (b *Bootstrap) CleanupWebhookResources() error {
+	validatingWebhookConfiguration := Resource{
+		Name:    "ibm-common-service-validating-webhook-" + b.CSData.OperatorNs,
+		Version: "v1",
+		Group:   "admissionregistration.k8s.io",
+		Kind:    "ValidatingWebhookConfiguration",
+		Scope:   "clusterScope",
+	}
+
+	mutatingWebhookConfiguration := Resource{
+		Name:    "ibm-operandrequest-webhook-configuration-" + b.CSData.OperatorNs,
+		Version: "v1",
+		Group:   "admissionregistration.k8s.io",
+		Kind:    "MutatingWebhookConfiguration",
+		Scope:   "clusterScope",
+	}
+
+	webhookService := Resource{
+		Name:    "webhook-service",
+		Version: "v1",
+		Group:   "",
+		Kind:    "Service",
+		Scope:   "namespaceScope",
+	}
+	// cleanup old webhookconfigurations and services
+	if err := b.Cleanup(b.CSData.OperatorNs, &validatingWebhookConfiguration); err != nil {
+		klog.Errorf("Failed to cleanup validatingWebhookConfig: %v", err)
+		return err
+	}
+
+	if err := b.Cleanup(b.CSData.OperatorNs, &mutatingWebhookConfiguration); err != nil {
+		klog.Errorf("Failed to cleanup mutatingWebhookConfiguration: %v", err)
+		return err
+	}
+
+	if err := b.Cleanup(b.CSData.OperatorNs, &webhookService); err != nil {
+		klog.Errorf("Failed to cleanup webhookService: %v", err)
+		return err
+	}
+	return nil
+}

@@ -93,10 +93,4 @@ spec:
           privileged: false
           readOnlyRootFilesystem: true
           runAsNonRoot: true
-        volumeMounts:
-        - name: webhook-certs
-          mountPath: "/etc/ssl/certs/webhook"
       terminationGracePeriodSeconds: 10
-      volumes:
-      - emptyDir: {}
-        name: webhook-certs

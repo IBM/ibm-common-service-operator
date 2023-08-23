@@ -52,7 +52,8 @@ import (
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/controllers/goroutines"
-	"github.com/IBM/ibm-common-service-operator/controllers/webhooks"
+	commonservicewebhook "github.com/IBM/ibm-common-service-operator/controllers/webhooks/commonservice"
+	operandrequestwebhook "github.com/IBM/ibm-common-service-operator/controllers/webhooks/operandrequest"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -163,29 +164,16 @@ func main() {
 			os.Exit(1)
 		}
 
-		validatingWebhookConfiguration := bootstrap.Resource{
-			Name:    "ibm-common-service-validating-webhook-" + bs.CSData.OperatorNs,
-			Version: "v1",
-			Group:   "admissionregistration.k8s.io",
-			Kind:    "ValidatingWebhookConfiguration",
-			Scope:   "clusterScope",
-		}
-
-		if err = bs.Cleanup(bs.CSData.OperatorNs, &validatingWebhookConfiguration); err != nil {
-			klog.Errorf("Failed to cleanup validatingWebhookConfig: %v", err)
+		if err := bs.CleanupWebhookResources(); err != nil {
+			klog.Errorf("Cleanup Webhook Resources failed: %v", err)
 			os.Exit(1)
 		}
-
-		klog.Infof("Creating CommonService CR in the namespace %s", bs.CSData.OperatorNs)
-		if err = bs.CreateCsCR(); err != nil {
-			klog.Errorf("Failed to create CommonService CR: %v", err)
-			os.Exit(1)
-		}
-
 		// Create or Update CPP configuration
 		go goroutines.CreateUpdateConfig(bs)
 		// Update CS CR Status
 		go goroutines.UpdateCsCrStatus(bs)
+		// Create CS CR
+		go goroutines.WaitToCreateCsCR(bs)
 
 		if err = (&controllers.CommonServiceReconciler{
 			Bootstrap: bs,
@@ -216,15 +204,28 @@ func main() {
 			klog.Error(err, "unable to create controller", "controller", "V1AddLabel")
 			os.Exit(1)
 		}
-		// Start up the webhook server if it is ocp
-		if bs.CSData.IsOCP {
-			if err := webhooks.SetupWebhooks(mgr, bs); err != nil {
-				klog.Error(err, "Error setting up webhook server")
-			}
-		}
 	} else {
 		klog.Infof("Common Service Operator goes dormant in the namespace %s", operatorNs)
 		klog.Infof("Common Service Operator in the namespace %s takes charge of resource management", cpfsNs)
+	}
+
+	// Start up the webhook server if it is ocp
+	if err = (&commonservicewebhook.Defaulter{
+		Client:    mgr.GetClient(),
+		Reader:    mgr.GetAPIReader(),
+		IsDormant: operatorNs != cpfsNs,
+	}).SetupWebhookWithManager(mgr); err != nil {
+		klog.Errorf("Unable to create CommonService webhook: %v", err)
+		os.Exit(1)
+	}
+
+	if err = (&operandrequestwebhook.Defaulter{
+		Client:    mgr.GetClient(),
+		Reader:    mgr.GetAPIReader(),
+		IsDormant: operatorNs != cpfsNs,
+	}).SetupWebhookWithManager(mgr); err != nil {
+		klog.Errorf("Unable to create OperandRequest webhook: %v", err)
+		os.Exit(1)
 	}
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

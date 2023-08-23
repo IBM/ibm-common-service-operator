@@ -44,7 +44,6 @@ import (
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
-	"github.com/IBM/ibm-common-service-operator/controllers/webhooks"
 )
 
 // CommonServiceReconciler reconciles a CommonService object
@@ -171,13 +170,6 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 				klog.Errorf("Failed to update namespaceMapping in common-service-maps: %v", err)
 				os.Exit(1)
 			}
-		}
-	}
-
-	// Reconcile the webhooks if it is ocp
-	if r.Bootstrap.CSData.IsOCP {
-		if err := webhooks.Config.Reconcile(context.TODO(), r.Client, instance); err != nil {
-			return ctrl.Result{}, err
 		}
 	}
 

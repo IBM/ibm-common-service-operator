@@ -27,25 +27,44 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	operatorv3 "github.com/IBM/ibm-common-service-operator/api/v3"
-	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
+	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
-	"github.com/IBM/operand-deployment-lifecycle-manager/controllers/util"
 )
 
-// +kubebuilder:webhook:path=/mutate-operator-ibm-com-v1alpha1-operandrequest,mutating=true,failurePolicy=fail,sideEffects=None,groups=operator.ibm.com,resources=operandrequests,verbs=create;update,versions=v1alpha1,name=moperandrequest.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/validate-operator-ibm-com-v3-commonservice,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.ibm.com,resources=commonservice,verbs=create;update,versions=v3,name=vcommonservice.kb.io,admissionReviewVersions=v1
 
-// OperandRequestDefaulter points to correct RegistryNamespace
+// CommonServiceDefaulter points to correct ServiceNamespace
 type Defaulter struct {
-	*bootstrap.Bootstrap
-	decoder *admission.Decoder
+	Reader    client.Reader
+	Client    client.Client
+	IsDormant bool
+	decoder   *admission.Decoder
 }
 
 // podAnnotator adds an annotation to every incoming pods.
 func (r *Defaulter) Handle(ctx context.Context, req admission.Request) admission.Response {
 	klog.Infof("Webhook is invoked by Commonservice %s/%s", req.AdmissionRequest.Namespace, req.AdmissionRequest.Name)
+
+	if r.IsDormant {
+		return admission.Allowed("")
+	}
+	serviceNs := util.GetServicesNamespace(r.Reader)
+	operatorNs, operatorNsErr := util.GetOperatorNamespace()
+	if operatorNsErr != nil {
+		return admission.Errored(http.StatusBadRequest, operatorNsErr)
+	}
+
+	catalogSourceName, catalogSourceNs := util.GetCatalogSource(constant.IBMCSPackage, operatorNs, r.Reader)
+	if catalogSourceName == "" || catalogSourceNs == "" {
+		err := fmt.Errorf("failed to get catalogsource")
+		return admission.Errored(http.StatusBadRequest, err)
+	}
 
 	cs := &operatorv3.CommonService{}
 
@@ -55,7 +74,7 @@ func (r *Defaulter) Handle(ctx context.Context, req admission.Request) admission
 	}
 
 	// if it is master CommonService CR, check operator and services namespaces
-	if req.AdmissionRequest.Name == constant.MasterCR && req.AdmissionRequest.Namespace == r.Bootstrap.CSData.OperatorNs {
+	if req.AdmissionRequest.Name == constant.MasterCR && req.AdmissionRequest.Namespace == operatorNs {
 		klog.Infof("Start to validate master CommonService CR")
 		// check OperatorNamespace
 		opNs := cs.Spec.OperatorNamespace
@@ -81,14 +100,14 @@ func (r *Defaulter) Handle(ctx context.Context, req admission.Request) admission
 		klog.Infof("Start to validate non-master CommonService CR")
 		// check OperatorNamespace
 		operatorNamespace := cs.Spec.OperatorNamespace
-		deniedOperatorNs := r.CheckConfig(string(operatorNamespace), r.Bootstrap.CSData.OperatorNs)
+		deniedOperatorNs := r.CheckConfig(string(operatorNamespace), operatorNs)
 		if deniedOperatorNs {
 			return admission.Denied(fmt.Sprintf("Operator Namespace: %v is not allowed to be configured in namespace %v", operatorNamespace, req.AdmissionRequest.Namespace))
 		}
 
 		// check ServicesNamespace
 		servicesNamespace := cs.Spec.ServicesNamespace
-		deniedServicesNs := r.CheckConfig(string(servicesNamespace), r.Bootstrap.CSData.ServicesNs)
+		deniedServicesNs := r.CheckConfig(string(servicesNamespace), serviceNs)
 		if deniedServicesNs {
 			return admission.Denied(fmt.Sprintf("Services Namespace: %v is not allowed to be configured in namespace %v", servicesNamespace, req.AdmissionRequest.Namespace))
 		}
@@ -96,14 +115,14 @@ func (r *Defaulter) Handle(ctx context.Context, req admission.Request) admission
 		// check CatalogName
 
 		catalogName := cs.Spec.CatalogName
-		deniedCatalog := r.CheckConfig(string(catalogName), r.Bootstrap.CSData.CatalogSourceName)
+		deniedCatalog := r.CheckConfig(string(catalogName), catalogSourceName)
 		if deniedCatalog {
 			return admission.Denied(fmt.Sprintf("CatalogSource Name: %v is not allowed to be configured in namespace %v", catalogName, req.AdmissionRequest.Namespace))
 		}
 
 		// check CatalogNamespace
 		catalogNamespace := cs.Spec.CatalogNamespace
-		deniedCatalogNs := r.CheckConfig(string(catalogNamespace), r.Bootstrap.CSData.CatalogSourceNs)
+		deniedCatalogNs := r.CheckConfig(string(catalogNamespace), catalogSourceNs)
 		if deniedCatalogNs {
 			return admission.Denied(fmt.Sprintf("CatalogSource Namespace: %v is not allowed to be configured in namespace %v", catalogNamespace, req.AdmissionRequest.Namespace))
 		}
@@ -114,12 +133,13 @@ func (r *Defaulter) Handle(ctx context.Context, req admission.Request) admission
 }
 
 func (r *Defaulter) CheckNamespace(name string) (bool, error) {
+	watchNamespaces := util.GetWatchNamespace()
 	denied := false
 	if name == "" {
 		return false, nil
 	}
 	// in cluster scope
-	if len(r.Bootstrap.CSData.WatchNamespaces) == 0 {
+	if len(watchNamespaces) == 0 {
 		ctx := context.Background()
 		ns := &corev1.Namespace{}
 		nsKey := types.NamespacedName{
@@ -132,7 +152,7 @@ func (r *Defaulter) CheckNamespace(name string) (bool, error) {
 
 		}
 		// if it is not cluster scope
-	} else if len(r.Bootstrap.CSData.WatchNamespaces) != 0 && !util.Contains(strings.Split(r.Bootstrap.CSData.WatchNamespaces, ","), name) {
+	} else if len(watchNamespaces) != 0 && !util.Contains(strings.Split(watchNamespaces, ","), name) {
 		denied = true
 	}
 	return denied, nil
@@ -147,5 +167,14 @@ func (r *Defaulter) CheckConfig(config, parameter string) bool {
 
 func (r *Defaulter) InjectDecoder(decoder *admission.Decoder) error {
 	r.decoder = decoder
+	return nil
+}
+
+func (r *Defaulter) SetupWebhookWithManager(mgr ctrl.Manager) error {
+
+	mgr.GetWebhookServer().
+		Register("/validate-operator-ibm-com-v3-commonservice",
+			&webhook.Admission{Handler: r})
+
 	return nil
 }
