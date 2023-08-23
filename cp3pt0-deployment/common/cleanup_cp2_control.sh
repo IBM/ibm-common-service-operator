@@ -10,6 +10,7 @@
 
 # ---------- Command arguments ----------
 OC=oc
+ENABLE_LICENSING=0
 
 
 # ---------- Command variables ----------
@@ -52,6 +53,9 @@ function parse_arguments() {
             shift
             OC=$1
             ;;
+        --enable-licensing)
+            ENABLE_LICENSING=1
+            ;;
         -h | --help)
             print_usage
             exit 1
@@ -75,6 +79,7 @@ function print_usage() {
     echo "Options:"
     echo "   --oc string                                    File path to oc CLI. Default uses oc in your PATH"
     echo "   -h, --help                                     Print usage information"
+    echo "   --enable-licensing                             Set this flag to install ibm-licensing-operator"
     echo ""
 }
 
@@ -85,6 +90,7 @@ function pre_req() {
     user=$(oc whoami 2> /dev/null)
     if [ $? -ne 0 ]; then
         error "You must be logged into the OpenShift Cluster from the oc command line"
+        exit 1
     else
         success "oc command logged in as ${user}"
     fi
@@ -92,7 +98,7 @@ function pre_req() {
     get_control_namespace
 
     # checking if there is any CS operator is still in v3.x.x
-    info "[Step 1] Checking ibm-common-service-operator channel ..."
+    title "[Step 1] Checking ibm-common-service-operator channel ..."
     cs_namespace=$(${OC} -n kube-public get cm common-service-maps -o jsonpath='{.data.common-service-maps\.yaml}' | (grep 'map-to-common-service-namespace' || echo "fail") | awk '{print $2}')
     if [[ $cs_namespace == "fail" ]]; then
         info "It is not in multi-instance mode"
@@ -105,6 +111,7 @@ function pre_req() {
                 channel=$(echo ${csv} | cut -d "." -f 2 | awk '{print $1}')
                 if [[ "${channel}" == "v3" ]]; then
                     error "Found ibm-common-service-operator in v3.x version, user need to remove it before running this script"
+                    exit 1
                 fi
             fi
         done
@@ -113,9 +120,44 @@ function pre_req() {
 
     # skip checking licensing instance
     # info "[Step 2] Checking IBMLicensing instance..."
+    title "[Step 2] Checking licesing service version..."
+    if [ $ENABLE_LICENSING -eq 1 ]; then
+        check_licensing
+        if [ $? -ne 0 ]; then
+            error "ibm-licensing is not found or having more than one\n"
+            exit 1
+        fi
+
+        local version=$("$OC" get ibmlicensing instance -o jsonpath='{.spec.version}')
+        if [ -z "$version" ]; then
+            warning "No version field in ibmlicensing CR"
+            exit 1
+        fi
+
+        local major=$(echo "$version" | cut -d '.' -f1)
+        if [ "$major" -eq 3 ]; then
+            warning "IBM licensing still in v3 version, we should run setup_singleton.sh to migrate Licensing Service to v4.x first"
+            exit 1
+        fi
+
+        local ns=$("$OC" get deployments -A | grep ibm-licensing-operator | cut -d ' ' -f1)
+        if [ -z "$ns" ]; then
+            info "No ibm-licensing-operator found, exit"
+            exit 1
+        fi
+        if [ $ns == $CONTROL_NS ]; then
+            warning "IBM licensing is installed in the control namespace, we should not cleanup it"
+            exit 1
+        fi
+
+        success "Found available licensing in the cluster"
+
+    fi
+
+
 
     # checking cert manager 
-    info "[Step 2] Checking if there is an available cert-manager in the cluster..."
+    title "[Step 3] Checking if there is an available cert-manager in the cluster..."
     local not_in_control_ns=0
     pods_namespaces=$(${OC} get pods -A | (grep "cert-manager-webhook" || echo "fail") | awk '{print $1}')
     if [[ $pods_namespaces == "fail" ]]; then
@@ -124,9 +166,11 @@ function pre_req() {
         if [ $? -eq 0 ]; then
             # There is a cert-manager operator in the cluster, but no operand, return error
             error "There is a cert-manager operator in Control namespace, but no cert-manager operand found"
+            exit 1
         else
             # There is no cert-manager in the cluster
             error "There is no cert-manager in the cluster"
+            exit 1
         fi
     else
         for ns in $pods_namespaces
@@ -140,6 +184,7 @@ function pre_req() {
 
     if [[ $not_in_control_ns -eq 0 ]]; then
         error "only found one cert-manager in control namespace, we should not clean it"
+        exit 1
     fi
 
     success "Found available cert-manager in the cluster"
