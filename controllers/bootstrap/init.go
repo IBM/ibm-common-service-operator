@@ -660,6 +660,7 @@ func (b *Bootstrap) InstallOrUpdateOpreg(forceUpdateODLMCRs bool, installPlanApp
 		constant.IMOpReg,
 		constant.IdpConfigUIOpReg,
 		constant.PlatformUIOpReg,
+		constant.KeyCloakOpReg,
 	}
 
 	for _, reg := range registries {
@@ -679,6 +680,7 @@ func (b *Bootstrap) InstallOrUpdateOpreg(forceUpdateODLMCRs bool, installPlanApp
 		constant.MongoDBOpReg,
 		constant.IMOpReg,
 		constant.PlatformUIOpReg,
+		constant.KeyCloakOpReg,
 	}
 
 	for _, reg := range Saasregistries {
@@ -740,6 +742,7 @@ func (b *Bootstrap) InstallOrUpdateOpcon(forceUpdateODLMCRs bool) error {
 		constant.IMOpCon,
 		constant.IdpConfigUIOpCon,
 		constant.PlatformUIOpCon,
+		constant.KeyCloakOpCon,
 	}
 
 	constant.CSV3OperandConfig = constant.CSV3OpCon
