@@ -28,6 +28,7 @@ MASTER_NS=
 EXCLUDED_NS=""
 ADDITIONAL_NS=""
 CONTROL_NS=""
+LSR_NAMESPACE=MASTER_NS
 CS_MAPPING_YAML=""
 CM_NAME="common-service-maps"
 CERT_MANAGER_MIGRATED="false"
@@ -133,7 +134,7 @@ Usage: ${script} [OPTION]...
 Isolate and prepare Cloud Pak 2.0 Foundational Services for upgrade to or additional installation of Cloud Pak 3.0 Foundational Services
 
 Examples:
-# isolate the existing instance scope in ibm-common-serivces namespace and re-deploy cluster sigleton services in cs-control namespace
+# isolate the existing instance scope in ibm-common-services namespace and re-deploy cluster sigleton services in cs-control namespace
 isolate.sh --original-cs-ns ibm-common-services --control-ns cs-control
 
 # remove cloudpak-1 and cloudpak-2 namespace from the existing instance scope in ibm-common-services
@@ -164,14 +165,7 @@ function prereq() {
     #verify one and only one cert manager is installed
     check_certmanager_count
 
-    # LicenseServiceReporter should not be installed because it does not support multi-instance mode
-    return_value=$(("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
-    if [[ $return_value == "exists" ]]; then
-        return_value=$("${OC}" get ibmlicenseservicereporters -A | wc -l)
-        if [[ $return_value -gt 0 ]]; then
-            error "LicenseServiceReporter does not support multi-instance mode. Remove before proceeding"
-        fi
-    fi
+    isolate_license_service_reporter
 
     return_value="reset"
     # ensure cs-operator is not installed in all namespace mode
@@ -772,6 +766,38 @@ function check_certmanager_count(){
         fi
     fi
     success "Cert manager deployment verified."
+}
+
+function isolate_license_service_reporter(){
+
+  # LicenseServiceReporter should not be installed because it does not support multi-instance mode
+  return_value=$( ("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
+  if [[ $return_value == "exists" ]]; then
+
+      return_value=$("${OC}" get ibmlicenseservicereporters -A --no-headers | wc -l)
+      if [[ $return_value -gt 0 ]]; then
+
+        #Save existing LSR PersistentVolume and storage class.
+        status=$("${OC}" get pvc license-service-reporter-pvc -n $LSR_NAMESPACE)
+        if [[ -z "$status" ]]; then
+          error "PVC license-service-reporter-pvc not found in $LSR_NAMESPACE"
+        fi
+
+        VOL=$("${OC}" get pvc license-service-reporter-pvc -n $LSR_NAMESPACE  -o=jsonpath='{.spec.volumeName}')
+        if [[ -z "$VOL" ]]; then
+          error "Volume for pvc license-service-reporter-pvc not found in $LSR_NAMESPACE"
+        fi
+
+        #label LSR PV as LSR PV for further LSR upgrade
+        ${OC} label pv $VOL license-service-reporter-pv=true
+
+        #Change existing LSR PersistentVolumeClaim claim policy to retain.
+        ${OC} patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Retain" }}'
+        ${OC} patch pv $VOL --type=merge -p '{"spec": {"claimRef":null}}'
+        ${OC} patch pv $VOL --type=json -p '[{ "op": "remove", "path": "/spec/claimRef" }]'
+
+      fi
+  fi
 }
 
 function wait_for_nss_update() {

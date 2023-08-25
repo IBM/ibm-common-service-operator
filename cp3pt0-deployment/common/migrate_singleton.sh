@@ -16,6 +16,7 @@ OPERATOR_NS=""
 CONTROL_NS=""
 SOURCE_NS="openshift-marketplace"
 ENABLE_LICENSING=0
+LSR_NAMESPACE="ibm-lsr"
 LICENSING_NS=""
 NEW_MAPPING=""
 NEW_TENANT=0
@@ -54,15 +55,44 @@ function main() {
     
     if [[ $ENABLE_LICENSING -eq 1 ]]; then
 
-        is_exists=$("$OC" get deployments ibm-licensing-operator -n "$OPERATOR_NS")
-        if [ ! -z "$is_exists" ]; then
-            # Migrate Licensing Services Data
-            ${BASE_DIR}/migrate_cp2_licensing.sh --control-namespace "$OPERATOR_NS" --target-namespace "$LICENSING_NS" "--skip-user-vertify"
-            local is_deleted=$(("${OC}" delete -n "${CONTROL_NS}" --ignore-not-found OperandBindInfo ibm-licensing-bindinfo --timeout=10s > /dev/null && echo "success" ) || echo "fail")
-            if [[ $is_deleted == "fail" ]]; then
-                warning "Failed to delete OperandBindInfo, patching its finalizer to null..."
-                ${OC} patch -n "${CONTROL_NS}" OperandBindInfo ibm-licensing-bindinfo --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
-            fi
+        #Prepare LSR PV/PVC which was decoupled in isolate.sh
+        # delete old LSR CR - PV should stay,
+        ${OC} delete IBMLicenseServiceReporter instance -n ibm-common-services
+
+        lsr_pv_nr=$("${OC}" get pv -l license-service-reporter-pv=true --no-headers | wc -l )
+        if [[ lsr_pv_nr -gt 1 ]]; then
+          error "More than on PV with label license-service-reporter-pv=true was found. Only one is allowed."
+        fi
+
+        if [[ lsr_pv_nr -eq 1 ]]; then
+
+          create_namespace "${LSR_NAMESPACE}"
+
+          # get pv name
+          LSR_PV_NAME=${OC} get pv -l license-service-reporter-pv=true -o=jsonpath='{.items[0].metadata.name}'
+          # get storage class name
+          LSR_STORAGE_CLASS=${OC} get pv -l license-service-reporter-pv=true -o=jsonpath='{.items[0].spec.storageClassName}'
+          # create PVC
+          TEMP_LSR_PVC_FILE="_TEMP_LSR_PVC_FILE.yaml"
+
+          cat <<EOF >TEMP_LSR_PVC_FILE
+          apiVersion: v1
+          kind: PersistentVolumeClaim
+          metadata:
+            name: license-service-reporter-pvc
+            namespace: ${LSR_NAMESPACE}
+          spec:
+            accessModes:
+            - ReadWriteOnce
+            resources:
+              requests:
+                storage: 1Gi
+            storageClassName: "${LSR_STORAGE_CLASS}"
+            volumeMode: Filesystem
+            volumeName: ${LSR_PV_NAME}
+EOF
+          ${OC} create -f ${TEMP_LSR_PVC_FILE}
+          ${OC} patch pv ${LSR_PV_NAME} --type=merge -p '{"spec": {"claimRef":null}}'
         fi
         
         backup_ibmlicensing
@@ -140,6 +170,9 @@ function parse_arguments() {
         --enable-licensing)
             ENABLE_LICENSING=1
             ;;
+        --lsr-namespace)
+            LSR_NAMESPACE=$1
+            ;;
         -v | --debug)
             shift
             DEBUG=$1
@@ -168,6 +201,7 @@ function print_usage() {
     echo "   --yq string                                    File path to yq CLI. Default uses yq in your PATH"
     echo "   --operator-namespace string                    Required. Namespace to migrate Foundational services operator"
     echo "   --enable-licensing                             Set this flag to migrate ibm-licensing-operator"
+    echo "   --lsr-namespace                                Required. Namespace to migrate License Service Reporter"
     echo "   -v, --debug integer                            Verbosity of logs. Default is 0. Set to 1 for debug logs."
     echo "   -h, --help                                     Print usage information"
     echo ""
