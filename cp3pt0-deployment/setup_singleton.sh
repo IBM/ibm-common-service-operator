@@ -12,7 +12,6 @@
 
 OC=oc
 ENABLE_LICENSING=0
-ENABLE_LSR=0
 ENABLE_PRIVATE_CATALOG=0
 MIGRATE_SINGLETON=0
 OPERATOR_NS=""
@@ -56,7 +55,7 @@ function main() {
     if [ $MIGRATE_SINGLETON -eq 1 ]; then
         info "Found parameter '--operator-namespace', migrating singleton services"
         if [ $ENABLE_LICENSING -eq 1 ]; then
-            ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" "--enable-licensing"
+            ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" "--enable-licensing" "--lsr-namespace" "$LSR_NAMESPACE"
         else
             ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" 
         fi
@@ -64,6 +63,7 @@ function main() {
 
     install_cert_manager
     install_licensing
+    install_license_service_reporter
 }
 
 function parse_arguments() {
@@ -111,6 +111,10 @@ function parse_arguments() {
             LICENSING_NAMESPACE=$1
             CUSTOMIZED_LICENSING_NAMESPACE=1
             ;;
+        --lsr-namespace)
+            shift
+            LSR_NAMESPACE=$1
+            ;;
         -c | --channel)
             shift
             CHANNEL=$1
@@ -148,6 +152,7 @@ function print_usage() {
     echo "   --oc string                                    File path to oc CLI. Default uses oc in your PATH"
     echo "   --operator-namespace string                    Namespace to migrate Cloud Pak 2 Foundational services"
     echo "   --enable-licensing                             Set this flag to install ibm-licensing-operator"
+    echo "   --lsr-namespace                                Namespace to migrate License Service Reporter"
     echo "   --enable-private-catalog                       Set this flag to use namespace scoped CatalogSource. Default is in openshift-marketplace namespace"
     echo "   --cert-manager-source string                   CatalogSource name of ibm-cert-manager-operator. This assumes your CatalogSource is already created. Default is ibm-cert-manager-catalog"
     echo "   --licensing-source string                      CatalogSource name of ibm-licensing. This assumes your CatalogSource is already created. Default is ibm-licensing-catalog"
@@ -235,9 +240,9 @@ function wait_for_license_instance() {
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
-function installing_license_service_reporter() {
+function install_license_service_reporter() {
 
-  if [ $ENABLE_LSR -ne 1 ] ; then
+  if [ $ENABLE_LICENSING -ne 1 ] ; then
     return
   fi
 
@@ -250,68 +255,49 @@ function installing_license_service_reporter() {
       error "There is no ibm-license-service-reporter-operator Subscription installed\n"
   fi
 
+
   if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
       SOURCE_NS="${LSR_NAMESPACE}"
   fi
 
   create_namespace "${LSR_NAMESPACE}"
 
-  #Prepare LSR PV/PVC which was decoupled in isolate.sh
+  target=$(cat <<EOF
 
-  lsr_pv_nr=$("${OC}" get pv -l license-service-reporter-pv=true --no-headers | wc -l )
-  if [[ lsr_pv_nr -gt 1 ]]; then
-    error "More than on PV with label license-service-reporter-pv=true was found. Only one is allowed."
-  fi
-
-  if [[ lsr_pv_nr -eq 1 ]]; then
-    # get pv name
-    LSR_PV_NAME=${OC} get pv -l license-service-reporter-pv=true -o=jsonpath='{.items[0].metadata.name}'
-
-    # get storage class name
-    LSR_STORAGE_CLASS=${OC} get pv -l license-service-reporter-pv=true -o=jsonpath='{.items[0].spec.storageClassName}'
-
-    # create PVC
-    TEMP_LSR_PVC_FILE="_TMP.yaml"
-
-    cat <<EOF >TEMP_LSR_PVC_FILE
-    apiVersion: v1
-    kind: PersistentVolumeClaim
-    metadata:
-      name: license-service-reporter-pvc
-      namespace: $LSR_NAMESPACE
-    spec:
-      accessModes:
-      - ReadWriteOnce
-      resources:
-        requests:
-          storage: 1Gi
-      storageClassName: "$LSR_STORAGE_CLASS"
-      volumeMode: Filesystem
-      volumeName: $LSR_PV_NAME
+  targetNamespaces:
+    - ${LSR_NAMESPACE}
 EOF
-    ${OC} create -f TEMP_LSR_PVC_FILE
-    lsr_pvc_status=$("${OC}" get pvc license-service-reporter-pvc -n $LSR_NAMESPACE --no-headers | awk '{print $2}')
-    ${OC} patch pv $LSR_PV_NAME --type=merge -p '{"spec": {"claimRef":null}}'
-  fi
-
-
-  #install LSR operator with cmd
-
-#  target=$(cat <<EOF
-#
-#  targetNamespaces:
-#    - ${LSR_NAMESPACE}
-#EOF
-#)
-  #create_operator_group "ibm-license-service-reporter-operator" "${LSR_NAMESPACE}" "$target"
+)
+  create_operator_group "ibm-license-service-reporter-operator" "${LSR_NAMESPACE}" "$target"
   create_subscription "ibm-license-service-reporter-operator" "${LSR_NAMESPACE}" "$CHANNEL" "ibm-license-service-reporter-operator" "${LSR_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
   wait_for_operator "${LSR_NAMESPACE}" "ibm-license-service-reporter-operator"
 
   #create_reporter_instance
+  TEMP_LSR_FILE="_TEMP_LSR_FILE.yaml"
 
+  cat <<EOF >TEMP_LSR_FILE
+    apiVersion: operator.ibm.com/v1alpha1
+    kind: IBMLicenseServiceReporter
+    metadata:
+      name: ibm-lsr-instance
+      namespace: $LSR_NAMESPACE
+      labels:
+        app.kubernetes.io/created-by: ibm-license-service-reporter-operator
+        app.kubernetes.io/instance: ibmlicenseservicereporter-instance
+        app.kubernetes.io/name: ibmlicenseservicereporter
+        app.kubernetes.io/part-of: ibm-license-service-reporter-operator
+    spec:
+      license:
+        accept: true
+      authentication:
+        useradmin:
+          enabled: true
+      version: 4.2.0
+EOF
 
-  #wait_for_license_instance
-  #accept_license "ibmlicensing" "" "instance"
+  ${OC} create -f TEMP_LSR_FILE
+
+  #wait_for_lsr_instance
 }
 
 function pre_req() {
