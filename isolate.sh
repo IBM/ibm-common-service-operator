@@ -158,11 +158,35 @@ function prereq() {
     check_certmanager_count
 
     # LicenseServiceReporter should not be installed because it does not support multi-instance mode
-    return_value=$(("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
+    return_value=$( ("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
     if [[ $return_value == "exists" ]]; then
-        return_value=$("${OC}" get ibmlicenseservicereporters -A | wc -l)
+
+        return_value=$("${OC}" get ibmlicenseservicereporters -A --no-headers | wc -l)
         if [[ $return_value -gt 0 ]]; then
-            error "LicenseServiceReporter does not support multi-instance mode. Remove before proceeding"
+
+          LSR_NAMESPACE="ibm-common-services"
+          #Save the name of existing LSR PersistentVolume and storage class.
+          status=$("${OC}" get pvc license-service-reporter-pvc -n $LSR_NAMESPACE)
+          if [[ -z "$status" ]]; then
+            error "PVC license-service-reporter-pvc not found in $LSR_NAMESPACE"
+          fi
+
+          VOL=$("${OC}" get pvc license-service-reporter-pvc -n $LSR_NAMESPACE  -o=jsonpath='{.spec.volumeName}')
+          if [[ -z "$VOL" ]]; then
+            error "Volume for pvc license-service-reporter-pvc not found in $LSR_NAMESPACE"
+          fi
+
+          #label LSR PV as LSR PV for further LSR upgrade
+          ${OC} label pv $VOL license-service-reporter-pv=true
+
+          #Change existing LSR PersistentVolumeClaim claim policy to retain.
+          ${OC} patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Retain" }}'
+          ${OC} patch pv $VOL --type=merge -p '{"spec": {"claimRef":null}}'
+          ${OC} patch pv $VOL --type=json -p '[{ "op": "remove", "path": "/spec/claimRef" }]'
+
+          # delete LSR CR - PV should stay
+          ${OC} delete IBMLicenseServiceReporter instance -n ibm-common-services
+
         fi
     fi
 

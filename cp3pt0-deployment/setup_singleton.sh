@@ -12,6 +12,7 @@
 
 OC=oc
 ENABLE_LICENSING=0
+ENABLE_LSR=0
 ENABLE_PRIVATE_CATALOG=0
 MIGRATE_SINGLETON=0
 OPERATOR_NS=""
@@ -21,8 +22,10 @@ SOURCE_NS="openshift-marketplace"
 INSTALL_MODE="Automatic"
 CERT_MANAGER_SOURCE="ibm-cert-manager-catalog"
 LICENSING_SOURCE="ibm-licensing-catalog"
+LSR_SOURCE="ibm-license-service-reporter-operator-catalog"
 CERT_MANAGER_NAMESPACE="ibm-cert-manager"
 LICENSING_NAMESPACE="ibm-licensing"
+LSR_NAMESPACE="ibm-lsr"
 LICENSE_ACCEPT=0
 DEBUG=0
 
@@ -230,6 +233,85 @@ function wait_for_license_instance() {
     local success_message="ibmlicensing ${name} present"
     local error_message="Timeout after ${total_time_mins} minutes waiting for ibmlicensing ${name} to be present."
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
+function installing_license_service_reporter() {
+
+  if [ $ENABLE_LSR -ne 1 ] ; then
+    return
+  fi
+
+  title "Installing License Service Reporter\n"
+  is_sub_exist "ibm-license-service-reporter-operator" # this will catch the package names of all ibm-license-service-reporter-operator
+  if [ $? -eq 0 ]; then
+      warning "There is an ibm-license-service-reporter-operator Subscription already\n"
+      return 0
+  elif [ $SKIP_INSTALL -eq 1 ]; then
+      error "There is no ibm-license-service-reporter-operator Subscription installed\n"
+  fi
+
+  if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
+      SOURCE_NS="${LSR_NAMESPACE}"
+  fi
+
+  create_namespace "${LSR_NAMESPACE}"
+
+  #Prepare LSR PV/PVC which was decoupled in isolate.sh
+
+  lsr_pv_nr=$("${OC}" get pv -l license-service-reporter-pv=true --no-headers | wc -l )
+  if [[ lsr_pv_nr -gt 1 ]]; then
+    error "More than on PV with label license-service-reporter-pv=true was found. Only one is allowed."
+  fi
+
+  if [[ lsr_pv_nr -eq 1 ]]; then
+    # get pv name
+    LSR_PV_NAME=${OC} get pv -l license-service-reporter-pv=true -o=jsonpath='{.items[0].metadata.name}'
+
+    # get storage class name
+    LSR_STORAGE_CLASS=${OC} get pv -l license-service-reporter-pv=true -o=jsonpath='{.items[0].spec.storageClassName}'
+
+    # create PVC
+    TEMP_LSR_PVC_FILE="_TMP.yaml"
+
+    cat <<EOF >TEMP_LSR_PVC_FILE
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: license-service-reporter-pvc
+      namespace: $LSR_NAMESPACE
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+      storageClassName: "$LSR_STORAGE_CLASS"
+      volumeMode: Filesystem
+      volumeName: $LSR_PV_NAME
+EOF
+    ${OC} create -f TEMP_LSR_PVC_FILE
+    lsr_pvc_status=$("${OC}" get pvc license-service-reporter-pvc -n $LSR_NAMESPACE --no-headers | awk '{print $2}')
+    ${OC} patch pv $LSR_PV_NAME --type=merge -p '{"spec": {"claimRef":null}}'
+  fi
+
+
+  #install LSR operator with cmd
+
+#  target=$(cat <<EOF
+#
+#  targetNamespaces:
+#    - ${LSR_NAMESPACE}
+#EOF
+#)
+  #create_operator_group "ibm-license-service-reporter-operator" "${LSR_NAMESPACE}" "$target"
+  create_subscription "ibm-license-service-reporter-operator" "${LSR_NAMESPACE}" "$CHANNEL" "ibm-license-service-reporter-operator" "${LSR_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
+  wait_for_operator "${LSR_NAMESPACE}" "ibm-license-service-reporter-operator"
+
+  #create_reporter_instance
+
+
+  #wait_for_license_instance
+  #accept_license "ibmlicensing" "" "instance"
 }
 
 function pre_req() {
