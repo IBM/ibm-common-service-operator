@@ -1,0 +1,49 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: zen5-restore-job
+  namespace: zen
+spec:
+  template:
+    spec:
+        containers:
+        - command:
+          - sh
+          - -c
+          - /zen5/restore_zen5.sh zen test-zen
+          #image: icr.io/cpopen/cpfs/cpfs-utils@sha256<hash>
+          image: docker-na-public.artifactory.swg-devops.com/hyc-cloud-private-scratch-docker-local/ibmcom/cpfs-utils-amd64:4.2.0-test
+          imagePullPolicy: Always
+          name: zen5-restore-job
+          resources:
+            limits:
+              cpu: 500m
+              ephemeral-storage: 512Mi
+              memory: 512Mi
+            requests:
+              cpu: 200m
+              ephemeral-storage: 128Mi
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            runAsNonRoot: true
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /zen5/zen-backup
+            name: zen5-backup-mount
+        dnsPolicy: ClusterFirst
+        restartPolicy: OnFailure
+        schedulerName: default-scheduler
+        securityContext:
+          runAsNonRoot: true
+        serviceAccount: zen5-backup-sa
+        serviceAccountName: zen5-backup-sa
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - name: zen5-backup-mount
+          persistentVolumeClaim:
+            claimName: zen5-backup-pvc

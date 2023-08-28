@@ -33,3 +33,6 @@ spec:
         - cert-manager
         - namespace
         - configmap
+        - zen5
+        - zen5-data
+        - crd
