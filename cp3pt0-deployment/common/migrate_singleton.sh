@@ -54,7 +54,7 @@ function main() {
     
     if [[ $ENABLE_LICENSING -eq 1 ]]; then
 
-        is_exists=$("$OC" get deployments ibm-licensing-operator -n "$OPERATOR_NS")
+        is_exists=$("$OC" get deployments ibm-licensing-operator -n "$OPERATOR_NS" --ignore-not-found)
         if [ ! -z "$is_exists" ]; then
             # Migrate Licensing Services Data
             ${BASE_DIR}/migrate_cp2_licensing.sh --control-namespace "$OPERATOR_NS" --target-namespace "$LICENSING_NS" "--skip-user-vertify"
@@ -66,9 +66,9 @@ function main() {
         fi
         
         backup_ibmlicensing
-        isExists=$("${OC}" get deployments -n "${CONTROL_NS}" --ignore-not-found ibm-licensing-operator)
-        if [ ! -z "$isExists" ]; then
-            "${OC}" delete  --ignore-not-found ibmlicensing instance
+        is_exists=$("${OC}" get deployments -n "${CONTROL_NS}" --ignore-not-found ibm-licensing-operator)
+        if [ ! -z "$is_exists" ]; then
+            "${OC}" delete --ignore-not-found ibmlicensing instance
         fi
 
         # Delete licensing csv/subscriptions
@@ -84,13 +84,31 @@ function main() {
 
 function restore_ibmlicensing() {
 
+    is_exist=$("${OC}" get cm ibmlicensing-instance-bak -n ${LICENSING_NS} --ignore-not-found)
+    if [[ -z "${is_exist}" ]]; then
+        warning "No IBMLicensing instance backup found, skipping restore"
+        return
+    fi
     # extracts the previously saved IBMLicensing CR from ConfigMap and creates the IBMLicensing CR
     "${OC}" get cm ibmlicensing-instance-bak -n ${LICENSING_NS} -o yaml --ignore-not-found | "${YQ}" .data | sed -e 's/.*ibmlicensing.yaml.*//' | 
-    sed -e 's/^  //g' | oc apply -f -
+    sed -e 's/^  //g' | "${OC}" apply -f -
+    
+    if [[ $? -ne 0 ]]; then
+        warning "Failed to restore IBMLicensing instance"
+    else
+        success "IBMLicensing instance is restored"
+    fi
 
 }
 
 function backup_ibmlicensing() {
+    create_namespace "${LICENSING_NS}"
+
+    is_exist=$("${OC}" get IBMLicensing instance --ignore-not-found)
+    if [[ -z "${is_exist}" ]]; then
+        echo "No IBMLicensing instance found, skipping backup"
+        return
+    fi
 
     instance=`"${OC}" get IBMLicensing instance -o yaml --ignore-not-found | "${YQ}" '
         with(.; del(.metadata.creationTimestamp) |
@@ -100,7 +118,7 @@ function backup_ibmlicensing() {
         del(.status)
         )
     ' | sed -e 's/^/    /g'`
-cat << _EOF | oc apply -f -
+cat << _EOF | "${OC}" apply -f -
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -111,6 +129,11 @@ data:
 ${instance}
 _EOF
 
+    if [[ $? -ne 0 ]]; then
+        warning "Failed to backup IBMLicensing instance"
+    else
+        success "IBMLicensing instance is backed up"
+    fi
 }
 
 function parse_arguments() {
