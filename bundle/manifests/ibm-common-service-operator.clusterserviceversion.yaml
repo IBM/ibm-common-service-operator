@@ -22,7 +22,7 @@ metadata:
       ]
     capabilities: Seamless Upgrades
     containerImage: icr.io/cpopen/common-service-operator:latest
-    createdAt: "2023-07-26T17:27:50Z"
+    createdAt: "2023-08-24T20:55:01Z"
     description: The IBM Common Service Operator is used to deploy IBM Common Services
     nss.operator.ibm.com/managed-operators: ibm-common-service-operator
     nss.operator.ibm.com/managed-webhooks: ""
@@ -30,7 +30,7 @@ metadata:
     operatorChannel: v4.2
     operatorVersion: 4.2.0
     operators.openshift.io/infrastructure-features: '["disconnected"]'
-    operators.operatorframework.io/builder: operator-sdk-v1.28.0
+    operators.operatorframework.io/builder: operator-sdk-v1.31.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/IBM/ibm-common-service-operator
     support: IBM
@@ -282,7 +282,7 @@ spec:
                         value: icr.io/cpopen/cpfs/ibm-secretshare-operator:1.19.0
                       - name: IBM_ZEN_OPERATOR_IMAGE
                         value: icr.io/cpopen/ibm-zen-operator:1.7.0
-                    image: icr.io/cpopen/common-service-operator:latest 
+                    image: icr.io/cpopen/common-service-operator:latest
                     imagePullPolicy: IfNotPresent
                     livenessProbe:
                       failureThreshold: 10
@@ -475,11 +475,6 @@ spec:
   minKubeVersion: 1.19.0
   provider:
     name: IBM
-  relatedImages:
-  - image: icr.io/cpopen/common-service-operator:4.2.0
-    name: COMMON_SERVICE_OPERATOR_IMAGE
-  - image: icr.io/cpopen/cpfs/cpfs-utils:latest
-    name: CPFS_UTILS_IMAGE
   version: 4.2.0
   webhookdefinitions:
     - admissionReviewVersions:
@@ -522,3 +517,8 @@ spec:
       targetPort: 9443
       type: ValidatingAdmissionWebhook
       webhookPath: /validate-operator-ibm-com-v3-commonservice
+  relatedImages:
+    - image: icr.io/cpopen/common-service-operator:4.2.0
+      name: COMMON_SERVICE_OPERATOR_IMAGE
+    - image: icr.io/cpopen/cpfs/cpfs-utils:latest
+      name: CPFS_UTILS_IMAGE
