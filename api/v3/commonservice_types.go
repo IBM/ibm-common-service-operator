@@ -181,7 +181,7 @@ type ConfigStatus struct {
 	// ServicesDeployed indicates whether the OperandConfig has been created or
 	// not.
 	ServicesDeployed bool `json:"servicesDeployed,omitempty"`
-	// Configurable indicates whether this CommonService CR is the one that can
+	// Configurable indicates whether this CommonService CR is the one
 	// that can be used to configure the foundational services' installer. Other
 	// CommonService CRs configurations will not take effect, except for sizing
 	Configurable bool `json:"configurable,omitempty"`
