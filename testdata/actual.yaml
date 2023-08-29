@@ -502,6 +502,18 @@
             }
           }
         },
+        "initMongodb": {
+          "resources": {
+            "limits": {
+              "cpu": "100m",
+              "memory": "128Mi"
+            },
+            "requests": {
+              "cpu": "100m",
+              "memory": "128Mi"
+            }
+          }
+        },
         "replicas": 3
       }
     }
@@ -567,6 +579,18 @@
             "requests": {
               "cpu": "570m",
               "memory": "210Mi"
+            }
+          }
+        },
+        "initMongodb": {
+          "resources": {
+            "limits": {
+              "cpu": "100m",
+              "memory": "128Mi"
+            },
+            "requests": {
+              "cpu": "100m",
+              "memory": "128Mi"
             }
           }
         },
@@ -638,6 +662,18 @@
             }
           }
         },
+        "initMongodb": {
+          "resources": {
+            "limits": {
+              "cpu": "100m",
+              "memory": "128Mi"
+            },
+            "requests": {
+              "cpu": "100m",
+              "memory": "128Mi"
+            }
+          }
+        },
         "replicas": 3
       }
     }
@@ -703,6 +739,18 @@
             "requests": {
               "cpu": "570m",
               "memory": "210Mi"
+            }
+          }
+        },
+        "initMongodb": {
+          "resources": {
+            "limits": {
+              "cpu": "100m",
+              "memory": "128Mi"
+            },
+            "requests": {
+              "cpu": "100m",
+              "memory": "128Mi"
             }
           }
         },
