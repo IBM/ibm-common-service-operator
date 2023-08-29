@@ -311,6 +311,14 @@ const ConfigurationRules = `
           requests:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+      initMongodb:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
 - name: ibm-im-operator-v4.0
   spec:
     authentication:
@@ -350,6 +358,14 @@ const ConfigurationRules = `
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
       identityProvider:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      initMongodb:
         resources:
           limits:
             cpu: LARGEST_VALUE
@@ -403,6 +419,14 @@ const ConfigurationRules = `
           requests:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+      initMongodb:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
 - name: ibm-im-operator-v4.2
   spec:
     authentication:
@@ -442,6 +466,14 @@ const ConfigurationRules = `
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
       identityProvider:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      initMongodb:
         resources:
           limits:
             cpu: LARGEST_VALUE

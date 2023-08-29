@@ -232,7 +232,6 @@ spec:
       authentication:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      policydecision: {}
       operandBindInfo: 
         operand: ibm-im-operator
       operandRequest:
@@ -246,7 +245,6 @@ spec:
       authentication:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      policydecision: {}
       operandBindInfo: 
         operand: ibm-im-operator
       operandRequest:
@@ -260,7 +258,6 @@ spec:
       authentication:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      policydecision: {}
       operandBindInfo: 
         operand: ibm-im-operator
       operandRequest:
@@ -709,7 +706,6 @@ spec:
       authentication:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      policydecision: {}
       operandBindInfo:  
         operand: ibm-im-operator
       operandRequest: 
@@ -998,7 +994,6 @@ spec:
       authentication:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      policydecision: {}
       operandBindInfo:
         operand: ibm-im-operator
         bindings: {}
