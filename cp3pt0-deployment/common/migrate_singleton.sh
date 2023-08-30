@@ -90,20 +90,19 @@ function main() {
           kind: PersistentVolumeClaim
           metadata:
             name: license-service-reporter-pvc
-            namespace: $LSR_NAMESPACE
+            namespace: ${LSR_NAMESPACE}
           spec:
             accessModes:
             - ReadWriteOnce
             resources:
               requests:
                 storage: 1Gi
-            storageClassName: "$LSR_STORAGE_CLASS"
+            storageClassName: "${LSR_STORAGE_CLASS}"
             volumeMode: Filesystem
-            volumeName: $LSR_PV_NAME
+            volumeName: ${LSR_PV_NAME}
 EOF
-          ${OC} create -f TEMP_LSR_PVC_FILE
-          lsr_pvc_status=$("${OC}" get pvc license-service-reporter-pvc -n $LSR_NAMESPACE --no-headers | awk '{print $2}')
-          ${OC} patch pv $LSR_PV_NAME --type=merge -p '{"spec": {"claimRef":null}}'
+          ${OC} create -f ${TEMP_LSR_PVC_FILE}
+          ${OC} patch pv ${LSR_PV_NAME} --type=merge -p '{"spec": {"claimRef":null}}'
         fi
 
         # Delete licensing csv/subscriptions

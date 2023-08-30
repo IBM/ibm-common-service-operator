@@ -280,7 +280,7 @@ EOF
     kind: IBMLicenseServiceReporter
     metadata:
       name: ibm-lsr-instance
-      namespace: $LSR_NAMESPACE
+      namespace: ${LSR_NAMESPACE}
       labels:
         app.kubernetes.io/created-by: ibm-license-service-reporter-operator
         app.kubernetes.io/instance: ibmlicenseservicereporter-instance
@@ -292,10 +292,9 @@ EOF
       authentication:
         useradmin:
           enabled: true
-      version: 4.2.0
 EOF
 
-  ${OC} create -f TEMP_LSR_FILE
+  ${OC} create -f ${TEMP_LSR_FILE}
 
   #wait_for_lsr_instance
 }
