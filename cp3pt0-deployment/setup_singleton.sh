@@ -200,6 +200,12 @@ function is_migrate_licensing() {
 
     title "Check migrating LTSR ibm-licensing-operator"
     
+    local ns=$("$OC" get deployments -A | grep ibm-licensing-operator | cut -d ' ' -f1)
+    if [ -z "$ns" ]; then
+        info "No LTSR ibm-licensing-operator to migrate, skipping"
+        return 0
+    fi
+
     local version=$("$OC" get ibmlicensings.operator.ibm.com instance -o jsonpath='{.spec.version}' --ignore-not-found)
     if [ -z "$version" ]; then
         warning "No version field in ibmlicensing CR, skipping"
@@ -208,12 +214,10 @@ function is_migrate_licensing() {
     local major=$(echo "$version" | cut -d '.' -f1)
     if [ "$major" -ge 4 ]; then
         info "There is no LTSR ibm-licensing-operator to migrate, skipping"
-        return 0
-    fi
-
-    local ns=$("$OC" get deployments -A | grep ibm-licensing-operator | cut -d ' ' -f1)
-    if [ -z "$ns" ]; then
-        info "No LTSR ibm-licensing-operator to migrate, skipping"
+        if [[ "$CUSTOMIZED_LICENSING_NAMESPACE" -eq 1 ]] && [[ "$ns" != "$LICENSING_NAMESPACE" ]]; then
+            error "An ibm-licensing-operator already installed in namespace: $ns, please do not set parameter '-licensingNs $LICENSING_NAMESPACE"
+        fi
+        LICENSING_NAMESPACE="$ns"
         return 0
     fi
 
@@ -351,7 +355,7 @@ EOF
     else
         create_subscription "ibm-licensing-operator-app" "${LICENSING_NAMESPACE}" "$CHANNEL" "ibm-licensing-operator-app" "${LICENSING_SOURCE}" "${LIS_SOURCE_NS}" "${INSTALL_MODE}"
     fi
-    wait_for_csv "${LICENSING_NAMESPACE}" "ibm-licensing-operator"
+    wait_for_csv "${LICENSING_NAMESPACE}" "ibm-licensing-operator-app"
     wait_for_operator "${LICENSING_NAMESPACE}" "ibm-licensing-operator"
     wait_for_license_instance
     accept_license "ibmlicensing" "" "instance"
