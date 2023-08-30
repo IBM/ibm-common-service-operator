@@ -1010,9 +1010,9 @@ func (b *Bootstrap) DeployResource(cr, placeholder string) bool {
 	return true
 }
 
-func CheckClusterType(mgr manager.Manager, ns string) (bool, error) {
+func (b *Bootstrap) CheckClusterType(ns string) (bool, error) {
 	var isOCP bool
-	dc := discovery.NewDiscoveryClientForConfigOrDie(mgr.GetConfig())
+	dc := discovery.NewDiscoveryClientForConfigOrDie(b.Config)
 	_, apiLists, err := dc.ServerGroupsAndResources()
 	if err != nil {
 		return false, err
@@ -1047,7 +1047,7 @@ func CheckClusterType(mgr manager.Manager, ns string) (bool, error) {
 	klog.Infof("Cluster type is OCP: %v", isOCP)
 
 	config := &corev1.ConfigMap{}
-	if err := mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: constant.IBMCPPCONFIG, Namespace: ns}, config); err != nil && !errors.IsNotFound(err) {
+	if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: constant.IBMCPPCONFIG, Namespace: ns}, config); err != nil && !errors.IsNotFound(err) {
 		return false, err
 	} else if errors.IsNotFound(err) {
 		if isOCP {
