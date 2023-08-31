@@ -20,7 +20,6 @@ import (
 	"flag"
 	"os"
 	"strings"
-	"time"
 
 	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
@@ -142,20 +141,6 @@ func main() {
 	// If Common Service Operator Namespace is not in the same as .spec.operatorNamespace(cpfsNs) in default CS CR,
 	// this Common Service Operator is not in the operatorNamespace(cpfsNs) under this tenant, and goes dormant.
 	if operatorNs == cpfsNs {
-		for {
-			typeCorrect, err := bootstrap.CheckClusterType(mgr, util.GetServicesNamespace(mgr.GetAPIReader()))
-			if err != nil {
-				klog.Errorf("Failed to verify cluster type  %v", err)
-				continue
-			}
-
-			if !typeCorrect {
-				klog.Error("Cluster type specificed in the ibm-cpp-config isn't correct")
-				time.Sleep(2 * time.Minute)
-			} else {
-				break
-			}
-		}
 
 		// New bootstrap Object
 		bs, err := bootstrap.NewBootstrap(mgr)
@@ -209,7 +194,7 @@ func main() {
 		klog.Infof("Common Service Operator in the namespace %s takes charge of resource management", cpfsNs)
 	}
 
-	// Start up the webhook server if it is ocp
+	// Start up the webhook server
 	if err = (&commonservicewebhook.Defaulter{
 		Client:    mgr.GetClient(),
 		Reader:    mgr.GetAPIReader(),

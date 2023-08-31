@@ -39,7 +39,6 @@ type CSData struct {
 	ApprovalMode       string
 	OnPremMultiEnable  string
 	ZenOperatorImage   string
-	IsOCP              bool
 	WatchNamespaces    string
 }
 

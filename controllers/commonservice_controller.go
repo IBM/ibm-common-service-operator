@@ -173,6 +173,25 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 		}
 	}
 
+	typeCorrect, err := r.Bootstrap.CheckClusterType(util.GetServicesNamespace(r.Reader))
+	if err != nil {
+		klog.Errorf("Failed to verify cluster type  %v", err)
+		if err := r.updatePhase(ctx, instance, CRFailed); err != nil {
+			klog.Error(err)
+		}
+		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
+		return ctrl.Result{}, err
+	}
+
+	if !typeCorrect {
+		klog.Error("Cluster type specificed in the ibm-cpp-config isn't correct")
+		if err := r.updatePhase(ctx, instance, CRFailed); err != nil {
+			klog.Error(err)
+		}
+		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
+		return ctrl.Result{}, err
+	}
+
 	// Init common service bootstrap resource
 	// Including namespace-scope configmap
 	// Deploy OperandConfig and OperandRegistry

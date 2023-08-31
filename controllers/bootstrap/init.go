@@ -108,10 +108,6 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 	if err != nil {
 		return
 	}
-	isOCP, err := isOCP(mgr, servicesNs)
-	if err != nil {
-		return
-	}
 
 	catalogSourceName, catalogSourceNs := util.GetCatalogSource(constant.IBMCSPackage, operatorNs, mgr.GetAPIReader())
 	if catalogSourceName == "" || catalogSourceNs == "" {
@@ -130,7 +126,6 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		CatalogSourceNs:   catalogSourceNs,
 		ApprovalMode:      approvalMode,
 		ZenOperatorImage:  util.GetImage("IBM_ZEN_OPERATOR_IMAGE"),
-		IsOCP:             isOCP,
 		WatchNamespaces:   util.GetWatchNamespace(),
 		OnPremMultiEnable: strconv.FormatBool(util.CheckMultiInstances(mgr.GetAPIReader())),
 	}
@@ -161,20 +156,6 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 	}
 	klog.Infof("Single Deployment Status: %v, MultiInstance Deployment status: %v, SaaS Depolyment Status: %v", !bs.MultiInstancesEnable, bs.MultiInstancesEnable, bs.SaasEnable)
 	return
-}
-
-func isOCP(mgr manager.Manager, ns string) (bool, error) {
-	config := &corev1.ConfigMap{}
-	if err := mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: constant.IBMCPPCONFIG, Namespace: ns}, config); err != nil && !errors.IsNotFound(err) {
-		return false, err
-	} else if errors.IsNotFound(err) {
-		return true, nil
-	} else {
-		if config.Data["kubernetes_cluster_type"] == "" || config.Data["kubernetes_cluster_type"] == "ocp" {
-			return true, nil
-		}
-		return false, nil
-	}
 }
 
 // InitResources initialize resources at the bootstrap of operator
@@ -1010,9 +991,9 @@ func (b *Bootstrap) DeployResource(cr, placeholder string) bool {
 	return true
 }
 
-func CheckClusterType(mgr manager.Manager, ns string) (bool, error) {
+func (b *Bootstrap) CheckClusterType(ns string) (bool, error) {
 	var isOCP bool
-	dc := discovery.NewDiscoveryClientForConfigOrDie(mgr.GetConfig())
+	dc := discovery.NewDiscoveryClientForConfigOrDie(b.Config)
 	_, apiLists, err := dc.ServerGroupsAndResources()
 	if err != nil {
 		return false, err
@@ -1035,7 +1016,7 @@ func CheckClusterType(mgr manager.Manager, ns string) (bool, error) {
 						Version: "v1",
 						Kind:    "Infrastructure",
 					})
-					if err := mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: "cluster"}, infraObj); err == nil {
+					if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: "cluster"}, infraObj); err == nil {
 						isOCP = true
 					} else {
 						klog.Errorf("Fail to get Infrastructure resource named cluster: %v", err)
@@ -1047,7 +1028,7 @@ func CheckClusterType(mgr manager.Manager, ns string) (bool, error) {
 	klog.Infof("Cluster type is OCP: %v", isOCP)
 
 	config := &corev1.ConfigMap{}
-	if err := mgr.GetClient().Get(context.TODO(), types.NamespacedName{Name: constant.IBMCPPCONFIG, Namespace: ns}, config); err != nil && !errors.IsNotFound(err) {
+	if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: constant.IBMCPPCONFIG, Namespace: ns}, config); err != nil && !errors.IsNotFound(err) {
 		return false, err
 	} else if errors.IsNotFound(err) {
 		if isOCP {
