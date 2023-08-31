@@ -194,7 +194,7 @@ func main() {
 		klog.Infof("Common Service Operator in the namespace %s takes charge of resource management", cpfsNs)
 	}
 
-	// Start up the webhook server if it is ocp
+	// Start up the webhook server
 	if err = (&commonservicewebhook.Defaulter{
 		Client:    mgr.GetClient(),
 		Reader:    mgr.GetAPIReader(),
