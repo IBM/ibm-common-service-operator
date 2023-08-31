@@ -235,9 +235,13 @@ function check_singleton_catalogsource() {
         CM_SOURCE_NS="${CERT_MANAGER_NAMESPACE}"
         LIS_SOURCE_NS="${LICENSING_NAMESPACE}"
     fi
-    
-    local sources=("$CERT_MANAGER_SOURCE,$CM_SOURCE_NS,ibm-cert-manager-operator,$CERT_MANAGER_NAMESPACE,$CHANNEL" "$LICENSING_SOURCE,$LIS_SOURCE_NS,ibm-licensing-operator-app,$LICENSING_NAMESPACE,$CHANNEL")
-    
+
+    local sources=("$CERT_MANAGER_SOURCE,$CM_SOURCE_NS,ibm-cert-manager-operator,$CERT_MANAGER_NAMESPACE,$CHANNEL")
+
+    if [ $ENABLE_LICENSING -eq 1 ]; then
+        sources+=("$LICENSING_SOURCE,$LIS_SOURCE_NS,ibm-licensing-operator-app,$LICENSING_NAMESPACE,$CHANNEL")
+    fi
+  
     for source_info in "${sources[@]}"; do
 
         IFS="," read -r source source_ns pm operator_ns channel <<< "$source_info"
