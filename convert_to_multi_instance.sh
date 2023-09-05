@@ -55,6 +55,16 @@ function prereq() {
     which "${OC}" || error "Missing oc CLI"
     which "${YQ}" || error "Missing yq"
     
+    # Verify that yq is at least version 4.18.1
+    yq_minimum_version=4.18.1
+    # Get the user's yq version and remove any leading "v" character if present
+    yq_version=$("${YQ}" --version | awk '{print $NF}' | sed 's/^v//')
+
+    # Compare yq versions using sort
+    if [[ "$(printf '%s\n' "$yq_minimum_version" "$yq_version" | sort -V | head -n 1)" != "$yq_minimum_version" ]]; then
+        error "yq version $yq_version must be at least $yq_minimum_version or higher.\nInstructions for installing/upgrading yq are available here: https://github.com/marketplace/actions/yq-portable-yaml-processor"
+    fi
+
     if [[ -z $master_ns ]]; then
         error "Please specify original cs namespace."
     fi
