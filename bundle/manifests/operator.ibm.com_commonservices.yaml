@@ -129,6 +129,7 @@ spec:
                       type: string
                     spec:
                       additionalProperties:
+                        type: object
                         x-kubernetes-preserve-unknown-fields: true
                       type: object
                   required:
