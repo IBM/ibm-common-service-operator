@@ -185,7 +185,7 @@ spec:
                     type: string
                   configurable:
                     description: Configurable indicates whether this CommonService
-                      CR is the one that can that can be used to configure the foundational
+                      CR is the one that can be used to configure the foundational
                       services' installer. Other CommonService CRs configurations
                       will not take effect, except for sizing
                     type: boolean

@@ -22,7 +22,7 @@ metadata:
       ]
     capabilities: Seamless Upgrades
     containerImage: icr.io/cpopen/common-service-operator:latest
-    createdAt: "2023-08-24T20:55:01Z"
+    createdAt: "2023-09-05T14:38:17Z"
     description: The IBM Common Service Operator is used to deploy IBM Common Services
     nss.operator.ibm.com/managed-operators: ibm-common-service-operator
     nss.operator.ibm.com/managed-webhooks: ""
@@ -311,8 +311,8 @@ spec:
                         memory: 512Mi
                       requests:
                         cpu: 100m
-                        memory: 200Mi
                         ephemeral-storage: 256Mi
+                        memory: 200Mi
                     securityContext:
                       allowPrivilegeEscalation: false
                       capabilities:
@@ -474,6 +474,10 @@ spec:
       name: IBM Support
   maturity: alpha
   minKubeVersion: 1.19.0
+  nativeAPIs:
+    - group: cert-manager.io
+      kind: Certificate
+      version: v1
   provider:
     name: IBM
   version: 4.2.0
@@ -513,7 +517,7 @@ spec:
             - CREATE
             - UPDATE
           resources:
-            - commonservices
+            - commonservice
       sideEffects: None
       targetPort: 9443
       type: ValidatingAdmissionWebhook
