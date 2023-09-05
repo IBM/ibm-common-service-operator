@@ -265,9 +265,9 @@ function wait_for_cscr_status(){
     local retries=20
     local sleep_time=6
     local total_time_mins=$(( sleep_time * retries / 60))
-    local wait_message="Waiting for CommonService ${name} in ${namespace} to be ready"
-    local success_message="CommonService in ${namespace} is succeeded"
-    local error_message="Timeout after ${total_time_mins} minutes waiting for CommonService in ${namespace} to be ready"
+    local wait_message="Waiting for CommonService CR ${name} in ${namespace} to be ready"
+    local success_message="CommonService CR in ${namespace} is in Succeeded Phase"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for CommonService CR in ${namespace} to be ready"
  
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }

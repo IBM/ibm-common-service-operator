@@ -624,16 +624,14 @@ EOF
     
         # Check if the patch was successful
         if [[ $? -eq 0 ]]; then
-            checkOperatorNS=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | yq '.spec.operatorNamespace=="'${OPERATOR_NS}'"')
-            checkServicesNS=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | yq '.spec.servicesNamespace=="'${SERVICES_NS}'"')
-            if [ $checkOperatorNS ] && [ $checkServicesNS ]; then
+            operator_ns_in_cr=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | yq '.spec.operatorNamespace')
+            services_ns_in_cr=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | yq '.spec.servicesNamespace')
+            if [[ "$operator_ns_in_cr" == "$OPERATOR_NS" ]] && [[ "$services_ns_in_cr" == "$SERVICES_NS" ]]; then
                 success "Successfully patched CommonService CR in ${OPERATOR_NS}"
                 break
             else
-                operatorNSinCR=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | yq '.spec.operatorNamespace')
-                servicesNSinCR=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | yq '.spec.servicesNamespace')
-                warning "OperatorNamespace in CommonService cr should be ${OPERATOR_NS}, but it is ${operatorNSinCR}"
-                warning "ServicesNamespace in CommonService cr should be ${SERVICES_NS}, but it is ${servicesNSinCR}"
+                warning "Expected OperatorNamespace is ${OPERATOR_NS}, but existing value is ${operator_ns_in_cr} in CommonService CR, retry it in ${delay} seconds..."
+                warning "Expected ServicesNamespace is ${SERVICES_NS}, but existing value is ${services_ns_in_cr} in CommonService CR, retry it in ${delay} seconds..."
                 retries=$((retries-1))
             fi
         else
