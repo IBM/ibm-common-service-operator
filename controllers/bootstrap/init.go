@@ -1276,7 +1276,7 @@ func (b *Bootstrap) ConfigCertManagerOperandManagedByOperator(ctx context.Contex
 		client.MatchingLabels(
 			map[string]string{constant.CsManagedLabel: "true"}),
 	}
-
+	// Delete idle Cert Manager CRs which are managed by CS operator, but not in ServicesNamespace
 	certsList := b.ListCerts(ctx, opts...)
 	if certsList != nil {
 		for _, cert := range certsList.Items {
@@ -1285,12 +1285,13 @@ func (b *Bootstrap) ConfigCertManagerOperandManagedByOperator(ctx context.Contex
 					klog.Errorf("Failed to delete idle Cert Manager Certificate %s/%s which is managed by CS operator, but not in ServicesNamespace %s", cert.GetNamespace(), cert.GetName(), b.CSData.ServicesNs)
 					return err
 				}
-				klog.Infof("Delete idle Cert Manager Certificate %s/%s which is managed by CS operator, but not in ServicesNamespace %s", cert.GetNamespace(), cert.GetName(), b.CSData.ServicesNs)
+				klog.Infof("Deleted idle Cert Manager Certificate %s/%s which is managed by CS operator, but not in ServicesNamespace %s", cert.GetNamespace(), cert.GetName(), b.CSData.ServicesNs)
 
 			}
 		}
 	}
 
+	// Delete idle Cert Manager CRs which are managed by CS operator, but not in ServicesNamespace
 	issuerList := b.ListIssuer(ctx, opts...)
 	if issuerList != nil {
 		for _, issuer := range issuerList.Items {
@@ -1299,7 +1300,29 @@ func (b *Bootstrap) ConfigCertManagerOperandManagedByOperator(ctx context.Contex
 					klog.Errorf("Failed to delete idle Cert Manager Issuer %s/%s which is managed by CS operator, but not in ServicesNamespace %s", issuer.GetNamespace(), issuer.GetName(), b.CSData.ServicesNs)
 					return err
 				}
-				klog.Infof("Delete idle Cert Manager Issuer %s/%s which is managed by CS operator, but not in ServicesNamespace %s", issuer.GetNamespace(), issuer.GetName(), b.CSData.ServicesNs)
+				klog.Infof("Deleted idle Cert Manager Issuer %s/%s which is managed by CS operator, but not in ServicesNamespace %s", issuer.GetNamespace(), issuer.GetName(), b.CSData.ServicesNs)
+			}
+		}
+	}
+
+	watchNamespaceList := strings.Split(b.CSData.WatchNamespaces, ",")
+	secretName := "cs-ca-certificate-secret"
+	if len(watchNamespaceList) > 1 {
+		for _, watchNamespace := range watchNamespaceList {
+			secret := &corev1.Secret{}
+			err := b.Client.Get(context.TODO(), types.NamespacedName{Name: secretName, Namespace: watchNamespace}, secret)
+			if err != nil && !errors.IsNotFound(err) {
+				return nil
+			} else if errors.IsNotFound(err) {
+				continue
+			} else {
+				if watchNamespace != b.CSData.ServicesNs {
+					if err := b.Client.Delete(ctx, secret); err != nil {
+						klog.Errorf("Failed to delete cs ca certificate secret %s/%s not in ServicesNamespace %s", secret.GetNamespace(), secret.GetName(), b.CSData.ServicesNs)
+						return err
+					}
+					klog.Infof("Deleted cs ca certificate secret %s/%s not in ServicesNamespace %s", secret.GetNamespace(), secret.GetName(), b.CSData.ServicesNs)
+				}
 			}
 		}
 	}
