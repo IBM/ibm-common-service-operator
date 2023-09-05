@@ -273,7 +273,7 @@ func (in *ServiceConfig) DeepCopyInto(out *ServiceConfig) {
 	*out = *in
 	if in.Spec != nil {
 		in, out := &in.Spec, &out.Spec
-		*out = make(map[string]runtime.RawExtension, len(*in))
+		*out = make(map[string]extensionWithMarker, len(*in))
 		for key, val := range *in {
 			(*out)[key] = *val.DeepCopy()
 		}
