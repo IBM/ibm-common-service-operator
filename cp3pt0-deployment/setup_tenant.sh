@@ -311,16 +311,24 @@ function determine_topology() {
         fi
     fi
 
+    # if nss is empty, nss_count is not greater than 1 and services namespace is different operator namespace, then it is a all namespaces topology
+    if [[ $is_all_ns -eq 1 ]] && [[ "$SERVICES_NS" != "$OPERATOR_NS" ]]; then
+        IS_NOT_COMPLEX_TOPOLOGY=1
+        warning "It is all namespaces topology\n"
+        # TETHERED_NS or EXCLUDED_NS is not allowed in all namespaces topology
+        if [[ "$TETHERED_NS" != "" ]]; then
+            error "--tethered-namespaces is not allowed in all namespaces topology\n"
+        fi
+        if [[ "$EXCLUDED_NS" != "" ]]; then
+            error "--excluded-namespaces is not allowed in all namespaces topology\n"
+        fi
+        return
+    fi
+
     # if nss_count is not greater than 1 and services namespace is the same as operator namespace, then it is a simple topology
     if [[ "$SERVICES_NS" == "$OPERATOR_NS" || "$SERVICES_NS" == "" ]] && [[ "$TETHERED_NS" == "" ]] && [[ "$EXCLUDED_NS" == "" ]]; then
         IS_NOT_COMPLEX_TOPOLOGY=1
-        warning "It is simple topology or all namespaces topology\n"
-        return
-    fi
-    # if nss is empty, nss_count is not greater than 1 and services namespace is different operator namespace, then it is a all namespaces topology
-    if [[ $is_all_ns -eq 1 ]] && [[ "$SERVICES_NS" != "$OPERATOR_NS" ]] && [[ "$TETHERED_NS" == "" ]] && [[ "$EXCLUDED_NS" == "" ]]; then
-        IS_NOT_COMPLEX_TOPOLOGY=1
-        warning "It is all namespaces topology\n"
+        warning "It is simple namespace topology\n"
         return
     fi
 }
