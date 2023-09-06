@@ -442,18 +442,6 @@
     "name": "ibm-im-operator",
     "spec": {
       "authentication": {
-        "auditService": {
-          "resources": {
-            "limits": {
-              "cpu": "1000m",
-              "memory": "50Mi"
-            },
-            "requests": {
-              "cpu": "10m",
-              "memory": "40Mi"
-            }
-          }
-        },
         "authService": {
           "resources": {
             "limits": {
@@ -522,18 +510,6 @@
     "name": "ibm-im-operator-v4.0",
     "spec": {
       "authentication": {
-        "auditService": {
-          "resources": {
-            "limits": {
-              "cpu": "1000m",
-              "memory": "50Mi"
-            },
-            "requests": {
-              "cpu": "10m",
-              "memory": "40Mi"
-            }
-          }
-        },
         "authService": {
           "resources": {
             "limits": {
@@ -602,18 +578,6 @@
     "name": "ibm-im-operator-v4.1",
     "spec": {
       "authentication": {
-        "auditService": {
-          "resources": {
-            "limits": {
-              "cpu": "1000m",
-              "memory": "50Mi"
-            },
-            "requests": {
-              "cpu": "10m",
-              "memory": "40Mi"
-            }
-          }
-        },
         "authService": {
           "resources": {
             "limits": {
@@ -682,18 +646,6 @@
     "name": "ibm-im-operator-v4.2",
     "spec": {
       "authentication": {
-        "auditService": {
-          "resources": {
-            "limits": {
-              "cpu": "1000m",
-              "memory": "50Mi"
-            },
-            "requests": {
-              "cpu": "10m",
-              "memory": "40Mi"
-            }
-          }
-        },
         "authService": {
           "resources": {
             "limits": {

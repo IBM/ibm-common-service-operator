@@ -266,14 +266,6 @@ const Small = `
   spec:
     authentication:
       replicas: 1
-      auditService:
-        resources:
-          limits:
-            cpu: 1000m
-            memory: 300Mi
-          requests:
-            cpu: 20m
-            memory: 50Mi
       authService:
         resources:
           limits:
@@ -310,14 +302,6 @@ const Small = `
   spec:
     authentication:
       replicas: 1
-      auditService:
-        resources:
-          limits:
-            cpu: 1000m
-            memory: 300Mi
-          requests:
-            cpu: 20m
-            memory: 50Mi
       authService:
         resources:
           limits:
@@ -354,14 +338,6 @@ const Small = `
   spec:
     authentication:
       replicas: 1
-      auditService:
-        resources:
-          limits:
-            cpu: 1000m
-            memory: 300Mi
-          requests:
-            cpu: 20m
-            memory: 50Mi
       authService:
         resources:
           limits:
@@ -398,14 +374,6 @@ const Small = `
   spec:
     authentication:
       replicas: 1
-      auditService:
-        resources:
-          limits:
-            cpu: 1000m
-            memory: 300Mi
-          requests:
-            cpu: 20m
-            memory: 50Mi
       authService:
         resources:
           limits:
