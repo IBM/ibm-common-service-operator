@@ -28,7 +28,7 @@ MASTER_NS=
 EXCLUDED_NS=""
 ADDITIONAL_NS=""
 CONTROL_NS=""
-LSR_NAMESPACE=MASTER_NS
+LSR_NAMESPACE=$MASTER_NS
 CS_MAPPING_YAML=""
 CM_NAME="common-service-maps"
 CERT_MANAGER_MIGRATED="false"
@@ -61,6 +61,7 @@ function main() {
             ;;
         "--original-cs-ns")
             MASTER_NS=$2
+            LSR_NAMESPACE=$MASTER_NS
             shift
             ;;
         "--excluded-ns")
@@ -769,7 +770,7 @@ function check_certmanager_count(){
 }
 
 function isolate_license_service_reporter(){
-
+  info "Isolating License Service Reporter"
   # LicenseServiceReporter should not be installed because it does not support multi-instance mode
   return_value=$( ("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
   if [[ $return_value == "exists" ]]; then
@@ -777,27 +778,29 @@ function isolate_license_service_reporter(){
       return_value=$("${OC}" get ibmlicenseservicereporters -A --no-headers | wc -l)
       if [[ $return_value -gt 0 ]]; then
 
-        #Save existing LSR PersistentVolume and storage class.
+        # Save existing LSR PersistentVolume and storage class.
         status=$("${OC}" get pvc license-service-reporter-pvc -n $LSR_NAMESPACE)
+        debug1 "LSR pvc status: $status"
         if [[ -z "$status" ]]; then
           error "PVC license-service-reporter-pvc not found in $LSR_NAMESPACE"
         fi
 
         VOL=$("${OC}" get pvc license-service-reporter-pvc -n $LSR_NAMESPACE  -o=jsonpath='{.spec.volumeName}')
+        debug1 "LSR volume name: $VOL"
         if [[ -z "$VOL" ]]; then
           error "Volume for pvc license-service-reporter-pvc not found in $LSR_NAMESPACE"
         fi
 
-        #label LSR PV as LSR PV for further LSR upgrade
+        # label LSR PV as LSR PV for further LSR upgrade
         ${OC} label pv $VOL license-service-reporter-pv=true
 
-        #Change existing LSR PersistentVolumeClaim claim policy to retain.
+        # Change existing LSR PersistentVolumeClaim claim policy to retain.
         ${OC} patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Retain" }}'
-        ${OC} patch pv $VOL --type=merge -p '{"spec": {"claimRef":null}}'
-        ${OC} patch pv $VOL --type=json -p '[{ "op": "remove", "path": "/spec/claimRef" }]'
-
+        ${OC} patch pv $VOL --type="merge" -p '{"spec": {"claimRef":null}}'
+        ${OC} patch pv $VOL --type="json" -p '[{ "op": "remove", "path": "/spec/claimRef" }]'        
       fi
   fi
+  success "License Service Reporter isolated."
 }
 
 function wait_for_nss_update() {
