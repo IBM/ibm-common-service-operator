@@ -68,7 +68,7 @@ function main() {
 
     if [ $MIGRATE_SINGLETON -eq 1 ]; then
         if [ $ENABLE_LICENSING -eq 1 ]; then
-            ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" --control-namespace "$CONTROL_NS" "--enable-licensing" --licensing-namespace "$LICENSING_NAMESPACE" "--lsr-namespace" "$LSR_NAMESPACE"
+            ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" "--control-namespace" "$CONTROL_NS" "--enable-licensing" "--licensing-namespace" "$LICENSING_NAMESPACE" "--lsr-namespace" "$LSR_NAMESPACE"
         else
             ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" --control-namespace "$CONTROL_NS"
         fi
@@ -393,11 +393,15 @@ function install_license_service_reporter() {
 
   if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
       SOURCE_NS="${LSR_NAMESPACE}"
+  else
+      SOURCE_NS="${CM_SOURCE_NS}"
   fi
 
+  debug1 "LSR namespace: ${LSR_NAMESPACE}" 
   create_namespace "${LSR_NAMESPACE}"
 
   target=$(cat <<EOF
+
   targetNamespaces:
     - ${LSR_NAMESPACE}
 EOF

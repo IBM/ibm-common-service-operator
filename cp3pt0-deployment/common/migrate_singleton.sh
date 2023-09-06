@@ -66,6 +66,7 @@ function main() {
 
         if [[ lsr_pv_nr -eq 1 ]]; then
 
+          debug1 "LSR namespace: ${LSR_NAMESPACE}" 
           create_namespace "${LSR_NAMESPACE}"
 
           # get pv name
@@ -168,9 +169,11 @@ function parse_arguments() {
             LICENSING_NS=$1
             ;;
         --enable-licensing)
+            shift
             ENABLE_LICENSING=1
             ;;
         --lsr-namespace)
+            shift
             LSR_NAMESPACE=$1
             ;;
         -v | --debug)
