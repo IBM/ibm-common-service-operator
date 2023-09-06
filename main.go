@@ -195,22 +195,24 @@ func main() {
 	}
 
 	// Start up the webhook server
-	if err = (&commonservicewebhook.Defaulter{
-		Client:    mgr.GetClient(),
-		Reader:    mgr.GetAPIReader(),
-		IsDormant: operatorNs != cpfsNs,
-	}).SetupWebhookWithManager(mgr); err != nil {
-		klog.Errorf("Unable to create CommonService webhook: %v", err)
-		os.Exit(1)
-	}
+	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
+		if err = (&commonservicewebhook.Defaulter{
+			Client:    mgr.GetClient(),
+			Reader:    mgr.GetAPIReader(),
+			IsDormant: operatorNs != cpfsNs,
+		}).SetupWebhookWithManager(mgr); err != nil {
+			klog.Errorf("Unable to create CommonService webhook: %v", err)
+			os.Exit(1)
+		}
 
-	if err = (&operandrequestwebhook.Defaulter{
-		Client:    mgr.GetClient(),
-		Reader:    mgr.GetAPIReader(),
-		IsDormant: operatorNs != cpfsNs,
-	}).SetupWebhookWithManager(mgr); err != nil {
-		klog.Errorf("Unable to create OperandRequest webhook: %v", err)
-		os.Exit(1)
+		if err = (&operandrequestwebhook.Defaulter{
+			Client:    mgr.GetClient(),
+			Reader:    mgr.GetAPIReader(),
+			IsDormant: operatorNs != cpfsNs,
+		}).SetupWebhookWithManager(mgr); err != nil {
+			klog.Errorf("Unable to create OperandRequest webhook: %v", err)
+			os.Exit(1)
+		}
 	}
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
