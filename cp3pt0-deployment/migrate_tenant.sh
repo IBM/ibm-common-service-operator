@@ -69,9 +69,6 @@ function main() {
     # Migrate singleton services
     if [[ $ENABLE_LICENSING -eq 1 ]]; then
         arguments+="--enable-licensing"
-        if [[ "$CONTROL_NS" != "$OPERATOR_NS" ]]; then
-            arguments+=" -licensingNs $CONTROL_NS"
-        fi
     fi
 
     if [[ $ENABLE_PRIVATE_CATALOG -eq 1 ]]; then

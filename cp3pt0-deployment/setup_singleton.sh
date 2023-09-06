@@ -200,7 +200,13 @@ function is_migrate_licensing() {
 
     title "Check migrating LTSR ibm-licensing-operator"
     
-    local version=$("$OC" get ibmlicensing instance -o jsonpath='{.spec.version}')
+    local ns=$("$OC" get deployments -A | grep ibm-licensing-operator | cut -d ' ' -f1)
+    if [ -z "$ns" ]; then
+        info "No LTSR ibm-licensing-operator to migrate, skipping"
+        return 0
+    fi
+
+    local version=$("$OC" get ibmlicensings.operator.ibm.com instance -o jsonpath='{.spec.version}' --ignore-not-found)
     if [ -z "$version" ]; then
         warning "No version field in ibmlicensing CR, skipping"
         return 0
@@ -208,12 +214,10 @@ function is_migrate_licensing() {
     local major=$(echo "$version" | cut -d '.' -f1)
     if [ "$major" -ge 4 ]; then
         info "There is no LTSR ibm-licensing-operator to migrate, skipping"
-        return 0
-    fi
-
-    local ns=$("$OC" get deployments -A | grep ibm-licensing-operator | cut -d ' ' -f1)
-    if [ -z "$ns" ]; then
-        info "No LTSR ibm-licensing-operator to migrate, skipping"
+        if [[ "$CUSTOMIZED_LICENSING_NAMESPACE" -eq 1 ]] && [[ "$ns" != "$LICENSING_NAMESPACE" ]]; then
+            error "An ibm-licensing-operator already installed in namespace: $ns, please do not set parameter '-licensingNs $LICENSING_NAMESPACE"
+        fi
+        LICENSING_NAMESPACE="$ns"
         return 0
     fi
 
@@ -291,7 +295,7 @@ function install_cert_manager() {
         error "There is no cert-manager-webhook pod running\n"
     fi
 
-    local api_version=$("$OC" get deployments -n "$webhook_ns" cert-manager-webhook -o jsonpath='{.metadata.ownerReferences[*].apiVersion}')
+    local api_version=$("$OC" get deployments -n "$webhook_ns" cert-manager-webhook -o jsonpath='{.metadata.ownerReferences[*].apiVersion}' --ignore-not-found)
     if [ ! -z "$api_version" ]; then
         if [ "$api_version" == "$CERT_MANAGER_V1ALPHA1_OWNER" ]; then
             error "Cluster has not deactivated LTSR ibm-cert-manager-operator yet, please re-run this script"
@@ -314,6 +318,7 @@ function install_cert_manager() {
     else
         create_subscription "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" "$CHANNEL" "ibm-cert-manager-operator" "${CERT_MANAGER_SOURCE}" "${CM_SOURCE_NS}" "${INSTALL_MODE}"
     fi
+    wait_for_csv "${CERT_MANAGER_NAMESPACE}" "ibm-cert-manager-operator"
     wait_for_operator "${CERT_MANAGER_NAMESPACE}" "ibm-cert-manager-operator"
     accept_license "certmanagerconfig.operator.ibm.com" "" "default"
 }
@@ -354,6 +359,7 @@ EOF
     else
         create_subscription "ibm-licensing-operator-app" "${LICENSING_NAMESPACE}" "$CHANNEL" "ibm-licensing-operator-app" "${LICENSING_SOURCE}" "${LIS_SOURCE_NS}" "${INSTALL_MODE}"
     fi
+    wait_for_csv "${LICENSING_NAMESPACE}" "ibm-licensing-operator-app"
     wait_for_operator "${LICENSING_NAMESPACE}" "ibm-licensing-operator"
     wait_for_license_instance
     accept_license "ibmlicensing" "" "instance"

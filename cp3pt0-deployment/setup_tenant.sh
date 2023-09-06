@@ -381,7 +381,8 @@ function install_nss() {
     fi
 
     if [ $PREVIEW_MODE -eq 0 ]; then
-        wait_for_operator "$OPERATOR_NS" "ibm-namespace-scope-operator" 
+        wait_for_csv "$OPERATOR_NS" "ibm-namespace-scope-operator"
+        wait_for_operator "$OPERATOR_NS" "ibm-namespace-scope-operator"
     fi
     
     # namespaceMembers should at least have Bedrock operators' namespace
@@ -566,7 +567,11 @@ function install_cs_operator() {
     fi
     
     # Checking master CommonService CR status
-    wait_for_cscr_status "$OPERATOR_NS" "common-service"
+    if [ $PREVIEW_MODE -eq 0 ]; then
+        wait_for_csv "$OPERATOR_NS" "ibm-odlm"
+        wait_for_operator "$OPERATOR_NS" "operand-deployment-lifecycle-manager"
+        wait_for_cscr_status "$OPERATOR_NS" "common-service"
+    fi
 }
 
 function configure_nss_kind() {

@@ -233,13 +233,13 @@ function wait_for_operator() {
 function wait_for_csv() {
     local namespace=$1
     local package_name=$2
-    local condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${package_name}.${namespace}='' -n ${namespace} -o yaml -o jsonpath='{.items[*].status.installedCSV}' | grep ^${package_name}"
+    local condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${package_name}.${namespace}='' -n ${namespace} -o yaml -o jsonpath='{.items[*].status.installedCSV}'"
     local retries=30
     local sleep_time=10
     local total_time_mins=$(( sleep_time * retries / 60))
-    local wait_message="Waiting for operator ${package_name} CSV in namespace ${namespace} to be generated"
-    local success_message="Operator ${package_name} CSV in namespace ${namespace} is generated"
-    local error_message="Timeout after ${total_time_mins} minutes waiting for ${package_name} CSV in namespace ${namespace} to be generated"
+    local wait_message="Waiting for operator ${package_name} CSV in namespace ${namespace} to be bundled with Subscription"
+    local success_message="Operator ${package_name} CSV in namespace ${namespace} is bundled with Subscription"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for ${package_name} CSV in namespace ${namespace} to be bundled with Subscription"
  
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
@@ -813,7 +813,7 @@ function cleanup_webhook() {
     local nss_list=$2
     for ns in ${nss_list//,/ }
     do
-        info "Deleting podpresets in namespace {$ns}..."
+        info "Deleting podpresets in namespace $ns..."
         ${OC} get podpresets.operator.ibm.com -n $ns --no-headers | awk '{print $1}' | xargs ${OC} delete -n $ns --ignore-not-found podpresets.operator.ibm.com
     done
     msg ""
@@ -902,7 +902,7 @@ function get_control_namespace() {
     local config_map_name="common-service-maps"
 
     # Get the ConfigMap data
-    config_map_data=$(${OC} get configmap "${config_map_name}" -n kube-public -o yaml | ${YQ} '.data[]')
+    config_map_data=$(${OC} get configmap "${config_map_name}" -n kube-public -o yaml --ignore-not-found | ${YQ} '.data[]')
 
     # Check if the ConfigMap exists
     if [[ -z "${config_map_data}" ]]; then
@@ -1229,6 +1229,12 @@ function accept_license() {
         info "Preview mode is on, skip patching license acceptance\n"
         return 0       
     fi
+
+    if [[ -z "$(${OC} get $kind $cr_name -n $namespace --ignore-not-found)" ]]; then
+        warning "Not found $kind $cr_name in $namespace, skipping updating license acceptance\n"
+        return 0
+    fi
+
     ${OC} patch "$kind" "$cr_name" -n "$namespace" --type='merge' -p '{"spec":{"license":{"accept":true}}}' || export fail="true"
     if [[ $fail == "true" ]]; then
         warning "Failed to update license acceptance for $kind CR $cr_name\n"
