@@ -26,6 +26,7 @@ const Small = `
             cpu: 100m
             memory: 520Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 20m
             memory: 410Mi
       certManagerController:
@@ -34,6 +35,7 @@ const Small = `
             cpu: 80m
             memory: 530Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 20m
             memory: 230Mi
       certManagerWebhook:
@@ -42,6 +44,7 @@ const Small = `
             cpu: 60m
             memory: 100Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 30m
             memory: 40Mi
 - name: ibm-mongodb-operator
@@ -53,11 +56,13 @@ const Small = `
           cpu: 1000m
           memory: 640Mi
         requests:
+          ephemeral-storage: 256Mi
           cpu: 500m
           memory: 640Mi
       metrics:
         resources:
           requests:
+            ephemeral-storage: 256Mi
             cpu: 100m
             memory: 300Mi
           limits:
@@ -72,11 +77,13 @@ const Small = `
           cpu: 1000m
           memory: 640Mi
         requests:
+          ephemeral-storage: 256Mi
           cpu: 500m
           memory: 640Mi
       metrics:
         resources:
           requests:
+            ephemeral-storage: 256Mi
             cpu: 100m
             memory: 300Mi
           limits:
@@ -91,11 +98,13 @@ const Small = `
           cpu: 1000m
           memory: 640Mi
         requests:
+          ephemeral-storage: 256Mi
           cpu: 500m
           memory: 640Mi
       metrics:
         resources:
           requests:
+            ephemeral-storage: 256Mi
             cpu: 100m
             memory: 300Mi
           limits:
@@ -110,11 +119,13 @@ const Small = `
           cpu: 1000m
           memory: 640Mi
         requests:
+          ephemeral-storage: 256Mi
           cpu: 500m
           memory: 640Mi
       metrics:
         resources:
           requests:
+            ephemeral-storage: 256Mi
             cpu: 100m
             memory: 300Mi
           limits:
@@ -129,11 +140,13 @@ const Small = `
           cpu: 1000m
           memory: 640Mi
         requests:
+          ephemeral-storage: 256Mi
           cpu: 500m
           memory: 640Mi
       metrics:
         resources:
           requests:
+            ephemeral-storage: 256Mi
             cpu: 100m
             memory: 300Mi
           limits:
@@ -149,6 +162,7 @@ const Small = `
             cpu: 20m
             memory: 40Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 10m
             memory: 20Mi
       authService:
@@ -157,6 +171,7 @@ const Small = `
             cpu: 1000m
             memory: 1090Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 600m
             memory: 650Mi
       clientRegistration:
@@ -165,6 +180,7 @@ const Small = `
             cpu: 1000m
             memory: 50Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 20m
             memory: 50Mi
       identityManager:
@@ -173,6 +189,7 @@ const Small = `
             cpu: 1000m
             memory: 410Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 260m
             memory: 240Mi
       identityProvider:
@@ -181,6 +198,7 @@ const Small = `
             cpu: 1000m
             memory: 420Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 570m
             memory: 250Mi
     oidcclientwatcher:
@@ -190,6 +208,7 @@ const Small = `
           cpu: 1000m
           memory: 256Mi
         requests:
+          ephemeral-storage: 256Mi
           cpu: 20m
           memory: 34Mi
     pap:
@@ -199,6 +218,7 @@ const Small = `
             cpu: 20m
             memory: 40Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 10m
             memory: 20Mi
       papService:
@@ -207,6 +227,7 @@ const Small = `
             cpu: 1000m
             memory: 380Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 30m
             memory: 190Mi
       replicas: 1
@@ -217,6 +238,7 @@ const Small = `
           cpu: 1000m
           memory: 60Mi
         requests:
+          ephemeral-storage: 256Mi
           cpu: 20m
           memory: 30Mi
     policydecision:
@@ -226,6 +248,7 @@ const Small = `
             cpu: 20m
             memory: 40Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 10m
             memory: 20Mi
       resources:
@@ -233,6 +256,7 @@ const Small = `
           cpu: 1000m
           memory: 50Mi
         requests:
+          ephemeral-storage: 256Mi
           cpu: 70m
           memory: 30Mi
       replicas: 1
@@ -242,6 +266,7 @@ const Small = `
           cpu: 1000m
           memory: 145Mi
         requests:
+          ephemeral-storage: 256Mi
           cpu: 20m
           memory: 40Mi
       replicas: 1
@@ -252,6 +277,7 @@ const Small = `
           cpu: 1000m
           memory: 50Mi
         requests:
+          ephemeral-storage: 256Mi
           cpu: 20m
           memory: 50Mi
       iamOnboarding:
@@ -260,6 +286,7 @@ const Small = `
             cpu: 1000m
             memory: 1024Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 20m
             memory: 64Mi
 - name: ibm-im-operator
@@ -272,6 +299,7 @@ const Small = `
             cpu: 20m
             memory: 40Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 10m
             memory: 20Mi
       authService:
@@ -280,6 +308,7 @@ const Small = `
             cpu: 1000m
             memory: 1090Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 600m
             memory: 650Mi
       clientRegistration:
@@ -288,6 +317,7 @@ const Small = `
             cpu: 1000m
             memory: 50Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 20m
             memory: 50Mi
       identityManager:
@@ -296,6 +326,7 @@ const Small = `
             cpu: 1000m
             memory: 410Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 260m
             memory: 240Mi
       identityProvider:
@@ -304,6 +335,7 @@ const Small = `
             cpu: 1000m
             memory: 420Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 570m
             memory: 250Mi
 - name: ibm-im-operator-v4.0
@@ -316,6 +348,7 @@ const Small = `
             cpu: 20m
             memory: 40Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 10m
             memory: 20Mi
       authService:
@@ -324,6 +357,7 @@ const Small = `
             cpu: 1000m
             memory: 1090Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 600m
             memory: 650Mi
       clientRegistration:
@@ -332,6 +366,7 @@ const Small = `
             cpu: 1000m
             memory: 50Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 20m
             memory: 50Mi
       identityManager:
@@ -340,6 +375,7 @@ const Small = `
             cpu: 1000m
             memory: 410Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 260m
             memory: 240Mi
       identityProvider:
@@ -348,6 +384,7 @@ const Small = `
             cpu: 1000m
             memory: 420Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 570m
             memory: 250Mi
 - name: ibm-im-operator-v4.1
@@ -360,6 +397,7 @@ const Small = `
             cpu: 20m
             memory: 40Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 10m
             memory: 20Mi
       authService:
@@ -368,6 +406,7 @@ const Small = `
             cpu: 1000m
             memory: 1090Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 600m
             memory: 650Mi
       clientRegistration:
@@ -376,6 +415,7 @@ const Small = `
             cpu: 1000m
             memory: 50Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 20m
             memory: 50Mi
       identityManager:
@@ -384,6 +424,7 @@ const Small = `
             cpu: 1000m
             memory: 410Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 260m
             memory: 240Mi
       identityProvider:
@@ -392,6 +433,7 @@ const Small = `
             cpu: 1000m
             memory: 420Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 570m
             memory: 250Mi
 - name: ibm-im-operator-v4.2
@@ -404,6 +446,7 @@ const Small = `
             cpu: 20m
             memory: 40Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 10m
             memory: 20Mi
       authService:
@@ -412,6 +455,7 @@ const Small = `
             cpu: 1000m
             memory: 1090Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 600m
             memory: 650Mi
       clientRegistration:
@@ -420,6 +464,7 @@ const Small = `
             cpu: 1000m
             memory: 50Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 20m
             memory: 50Mi
       identityManager:
@@ -428,6 +473,7 @@ const Small = `
             cpu: 1000m
             memory: 410Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 260m
             memory: 240Mi
       identityProvider:
@@ -436,6 +482,7 @@ const Small = `
             cpu: 1000m
             memory: 420Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 570m
             memory: 250Mi
 - name: ibm-management-ingress-operator
@@ -444,6 +491,7 @@ const Small = `
       replicas: 1
       resources:
         requests:
+          ephemeral-storage: 256Mi
           cpu: 70m
           memory: 70Mi
         limits:
@@ -456,6 +504,7 @@ const Small = `
         replicas: 1
         resources:
           requests:
+            ephemeral-storage: 256Mi
             cpu: 100m
             memory: 110Mi
           limits:
@@ -465,6 +514,7 @@ const Small = `
         replicas: 1
         resources:
           requests:
+            ephemeral-storage: 256Mi
             cpu: 10m
             memory: 20Mi
           limits:
@@ -473,6 +523,7 @@ const Small = `
       kubectl:
         resources:
           requests:
+            ephemeral-storage: 256Mi
             memory: 150Mi
             cpu: 30m
           limits:
@@ -483,6 +534,7 @@ const Small = `
     IBMLicensing:
       resources:
         requests:
+          ephemeral-storage: 256Mi
           cpu: 100m
           memory: 430Mi
         limits:
@@ -492,6 +544,7 @@ const Small = `
       databaseContainer:
         resources:
           requests:
+            ephemeral-storage: 256Mi
             cpu: 200m
             memory: 256Mi
           limits:
@@ -500,6 +553,7 @@ const Small = `
       receiverContainer:
         resources:
           requests:
+            ephemeral-storage: 256Mi
             cpu: 200m
             memory: 256Mi
           limits:
@@ -511,6 +565,7 @@ const Small = `
       replicas: 1
       resources:
         requests:
+          ephemeral-storage: 256Mi
           memory: 256Mi
           cpu: 130m
         limits:
@@ -522,6 +577,7 @@ const Small = `
       replicas: 1
       resources:
         requests:
+          ephemeral-storage: 256Mi
           memory: 256Mi
           cpu: 130m
         limits:
@@ -533,6 +589,7 @@ const Small = `
       replicas: 1
       resources:
         requests:
+          ephemeral-storage: 256Mi
           memory: 256Mi
           cpu: 130m
         limits:
@@ -544,6 +601,7 @@ const Small = `
       replicas: 1
       resources:
         requests:
+          ephemeral-storage: 256Mi
           memory: 256Mi
           cpu: 130m
         limits:
@@ -555,6 +613,7 @@ const Small = `
       replicas: 1
       resources:
         requests:
+          ephemeral-storage: 256Mi
           memory: 256Mi
           cpu: 130m
         limits:
@@ -569,6 +628,7 @@ const Small = `
             cpu: 25m
             memory: 50Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 20m
             memory: 30Mi
       platformApi:
@@ -577,6 +637,7 @@ const Small = `
             cpu: 25m
             memory: 50Mi
           requests:
+            ephemeral-storage: 256Mi
             cpu: 20m
             memory: 30Mi
       replicas: 1
@@ -587,6 +648,7 @@ const Small = `
         replicas: 1
         resources:
           requests:
+            ephemeral-storage: 256Mi
             memory: 50Mi
             cpu: 20m
           limits:
@@ -596,6 +658,7 @@ const Small = `
         replicas: 1
         resources:
           requests:
+            ephemeral-storage: 256Mi
             memory: 100Mi
             cpu: 20m
           limits:
@@ -607,6 +670,7 @@ const Small = `
       fluentd:
         resources:
           requests:
+            ephemeral-storage: 256Mi
             cpu: 30m
             memory: 20Mi
           limits:
@@ -618,6 +682,7 @@ const Small = `
       grafanaConfig:
         resources:
           requests:
+            ephemeral-storage: 256Mi
             cpu: 20m
             memory: 40Mi
           limits:
@@ -626,6 +691,7 @@ const Small = `
       dashboardConfig:
         resources:
           requests:
+            ephemeral-storage: 256Mi
             cpu: 20m
             memory: 30Mi
           limits:
@@ -634,6 +700,7 @@ const Small = `
       routerConfig:
         resources:
           requests:
+            ephemeral-storage: 256Mi
             cpu: 20m
             memory: 20Mi
           limits:
