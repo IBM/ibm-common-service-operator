@@ -236,6 +236,37 @@ func mergeChangedMapWithExtremeSize(key string, defaultMap interface{}, changedM
 	}
 }
 
+// filterNewAddProfile exclude the changedMap's entries which is not in defaultMap
+func filterNewAddProfile(defaultMap map[string]interface{}, changedMap map[string]interface{}) map[string]interface{} {
+	for key := range changedMap {
+		deepFilterMap(key, defaultMap[key], changedMap[key], changedMap)
+	}
+	return changedMap
+}
+
+func deepFilterMap(key string, defaultMap interface{}, changedMap interface{}, finalMap map[string]interface{}) {
+	switch changedMap := changedMap.(type) {
+	case map[string]interface{}:
+		if _, ok := defaultMap.(map[string]interface{}); ok { //Check that the default map value is also a map[string]interface
+			changedMapRef := changedMap
+			defaultMapRef := defaultMap.(map[string]interface{})
+			for newKey := range changedMapRef {
+				deepFilterMap(newKey, defaultMapRef[newKey], changedMapRef[newKey], finalMap[key].(map[string]interface{}))
+			}
+		} else {
+			delete(finalMap, key)
+		}
+	default:
+		if changedMap == nil || defaultMap == nil {
+			delete(finalMap, key)
+		} else {
+			if _, ok := defaultMap.(map[string]interface{}); ok {
+				delete(finalMap, key)
+			}
+		}
+	}
+}
+
 // mergeSizeProfile deep merge two configs
 func mergeSizeProfile(defaultMap map[string]interface{}, changedMap map[string]interface{}) map[string]interface{} {
 	for key := range defaultMap {
@@ -268,7 +299,7 @@ func deepMergeTwoMaps(key string, defaultMap interface{}, changedMap interface{}
 	}
 }
 
-func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newConfigs []interface{}, serviceControllerMapping map[string]string) (bool, error) {
+func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newConfigs []interface{}, newAddConfigs []interface{}, serviceControllerMapping map[string]string) (bool, error) {
 	opcon := util.NewUnstructured("operator.ibm.com", "OperandConfig", "v1alpha1")
 	opconKey := types.NamespacedName{
 		Name:      "common-service",
@@ -287,6 +318,35 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 	ruleSlice, err := convertStringToSlice(rules.ConfigurationRules)
 	if err != nil {
 		return true, err
+	}
+
+	if newAddConfigs != nil {
+		for _, newAddConfig := range newAddConfigs {
+			if newAddConfig == nil {
+				continue
+			}
+			rules := getItemByName(ruleSlice, newAddConfig.(map[string]interface{})["name"].(string))
+			if rules == nil {
+				continue
+			}
+			for cr, size := range filterNewAddProfile(rules.(map[string]interface{})["spec"].(map[string]interface{}), newAddConfig.(map[string]interface{})["spec"].(map[string]interface{})) {
+				newAddConfig.(map[string]interface{})["spec"].(map[string]interface{})[cr] = size
+			}
+
+		}
+
+		for _, opService := range opconServices {
+			if opService == nil {
+				continue
+			}
+			newAddConfig := getItemByName(newAddConfigs, opService.(map[string]interface{})["name"].(string))
+			if newAddConfig == nil {
+				continue
+			}
+			for cr, size := range mergeSizeProfile(opService.(map[string]interface{})["spec"].(map[string]interface{}), newAddConfig.(map[string]interface{})["spec"].(map[string]interface{})) {
+				opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = size
+			}
+		}
 	}
 
 	for _, newConfigForOperator := range newConfigs {
@@ -346,6 +406,10 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 			continue
 		}
 		for cr, spec := range opService.(map[string]interface{})["spec"].(map[string]interface{}) {
+			if existingOpService.(map[string]interface{})["spec"].(map[string]interface{})[cr] == nil {
+				isEqual = false
+				break
+			}
 			existingCrSpec := existingOpService.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
 			if isEqual = rules.ResourceEqualComparison(existingCrSpec, spec); !isEqual {
 				break
@@ -421,7 +485,7 @@ func (r *CommonServiceReconciler) getExtremeizes(ctx context.Context, opconServi
 			return configSummary, err
 		}
 
-		csConfigs, serviceControllerMapping, err := r.getNewConfigs(&cs, inScope)
+		csConfigs, _, serviceControllerMapping, err := r.getNewConfigs(&cs, inScope)
 		if err != nil {
 			return []interface{}{}, err
 		}

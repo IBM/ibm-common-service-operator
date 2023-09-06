@@ -31,7 +31,7 @@ var (
 	clusterScopeOperators = []string{"ibm-cert-manager-operator", "ibm-licensing-operator"}
 )
 
-func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, inScope bool) ([]interface{}, map[string]string, error) {
+func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, inScope bool) ([]interface{}, []interface{}, map[string]string, error) {
 	var newConfigs []interface{}
 	var err error
 	// Update storageclass in OperandConfig
@@ -39,7 +39,7 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 		klog.Info("Applying storageClass configuration")
 		storageConfig, err := convertStringToSlice(strings.ReplaceAll(constant.StorageClassTemplate, "placeholder", cs.Object["spec"].(map[string]interface{})["storageClass"].(string)))
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		newConfigs = append(newConfigs, storageConfig...)
 	}
@@ -49,7 +49,7 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 		klog.Info("Applying routeHost configuration")
 		routeHostConfig, err := convertStringToSlice(strings.ReplaceAll(constant.RouteHostTemplate, "placeholder", cs.Object["spec"].(map[string]interface{})["routeHost"].(string)))
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		newConfigs = append(newConfigs, routeHostConfig...)
 	}
@@ -59,7 +59,7 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 		klog.Info("Applying the default admin username")
 		adminUsernameConfig, err := convertStringToSlice(strings.ReplaceAll(constant.DefaultAdminUserTemplate, "placeholder", cs.Object["spec"].(map[string]interface{})["defaultAdminUser"].(string)))
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		newConfigs = append(newConfigs, adminUsernameConfig...)
 	}
@@ -69,7 +69,7 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 		klog.Info("Applying multipleInstancesEnabled configuration")
 		multipleinstancesenabledConfig, err := convertStringToSlice(strings.ReplaceAll(constant.MultipleInstancesEnabledTemplate, "placeholder", "true"))
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		newConfigs = append(newConfigs, multipleinstancesenabledConfig...)
 	}
@@ -84,7 +84,7 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 	// update config for all three services
 	fipsEnabledConfig, err := convertStringToSlice(strings.ReplaceAll(constant.FipsEnabledTemplate, "placeholder", strconv.FormatBool(fipsEnabled)))
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	newConfigs = append(newConfigs, fipsEnabledConfig...)
 
@@ -94,7 +94,7 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 			if storageClass := apiCatalog.(map[string]interface{})["storageClass"]; storageClass != nil {
 				storageConfig, err := convertStringToSlice(strings.ReplaceAll(constant.APICatalogTemplate, "placeholder", storageClass.(string)))
 				if err != nil {
-					return nil, nil, err
+					return nil, nil, nil, err
 				}
 				newConfigs = append(newConfigs, storageConfig...)
 			}
@@ -103,6 +103,7 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 
 	klog.Info("Applying size configuration")
 	var sizeConfigs []interface{}
+	var newAddConfigs []interface{}
 	serviceControllerMapping := make(map[string]string)
 	serviceControllerMapping["profileController"] = "default"
 	if controller, ok := cs.Object["spec"].(map[string]interface{})["profileController"]; ok {
@@ -111,34 +112,34 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 
 	switch cs.Object["spec"].(map[string]interface{})["size"] {
 	case "starterset", "starter":
-		sizeConfigs, serviceControllerMapping, err = applySizeTemplate(cs, size.StarterSet, serviceControllerMapping, inScope)
+		sizeConfigs, newAddConfigs, serviceControllerMapping, err = applySizeTemplate(cs, size.StarterSet, serviceControllerMapping, inScope)
 		if err != nil {
-			return sizeConfigs, serviceControllerMapping, err
+			return sizeConfigs, newAddConfigs, serviceControllerMapping, err
 		}
 	case "small":
-		sizeConfigs, serviceControllerMapping, err = applySizeTemplate(cs, size.Small, serviceControllerMapping, inScope)
+		sizeConfigs, newAddConfigs, serviceControllerMapping, err = applySizeTemplate(cs, size.Small, serviceControllerMapping, inScope)
 		if err != nil {
-			return sizeConfigs, serviceControllerMapping, err
+			return sizeConfigs, newAddConfigs, serviceControllerMapping, err
 		}
 	case "medium":
-		sizeConfigs, serviceControllerMapping, err = applySizeTemplate(cs, size.Medium, serviceControllerMapping, inScope)
+		sizeConfigs, newAddConfigs, serviceControllerMapping, err = applySizeTemplate(cs, size.Medium, serviceControllerMapping, inScope)
 		if err != nil {
-			return sizeConfigs, serviceControllerMapping, err
+			return sizeConfigs, newAddConfigs, serviceControllerMapping, err
 		}
 	case "large", "production":
-		sizeConfigs, serviceControllerMapping, err = applySizeTemplate(cs, size.Large, serviceControllerMapping, inScope)
+		sizeConfigs, newAddConfigs, serviceControllerMapping, err = applySizeTemplate(cs, size.Large, serviceControllerMapping, inScope)
 		if err != nil {
-			return sizeConfigs, serviceControllerMapping, err
+			return sizeConfigs, newAddConfigs, serviceControllerMapping, err
 		}
 	default:
-		sizeConfigs, serviceControllerMapping = applySizeConfigs(cs, serviceControllerMapping, inScope)
+		sizeConfigs, newAddConfigs, serviceControllerMapping = applySizeConfigs(cs, serviceControllerMapping, inScope)
 	}
 	newConfigs = append(newConfigs, sizeConfigs...)
 
-	return newConfigs, serviceControllerMapping, nil
+	return newConfigs, newAddConfigs, serviceControllerMapping, nil
 }
 
-func applySizeConfigs(cs *unstructured.Unstructured, serviceControllerMapping map[string]string, inScope bool) ([]interface{}, map[string]string) {
+func applySizeConfigs(cs *unstructured.Unstructured, serviceControllerMapping map[string]string, inScope bool) ([]interface{}, []interface{}, map[string]string) {
 	var dest []interface{}
 	if cs.Object["spec"].(map[string]interface{})["services"] != nil {
 		for _, configSize := range cs.Object["spec"].(map[string]interface{})["services"].([]interface{}) {
@@ -161,10 +162,10 @@ func applySizeConfigs(cs *unstructured.Unstructured, serviceControllerMapping ma
 		}
 	}
 
-	return dest, serviceControllerMapping
+	return dest, dest, serviceControllerMapping
 }
 
-func applySizeTemplate(cs *unstructured.Unstructured, sizeTemplate string, serviceControllerMapping map[string]string, inScope bool) ([]interface{}, map[string]string, error) {
+func applySizeTemplate(cs *unstructured.Unstructured, sizeTemplate string, serviceControllerMapping map[string]string, inScope bool) ([]interface{}, []interface{}, map[string]string, error) {
 
 	var src []interface{}
 	if cs.Object["spec"].(map[string]interface{})["services"] != nil {
@@ -175,9 +176,10 @@ func applySizeTemplate(cs *unstructured.Unstructured, sizeTemplate string, servi
 	sizes, err := convertStringToSlice(sizeTemplate)
 	if err != nil {
 		klog.Errorf("convert size to interface slice: %v", err)
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	var newSizes []interface{}
+	var newAddSizes []interface{}
 	if !inScope {
 		// delete all namespace-scoped operator's template
 		for _, configSize := range sizes {
@@ -188,6 +190,15 @@ func applySizeTemplate(cs *unstructured.Unstructured, sizeTemplate string, servi
 			}
 		}
 		sizes = newSizes
+
+		for _, configSize := range src {
+			for _, operator := range clusterScopeOperators {
+				if configSize.(map[string]interface{})["name"].(string) == operator {
+					newAddSizes = append(newAddSizes, configSize)
+				}
+			}
+		}
+		src = newAddSizes
 	}
 
 	for _, configSize := range sizes {
@@ -205,5 +216,5 @@ func applySizeTemplate(cs *unstructured.Unstructured, sizeTemplate string, servi
 			configSize.(map[string]interface{})["spec"].(map[string]interface{})[cr] = size
 		}
 	}
-	return sizes, serviceControllerMapping, nil
+	return sizes, src, serviceControllerMapping, nil
 }
