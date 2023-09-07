@@ -1,0 +1,57 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: zen5-backup-role
+rules:
+  - verbs:
+      - create
+      - get
+      - delete
+      - watch
+      - update
+      - list
+      - patch
+    apiGroups:
+      - ''
+      - batch
+      - extensions
+      - apps
+      - policy
+      - rbac.authorization.k8s.io
+      - autoscaling
+      - authorization.openshift.io
+      - networking.k8s.io
+      - metrics.k8s.io
+    resources:
+      - pods
+      - pods/log
+      - secrets
+      - jobs
+      - configmaps
+      - deployments
+      - deployments/scale
+      - cronjobs
+      - pods/exec
+      - pods/portforward
+      - horizontalpodautoscalers
+      - verticalpodautoscalers
+      - endpoints
+      - cronjob
+      - pods/status
+  - verbs:
+      - get
+      - list
+      - patch
+    apiGroups:
+      - zen.cpd.ibm.com
+      - postgresql.k8s.enterprisedb.io
+    resources:
+      - zenservice
+      - zenservices
+      - clusters
+  - verbs:
+      - get
+    apiGroups:
+      - ""
+    resources:
+      - configmaps

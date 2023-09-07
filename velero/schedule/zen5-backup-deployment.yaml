@@ -14,9 +14,11 @@ spec:
       annotations:
         backup.velero.io/backup-volumes: zen5-backup
         pre.hook.backup.velero.io/command: '["sh", "-c", "/zen5/backup_zen5.sh zen"]'
-        pre.hook.backup.velero.io/timeout: 120s
-        post.hook.backup.velero.io/command: '["sh", "-c", "rm -rf /zen5/zen-backup"]'
+        pre.hook.backup.velero.io/timeout: 600s
+        #post.hook.backup.velero.io/command: '["sh", "-c", "rm -rf /zen5/zen-backup"]'
         post.hook.restore.velero.io/command: '["sh", "-c", "/zen5/restore_zen5.sh zen test-zen"]'
+        post.hook.restore.velero.io/wait-timeout: 600s
+        post.hook.restore.velero.io/exec-timeout: 600s
       name: zen5-backup
       namespace: zen
       labels:
@@ -49,6 +51,8 @@ spec:
         schedulerName: default-scheduler
         securityContext:
           runAsNonRoot: true
+        serviceAccount: zen5-backup-sa
+        serviceAccountName: zen5-backup-sa
         terminationGracePeriodSeconds: 30
         volumes:
         - name: zen5-backup-mount
