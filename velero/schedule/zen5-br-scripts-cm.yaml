@@ -1,0 +1,171 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zen5-br-configmap
+data:
+  backup_zen5.sh: |
+    #!/usr/bin/env bash
+
+    # Licensed Materials - Property of IBM
+    # Copyright IBM Corporation 2023. All Rights Reserved
+    # US Government Users Restricted Rights -
+    # Use, duplication or disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+    #
+    # This is an internal component, bundled with an official IBM product.
+    # Please refer to that particular license for additional information.
+
+    # ---------- Command arguments ----------
+    #should probably defualt this to zen with an optional parameter
+    ZEN_NAMESPACE=$1
+
+
+    # oc apply -f zen-backup-sa.yaml -n $ZEN_NAMESPACE
+    #Backup steps
+    whoami
+    pwd
+
+    #Setup backup location
+    BACKUP_DIR=/zen5/zen-backup
+    mkdir -p $BACKUP_DIR/workspace
+    mkdir -p $BACKUP_DIR/secrets
+    mkdir -p $BACKUP_DIR/database
+    mkdir -p $BACKUP_DIR/objstorage
+
+    #Set zen namespace
+    #will be covered by command line argument/prereq function
+
+    #Backup zen metastoredb
+    #check if this flag is true, otherwise do not proceed
+    return_value=$(oc get cm ibm-zen-metastore-edb-cm -o jsonpath='{.data.IS_EMBEDDED_DATABASE}{"\n"}' || echo "fail")
+    if [[ $return_value != "fail" ]]; then #obviously needs to be corrected
+        echo "inside first if"
+        #this line could be tough to run outside of a script since it will need permissions to view cluster resources
+        CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io zen-metastore-edb -o jsonpath="{.status.currentPrimary}"` && \
+        oc exec -t $CNPG_PRIMARY_POD -c postgres -- mkdir -p /run/zen_backup && \
+        oc exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=zen -f /run/zen_backup/zen_db_backup.dump
+
+        #Move backup to backup location
+        oc cp $ZEN_NAMESPACE/$CNPG_PRIMARY_POD:/run/zen_backup/zen_db_backup.dump $BACKUP_DIR/database/zen_db_backup.dump
+    fi
+    echo "outside first if"
+    #Backup zen object storage
+    #check if this is true
+    return_value=""
+    return_value=$(oc get cm ibm-zen-objectstore-cm -o jsonpath='{.data.IS_EMBEDDED_OBJECTSTORE}{"\n"}' || echo "fail")
+    if [[ $return_value != "fail" ]]; then
+        echo "inside second if"
+        #Read object storage connection and credentials
+        OBJECTSTORE_ENDPOINT=$(oc get cm ibm-zen-objectstore-cm -o jsonpath="{.data.OBJECTSTORE_ENDPOINT}")
+        oc extract secret/ibm-zen-objectstore-secret --to=$BACKUP_DIR/workspace --confirm
+
+        #Backup object storage data
+        oc exec -t zen-minio-0 -- bash -c "rm -rf /tmp/backup && mkdir -p /tmp/backup && export HOME=/tmp && /workdir/bin/mc alias set zenobjstore ${OBJECTSTORE_ENDPOINT} $(<${BACKUP_DIR}/workspace/accesskey) $(<${BACKUP_DIR}/workspace/secretkey) --config-dir=/tmp/.mc --insecure && /workdir/bin/mc cp --recursive zenobjstore/ /tmp/backup/ --insecure" 
+
+        #Move backup to backup location
+        oc cp $ZEN_NAMESPACE/zen-minio-0:/tmp/backup $BACKUP_DIR/objstorage && oc exec -t zen-minio-0 -- bash -c "rm -rf /tmp/backup"
+    fi
+    echo "outside second if"
+
+    #Backup JWT configuration
+    oc extract -n ${ZEN_NAMESPACE} secret/ibm-zen-secret-jwt --to=$BACKUP_DIR/secrets
+    echo "one"
+    oc extract -n ${ZEN_NAMESPACE} secret/ibm-zen-secret-jwt-private --to=$BACKUP_DIR/secrets
+    echo "two"
+    oc extract -n ${ZEN_NAMESPACE} secret/zen-secrets-aes-key  --to=$BACKUP_DIR/secrets
+    echo "three"
+    oc extract -n ${ZEN_NAMESPACE} secret/admin-user-details --to=$BACKUP_DIR/secrets
+
+    echo "complete"
+  restore_zen5.sh: |
+    #!/usr/bin/env bash
+
+    # Licensed Materials - Property of IBM
+    # Copyright IBM Corporation 2023. All Rights Reserved
+    # US Government Users Restricted Rights -
+    # Use, duplication or disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+    #
+    # This is an internal component, bundled with an official IBM product.
+    # Please refer to that particular license for additional information.
+
+    #steps copied from https://github.ibm.com/PrivateCloud-analytics/zen-dev-test-utils/blob/gh-pages/docs/zen-v5-br.md#21321-read-object-storage-connection-and-credentials
+
+    #[2.2] Restore
+    #[2.2.1] Set Zen namespace
+    ZEN_NAMESPACE=$1 #should probably defualt this to zen with an optional parameter
+    ZENSERVICE_NAME=$2
+    BACKUP_DIR=/zen5/zen-backup
+    echo "first print"
+
+    #[2.2.2] Enable Zen operator maintenance mode and scale down deployments
+    oc patch zenservice ${ZENSERVICE_NAME} --namespace ${ZEN_NAMESPACE} --type=merge --patch '{"spec": {"ignoreForMaintenance": true}}'
+    #suspend backup cronjob
+    oc patch cj zen-metastore-backup-cron-job --namespace ${ZEN_NAMESPACE} --type=merge --patch '{"spec": {"suspend": true}}'
+    echo "second print"
+    oc get deploy ibm-nginx zen-core usermgmt zen-watcher  zen-watchdog zen-core-api -n ${ZEN_NAMESPACE}
+    oc scale deploy ibm-nginx zen-core usermgmt zen-watcher zen-core-api --replicas=0 -n ${ZEN_NAMESPACE}
+    # zen-watchdog is applicable only for CloudPak for Data 
+    #TODO need to error handle if it does not exist
+    oc get deploy zen-watchdog -n ${ZEN_NAMESPACE}
+    oc scale deploy zen-watchdog --replicas=0 -n ${ZEN_NAMESPACE}
+    echo "third print"
+    #[2.2.3] Reset platform metadata and configuration data
+    #[2.2.3.1] Reset database
+    CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io zen-metastore-edb -o jsonpath="{.status.currentPrimary}"` && oc exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "DROP DATABASE IF EXISTS zen;"  -c "DROP USER IF EXISTS zen_user;" -c "CREATE DATABASE zen;" -c "CREATE USER zen_user;" -c "GRANT CONNECT ON DATABASE zen TO public;" -c "ALTER DATABASE zen OWNER TO zen_user;" -c "GRANT ALL PRIVILEGES ON DATABASE zen to zen_user;"
+    echo "fourth print"
+    #[2.2.3.2] reset object storage
+    #[2.2.3.2.1] read object storage connection and credentials
+    IBM_ZEN_BUCKET_NAME=$(oc get cm ibm-zen-objectstore-cm -o=jsonpath='{.data.BUCKET_ZEN_CONFIGURATION}')
+    OBJECTSTORE_ENDPOINT=$(oc get cm ibm-zen-objectstore-cm -o jsonpath="{.data.OBJECTSTORE_ENDPOINT}")
+    oc extract secret/ibm-zen-objectstore-secret --to=$BACKUP_DIR/workspace --confirm
+    echo "fifth print"
+    #[2.2.3.2.2] Remove and recreate Zen bucket
+    oc exec -t zen-minio-0 -- bash -c "rm -rf /tmp/backup && mkdir -p /tmp/backup && export HOME=/tmp && /workdir/bin/mc alias set zenobjstore ${OBJECTSTORE_ENDPOINT} $(<${BACKUP_DIR}/workspace/accesskey) $(<${BACKUP_DIR}/workspace/secretkey) --config-dir=/tmp/.mc --insecure && /workdir/bin/mc ls zenobjstore/${IBM_ZEN_BUCKET_NAME} --insecure && /workdir/bin/mc rb zenobjstore/${IBM_ZEN_BUCKET_NAME} --force --dangerous --insecure && /workdir/bin/mc mb zenobjstore/${IBM_ZEN_BUCKET_NAME} --insecure"
+    echo "sixth print"
+    #[2.2.4] Restore data
+    #[2.2.4.1] Restore platform metadata (metastore database)
+    CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io zen-metastore-edb -o jsonpath="{.status.currentPrimary}"`
+    oc exec $CNPG_PRIMARY_POD -n $ZEN_NAMESPACE -- mkdir -p /run/zen_backup
+    oc cp $BACKUP_DIR/database/zen_db_backup.dump $ZEN_NAMESPACE/$CNPG_PRIMARY_POD:/run/zen_backup/zen_db_backup.dump
+    echo "seventh print"
+    oc exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
+    oc exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -d zen -f /run/zen_backup/zen_db_backup.dump
+    oc exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
+    echo "eighth print"
+    #[2.2.4.2] Restore platform configuration data (object storage)
+    IBM_ZEN_BUCKET_NAME=$(oc get cm ibm-zen-objectstore-cm -o=jsonpath='{.data.BUCKET_ZEN_CONFIGURATION}')
+    oc cp $BACKUP_DIR/objstorage $ZEN_NAMESPACE/zen-minio-0:/tmp/backup 
+    oc exec -t zen-minio-0 -- bash -c "export HOME=/tmp && /workdir/bin/mc alias set zenobjstore ${OBJECTSTORE_ENDPOINT} $(<${BACKUP_DIR}/workspace/accesskey) $(<${BACKUP_DIR}/workspace/secretkey) --config-dir=/tmp/.mc --insecure && /workdir/bin/mc cp --recursive /tmp/backup/objstorage/${IBM_ZEN_BUCKET_NAME}/ zenobjstore/${IBM_ZEN_BUCKET_NAME}/ --insecure"
+    echo "ninth print"
+    #[2.2.4.3] Restore JWT configuration and keys
+    oc patch secret -n $ZEN_NAMESPACE ibm-zen-secret-jwt --patch="{\"data\": { \"public.pem\": \"$(base64 -w0 $BACKUP_DIR/secrets/public.pem)\" }}"
+    oc patch secret -n $ZEN_NAMESPACE ibm-zen-secret-jwt --patch="{\"data\": { \"jwt.cert\": \"$(base64 -w0 $BACKUP_DIR/secrets/jwt.cert)\" }}"
+    oc patch secret -n $ZEN_NAMESPACE ibm-zen-secret-jwt-private --patch="{\"data\": { \"private.pem\": \"$(base64 -w0 $BACKUP_DIR/secrets/private.pem)\" }}"
+    oc patch secret -n $ZEN_NAMESPACE zen-secrets-aes-key --patch="{\"data\": { \"aes_key\": \"$(base64 -w0 $BACKUP_DIR/secrets/aes_key)\" }}"
+    oc patch secret -n $ZEN_NAMESPACE admin-user-details --patch="{\"data\": { \"initial_admin_password\": \"$(base64 -w0 $BACKUP_DIR/secrets/initial_admin_password)\" }}"
+    echo "tenth print"
+    #[2.2.5] Scale up deployments and Disable Zen operator maintenance mode
+    #[2.2.5.1] Scale up the deployments
+    oc scale deploy zen-watcher --replicas=1
+    oc scale deploy zen-watchdog --replicas=1 # (Only for CloudPak for Data) TODO error handle if not present
+    oc scale deploy usermgmt --replicas=2
+    oc scale deploy zen-core-api --replicas=2
+    oc scale deploy zen-core --replicas=2
+    oc scale deploy ibm-nginx --replicas=2
+    echo "eleventh print"
+    #[2.2.5.2] Wait for deployments
+    oc wait pod --for=condition=Ready -l app.kubernetes.io/component=ibm-nginx --timeout=180s
+    oc wait pod --for=condition=Ready -l app.kubernetes.io/component=zen-core --timeout=180s
+    oc wait pod --for=condition=Ready -l app.kubernetes.io/component=zen-core-api --timeout=180s
+    oc wait pod --for=condition=Ready -l app.kubernetes.io/component=zen-watcher --timeout=180s
+    oc wait pod --for=condition=Ready -l app.kubernetes.io/component=zen-watchdog --timeout=180s # (Only for CloudPak for Data) TODO error handle if not present
+    oc wait pod --for=condition=Ready -l app.kubernetes.io/component=usermgmt --timeout=180s
+    echo "12th print"
+    #[2.2.5.3] Restart zen-watcher
+    oc delete pods -l component=zen-watcher
+
+    #[2.2.5.4] Enable backup cronjob
+    oc patch cj zen-metastore-backup-cron-job --namespace ${ZEN_NAMESPACE} --type=merge --patch '{"spec": {"suspend": false}}'
+
+    #[2.2.5.5] remove zenservice from maintenance mode
+    oc patch zenservice ${ZENSERVICE_NAME} --namespace ${ZEN_NAMESPACE} --type=merge --patch '{"spec": {"ignoreForMaintenance": false}}'
+    echo "final print" 
