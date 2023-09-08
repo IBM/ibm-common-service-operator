@@ -2,6 +2,8 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: zen5-br-configmap
+  labels:
+    foundationservices.cloudpak.ibm.com: zen5-data
 data:
   backup_zen5.sh: |
     #!/usr/bin/env bash
