@@ -57,7 +57,25 @@ function main() {
 
         #Prepare LSR PV/PVC which was decoupled in isolate.sh
         # delete old LSR CR - PV should stay,
+        VOL=$("${OC}" get pvc license-service-reporter-pvc -n ibm-common-services  -o=jsonpath='{.spec.volumeName}')
+        debug1 "LSR volume name: $VOL"
+        if [[ -z "$VOL" ]]; then
+          error "Volume for pvc license-service-reporter-pvc not found in ibm-common-services"
+        fi
+
+        # label LSR PV as LSR PV for further LSR upgrade
+        ${OC} label pv $VOL license-service-reporter-pv=true --overwrite 
+        ${OC} patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Retain" }}'
+
         ${OC} delete IBMLicenseServiceReporter instance -n ibm-common-services
+
+        lsr_pvcs=$("${OC}" get pvc license-service-reporter-pvc -n ibm-common-services  --no-headers | wc -l)
+        if [[ lsr_pvcs -gt 0 ]]; then
+            info "Failed to delete pvc license-service-reporter-pvc, patching its finalizer to null..."
+            ${OC} patch pvc license-service-reporter-pvc -n ibm-common-services  --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+        else
+            debug1 "No pvc license-service-reporter-pvc as expected"
+        fi
 
         lsr_pv_nr=$("${OC}" get pv -l license-service-reporter-pv=true --no-headers | wc -l )
         if [[ lsr_pv_nr -gt 1 ]]; then
@@ -70,13 +88,25 @@ function main() {
           create_namespace "${LSR_NAMESPACE}"
 
           # get pv name
-          LSR_PV_NAME=${OC} get pv -l license-service-reporter-pv=true -o=jsonpath='{.items[0].metadata.name}'
+          LSR_PV_NAME=$("${OC}" get pv -l license-service-reporter-pv=true -o=jsonpath='{.items[0].metadata.name}')
+          desc=$("${OC}" get pv $LSR_PV_NAME -n $LSR_NAMESPACE -o yaml)
+          debug1 "1: $desc"
           # get storage class name
-          LSR_STORAGE_CLASS=${OC} get pv -l license-service-reporter-pv=true -o=jsonpath='{.items[0].spec.storageClassName}'
+          roks=$(${OC} cluster-info | grep 'containers.cloud.ibm.com')
+          if [[ -z $roks ]]; then
+            LSR_STORAGE_CLASS=$("${OC}" get pv -l license-service-reporter-pv=true -o=jsonpath='{.items[0].spec.storageClassName}')
+            if [[ -z $LSR_STORAGE_CLASS ]]; then
+                error "Cannnot get storage class name from PVC license-service-reporter-pv in $LSR_NAMESPACE"
+            fi
+          else
+            debug1 "Run on ROKS, not setting storageclass name"
+            LSR_STORAGE_CLASS=""
+          fi
+
           # create PVC
           TEMP_LSR_PVC_FILE="_TEMP_LSR_PVC_FILE.yaml"
 
-          cat <<EOF >TEMP_LSR_PVC_FILE
+          cat <<EOF >$TEMP_LSR_PVC_FILE
           apiVersion: v1
           kind: PersistentVolumeClaim
           metadata:
@@ -93,7 +123,18 @@ function main() {
             volumeName: ${LSR_PV_NAME}
 EOF
           ${OC} create -f ${TEMP_LSR_PVC_FILE}
-          ${OC} patch pv ${LSR_PV_NAME} --type=merge -p '{"spec": {"claimRef":null}}'
+          #${OC} patch pv ${LSR_PV_NAME} --type=merge -p '{"spec": {"claimRef":null}}'
+          status=$("${OC}" get pvc license-service-reporter-pvc -n $LSR_NAMESPACE --no-headers | awk '{print $2}')
+          while [[ "$status" != "Bound" ]]
+          do
+            namespace=$("${OC}" get pv ${LSR_PV_NAME} -o=jsonpath='{.spec.claimRef.namespace}')
+            if [[ $namespace != $LSR_NAMESPACE ]]; then
+                ${OC} patch pv ${LSR_PV_NAME} --type=merge -p '{"spec": {"claimRef":null}}'
+            fi
+            info "Waiting for pvc license-service-reporter-pvc to bind"
+            sleep 10
+            status=$("${OC}" get pvc license-service-reporter-pvc -n $LSR_NAMESPACE --no-headers | awk '{print $2}')
+          done
         fi
         
         backup_ibmlicensing

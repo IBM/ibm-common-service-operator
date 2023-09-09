@@ -778,7 +778,7 @@ function isolate_license_service_reporter(){
       return_value=$("${OC}" get ibmlicenseservicereporters -A --no-headers | wc -l)
       if [[ $return_value -gt 0 ]]; then
 
-        # Save existing LSR PersistentVolume and storage class.
+        # Change persistentVolumeReclaimPolicy to Retain
         status=$("${OC}" get pvc license-service-reporter-pvc -n $LSR_NAMESPACE)
         debug1 "LSR pvc status: $status"
         if [[ -z "$status" ]]; then
@@ -792,12 +792,8 @@ function isolate_license_service_reporter(){
         fi
 
         # label LSR PV as LSR PV for further LSR upgrade
-        ${OC} label pv $VOL license-service-reporter-pv=true
-
-        # Change existing LSR PersistentVolumeClaim claim policy to retain.
+        ${OC} label pv $VOL license-service-reporter-pv=true --overwrite 
         ${OC} patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Retain" }}'
-        ${OC} patch pv $VOL --type="merge" -p '{"spec": {"claimRef":null}}'
-        ${OC} patch pv $VOL --type="json" -p '[{ "op": "remove", "path": "/spec/claimRef" }]'        
       fi
   fi
   success "License Service Reporter isolated."
