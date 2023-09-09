@@ -413,7 +413,7 @@ EOF
   #create_reporter_instance
   TEMP_LSR_FILE="_TEMP_LSR_FILE.yaml"
 
-  cat <<EOF >TEMP_LSR_FILE
+  cat <<EOF >$TEMP_LSR_FILE
     apiVersion: operator.ibm.com/v1alpha1
     kind: IBMLicenseServiceReporter
     metadata:
