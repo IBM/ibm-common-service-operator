@@ -298,15 +298,6 @@ const ConfigurationRules = `
       config:
         fipsEnabled: LARGEST_VALUE
       replicas: LARGEST_VALUE
-      auditService:
-        resources:
-          limits:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-          requests:
-            cpu: LARGEST_VALUE
-            ephemeral-storage: LARGEST_VALUE
-            memory: LARGEST_VALUE
       authService:
         resources:
           limits:
@@ -358,15 +349,6 @@ const ConfigurationRules = `
       config:
         fipsEnabled: LARGEST_VALUE
       replicas: LARGEST_VALUE
-      auditService:
-        resources:
-          limits:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-          requests:
-            cpu: LARGEST_VALUE
-            ephemeral-storage: LARGEST_VALUE
-            memory: LARGEST_VALUE
       authService:
         resources:
           limits:
@@ -418,15 +400,6 @@ const ConfigurationRules = `
       config:
         fipsEnabled: LARGEST_VALUE
       replicas: LARGEST_VALUE
-      auditService:
-        resources:
-          limits:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-          requests:
-            cpu: LARGEST_VALUE
-            ephemeral-storage: LARGEST_VALUE
-            memory: LARGEST_VALUE
       authService:
         resources:
           limits:
@@ -478,15 +451,6 @@ const ConfigurationRules = `
       config:
         fipsEnabled: LARGEST_VALUE
       replicas: LARGEST_VALUE
-      auditService:
-        resources:
-          limits:
-            cpu: LARGEST_VALUE
-            memory: LARGEST_VALUE
-          requests:
-            cpu: LARGEST_VALUE
-            ephemeral-storage: LARGEST_VALUE
-            memory: LARGEST_VALUE
       authService:
         resources:
           limits:

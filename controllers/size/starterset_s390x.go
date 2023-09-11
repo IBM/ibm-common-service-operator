@@ -295,15 +295,6 @@ const StarterSet = `
   spec:
     authentication:
       replicas: 1
-      auditService:
-        resources:
-          limits:
-            cpu: 1000m
-            memory: 50Mi
-          requests:
-            ephemeral-storage: 256Mi
-            cpu: 20m
-            memory: 50Mi
       authService:
         resources:
           limits:
@@ -344,15 +335,6 @@ const StarterSet = `
   spec:
     authentication:
       replicas: 1
-      auditService:
-        resources:
-          limits:
-            cpu: 1000m
-            memory: 50Mi
-          requests:
-            ephemeral-storage: 256Mi
-            cpu: 20m
-            memory: 50Mi
       authService:
         resources:
           limits:
@@ -393,15 +375,6 @@ const StarterSet = `
   spec:
     authentication:
       replicas: 1
-      auditService:
-        resources:
-          limits:
-            cpu: 1000m
-            memory: 50Mi
-          requests:
-            ephemeral-storage: 256Mi
-            cpu: 20m
-            memory: 50Mi
       authService:
         resources:
           limits:
@@ -442,15 +415,6 @@ const StarterSet = `
   spec:
     authentication:
       replicas: 1
-      auditService:
-        resources:
-          limits:
-            cpu: 1000m
-            memory: 50Mi
-          requests:
-            ephemeral-storage: 256Mi
-            cpu: 20m
-            memory: 50Mi
       authService:
         resources:
           limits:

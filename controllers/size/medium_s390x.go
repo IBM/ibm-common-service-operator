@@ -292,15 +292,6 @@ const Medium = `
 - name: ibm-im-operator
   spec:
     authentication:
-      auditService:
-        resources:
-          limits:
-            cpu: 1000m
-            memory: 50Mi
-          requests:
-            ephemeral-storage: 256Mi
-            cpu: 50m
-            memory: 50Mi
       authService:
         resources:
           limits:
@@ -341,15 +332,6 @@ const Medium = `
 - name: ibm-im-operator-v4.0
   spec:
     authentication:
-      auditService:
-        resources:
-          limits:
-            cpu: 1000m
-            memory: 50Mi
-          requests:
-            ephemeral-storage: 256Mi
-            cpu: 50m
-            memory: 50Mi
       authService:
         resources:
           limits:
@@ -390,15 +372,6 @@ const Medium = `
 - name: ibm-im-operator-v4.1
   spec:
     authentication:
-      auditService:
-        resources:
-          limits:
-            cpu: 1000m
-            memory: 50Mi
-          requests:
-            ephemeral-storage: 256Mi
-            cpu: 50m
-            memory: 50Mi
       authService:
         resources:
           limits:
@@ -439,15 +412,6 @@ const Medium = `
 - name: ibm-im-operator-v4.2
   spec:
     authentication:
-      auditService:
-        resources:
-          limits:
-            cpu: 1000m
-            memory: 50Mi
-          requests:
-            ephemeral-storage: 256Mi
-            cpu: 50m
-            memory: 50Mi
       authService:
         resources:
           limits:
