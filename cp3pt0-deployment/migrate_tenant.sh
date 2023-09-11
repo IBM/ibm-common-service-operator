@@ -21,7 +21,6 @@ SOURCE="opencloud-operators"
 CERT_MANAGER_SOURCE="ibm-cert-manager-catalog"
 LICENSING_SOURCE="ibm-licensing-catalog"
 SOURCE_NS="openshift-marketplace"
-PRIVATE_NS=""
 INSTALL_MODE="Automatic"
 ENABLE_LICENSING=0
 ENABLE_PRIVATE_CATALOG=0
@@ -86,16 +85,20 @@ function main() {
     update_cscr "$OPERATOR_NS" "$SERVICES_NS" "$NS_LIST"
     accept_license "commonservice" "$OPERATOR_NS"  "common-service"
 
+    # Validate ibm-common-service-operator CatalogSource and CatalogSourceNamespaces
     # Update ibm-common-service-operator channel
     for ns in ${NS_LIST//,/ }; do
-        if [ $ENABLE_PRIVATE_CATALOG -eq 0 ]; then
-            check_cs_catalogsource
-            update_operator ibm-common-service-operator $ns $CHANNEL $SOURCE $SOURCE_NS $INSTALL_MODE
-        else
-            PRIVATE_NS=$ns
-            check_cs_catalogsource
-            update_operator ibm-common-service-operator $PRIVATE_NS $CHANNEL $SOURCE $PRIVATE_NS $INSTALL_MODE
+        local pm="ibm-common-service-operator"
+        local sub_name=$(${OC} get subscription.operators.coreos.com -n ${ns} -l operators.coreos.com/${pm}.${ns}='' --no-headers | awk '{print $1}')
+        if [ ! -z "$sub_name" ]; then
+            op_source=$SOURCE
+            op_source_ns=$SOURCE_NS
+            if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
+                op_source_ns=$ns
+            fi
         fi
+        validate_operator_catalogsource $pm $ns $op_source $op_source_ns $CHANNEL op_source op_source_ns
+        update_operator $pm $ns $CHANNEL $op_source $op_source_ns $INSTALL_MODE
     done
 
     # Wait for CS operator upgrade
