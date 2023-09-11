@@ -57,18 +57,9 @@ function main() {
 
         #Prepare LSR PV/PVC which was decoupled in isolate.sh
         # delete old LSR CR - PV should stay,
-        VOL=$("${OC}" get pvc license-service-reporter-pvc -n ibm-common-services  -o=jsonpath='{.spec.volumeName}')
-        debug1 "LSR volume name: $VOL"
-        if [[ -z "$VOL" ]]; then
-          error "Volume for pvc license-service-reporter-pvc not found in ibm-common-services"
-        fi
-
-        # label LSR PV as LSR PV for further LSR upgrade
-        ${OC} label pv $VOL license-service-reporter-pv=true --overwrite 
-        ${OC} patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Retain" }}'
-
         ${OC} delete IBMLicenseServiceReporter instance -n ibm-common-services
 
+        # in case PVC is blocked with deletion, the finalizer needs to be removed
         lsr_pvcs=$("${OC}" get pvc license-service-reporter-pvc -n ibm-common-services  --no-headers | wc -l)
         if [[ lsr_pvcs -gt 0 ]]; then
             info "Failed to delete pvc license-service-reporter-pvc, patching its finalizer to null..."
@@ -87,7 +78,7 @@ function main() {
           debug1 "LSR namespace: ${LSR_NAMESPACE}" 
           create_namespace "${LSR_NAMESPACE}"
 
-          # get pv name
+          # on ROKS storage class name cannot be proviced during PVC creation
           LSR_PV_NAME=$("${OC}" get pv -l license-service-reporter-pv=true -o=jsonpath='{.items[0].metadata.name}')
           desc=$("${OC}" get pv $LSR_PV_NAME -n $LSR_NAMESPACE -o yaml)
           debug1 "1: $desc"
@@ -123,7 +114,7 @@ function main() {
             volumeName: ${LSR_PV_NAME}
 EOF
           ${OC} create -f ${TEMP_LSR_PVC_FILE}
-          #${OC} patch pv ${LSR_PV_NAME} --type=merge -p '{"spec": {"claimRef":null}}'
+          # checking status of PVC - in case it cannot be boud, the claimRef needs to be set to null
           status=$("${OC}" get pvc license-service-reporter-pvc -n $LSR_NAMESPACE --no-headers | awk '{print $2}')
           while [[ "$status" != "Bound" ]]
           do
