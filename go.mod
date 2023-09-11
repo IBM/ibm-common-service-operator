@@ -1,6 +1,6 @@
 module github.com/IBM/ibm-common-service-operator
 
-go 1.18
+go 1.20
 
 require (
 	github.com/IBM/controller-filtered-cache v0.3.4
@@ -54,7 +54,7 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.26.0 // indirect
 	github.com/prometheus/procfs v0.6.0 // indirect
-	github.com/sirupsen/logrus v1.8.1 // indirect
+	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
