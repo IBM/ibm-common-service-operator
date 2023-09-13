@@ -84,6 +84,10 @@ function parse_arguments() {
             shift
             OC=$1
             ;;
+        --yq)
+            shift
+            YQ=$1
+            ;;
         --operator-namespace)
             shift
             OPERATOR_NS=$1
