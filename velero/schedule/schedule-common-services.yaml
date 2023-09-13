@@ -8,7 +8,7 @@ spec:
   template:
     ttl: 48h0m0s
     defaultVolumesToRestic: true
-    storageLocation: bcdr-data-protection-app-1
+    storageLocation: <storage location>
     includeClusterResources: true
     includedNamespaces:
     - '*'
