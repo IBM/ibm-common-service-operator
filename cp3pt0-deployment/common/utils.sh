@@ -237,9 +237,9 @@ function wait_for_csv() {
     local retries=30
     local sleep_time=10
     local total_time_mins=$(( sleep_time * retries / 60))
-    local wait_message="Waiting for operator ${package_name} CSV in namespace ${namespace} to be bundled with Subscription"
-    local success_message="Operator ${package_name} CSV in namespace ${namespace} is bundled with Subscription"
-    local error_message="Timeout after ${total_time_mins} minutes waiting for ${package_name} CSV in namespace ${namespace} to be bundled with Subscription"
+    local wait_message="Waiting for operator ${package_name} CSV in namespace ${namespace} to be bound to Subscription"
+    local success_message="Operator ${package_name} CSV in namespace ${namespace} is bound to Subscription"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for ${package_name} CSV in namespace ${namespace} to be bound to Subscription"
  
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
@@ -552,46 +552,35 @@ function catalogsource_correction() {
     echo "$return_value $catalog_source $catalog_namespace"
 }
 
-function check_cs_catalogsource(){
-    title "Check Foundational services CatalogSource..."
+# Validate operator CatalogSource and CatalogSourceNamespace
+function validate_operator_catalogsource(){
+    local pm="$1" 
+    local operator_ns="$2"
+    local source="$3"
+    local source_ns="$4"
+    local channel="$5"
 
-    local pm="ibm-common-service-operator"
-    if [ $ENABLE_PRIVATE_CATALOG -eq 0 ]; then
-        local source_ns=$SOURCE_NS
-        local operator_ns=$OPERATOR_NS
-    else
-        local source_ns=$PRIVATE_NS
-        local operator_ns=$PRIVATE_NS
-        local sub_name=$(${OC} get subscription.operators.coreos.com -n ${ns} -l operators.coreos.com/${pm}.${operator_ns}='' --no-headers | awk '{print $1}')
-        if [ -z "$sub_name" ]; then
-            warning "Not found subscription ${pm} in ${operator_ns}"
-            return 0
-        fi
-    fi
+    title "Validate CatalogSource for operator $pm in $operator_ns namespace"
     
-    correct_result=$(catalogsource_correction $SOURCE $source_ns $pm $operator_ns $CHANNEL)
+    correct_result=$(catalogsource_correction $source $source_ns $pm $operator_ns $channel)
     IFS=" " read -r return_value correct_source correct_source_ns <<< "$correct_result"
     
     # return_value: 0 - correct, 1 - multiple, 2 - none, 3 - wrong and corrected
     if [[ $return_value -eq 0 ]]; then
-        success "CatalogSource $SOURCE from $source_ns CatalogSourceNamespace is available for $pm in $operator_ns namespace"
+        success "CatalogSource $source from $source_ns CatalogSourceNamespace is available for $pm in $operator_ns namespace"
     elif [[ $return_value -eq 1 ]]; then
-        warning "CatalogSource $SOURCE from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace"
+        warning "CatalogSource $source from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace"
         error "Multiple CatalogSource are available for $pm in $operator_ns namespace, please specify the correct CatalogSource name and namespace"
     elif [[ $return_value -eq 2 ]]; then
-        warning "CatalogSource $SOURCE from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace"
+        warning "CatalogSource $source from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace"
         error "No CatalogSource is available for $pm in $operator_ns namespace"
     elif [[ $return_value -eq 3 ]]; then
-        warning "CatalogSource $SOURCE from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace"
+        warning "CatalogSource $source from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace"
         success "CatalogSource $correct_source from $correct_source_ns CatalogSourceNamespace is available for $pm in $operator_ns namespace"
     fi
 
-    SOURCE=$correct_source
-    if [ $ENABLE_PRIVATE_CATALOG -eq 0 ]; then
-        SOURCE_NS=$correct_source_ns
-    else
-        PRIVATE_NS=$correct_source_ns
-    fi
+    eval "$6=${correct_source}"
+    eval "$7=${correct_source_ns}"
 }
 
 function is_sub_exist() {

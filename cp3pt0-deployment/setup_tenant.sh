@@ -13,7 +13,7 @@
 OC=oc
 YQ=yq
 ENABLE_LICENSING=0
-CHANNEL="v4.1"
+CHANNEL="v4.2"
 SOURCE="opencloud-operators"
 SOURCE_NS="openshift-marketplace"
 OPERATOR_NS=""
@@ -96,6 +96,9 @@ function parse_arguments() {
         --license-accept)
             LICENSE_ACCEPT=1
             ;;
+        --enable-private-catalog)
+            ENABLE_PRIVATE_CATALOG=1
+            ;;
         -c | --channel)
             shift
             CHANNEL=$1
@@ -153,7 +156,8 @@ function print_usage() {
     echo "   --tethered-namespaces string   Optional. Add namespaces to this tenant, comma-delimited, e.g. 'ns1,ns2'"
     echo "   --excluded-namespaces string   Optional. Remove namespaces from this tenant, comma-delimited, e.g. 'ns1,ns2'"
     echo "   --license-accept               Required. Set this flag to accept the license agreement"
-    echo "   -c, --channel string           Optional. Channel for Subscription(s). Default is v4.1"
+    echo "   --enable-private-catalog       Optional. Set this flag to use namespace scoped CatalogSource. Default is in openshift-marketplace namespace"
+    echo "   -c, --channel string           Optional. Channel for Subscription(s). Default is v4.2"
     echo "   -i, --install-mode string      Optional. InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
     echo "   -s, --source string            Optional. CatalogSource name. This assumes your CatalogSource is already created. Default is opencloud-operators"
     echo "   -n, --namespace string         Optional. Namespace of CatalogSource. Default is openshift-marketplace"
@@ -244,8 +248,8 @@ function pre_req() {
         error "Must provide additional namespaces for --tethered-namespaces, different from operator-namespace and services-namespace"
     fi
 
-    # Check catalogsource
-    check_cs_catalogsource
+    # Check public CatalogSource and CatalogSource Namespace
+    validate_cs_catalogsource    
     echo ""
 }
 
@@ -331,6 +335,15 @@ function determine_topology() {
         warning "It is simple namespace topology\n"
         return
     fi
+}
+
+# Validate ibm-common-service-operator CatalogSource and CatalogSourceNamespace
+function validate_cs_catalogsource() {
+    if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
+        SOURCE_NS=$OPERATOR_NS
+    fi
+
+    validate_operator_catalogsource "ibm-common-service-operator" $OPERATOR_NS $SOURCE $SOURCE_NS $CHANNEL SOURCE SOURCE_NS
 }
 
 function create_ns_list() {
@@ -543,8 +556,27 @@ function install_cs_operator() {
     if [ $? -eq 0 ]; then
         info "There is an ibm-common-service-operator Subscription already\n"
         if [ $PREVIEW_MODE -eq 0 ]; then
-            update_operator "ibm-common-service-operator" "$OPERATOR_NS" $CHANNEL $SOURCE $SOURCE_NS $INSTALL_MODE
-            wait_for_operator_upgrade $OPERATOR_NS "ibm-common-service-operator" $CHANNEL $INSTALL_MODE
+            local pm="ibm-common-service-operator"
+            local ns_list=$(${OC} get configmap namespace-scope -n ${OPERATOR_NS} -o jsonpath='{.data.namespaces}' --ignore-not-found)
+            if [[ -z "$ns_list" ]]; then
+                warning "Not found ConfigMap namespace-scope in namespace ${OPERATOR_NS}, only upgrading operators in namespace $OPERATOR_NS"
+                update_operator $pm $OPERATOR_NS $CHANNEL $SOURCE $SOURCE_NS $INSTALL_MODE
+                wait_for_operator_upgrade $OPERATOR_NS $pm $CHANNEL $INSTALL_MODE
+            else
+                for ns in ${ns_list//,/ }; do
+                    local sub_name=$(${OC} get subscription.operators.coreos.com -n ${ns} -l operators.coreos.com/${pm}.${ns}='' --no-headers | awk '{print $1}')
+                    if [ ! -z "$sub_name" ]; then
+                        op_source=$SOURCE
+                        op_source_ns=$SOURCE_NS
+                        if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
+                            op_source_ns=$ns
+                        fi
+                        validate_operator_catalogsource $pm $ns $op_source $op_source_ns $CHANNEL op_source op_source_ns
+                        update_operator $pm $ns $CHANNEL $op_source $op_source_ns $INSTALL_MODE
+                        wait_for_operator_upgrade $ns $pm $CHANNEL $INSTALL_MODE
+                    fi
+                done
+            fi        
         fi
     else
         create_subscription "ibm-common-service-operator" "$OPERATOR_NS" "$CHANNEL" "ibm-common-service-operator" "${SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
