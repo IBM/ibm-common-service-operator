@@ -121,9 +121,9 @@ data:
 
     function main {
         title "Beginning restore process for zenservice $ZENSERVICE_NAME in namespace $ZEN_NAMESPACE."
-        info "Enabling Zen operator maintenance mode and scale down deployments"
+        #info "Enabling Zen operator maintenance mode and scale down deployments"
         #[2.2.2] Enable Zen operator maintenance mode and scale down deployments
-        oc patch zenservice ${ZENSERVICE_NAME} --namespace ${ZEN_NAMESPACE} --type=merge --patch '{"spec": {"ignoreForMaintenance": true}}'
+        #oc patch zenservice ${ZENSERVICE_NAME} --namespace ${ZEN_NAMESPACE} --type=merge --patch '{"spec": {"ignoreForMaintenance": true}}'
         #suspend backup cronjob
         oc patch cj zen-metastore-backup-cron-job --namespace ${ZEN_NAMESPACE} --type=merge --patch '{"spec": {"suspend": true}}'
         oc get deploy ibm-nginx zen-core usermgmt zen-watcher  zen-watchdog zen-core-api -n ${ZEN_NAMESPACE}
@@ -208,8 +208,8 @@ data:
         oc patch cj zen-metastore-backup-cron-job --namespace ${ZEN_NAMESPACE} --type=merge --patch '{"spec": {"suspend": false}}'
 
         #[2.2.5.5] remove zenservice from maintenance mode
-        info "Remove zenservice from maintenance mode."
-        oc patch zenservice ${ZENSERVICE_NAME} --namespace ${ZEN_NAMESPACE} --type=merge --patch '{"spec": {"ignoreForMaintenance": false}}'
+        #info "Remove zenservice from maintenance mode."
+        #oc patch zenservice ${ZENSERVICE_NAME} --namespace ${ZEN_NAMESPACE} --type=merge --patch '{"spec": {"ignoreForMaintenance": false}}'
 
         success "Restore complete for zenservice $ZENSERVICE_NAME in namespace $ZEN_NAMESPACE."
     }
