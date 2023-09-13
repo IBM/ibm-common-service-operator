@@ -441,6 +441,94 @@ spec:
         name: cs-keycloak
   - name: edb-keycloak
     resources:
+      - apiVersion: batch/v1
+        kind: Job
+        name: create-postgres-license-config
+        namespace: "{{ .OperatorNs }}"
+        data:
+          spec:
+            activeDeadlineSeconds: 600
+            backoffLimit: 5
+            template:
+              metadata:
+                annotations:
+                  productID: 068a62892a1e4db39641342e592daa25
+                  productMetric: FREE
+                  productName: IBM Cloud Platform Common Services
+              spec:
+                imagePullSecrets:
+                  - name: ibm-entitlement-key
+                affinity:
+                  nodeAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                      nodeSelectorTerms:
+                      - matchExpressions:
+                        - key: kubernetes.io/arch
+                          operator: In
+                          values:
+                          - amd64
+                          - ppc64le
+                          - s390x
+                initContainers:
+                - command:
+                  - bash
+                  - -c
+                  - |
+                    cat << EOF | kubectl apply -f -
+                    apiVersion: v1
+                    kind: Secret
+                    type: Opaque
+                    metadata:
+                      name: postgresql-operator-controller-manager-config
+                    data:
+                      EDB_LICENSE_KEY: $(base64 /license_keys/edb/EDB_LICENSE_KEY | tr -d '\n')
+                    EOF
+                  image: cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:e683c4bfceb5a99f7971409d4028cf326cdedb007f9cf3daf28b8141835535f1
+                  name: edb-license
+                  resources:
+                    limits:
+                      cpu: 500m
+                      memory: 512Mi
+                    requests:
+                      cpu: 100m
+                      memory: 50Mi
+                  securityContext:
+                    allowPrivilegeEscalation: false
+                    capabilities:
+                      drop:
+                      - ALL
+                    privileged: false
+                    readOnlyRootFilesystem: false
+                containers:
+                - command:
+                  - bash
+                  - '-c'
+                  - >-
+                    kubectl delete pods -l app.kubernetes.io/name=cloud-native-postgresql
+                  image: >-
+                    cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:e683c4bfceb5a99f7971409d4028cf326cdedb007f9cf3daf28b8141835535f1
+                  name: restart-edb-pod
+                  resources:
+                    limits:
+                      cpu: 500m
+                      memory: 512Mi
+                    requests:
+                      cpu: 100m
+                      memory: 50Mi
+                  securityContext:
+                    allowPrivilegeEscalation: false
+                    capabilities:
+                      drop:
+                      - ALL
+                    privileged: false
+                    readOnlyRootFilesystem: false
+                hostIPC: false
+                hostNetwork: false
+                hostPID: false
+                restartPolicy: OnFailure
+                securityContext:
+                  runAsNonRoot: true
+                serviceAccountName: edb-license-sa
       - apiVersion: postgresql.k8s.enterprisedb.io/v1
         data:
           spec:
