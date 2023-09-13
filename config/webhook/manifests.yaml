@@ -52,5 +52,5 @@ webhooks:
     - CREATE
     - UPDATE
     resources:
-    - commonservice
+    - commonservices
   sideEffects: None

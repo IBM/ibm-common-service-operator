@@ -37,7 +37,7 @@ import (
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 )
 
-// +kubebuilder:webhook:path=/validate-operator-ibm-com-v3-commonservice,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.ibm.com,resources=commonservice,verbs=create;update,versions=v3,name=vcommonservice.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/validate-operator-ibm-com-v3-commonservice,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.ibm.com,resources=commonservices,verbs=create;update,versions=v3,name=vcommonservice.kb.io,admissionReviewVersions=v1
 
 // CommonServiceDefaulter points to correct ServiceNamespace
 type Defaulter struct {
