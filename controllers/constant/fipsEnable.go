@@ -30,4 +30,24 @@ const FipsEnabledTemplate = `
   spec:
     managementIngress:
       fipsEnabled: placeholder
+- name: ibm-im-operator
+  spec:
+    authentication:
+      config:
+        fipsEnabled: placeholder
+- name: ibm-im-operator-v4.0
+  spec:
+    authentication:
+      config:
+        fipsEnabled: placeholder
+- name: ibm-im-operator-v4.1
+  spec:
+    authentication:
+      config:
+        fipsEnabled: placeholder
+- name: ibm-im-operator-v4.2
+  spec:
+    authentication:
+      config:
+        fipsEnabled: placeholder
 `

@@ -74,19 +74,16 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 		newConfigs = append(newConfigs, multipleinstancesenabledConfig...)
 	}
 
-	// set fipsEnabled to false by default
-	fipsEnabled := false
 	// if there is a fipsEnabled field for overall
 	if enabled := cs.Object["spec"].(map[string]interface{})["fipsEnabled"]; enabled != nil {
 		klog.Info("Applying fips configuration")
-		fipsEnabled = enabled.(bool)
+		// update config for all three services
+		fipsEnabledConfig, err := convertStringToSlice(strings.ReplaceAll(constant.FipsEnabledTemplate, "placeholder", strconv.FormatBool(enabled.(bool))))
+		if err != nil {
+			return nil, nil, err
+		}
+		newConfigs = append(newConfigs, fipsEnabledConfig...)
 	}
-	// update config for all three services
-	fipsEnabledConfig, err := convertStringToSlice(strings.ReplaceAll(constant.FipsEnabledTemplate, "placeholder", strconv.FormatBool(fipsEnabled)))
-	if err != nil {
-		return nil, nil, err
-	}
-	newConfigs = append(newConfigs, fipsEnabledConfig...)
 
 	// Update storageclass for API Catalog
 	if features := cs.Object["spec"].(map[string]interface{})["features"]; features != nil {
