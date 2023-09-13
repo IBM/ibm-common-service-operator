@@ -96,9 +96,9 @@ function main() {
             if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
                 op_source_ns=$ns
             fi
+            validate_operator_catalogsource $pm $ns $op_source $op_source_ns $CHANNEL op_source op_source_ns
+            update_operator $pm $ns $CHANNEL $op_source $op_source_ns $INSTALL_MODE
         fi
-        validate_operator_catalogsource $pm $ns $op_source $op_source_ns $CHANNEL op_source op_source_ns
-        update_operator $pm $ns $CHANNEL $op_source $op_source_ns $INSTALL_MODE
     done
 
     # Wait for CS operator upgrade
