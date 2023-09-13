@@ -22,7 +22,7 @@ metadata:
       ]
     capabilities: Seamless Upgrades
     containerImage: icr.io/cpopen/common-service-operator:latest
-    createdAt: "2020-10-19T21:38:33Z"
+    createdAt: "2023-09-13T16:10:36Z"
     description: The IBM Common Service Operator is used to deploy IBM Common Services
     nss.operator.ibm.com/managed-operators: ibm-common-service-operator
     nss.operator.ibm.com/managed-webhooks: ""
@@ -517,7 +517,7 @@ spec:
             - CREATE
             - UPDATE
           resources:
-            - commonservice
+            - commonservices
       sideEffects: None
       targetPort: 9443
       type: ValidatingAdmissionWebhook
