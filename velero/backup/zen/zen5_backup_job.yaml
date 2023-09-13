@@ -36,6 +36,8 @@ spec:
           volumeMounts:
           - mountPath: /zen5/zen-backup
             name: zen5-backup-mount
+          - name: scripts
+            mountPath: "/zen5"
         dnsPolicy: ClusterFirst
         restartPolicy: OnFailure
         schedulerName: default-scheduler
@@ -48,3 +50,7 @@ spec:
         - name: zen5-backup-mount
           persistentVolumeClaim:
             claimName: zen5-backup-pvc
+        - name: scripts
+          configMap:
+            name: zen5-br-configmap
+            defaultMode: 0777
