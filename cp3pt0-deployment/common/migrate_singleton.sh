@@ -55,7 +55,18 @@ function main() {
     delete_operator "ibm-cert-manager-operator" "$OPERATOR_NS"
     
     if [[ $ENABLE_LICENSING -eq 1 ]]; then
-    
+
+        is_exists=$("$OC" get deployments ibm-licensing-operator -n "$OPERATOR_NS")
+        if [ ! -z "$is_exists" ]; then
+            # Migrate Licensing Services Data
+            ${BASE_DIR}/migrate_cp2_licensing.sh --control-namespace "$OPERATOR_NS" --target-namespace "$LICENSING_NS" "--skip-user-vertify"
+            local is_deleted=$(("${OC}" delete -n "${CONTROL_NS}" --ignore-not-found OperandBindInfo ibm-licensing-bindinfo --timeout=10s > /dev/null && echo "success" ) || echo "fail")
+            if [[ $is_deleted == "fail" ]]; then
+                warning "Failed to delete OperandBindInfo, patching its finalizer to null..."
+                ${OC} patch -n "${CONTROL_NS}" OperandBindInfo ibm-licensing-bindinfo --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+            fi
+        fi
+
         if [[ $ENABLE_LICENSE_SERVICE_REPORTER -eq 1 ]]; then
             migrate_license_service_reporter
         fi
