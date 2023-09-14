@@ -169,14 +169,30 @@ function restore_ibmlicensing() {
 
 function backup_ibmlicensing() {
 
-    instance=`"${OC}" get IBMLicensing instance -o yaml --ignore-not-found | "${YQ}" '
-        with(.; del(.metadata.creationTimestamp) |
-        del(.metadata.managedFields) |
-        del(.metadata.resourceVersion) |
-        del(.metadata.uid) |
-        del(.status)
-        )
-    ' | sed -e 's/^/    /g'`
+    # for LS + LSR installed in the same cluster, the sender needs to be removed as it is not valid any more after migration
+    local reporterURL=$("${OC}" get IBMLicensing instance  --ignore-not-found -o=jsonpath='{.spec.sender.reporterURL}')
+    if [[ $reporterURL == "https://ibm-license-service-reporter:8080" ]]; then
+        debug1 "Removing sender section for local configuration"
+        instance=`"${OC}" get IBMLicensing instance -o yaml --ignore-not-found | "${YQ}" '
+            with(.; del(.metadata.creationTimestamp) |
+            del(.metadata.managedFields) |
+            del(.metadata.resourceVersion) |
+            del(.metadata.uid) |
+            del(.status) | 
+            del(.spec.sender)
+            )
+        ' | sed -e 's/^/    /g'`
+    else
+        instance=`"${OC}" get IBMLicensing instance -o yaml --ignore-not-found | "${YQ}" '
+            with(.; del(.metadata.creationTimestamp) |
+            del(.metadata.managedFields) |
+            del(.metadata.resourceVersion) |
+            del(.metadata.uid) |
+            del(.status)
+            )
+        ' | sed -e 's/^/    /g'`
+    fi
+    debug1 "instance: $instance"
 cat << _EOF | oc apply -f -
 apiVersion: v1
 kind: ConfigMap
