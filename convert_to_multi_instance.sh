@@ -24,6 +24,8 @@ OC=oc
 YQ=yq
 
 cs_operator_channel=
+cs_operator_sourceNamespace=
+cs_operator_installPlanApproval=
 catalog_source=
 requested_ns=
 map_to_cs_ns=
@@ -53,6 +55,16 @@ function prereq() {
     which "${OC}" || error "Missing oc CLI"
     which "${YQ}" || error "Missing yq"
     
+    # Verify that yq is at least version 4.18.1
+    yq_minimum_version=4.18.1
+    # Get the user's yq version and remove any leading "v" character if present
+    yq_version=$("${YQ}" --version | awk '{print $NF}' | sed 's/^v//')
+
+    # Compare yq versions using sort
+    if [[ "$(printf '%s\n' "$yq_minimum_version" "$yq_version" | sort -V | head -n 1)" != "$yq_minimum_version" ]]; then
+        error "yq version $yq_version must be at least $yq_minimum_version or higher.\nInstructions for installing/upgrading yq are available here: https://github.com/marketplace/actions/yq-portable-yaml-processor"
+    fi
+
     if [[ -z $master_ns ]]; then
         error "Please specify original cs namespace."
     fi
@@ -201,7 +213,11 @@ function collect_data() {
     
     info "MasterNS:${master_ns}"
     cs_operator_channel=$(${OC} get subscription.operators.coreos.com ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.channel") 
-    info "channel:${cs_operator_channel}"   
+    info "channel:${cs_operator_channel}"
+    cs_operator_sourceNamespace=$(${OC} get subscription.operators.coreos.com ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.sourceNamespace") 
+    info "sourceNamespace:${cs_operator_sourceNamespace}"
+    cs_operator_installPlanApproval=$(${OC} get subscription.operators.coreos.com ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.installPlanApproval") 
+    info "installPlanApproval:${cs_operator_installPlanApproval}"
     catalog_source=$(${OC} get subscription.operators.coreos.com ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.source")
     info "catalog_source:${catalog_source}"
 
@@ -382,11 +398,13 @@ function cleanupCSOperators(){
         if [[ $return_value != "fail" ]]; then
             local sub=$(${OC} get subscription.operators.coreos.com -n ${namespace} | grep ibm-common-service-operator | awk '{print $1}')
             ${OC} get subscription.operators.coreos.com ${sub} -n ${namespace} -o yaml > tmp.yaml 
-            ${YQ} -i '.spec.source = "'${catalog_source}'"' tmp.yaml || error "Could not replace catalog source for CS operator in namespace ${namespace}"
-            ${YQ} -i '.spec.channel = "'${cs_operator_channel}'"' tmp.yaml || error "Could not replace channel for CS operator in namespace ${namespace}"
+            ${YQ} -i '.spec.source = "'${catalog_source}'"' tmp.yaml || error "Could not replace catalog source for CS operator subscription in namespace ${namespace}"
+            ${YQ} -i '.spec.channel = "'${cs_operator_channel}'"' tmp.yaml || error "Could not replace channel for CS operator subscription in namespace ${namespace}"
+            ${YQ} -i '.spec.sourceNamespace = "'${cs_operator_sourceNamespace}'"' tmp.yaml || error "Could not replace sourceNamespace for CS operator subscription in namespace ${namespace}"
+            ${YQ} -i '.spec.installPlanApproval = "'${cs_operator_installPlanApproval}'"' tmp.yaml || error "Could not replace installPlanApproval for CS operator subscription in namespace ${namespace}"
             ${YQ} -i 'del(.metadata.creationTimestamp) | del(.metadata.managedFields) | del(.metadata.resourceVersion) | del(.metadata.uid) | del(.status)' tmp.yaml || error "Failed to remove metadata fields from temp cs operator yaml for namespace ${namespace}."
             ${OC} apply -f tmp.yaml || error "Failed to apply catalogsource and channel changes to cs operator subscription in namespace ${namespace}."
-            info "Common Service Operator Subscription in namespace ${namespace} updated to use catalog source ${catalog_source} and channel ${cs_operator_channel}."
+            info "Common Service Operator Subscription in namespace ${namespace} updated to use catalog source ${catalog_source}, channel ${cs_operator_channel}, sourceNamespace ${cs_operator_sourceNamespace}, and installPlanApproval ${cs_operator_installPlanApproval}."
         else
             info "No Common Service Operator in namespace ${namespace}. Moving on..."
         fi

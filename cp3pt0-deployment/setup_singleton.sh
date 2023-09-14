@@ -18,7 +18,7 @@ ENABLE_PRIVATE_CATALOG=0
 MIGRATE_SINGLETON=0
 OPERATOR_NS=""
 CONTROL_NS=""
-CHANNEL="v4.1"
+CHANNEL="v4.2"
 INSTALL_MODE="Automatic"
 CM_SOURCE_NS="openshift-marketplace"
 LIS_SOURCE_NS="openshift-marketplace"
@@ -66,7 +66,7 @@ function main() {
 
     is_migrate_licensing
     is_migrate_cert_manager
-    check_singleton_catalogsource
+    validate_singleton_catalogsource
 
     if [ $MIGRATE_SINGLETON -eq 1 ]; then
         if [ $ENABLE_LICENSING -eq 1 ]; then
@@ -92,6 +92,10 @@ function parse_arguments() {
         --oc)
             shift
             OC=$1
+            ;;
+        --yq)
+            shift
+            YQ=$1
             ;;
         --operator-namespace)
             shift
@@ -192,8 +196,8 @@ function print_usage() {
     echo "   --lsr-source string                            Optional. CatalogSource name of ibm-license-service-reporter. This assumes your CatalogSource is already created. Default is ibm-license-service-reporter-catalog"
     echo "   -cmNs, --cert-manager-namespace string         Optional. Set custom namespace for ibm-cert-manager-operator. Default is ibm-cert-manager"
     echo "   --license-accept                               Required. Set this flag to accept the license agreement."
-    echo "   --preview                                      Enable preview mode (dry run)"
-    echo "   -c, --channel string                           Optional. Channel for Subscription(s). Default is v4.1"
+    echo "   --preview                                      Optional.  Enable preview mode (dry run)"
+    echo "   -c, --channel string                           Optional. Channel for Subscription(s). Default is v4.2"
     echo "   -i, --install-mode string                      Optional. InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
     echo "   -v, --debug integer                            Optional. Verbosity of logs. Default is 0. Set to 1 for debug logs"
     echo "   -h, --help                                     Print usage information"
@@ -223,7 +227,13 @@ function is_migrate_licensing() {
 
     title "Check migrating LTSR ibm-licensing-operator"
     
-    local version=$("$OC" get ibmlicensing instance -o jsonpath='{.spec.version}')
+    local ns=$("$OC" get deployments -A | grep ibm-licensing-operator | cut -d ' ' -f1)
+    if [ -z "$ns" ]; then
+        info "No LTSR ibm-licensing-operator to migrate, skipping"
+        return 0
+    fi
+
+    local version=$("$OC" get ibmlicensings.operator.ibm.com instance -o jsonpath='{.spec.version}' --ignore-not-found)
     if [ -z "$version" ]; then
         warning "No version field in ibmlicensing CR, skipping"
         return 0
@@ -231,12 +241,10 @@ function is_migrate_licensing() {
     local major=$(echo "$version" | cut -d '.' -f1)
     if [ "$major" -ge 4 ]; then
         info "There is no LTSR ibm-licensing-operator to migrate, skipping"
-        return 0
-    fi
-
-    local ns=$("$OC" get deployments -A | grep ibm-licensing-operator | cut -d ' ' -f1)
-    if [ -z "$ns" ]; then
-        info "No LTSR ibm-licensing-operator to migrate, skipping"
+        if [[ "$CUSTOMIZED_LICENSING_NAMESPACE" -eq 1 ]] && [[ "$ns" != "$LICENSING_NAMESPACE" ]]; then
+            error "An ibm-licensing-operator already installed in namespace: $ns, please do not set parameter '-licensingNs $LICENSING_NAMESPACE"
+        fi
+        LICENSING_NAMESPACE="$ns"
         return 0
     fi
 
@@ -251,45 +259,19 @@ function is_migrate_licensing() {
     MIGRATE_SINGLETON=1
 }
 
-function check_singleton_catalogsource() {
-
-    title "Check singleton services CatalogSource..."
+function validate_singleton_catalogsource() {
     if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
         CM_SOURCE_NS="${CERT_MANAGER_NAMESPACE}"
         LIS_SOURCE_NS="${LICENSING_NAMESPACE}"
         LSR_SOURCE_NS="${LSR_NAMESPACE}"
     fi
-    
-    local sources=("$CERT_MANAGER_SOURCE,$CM_SOURCE_NS,ibm-cert-manager-operator,$CERT_MANAGER_NAMESPACE,$CHANNEL" "$LICENSING_SOURCE,$LIS_SOURCE_NS,ibm-licensing-operator-app,$LICENSING_NAMESPACE,$CHANNEL")
-    
-    for source_info in "${sources[@]}"; do
 
-        IFS="," read -r source source_ns pm operator_ns channel <<< "$source_info"
-        correct_result=$(catalogsource_correction "$source" "$source_ns" "$pm" "$operator_ns" "$channel")
-        IFS=" " read -r return_value correct_source correct_source_ns <<< "$correct_result"
+    validate_operator_catalogsource ibm-cert-manager-operator $CERT_MANAGER_NAMESPACE $CERT_MANAGER_SOURCE $CM_SOURCE_NS $CHANNEL CERT_MANAGER_SOURCE CM_SOURCE_NS 
+    
+    if [ $ENABLE_LICENSING -eq 1 ]; then
+        validate_operator_catalogsource ibm-licensing-operator-app $LICENSING_NAMESPACE $LICENSING_SOURCE $LIS_SOURCE_NS $CHANNEL LICENSING_SOURCE LIS_SOURCE_NS
+    fi
 
-        # return_value: 0 - correct, 1 - multiple, 2 - none, 3 - wrong and corrected
-        if [[ $return_value -eq 0 ]]; then
-            success "CatalogSource $source from $source_ns CatalogSourceNamespace is available for $pm in $operator_ns namespace"
-        elif [[ $return_value -eq 1 ]]; then
-            warning "CatalogSource $source from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace"
-            error "Multiple CatalogSource are available for $pm in $operator_ns namespace, please specify the correct CatalogSource name and namespace"
-        elif [[ $return_value -eq 2 ]]; then
-            warning "CatalogSource $source from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace"
-            error "No CatalogSource is available for $pm in $operator_ns namespace"
-        elif [[ $return_value -eq 3 ]]; then
-            warning "CatalogSource $source from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace"
-            success "CatalogSource $correct_source from $correct_source_ns CatalogSourceNamespace is available for $pm in $operator_ns namespace"
-        fi
-        
-        if [[ $pm == "ibm-cert-manager-operator" ]]; then
-            CERT_MANAGER_SOURCE=$correct_source
-            CM_SOURCE_NS=$correct_source_ns
-        else
-            LICENSING_SOURCE=$correct_source
-            LIS_SOURCE_NS=$correct_source_ns
-        fi 
-    done
 }
 
 function install_cert_manager() {
@@ -311,7 +293,7 @@ function install_cert_manager() {
         error "There is no cert-manager-webhook pod running\n"
     fi
 
-    local api_version=$("$OC" get deployments -n "$webhook_ns" cert-manager-webhook -o jsonpath='{.metadata.ownerReferences[*].apiVersion}')
+    local api_version=$("$OC" get deployments -n "$webhook_ns" cert-manager-webhook -o jsonpath='{.metadata.ownerReferences[*].apiVersion}' --ignore-not-found)
     if [ ! -z "$api_version" ]; then
         if [ "$api_version" == "$CERT_MANAGER_V1ALPHA1_OWNER" ]; then
             error "Cluster has not deactivated LTSR ibm-cert-manager-operator yet, please re-run this script"
@@ -334,6 +316,7 @@ function install_cert_manager() {
     else
         create_subscription "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" "$CHANNEL" "ibm-cert-manager-operator" "${CERT_MANAGER_SOURCE}" "${CM_SOURCE_NS}" "${INSTALL_MODE}"
     fi
+    wait_for_csv "${CERT_MANAGER_NAMESPACE}" "ibm-cert-manager-operator"
     wait_for_operator "${CERT_MANAGER_NAMESPACE}" "ibm-cert-manager-operator"
     accept_license "certmanagerconfig.operator.ibm.com" "" "default"
 }
@@ -374,6 +357,7 @@ EOF
     else
         create_subscription "ibm-licensing-operator-app" "${LICENSING_NAMESPACE}" "$CHANNEL" "ibm-licensing-operator-app" "${LICENSING_SOURCE}" "${LIS_SOURCE_NS}" "${INSTALL_MODE}"
     fi
+    wait_for_csv "${LICENSING_NAMESPACE}" "ibm-licensing-operator-app"
     wait_for_operator "${LICENSING_NAMESPACE}" "ibm-licensing-operator"
     wait_for_license_instance
     accept_license "ibmlicensing" "" "instance"
