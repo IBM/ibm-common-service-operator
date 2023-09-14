@@ -90,20 +90,20 @@ function main() {
 function migrate_license_service_reporter(){
     title "LSR migration from ibm-cmmon-services to ${LSR_NAMESPACE}"
 
-    local lsr_instances=$("$OC" get IBMLicenseServiceReporter instance -n ibm-common-services --no-headers | wc -l)
+    local lsr_instances=$("$OC" get IBMLicenseServiceReporter instance -n ${OPERATOR_NS} --no-headers | wc -l)
     if [[ lsr_instances -eq 0 ]]; then
-        info "No LSR for migration found in ibm-common-services namespace"
+        info "No LSR for migration found in ${OPERATOR_NS} namespace"
         return 0
     fi
     # Prepare LSR PV/PVC which was decoupled in isolate.sh
     # delete old LSR CR - PV will stay as during isolate.sh the policy was set to Retain
-    ${OC} delete IBMLicenseServiceReporter instance -n ibm-common-services
+    ${OC} delete IBMLicenseServiceReporter instance -n ${OPERATOR_NS}
 
     # in case PVC is blocked with deletion, the finalizer needs to be removed
-    lsr_pvcs=$("${OC}" get pvc license-service-reporter-pvc -n ibm-common-services  --no-headers | wc -l)
+    lsr_pvcs=$("${OC}" get pvc license-service-reporter-pvc -n ${OPERATOR_NS}  --no-headers | wc -l)
     if [[ lsr_pvcs -gt 0 ]]; then
         info "Failed to delete pvc license-service-reporter-pvc, patching its finalizer to null..."
-        ${OC} patch pvc license-service-reporter-pvc -n ibm-common-services  --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+        ${OC} patch pvc license-service-reporter-pvc -n ${OPERATOR_NS}  --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
     else
         debug1 "No pvc license-service-reporter-pvc as expected"
     fi
