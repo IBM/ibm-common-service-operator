@@ -96,7 +96,7 @@ function usage() {
 
 	while read -r ; do echo "${REPLY}" ; done <<-EOF
 	Usage: ${script} [OPTION]...
-	Uninstall common services
+	Migrate Mongo data across Common Service instances
 	Options:
 	Mandatory arguments to long options are mandatory for short options too.
 	  -h, --help                    display this help and exit
