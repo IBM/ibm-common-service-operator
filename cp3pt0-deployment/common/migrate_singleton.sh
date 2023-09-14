@@ -95,6 +95,12 @@ function migrate_license_service_reporter(){
         info "No LSR for migration found in ${OPERATOR_NS} namespace"
         return 0
     fi
+
+    lsr_pv_nr=$("${OC}" get pv -l license-service-reporter-pv=true --no-headers | wc -l )
+    if [[ lsr_pv_nr -ne 1 ]]; then
+        error "Not one PV with label license-service-reporter-pv=true was found. Exactly one such PV is allowed."
+    fi
+
     # Prepare LSR PV/PVC which was decoupled in isolate.sh
     # delete old LSR CR - PV will stay as during isolate.sh the policy was set to Retain
     ${OC} delete IBMLicenseServiceReporter instance -n ${OPERATOR_NS}
@@ -106,11 +112,6 @@ function migrate_license_service_reporter(){
         ${OC} patch pvc license-service-reporter-pvc -n ${OPERATOR_NS}  --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
     else
         debug1 "No pvc license-service-reporter-pvc as expected"
-    fi
-
-    lsr_pv_nr=$("${OC}" get pv -l license-service-reporter-pv=true --no-headers | wc -l )
-    if [[ lsr_pv_nr -gt 1 ]]; then
-        error "More than on PV with label license-service-reporter-pv=true was found. Only one is allowed."
     fi
 
     if [[ lsr_pv_nr -eq 1 ]]; then
