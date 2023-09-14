@@ -12,7 +12,7 @@ spec:
           - -c
           - ls
           - ./zen5/backup_zen5.sh <zenservice namespace>
-          image: icr.io/cpopen/cpfs/cpfs-utils:4.0.0 #4.1.0 if using CS 4.1, 4.2.0 if using CS 4.2
+          image: icr.io/cpopen/cpfs/cpfs-utils:4.2.0 #4.1.0 if using CS 4.1, 4.2.0 if using CS 4.2
           imagePullPolicy: Always
           name: zen5-backup-job
           resources:
