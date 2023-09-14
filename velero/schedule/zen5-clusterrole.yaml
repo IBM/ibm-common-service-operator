@@ -17,10 +17,6 @@ rules:
       - extensions
       - apps
       - policy
-      - rbac.authorization.k8s.io
-      - authorization.openshift.io
-      - networking.k8s.io
-      - metrics.k8s.io
     resources:
       - pods
       - pods/log
