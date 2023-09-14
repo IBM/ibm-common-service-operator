@@ -43,11 +43,13 @@ type CSData struct {
 }
 
 // +kubebuilder:pruning:PreserveUnknownFields
-type extensionWithMarker runtime.RawExtension
+type ExtensionWithMarker struct {
+	runtime.RawExtension `json:",inline"`
+}
 
 type ServiceConfig struct {
 	Name               string                         `json:"name"`
-	Spec               map[string]extensionWithMarker `json:"spec"`
+	Spec               map[string]ExtensionWithMarker `json:"spec"`
 	ManagementStrategy string                         `json:"managementStrategy,omitempty"`
 }
 
