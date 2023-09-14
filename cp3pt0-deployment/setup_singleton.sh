@@ -136,7 +136,7 @@ function parse_arguments() {
             shift
             CERT_MANAGER_NAMESPACE=$1
             ;;
-        -lsNs | --licensing-namespace)
+        -licensingNs | --licensing-namespace)
             shift
             LICENSING_NAMESPACE=$1
             CUSTOMIZED_LICENSING_NAMESPACE=1
@@ -187,7 +187,7 @@ function print_usage() {
     echo "   --yq string                                    Optional. File path to yq CLI. Default uses yq in your PATH"
     echo "   --operator-namespace string                    Optional. Namespace to migrate Cloud Pak 2 Foundational services"
     echo "   -ls, --enable-licensing                        Optional. Set this flag to install ibm-licensing-operator"
-    echo "   -lsNs, --licensing-namespace string            Optional. Set custom namespace for ibm-licensing-operator. Default is ibm-licensing"
+    echo "   -licensingNs, --licensing-namespace string     Optional. Set custom namespace for ibm-licensing-operator. Default is ibm-licensing"
     echo "   -lsr, --enable-license-service-reporter        Optional. Set this flag to install ibm-license-service-reporter-operator. Always use with -ls"
     echo "   -lsrNs, --license-service-reporter-namespace string Optional. Set custom namespace for License Service Reporter. Default is ibm-lsr"
     echo "   --enable-private-catalog                       Optional. Set this flag to use namespace scoped CatalogSource. Default is in openshift-marketplace namespace"
@@ -251,7 +251,7 @@ function is_migrate_licensing() {
     get_and_validate_arguments
     if [ ! -z "$CONTROL_NS" ]; then
         if [[ "$CUSTOMIZED_LICENSING_NAMESPACE" -eq 1 ]] && [[ "$CONTROL_NS" != "$LICENSING_NAMESPACE" ]]; then
-            error "Licensing Migration could only be done in $CONTROL_NS, please do not set parameter '-lsNs $LICENSING_NAMESPACE'"
+            error "Licensing Migration could only be done in $CONTROL_NS, please do not set parameter '-licensingNs $LICENSING_NAMESPACE'"
         fi
         LICENSING_NAMESPACE="$CONTROL_NS"
     fi
