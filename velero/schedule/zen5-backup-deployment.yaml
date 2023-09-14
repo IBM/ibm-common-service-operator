@@ -29,8 +29,7 @@ spec:
           - sh
           - -c
           - sleep infinity
-          #image: icr.io/cpopen/cpfs/cpfs-utils@sha256<hash>
-          image: docker-na-public.artifactory.swg-devops.com/hyc-cloud-private-scratch-docker-local/ibmcom/cpfs-utils-amd64:4.2.0-test
+          image: icr.io/cpopen/cpfs/cpfs-utils:4.0.0 #4.1.0 if using CS 4.1, 4.2.0 if using CS 4.2
           imagePullPolicy: IfNotPresent
           name: zen5-backup-job
           resources:

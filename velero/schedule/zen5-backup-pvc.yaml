@@ -6,7 +6,7 @@ metadata:
   labels:
     foundationservices.cloudpak.ibm.com: zen5-data
 spec:
-  storageClassName: rook-cephfs
+  storageClassName: ibmc-block-retain-gold
   accessModes:
     - ReadWriteOnce
   resources:

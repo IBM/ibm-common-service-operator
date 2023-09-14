@@ -21,7 +21,6 @@ data:
     ZEN_NAMESPACE=$1
     BACKUP_DIR=/zen5/zen-backup
 
-    # oc apply -f zen-backup-sa.yaml -n $ZEN_NAMESPACE
     #Backup steps
 
     #Setup backup location
@@ -67,10 +66,10 @@ data:
 
         #Backup JWT configuration
         info "Backing up JWT secrets"
-        oc extract -n ${ZEN_NAMESPACE} secret/ibm-zen-secret-jwt --to=$BACKUP_DIR/secrets || error "Failed to backup secret/ibm-zen-secret-jwt in namespace ${ZEN_NAMESPACE}"
-        oc extract -n ${ZEN_NAMESPACE} secret/ibm-zen-secret-jwt-private --to=$BACKUP_DIR/secrets || error "Failed to backup secret/ibm-zen-secret-jwt-private in namespace ${ZEN_NAMESPACE}"
-        oc extract -n ${ZEN_NAMESPACE} secret/zen-secrets-aes-key  --to=$BACKUP_DIR/secrets || error "Failed to backup secret/zen-secrets-aes-key in namespace ${ZEN_NAMESPACE}"
-        oc extract -n ${ZEN_NAMESPACE} secret/admin-user-details --to=$BACKUP_DIR/secrets || error "Failed to backup secret/admin-user-details in namespace ${ZEN_NAMESPACE}"
+        oc extract -n ${ZEN_NAMESPACE} secret/ibm-zen-secret-jwt --to=$BACKUP_DIR/secrets || warning "Failed to backup secret/ibm-zen-secret-jwt in namespace ${ZEN_NAMESPACE}"
+        oc extract -n ${ZEN_NAMESPACE} secret/ibm-zen-secret-jwt-private --to=$BACKUP_DIR/secrets || warning "Failed to backup secret/ibm-zen-secret-jwt-private in namespace ${ZEN_NAMESPACE}"
+        oc extract -n ${ZEN_NAMESPACE} secret/zen-secrets-aes-key  --to=$BACKUP_DIR/secrets || warning "Failed to backup secret/zen-secrets-aes-key in namespace ${ZEN_NAMESPACE}"
+        oc extract -n ${ZEN_NAMESPACE} secret/admin-user-details --to=$BACKUP_DIR/secrets || warning "Failed to backup secret/admin-user-details in namespace ${ZEN_NAMESPACE}"
 
         success "Backup completed."
     }
@@ -100,6 +99,8 @@ data:
     function info() {
         msg "[INFO] ${1}"
     }
+
+    main $*
   restore_zen5.sh: |
     #!/usr/bin/env bash
 
@@ -121,9 +122,9 @@ data:
 
     function main {
         title "Beginning restore process for zenservice $ZENSERVICE_NAME in namespace $ZEN_NAMESPACE."
-        #info "Enabling Zen operator maintenance mode and scale down deployments"
+        info "Enabling Zen operator maintenance mode and scale down deployments"
         #[2.2.2] Enable Zen operator maintenance mode and scale down deployments
-        #oc patch zenservice ${ZENSERVICE_NAME} --namespace ${ZEN_NAMESPACE} --type=merge --patch '{"spec": {"ignoreForMaintenance": true}}'
+        oc patch zenservice ${ZENSERVICE_NAME} --namespace ${ZEN_NAMESPACE} --type=merge --patch '{"spec": {"ignoreForMaintenance": true}}'
         #suspend backup cronjob
         oc patch cj zen-metastore-backup-cron-job --namespace ${ZEN_NAMESPACE} --type=merge --patch '{"spec": {"suspend": true}}'
         oc get deploy ibm-nginx zen-core usermgmt zen-watcher  zen-watchdog zen-core-api -n ${ZEN_NAMESPACE}
@@ -179,13 +180,13 @@ data:
         #[2.2.5] Scale up deployments and Disable Zen operator maintenance mode
         #[2.2.5.1] Scale up the deployments
         info "Scale up deployments."
-        oc scale deploy zen-watcher --replicas=1
-        oc scale deploy usermgmt --replicas=2
-        oc scale deploy zen-core-api --replicas=2
-        oc scale deploy zen-core --replicas=2
-        oc scale deploy ibm-nginx --replicas=2
+        oc scale deploy zen-watcher --replicas=1 -n $ZEN_NAMESPACE
+        oc scale deploy usermgmt --replicas=2 -n $ZEN_NAMESPACE
+        oc scale deploy zen-core-api --replicas=2 -n $ZEN_NAMESPACE
+        oc scale deploy zen-core --replicas=2 -n $ZEN_NAMESPACE
+        oc scale deploy ibm-nginx --replicas=2 -n $ZEN_NAMESPACE
         if [[ $zen_watchdog_present != "fail" ]]; then
-            oc scale deploy zen-watchdog --replicas=1 # (Only for CloudPak for Data) TODO error handle if not present
+            oc scale deploy zen-watchdog --replicas=1 -n $ZEN_NAMESPACE # (Only for CloudPak for Data)
         fi
 
         #[2.2.5.2] Wait for deployments
@@ -208,8 +209,8 @@ data:
         oc patch cj zen-metastore-backup-cron-job --namespace ${ZEN_NAMESPACE} --type=merge --patch '{"spec": {"suspend": false}}'
 
         #[2.2.5.5] remove zenservice from maintenance mode
-        #info "Remove zenservice from maintenance mode."
-        #oc patch zenservice ${ZENSERVICE_NAME} --namespace ${ZEN_NAMESPACE} --type=merge --patch '{"spec": {"ignoreForMaintenance": false}}'
+        info "Remove zenservice from maintenance mode."
+        oc patch zenservice ${ZENSERVICE_NAME} --namespace ${ZEN_NAMESPACE} --type=merge --patch '{"spec": {"ignoreForMaintenance": false}}'
 
         success "Restore complete for zenservice $ZENSERVICE_NAME in namespace $ZEN_NAMESPACE."
     }
@@ -238,3 +239,5 @@ data:
     function info() {
         msg "[INFO] ${1}"
     }
+
+    main $*
