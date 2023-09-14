@@ -8,7 +8,7 @@ spec:
   template:
     ttl: 48h0m0s
     defaultVolumesToRestic: true
-    storageLocation: bcdr-data-protection-app-1
+    storageLocation: <storage location>
     includeClusterResources: true
     includedNamespaces:
     - '*'
@@ -33,3 +33,6 @@ spec:
         - cert-manager
         - namespace
         - configmap
+        - zen5
+        - zen5-data
+        - crd
