@@ -17,11 +17,6 @@ rules:
       - extensions
       - apps
       - policy
-      - rbac.authorization.k8s.io
-      - autoscaling
-      - authorization.openshift.io
-      - networking.k8s.io
-      - metrics.k8s.io
     resources:
       - pods
       - pods/log
@@ -33,8 +28,6 @@ rules:
       - cronjobs
       - pods/exec
       - pods/portforward
-      - horizontalpodautoscalers
-      - verticalpodautoscalers
       - endpoints
       - cronjob
       - pods/status
