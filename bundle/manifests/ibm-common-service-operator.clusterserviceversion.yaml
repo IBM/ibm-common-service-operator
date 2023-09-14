@@ -25,9 +25,9 @@ metadata:
     createdAt: "2020-10-19T21:38:33Z"
     description: The IBM Common Service Operator is used to deploy IBM Common Services
     nss.operator.ibm.com/managed-operators: cloud-native-postgresql,ibm-bts-operator
-    olm.skipRange: ">=3.3.0 <3.23.7"
+    olm.skipRange: ">=3.3.0 <3.23.8"
     operatorChannel: v3.23
-    operatorVersion: 3.23.7
+    operatorVersion: 3.23.8
     operators.openshift.io/infrastructure-features: '["disconnected"]'
     operators.operatorframework.io/builder: operator-sdk-v1.24.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
@@ -38,7 +38,7 @@ metadata:
     operatorframework.io/arch.ppc64le: supported
     operatorframework.io/arch.s390x: supported
     operatorframework.io/os.linux: supported
-  name: ibm-common-service-operator.v3.23.7
+  name: ibm-common-service-operator.v3.23.8
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -123,7 +123,7 @@ spec:
 
     ## Operator versions
 
-     - 3.23.7
+     - 3.23.8
 
     ## Prerequisites
 
@@ -507,12 +507,12 @@ spec:
   provider:
     name: IBM
   relatedImages:
-    - image: icr.io/cpopen/common-service-operator:3.23.7
+    - image: icr.io/cpopen/common-service-operator:3.23.8
       name: COMMON_SERVICE_OPERATOR_IMAGE
-    - image: icr.io/cpopen/cpfs/ibm-cs-webhook:1.19.7
+    - image: icr.io/cpopen/cpfs/ibm-cs-webhook:1.19.8
       name: IBM_CS_WEBHOOK_IMAGE
-    - image: icr.io/cpopen/cpfs/ibm-secretshare-operator:1.20.7
+    - image: icr.io/cpopen/cpfs/ibm-secretshare-operator:1.20.8
       name: IBM_SECRETSHARE_OPERATOR_IMAGE
     - image: icr.io/cpopen/cpfs/multi-instance-conversion:latest
       name: CS_MULTI_INSTANCE_CONVERSION_IMAGE
-  version: 3.23.7
+  version: 3.23.8

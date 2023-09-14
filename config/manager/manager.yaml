@@ -64,9 +64,9 @@ spec:
         - name: OPERATOR_NAME
           value: "ibm-common-service-operator"
         - name: IBM_CS_WEBHOOK_IMAGE
-          value: icr.io/cpopen/cpfs/ibm-cs-webhook:1.19.7
+          value: icr.io/cpopen/cpfs/ibm-cs-webhook:1.19.8
         - name: IBM_SECRETSHARE_OPERATOR_IMAGE
-          value: icr.io/cpopen/cpfs/ibm-secretshare-operator:1.20.7
+          value: icr.io/cpopen/cpfs/ibm-secretshare-operator:1.20.8
         - name: IBM_ZEN_OPERATOR_IMAGE
           value: icr.io/cpopen/ibm-zen-operator:1.8.1
         resources:
