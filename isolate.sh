@@ -28,7 +28,6 @@ MASTER_NS=
 EXCLUDED_NS=""
 ADDITIONAL_NS=""
 CONTROL_NS=""
-LSR_NAMESPACE=$MASTER_NS
 CS_MAPPING_YAML=""
 CM_NAME="common-service-maps"
 CERT_MANAGER_MIGRATED="false"
@@ -61,7 +60,6 @@ function main() {
             ;;
         "--original-cs-ns")
             MASTER_NS=$2
-            LSR_NAMESPACE=$MASTER_NS
             shift
             ;;
         "--excluded-ns")
@@ -114,6 +112,7 @@ function main() {
     update_tenant "${MASTER_NS}" "${ns_list}"
     check_cm_ns_exist "$ns_list $CONTROL_NS" # debating on turning this off by default since this technically falls outside the scope of isolate
     removeNSS
+    isolate_license_service_reporter
     uninstall_singletons
     isolate_odlm "ibm-odlm" $MASTER_NS
     if [[ $BACKUP_LICENSING == "true" ]]; then
@@ -165,8 +164,6 @@ function prereq() {
 
     #verify one and only one cert manager is installed
     check_certmanager_count
-
-    isolate_license_service_reporter
 
     return_value="reset"
     # ensure cs-operator is not installed in all namespace mode
@@ -770,33 +767,33 @@ function check_certmanager_count(){
 }
 
 function isolate_license_service_reporter(){
-  info "Isolating License Service Reporter"
-  # LicenseServiceReporter should not be installed because it does not support multi-instance mode
-  return_value=$( ("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
-  if [[ $return_value == "exists" ]]; then
+    title "Isolating License Service Reporter"
 
-      return_value=$("${OC}" get ibmlicenseservicereporters -A --no-headers | wc -l)
-      if [[ $return_value -gt 0 ]]; then
+    return_value=$( ("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
+    if [[ $return_value == "exists" ]]; then
 
-        # Change persistentVolumeReclaimPolicy to Retain
-        status=$("${OC}" get pvc license-service-reporter-pvc -n $LSR_NAMESPACE)
-        debug1 "LSR pvc status: $status"
-        if [[ -z "$status" ]]; then
-          error "PVC license-service-reporter-pvc not found in $LSR_NAMESPACE"
+        return_value=$("${OC}" get ibmlicenseservicereporters -A --no-headers | wc -l)
+        if [[ $return_value -gt 0 ]]; then
+
+            # Change persistentVolumeReclaimPolicy to Retain
+            status=$("${OC}" get pvc license-service-reporter-pvc -n $MASTER_NS)
+            debug1 "LSR pvc status: $status"
+            if [[ -z "$status" ]]; then
+                error "PVC license-service-reporter-pvc not found in $MASTER_NS"
+            fi
+
+            VOL=$("${OC}" get pvc license-service-reporter-pvc -n $MASTER_NS  -o=jsonpath='{.spec.volumeName}')
+            debug1 "LSR volume name: $VOL"
+            if [[ -z "$VOL" ]]; then
+                error "Volume for pvc license-service-reporter-pvc not found in $MASTER_NS"
+            fi
+
+            # label LSR PV as LSR PV for further LSR upgrade
+            ${OC} label pv $VOL license-service-reporter-pv=true --overwrite 
+            ${OC} patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Retain" }}'
         fi
-
-        VOL=$("${OC}" get pvc license-service-reporter-pvc -n $LSR_NAMESPACE  -o=jsonpath='{.spec.volumeName}')
-        debug1 "LSR volume name: $VOL"
-        if [[ -z "$VOL" ]]; then
-          error "Volume for pvc license-service-reporter-pvc not found in $LSR_NAMESPACE"
-        fi
-
-        # label LSR PV as LSR PV for further LSR upgrade
-        ${OC} label pv $VOL license-service-reporter-pv=true --overwrite 
-        ${OC} patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Retain" }}'
-      fi
-  fi
-  success "License Service Reporter isolated."
+    fi
+    success "License Service Reporter isolated."
 }
 
 function wait_for_nss_update() {
