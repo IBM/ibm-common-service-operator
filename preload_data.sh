@@ -1904,13 +1904,13 @@ spec:
   renewBefore: 720h0m0s
   secretName: test-certificate-secret
 EOF
-    return_value_cert=$(${OC} get certificate -n $FROM_NAMESPACE --ignore-not-found | grep test-certificate || echo "false")
+    return_value_cert=$(${OC} get certificate.v1.cert-manager.io -n $FROM_NAMESPACE --ignore-not-found | grep test-certificate || echo "false")
     if [[ $return_value_cert == "false" ]]; then
-      ${OC} delete issuer test-issuer -n $OPERATOR_NS --ignore-not-found
+      ${OC} delete issuer.v1.cert-manager.io test-issuer -n $FROM_NAMESPACE --ignore-not-found
       error "Failed to create test certificate. Verify cert manager is installed and ready on the cluster then re-run the preload script."
     else
-      ${OC} delete certificate test-certificate -n $FROM_NAMESPACE --ignore-not-found
-      ${OC} delete issuer test-issuer -n $FROM_NAMESPACE --ignore-not-found
+      ${OC} delete certificate.v1.cert-manager.io test-certificate -n $FROM_NAMESPACE --ignore-not-found
+      ${OC} delete issuer.v1.cert-manager.io test-issuer -n $FROM_NAMESPACE --ignore-not-found
     fi
   fi  
   success "Cert manager is ready, preload can proceed."
