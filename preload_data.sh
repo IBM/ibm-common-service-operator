@@ -221,8 +221,8 @@ function cleanup() {
   if [[ -f $TEMPFILE ]]; then
     rm $TEMPFILE
   fi
-  ${OC} delete job mongodb-backup -n $FROM_NAMESPACE
-  ${OC} delete job mongodb-restore -n $TO_NAMESPACE
+  ${OC} delete job mongodb-backup -n $FROM_NAMESPACE --ignore-not-found
+  ${OC} delete job mongodb-restore -n $TO_NAMESPACE --ignore-not-found
   pvcexists=$(${OC} get pvc cs-mongodump -n $FROM_NAMESPACE --no-headers --ignore-not-found | awk '{print $2}')
   if [[ -n "$pvcexists" ]]; then
     if [[ "$pvcexists" == "Bound" ]]; then
