@@ -134,7 +134,7 @@ function edit_odlm_sub() {
         fi
 
         msg ""
-    done < <(oc get subscription -n ${namespace} | grep operand-deployment-lifecycle-manager-app | awk '{print $1}')
+    done < <(oc get subscription.operators.coreos.com -n ${namespace} | grep operand-deployment-lifecycle-manager-app | awk '{print $1}')
     success "Disable ${odlm_sub} operator checker in ${namespace} successfully."
 }
 

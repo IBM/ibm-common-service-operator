@@ -220,9 +220,11 @@ function pre_req_bpm() {
 function cleanup() {
   title "Cleaning up any previous copy operations..."
   msg "-----------------------------------------------------------------------"
-  rm $TEMPFILE
-  ${OC} delete job mongodb-backup -n $FROM_NAMESPACE
-  ${OC} delete job mongodb-restore -n $TO_NAMESPACE
+  if [[ -f $TEMPFILE ]]; then
+    rm $TEMPFILE
+  fi
+  ${OC} delete job mongodb-backup -n $FROM_NAMESPACE --ignore-not-found
+  ${OC} delete job mongodb-restore -n $TO_NAMESPACE --ignore-not-found
   pvcexists=$(${OC} get pvc cs-mongodump -n $FROM_NAMESPACE --no-headers --ignore-not-found | awk '{print $2}')
   if [[ -n "$pvcexists" ]]; then
     if [[ "$pvcexists" == "Bound" ]]; then
@@ -287,13 +289,18 @@ EOF
 
   ${OC} apply -f $TEMPFILE
 
-  status=$(${OC} get pvc cs-mongodump --no-headers | awk '{print $2}')
-  while [[ "$status" != "Bound" ]]
-  do
-    info "Waiting for pvc cs-mongodump to bind"
-    sleep 10
+  wait_trigger=$(${OC} get sc $NEW_STORAGE_CLASS -o yaml | grep volumeBindingMode: | awk '{print $2}')
+  if [[ $wait_trigger == "WaitForFirstConsumer" ]]; then
+    info "StorageClass waits for pod to claim PVC, skipping wait for binding."
+  else
     status=$(${OC} get pvc cs-mongodump --no-headers | awk '{print $2}')
-  done
+    while [[ "$status" != "Bound" ]]
+    do
+      info "Waiting for pvc cs-mongodump to bind"
+      sleep 10
+      status=$(${OC} get pvc cs-mongodump --no-headers | awk '{print $2}')
+    done
+  fi
   success "MongoDB PVC ready"
 
 } # createdumppvc

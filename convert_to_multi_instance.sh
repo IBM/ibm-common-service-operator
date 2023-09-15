@@ -24,10 +24,13 @@ OC=oc
 YQ=yq
 
 cs_operator_channel=
+cs_operator_sourceNamespace=
+cs_operator_installPlanApproval=
 catalog_source=
 requested_ns=
 map_to_cs_ns=
 master_ns=$1
+control_ns=
 cm_name="common-service-maps"
     
 function main() {
@@ -38,6 +41,7 @@ function main() {
     check_cm_ns_exist
     prepare_cluster
     isolate_odlm "ibm-odlm" $master_ns
+    update_opreqs
     scale_up_pod
     restart_CS_pods
     install_new_CS
@@ -51,6 +55,16 @@ function prereq() {
     which "${OC}" || error "Missing oc CLI"
     which "${YQ}" || error "Missing yq"
     
+    # Verify that yq is at least version 4.18.1
+    yq_minimum_version=4.18.1
+    # Get the user's yq version and remove any leading "v" character if present
+    yq_version=$("${YQ}" --version | awk '{print $NF}' | sed 's/^v//')
+
+    # Compare yq versions using sort
+    if [[ "$(printf '%s\n' "$yq_minimum_version" "$yq_version" | sort -V | head -n 1)" != "$yq_minimum_version" ]]; then
+        error "yq version $yq_version must be at least $yq_minimum_version or higher.\nInstructions for installing/upgrading yq are available here: https://github.com/marketplace/actions/yq-portable-yaml-processor"
+    fi
+
     if [[ -z $master_ns ]]; then
         error "Please specify original cs namespace."
     fi
@@ -198,10 +212,14 @@ function collect_data() {
     msg "-----------------------------------------------------------------------"
     
     info "MasterNS:${master_ns}"
-    cs_operator_channel=$(${OC} get sub ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.channel") 
-    info "channel:${cs_operator_channel}"   
-    catalog_source=$(${OC} get sub ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.source")
-    info "catalog_source:${catalog_source}" 
+    cs_operator_channel=$(${OC} get subscription.operators.coreos.com ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.channel") 
+    info "channel:${cs_operator_channel}"
+    cs_operator_sourceNamespace=$(${OC} get subscription.operators.coreos.com ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.sourceNamespace") 
+    info "sourceNamespace:${cs_operator_sourceNamespace}"
+    cs_operator_installPlanApproval=$(${OC} get subscription.operators.coreos.com ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.installPlanApproval") 
+    info "installPlanApproval:${cs_operator_installPlanApproval}"
+    catalog_source=$(${OC} get subscription.operators.coreos.com ibm-common-service-operator -n ${master_ns} -o yaml | yq ".spec.source")
+    info "catalog_source:${catalog_source}"
 
     #this command gets all of the ns listed in requested from namesapce fields
     requested_ns=$("${OC}" get configmap -n kube-public -o yaml ${cm_name} | yq '.data[]' | yq '.namespaceMapping[].requested-from-namespace' | awk '{print $2}' | tr '\n' ' ')
@@ -376,14 +394,17 @@ function cleanupCSOperators(){
     msg "-----------------------------------------------------------------------"
     for namespace in $requested_ns
     do
-        return_value=$(${OC} get sub -n ${namespace} | (grep ibm-common-service-operator || echo "fail"))
+        return_value=$(${OC} get subscription.operators.coreos.com -n ${namespace} | (grep ibm-common-service-operator || echo "fail"))
         if [[ $return_value != "fail" ]]; then
-            local sub=$(${OC} get sub -n ${namespace} | grep ibm-common-service-operator | awk '{print $1}')
-            ${OC} get sub ${sub} -n ${namespace} -o yaml > tmp.yaml 
-            ${YQ} -i '.spec.source = "'${catalog_source}'"' tmp.yaml || error "Could not replace catalog source for CS operator in namespace ${namespace}"
-            ${OC} delete sub ${sub} -n ${namespace}
-            ${OC} apply -f tmp.yaml
-            info "Common Service Operator Subscription in namespace ${namespace} updated to use catalog source ${catalog_source}"
+            local sub=$(${OC} get subscription.operators.coreos.com -n ${namespace} | grep ibm-common-service-operator | awk '{print $1}')
+            ${OC} get subscription.operators.coreos.com ${sub} -n ${namespace} -o yaml > tmp.yaml 
+            ${YQ} -i '.spec.source = "'${catalog_source}'"' tmp.yaml || error "Could not replace catalog source for CS operator subscription in namespace ${namespace}"
+            ${YQ} -i '.spec.channel = "'${cs_operator_channel}'"' tmp.yaml || error "Could not replace channel for CS operator subscription in namespace ${namespace}"
+            ${YQ} -i '.spec.sourceNamespace = "'${cs_operator_sourceNamespace}'"' tmp.yaml || error "Could not replace sourceNamespace for CS operator subscription in namespace ${namespace}"
+            ${YQ} -i '.spec.installPlanApproval = "'${cs_operator_installPlanApproval}'"' tmp.yaml || error "Could not replace installPlanApproval for CS operator subscription in namespace ${namespace}"
+            ${YQ} -i 'del(.metadata.creationTimestamp) | del(.metadata.managedFields) | del(.metadata.resourceVersion) | del(.metadata.uid) | del(.status)' tmp.yaml || error "Failed to remove metadata fields from temp cs operator yaml for namespace ${namespace}."
+            ${OC} apply -f tmp.yaml || error "Failed to apply catalogsource and channel changes to cs operator subscription in namespace ${namespace}."
+            info "Common Service Operator Subscription in namespace ${namespace} updated to use catalog source ${catalog_source}, channel ${cs_operator_channel}, sourceNamespace ${cs_operator_sourceNamespace}, and installPlanApproval ${cs_operator_installPlanApproval}."
         else
             info "No Common Service Operator in namespace ${namespace}. Moving on..."
         fi
@@ -814,6 +835,44 @@ function cleanup_webhook() {
     info "Deleting ValidatingWebhookConfiguration..."
     ${OC} delete ValidatingWebhookConfiguration ibm-cs-ns-mapping-webhook-configuration --ignore-not-found
 
+    local webhook_pod_in_control_ns=$(${OC} get pods -n $control_ns | grep common-service-webhook || echo "fail")
+    if [[ $webhook_pod_in_control_ns != "fail" ]]; then
+        info "Webhook pod in control namespace, restarting."
+        local pod_name=$(${OC} get pods -n $control_ns | grep common-service-webhook | awk '{print $1}')
+        ${OC} delete pod $pod_name -n $control_ns
+    else
+        info "Webhook pod not in control namespace, skipping restart."
+    fi
+}
+
+function update_opreqs(){
+    title "Updating Operand Requests to use Operand Registry in new CS namespace"
+    #check map to namespaces, get list of requested from ns from there
+    #update opreq in map to first
+    #update opreq in list of namespace from first line
+    for csns in $map_to_cs_ns
+    do
+        local namespaces=$(${OC} get cm common-service-maps -o yaml -n kube-public | $YQ '.data[]' | $YQ '.namespaceMapping[] | select(.map-to-common-service-namespace == "'$csns'").requested-from-namespace' | awk '{print $2}' | tr '\n' ' ')
+        namespaces="$namespaces $csns"
+        for ns in $namespaces
+        do
+            opreqs=$(${OC} get operandrequests -n $ns --no-headers | awk '{print $1}' | tr '\n' ' ')
+            for opreq in $opreqs
+            do
+                ${OC} get opreq $opreq -n $ns -o yaml > tmp.yaml
+                ${YQ} -i 'del(.metadata.creationTimestamp)' tmp.yaml
+                ${YQ} -i 'del(.metadata.resourceVersion)' tmp.yaml
+                ${YQ} -i 'del(.metadata.uid)' tmp.yaml
+                ${YQ} -i 'del(.metadata.generation)' tmp.yaml
+                ${YQ} -i 'del(.metadata.managedFields)' tmp.yaml
+                ${YQ} -i '.spec.requests[0].registryNamespace = "ibm-common-services"' tmp.yaml    
+                ${OC} apply -n $ns -f tmp.yaml || error "Failed to update registryNamespace value for operand request $opreq in namespace $ns."
+                info "Operand request $opreq in namespace $ns updated to use ibm-common-services as registryNamespace."
+                rm -f tmp.yaml
+            done
+        done
+    done
+    success "Operand requests' registryNamespace values updated."
 }
 
 function msg() {

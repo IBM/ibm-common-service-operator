@@ -182,7 +182,7 @@ function switch_to_continous_delivery() {
         oc patch sub ${cssub} -n ${ns} --type="json" -p '[{"op": "replace", "path":"/spec/channel", "value":"v3"}]' 2> /dev/null
 
         msg ""
-    done < <(oc get sub --all-namespaces | grep ibm-common-service-operator | awk '{print $1" "$2}')
+    done < <(oc get subscription.operators.coreos.com --all-namespaces | grep ibm-common-service-operator | awk '{print $1" "$2}')
 }
 
 function check_switch_complete() {
@@ -201,12 +201,12 @@ function check_switch_complete() {
         msg "Checking subscription ${cssub} in namespace ${ns} ..."
         msg "-----------------------------------------------------------------------"
         
-        channel=$(oc get sub ${cssub} -n ${ns} -o jsonpath='{.spec.channel}')
+        channel=$(oc get subscription.operators.coreos.com ${cssub} -n ${ns} -o jsonpath='{.spec.channel}')
         if [[ "$channel" != "v3" ]]; then
             error "the channel of subscription ${cssub} in namespace ${ns} is not v3, please try to re-run the script"
         fi
 
-    done < <(oc get sub --all-namespaces | grep ibm-common-service-operator | awk '{print $1" "$2}')
+    done < <(oc get subscription.operators.coreos.com --all-namespaces | grep ibm-common-service-operator | awk '{print $1" "$2}')
 
     success "Updated all ibm-common-service-operator subscriptions successfully."
     info "Please wait a moment for ibm-common-service-operator to upgrade all foundational services."

@@ -116,7 +116,7 @@ function switch_to_eus() {
 
     while read -r ns cssub; do
         delete_operator $cssub $ns
-    done < <(oc get sub --all-namespaces --ignore-not-found | grep ibm-common-service-operator | awk '{print $1" "$2}')
+    done < <(oc get subscription.operators.coreos.com --all-namespaces --ignore-not-found | grep ibm-common-service-operator | awk '{print $1" "$2}')
 
     success "Remove all Common Service Operators successfully."
     msg ""
@@ -152,7 +152,7 @@ function delete_operator() {
     ns=$2
     msg "Deleting ${sub} in namespace ${ns}..."
     msg "-----------------------------------------------------------------------"
-    csv=$(oc get sub ${sub} -n ${ns} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
+    csv=$(oc get subscription.operators.coreos.com ${sub} -n ${ns} -o=jsonpath='{.status.installedCSV}' --ignore-not-found)
     in_step=1
     msg "[${in_step}] Removing the subscription of ${sub} in namespace ${ns} ..."
     oc delete sub ${sub} -n ${ns} --ignore-not-found
