@@ -218,12 +218,9 @@ function pre_req_bpm() {
 function cleanup() {
   title "Cleaning up any previous copy operations..."
   msg "-----------------------------------------------------------------------"
-  
-  if [[ -f $TEMPFILE ]]; then
-    rm $TEMPFILE
-  fi
-  ${OC} delete job mongodb-backup -n $FROM_NAMESPACE --ignore-not-found
-  ${OC} delete job mongodb-restore -n $TO_NAMESPACE --ignore-not-found
+  rm $TEMPFILE
+  ${OC} delete job mongodb-backup -n $FROM_NAMESPACE
+  ${OC} delete job mongodb-restore -n $TO_NAMESPACE
   pvcexists=$(${OC} get pvc cs-mongodump -n $FROM_NAMESPACE --no-headers --ignore-not-found | awk '{print $2}')
   if [[ -n "$pvcexists" ]]; then
     if [[ "$pvcexists" == "Bound" ]]; then
@@ -340,13 +337,6 @@ spec:
             cpu: 100m
             memory: 128Mi
         command: ["bash", "-c", "cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongodump --oplog --out /dump/dump --host mongodb:27017 --username \$ADMIN_USER --password \$ADMIN_PASSWORD --authenticationDatabase admin --ssl --sslCAFile /work-dir/ca.pem --sslPEMKeyFile /work-dir/mongo.pem"]
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop: ["ALL"]
-          runAsNonRoot: true
-          seccompProfile:
-            type: RuntimeDefault
         volumeMounts:
         - mountPath: "/work-dir"
           name: tmp-mongodb
@@ -605,13 +595,6 @@ spec:
       - name: icp-mongodb-restore
         image: $ibm_mongodb_image
         command: ["bash", "-c", "cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongorestore --host rs0/icp-mongodb:27017 --username \$ADMIN_USER --password \$ADMIN_PASSWORD --authenticationDatabase admin --ssl --sslCAFile /work-dir/ca.pem --sslPEMKeyFile /work-dir/mongo.pem /dump/dump"]
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop: ["ALL"]
-          runAsNonRoot: true
-          seccompProfile:
-            type: RuntimeDefault
         resources:
           limits:
             cpu: 500m
@@ -671,13 +654,6 @@ spec:
       - name: icp-mongodb-restore
         image: $ibm_mongodb_image
         command: ["bash", "-c", "cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongorestore --host rs0/icp-mongodb:27017 --username \$ADMIN_USER --password \$ADMIN_PASSWORD --authenticationDatabase admin /dump/dump"]
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop: ["ALL"]
-          runAsNonRoot: true
-          seccompProfile:
-            type: RuntimeDefault
         resources:
           limits:
             cpu: 500m
@@ -1530,13 +1506,6 @@ spec:
           command:
             - /install/install.sh
           imagePullPolicy: IfNotPresent
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop: ["ALL"]
-            runAsNonRoot: true
-            seccompProfile:
-              type: RuntimeDefault
           volumeMounts:
             - name: mongodbdir
               mountPath: /work-dir
@@ -1610,11 +1579,6 @@ spec:
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
-            capabilities:
-              drop: ["ALL"]
-            runAsNonRoot: true
-            seccompProfile:
-              type: RuntimeDefault
           imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: mongodbdir
@@ -1708,11 +1672,6 @@ spec:
           securityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
-            capabilities:
-              drop: ["ALL"]
-            runAsNonRoot: true
-            seccompProfile:
-              type: RuntimeDefault
           ports:
             - name: peer
               containerPort: 27017
