@@ -132,6 +132,23 @@ function migrate_license_service_reporter(){
         else
             debug1 "Run on ROKS, not setting storageclass name"
             LSR_STORAGE_CLASS=""
+                       
+            deprecated_region='{.items[0].metadata.labels.failure-domain\.beta\.kubernetes\.io\/region}'
+            deprecated_zone='{.items[0].metadata.labels.failure-domain\.beta\.kubernetes\.io\/zone}'
+
+
+            deprecated_region_label='failure-domain.beta.kubernetes.io/region'
+            not_deprecated_region_label='topology.kubernetes.io/region'
+            deprecated_zone_label='failure-domain.beta.kubernetes.io/zone'
+            not_deprecated_zone_label='topology.kubernetes.io/zone'
+
+            region=$(oc get pv -l license-service-reporter-pv=true -o=jsonpath=$deprecated_region)
+            zone=$(oc get pv -l license-service-reporter-pv=true -o=jsonpath=$deprecated_zone)
+
+            if [[ $region != "" ]]; then
+                debug1 "Replacing depracated PV labels"
+                oc label pv $VOL $not_deprecated_region_label=$region $deprecated_region_label- $not_deprecated_zone_label=$zone $deprecated_zone_label- --overwrite 
+            fi
         fi
 
         # create PVC
