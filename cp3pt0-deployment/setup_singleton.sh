@@ -183,24 +183,24 @@ function print_usage() {
     echo "See https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.0?topic=manager-installing-cert-licensing-by-script for more information."
     echo ""
     echo "Options:"
-    echo "   --oc string                                    Optional. File path to oc CLI. Default uses oc in your PATH"
-    echo "   --yq string                                    Optional. File path to yq CLI. Default uses yq in your PATH"
-    echo "   --operator-namespace string                    Optional. Namespace to migrate Cloud Pak 2 Foundational services"
-    echo "   -ls, --enable-licensing                        Optional. Set this flag to install ibm-licensing-operator"
-    echo "   -licensingNs, --licensing-namespace string     Optional. Set custom namespace for ibm-licensing-operator. Default is ibm-licensing"
-    echo "   -lsr, --enable-license-service-reporter        Optional. Set this flag to install ibm-license-service-reporter-operator. Always use with -ls"
-    echo "   -lsrNs, --license-service-reporter-namespace string Optional. Set custom namespace for License Service Reporter. Default is ibm-lsr"
-    echo "   --enable-private-catalog                       Optional. Set this flag to use namespace scoped CatalogSource. Default is in openshift-marketplace namespace"
-    echo "   --cert-manager-source string                   Optional. CatalogSource name of ibm-cert-manager-operator. This assumes your CatalogSource is already created. Default is ibm-cert-manager-catalog"
-    echo "   --licensing-source string                      Optional. CatalogSource name of ibm-licensing. This assumes your CatalogSource is already created. Default is ibm-licensing-catalog"
-    echo "   --lsr-source string                            Optional. CatalogSource name of ibm-license-service-reporter. This assumes your CatalogSource is already created. Default is ibm-license-service-reporter-catalog"
-    echo "   -cmNs, --cert-manager-namespace string         Optional. Set custom namespace for ibm-cert-manager-operator. Default is ibm-cert-manager"
-    echo "   --license-accept                               Required. Set this flag to accept the license agreement."
-    echo "   --preview                                      Optional.  Enable preview mode (dry run)"
-    echo "   -c, --channel string                           Optional. Channel for Subscription(s). Default is v4.2"
-    echo "   -i, --install-mode string                      Optional. InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
-    echo "   -v, --debug integer                            Optional. Verbosity of logs. Default is 0. Set to 1 for debug logs"
-    echo "   -h, --help                                     Print usage information"
+    echo "   --oc string                                            Optional. File path to oc CLI. Default uses oc in your PATH"
+    echo "   --yq string                                            Optional. File path to yq CLI. Default uses yq in your PATH"
+    echo "   --operator-namespace string                            Optional. Namespace to migrate Cloud Pak 2 Foundational services"
+    echo "   -ls, --enable-licensing                                Optional. Set this flag to install ibm-licensing-operator"
+    echo "   -licensingNs, --licensing-namespace string             Optional. Set custom namespace for ibm-licensing-operator. Default is ibm-licensing"
+    echo "   -lsr, --enable-license-service-reporter                Optional. Set this flag to install ibm-license-service-reporter-operator. Always use with -ls(--enable-licensing) flag"
+    echo "   -lsrNs, --license-service-reporter-namespace string    Optional. Set custom namespace for License Service Reporter. Default is ibm-lsr"
+    echo "   --enable-private-catalog                               Optional. Set this flag to use namespace scoped CatalogSource. Default is in openshift-marketplace namespace"
+    echo "   --cert-manager-source string                           Optional. CatalogSource name of ibm-cert-manager-operator. This assumes your CatalogSource is already created. Default is ibm-cert-manager-catalog"
+    echo "   --licensing-source string                              Optional. CatalogSource name of ibm-licensing. This assumes your CatalogSource is already created. Default is ibm-licensing-catalog"
+    echo "   --lsr-source string                                    Optional. CatalogSource name of ibm-license-service-reporter. This assumes your CatalogSource is already created. Default is ibm-license-service-reporter-catalog"
+    echo "   -cmNs, --cert-manager-namespace string                 Optional. Set custom namespace for ibm-cert-manager-operator. Default is ibm-cert-manager"
+    echo "   --license-accept                                       Required. Set this flag to accept the license agreement."
+    echo "   --preview                                              Optional.  Enable preview mode (dry run)"
+    echo "   -c, --channel string                                   Optional. Channel for Subscription(s). Default is v4.2"
+    echo "   -i, --install-mode string                              Optional. InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
+    echo "   -v, --debug integer                                    Optional. Verbosity of logs. Default is 0. Set to 1 for debug logs"
+    echo "   -h, --help                                             Print usage information"
     echo ""
 }
 
@@ -270,6 +270,9 @@ function validate_singleton_catalogsource() {
     
     if [ $ENABLE_LICENSING -eq 1 ]; then
         validate_operator_catalogsource ibm-licensing-operator-app $LICENSING_NAMESPACE $LICENSING_SOURCE $LIS_SOURCE_NS $CHANNEL LICENSING_SOURCE LIS_SOURCE_NS
+        if [ $ENABLE_LICENSE_SERVICE_REPORTER -eq 1 ]; then
+            validate_operator_catalogsource ibm-license-service-reporter-operator $LSR_NAMESPACE $LSR_SOURCE $LSR_SOURCE_NS $CHANNEL LSR_SOURCE LSR_SOURCE_NS
+        fi
     fi
 
 }
@@ -376,70 +379,91 @@ function wait_for_license_instance() {
 }
 
 function install_license_service_reporter() {
-
-  if [ $ENABLE_LICENSE_SERVICE_REPORTER -ne 1 ] ; then
+    if [ $ENABLE_LICENSE_SERVICE_REPORTER -ne 1 ] ; then
     return
-  fi
+    fi
 
-  title "Installing License Service Reporter\n"
-  is_sub_exist "ibm-license-service-reporter-operator" # this will catch the package names of all ibm-license-service-reporter-operator
-  if [ $? -eq 0 ]; then
-      warning "There is an ibm-license-service-reporter-operator Subscription already\n"
-      return 0
-  elif [ $SKIP_INSTALL -eq 1 ]; then
-      error "There is no ibm-license-service-reporter-operator Subscription installed\n"
-  fi
+    title "Installing License Service Reporter\n"
+    is_sub_exist "ibm-license-service-reporter-operator" # this will catch the package names of all ibm-license-service-reporter-operator
+    if [ $? -eq 0 ]; then
+        warning "There is an ibm-license-service-reporter-operator Subscription already, so will upgrade it\n"
+    elif [ $SKIP_INSTALL -eq 1 ]; then
+        error "There is no ibm-license-service-reporter-operator Subscription installed\n"
+    fi
 
 
-  if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
-      SOURCE_NS="${LSR_NAMESPACE}"
-  else
-      SOURCE_NS="${CM_SOURCE_NS}"
-  fi
+    local ns=$("$OC" get deployments -A | grep ibm-license-service-reporter-operator | cut -d ' ' -f1)
+    if [ ! -z "$ns" ]; then
+        if [ "$ns" != "$LSR_NAMESPACE" ]; then
+            error "An ibm-license-service-reporter-operator already installed in namespace: $ns, expected namespace is: $LSR_NAMESPACE"
+        fi
+    fi
 
-  debug1 "LSR namespace: ${LSR_NAMESPACE}" 
-  create_namespace "${LSR_NAMESPACE}"
+    create_namespace "${LSR_NAMESPACE}"
 
-  target=$(cat <<EOF
+    target=$(cat <<EOF
 
   targetNamespaces:
     - ${LSR_NAMESPACE}
 EOF
-)
-  create_operator_group "ibm-license-service-reporter-operator" "${LSR_NAMESPACE}" "$target"
-  create_subscription "ibm-license-service-reporter-operator" "${LSR_NAMESPACE}" "$CHANNEL" "ibm-license-service-reporter-operator" "${LSR_SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
-  wait_for_operator "${LSR_NAMESPACE}" "ibm-license-service-reporter-operator"
+    )
+    create_operator_group "ibm-license-service-reporter-operator" "${LSR_NAMESPACE}" "$target"
+    
+    is_sub_exist "ibm-license-service-reporter-operator" # this will catch the package names of all ibm-license-service-reporter-operator
+    if [ $? -eq 0 ]; then
+        update_operator "ibm-license-service-reporter-operator" "${LSR_NAMESPACE}" "$CHANNEL" "${LSR_SOURCE}" "${LSR_SOURCE_NS}" "${INSTALL_MODE}"
+        wait_for_operator_upgrade "${LSR_NAMESPACE}" "ibm-license-service-reporter-operator" "$CHANNEL" "${INSTALL_MODE}"
+    else
+        create_subscription "ibm-license-service-reporter-operator" "${LSR_NAMESPACE}" "$CHANNEL" "ibm-license-service-reporter-operator" "${LSR_SOURCE}" "${LSR_SOURCE_NS}" "${INSTALL_MODE}"
+    fi
+    wait_for_csv "${LSR_NAMESPACE}" "ibm-license-service-reporter-operator"
+    wait_for_operator "${LSR_NAMESPACE}" "ibm-license-service-reporter-operator"
 
-  #create_reporter_instance
-  TEMP_LSR_FILE="_TEMP_LSR_FILE.yaml"
-
-  cat <<EOF >$TEMP_LSR_FILE
-    apiVersion: operator.ibm.com/v1alpha1
-    kind: IBMLicenseServiceReporter
-    metadata:
-      name: ibm-lsr-instance
-      namespace: ${LSR_NAMESPACE}
-      labels:
-        app.kubernetes.io/created-by: ibm-license-service-reporter-operator
-        app.kubernetes.io/instance: ibmlicenseservicereporter-instance
-        app.kubernetes.io/name: ibmlicenseservicereporter
-        app.kubernetes.io/part-of: ibm-license-service-reporter-operator
-    spec:
-      license:
-        accept: true
-      authentication:
-        useradmin:
-          enabled: true
-EOF
-
-  ${OC} create -f ${TEMP_LSR_FILE}
-
-  wait_for_lsr_instance
+    configure_lsr_instance
+    wait_for_lsr_instance
+    accept_license "ibmlicenseservicereporter" "$LSR_NAMESPACE" "ibm-lsr-instance"
 }
 
 
+function configure_lsr_instance() {
+    title "Configuring License Service Reporter CR in $LSR_NAMESPACE..."
+
+    result=$("${OC}" get ibmlicenseservicereporter ibm-lsr-instance -n ${LSR_NAMESPACE} -o yaml --ignore-not-found)
+    if [[ ! -z "${result}" ]]; then
+        info "Configure License Service Reporter CR in $LSR_NAMESPACE\n"
+        ${OC} get ibmlicenseservicereporter ibm-lsr-instance -n ${LSR_NAMESPACE} -o yaml | ${YQ} eval '.spec.authentication.useradmin.enabled = true' > ${PREVIEW_DIR}/licensing_service_reporter.yaml
+        ${YQ} -i eval 'select(.kind == "IBMLicenseServiceReporter") | del(.metadata.resourceVersion) | del(.metadata.uid) | del(.metadata.creationTimestamp) | del(.metadata.generation)' ${PREVIEW_DIR}/licensing_service_reporter.yaml
+    else
+        info "Creating the IBM License Service Reporter object:\n"
+        cat <<EOF > ${PREVIEW_DIR}/licensing_service_reporter.yaml
+apiVersion: operator.ibm.com/v1alpha1
+kind: IBMLicenseServiceReporter
+metadata:
+  name: ibm-lsr-instance
+  namespace: ${LSR_NAMESPACE}
+  labels:
+    app.kubernetes.io/created-by: ibm-license-service-reporter-operator
+    app.kubernetes.io/instance: ibmlicenseservicereporter-instance
+    app.kubernetes.io/name: ibmlicenseservicereporter
+    app.kubernetes.io/part-of: ibm-license-service-reporter-operator
+spec:
+  license:
+    accept: true
+  authentication:
+    useradmin:
+      enabled: true
+EOF
+    fi
+
+    cat ${PREVIEW_DIR}/licensing_service_reporter.yaml
+    echo ""
+    
+    cat "${PREVIEW_DIR}/licensing_service_reporter.yaml" | ${OC} apply -f -
+
+}
+
 function wait_for_lsr_instance() {
-    local name="instance"
+    local name="ibm-lsr-instance"
     local condition="${OC} get IBMLicenseServiceReporter -A --no-headers --ignore-not-found | grep ${name} || true"
     local retries=20
     local sleep_time=15
@@ -498,6 +522,11 @@ function pre_req() {
     if [ -z "$OPERATOR_NS" ]; then
         OPERATOR_NS=$("$OC" project --short)
     fi
+
+    if [ $ENABLE_LICENSE_SERVICE_REPORTER -eq 1 ] && [ $ENABLE_LICENSING -eq 0 ]; then
+        error "IBM License Service Report is enabled, but IBM Licensing is not enabled. Please always use -ls(--enable-licensing) flag with -lsr(--enable-license-service-reporter) flag"
+    fi
+
     echo ""
 }
 
