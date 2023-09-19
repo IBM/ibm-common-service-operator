@@ -64,10 +64,11 @@ function main() {
     # Scale down CS, ODLM and delete OperandReigsrty
     # It helps to prevent re-installing licensing and cert-manager services
     scale_down $OPERATOR_NS $SERVICES_NS $CHANNEL $SOURCE
-    local arguments=""
+    local arguments="--yq $YQ --oc $OC"
+
     # Migrate singleton services
     if [[ $ENABLE_LICENSING -eq 1 ]]; then
-        arguments+="--enable-licensing"
+        arguments+=" --enable-licensing"
     fi
 
     if [[ $ENABLE_PRIVATE_CATALOG -eq 1 ]]; then
