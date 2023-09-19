@@ -29,6 +29,9 @@ NEW_TENANT=0
 DEBUG=0
 PREVIEW_MODE=0
 LICENSE_ACCEPT=0
+ENABLE_LICENSE_SERVICE_REPORTER=0
+LSR_NAMESPACE="ibm-lsr"
+LSR_SOURCE="ibm-license-service-reporter-operator-catalog"
 
 # ---------- Command variables ----------
 
@@ -69,6 +72,11 @@ function main() {
     # Migrate singleton services
     if [[ $ENABLE_LICENSING -eq 1 ]]; then
         arguments+=" --enable-licensing"
+    fi
+    
+    if [[ $ENABLE_LICENSE_SERVICE_REPORTER -eq 1 ]]; then
+        isolate_license_service_reporter
+        arguments+=" --enable-license-service-reporter --license-service-reporter-namespace $LSR_NAMESPACE --lsr-source $LSR_SOURCE"
     fi
 
     if [[ $ENABLE_PRIVATE_CATALOG -eq 1 ]]; then
@@ -181,6 +189,17 @@ function parse_arguments() {
         --license-accept)
             LICENSE_ACCEPT=1
             ;;
+        --enable-license-service-reporter)
+            ENABLE_LICENSE_SERVICE_REPORTER=1
+            ;;
+        --lsr-namespace)
+            shift
+            LSR_NAMESPACE=$1
+            ;;
+        --lsr-source)
+            shift
+            LSR_SOURCE=$1
+            ;;
         -c | --channel)
             shift
             CHANNEL=$1
@@ -218,20 +237,23 @@ function print_usage() {
     echo "See https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.0?topic=4x-in-place-migration for more information."
     echo ""
     echo "Options:"
-    echo "   --oc string                    Optional. File path to oc CLI. Default uses oc in your PATH"
-    echo "   --yq string                    Optional. File path to yq CLI. Default uses yq in your PATH"
-    echo "   --operator-namespace string    Required. Namespace to migrate Foundational services operator"
-    echo "   --services-namespace           Optional. Namespace to migrate operands of Foundational services, i.e. 'dataplane'. Default is the same as operator-namespace"
-    echo "   --cert-manager-source string   Optional. CatalogSource name of ibm-cert-manager-operator. This assumes your CatalogSource is already created. Default is ibm-cert-manager-catalog"
-    echo "   --licensing-source string      Optional. CatalogSource name of ibm-licensing. This assumes your CatalogSource is already created. Default is ibm-licensing-catalog"
-    echo "   --enable-licensing             Optional. Set this flag to migrate ibm-licensing-operator"
-    echo "   --enable-private-catalog       Optional. Set this flag to use namespace scoped CatalogSource. Default is in openshift-marketplace namespace"
-    echo "   --license-accept               Required. Set this flag to accept the license agreement."
-    echo "   -c, --channel string           Optional. Channel for Subscription(s). Default is v4.0"   
-    echo "   -i, --install-mode string      Optional. InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
-    echo "   -s, --source string            Optional. CatalogSource name. This assumes your CatalogSource is already created. Default is opencloud-operators"
-    echo "   -v, --debug integer            Optional. Verbosity of logs. Default is 0. Set to 1 for debug logs."
-    echo "   -h, --help                     Print usage information"
+    echo "   --oc string                        Optional. File path to oc CLI. Default uses oc in your PATH"
+    echo "   --yq string                        Optional. File path to yq CLI. Default uses yq in your PATH"
+    echo "   --operator-namespace string        Required. Namespace to migrate Foundational services operator"
+    echo "   --services-namespace               Optional. Namespace to migrate operands of Foundational services, i.e. 'dataplane'. Default is the same as operator-namespace"
+    echo "   --cert-manager-source string       Optional. CatalogSource name of ibm-cert-manager-operator. This assumes your CatalogSource is already created. Default is ibm-cert-manager-catalog"
+    echo "   --licensing-source string          Optional. CatalogSource name of ibm-licensing. This assumes your CatalogSource is already created. Default is ibm-licensing-catalog"
+    echo "   --enable-licensing                 Optional. Set this flag to migrate ibm-licensing-operator"
+    echo "   --enable-private-catalog           Optional. Set this flag to use namespace scoped CatalogSource. Default is in openshift-marketplace namespace"
+    echo "   --license-accept                   Required. Set this flag to accept the license agreement."
+    echo "   --enable-license-service-reporter  Optional. Set this flag to migrate ibm-license-service-reporter"
+    echo "   --lsr-source string                Optional. CatalogSource name of ibm-license-service-reporter-operator. This assumes your CatalogSource is already created. Default is ibm-license-service-reporter-operator-catalog"
+    echo "   --lsr-namespace                    Optional. Namespace to migrate License Service Reporter. Default is ibm-lsr"
+    echo "   -c, --channel string               Optional. Channel for Subscription(s). Default is v4.0"   
+    echo "   -i, --install-mode string          Optional. InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
+    echo "   -s, --source string                Optional. CatalogSource name. This assumes your CatalogSource is already created. Default is opencloud-operators"
+    echo "   -v, --debug integer                Optional. Verbosity of logs. Default is 0. Set to 1 for debug logs."
+    echo "   -h, --help                         Print usage information"
     echo ""
 }
 
@@ -301,6 +323,36 @@ function pre_req() {
     fi
     
     get_and_validate_arguments
+}
+
+function isolate_license_service_reporter(){
+    title "Isolating License Service Reporter"
+
+    return_value=$( ("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
+    if [[ $return_value == "exists" ]]; then
+
+        return_value=$("${OC}" get ibmlicenseservicereporters -A --no-headers | wc -l)
+        if [[ $return_value -gt 0 ]]; then
+
+            # Change persistentVolumeReclaimPolicy to Retain
+            status=$("${OC}" get pvc license-service-reporter-pvc -n $OPERATOR_NS)
+            debug1 "LSR pvc status: $status"
+            if [[ -z "$status" ]]; then
+                error "PVC license-service-reporter-pvc not found in $OPERATOR_NS"
+            fi
+
+            VOL=$("${OC}" get pvc license-service-reporter-pvc -n $OPERATOR_NS  -o=jsonpath='{.spec.volumeName}')
+            debug1 "LSR volume name: $VOL"
+            if [[ -z "$VOL" ]]; then
+                error "Volume for pvc license-service-reporter-pvc not found in $OPERATOR_NS"
+            fi
+
+            # label LSR PV as LSR PV for further LSR upgrade
+            ${OC} label pv $VOL license-service-reporter-pv=true --overwrite 
+            ${OC} patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Retain" }}'
+        fi
+    fi
+    success "License Service Reporter isolated."
 }
 
 # TODO validate argument
