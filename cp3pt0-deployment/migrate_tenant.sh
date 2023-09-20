@@ -31,7 +31,7 @@ PREVIEW_MODE=0
 LICENSE_ACCEPT=0
 ENABLE_LICENSE_SERVICE_REPORTER=0
 LSR_NAMESPACE="ibm-lsr"
-LSR_SOURCE="ibm-license-service-reporter-operator-catalog"
+LSR_SOURCE="ibm-license-service-reporter-bundle-catalog"
 
 # ---------- Command variables ----------
 
@@ -247,7 +247,7 @@ function print_usage() {
     echo "   --enable-private-catalog           Optional. Set this flag to use namespace scoped CatalogSource. Default is in openshift-marketplace namespace"
     echo "   --license-accept                   Required. Set this flag to accept the license agreement."
     echo "   --enable-license-service-reporter  Optional. Set this flag to migrate ibm-license-service-reporter"
-    echo "   --lsr-source string                Optional. CatalogSource name of ibm-license-service-reporter-operator. This assumes your CatalogSource is already created. Default is ibm-license-service-reporter-operator-catalog"
+    echo "   --lsr-source string                Optional. CatalogSource name of ibm-license-service-reporter-operator. This assumes your CatalogSource is already created. Default is ibm-license-service-reporter-bundle-catalog"
     echo "   --lsr-namespace                    Optional. Namespace to migrate License Service Reporter. Default is ibm-lsr"
     echo "   -c, --channel string               Optional. Channel for Subscription(s). Default is v4.0"   
     echo "   -i, --install-mode string          Optional. InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
