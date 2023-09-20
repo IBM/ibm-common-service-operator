@@ -14,14 +14,17 @@ POSSIBLE_CONFIGMAPS=("ibm-licensing-config"
 "ibm-licensing-services"
 )
 
-COMMON_SERVICE_NAMESPACE="ibm-common-services"
+LICENSING_NAMESPACE=$1
+if [[ -z $LICENSING_NAMESPACE ]]; then
+  LICENSING_NAMESPACE="ibm-common-services"
+fi
 
-CURRENT_CONFIGMAPS=$(oc get configmaps -n $COMMON_SERVICE_NAMESPACE | grep licensing | cut -d ' ' -f1)
+CURRENT_CONFIGMAPS=$(oc get configmaps -n $LICENSING_NAMESPACE | grep licensing | cut -d ' ' -f1)
 for configmap in ${CURRENT_CONFIGMAPS[@]};
 do
   if [[ " ${POSSIBLE_CONFIGMAPS[@]} " =~ " ${configmap} " ]]
   then
     echo "labeling $configmap"
-    oc label configmap $configmap -n $COMMON_SERVICE_NAMESPACE foundationservices.cloudpak.ibm.com=licensing --overwrite=true
+    oc label configmap $configmap -n $LICENSING_NAMESPACE foundationservices.cloudpak.ibm.com=licensing --overwrite=true
   fi
 done
