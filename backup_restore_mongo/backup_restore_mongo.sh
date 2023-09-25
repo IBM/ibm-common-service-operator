@@ -35,7 +35,7 @@ BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 
 # ---------- Main functions ----------
 
-. ../cp3pt0-deployment/common/utils.sh
+. $BASE_DIR/../cp3pt0-deployment/common/utils.sh
 
 function main() {
     while [ "$#" -gt "0" ]
@@ -87,7 +87,7 @@ function main() {
         refresh_auth_idp
     fi
     if [[ $cleanup == "true" ]]; then
-        cleanup
+    cleanup
     fi
 }
 
@@ -323,7 +323,8 @@ function prep_restore() {
     fi
     
     ${OC} get pvc -n ${ORIGINAL_NAMESPACE} cs-mongodump -o yaml > cs-mongodump-copy.yaml
-    local pvx=$(${OC} get pv | grep cs-mongodump | awk '{print $1}')
+    # get the origin pv from the cs-mongodump pvc
+    local pvx=$(${OC} get pvc cs-mongodump -n $ORIGINAL_NAMESPACE  -o=jsonpath='{.spec.volumeName}')
     export PVX=${pvx}
     ${OC} delete job mongodb-backup -n ${ORIGINAL_NAMESPACE}
     ${OC} delete pvc cs-mongodump -n ${ORIGINAL_NAMESPACE} --ignore-not-found --timeout=10s
@@ -331,7 +332,7 @@ function prep_restore() {
         info "Failed to delete pvc cs-mongodump, patching its finalizer to null..."
         ${OC} patch pvc cs-mongodump -n ${ORIGINAL_NAMESPACE} --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
     fi
-    ${OC} patch pv -n ${ORIGINAL_NAMESPACE} ${pvx} --type=merge -p '{"spec": {"claimRef":null}}'
+    ${OC} patch pv ${pvx} --type=merge -p '{"spec": {"claimRef":null}}'
     
     #Check if the backup PV has come available yet
     #need to error handle, if a pv/pvc from a previous attempt exists in any ns it will mess this up
@@ -356,8 +357,23 @@ function prep_restore() {
         fi
     done
 
+    # Clean up used restore resources before starting restore process
+    local return_value=$("${OC}" get pvc -n $TARGET_NAMESPACE | grep cs-mongodump)
+    if [[ ! -z $return_value ]]; then
+        #delete retore items in target namespace
+        local boundPV=$(${OC} get pvc cs-mongodump -n $TARGET_NAMESPACE -o yaml | yq '.spec.volumeName' | awk '{print}')
+        ${OC} delete pvc cs-mongodump -n $TARGET_NAMESPACE --ignore-not-found --timeout=10s
+        if [ $? -ne 0 ]; then
+            info "Failed to delete pvc cs-mongodump, patching its finalizer to null..."
+            ${OC} patch pvc cs-mongodump -n $TARGET_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+        fi
+        ${OC} patch pv $boundPV --type=merge -p '{"metadata": {"finalizers":null}}'
+        ${OC} delete pv $boundPV
+    fi
+
     #edit the cs-mongodump-copy.yaml pvc file and apply it in the target namespace
     export TARGET_NAMESPACE=$TARGET_NAMESPACE
+    ${YQ} -i eval 'select(.kind == "PersistentVolumeClaim") | del(.metadata.resourceVersion) | del(.metadata.uid) | del(.metadata.creationTimestamp) | del(.metadata.generation)' cs-mongodump-copy.yaml
     ${YQ} -i '.metadata.namespace=strenv(TARGET_NAMESPACE)' cs-mongodump-copy.yaml
     ${OC} apply -f cs-mongodump-copy.yaml
     
