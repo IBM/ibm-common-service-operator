@@ -87,7 +87,7 @@ function main() {
         refresh_auth_idp
     fi
     if [[ $cleanup == "true" ]]; then
-    cleanup
+        cleanup
     fi
 }
 
