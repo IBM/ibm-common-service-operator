@@ -29,6 +29,12 @@ data:
         info "Creating necessary directories"
         mkdir -p $BACKUP_DIR/workspace
         mkdir -p $BACKUP_DIR/secrets
+        mkdir -p $BACKUP_DIR/secrets/jwks 
+        mkdir -p $BACKUP_DIR/secrets/jwt 
+        mkdir -p $BACKUP_DIR/secrets/jwt-private
+        mkdir -p $BACKUP_DIR/secrets/ibmid-jwk
+        mkdir -p $BACKUP_DIR/secrets/aes-key 
+        mkdir -p $BACKUP_DIR/secrets/admin-user
         mkdir -p $BACKUP_DIR/database
         mkdir -p $BACKUP_DIR/objstorage
 
@@ -66,6 +72,7 @@ data:
 
         #Backup JWT configuration
         info "Backing up JWT secrets"
+        oc extract -n ${ZEN_NAMESPACE} secret/ibm-zen-secret-jwks --to=$BACKUP_DIR/secrets/jwks || warning "Failed to backup secret/ibm-zen-secret-jwks in namespace ${ZEN_NAMESPACE}"
         oc extract -n ${ZEN_NAMESPACE} secret/ibm-zen-secret-jwt --to=$BACKUP_DIR/secrets || warning "Failed to backup secret/ibm-zen-secret-jwt in namespace ${ZEN_NAMESPACE}"
         oc extract -n ${ZEN_NAMESPACE} secret/ibm-zen-secret-jwt-private --to=$BACKUP_DIR/secrets || warning "Failed to backup secret/ibm-zen-secret-jwt-private in namespace ${ZEN_NAMESPACE}"
         oc extract -n ${ZEN_NAMESPACE} secret/zen-secrets-aes-key  --to=$BACKUP_DIR/secrets || warning "Failed to backup secret/zen-secrets-aes-key in namespace ${ZEN_NAMESPACE}"
@@ -111,6 +118,8 @@ data:
     #
     # This is an internal component, bundled with an official IBM product.
     # Please refer to that particular license for additional information.
+
+    #steps copied from https://github.ibm.com/PrivateCloud-analytics/zen-dev-test-utils/blob/gh-pages/docs/zen-v5-br.md#21321-read-object-storage-connection-and-credentials
 
     #[2.2] Restore
     #[2.2.1] Set Zen namespace
@@ -169,6 +178,8 @@ data:
 
         #[2.2.4.3] Restore JWT configuration and keys
         info "Restore JWT configuration and keys."
+        oc patch secret -n $ZEN_NAMESPACE secret/ibm-zen-secret-jwks --patch="{\"data\": { \"jwks.json\": \"$(base64 -w0 $BACKUP_DIR/secrets/jwks/jwks.json)\" }}"
+        oc patch secret -n $ZEN_NAMESPACE secret/ibm-zen-secret-jwks --patch="{\"data\": { \"key_id\": \"$(base64 -w0 $BACKUP_DIR/secrets/jwks/key_id)\" }}"
         oc patch secret -n $ZEN_NAMESPACE ibm-zen-secret-jwt --patch="{\"data\": { \"public.pem\": \"$(base64 -w0 $BACKUP_DIR/secrets/public.pem)\" }}"
         oc patch secret -n $ZEN_NAMESPACE ibm-zen-secret-jwt --patch="{\"data\": { \"jwt.cert\": \"$(base64 -w0 $BACKUP_DIR/secrets/jwt.cert)\" }}"
         oc patch secret -n $ZEN_NAMESPACE ibm-zen-secret-jwt-private --patch="{\"data\": { \"private.pem\": \"$(base64 -w0 $BACKUP_DIR/secrets/private.pem)\" }}"
