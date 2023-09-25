@@ -126,6 +126,10 @@ function prereq() {
         error "Neither backup nor restore processes were triggered. Use -h or --help to see script usage options"
     fi
 
+    if [[ $restore == "true" ]] && [[ -z $TARGET_NAMESPACE ]]; then
+        error "Restore selected but no restore namespace provided with \"--rns\" parameter. Use -h or --help to see script usage options"
+    fi
+
     mongo_node=$(${OC} get pods -n $ORIGINAL_NAMESPACE -o wide | grep icp-mongodb-0 | awk '{print $7}')
     architecture=$(${OC} describe node $mongo_node | grep "Architecture:" | awk '{print $2}')
     if [[ $architecture == "s390x" ]]; then
@@ -154,9 +158,13 @@ function prereq() {
         error "Mongodb is not running in Namespace $ORIGINAL_NAMESPACE"
     fi
 
-    runningmongo_target=$(${OC} get po icp-mongodb-0 --no-headers --ignore-not-found -n $TARGET_NAMESPACE | awk '{print $3}')
-    if [[ -z "$runningmongo_target" ]] || [[ "$runningmongo_target" != "Running" ]]; then
-        error "Mongodb is not running in Namespace $TARGET_NAMESPACE"
+    if [[ -z $TARGET_NAMESPACE ]]; then
+        info "Restore not specified, skipping check for mongo in restore namespace..."
+    else
+        runningmongo_target=$(${OC} get po icp-mongodb-0 --no-headers --ignore-not-found -n $TARGET_NAMESPACE | awk '{print $3}')
+        if [[ -z "$runningmongo_target" ]] || [[ "$runningmongo_target" != "Running" ]]; then
+            error "Mongodb is not running in Namespace $TARGET_NAMESPACE"
+        fi
     fi
 
     success "Prerequisites present."
