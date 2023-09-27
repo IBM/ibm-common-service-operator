@@ -91,8 +91,13 @@ function append_check() {
 
 function update_overall() {
     local group=$1
-    local status=$2
+    local status="ok"
 
+    local is_failed=$(jq --arg group "$group" '.[] | select(.groupName==$group).status.checks | any(.status=="failed")' $JSON_FILE)
+    if [ "$is_failed" == "true" ]; then
+        status="failed"
+    fi
+    
     if [ ! -e "$JSON_FILE" ]; then
         echo "Output JSON file: $JSON_FILE, is missing"
     fi
