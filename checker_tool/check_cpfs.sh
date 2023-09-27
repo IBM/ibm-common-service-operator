@@ -10,12 +10,28 @@
 
 export check_cpfs_workdir=$(dirname "$(readlink -f "$BASH_SOURCE")")
 export WORKTMP="/tmp"
+
+source "${check_cpfs_workdir}"/output.sh
+
 # Where groups of test cases can be found
 CHECKS_ROOT=${CHECKS_ROOT:-${check_cpfs_workdir}/suites}
+
+OUTPUT_FILENAME="results.json"
 
 function main() {
     echo "This is the main function"
     parse_arguments "$@"
+
+    # TODO: remove this block of comments for release. This is just for testing
+    # and to show how to use the functions
+    # create_json "${check_cpfs_workdir}/${OUTPUT_FILENAME}"
+    # create_group "group1 test"
+    # create_group "group2 test"
+    # append_check "group1 test" "check3" "ok" "reason 1" ""
+    # append_check "group1 test" "check1" "ok" "" ""
+    # append_check "group1 test" "check3" "failed" "reason 2" ""
+    # update_overall "group1 test" "ok"
+    # update_overall "group2 test" "failed"
 }
 
 function parse_arguments() {
@@ -31,11 +47,14 @@ function parse_arguments() {
         --cases | -c)
             run_checks 'cases' $2
             ;;
-        --ignore_groups | -ng)
+        --ignore-groups | -ng)
             run_checks 'ignore_groups' $2
             ;;
-        --ignore_cases | -nc)
+        --ignore-cases | -nc)
             run_checks 'ignore_cases' $2
+            ;;
+        --output-file | -f)
+            OUTPUT_FILENAME=$2
             ;;
         --help | -h)
             print_usage
@@ -58,10 +77,11 @@ function print_usage() {
     echo -e "\t[--all|-a], all cases will be ran."
     echo -e "\t[--groups|-g <groups>], the case groups should be like --groups='group1,group2'."
     echo -e "\t[--groups|-g -l], list the current supported groups."
-    echo -e "\t[--ignore_groups|-ng <groups>], skip the cases groups, like -ng group1,group2."
+    echo -e "\t[--ignore-groups|-ng <groups>], skip the cases groups, like -ng group1,group2."
     echo -e "\t[--cases|-c <cases>], the cases should be like --cases='case1,case2'."
     echo -e "\t[--cases|-c -l], list the current supported cases."
-    echo -e "\t[--ignore_cases|-nc <cases>], skip the cases groups, like -nc case1,case2."
+    echo -e "\t[--ignore-cases|-nc <cases>], skip the cases groups, like -nc case1,case2."
+    echo -e "\t[--output-file|-f <string>], name to use for the output file. Default name is 'results.json'"
     echo ""
 }
 
