@@ -16,7 +16,7 @@ spec:
         pre.hook.backup.velero.io/command: '["sh", "-c", "/zen5/backup_zen5.sh <zenservice namespace>"]'
         pre.hook.backup.velero.io/timeout: 300s
         post.hook.backup.velero.io/command: '["sh", "-c", "rm -rf /zen5/zen-backup/database && rm -rf /zen5/zen-backup/objstorage && rm -rf /zen5/zen-backup/secrets && rm -rf /zen5/zen-backup/workspace"]'
-        post.hook.restore.velero.io/command: '["sh", "-c", "/zen5/restore_zen5.sh <zenservice-namespace> <zenservice name>"]'
+        post.hook.restore.velero.io/command: '["sh", "-c", "/zen5/restore_zen5.sh <zenservice namespace> <zenservice name>"]'
         post.hook.restore.velero.io/wait-timeout: 300s
         post.hook.restore.velero.io/exec-timeout: 300s
       name: zen5-backup
