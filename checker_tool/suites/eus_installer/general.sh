@@ -102,7 +102,7 @@ function check_opreq(){
     oc get operandrequest -n ${OPERATOR_NS}
     failed_opreqs=$(oc get OperandRequest -n ${OPERATOR_NS} -o=jsonpath='{.items[?(@.status.phase != "Running")].metadata.name}')
     if [[ "X$failed_opreqs" != "X" ]]; then
-        for opreq in $(echo $failed_opreqs);
+        for opreq in $(echo $failed_opreqs)
         do 
             error "OperandRequest: ${opreq} in namespace: ${OPERATOR_NS} not in Running status"
             append_check "eus_installer" "check operandRequest:${opreq}" "failed" "OperandRequest: ${opreq} in namespace: ${OPERATOR_NS} not in Running status" ""
@@ -146,7 +146,7 @@ function check_certificate(){
     failed_cert_v1a1=$(oc get certificates.v1alpha1.certmanager.k8s.io -n ${OPERATOR_NS} --no-headers --ignore-not-found -o=jsonpath='{.items[?(@.status.conditions[0].status != "True")].metadata.name}')
     failed_cert_v1=$(oc get certificates -n ${OPERATOR_NS} --no-headers --ignore-not-found -o=jsonpath='{.items[?(@.status.conditions[0].status != "True")].metadata.name}')
     if [[ "X$failed_cert_v1a1" != "X" ]]; then
-        for cert in $(echo $failed_cert_v1a1);
+        for cert in $(echo $failed_cert_v1a1)
         do 
             # oc get csv ${csv} -n ${OPERATOR_NS} -oyaml
             error "v1alpha1 certificate: ${cert} in namespace: ${OPERATOR_NS} not in True status"
@@ -158,7 +158,7 @@ function check_certificate(){
     fi
 
     if [[ "X$failed_cert_v1" != "X" ]]; then
-        for cert in $(echo $failed_cert_v1a1);
+        for cert in $(echo $failed_cert_v1a1)
         do 
             # oc get csv ${csv} -n ${OPERATOR_NS} -oyaml
             error "v1 certificate: ${cert} in namespace: ${OPERATOR_NS} not in True status"

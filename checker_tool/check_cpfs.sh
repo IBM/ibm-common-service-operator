@@ -40,7 +40,7 @@ function pre_req() {
     if [ "$OPERATOR_NS" == "" ]; then
         echo "OPERATOR_NS is not set, use default namespace: ibm-common-services"
         echo "You can set OPERATOR_NS by using the following command 'export OPERATOR_NS=<namespace>' "
-        OPERATOR_NS="ibm-common-services"
+        export OPERATOR_NS="ibm-common-services"
     fi
 }
 
