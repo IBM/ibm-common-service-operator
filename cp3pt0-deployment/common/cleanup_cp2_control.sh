@@ -99,7 +99,7 @@ function pre_req() {
 
     # checking if there is any CS operator is still in v3.x.x
     title "[Step 1] Checking ibm-common-service-operator channel ..."
-    cs_namespace=$(${OC} -n kube-public get cm common-service-maps -o jsonpath='{.data.common-service-maps\.yaml}' | (grep 'map-to-common-service-namespace' || echo "fail") | awk '{print $2}')
+    cs_namespace=$(${OC} -n kube-public get cm common-service-maps -o jsonpath='{.data.common-service-maps\.yaml}' | (grep 'map-to-common-service-namespace' || echo "fail") | awk '{print $3}')
     if [[ $cs_namespace == "fail" ]]; then
         info "It is not in multi-instance mode"
     else
@@ -135,7 +135,7 @@ function pre_req() {
         fi
 
         local major=$(echo "$version" | cut -d '.' -f1)
-        if [ "$major" -eq 3 ]; then
+        if [ "$major" -eq 1 ]; then
             warning "IBM licensing still in v3 version, we should run setup_singleton.sh to migrate Licensing Service to v4.x first"
             exit 1
         fi
