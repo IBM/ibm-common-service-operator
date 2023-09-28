@@ -230,6 +230,7 @@ spec:
             app.kubernetes.io/instance: ibm-common-service-operator
             app.kubernetes.io/managed-by: ibm-common-service-operator
             app.kubernetes.io/name: ibm-common-service-operator
+            productName: IBM_Cloud_Platform_Common_Services
           name: ibm-common-service-operator
           spec:
             replicas: 1
@@ -248,6 +249,7 @@ spec:
                   app.kubernetes.io/instance: ibm-common-service-operator
                   app.kubernetes.io/managed-by: ibm-common-service-operator
                   app.kubernetes.io/name: ibm-common-service-operator
+                  productName: IBM_Cloud_Platform_Common_Services
                   name: ibm-common-service-operator
               spec:
                 affinity:
