@@ -114,6 +114,15 @@ function prereq() {
     if [[ $restore == "true" ]] && [[ -z $TARGET_NAMESPACE ]]; then
         error "Restore selected but no restore namespace provided with \"--rns\" parameter. Use -h or --help to see script usage options"
     fi
+
+    if [[ -z $TARGET_NAMESPACE ]]; then
+        info "Restore not specified, skipping check for mongo in restore namespace..."
+    else
+        runningmongo_target=$(${OC} get po icp-mongodb-0 --no-headers --ignore-not-found -n $TARGET_NAMESPACE | awk '{print $3}')
+        if [[ -z "$runningmongo_target" ]] || [[ "$runningmongo_target" != "Running" ]]; then
+            error "Mongodb is not running in Namespace $TARGET_NAMESPACE"
+        fi
+    fi
     success "Prerequisites present."
 }
 
