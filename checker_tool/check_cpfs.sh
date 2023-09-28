@@ -20,6 +20,8 @@ OUTPUT_FILENAME="results.json"
 
 function main() {
     echo "This is the main function"
+    pre_req
+    create_json "${check_cpfs_workdir}/${OUTPUT_FILENAME}"
     parse_arguments "$@"
 
     # TODO: remove this block of comments for release. This is just for testing
@@ -32,6 +34,14 @@ function main() {
     # append_check "group1 test" "check3" "failed" "reason 2" ""
     # update_overall "group1 test" "ok"
     # update_overall "group2 test" "failed"
+}
+
+function pre_req() {
+    if [ "$OPERATOR_NS" == "" ]; then
+        echo "OPERATOR_NS is not set, use default namespace: ibm-common-services"
+        echo "You can set OPERATOR_NS by using the following command 'export OPERATOR_NS=<namespace>' "
+        OPERATOR_NS="ibm-common-services"
+    fi
 }
 
 function parse_arguments() {
@@ -173,13 +183,6 @@ function run_checks() {
             done
         done
     fi
-
-
-
-    # run the command
-    command='sh'
-    command+=' .${bats_files[*]}'
-    eval $command
 }
 
 
