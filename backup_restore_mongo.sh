@@ -111,6 +111,18 @@ function prereq() {
         error "Neither backup nor restore processes were triggered. Use -h or --help to see script usage options"
     fi
 
+    if [[ $restore == "true" ]] && [[ -z $TARGET_NAMESPACE ]]; then
+        error "Restore selected but no restore namespace provided with \"--rns\" parameter. Use -h or --help to see script usage options"
+    fi
+
+    if [[ -z $TARGET_NAMESPACE ]]; then
+        info "Restore not specified, skipping check for mongo in restore namespace..."
+    else
+        runningmongo_target=$(${OC} get po icp-mongodb-0 --no-headers --ignore-not-found -n $TARGET_NAMESPACE | awk '{print $3}')
+        if [[ -z "$runningmongo_target" ]] || [[ "$runningmongo_target" != "Running" ]]; then
+            error "Mongodb is not running in Namespace $TARGET_NAMESPACE"
+        fi
+    fi
     success "Prerequisites present."
 }
 
@@ -230,7 +242,8 @@ function prep_restore() {
     fi
     
     ${OC} get pvc -n ${ORIGINAL_NAMESPACE} cs-mongodump -o yaml > cs-mongodump-copy.yaml
-    local pvx=$(${OC} get pv | grep cs-mongodump | awk '{print $1}')
+    # get the origin pv from the cs-mongodump pvc
+    local pvx=$(${OC} get pvc cs-mongodump -n $ORIGINAL_NAMESPACE  -o=jsonpath='{.spec.volumeName}')
     export PVX=${pvx}
     ${OC} delete job mongodb-backup -n ${ORIGINAL_NAMESPACE}
     ${OC} delete pvc cs-mongodump -n ${ORIGINAL_NAMESPACE} --ignore-not-found --timeout=10s
@@ -238,7 +251,7 @@ function prep_restore() {
         info "Failed to delete pvc cs-mongodump, patching its finalizer to null..."
         ${OC} patch pvc cs-mongodump -n ${ORIGINAL_NAMESPACE} --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
     fi
-    ${OC} patch pv -n ${ORIGINAL_NAMESPACE} ${pvx} --type=merge -p '{"spec": {"claimRef":null}}'
+    ${OC} patch pv ${pvx} --type=merge -p '{"spec": {"claimRef":null}}'
     
     #Check if the backup PV has come available yet
     #need to error handle, if a pv/pvc from a previous attempt exists in any ns it will mess this up
@@ -263,8 +276,23 @@ function prep_restore() {
         fi
     done
 
+    # Clean up used restore resources before starting restore process
+    local return_value=$("${OC}" get pvc -n $TARGET_NAMESPACE | grep cs-mongodump)
+    if [[ ! -z $return_value ]]; then
+        #delete retore items in target namespace
+        local boundPV=$(${OC} get pvc cs-mongodump -n $TARGET_NAMESPACE -o yaml | yq '.spec.volumeName' | awk '{print}')
+        ${OC} delete pvc cs-mongodump -n $TARGET_NAMESPACE --ignore-not-found --timeout=10s
+        if [ $? -ne 0 ]; then
+            info "Failed to delete pvc cs-mongodump, patching its finalizer to null..."
+            ${OC} patch pvc cs-mongodump -n $TARGET_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+        fi
+        ${OC} patch pv $boundPV --type=merge -p '{"metadata": {"finalizers":null}}'
+        ${OC} delete pv $boundPV
+    fi
+
     #edit the cs-mongodump-copy.yaml pvc file and apply it in the target namespace
     export TARGET_NAMESPACE=$TARGET_NAMESPACE
+    ${YQ} -i eval 'select(.kind == "PersistentVolumeClaim") | del(.metadata.resourceVersion) | del(.metadata.uid) | del(.metadata.creationTimestamp) | del(.metadata.generation)' cs-mongodump-copy.yaml
     ${YQ} -i '.metadata.namespace=strenv(TARGET_NAMESPACE)' cs-mongodump-copy.yaml
     ${OC} apply -f cs-mongodump-copy.yaml
     
