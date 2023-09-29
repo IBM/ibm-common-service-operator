@@ -14,6 +14,7 @@ OC=oc
 YQ=yq
 ENABLE_LICENSING=0
 CHANNEL="v4.2"
+NSS_CHANNEL="v4.2"
 SOURCE="opencloud-operators"
 SOURCE_NS="openshift-marketplace"
 OPERATOR_NS=""
@@ -382,15 +383,24 @@ function check_singleton_service() {
 function install_nss() {
     title "Checking whether Namespace Scope operator exist..."
 
+    # Extract the numeric part from the CHANNEL variable using parameter expansion
+    local cs_channel="${CHANNEL#v}"
+    local nss_channel="${NSS_CHANNEL#v}"
+
+    # Check if CHANNEL_NUMERIC is greater than or equal to 4.2, if yes, use NSS channel as v4.2
+    if (( $(echo "$cs_channel < $nss_channel" | bc -l) )); then
+        NSS_CHANNEL="$CHANNEL"
+    fi
+
     is_sub_exist "ibm-namespace-scope-operator" "$OPERATOR_NS"
     if [ $? -eq 0 ]; then
         warning "There is an ibm-namespace-scope-operator subscription already deployed\n"
         if [ $PREVIEW_MODE -eq 0 ]; then
-            update_operator "ibm-namespace-scope-operator" "$OPERATOR_NS" $CHANNEL $SOURCE $SOURCE_NS $INSTALL_MODE
-            wait_for_operator_upgrade $OPERATOR_NS "ibm-namespace-scope-operator" $CHANNEL $INSTALL_MODE
+            update_operator "ibm-namespace-scope-operator" "$OPERATOR_NS" $NSS_CHANNEL $SOURCE $SOURCE_NS $INSTALL_MODE
+            wait_for_operator_upgrade $OPERATOR_NS "ibm-namespace-scope-operator" $NSS_CHANNEL $INSTALL_MODE
         fi
     else
-        create_subscription "ibm-namespace-scope-operator" "$OPERATOR_NS" "$CHANNEL" "ibm-namespace-scope-operator" "${SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
+        create_subscription "ibm-namespace-scope-operator" "$OPERATOR_NS" "$NSS_CHANNEL" "ibm-namespace-scope-operator" "${SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
     fi
 
     if [ $PREVIEW_MODE -eq 0 ]; then
