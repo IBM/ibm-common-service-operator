@@ -4,10 +4,10 @@ function check_oc_login() {
     # Checking oc command logged in
     user=$(oc whoami 2> /dev/null)
     if [ $? -ne 0 ]; then
-        append_check "eus_installer" "check oc login" "failed" "You must be logged into the OpenShift Cluster from the oc command line" ""
+        append_check "ltsr_installer" "check oc login" "failed" "You must be logged into the OpenShift Cluster from the oc command line" ""
         error "You must be logged into the OpenShift Cluster from the oc command line"
     else
-        append_check "eus_installer" "check oc login" "ok" "oc command logged in as ${user}" ""
+        append_check "ltsr_installer" "check oc login" "ok" "oc command logged in as ${user}" ""
         success "oc command logged in as ${user}"
     fi
 }
@@ -22,7 +22,7 @@ function check_subscriptions() {
         state=$(echo $line | awk '{print $2}')
         if [[ "$state" != "AtLatestKnown" ]]; then
             error "Subscription: ${sub} in namespace: ${OPERATOR_NS} not in Succeeded status"
-            append_check "eus_installer" "check subscription:${sub}" "failed" "Subscription: ${sub} in namespace: ${OPERATOR_NS} not in Succeeded status" ""
+            append_check "ltsr_installer" "check subscription:${sub}" "failed" "Subscription: ${sub} in namespace: ${OPERATOR_NS} not in Succeeded status" ""
             rc=1
             # oc get subscription.operators.coreos.com ${sub} -n ${OPERATOR_NS} -oyaml | tee -a $logfile
         fi
@@ -30,7 +30,7 @@ function check_subscriptions() {
 
     if [ $rc -eq 0 ]; then
         success "All Subscriptions in namespace: ${OPERATOR_NS} in Succeeded status"
-        append_check "eus_installer" "check subscription" "ok" "All Subscriptions in namespace: ${OPERATOR_NS} in Succeeded status" ""
+        append_check "ltsr_installer" "check subscription" "ok" "All Subscriptions in namespace: ${OPERATOR_NS} in Succeeded status" ""
     fi
 }
 
@@ -51,12 +51,15 @@ function check_sub_version(){
         cert_manager_channel=$(oc get subscription.operators.coreos.com ibm-cert-manager-operator -n cs-control --ignore-not-found -o yaml | yq ".spec.channel")
     fi
 
-    if [[ "$iam_operator_channel" == "stable-v1" ]] && [[ "$odlm_channel" == "stable-v1" ]] && [[ "$cs_operator_channel" == "stable-v1" ]] && [[ "$cert_manager_channel" == "stable-v1" ]]; then
-        success "cert-manager, IAM, ODLM and CS-Operator subscriptions are all in correct channel stable-v1 for EUS"
-        append_check "eus_installer" "check subscription channel" "ok" "cert-manager, IAM, ODLM and CS-Operator subscriptions are all in correct channel stable-v1 for EUS" ""
+    if [[ "$iam_operator_channel" == "v3" ]] && [[ "$odlm_channel" == "v3" ]] && [[ "$cs_operator_channel" == "v3" ]] && [[ "$cert_manager_channel" == "v3" ]]; then
+        success " cert-manager, IAM, ODLM and CS-Operator subscriptions are all in correct channel v3 for LTSR"
+        append_check "ltsr_installer" "check subscription channel" "ok" "cert-manager, IAM, ODLM and CS-Operator subscriptions are all in correct channel v3 for LTSR" ""
+    elif [[ "$iam_operator_channel" == "v3.23" ]] && [[ "$odlm_channel" == "v3.23" ]] && [[ "$cs_operator_channel" == "v3.23" ]] && [[ "$cert_manager_channel" == "v3.23" ]]; then
+        success " cert-manager, IAM, ODLM and CS-Operator subscriptions are all in correct channel v3 for LTSR"
+        append_check "ltsr_installer" "check subscription channel" "ok" "cert-manager, IAM, ODLM and CS-Operator subscriptions are all in correct channel v3.23 for LTSR" ""
     else
         error "operators may not in correct channel, please check"
-        append_check "eus_installer" "check subscription channel" "failed" "cert-manager:${cert_manager_channel}, IAM:${ibm_iam_operator_channel}, ODLM:${odlm_channel} and CS-Operator:${cs_operator_channel} subscriptions may not in correct channel" ""
+        append_check "ltsr_installer" "check subscription channel" "failed" "cert-manager:${cert_manager_channel}, IAM:${ibm_iam_operator_channel}, ODLM:${odlm_channel} and CS-Operator:${cs_operator_channel} subscriptions may not in correct channel" ""
         msg "ibm-common-service-operator channel: ${cs_operator_channel}"
         msg "ibm-iam-operator channel: ${ibm_iam_operator_channel}"
         msg "operand-deployment-lifecycle-manager channel: ${odlm_channel}"
@@ -75,11 +78,11 @@ function check_csv() {
         do 
             # oc get csv ${csv} -n ${OPERATOR_NS} -oyaml
             error "Clusterserviceversion: ${csv} in namespace: ${OPERATOR_NS} not in Succeeded status"
-            append_check "eus_installer" "check csv:${csv}" "failed" "Clusterserviceversion: ${csv} in namespace: ${OPERATOR_NS} not in Succeeded status" ""
+            append_check "ltsr_installer" "check csv:${csv}" "failed" "Clusterserviceversion: ${csv} in namespace: ${OPERATOR_NS} not in Succeeded status" ""
         done
     else
         success "All Clusterserviceversion in namespace: ${OPERATOR_NS} in Succeeded status"
-        append_check "eus_installer" "check csv" "ok" "All Clusterserviceversion in namespace: ${OPERATOR_NS} in Succeeded status" ""
+        append_check "ltsr_installer" "check csv" "ok" "All Clusterserviceversion in namespace: ${OPERATOR_NS} in Succeeded status" ""
     fi
 }
 
@@ -89,10 +92,10 @@ function check_CSCR(){
     local phase=$(oc get commonservice common-service -o jsonpath='{.status.phase}' -n ${OPERATOR_NS})
     if [[ "${phase}" != "Succeeded" ]]; then
         error "CommonService CR in namespace: ${OPERATOR_NS} not in Succeeded status"
-        append_check "eus_installer" "check CommonService CR" "failed" "CommonService CR in namespace: ${OPERATOR_NS} not in Succeeded status" ""
+        append_check "ltsr_installer" "check CommonService CR" "failed" "CommonService CR in namespace: ${OPERATOR_NS} not in Succeeded status" ""
     else
         success "CommonService CR in namespace: ${OPERATOR_NS} in Succeeded status"
-        append_check "eus_installer" "check CommonService CR" "ok" "CommonService CR in namespace: ${OPERATOR_NS} in Succeeded status" ""
+        append_check "ltsr_installer" "check CommonService CR" "ok" "CommonService CR in namespace: ${OPERATOR_NS} in Succeeded status" ""
     fi
 }
 
@@ -105,11 +108,11 @@ function check_opreq(){
         for opreq in $(echo $failed_opreqs)
         do 
             error "OperandRequest: ${opreq} in namespace: ${OPERATOR_NS} not in Running status"
-            append_check "eus_installer" "check operandRequest:${opreq}" "failed" "OperandRequest: ${opreq} in namespace: ${OPERATOR_NS} not in Running status" ""
+            append_check "ltsr_installer" "check operandRequest:${opreq}" "failed" "OperandRequest: ${opreq} in namespace: ${OPERATOR_NS} not in Running status" ""
         done
     else
         success "All OperandRequest in namespace: ${OPERATOR_NS} in Running status"
-        append_check "eus_installer" "check operandRequest" "ok" "All OperandRequest in namespace: ${OPERATOR_NS} in Running status" ""
+        append_check "ltsr_installer" "check operandRequest" "ok" "All OperandRequest in namespace: ${OPERATOR_NS} in Running status" ""
     fi
 
 }
@@ -131,10 +134,10 @@ EOF
     _ssi_status=$(oc get issuer.v1alpha1.certmanager.k8s.io -n ${OPERATOR_NS} --no-headers --ignore-not-found hello-myself-tls -o jsonpath={.status.conditions[0].status})
     if [[ $_ssi_status -eq 'True' ]]; then
         success "Cert manager in namespace: ${OPERATOR_NS} in running status"
-        append_check "eus_installer" "check cert manager" "ok" "Cert manager in namespace: ${OPERATOR_NS} is running" ""
+        append_check "ltsr_installer" "check cert manager" "ok" "Cert manager in namespace: ${OPERATOR_NS} is running" ""
     else
         error "Cert manager in namespace: ${OPERATOR_NS} is not running"
-        append_check "eus_installer" "check cert manager" "fail" "Cert manager in namespace: ${OPERATOR_NS} is not running" ""
+        append_check "ltsr_installer" "check cert manager" "fail" "Cert manager in namespace: ${OPERATOR_NS} is not running" ""
     fi
     oc delete issuer.v1alpha1.certmanager.k8s.io -n ${OPERATOR_NS} --ignore-not-found hello-myself-tls
 }
@@ -150,11 +153,11 @@ function check_certificate(){
         do 
             # oc get csv ${csv} -n ${OPERATOR_NS} -oyaml
             error "v1alpha1 certificate: ${cert} in namespace: ${OPERATOR_NS} not in True status"
-            append_check "eus_installer" "check v1alpha1 cert:${cert}" "failed" "v1alpha1 certificate: ${cert} in namespace: ${OPERATOR_NS} not in True status" ""
+            append_check "ltsr_installer" "check v1alpha1 cert:${cert}" "failed" "v1alpha1 certificate: ${cert} in namespace: ${OPERATOR_NS} not in True status" ""
         done
     else
         success "All v1alpha1 certificate in namespace: ${OPERATOR_NS} in Succeeded status"
-        append_check "eus_installer" "check v1alpha1 certificate" "ok" "All v1alpha1 certificate in namespace: ${OPERATOR_NS} in Succeeded status" ""
+        append_check "ltsr_installer" "check v1alpha1 certificate" "ok" "All v1alpha1 certificate in namespace: ${OPERATOR_NS} in Succeeded status" ""
     fi
 
     if [[ "X$failed_cert_v1" != "X" ]]; then
@@ -162,11 +165,11 @@ function check_certificate(){
         do 
             # oc get csv ${csv} -n ${OPERATOR_NS} -oyaml
             error "v1 certificate: ${cert} in namespace: ${OPERATOR_NS} not in True status"
-            append_check "eus_installer" "check v1 cert:${cert}" "failed" "v1 certificate: ${cert} in namespace: ${OPERATOR_NS} not in True status" ""
+            append_check "ltsr_installer" "check v1 cert:${cert}" "failed" "v1 certificate: ${cert} in namespace: ${OPERATOR_NS} not in True status" ""
         done
     else
         success "All v1 certificate in namespace: ${OPERATOR_NS} in Succeeded status"
-        append_check "eus_installer" "check v1 certificate" "ok" "All v1 certificate in namespace: ${OPERATOR_NS} in Succeeded status" ""
+        append_check "ltsr_installer" "check v1 certificate" "ok" "All v1 certificate in namespace: ${OPERATOR_NS} in Succeeded status" ""
     fi
 
 
@@ -180,7 +183,7 @@ function error_check(){
 
 
 # this is the main function
-create_group "eus_installer"
+create_group "ltsr_installer"
 check_oc_login
 check_subscriptions
 check_sub_version
@@ -189,4 +192,4 @@ check_CSCR
 check_opreq
 check_certmanager
 check_certificate
-update_overall "eus_installer"
+update_overall "ltsr_installer"

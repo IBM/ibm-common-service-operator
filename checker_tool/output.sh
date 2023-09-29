@@ -8,10 +8,11 @@
 # This is an internal component, bundled with an official IBM product. 
 # Please refer to that particular license for additional information.
 
-JSON_FILE=""
+# JSON_FILE=""
 
 function create_json() {
     JSON_FILE=$1
+    export JSON_FILE=$1
     jq -n '[]' > "$JSON_FILE"
 }
 
@@ -119,4 +120,21 @@ function update_overall() {
     if [ "$json" != "" ]; then
         echo "$json" > "$JSON_FILE"
     fi
+}
+
+function success() {
+  msg "\33[32m[✔] ${1}\33[0m"
+}
+
+function error() {
+  msg "\33[31m[✘] ${1}\33[0m"
+}
+
+function msg() {
+    printf '%b\n' "${1}"
+}
+
+function title() {
+  msg "\33[1m# ${1}\33[0m"
+  echo "============================================================================================================"
 }
