@@ -158,7 +158,7 @@ function check_certificate(){
     fi
 
     if [[ "X$failed_cert_v1" != "X" ]]; then
-        for cert in $(echo $failed_cert_v1a1)
+        for cert in $(echo $failed_cert_v1)
         do 
             # oc get csv ${csv} -n ${OPERATOR_NS} -oyaml
             error "v1 certificate: ${cert} in namespace: ${OPERATOR_NS} not in True status"
