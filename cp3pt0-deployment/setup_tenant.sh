@@ -387,7 +387,7 @@ function install_nss() {
     local cs_channel="${CHANNEL#v}"
     local nss_channel="${NSS_CHANNEL#v}"
 
-    # Check if CHANNEL_NUMERIC is greater than or equal to 4.2, if yes, use NSS channel as v4.2
+    # Check if cs_channel is less than nss_channel, if yes, let NSS channel be the same as CS channel
     if (( $(echo "$cs_channel < $nss_channel" | bc -l) )); then
         NSS_CHANNEL="$CHANNEL"
     fi
@@ -452,7 +452,7 @@ EOF
         new_ns_list=$(echo ${TETHERED_NS//,/ } ${SERVICES_NS} | xargs -n1 | sort -u | xargs)
     fi
     debug1 "List of namespaces for common-service NSS ${new_ns_list}"
-    
+
     # add the new namespaces from list of common-service NSS to namespaceMembers
     for n in ${new_ns_list}; do
         if [[ $n == $OPERATOR_NS ]]; then
