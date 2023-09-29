@@ -168,7 +168,7 @@ function wait_for_configmap() {
     local retries=12
     local sleep_time=10
     local total_time_mins=$(( sleep_time * retries / 60))
-    local wait_message="Waiting for ConfigMap ${name} in namespace ${namespace} to be made available"
+    local wait_message="Waiting for ConfigMap ${name} in namespace ${namespace} to become available"
     local success_message="ConfigMap ${name} in namespace ${namespace} is available"
     local error_message="Timeout after ${total_time_mins} minutes waiting for ConfigMap ${name} in namespace ${namespace} to become available"
  
@@ -223,7 +223,7 @@ function wait_for_operator() {
     local retries=50
     local sleep_time=10
     local total_time_mins=$(( sleep_time * retries / 60))
-    local wait_message="Waiting for operator ${operator_name} in namespace ${namespace} to be made available"
+    local wait_message="Waiting for operator ${operator_name} in namespace ${namespace} to become available"
     local success_message="Operator ${operator_name} in namespace ${namespace} is available"
     local error_message="Timeout after ${total_time_mins} minutes waiting for ${operator_name} in namespace ${namespace} to become available"
  
