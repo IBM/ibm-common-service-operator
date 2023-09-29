@@ -82,6 +82,7 @@ function main() {
 
     install_cert_manager
     install_licensing
+    verify_cert_manager
     install_license_service_reporter
 }
 
@@ -533,6 +534,67 @@ function pre_req() {
 # TODO validate argument
 function get_and_validate_arguments() {
     get_control_namespace
+}
+
+function verify_cert_manager(){
+  info "Checking cert manager readiness."
+  #check webhook pod runnning
+  local name="cert-manager-webhook"
+  local retries=20
+  local sleep_time=15
+  local total_time_mins=$(( sleep_time * retries / 60))
+  local condition="${OC} get pod -A --no-headers --ignore-not-found | egrep '1/1' | grep ${name} || true"
+  local wait_message="Waiting for pod ${name} to be running ..."
+  local success_message="Pod ${name} is running."
+  local error_message="Timeout after ${total_time_mins} minutes waiting for pod ${name} to be running."
+  wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+
+  #check no duplicate webhook pod
+  webhook_deployments=$(${OC} get deploy -A --no-headers --ignore-not-found | grep ${name} -c)
+  if [[ $webhook_deployments != "1" ]]; then
+    error "More than one cert-manager-webhook deployment exists on the cluster."
+  fi
+
+  debug1 "Creating test issuer in namespace $CERT_MANAGER_NAMESPACE ."
+  cat << EOF | ${OC} apply -f -
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: test-issuer
+  namespace: $CERT_MANAGER_NAMESPACE 
+spec:
+  selfSigned: {}
+EOF
+  return_value_issuer=$(${OC} get issuer.v1.cert-manager.io -n $CERT_MANAGER_NAMESPACE --ignore-not-found | grep test-issuer || echo "false")
+  if [[ $return_value_issuer == "false" ]]; then
+    error "Failed to create test issuer."
+  else
+    debug1 "Creating test certificate in namespace $CERT_MANAGER_NAMESPACE ."
+    cat << EOF | ${OC} apply -f -
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: test-certificate
+  namespace: $CERT_MANAGER_NAMESPACE 
+spec:
+  commonName: test-certificate
+  duration: 17520h0m0s
+  issuerRef:
+    kind: Issuer
+    name: test-issuer
+  renewBefore: 720h0m0s
+  secretName: test-certificate-secret
+EOF
+    return_value_cert=$(${OC} get certificate.v1.cert-manager.io -n $CERT_MANAGER_NAMESPACE  --ignore-not-found | grep test-certificate || echo "false")
+    if [[ $return_value_cert == "false" ]]; then
+      ${OC} delete issuer.v1.cert-manager.io test-issuer -n $CERT_MANAGER_NAMESPACE  --ignore-not-found
+      error "Failed to create test certificate."
+    else
+      ${OC} delete certificate.v1.cert-manager.io test-certificate -n $CERT_MANAGER_NAMESPACE  --ignore-not-found
+      ${OC} delete issuer.v1.cert-manager.io test-issuer -n $CERT_MANAGER_NAMESPACE  --ignore-not-found
+    fi
+  fi  
+  success "Cert manager is ready."
 }
 
 main "$@"
