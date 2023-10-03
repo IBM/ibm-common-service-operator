@@ -248,3 +248,89 @@ data:
     }
 
     main $*
+  test-zen-ext.sh: |
+    #!/usr/bin/env bash
+    #
+    # Copyright 2023 IBM Corporation
+    #
+    # Licensed under the Apache License, Version 2.0 (the "License");
+    # you may not use this file except in compliance with the License.
+    # You may obtain a copy of the License at
+    #
+    # http://www.apache.org/licenses/LICENSE-2.0
+    #
+    # Unless required by applicable law or agreed to in writing, software
+    # distributed under the License is distributed on an "AS IS" BASIS,
+    # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    # See the License for the specific language governing permissions and
+    # limitations under the License.
+    #
+
+    ZEN_NAMESPACE=$1
+
+    function main(){
+
+        title "Begin zen extension cleanup process."
+        # Get broker secret value from secret zen-service-broker-secret
+        broker_secret=$(oc get secret zen-service-broker-secret -o yaml -n $ZEN_NAMESPACE | yq .data.token | base64 -d || echo "fail") 
+        if [[ $broker_secret == "fail" ]]; then
+            error "Failed to grab broker secret zen-service-broker-secret in namespace $ZEN_NAMESPACE"
+        else
+            info "Broker Secret obtained in namespace $ZEN_NAMESPACE"
+        fi
+
+        # Get selected extensions using extension_name
+        extensions=$(oc get configmap zen5-customization-configmap -n $ZEN_NAMESPACE -o yaml | yq .data.extensions || echo "fail") 
+        if [[ $extensions == "fail" ]]; then
+            error "Failed to get extensions from configmap zen5-customization-configmap in namespace $ZEN_NAMESPACE"
+        else
+            info "Extensions to cleanup in namespace $ZEN_NAMESPACE: $extensions"
+        fi
+
+        # curl -H 'secret: <broker-secret>' -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=bawtest-bas-extension,ibm-bts-zen-frontdoor,icp4adeploy-ban-zen-extension,icp4adeploy-cp4ba-zen-extension,icp4adeploy-graphql-zen-extension,icp4adeploy-cmis-zen-extension,icp4adeploy-cpe-zen-extension,icp4adeploy-rr-bawtest-zen-ext
+        curl_output=$(curl -H "secret: ${broker_secret}" -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=${extensions})
+
+        # Extract ID of each extension
+        id_list=$(echo $curl_output | yq eval '.data[] | select(.id == "*") | .id' | tr '\n' ' ') #space separated list of ids
+        if [[ -z $id_list ]] || [[ $id_list == "" ]]; then
+            error "The list of extensions provdided returned an empty ID list from the database. These extensions may not be present in this database."
+        else
+            info "List of extension IDs populated, continuing with deletion."
+        fi
+
+        # Delete each extension using the ID
+        # curl -H 'secret: <broker-secret>' -ks -X DELETE https://zen-core-api-svc:4444/v1/extensions/{id}
+        for id in $id_list; do
+            info "Deleting extension with ID $id."
+            curl -H "secret: ${broker_secret}" -ks -X DELETE https://zen-core-api-svc:4444/v1/extensions/{$id}
+        done
+
+        success "Zen extension cleanup complete."
+    }
+
+    function msg() {
+        printf '%b\n' "$1"
+    }
+
+    function success() {
+        msg "\33[32m[✔] ${1}\33[0m"
+    }
+
+    function warning() {
+        msg "\33[33m[✗] ${1}\33[0m"
+    }
+
+    function error() {
+        msg "\33[31m[✘] ${1}\33[0m"
+        exit 1
+    }
+
+    function title() {
+        msg "\33[34m# ${1}\33[0m"
+    }
+
+    function info() {
+        msg "[INFO] ${1}"
+    }
+
+    main $*

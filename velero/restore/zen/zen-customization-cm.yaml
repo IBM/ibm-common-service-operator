@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zen5-customization-configmap
+  labels:
+    foundationservices.cloudpak.ibm.com: zen5-data
+data:
+  extensions: <placeholder>
