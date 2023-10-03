@@ -248,7 +248,7 @@ data:
     }
 
     main $*
-  test-zen-ext.sh: |
+  customize-zen-extensions.sh: |
     #!/usr/bin/env bash
     #
     # Copyright 2023 IBM Corporation
@@ -265,6 +265,7 @@ data:
     # See the License for the specific language governing permissions and
     # limitations under the License.
     #
+    set -o errexit
 
     ZEN_NAMESPACE=$1
 
@@ -280,6 +281,11 @@ data:
         fi
 
         # Get selected extensions using extension_name
+        cm_exists=$(oc get configmap zen5-customization-configmap -n $ZEN_NAMESPACE || echo "fail")
+        if [[ $cm_exists == "fail" ]]; then
+            error "Configmap zen5-customization-configmap not found in $ZEN_NAMESPACE. Exiting..."
+        fi
+        
         extensions=$(oc get configmap zen5-customization-configmap -n $ZEN_NAMESPACE -o yaml | yq .data.extensions || echo "fail") 
         if [[ $extensions == "fail" ]]; then
             error "Failed to get extensions from configmap zen5-customization-configmap in namespace $ZEN_NAMESPACE"
