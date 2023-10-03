@@ -1,12 +1,13 @@
 #!/bin/bash
 # Used by multi-namespace
+CS_NAMESPACE=$1
 CONVERT=""
-if [[ ! -z $1 ]]; then
-  CONVERT=$1
+if [[ ! -z $2 ]]; then
+  CONVERT=$2
 fi
 s390x="false"
-if [[ ! -z $2 ]]; then
-  s390x=$2
+if [[ ! -z $3 ]]; then
+  s390x=$3
 fi
 function msg() {
   printf '%b\n' "$1"
