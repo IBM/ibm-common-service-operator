@@ -17,6 +17,7 @@ SERVICES_NS=""
 NS_LIST=""
 CONTROL_NS=""
 CHANNEL="v4.2"
+MAINTAINED_CHANNEL="v4.2"
 SOURCE="opencloud-operators"
 CERT_MANAGER_SOURCE="ibm-cert-manager-catalog"
 LICENSING_SOURCE="ibm-licensing-catalog"
@@ -83,7 +84,7 @@ function main() {
         arguments+=" --enable-private-catalog"
     fi
     
-    ${BASE_DIR}/setup_singleton.sh "--operator-namespace" "$OPERATOR_NS" "-c" "$CHANNEL" "--cert-manager-source" "$CERT_MANAGER_SOURCE" "--licensing-source" "$LICENSING_SOURCE" "--license-accept" $arguments
+    ${BASE_DIR}/setup_singleton.sh "--operator-namespace" "$OPERATOR_NS" "-c" "$MAINTAINED_CHANNEL" "--cert-manager-source" "$CERT_MANAGER_SOURCE" "--licensing-source" "$LICENSING_SOURCE" "--license-accept" $arguments
     if [ $? -ne 0 ]; then
         error "Failed to migrate singleton services"
         exit 1
@@ -116,7 +117,7 @@ function main() {
     scale_up $OPERATOR_NS $SERVICES_NS ibm-common-service-operator ibm-common-service-operator
 
     # Wait for ODLM upgrade
-    wait_for_operator_upgrade $OPERATOR_NS ibm-odlm $CHANNEL $INSTALL_MODE
+    wait_for_operator_upgrade $OPERATOR_NS ibm-odlm $MAINTAINED_CHANNEL $INSTALL_MODE
     # Scale up ODLM
     scale_up $OPERATOR_NS $SERVICES_NS ibm-odlm operand-deployment-lifecycle-manager
 
@@ -128,13 +129,12 @@ function main() {
     if [ $? -eq 0 ]; then
         warning "There is a ibm-namespace-scope-operator-restricted Subscription\n"
         delete_operator ibm-namespace-scope-operator-restricted $OPERATOR_NS
-        create_subscription ibm-namespace-scope-operator $OPERATOR_NS $CHANNEL ibm-namespace-scope-operator $SOURCE $SOURCE_NS $INSTALL_MODE
+        create_subscription ibm-namespace-scope-operator $OPERATOR_NS $MAINTAINED_CHANNEL ibm-namespace-scope-operator $SOURCE $SOURCE_NS $INSTALL_MODE
     else
-        update_operator ibm-namespace-scope-operator $OPERATOR_NS $CHANNEL $SOURCE $SOURCE_NS $INSTALL_MODE
+        update_operator ibm-namespace-scope-operator $OPERATOR_NS $MAINTAINED_CHANNEL $SOURCE $SOURCE_NS $INSTALL_MODE
     fi
 
-    wait_for_operator_upgrade "$OPERATOR_NS" "ibm-namespace-scope-operator" "$CHANNEL" $INSTALL_MODE
-    accept_license "namespacescope" "$OPERATOR_NS" "common-service"
+    wait_for_operator_upgrade "$OPERATOR_NS" "ibm-namespace-scope-operator" "$MAINTAINED_CHANNEL" $INSTALL_MODE
     # Authroize NSS operator
     for ns in ${NS_LIST//,/ }; do
         if [ "$ns" != "$OPERATOR_NS" ]; then
@@ -144,6 +144,8 @@ function main() {
 
     # Update NamespaceScope CR common-service
     update_nss_kind "$OPERATOR_NS" "$NS_LIST"
+
+    accept_license "namespacescope" "$OPERATOR_NS" "common-service"
 
     # Check master CommonService CR status
     wait_for_cscr_status "$OPERATOR_NS" "common-service"
@@ -323,6 +325,14 @@ function pre_req() {
     fi
     
     get_and_validate_arguments
+
+    # When Common Service channel info is less then maintained channel, update maintained channel for backward compatibility e.g., v4.1 and v4.0
+    # Otherwise, maintained channel is pinned at v4.2
+    local channel_numeric="${CHANNEL#v}"
+    local maintained_channel_numeric="${MAINTAINED_CHANNEL#v}"
+    if awk -v num="$channel_numeric" "BEGIN { exit !(num < $maintained_channel_numeric) }"; then
+        MAINTAINED_CHANNEL="$CHANNEL"
+    fi
 }
 
 function isolate_license_service_reporter(){
