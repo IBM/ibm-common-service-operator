@@ -205,7 +205,7 @@ spec:
   - channel: fast
     installPlanApproval: {{ .ApprovalMode }}
     name: keycloak-operator
-    namespace: "{{ .CPFSNs }}"
+    namespace: "{{ .ServicesNs }}"
     packageName: keycloak-operator
     scope: public
     sourceName: community-operators
