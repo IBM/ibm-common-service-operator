@@ -26,6 +26,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -35,6 +36,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -44,6 +46,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -56,6 +59,7 @@ const ConfigurationRules = `
         limits:
           cpu: LARGEST_VALUE
           memory: LARGEST_VALUE
+          ephemeral-storage: LARGEST_VALUE
         requests:
           cpu: LARGEST_VALUE
           ephemeral-storage: LARGEST_VALUE
@@ -69,6 +73,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
 - name: ibm-im-mongodb-operator
   spec:
     mongoDB:
@@ -77,6 +82,7 @@ const ConfigurationRules = `
         limits:
           cpu: LARGEST_VALUE
           memory: LARGEST_VALUE
+          ephemeral-storage: LARGEST_VALUE
         requests:
           cpu: LARGEST_VALUE
           ephemeral-storage: LARGEST_VALUE
@@ -90,6 +96,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
 - name: ibm-im-mongodb-operator-v4.0
   spec:
     mongoDB:
@@ -98,6 +105,7 @@ const ConfigurationRules = `
         limits:
           cpu: LARGEST_VALUE
           memory: LARGEST_VALUE
+          ephemeral-storage: LARGEST_VALUE
         requests:
           cpu: LARGEST_VALUE
           ephemeral-storage: LARGEST_VALUE
@@ -111,6 +119,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
 - name: ibm-im-mongodb-operator-v4.1
   spec:
     mongoDB:
@@ -119,6 +128,7 @@ const ConfigurationRules = `
         limits:
           cpu: LARGEST_VALUE
           memory: LARGEST_VALUE
+          ephemeral-storage: LARGEST_VALUE
         requests:
           cpu: LARGEST_VALUE
           ephemeral-storage: LARGEST_VALUE
@@ -132,6 +142,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
 - name: ibm-im-mongodb-operator-v4.2
   spec:
     mongoDB:
@@ -140,6 +151,7 @@ const ConfigurationRules = `
         limits:
           cpu: LARGEST_VALUE
           memory: LARGEST_VALUE
+          ephemeral-storage: LARGEST_VALUE
         requests:
           cpu: LARGEST_VALUE
           ephemeral-storage: LARGEST_VALUE
@@ -153,6 +165,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
 - name: ibm-iam-operator
   spec:
     authentication:
@@ -164,6 +177,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -173,6 +187,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -182,6 +197,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -191,6 +207,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -200,6 +217,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -210,6 +228,7 @@ const ConfigurationRules = `
         limits:
           cpu: LARGEST_VALUE
           memory: LARGEST_VALUE
+          ephemeral-storage: LARGEST_VALUE
         requests:
           cpu: LARGEST_VALUE
           ephemeral-storage: LARGEST_VALUE
@@ -220,6 +239,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -229,6 +249,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -240,6 +261,7 @@ const ConfigurationRules = `
         limits:
           cpu: LARGEST_VALUE
           memory: LARGEST_VALUE
+          ephemeral-storage: LARGEST_VALUE
         requests:
           cpu: LARGEST_VALUE
           ephemeral-storage: LARGEST_VALUE
@@ -250,6 +272,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -258,6 +281,7 @@ const ConfigurationRules = `
         limits:
           cpu: LARGEST_VALUE
           memory: LARGEST_VALUE
+          ephemeral-storage: LARGEST_VALUE
         requests:
           cpu: LARGEST_VALUE
           ephemeral-storage: LARGEST_VALUE
@@ -268,6 +292,7 @@ const ConfigurationRules = `
         limits:
           cpu: LARGEST_VALUE
           memory: LARGEST_VALUE
+          ephemeral-storage: LARGEST_VALUE
         requests:
           cpu: LARGEST_VALUE
           ephemeral-storage: LARGEST_VALUE
@@ -279,6 +304,7 @@ const ConfigurationRules = `
         limits:
           cpu: LARGEST_VALUE
           memory: LARGEST_VALUE
+          ephemeral-storage: LARGEST_VALUE
         requests:
           cpu: LARGEST_VALUE
           ephemeral-storage: LARGEST_VALUE
@@ -288,6 +314,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -303,6 +330,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -312,6 +340,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -321,6 +350,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -330,6 +360,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -339,6 +370,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -354,6 +386,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -363,6 +396,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -372,6 +406,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -381,6 +416,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -390,6 +426,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -405,6 +442,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -414,6 +452,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -423,6 +462,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -432,6 +472,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -441,6 +482,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -456,6 +498,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -465,6 +508,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -474,6 +518,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -483,6 +528,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -492,6 +538,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -509,6 +556,7 @@ const ConfigurationRules = `
         limits:
           cpu: LARGEST_VALUE
           memory: LARGEST_VALUE
+          ephemeral-storage: LARGEST_VALUE
 - name: ibm-ingress-nginx-operator
   spec:
     nginxIngress:
@@ -523,6 +571,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
       defaultBackend:
         replicas: LARGEST_VALUE
         resources:
@@ -533,14 +582,17 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
       kubectl:
         resources:
           requests:
             memory: LARGEST_VALUE
             cpu: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           limits:
             memory: LARGEST_VALUE
             cpu: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
 - name: ibm-licensing-operator
   spec:
     IBMLicensing:
@@ -552,6 +604,7 @@ const ConfigurationRules = `
         limits:
           cpu: LARGEST_VALUE
           memory: LARGEST_VALUE
+          ephemeral-storage: LARGEST_VALUE
     IBMLicenseServiceReporter:
       databaseContainer:
         resources:
@@ -562,6 +615,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
       receiverContainer:
         resources:
           requests:
@@ -571,6 +625,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
 - name: ibm-commonui-operator
   spec:
     commonWebUI:
@@ -579,18 +634,22 @@ const ConfigurationRules = `
         requests:
           memory: LARGEST_VALUE
           cpu: LARGEST_VALUE
+          ephemeral-storage: LARGEST_VALUE
         limits:
           memory: LARGEST_VALUE
           cpu: LARGEST_VALUE
+          ephemeral-storage: LARGEST_VALUE
       commonWebUIConfig:
         dashboardData:
           resources:
             limits:
               cpu: LARGEST_VALUE
               memory: LARGEST_VALUE
+              ephemeral-storage: LARGEST_VALUE
             requests:
               cpu: LARGEST_VALUE
               memory: LARGEST_VALUE
+              ephemeral-storage: LARGEST_VALUE
 - name: ibm-idp-config-ui-operator
   spec:
     commonWebUI:
@@ -599,18 +658,22 @@ const ConfigurationRules = `
         requests:
           memory: LARGEST_VALUE
           cpu: LARGEST_VALUE
+          ephemeral-storage: LARGEST_VALUE
         limits:
           memory: LARGEST_VALUE
           cpu: LARGEST_VALUE
+          ephemeral-storage: LARGEST_VALUE
       commonWebUIConfig:
         dashboardData:
           resources:
             limits:
               cpu: LARGEST_VALUE
               memory: LARGEST_VALUE
+              ephemeral-storage: LARGEST_VALUE
             requests:
               cpu: LARGEST_VALUE
               memory: LARGEST_VALUE
+              ephemeral-storage: LARGEST_VALUE
 - name: ibm-idp-config-ui-operator-v4.0
   spec:
     commonWebUI:
@@ -619,18 +682,22 @@ const ConfigurationRules = `
         requests:
           memory: LARGEST_VALUE
           cpu: LARGEST_VALUE
+          ephemeral-storage: LARGEST_VALUE
         limits:
           memory: LARGEST_VALUE
           cpu: LARGEST_VALUE
+          ephemeral-storage: LARGEST_VALUE
       commonWebUIConfig:
         dashboardData:
           resources:
             limits:
               cpu: LARGEST_VALUE
               memory: LARGEST_VALUE
+              ephemeral-storage: LARGEST_VALUE
             requests:
               cpu: LARGEST_VALUE
               memory: LARGEST_VALUE
+              ephemeral-storage: LARGEST_VALUE
 - name: ibm-idp-config-ui-operator-v4.1
   spec:
     commonWebUI:
@@ -639,18 +706,22 @@ const ConfigurationRules = `
         requests:
           memory: LARGEST_VALUE
           cpu: LARGEST_VALUE
+          ephemeral-storage: LARGEST_VALUE
         limits:
           memory: LARGEST_VALUE
           cpu: LARGEST_VALUE
+          ephemeral-storage: LARGEST_VALUE
       commonWebUIConfig:
         dashboardData:
           resources:
             limits:
               cpu: LARGEST_VALUE
               memory: LARGEST_VALUE
+              ephemeral-storage: LARGEST_VALUE
             requests:
               cpu: LARGEST_VALUE
               memory: LARGEST_VALUE
+              ephemeral-storage: LARGEST_VALUE
 - name: ibm-idp-config-ui-operator-v4.2
   spec:
     commonWebUI:
@@ -659,18 +730,22 @@ const ConfigurationRules = `
         requests:
           memory: LARGEST_VALUE
           cpu: LARGEST_VALUE
+          ephemeral-storage: LARGEST_VALUE
         limits:
           memory: LARGEST_VALUE
           cpu: LARGEST_VALUE
+          ephemeral-storage: LARGEST_VALUE
       commonWebUIConfig:
         dashboardData:
           resources:
             limits:
               cpu: LARGEST_VALUE
               memory: LARGEST_VALUE
+              ephemeral-storage: LARGEST_VALUE
             requests:
               cpu: LARGEST_VALUE
               memory: LARGEST_VALUE
+              ephemeral-storage: LARGEST_VALUE
 - name: ibm-platform-api-operator
   spec:
     platformApi:
@@ -679,6 +754,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -688,6 +764,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
@@ -702,18 +779,22 @@ const ConfigurationRules = `
           requests:
             memory: LARGEST_VALUE
             cpu: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           limits:
             memory: LARGEST_VALUE
             cpu: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
       healthService:
         replicas: LARGEST_VALUE
         resources:
           requests:
             memory: LARGEST_VALUE
             cpu: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           limits:
             memory: LARGEST_VALUE
             cpu: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
 - name: ibm-auditlogging-operator
   spec:
     auditLogging:
@@ -726,6 +807,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
 - name: ibm-monitoring-grafana-operator
   spec:
     grafana:
@@ -738,6 +820,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
       dashboardConfig:
         resources:
           requests:
@@ -747,6 +830,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
       routerConfig:
         resources:
           requests:
@@ -756,6 +840,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
 - name: ibm-apicatalog
   spec:
     apicatalogmanager:
