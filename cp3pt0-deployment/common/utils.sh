@@ -650,16 +650,13 @@ function cm_smoke_test(){
     local namespace=$4
     
     title " Smoke test for Cert Manager existence..." 
-    ${OC} delete issuer.v1.cert-manager.io $issuer_name -n ${namespace} --ignore-not-found
-    ${OC} delete certificate.v1.cert-manager.io $cert_name -n ${namespace}  --ignore-not-found
+    cleanup_cm_resources $issuer_name $cert_name $sercret_name $namespace
     create_issuer $issuer_name $namespace
     create_certificate $issuer_name $cert_name $sercret_name $namespace
     wait_for_issuer $issuer_name $namespace
     wait_for_certificate $cert_name $namespace
     if [[ $? -eq 0 ]]; then
-        ${OC} delete issuer.v1.cert-manager.io $issuer_name -n ${namespace} --ignore-not-found
-        ${OC} delete certificate.v1.cert-manager.io $cert_name -n ${namespace}  --ignore-not-found
-        ${OC} delete secret $sercret_name -n ${namespace}  --ignore-not-found
+        cleanup_cm_resources $issuer_name $cert_name $sercret_name $namespace
     fi
 }
 
@@ -920,6 +917,33 @@ function cleanup_webhook() {
     info "Deleting ValidatingWebhookConfiguration..."
     ${OC} delete ValidatingWebhookConfiguration ibm-cs-ns-mapping-webhook-configuration --ignore-not-found
 
+}
+
+# clean up issuers, certificates and secrets
+function cleanup_cm_resources() {
+    local issuer_name=$1
+    local cert_name=$2
+    local sercret_name=$3
+    local namespace=$4
+        
+    return_value_issuer=$(${OC} get issuer.v1.cert-manager.io $issuer_name -n $namespace --ignore-not-found )
+    if [[ ! -z $return_value_issuer ]]; then
+        info "Deleting $issuer_name Issuer ..."
+        ${OC} delete issuer.v1.cert-manager.io $issuer_name -n $namespace --ignore-not-found
+        msg ""
+    fi
+
+    return_value_cert=$(${OC} get certificate.v1.cert-manager.io $cert_name -n $namespace --ignore-not-found )
+    if [[ ! -z $return_value_cert ]]; then
+        info "Deleting $cert_name Certificate ..."
+        ${OC} delete certificate.v1.cert-manager.io $cert_name -n $namespace --ignore-not-found
+        msg ""
+
+        info "Deleting $$secret_name Secret ..."
+        ${OC} delete secret $sercret_name -n $namespace --ignore-not-found
+        msg ""
+    fi
+    
 }
 
 # TODO: clean up secretshare deployment and CR in service_ns
