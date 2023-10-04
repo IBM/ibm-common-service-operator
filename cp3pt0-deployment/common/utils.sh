@@ -230,6 +230,34 @@ function wait_for_operator() {
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
+function wait_for_issuer() {
+    local namespace=$1
+    local issuer=$(${OC} -n ${namespace} get issuer.v1.cert-manager.io --no-headers --ignore-not-found | awk '{print $1}')
+    local condition="${OC} -n ${namespace} get issuer.v1.cert-manager.io --no-headers --ignore-not-found | grep 'True'"
+    local retries=10
+    local sleep_time=6
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for Issuer ${issuer} in namespace ${namespace} to be Ready"
+    local success_message="Issuer ${issuer} in namespace ${namespace} is Ready"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for Issuer ${issuer} in namespace ${namespace} to be Ready"
+ 
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
+function wait_for_certificate() {
+    local namespace=$1
+    local certificate=$(${OC} -n ${namespace} get certificate.v1.cert-manager.io --no-headers --ignore-not-found | awk '{print $1}')
+    local condition="${OC} -n ${namespace} get certificate.v1.cert-manager.io --no-headers --ignore-not-found | grep 'True'"
+    local retries=10
+    local sleep_time=6
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for Certificate ${certificate} in namespace ${namespace} to be Ready"
+    local success_message="Certificate ${certificate} in namespace ${namespace} is Ready"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for Certificate ${certificate} in namespace ${namespace} to be Ready"
+ 
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
 function wait_for_csv() {
     local namespace=$1
     local package_name=$2
@@ -602,13 +630,23 @@ function check_cert_manager(){
         info "Preview mode is on, skip checking whether Cert Manager exist\n"
         return 0       
     fi
+    create_test_issuer $namespace
+    create_test_certificate $namespace
     csv_count=`$OC get csv -n "$namespace" | grep "$service_name" | wc -l`
     if [[ $csv_count == 1 ]]; then
-        success "Found only one Cert Manager exists in namespace "$namespace"\n"
+        success "Found only one Cert Manager CSV exists in namespace "$namespace", continue smoke checking\n"
     elif [[ $csv_count == 0 ]]; then
-        error "Missing a Cert Manager\n"
+        warning "Missing a Cert Manager, continue smoke checking\n"
     elif [[ $csv_count > 1 ]]; then
         error "Multiple Cert Manager csv found. Only one should be installed per cluster\n"
+    fi
+    wait_for_issuer $namespace
+    wait_for_certificate $namespace
+    if [[ $? -eq 0 ]]; then
+        local issuer=$(${OC} -n ${namespace} get issuer.v1.cert-manager.io --no-headers --ignore-not-found | awk '{print $1}')
+        local certificate=$(${OC} -n ${namespace} get certificate.v1.cert-manager.io --no-headers --ignore-not-found | awk '{print $1}')
+        ${OC} delete issuer.v1.cert-manager.io ${issuer} -n ${namespace} --ignore-not-found
+        ${OC} delete certificate.v1.cert-manager.io ${certificate} -n ${namespace}  --ignore-not-found
     fi
 }
 
@@ -705,6 +743,56 @@ EOF
     cat ${PREVIEW_DIR}/${name}-subscription.yaml | ${OC} apply -f -
     if [[ $? -ne 0 ]]; then
         error "Failed to create subscription ${name} in ${ns}\n"
+    fi
+}
+
+function create_test_issuer() {
+    local namespace=$1
+    debug1 "Creating test issuer in namespace $namespace ."
+    cat <<EOF > ${PREVIEW_DIR}/test-issuer.yaml
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: test-issuer
+  namespace: $namespace
+spec:
+  selfSigned: {}
+EOF
+
+    info "Creating following issuer:\n"
+    cat ${PREVIEW_DIR}/test-issuer.yaml
+    echo ""
+    cat ${PREVIEW_DIR}/test-issuer.yaml | ${OC} apply -f -
+    if [[ $? -ne 0 ]]; then
+        error "Failed to create test issuer in $namespace \n"
+    fi
+}
+
+function create_test_certificate() {
+    local namespace=$1
+    debug1 "Creating test certificate in namespace $namespace ."
+    cat <<EOF > ${PREVIEW_DIR}/test-certificate.yaml
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: test-certificate
+  namespace: $namespace 
+spec:
+  commonName: test-certificate
+  duration: 17520h0m0s
+  issuerRef:
+    kind: Issuer
+    name: test-issuer
+  renewBefore: 720h0m0s
+  secretName: test-certificate-secret
+EOF
+
+    info "Creating following certificate:\n"
+    cat ${PREVIEW_DIR}/test-certificate.yaml
+    echo ""
+    cat ${PREVIEW_DIR}/test-certificate.yaml | ${OC} apply -f -
+    if [[ $? -ne 0 ]]; then
+        error "Failed to create test certificate in $namespace \n"
     fi
 }
 

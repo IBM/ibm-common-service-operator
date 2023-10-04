@@ -34,7 +34,7 @@ PREVIEW_MODE=0
 DEBUG=0
 
 CUSTOMIZED_LICENSING_NAMESPACE=0
-SKIP_INSTALL=0
+VALIDATE_ONLY=0
 CHECK_LICENSING_ONLY=0
 CERT_MANAGER_V1_OWNER="operator.ibm.com/v1"
 CERT_MANAGER_V1ALPHA1_OWNER="operator.ibm.com/v1alpha1"
@@ -69,15 +69,15 @@ function main() {
     validate_singleton_catalogsource
 
     if [ $MIGRATE_SINGLETON -eq 1 ]; then
-        if [ $ENABLE_LICENSING -eq 1 ]; then
-            if [ $ENABLE_LICENSE_SERVICE_REPORTER -eq 1 ]; then
-                ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" "--control-namespace" "$CONTROL_NS" "--enable-licensing" "--licensing-namespace" "$LICENSING_NAMESPACE" "--enable-license-service-reporter" "--lsr-namespace" "$LSR_NAMESPACE" "-v" "$DEBUG"
-            else
-                ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" "--control-namespace" "$CONTROL_NS" "--enable-licensing" "--licensing-namespace" "$LICENSING_NAMESPACE" "-v" "$DEBUG"
-            fi
-        else
-            ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" --control-namespace "$CONTROL_NS"
-        fi
+    if [ $ENABLE_LICENSING -eq 1 ]; then
+    if [ $ENABLE_LICENSE_SERVICE_REPORTER -eq 1 ]; then
+    ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" "--control-namespace" "$CONTROL_NS" "--enable-licensing" "--licensing-namespace" "$LICENSING_NAMESPACE" "--enable-license-service-reporter" "--lsr-namespace" "$LSR_NAMESPACE" "-v" "$DEBUG"
+    else
+    ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" "--control-namespace" "$CONTROL_NS" "--enable-licensing" "--licensing-namespace" "$LICENSING_NAMESPACE" "-v" "$DEBUG"
+    fi
+    else
+    ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" --control-namespace "$CONTROL_NS"
+    fi
     fi
 
     install_cert_manager
@@ -127,11 +127,11 @@ function parse_arguments() {
             LICENSE_ACCEPT=1
             ;;
         --check-cert-manager)
-            SKIP_INSTALL=1
+            VALIDATE_ONLY=1
             ;;
         --check-licensing)
             CHECK_LICENSING_ONLY=1
-            SKIP_INSTALL=1
+            VALIDATE_ONLY=1
             ;;
         -cmNs | --cert-manager-namespace)
             shift
@@ -293,22 +293,26 @@ function install_cert_manager() {
     if [ ! -z "$webhook_ns" ]; then
         warning "There is a cert-manager-webhook pod Running, so most likely another cert-manager is already installed\n"
         info "Continue to upgrade check\n"
-    elif [ $SKIP_INSTALL -eq 1 ]; then
-        error "There is no cert-manager-webhook pod running\n"
-    fi
+        
+        # check if the cert-manager-webhook is owned by ibm-cert-manager-operator
+        local api_version=$("$OC" get deployments -n "$webhook_ns" cert-manager-webhook -o jsonpath='{.metadata.ownerReferences[*].apiVersion}' --ignore-not-found)
+        if [ ! -z "$api_version" ]; then
+            if [ "$api_version" == "$CERT_MANAGER_V1ALPHA1_OWNER" ]; then
+                error "Cluster has not deactivated LTSR ibm-cert-manager-operator yet, please re-run this script"
+            fi
 
-    local api_version=$("$OC" get deployments -n "$webhook_ns" cert-manager-webhook -o jsonpath='{.metadata.ownerReferences[*].apiVersion}' --ignore-not-found)
-    if [ ! -z "$api_version" ]; then
-        if [ "$api_version" == "$CERT_MANAGER_V1ALPHA1_OWNER" ]; then
-            error "Cluster has not deactivated LTSR ibm-cert-manager-operator yet, please re-run this script"
-        fi
+            if [ "$api_version" != "$CERT_MANAGER_V1_OWNER" ]; then
+                warning "Cluster has a non ibm-cert-manager-operator already installed, skipping"
+                return 0
+            fi
 
-        if [ "$api_version" != "$CERT_MANAGER_V1_OWNER" ]; then
-            warning "Cluster has a non ibm-cert-manager-operator already installed, skipping"
+            info "Upgrading ibm-cert-manager-operator to channel: $CHANNEL\n"
+        else
+            warning "Cluster has a RedHat cert-manager or Helm cert-manager, skipping"
             return 0
         fi
-        
-        info "Upgrading ibm-cert-manager-operator to channel: $CHANNEL\n"
+    elif [ $VALIDATE_ONLY -eq 1 ]; then
+        error "There is no cert-manager-webhook pod running\n"
     fi
     
     create_namespace "${CERT_MANAGER_NAMESPACE}"
@@ -334,7 +338,7 @@ function install_licensing() {
     is_sub_exist "ibm-licensing-operator-app" # this will catch the packagenames of all ibm-licensing-operator-app
     if [ $? -eq 0 ]; then
         warning "There is an ibm-licensing-operator-app Subscription already, so will upgrade it\n"
-    elif [ $SKIP_INSTALL -eq 1 ]; then
+    elif [ $VALIDATE_ONLY -eq 1 ]; then
         error "There is no ibm-licensing-operator-app Subscription installed\n"
     fi
 
@@ -388,7 +392,7 @@ function install_license_service_reporter() {
     is_sub_exist "ibm-license-service-reporter-operator" # this will catch the package names of all ibm-license-service-reporter-operator
     if [ $? -eq 0 ]; then
         warning "There is an ibm-license-service-reporter-operator Subscription already, so will upgrade it\n"
-    elif [ $SKIP_INSTALL -eq 1 ]; then
+    elif [ $VALIDATE_ONLY -eq 1 ]; then
         error "There is no ibm-license-service-reporter-operator Subscription installed\n"
     fi
 
@@ -492,7 +496,7 @@ function pre_req() {
         success "oc command logged in as ${user}"
     fi
 
-    if [ "$LICENSE_ACCEPT" -ne 1 ] && [ "$SKIP_INSTALL" -ne 1 ]; then
+    if [ "$LICENSE_ACCEPT" -ne 1 ] && [ "$VALIDATE_ONLY" -ne 1 ]; then
         error "License not accepted. Rerun script with --license-accept flag set. See https://ibm.biz/integration-licenses for more details"
     fi
 
