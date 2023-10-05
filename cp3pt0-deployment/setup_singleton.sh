@@ -33,6 +33,7 @@ LICENSE_ACCEPT=0
 PREVIEW_MODE=0
 DEBUG=0
 
+CUSTOMIZED_CM_NAMESPACE=0
 CUSTOMIZED_LICENSING_NAMESPACE=0
 VALIDATE_ONLY=0
 CHECK_LICENSING_ONLY=0
@@ -136,6 +137,7 @@ function parse_arguments() {
         -cmNs | --cert-manager-namespace)
             shift
             CERT_MANAGER_NAMESPACE=$1
+            CUSTOMIZED_CM_NAMESPACE=1
             ;;
         -licensingNs | --licensing-namespace)
             shift
@@ -307,6 +309,13 @@ function install_cert_manager() {
             fi
 
             info "Upgrading ibm-cert-manager-operator to channel: $CHANNEL\n"
+            if [[ "$webhook_ns" != "$CERT_MANAGER_NAMESPACE" ]]; then
+                if [[ "$CUSTOMIZED_CM_NAMESPACE" -eq 0 ]]; then
+                    CERT_MANAGER_NAMESPACE="$webhook_ns"
+                else
+                    error "An ibm-cert-manager-operator already installed in namespace: $webhook_ns, please do not set parameter '-cmNs $CERT_MANAGER_NAMESPACE"
+                fi
+            fi
         else
             warning "Cluster has a RedHat cert-manager or Helm cert-manager, skipping"
             return 0
