@@ -216,7 +216,11 @@ data:
       pv=$(oc get pvc cs-mongodump -n $CS_NAMESPACE --no-headers=true 2>/dev/null | awk '{print $3 }')
       if [[ -n $pv ]]
       then
-        oc delete pvc cs-mongodump --ignore-not-found -n $CS_NAMESPACE
+        oc delete pvc cs-mongodump -n $CS_NAMESPACE --ignore-not-found --timeout=10s
+        if [ $? -ne 0 ]; then
+            info "Failed to delete pvc cs-mongodump, patching its finalizer to null..."
+            oc patch pvc cs-mongodump -n $CS_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+        fi
         oc delete pv $pv --ignore-not-found
       fi
       success "Cleanup Complete"
@@ -907,3 +911,74 @@ data:
     fi
 
     restore_mongodb
+  set_access.js: |
+    use admin
+    try{
+        db.createRole(
+          {
+            role: "interalUseOnlyOplogRestore",
+            privileges: [
+              { resource: { anyResource: true }, actions: [ "anyAction" ] }
+            ],
+            roles: []
+          }
+        )
+      
+        db.createUser({
+          user: "root",
+          pwd: "ADMIN_PASSWORD",
+          roles: [
+            {role: "root", db: "admin"},"__system","interalUseOnlyOplogRestore","backup"
+          ]
+        })
+    } catch (err){
+        ;
+    }
+
+    use config 
+    db.runCommand({startSession:1});
+  mongodbrestore-z.yaml: |
+    apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: mongodb-restore
+    spec:
+      template:
+        spec:
+          containers:
+          - name: icp-mongodb-restore
+            image: quay.io/opencloudio/ibm-mongodb:4.0.24
+            command: ["bash", "-c", "cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongorestore --host rs0/mongodb:$MONGODB_SERVICE_PORT --username $ADMIN_USER --password $ADMIN_PASSWORD --authenticationDatabase admin /dump/dump"]
+            volumeMounts:
+            - mountPath: "/dump"
+              name: mongodump
+            - mountPath: "/work-dir"
+              name: tmp-mongodb
+            - mountPath: "/cred/mongo-certs"
+              name: icp-mongodb-client-cert
+            - mountPath: "/cred/cluster-ca"
+              name: cluster-ca-cert
+            env:
+              - name: ADMIN_USER
+                valueFrom:
+                  secretKeyRef:
+                    name: icp-mongodb-admin
+                    key: user
+              - name: ADMIN_PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: icp-mongodb-admin
+                    key: password
+          volumes:
+          - name: mongodump
+            persistentVolumeClaim:
+              claimName: cs-mongodump
+          - name: tmp-mongodb
+            emptyDir: {}
+          - name: icp-mongodb-client-cert
+            secret:
+              secretName: icp-mongodb-client-cert
+          - name: cluster-ca-cert
+            secret:
+              secretName: mongodb-root-ca-cert
+          restartPolicy: Never

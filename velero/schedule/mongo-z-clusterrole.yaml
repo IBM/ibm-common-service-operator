@@ -29,3 +29,4 @@ rules:
       - pods/status
       - jobs
       - persistentvolumeclaims
+      - persistentvolumes

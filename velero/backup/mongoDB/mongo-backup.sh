@@ -34,7 +34,11 @@ function cleanup() {
   pv=$(oc get pvc cs-mongodump -n $CS_NAMESPACE --no-headers=true 2>/dev/null | awk '{print $3 }')
   if [[ -n $pv ]]
   then
-    oc delete pvc cs-mongodump --ignore-not-found -n $CS_NAMESPACE
+    oc delete pvc cs-mongodump -n $CS_NAMESPACE --ignore-not-found --timeout=10s
+    if [ $? -ne 0 ]; then
+        info "Failed to delete pvc cs-mongodump, patching its finalizer to null..."
+        oc patch pvc cs-mongodump -n $CS_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+    fi
     oc delete pv $pv --ignore-not-found
   fi
   success "Cleanup Complete"

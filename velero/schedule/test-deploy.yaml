@@ -14,14 +14,14 @@ spec:
       annotations:
         backup.velero.io/backup-volumes: mongodump
         pre.hook.backup.velero.io/command: '["bash", "-c", "./mongo-backup.sh <ns> <sc> true"]'
-        post.hook.restore.velero.io/command: '["bash", "-c", "./mongo-restore.sh <ns> <sc> true"]'
-      name: mongodb-backup
+        post.hook.restore.velero.io/command: '["bash", "-c", "./mongo-restore.sh <ns> true"]'
+      name: z-mongodb-br
       namespace: ibm-common-services
       labels:
         foundationservices.cloudpak.ibm.com: mongo-data
     spec:
       containers:
-      - name: mongodb-backup
+      - name: z-mongodb-br
         image: icr.io/cpopen/cpfs/cpfs-utils:4.1.0
         command: ["bash", "-c", "sleep infinity"]
         resources:
