@@ -25,6 +25,17 @@ spec:
       - name: mongodb-backup
         image: icr.io/cpopen/cpfs/ibm-mongodb@sha256:3a44fcf5656cdd3f062d3ca45d7fd0a46ff3ed90f6ed34ba260ad50938e95f57
         command: ["bash", "-c", "sleep infinity"]
+        resources:
+          limits:
+            cpu: 500m
+            ephemeral-storage: 512Mi
+            memory: 512Mi
+          requests:
+            cpu: 200m
+            ephemeral-storage: 128Mi
+            memory: 256Mi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
         volumeMounts:
         - mountPath: "/dump"
           subpath: dump
@@ -48,6 +59,13 @@ spec:
               secretKeyRef:
                 name: icp-mongodb-admin
                 key: password
+      dnsPolicy: ClusterFirst
+      schedulerName: default-scheduler
+      securityContext:
+        runAsNonRoot: true
+      serviceAccount: mongo-z-backup-sa
+      serviceAccountName: mongo-z-backup-sa
+      terminationGracePeriodSeconds: 30
       volumes:
       - name: mongodump
         persistentVolumeClaim:
