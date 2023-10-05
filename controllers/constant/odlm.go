@@ -378,26 +378,14 @@ spec:
         force: false
         kind: OperandRequest
         name: edb-keycloak-request
-      - apiVersion: route.openshift.io/v1
-        data:
-          port:
-            targetPort: 8443
-          spec:
-            tls:
-              termination: passthrough
-            to:
-              kind: Service
-              name: cs-keycloak-service
-            wildcardPolicy: None
-        force: false
-        kind: Route
-        name: keycloak
       - apiVersion: operator.ibm.com/v1alpha1
         data:
           spec:
             bindings:
               public-keycloak-initial-admin:
                 secret: cs-keycloak-initial-admin
+              public-keycloak-tls-secret:
+                secret: cs-keycloak-tls-secret
             description: Binding information that should be accessible to Keycloak adopters
             operand: keycloak-operator
             registry: common-service
@@ -405,6 +393,21 @@ spec:
         force: false
         kind: OperandBindInfo
         name: keycloak-bindinfo
+      - apiVersion: cert-manager.io/v1
+        kind: Certificate
+        name: cs-keycloak-tls-cert
+        data:
+          spec:
+            commonName: cs-keycloak-service
+            dnsNames:
+                - cs-keycloak-service
+                - cs-keycloak-service.{{ .ServicesNs }}
+                - cs-keycloak-service.{{ .ServicesNs }}.svc
+                - cs-keycloak-service.{{ .ServicesNs }}.svc.cluster.local
+            issuerRef:
+                kind: Issuer
+                name: cs-ca-issuer
+            secretName: cs-keycloak-tls-secret
       - apiVersion: v1
         kind: ConfigMap
         force: false
@@ -428,6 +431,212 @@ spec:
                   SERVICE_NAME: .metadata.name
                   SERVICE_NAMESPACE: .metadata.namespace
                   SERVICE_ENDPOINT: https://+.metadata.name+.+.metadata.namespace+.+svc:+.spec.ports[0].port
+      - apiVersion: v1
+        kind: ConfigMap
+        name: keycloak-setup-script
+        data:
+          data:  
+            keycloak-setup-script.sh: |
+              #!/usr/bin/env bash
+              #
+              # Copyright 2023 IBM Corporation
+              #
+              # Licensed under the Apache License, Version 2.0 (the "License");
+              # you may not use this file except in compliance with the License.
+              # You may obtain a copy of the License at
+              #
+              # http://www.apache.org/licenses/LICENSE-2.0
+              #
+              # Unless required by applicable law or agreed to in writing, software
+              # distributed under the License is distributed on an "AS IS" BASIS,
+              # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+              # See the License for the specific language governing permissions and
+              # limitations under the License.
+              #
+              
+              # create Certificates for Keycloak
+              # wait for Secret
+              # Get secret
+              # Wait for ODLM to create KeyCloak CR, refresh KeyCloak CR annotation, so it could reload the secret
+              # Wait for Route to be created(needs to verify if it supports Customization other than what is defined in ODLM template)
+              # Load Certificate into Route
+              
+              
+              set -o pipefail
+              set -o errtrace
+              set -o nounset
+              
+              if [ -z "$NAMESPACE" ]; then
+                  resource_namespace=$(oc project -q)
+              else
+                  resource_namespace=$NAMESPACE
+              fi
+              
+              if [ -z "$WATCH_NAMESPACE" ]; then
+                  config_namespace_list=$(oc project -q)
+              else
+                  config_namespace_list=$WATCH_NAMESPACE
+              fi
+              
+              function main() {
+                  #     # create Certificates for Keycloak
+                  #     title "Create Certificates for Keycloak in namespace $resource_namespace"
+                  #     cat <<EOF | oc apply -f -
+                  # apiVersion: cert-manager.io/v1
+                  # kind: Certificate
+                  # apiVersion: cert-manager.io/v1
+                  # metadata:
+                  #     name: keycloak-tls-cert
+                  #     namespace: $resource_namespace
+                  # spec:
+                  #     commonName: cs-keycloak-service
+                  #     dnsNames:
+                  #         - cs-keycloak-service
+                  #         - cs-keycloak-service.$resource_namespace
+                  #         - cs-keycloak-service.$resource_namespace.svc
+                  #         - cs-keycloak-service.$resource_namespace.svc.cluster.local
+                  #     issuerRef:
+                  #         kind: Issuer
+                  #         name: cs-ca-issuer
+                  #     secretName: keycloak-tls-secret
+                  # EOF
+                  # wait for Secret keycloak-tls-secret and raise error msg if it does not exist after 5 minutes
+                  title "Wait for Secret cs-keycloak-tls-secret in namespace $resource_namespace"
+                  for i in {1..30}; do
+                      oc get secret cs-keycloak-tls-secret -n "$resource_namespace" >/dev/null 2>&1
+                      if [ $? -eq 0 ]; then
+                          success "Secret cs-keycloak-tls-secret found in namespace $resource_namespace"
+                          break
+                      else
+                          if [ $i -eq 30 ]; then
+                              error "Secret cs-keycloak-tls-secret not found in namespace $resource_namespace"
+                          fi
+                          warning "Secret cs-keycloak-tls-secret not found in namespace $resource_namespace, retrying in 10 seconds..."
+                          sleep 10
+                      fi
+                  done
+              
+                  # Wait for KeyCloak CR named cs-keycloak to be created
+                  title "Wait for KeyCloak CR named cs-keycloak to be created in namespace $resource_namespace"
+                  for i in {1..30}; do
+                      oc get keycloak cs-keycloak -n "$resource_namespace" >/dev/null 2>&1
+                      if [ $? -eq 0 ]; then
+                          success "KeyCloak CR named cs-keycloak found in namespace $resource_namespace"
+                          break
+                      else
+                          if [ $i -eq 30 ]; then
+                              error "KeyCloak CR named cs-keycloak not found in namespace $resource_namespace"
+                          fi
+                          warning "KeyCloak CR named cs-keycloak not found in namespace $resource_namespace, retrying in 10 seconds..."
+                          sleep 10
+                      fi
+                  done
+              
+                  # Refresh KeyCloak CR annotation to allow it to reload the secret
+                  title "Refresh KeyCloak CR annotation to allow it to reload the secret"
+                  oc patch keycloak cs-keycloak -n "$resource_namespace" --type merge -p '{"metadata":{"annotations":{"operator.ibm.com/reloaded-for-tls-secret":"'"$(date '+%Y-%m-%dT%T')"'"}}}'
+              
+                  ca_crt=$(oc get secret cs-keycloak-tls-secret -n "$resource_namespace" -o jsonpath='{.data.ca\.crt}' | base64 -d)
+                  # Create a route for KeyCloak named keycloak
+                  title "Create a route for KeyCloak named keycloak"
+                  # store contect of route yaml into a file
+                cat <<EOF | oc apply -f -
+              apiVersion: route.openshift.io/v1
+              kind: Route
+              metadata:
+                  name: keycloak
+                  namespace: $resource_namespace
+              spec:
+                  port:
+                      targetPort: 8443
+                  to:
+                      kind: Service
+                      name: cs-keycloak-service
+                  tls:
+                      termination: reencrypt
+                      destinationCACertificate: |-
+              $(echo "$ca_crt" | sed 's/^/          /')
+                  wildcardPolicy: None
+              EOF
+              
+              }
+              
+              function msg() {
+                  printf '%b\n' "$1"
+              }
+              
+              function success() {
+                  msg "\33[32m[✔] ${1}\33[0m"
+              }
+              
+              function error() {
+                  msg "\33[31m[✘] ${1}\33[0m"
+                  exit 1
+              }
+              
+              function title() {
+                  msg "\33[34m# ${1}\33[0m"
+              }
+              
+              function info() {
+                  msg "[INFO] ${1}"
+              }
+              
+              function warning() {
+                  msg "\33[33m[✗] ${1}\33[0m"
+              }
+              
+              # --- Run ---
+              
+              main $*
+      - apiVersion: batch/v1
+        kind: Job
+        name: keycloak-setup-job
+        data:
+          spec:
+            template:
+              metadata:
+                labels:
+                  app: keycloak-setup-job
+              spec:
+                containers:
+                - name: keycloak-setup-job
+                  image: icr.io/cpopen/cpfs/cpfs-utils:latest
+                  command: ["/bin/bash"]
+                  args: ["-c", "/setup-script/keycloak-setup-script.sh"]
+                  volumeMounts:
+                  - name: keycloak-setup-script
+                    mountPath: /setup-script
+                  env:
+                    - name: NAMESPACE
+                      valueFrom:
+                        fieldRef:
+                          apiVersion: v1
+                          fieldPath: metadata.namespace
+                    - name: WATCH_NAMESPACE
+                      valueFrom:
+                          configMapKeyRef:
+                            name: namespace-scope
+                            key: namespaces
+                volumes:
+                - name: keycloak-setup-script
+                  configMap:
+                    name: keycloak-setup-script
+                    defaultMode: 0777
+                    items:
+                    - key: keycloak-setup-script.sh
+                      path: keycloak-setup-script.sh
+                securityContext:
+                  runAsNonRoot: true
+                  seccompProfile:
+                    type: RuntimeDefault
+                  capabilities:
+                    drop:
+                    - ALL
+                  allowPrivilegeEscalation: false
+                restartPolicy: OnFailure
+                serviceAccountName: operand-deployment-lifecycle-manager
+            backoffLimit: 1
       - apiVersion: v1
         kind: ConfigMap
         name: keycloak-bindinfo-script
@@ -533,21 +742,6 @@ spec:
               }
           
               while true; do 
-          
-                  # check if secret exists or not
-                  oc get secret "cs-ca-certificate-secret" -n "$resource_namespace" >/dev/null 2>&1
-                  if [ $? -ne 0 ]; then
-                      echo "Secret cs-ca-certificate-secret does not exist in namespace $resource_namespace, skipping..."
-                      sleep 60
-                      continue
-                  fi
-          
-                  while IFS=',' read -ra config_namespace; do
-                      for j in "${config_namespace[@]}"; do
-                          copy_secret "cs-ca-certificate-secret" "$resource_namespace" "$j" "keycloak-bindinfo-cs-keycloak-ca-certificate-secret"
-                      done
-                  done <<< "$config_namespace_list" 
-                  
                   while IFS=',' read -ra kind; do
                       for i in "${kind[@]}"; do
                           echo $i
@@ -650,7 +844,7 @@ spec:
             hostname:
               strict: false
             http:
-              tlsSecret: cs-ca-certificate-secret
+              tlsSecret: cs-keycloak-tls-secret
             ingress:
               className: openshift-default
               enabled: true
