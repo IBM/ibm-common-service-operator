@@ -30,3 +30,4 @@ rules:
       - jobs
       - persistentvolumeclaims
       - persistentvolumes
+      - secrets

@@ -9,27 +9,12 @@ s390x="false"
 if [[ ! -z $3 ]]; then
   s390x=$3
 fi
-function msg() {
-  printf '%b\n' "$1"
-}
-
-function success() {
-  msg "\33[32m[✔] ${1}\33[0m"
-}
-function warning() {
-  msg "\33[33m[✗] ${1}\33[0m"
-}
-
-function error() {
-  msg "\33[31m[✘] ${1}\33[0m"
-  exit 1
-}
 
 function cleanup() {
   if [[ -z $CS_NAMESPACE ]]; then
     export CS_NAMESPACE=ibm-common-services
   fi
-  msg "[1] Cleaning up from previous backups..."
+  info "[1] Cleaning up from previous backups..."
   oc delete job mongodb-backup --ignore-not-found -n $CS_NAMESPACE
   pv=$(oc get pvc cs-mongodump -n $CS_NAMESPACE --no-headers=true 2>/dev/null | awk '{print $3 }')
   if [[ -n $pv ]]
@@ -45,7 +30,7 @@ function cleanup() {
 }
 
 function backup_mongodb(){
-  msg "[3] Backing Up MongoDB"
+  info "[3] Backing Up MongoDB"
   #
   #  Get the storage class from the existing PVCs for use in creating the backup volume
   #
@@ -67,7 +52,7 @@ metadata:
   name: cs-mongodump
   namespace: $CS_NAMESPACE
   labels:
-    foundationservices.cloudpak.ibm.com: data
+    foundationservices.cloudpak.ibm.com: mongo-data
 spec:
   accessModes:
   - ReadWriteOnce
@@ -80,7 +65,7 @@ EOF
   #
   # Start the backup
   #
-  msg "Starting backup"
+  info "Starting backup"
   ibm_mongodb_image=$(oc get pod icp-mongodb-0 -n $CS_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
   if [[ $s390x == "false" ]]; then
     cat <<EOF | oc apply -f -
@@ -212,7 +197,7 @@ EOF
 function waitforpods() {
   index=0
   retries=60
-  msg "Waiting for $1 pod(s) to start ..."
+  info "Waiting for $1 pod(s) to start ..."
   while true; do
       [[ $index -eq $retries ]] && exit 1
       if [ -z $1 ]; then

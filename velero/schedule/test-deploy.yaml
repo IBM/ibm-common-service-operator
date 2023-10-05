@@ -13,8 +13,11 @@ spec:
     metadata:
       annotations:
         backup.velero.io/backup-volumes: mongodump
-        pre.hook.backup.velero.io/command: '["bash", "-c", "./mongo-backup.sh <ns> <sc> true"]'
-        post.hook.restore.velero.io/command: '["bash", "-c", "./mongo-restore.sh <ns> true"]'
+        pre.hook.backup.velero.io/command: '["bash", "-c", "/scripts/mongo-backup.sh <ns> <sc> true"]'
+        post.hook.restore.velero.io/command: '["bash", "-c", "/scripts/mongo-restore.sh <ns> true"]'
+        pre.hook.backup.velero.io/wait-timeout: 300s
+        pre.hook.backup.velero.io/exec-timeout: 300s
+        pre.hook.backup.velero.io/timeout: 300s
       name: z-mongodb-br
       namespace: ibm-common-services
       labels:
