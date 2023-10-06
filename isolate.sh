@@ -768,7 +768,6 @@ function check_certmanager_count(){
 
 function isolate_license_service_reporter(){
     title "Isolating License Service Reporter"
-
     return_value=$( ("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
     if [[ $return_value == "exists" ]]; then
 
