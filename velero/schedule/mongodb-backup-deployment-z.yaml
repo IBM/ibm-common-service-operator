@@ -1,8 +1,8 @@
 kind: Deployment
 apiVersion: apps/v1
 metadata:
-  name: mongodb-backup
-  namespace: ibm-common-services
+  name: mongodb-backup-z
+  namespace: <cs namespace>
   labels:
     foundationservices.cloudpak.ibm.com: mongo-data
 spec:
@@ -13,17 +13,19 @@ spec:
     metadata:
       annotations:
         backup.velero.io/backup-volumes: mongodump
-        pre.hook.backup.velero.io/command: '["bash", "-c", "/prep-script/prep-mongo-br-z.sh <cs namespace> down; cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongodump --oplog --out /dump/dump --host mongodb:$MONGODB_SERVICE_PORT --username $ADMIN_USER --password $ADMIN_PASSWORD --authenticationDatabase admin; /prep-script/prep-mongo-br-z.sh <cs namespace> up"]'
-        post.hook.backup.velero.io/command: '["bash", "-c", "rm -rf /dump/dump/*"]'
-        post.hook.restore.velero.io/command: '["bash", "-c", "/prep-script/prep-mongo-br-z.sh <cs namespace> down; cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongorestore --host rs0/mongodb:$MONGODB_SERVICE_PORT --username $ADMIN_USER --password $ADMIN_PASSWORD --authenticationDatabase admin /dump/dump; /prep-script/prep-mongo-br-z.sh <cs namespace> up"]'
-      name: mongodb-backup
-      namespace: ibm-common-services
+        pre.hook.backup.velero.io/command: '["bash", "-c", "/scripts/mongo-backup.sh <cs namespace> <storage class name> true && /scripts/prep-mongo-br-z.sh <cs namespace> up"]'
+        post.hook.restore.velero.io/command: '["bash", "-c", "/scripts/mongo-restore.sh <cs namespace> true && /scripts/prep-mongo-br-z.sh <cs namespace> up"]'
+        pre.hook.backup.velero.io/wait-timeout: 300s
+        pre.hook.backup.velero.io/exec-timeout: 300s
+        pre.hook.backup.velero.io/timeout: 300s
+      name: z-mongodb-br
+      namespace: <cs namespace>
       labels:
         foundationservices.cloudpak.ibm.com: mongo-data
     spec:
       containers:
-      - name: mongodb-backup
-        image: icr.io/cpopen/cpfs/ibm-mongodb@sha256:3a44fcf5656cdd3f062d3ca45d7fd0a46ff3ed90f6ed34ba260ad50938e95f57
+      - name: z-mongodb-br
+        image: icr.io/cpopen/cpfs/cpfs-utils:4.2.0
         command: ["bash", "-c", "sleep infinity"]
         resources:
           limits:
@@ -44,8 +46,8 @@ spec:
           name: icp-mongodb-client-cert
         - mountPath: "/cred/cluster-ca"
           name: cluster-ca-cert
-        - mountPath: "/prep-script"
-          name: prep-script
+        - mountPath: "/scripts"
+          name: scripts
         - mountPath: "/work-dir"
           name: tmp-mongodb
         env:
@@ -76,7 +78,7 @@ spec:
       - name: cluster-ca-cert
         secret:
           secretName: mongodb-root-ca-cert
-      - name: prep-script
+      - name: scripts
         configMap:
           name: mongo-br-z-prep-script-cm
           defaultMode: 0777

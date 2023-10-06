@@ -7,21 +7,6 @@ s390x="false"
 if [[ ! -z $2 ]]; then
   s390x=$2
 fi
-function msg() {
-  printf '%b\n' "$1"
-}
-
-function success() {
-  msg "\33[32m[✔] ${1}\33[0m"
-}
-function warning() {
-  msg "\33[33m[✗] ${1}\33[0m"
-}
-
-function error() {
-  msg "\33[31m[✘] ${1}\33[0m"
-  exit 1
-}
 
 #
 # Restore Mongo
