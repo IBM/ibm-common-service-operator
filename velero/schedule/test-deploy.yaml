@@ -2,7 +2,7 @@ kind: Deployment
 apiVersion: apps/v1
 metadata:
   name: mongodb-backup-scripts
-  namespace: ibm-common-services
+  namespace: <cs namespace>
   labels:
     foundationservices.cloudpak.ibm.com: mongo-data
 spec:
@@ -13,19 +13,19 @@ spec:
     metadata:
       annotations:
         backup.velero.io/backup-volumes: mongodump
-        pre.hook.backup.velero.io/command: '["bash", "-c", "/scripts/mongo-backup.sh <ns> <sc> true"]'
-        post.hook.restore.velero.io/command: '["bash", "-c", "/scripts/mongo-restore.sh <ns> true"]'
+        pre.hook.backup.velero.io/command: '["bash", "-c", "/scripts/mongo-backup.sh <cs namespace> <storage class name> true && /scripts/prep-mongo-br-z.sh <cs namespace> up"]'
+        post.hook.restore.velero.io/command: '["bash", "-c", "/scripts/mongo-restore.sh <cs namespace> true && /scripts/prep-mongo-br-z.sh <cs namespace> up"]'
         pre.hook.backup.velero.io/wait-timeout: 300s
         pre.hook.backup.velero.io/exec-timeout: 300s
         pre.hook.backup.velero.io/timeout: 300s
       name: z-mongodb-br
-      namespace: ibm-common-services
+      namespace: <cs namespace>
       labels:
         foundationservices.cloudpak.ibm.com: mongo-data
     spec:
       containers:
       - name: z-mongodb-br
-        image: icr.io/cpopen/cpfs/cpfs-utils:4.1.0
+        image: icr.io/cpopen/cpfs/cpfs-utils:4.2.0
         command: ["bash", "-c", "sleep infinity"]
         resources:
           limits:

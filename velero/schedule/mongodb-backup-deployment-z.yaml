@@ -1,7 +1,7 @@
 kind: Deployment
 apiVersion: apps/v1
 metadata:
-  name: mongodb-backup-z
+  name: z-mongodb-br
   namespace: <cs namespace>
   labels:
     foundationservices.cloudpak.ibm.com: mongo-data
@@ -17,7 +17,8 @@ spec:
         post.hook.restore.velero.io/command: '["bash", "-c", "/scripts/mongo-restore.sh <cs namespace> true && /scripts/prep-mongo-br-z.sh <cs namespace> up"]'
         pre.hook.backup.velero.io/wait-timeout: 300s
         pre.hook.backup.velero.io/exec-timeout: 300s
-        pre.hook.backup.velero.io/timeout: 300s
+        pre.hook.backup.velero.io/timeout: 600s
+        post.hook.restore.velero.io/timeout: 600s
       name: z-mongodb-br
       namespace: <cs namespace>
       labels:
@@ -48,8 +49,6 @@ spec:
           name: cluster-ca-cert
         - mountPath: "/scripts"
           name: scripts
-        - mountPath: "/work-dir"
-          name: tmp-mongodb
         env:
           - name: ADMIN_USER
             valueFrom:
@@ -69,9 +68,6 @@ spec:
       serviceAccountName: mongo-z-backup-sa
       terminationGracePeriodSeconds: 30
       volumes:
-      - name: mongodump
-        persistentVolumeClaim:
-          claimName: cs-mongodump
       - name: icp-mongodb-client-cert
         secret:
           secretName: icp-mongodb-client-cert
