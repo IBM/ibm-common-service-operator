@@ -18,7 +18,7 @@ ENABLE_PRIVATE_CATALOG=0
 MIGRATE_SINGLETON=0
 OPERATOR_NS=""
 CONTROL_NS=""
-CHANNEL="v4.2"
+CHANNEL="v4.3"
 INSTALL_MODE="Automatic"
 CM_SOURCE_NS="openshift-marketplace"
 LIS_SOURCE_NS="openshift-marketplace"
@@ -200,7 +200,7 @@ function print_usage() {
     echo "   -cmNs, --cert-manager-namespace string                 Optional. Set custom namespace for ibm-cert-manager-operator. Default is ibm-cert-manager"
     echo "   --license-accept                                       Required. Set this flag to accept the license agreement."
     echo "   --preview                                              Optional.  Enable preview mode (dry run)"
-    echo "   -c, --channel string                                   Optional. Channel for Subscription(s). Default is v4.2"
+    echo "   -c, --channel string                                   Optional. Channel for Subscription(s). Default is v4.3"
     echo "   -i, --install-mode string                              Optional. InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
     echo "   -v, --debug integer                                    Optional. Verbosity of logs. Default is 0. Set to 1 for debug logs"
     echo "   -h, --help                                             Print usage information"
@@ -309,13 +309,10 @@ function install_cert_manager() {
             fi
 
             info "Upgrading ibm-cert-manager-operator to channel: $CHANNEL\n"
-            if [[ "$webhook_ns" != "$CERT_MANAGER_NAMESPACE" ]]; then
-                if [[ "$CUSTOMIZED_CM_NAMESPACE" -eq 0 ]]; then
-                    CERT_MANAGER_NAMESPACE="$webhook_ns"
-                else
-                    error "An ibm-cert-manager-operator already installed in namespace: $webhook_ns, please do not set parameter '-cmNs $CERT_MANAGER_NAMESPACE"
-                fi
+            if [[ "$webhook_ns" != "$CERT_MANAGER_NAMESPACE" ]] && [[ "$CUSTOMIZED_CM_NAMESPACE" -eq 1 ]]; then
+                error "An ibm-cert-manager-operator already installed in namespace: $webhook_ns, please do not set parameter '-cmNs $CERT_MANAGER_NAMESPACE"
             fi
+            CERT_MANAGER_NAMESPACE="$webhook_ns"
         else
             warning "Cluster has a RedHat cert-manager or Helm cert-manager, skipping"
             return 0
