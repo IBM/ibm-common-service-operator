@@ -98,7 +98,8 @@ function migrate_license_service_reporter(){
 
     lsr_pv_nr=$("${OC}" get pv -l license-service-reporter-pv=true --no-headers | wc -l )
     if [[ lsr_pv_nr -ne 1 ]]; then
-        error "Not one PV with label license-service-reporter-pv=true was found. Exactly one such PV is allowed."
+        warning "Expecting exactly one PV with label license-service-reporter-pv=true. $lsr_pv_nr found. Migration skipped."
+        return 0
     fi
 
     # Prepare LSR PV/PVC which was decoupled in isolate.sh
