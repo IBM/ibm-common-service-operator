@@ -230,6 +230,34 @@ function wait_for_operator() {
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
+function wait_for_issuer() {
+    local issuer=$1
+    local namespace=$2
+    local condition="${OC} -n ${namespace} get issuer.v1.cert-manager.io ${issuer} --ignore-not-found -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}' | grep 'True'"
+    local retries=10
+    local sleep_time=6
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for Issuer ${issuer} in namespace ${namespace} to be Ready"
+    local success_message="Issuer ${issuer} in namespace ${namespace} is Ready"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for Issuer ${issuer} in namespace ${namespace} to be Ready"
+ 
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
+function wait_for_certificate() {
+    local certificate=$1
+    local namespace=$2
+    local condition="${OC} -n ${namespace} get certificate.v1.cert-manager.io ${certificate} --ignore-not-found -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}' | grep 'True'"
+    local retries=10
+    local sleep_time=6
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for Certificate ${certificate} in namespace ${namespace} to be Ready"
+    local success_message="Certificate ${certificate} in namespace ${namespace} is Ready"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for Certificate ${certificate} in namespace ${namespace} to be Ready"
+ 
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
 function wait_for_csv() {
     local namespace=$1
     local package_name=$2
@@ -602,13 +630,33 @@ function check_cert_manager(){
         info "Preview mode is on, skip checking whether Cert Manager exist\n"
         return 0       
     fi
+    
     csv_count=`$OC get csv -n "$namespace" | grep "$service_name" | wc -l`
     if [[ $csv_count == 1 ]]; then
-        success "Found only one Cert Manager exists in namespace "$namespace"\n"
+        success "Found only one Cert Manager CSV exists in namespace "$namespace", continue smoke checking\n"
     elif [[ $csv_count == 0 ]]; then
-        error "Missing a Cert Manager\n"
+        warning "Missing a Cert Manager, continue smoke checking\n"
     elif [[ $csv_count > 1 ]]; then
         error "Multiple Cert Manager csv found. Only one should be installed per cluster\n"
+    fi
+
+    cm_smoke_test "test-issuer" "test-certificate" "test-certificate-secret" $namespace
+}
+
+function cm_smoke_test(){
+    local issuer_name=$1
+    local cert_name=$2
+    local sercret_name=$3
+    local namespace=$4
+    
+    title " Smoke test for Cert Manager existence..." 
+    cleanup_cm_resources $issuer_name $cert_name $sercret_name $namespace
+    create_issuer $issuer_name $namespace
+    create_certificate $issuer_name $cert_name $sercret_name $namespace
+    wait_for_issuer $issuer_name $namespace
+    wait_for_certificate $cert_name $namespace
+    if [[ $? -eq 0 ]]; then
+        cleanup_cm_resources $issuer_name $cert_name $sercret_name $namespace
     fi
 }
 
@@ -705,6 +753,58 @@ EOF
     cat ${PREVIEW_DIR}/${name}-subscription.yaml | ${OC} apply -f -
     if [[ $? -ne 0 ]]; then
         error "Failed to create subscription ${name} in ${ns}\n"
+    fi
+}
+
+function create_issuer() {
+    local issuer_name=$1
+    local namespace=$2
+    debug1 "Creating Issuer $issuer_name in namespace $namespace ."
+    cat <<EOF > ${PREVIEW_DIR}/issuer.yaml
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: $issuer_name
+  namespace: $namespace
+spec:
+  selfSigned: {}
+EOF
+
+    info "Creating following issuer:\n"
+    cat ${PREVIEW_DIR}/issuer.yaml
+    echo ""
+    cat ${PREVIEW_DIR}/issuer.yaml | ${OC} apply -f -
+    if [[ $? -ne 0 ]]; then
+        error "Failed to create Issuer $issuer_name in $namespace \n"
+    fi
+}
+
+function create_certificate() {
+    local issuer_name=$1
+    local cert_name=$2
+    local sercret_name=$3
+    local namespace=$4
+    debug1 "Creating Certificate $cert_name in namespace $namespace ."
+    cat <<EOF > ${PREVIEW_DIR}/certificate.yaml
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: $cert_name
+  namespace: $namespace 
+spec:
+  commonName: $cert_name
+  issuerRef:
+    kind: Issuer
+    name: $issuer_name
+  secretName: $sercret_name
+EOF
+
+    info "Creating following certificate:\n"
+    cat ${PREVIEW_DIR}/certificate.yaml
+    echo ""
+    cat ${PREVIEW_DIR}/certificate.yaml | ${OC} apply -f -
+    if [[ $? -ne 0 ]]; then
+        error "Failed to create test Certificate $cert_name in $namespace \n"
     fi
 }
 
@@ -817,6 +917,33 @@ function cleanup_webhook() {
     info "Deleting ValidatingWebhookConfiguration..."
     ${OC} delete ValidatingWebhookConfiguration ibm-cs-ns-mapping-webhook-configuration --ignore-not-found
 
+}
+
+# clean up issuers, certificates and secrets
+function cleanup_cm_resources() {
+    local issuer_name=$1
+    local cert_name=$2
+    local sercret_name=$3
+    local namespace=$4
+        
+    return_value_issuer=$(${OC} get issuer.v1.cert-manager.io $issuer_name -n $namespace --ignore-not-found )
+    if [[ ! -z $return_value_issuer ]]; then
+        info "Deleting $issuer_name Issuer ..."
+        ${OC} delete issuer.v1.cert-manager.io $issuer_name -n $namespace --ignore-not-found
+        msg ""
+    fi
+
+    return_value_cert=$(${OC} get certificate.v1.cert-manager.io $cert_name -n $namespace --ignore-not-found )
+    if [[ ! -z $return_value_cert ]]; then
+        info "Deleting $cert_name Certificate ..."
+        ${OC} delete certificate.v1.cert-manager.io $cert_name -n $namespace --ignore-not-found
+        msg ""
+
+        info "Deleting $$secret_name Secret ..."
+        ${OC} delete secret $sercret_name -n $namespace --ignore-not-found
+        msg ""
+    fi
+    
 }
 
 # TODO: clean up secretshare deployment and CR in service_ns
