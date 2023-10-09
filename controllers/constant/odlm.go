@@ -382,8 +382,6 @@ spec:
         data:
           spec:
             bindings:
-              public-keycloak-initial-admin:
-                secret: cs-keycloak-initial-admin
               public-keycloak-tls-secret:
                 secret: cs-keycloak-tls-secret
             description: Binding information that should be accessible to Keycloak adopters
