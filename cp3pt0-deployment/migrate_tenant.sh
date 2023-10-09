@@ -345,13 +345,13 @@ function isolate_license_service_reporter(){
         if [[ $return_value -gt 0 ]]; then
 
             # Change persistentVolumeReclaimPolicy to Retain
-            status=$("${OC}" get pvc license-service-reporter-pvc --ignore-not-found -n $MASTER_NS  --no-headers | awk '{print $2}' )
+            status=$("${OC}" get pvc license-service-reporter-pvc --ignore-not-found -n $OPERATOR_NS  --no-headers | awk '{print $2}' )
             debug1 "LSR pvc status: $status"
             if [[ "$status" == "Bound" ]]; then
-                VOL=$("${OC}" get pvc license-service-reporter-pvc --ignore-not-found -n $MASTER_NS  -o=jsonpath='{.spec.volumeName}')
+                VOL=$("${OC}" get pvc license-service-reporter-pvc --ignore-not-found -n $OPERATOR_NS  -o=jsonpath='{.spec.volumeName}')
                 debug1 "LSR volume name: $VOL"
                 if [[ -z "$VOL" ]]; then
-                    error "Volume for pvc license-service-reporter-pvc not found in $MASTER_NS"
+                    error "Volume for pvc license-service-reporter-pvc not found in $OPERATOR_NS"
                 fi
 
                 # label LSR PV as LSR PV for further LSR upgrade
@@ -361,7 +361,7 @@ function isolate_license_service_reporter(){
                 ${OC} patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Retain" }}'
                 debug1 "License Service Reporter PV reclaim policy set to 'Retain'"
             else
-                info "No Lisense Service Reporter PVC found in $MASTER_NS or it is not in 'Bound' state, skipping isolation."
+                info "No Lisense Service Reporter PVC found in $OPERATOR_NS or it is not in 'Bound' state, skipping isolation."
             fi
         fi
     fi
