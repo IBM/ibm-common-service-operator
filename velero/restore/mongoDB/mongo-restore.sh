@@ -15,14 +15,6 @@ function restore_mongodb () {
   msg "[$STEP] Restore the mongo database"
   STEP=$(( $STEP+1 ))
 
-  # Copy the PVC if needed
-  oc get pvc cs-mongodump -n $CS_NAMESPACE
-  if [ $? -ne 0 ]
-  then
-    echo PVC cs-mongodump not found!
-    exit -1
-  fi
-
   oc delete secret icp-mongo-setaccess -n $CS_NAMESPACE >/dev/null 2>&1
   oc create secret generic icp-mongo-setaccess -n $CS_NAMESPACE --from-file=set_access.js
 

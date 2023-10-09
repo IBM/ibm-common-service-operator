@@ -68,6 +68,9 @@ spec:
       serviceAccountName: mongo-z-backup-sa
       terminationGracePeriodSeconds: 30
       volumes:
+      - name: mongodump
+        persistentVolumeClaim:
+          claimName: cs-mongodump
       - name: icp-mongodb-client-cert
         secret:
           secretName: icp-mongodb-client-cert
