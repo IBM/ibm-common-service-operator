@@ -345,21 +345,24 @@ function isolate_license_service_reporter(){
         if [[ $return_value -gt 0 ]]; then
 
             # Change persistentVolumeReclaimPolicy to Retain
-            status=$("${OC}" get pvc license-service-reporter-pvc -n $OPERATOR_NS)
+            status=$("${OC}" get pvc license-service-reporter-pvc --ignore-not-found -n $OPERATOR_NS  --no-headers | awk '{print $2}' )
             debug1 "LSR pvc status: $status"
-            if [[ -z "$status" ]]; then
-                error "PVC license-service-reporter-pvc not found in $OPERATOR_NS"
-            fi
+            if [[ "$status" == "Bound" ]]; then
+                VOL=$("${OC}" get pvc license-service-reporter-pvc --ignore-not-found -n $OPERATOR_NS  -o=jsonpath='{.spec.volumeName}')
+                debug1 "LSR volume name: $VOL"
+                if [[ -z "$VOL" ]]; then
+                    error "Volume for pvc license-service-reporter-pvc not found in $OPERATOR_NS"
+                fi
 
-            VOL=$("${OC}" get pvc license-service-reporter-pvc -n $OPERATOR_NS  -o=jsonpath='{.spec.volumeName}')
-            debug1 "LSR volume name: $VOL"
-            if [[ -z "$VOL" ]]; then
-                error "Volume for pvc license-service-reporter-pvc not found in $OPERATOR_NS"
+                # label LSR PV as LSR PV for further LSR upgrade
+                ${OC} label pv $VOL license-service-reporter-pv=true --overwrite 
+                debug1 "License Service Reporter PV labeled with 'license-service-reporter-pv=true'"
+            
+                ${OC} patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Retain" }}'
+                debug1 "License Service Reporter PV reclaim policy set to 'Retain'"
+            else
+                info "No Lisense Service Reporter PVC found in $OPERATOR_NS or it is not in 'Bound' state, skipping isolation."
             fi
-
-            # label LSR PV as LSR PV for further LSR upgrade
-            ${OC} label pv $VOL license-service-reporter-pv=true --overwrite 
-            ${OC} patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Retain" }}'
         fi
     fi
     success "License Service Reporter isolated."
