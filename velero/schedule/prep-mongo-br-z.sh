@@ -15,8 +15,12 @@
 # limitations under the License.
 #
 
-CS_NAMESPACE=$1
-MODE=$2
+MODE=$1
+CS_NAMESPACE=$2
+SERVICES_NAMESPACE=$3
+if [[ -z $SERVICES_NAMESPACE ]]; then
+    $SERVICES_NAMESPACE=$CS_NAMESPACE
+fi
 
 function main(){
     if [[ -z $CS_NAMESPACE ]]; then
@@ -44,7 +48,7 @@ function scale_up(){
         oc scale deploy -n $CS_NAMESPACE ibm-mongodb-operator --replicas=1
         info "Wait for mongo operator to reconcile resources"
         sleep 60
-        delete_mongo_pods "$CS_NAMESPACE"
+        delete_mongo_pods "$SERVICES_NAMESPACE"
     fi
     success "Mongo reset successfully."
 }
@@ -54,10 +58,10 @@ function scale_down(){
     info "Scaling down MongoDB operator"
     oc scale deploy -n $CS_NAMESPACE ibm-mongodb-operator --replicas=0
     #get cache size value
-    cacheSizeGB=$(oc get cm icp-mongodb -n $CS_NAMESPACE -o yaml | grep cacheSizeGB | awk '{print $2}')
+    cacheSizeGB=$(oc get cm icp-mongodb -n $SERVICES_NAMESPACE -o yaml | grep cacheSizeGB | awk '{print $2}')
 
     info "Editing configmap icp-mongodb"
-    cat << EOF | oc apply -n $CS_NAMESPACE -f -
+    cat << EOF | oc apply -n $SERVICES_NAMESPACE -f -
 kind: ConfigMap
 apiVersion: v1
 metadata:
@@ -91,7 +95,7 @@ data:
       authorization: enabled
       keyFile: /data/configdb/key.txt
 EOF
-    delete_mongo_pods "$CS_NAMESPACE"
+    delete_mongo_pods "$SERVICES_NAMESPACE"
     success "Mongo prepped for backup or restore successfully."
 }
 
@@ -101,7 +105,7 @@ function delete_mongo_pods() {
   for pod in $pods
   do
     info "Deleting pod $pod"
-    oc delete pod $pod -n $CS_NAMESPACE --ignore-not-found
+    oc delete pod $pod -n $namespace --ignore-not-found
     local condition="oc get pod -n $namespace --no-headers --ignore-not-found | grep ${pod} | egrep '2/2' || oc get pod -n $namespace --no-headers --ignore-not-found | grep ${pod} | egrep '1/1' || true"
     local retries=15
     local sleep_time=15
