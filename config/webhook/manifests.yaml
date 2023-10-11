@@ -13,7 +13,7 @@ webhooks:
       name: webhook-service
       namespace: system
       path: /mutate-operator-ibm-com-v1alpha1-operandrequest
-  failurePolicy: Fail
+  failurePolicy: Ignore
   name: moperandrequest.kb.io
   rules:
   - apiGroups:
