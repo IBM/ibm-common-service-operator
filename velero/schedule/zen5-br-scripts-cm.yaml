@@ -136,28 +136,6 @@ data:
         #[2.2.2] Enable Zen operator maintenance mode and scale down deployments
         oc patch zenservice ${ZENSERVICE_NAME} --namespace ${ZEN_NAMESPACE} --type=merge --patch '{"spec": {"ignoreForMaintenance": true}}'
         
-        #check for parameter configmap for custom route changes
-        info "Checking for configmap zen5-customization-configmap in $ZEN_NAMESPACE."
-        cm_exists=$(oc get configmap -n $ZEN_NAMESPACE zen5-customization-configmap --ignore-not-found || echo "fail")
-        if [[ $cm_exists != "fail" ]]; then
-            route=$(oc get configmap -n $ZEN_NAMESPACE zen5-customization-configmap -o=jsonpath='{.data.custom_route}')
-            info "Configmap zen5-customization-configmap found in $ZEN_NAMESPACE. New zen Custom Route: ${route}"
-            instance=`oc get zenservice ${ZENSERVICE_NAME} -n ${ZEN_NAMESPACE} -o yaml --ignore-not-found | yq '
-                with(.; del(.metadata.creationTimestamp) |
-                del(.metadata.managedFields) |
-                del(.metadata.resourceVersion) |
-                del(.metadata.uid) |
-                del(.status) |
-                .spec.zenCustomRoute.route_host = "'${route}'"
-                )
-                ' | sed -e 's/^/    /g'`
-    cat << _EOF | oc apply -f -
-    ${instance}
-    _EOF
-        else
-            info "Configmap zen5-customization-configmap not present in $ZEN_NAMESPACE. Skipping custom route update."
-        fi
-        
         #suspend backup cronjob
         oc patch cj zen-metastore-backup-cron-job --namespace ${ZEN_NAMESPACE} --type=merge --patch '{"spec": {"suspend": true}}'
         oc get deploy ibm-nginx zen-core usermgmt zen-watcher  zen-watchdog zen-core-api -n ${ZEN_NAMESPACE}
@@ -313,12 +291,6 @@ data:
             error "Failed to grab broker secret zen-service-broker-secret in namespace $ZEN_NAMESPACE"
         else
             info "Broker Secret obtained in namespace $ZEN_NAMESPACE"
-        fi
-
-        # Get selected extensions using extension_name
-        cm_exists=$(oc get configmap zen5-customization-configmap -n $ZEN_NAMESPACE || echo "fail")
-        if [[ $cm_exists == "fail" ]]; then
-            error "Configmap zen5-customization-configmap not found in $ZEN_NAMESPACE. Exiting..."
         fi
 
         extensions=$(oc get zenextension -n $EXT_NAMESPACE -o custom-columns=NAME:.metadata.name --no-headers | tr '\n' ',')
