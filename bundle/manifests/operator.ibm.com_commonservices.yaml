@@ -145,7 +145,7 @@ spec:
                       type: string
                     spec:
                       additionalProperties:
-                         x-kubernetes-preserve-unknown-fields: true
+                        x-kubernetes-preserve-unknown-fields: true
                       type: object
                   required:
                   - name
