@@ -22,51 +22,54 @@ const ServiceLabelTemplate = `
   spec:
     authentication:
       labels:
-	  	placeholder
+	  - name: placeholder1
+	    value: placeholder2
 - name: ibm-im-mongodb-operator
 	spec:
 		mongoDB:
 			labels:
-				placeholder
+			- name: placeholder1
+			  value: placeholder2
 - name: ibm-im-operator
   spec:
     authentication:
       labels:
 	  - name: placeholder1
-	  	value: placeholder2
+	    value: placeholder2
 - name: ibm-im-operator-v4.0
   spec:
     authentication:
       labels:
-	  	placeholder
+	  - name: placeholder1
+	    value: placeholder2
 - name: ibm-im-operator-v4.1
   spec:
     authentication:
       labels:
-	  	placeholder
+	  - name: placeholder1
+	    value: placeholder2
 - name: ibm-im-operator-v4.2
   spec:
     authentication:
       labels:
-	  	placeholder
+	  - name: placeholder1
+	    value: placeholder2
 - name: ibm-idp-config-ui-operator-v4.0
 	spec:
 		commonWebUI: 
 			labels:
-				placeholder
+			- name: placeholder1
+			  value: placeholder2
 - name: ibm-idp-config-ui-operator-v4.1
 	spec:
 		commonWebUI: 
 			labels:
-				placeholder
+			- name: placeholder1
+			  value: placeholder2
 - name: ibm-idp-config-ui-operator-v4.2
 	spec:
 		commonWebUI: 
 			labels:
-				placeholder
-`
-
-const LabelTemplate = `
-- name: placeholder1
-  value: placeholder2
+			-   name: placeholder1
+				value: placeholder2
 `

@@ -1504,14 +1504,22 @@ func (b *Bootstrap) UpdateResourceLabel(instance *apiv3.CommonService) error {
 	csObjectList.Items = append(csObjectList.Items, *instance)
 
 	// get spec.labels in the spec
+	needUpdate := false
 	for _, cs := range csObjectList.Items {
 		labels := cs.Spec.Labels
 		for _, l := range labels {
+			needUpdate = true
 			labelsMap[l.Name] = l.Value
 		}
 	}
 
+	if !needUpdate {
+		klog.Infof("no need to update label")
+		return nil
+	}
+
 	// update cs cr
+	klog.Infof("update cscr")
 	for _, cs := range csObjectList.Items {
 		util.EnsureLabelsForCsCR(&cs, labelsMap)
 		if err := b.Client.Update(context.TODO(), &cs); err != nil {
@@ -1521,6 +1529,7 @@ func (b *Bootstrap) UpdateResourceLabel(instance *apiv3.CommonService) error {
 	}
 
 	// update configmaps
+	klog.Infof("update cm")
 	cmNames := []string{"common-services-maps", "namespace-scope"}
 	cmList := &corev1.ConfigMapList{}
 	for _, cmName := range cmNames {
@@ -1528,7 +1537,7 @@ func (b *Bootstrap) UpdateResourceLabel(instance *apiv3.CommonService) error {
 		if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: b.CSData.ServicesNs}, cm); err != nil && !errors.IsNotFound(err) {
 			return err
 		} else if errors.IsNotFound(err) {
-			klog.V(3).Infof("configmap %s is not found in kube-public namespace", constant.CsMapConfigMap)
+			klog.V(3).Infof("configmap %s is not found in namespace: %s", cmName, b.CSData.ServicesNs)
 		}
 		cmList.Items = append(cmList.Items, *cm)
 	}
@@ -1542,6 +1551,7 @@ func (b *Bootstrap) UpdateResourceLabel(instance *apiv3.CommonService) error {
 
 	// update ODLM CR
 	// update opcfg
+	klog.Infof("update opcfg")
 	opconfigList := &odlm.OperandConfigList{}
 	opcon := &odlm.OperandConfig{}
 	if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: "common-service", Namespace: b.CSData.ServicesNs}, opcon); err != nil && !errors.IsNotFound(err) {
@@ -1559,6 +1569,7 @@ func (b *Bootstrap) UpdateResourceLabel(instance *apiv3.CommonService) error {
 	}
 
 	// update opreg
+	klog.Infof("update opreg")
 	opregList := &odlm.OperandRegistryList{}
 	opreg := &odlm.OperandRegistry{}
 	if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: "common-service", Namespace: b.CSData.ServicesNs}, opreg); err != nil && !errors.IsNotFound(err) {
@@ -1576,6 +1587,7 @@ func (b *Bootstrap) UpdateResourceLabel(instance *apiv3.CommonService) error {
 	}
 
 	//update issuer
+	klog.Infof("update issuer")
 	issuerList := &certmanagerv1.IssuerList{}
 	issuerNames := []string{"cs-ss-issuer", "cs-ca-issuer"}
 	for _, issuerName := range issuerNames {
@@ -1619,6 +1631,7 @@ func (b *Bootstrap) UpdateResourceLabel(instance *apiv3.CommonService) error {
 func (b *Bootstrap) UpdateResourceWithLabel(resources *unstructured.UnstructuredList, labels map[string]string) error {
 	for _, resource := range resources.Items {
 		util.EnsureLabels(&resource, labels)
+		klog.Infof("updating resorece %")
 		if err := b.UpdateObject(&resource); err != nil {
 			klog.Errorf("Failed to update label in kind:%v namespace/name:%v/%v, %v", resource.GetKind(), resource.GetNamespace(), resource.GetName(), err)
 			return err
