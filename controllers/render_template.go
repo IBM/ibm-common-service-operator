@@ -97,6 +97,26 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 			}
 		}
 	}
+	klog.Info("Applying label configuration")
+	var labelstring string
+	if labels := cs.Object["spec"].(map[string]interface{})["labels"]; labels != nil {
+		for _, label := range labels.([]interface{}) {
+			if labelname := label.(map[string]interface{})["name"]; labelname != nil {
+				if labelvalue := label.(map[string]interface{})["value"]; labelvalue != nil {
+					replacer := strings.NewReplacer("placeholder1", labelname.(string), "placeholder2", labelvalue.(string))
+					labelstring += replacer.Replace(constant.LabelTemplate)
+				}
+			}
+		}
+
+		if labelstring != "" {
+			labelConfig, err := convertStringToSlice(strings.ReplaceAll(constant.ServiceLabelTemplate, "placeholder", labelstring))
+			if err != nil {
+				return nil, nil, err
+			}
+			newConfigs = append(newConfigs, labelConfig...)
+		}
+	}
 
 	klog.Info("Applying size configuration")
 	var sizeConfigs []interface{}

@@ -1487,3 +1487,142 @@ func (b *Bootstrap) CleanupWebhookResources() error {
 	}
 	return nil
 }
+
+func (b *Bootstrap) UpdateResourceLabel(instance *apiv3.CommonService) error {
+	labelsMap := make(map[string]string)
+	// Fetch all the CommonService instances
+	csReq, err := labels.NewRequirement(constant.CsClonedFromLabel, selection.DoesNotExist, []string{})
+	if err != nil {
+		return err
+	}
+	csObjectList := &apiv3.CommonServiceList{}
+	if err := b.Client.List(ctx, csObjectList, &client.ListOptions{
+		LabelSelector: labels.NewSelector().Add(*csReq),
+	}); err != nil {
+		return err
+	}
+	csObjectList.Items = append(csObjectList.Items, *instance)
+
+	// get spec.labels in the spec
+	for _, cs := range csObjectList.Items {
+		labels := cs.Spec.Labels
+		for _, l := range labels {
+			labelsMap[l.Name] = l.Value
+		}
+	}
+
+	// update cs cr
+	for _, cs := range csObjectList.Items {
+		util.EnsureLabelsForCsCR(&cs, labelsMap)
+		if err := b.Client.Update(context.TODO(), &cs); err != nil {
+			klog.Errorf("Failed to update label in commonservice cr:%v, %v", cs.GetName(), err)
+			return err
+		}
+	}
+
+	// update configmaps
+	cmNames := []string{"common-services-maps", "namespace-scope"}
+	cmList := &corev1.ConfigMapList{}
+	for _, cmName := range cmNames {
+		cm := &corev1.ConfigMap{}
+		if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: b.CSData.ServicesNs}, cm); err != nil && !errors.IsNotFound(err) {
+			return err
+		} else if errors.IsNotFound(err) {
+			klog.V(3).Infof("configmap %s is not found in kube-public namespace", constant.CsMapConfigMap)
+		}
+		cmList.Items = append(cmList.Items, *cm)
+	}
+	cmUnstructedList, err := util.ObjectListToNewUnstructuredList(cmList)
+	if err != nil {
+		return err
+	}
+	if err := b.UpdateResourceWithLabel(cmUnstructedList, labelsMap); err != nil {
+		return err
+	}
+
+	// update ODLM CR
+	// update opcfg
+	opconfigList := &odlm.OperandConfigList{}
+	opcon := &odlm.OperandConfig{}
+	if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: "common-service", Namespace: b.CSData.ServicesNs}, opcon); err != nil && !errors.IsNotFound(err) {
+		return err
+	} else if errors.IsNotFound(err) {
+		klog.V(3).Infof("OperandConfig common-service is not found in namespace: %s", b.CSData.ServicesNs)
+	}
+	opconfigList.Items = append(opconfigList.Items, *opcon)
+	opconUnstructedList, err := util.ObjectListToNewUnstructuredList(opconfigList)
+	if err != nil {
+		return err
+	}
+	if err := b.UpdateResourceWithLabel(opconUnstructedList, labelsMap); err != nil {
+		return err
+	}
+
+	// update opreg
+	opregList := &odlm.OperandRegistryList{}
+	opreg := &odlm.OperandRegistry{}
+	if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: "common-service", Namespace: b.CSData.ServicesNs}, opreg); err != nil && !errors.IsNotFound(err) {
+		return err
+	} else if errors.IsNotFound(err) {
+		klog.V(3).Infof("OperandRegistry common-service is not found in namespace: %s", b.CSData.ServicesNs)
+	}
+	opregList.Items = append(opregList.Items, *opreg)
+	opregUnstructedList, err := util.ObjectListToNewUnstructuredList(opregList)
+	if err != nil {
+		return err
+	}
+	if err := b.UpdateResourceWithLabel(opregUnstructedList, labelsMap); err != nil {
+		return err
+	}
+
+	//update issuer
+	issuerList := &certmanagerv1.IssuerList{}
+	issuerNames := []string{"cs-ss-issuer", "cs-ca-issuer"}
+	for _, issuerName := range issuerNames {
+		issuer := &certmanagerv1.Issuer{}
+		if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: issuerName, Namespace: b.CSData.ServicesNs}, issuer); err != nil && !errors.IsNotFound(err) {
+			return err
+		} else if errors.IsNotFound(err) {
+			klog.V(3).Infof("Issuer %s is not found in namespace: %s", issuerName, b.CSData.ServicesNs)
+		}
+		issuerList.Items = append(issuerList.Items, *issuer)
+	}
+	issuerUnstructedList, err := util.ObjectListToNewUnstructuredList(issuerList)
+	if err != nil {
+		return err
+	}
+
+	if err := b.UpdateResourceWithLabel(issuerUnstructedList, labelsMap); err != nil {
+		return err
+	}
+
+	// update certificate
+	certList := &certmanagerv1.CertificateList{}
+	cert := &certmanagerv1.Certificate{}
+	if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: "cs-ca-certificate", Namespace: b.CSData.ServicesNs}, cert); err != nil && !errors.IsNotFound(err) {
+		return err
+	} else if errors.IsNotFound(err) {
+		klog.V(3).Infof("certificate cs-ca-certificate is not found in namespace: %s", b.CSData.ServicesNs)
+	}
+	certList.Items = append(certList.Items, *cert)
+	certUnstructedList, err := util.ObjectListToNewUnstructuredList(certList)
+	if err != nil {
+		return err
+	}
+	if err := b.UpdateResourceWithLabel(certUnstructedList, labelsMap); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (b *Bootstrap) UpdateResourceWithLabel(resources *unstructured.UnstructuredList, labels map[string]string) error {
+	for _, resource := range resources.Items {
+		util.EnsureLabels(&resource, labels)
+		if err := b.UpdateObject(&resource); err != nil {
+			klog.Errorf("Failed to update label in kind:%v namespace/name:%v/%v, %v", resource.GetKind(), resource.GetNamespace(), resource.GetName(), err)
+			return err
+		}
+	}
+	return nil
+}

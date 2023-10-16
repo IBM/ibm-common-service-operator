@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.6.1
+    controller-gen.kubebuilder.io/version: v0.5.0
   creationTimestamp: null
   labels:
     app.kubernetes.io/instance: ibm-common-service-operator
@@ -85,6 +85,22 @@ spec:
                 description: 'InstallPlanApproval sets the approval mode for ODLM
                   and other foundational services: Manual or Automatic'
                 type: string
+              labels:
+                description: Labels describes  foundational services will use this
+                  labels to labels their corresponding resources
+                items:
+                  description: LabelConfig defines the label in common service corresponding
+                    resources
+                  properties:
+                    name:
+                      type: string
+                    value:
+                      type: string
+                  required:
+                  - name
+                  - value
+                  type: object
+                type: array
               license:
                 description: LicenseList defines the license specification in CSV
                 properties:
@@ -129,7 +145,7 @@ spec:
                       type: string
                     spec:
                       additionalProperties:
-                        x-kubernetes-preserve-unknown-fields: true
+                        type: object
                       type: object
                   required:
                   - name

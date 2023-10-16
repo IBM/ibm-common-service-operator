@@ -246,6 +246,11 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 		return ctrl.Result{}, err
 	}
 
+	if err := r.Bootstrap.UpdateResourceLabel(instance); err != nil {
+		klog.Error(err)
+		return ctrl.Result{}, err
+	}
+
 	if err := r.updatePhase(ctx, instance, CRSucceeded); err != nil {
 		klog.Error(err)
 		return ctrl.Result{}, err
@@ -316,6 +321,11 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(ctx context.Context, instan
 			klog.Error(err)
 		}
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
+		return ctrl.Result{}, err
+	}
+
+	if err := r.Bootstrap.UpdateResourceLabel(instance); err != nil {
+		klog.Error(err)
 		return ctrl.Result{}, err
 	}
 

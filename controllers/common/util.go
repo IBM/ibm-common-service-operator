@@ -675,6 +675,16 @@ func EnsureLabelsForConfigMap(cm *corev1.ConfigMap, labels map[string]string) {
 	}
 }
 
+// EnsureLabels ensures that the specifc resource has the certain labels
+func EnsureLabels(resource *unstructured.Unstructured, labels map[string]string) {
+	if resource.Object["metadata"].(map[string]interface{})["labels"] == nil {
+		resource.Object["metadata"].(map[string]interface{})["labels"] = make(map[string]string)
+	}
+	for k, v := range labels {
+		resource.Object["metadata"].(map[string]interface{})["labels"].(map[string]string)[k] = v
+	}
+}
+
 // GetRequestNs gets requested-from-namespace of map-to-common-service-namespace
 func GetRequestNs(r client.Reader) (requestNs []string) {
 	operatorNs, err := GetOperatorNamespace()
