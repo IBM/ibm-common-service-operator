@@ -71,5 +71,5 @@ const ServiceLabelTemplate = `
 		commonWebUI: 
 			labels:
 			-   name: placeholder1
-				value: placeholder2
+			    value: placeholder2
 `
