@@ -123,6 +123,11 @@ data:
     #[2.2.1] Set Zen namespace
     ZEN_NAMESPACE=$1 #should probably defualt this to zen with an optional parameter
     ZENSERVICE_NAME=$2
+    EXT_NAMESPACE=$3
+    if [[ -z $EXT_NAMESPACE ]]; then
+        $EXT_NAMESPACE=$ZEN_NAMESPACE
+    fi
+
     BACKUP_DIR=/zen5/zen-backup
 
     function main {
@@ -207,6 +212,9 @@ data:
         oc patch secret -n $ZEN_NAMESPACE zen-secrets-aes-key --patch="{\"data\": { \"aes_key\": \"$(base64 -w0 $BACKUP_DIR/secrets/aes_key)\" }}"
         oc patch secret -n $ZEN_NAMESPACE admin-user-details --patch="{\"data\": { \"initial_admin_password\": \"$(base64 -w0 $BACKUP_DIR/secrets/initial_admin_password)\" }}"
 
+        #Possible site for running extension script
+        ./zen5/customize-zen-extensions.sh $ZEN_NAMESPACE $ZENSERVICE_NAME $EXT_NAMESPACE
+        
         #[2.2.5] Scale up deployments and Disable Zen operator maintenance mode
         #[2.2.5.1] Scale up the deployments
         info "Scale up deployments."
@@ -291,6 +299,10 @@ data:
     set -o errexit
 
     ZEN_NAMESPACE=$1
+    EXT_NAMESPACE=$2
+    if [[ -z $EXT_NAMESPACE ]]; then
+        $EXT_NAMESPACE=$ZEN_NAMESPACE
+    fi
 
     function main(){
 
@@ -308,33 +320,32 @@ data:
         if [[ $cm_exists == "fail" ]]; then
             error "Configmap zen5-customization-configmap not found in $ZEN_NAMESPACE. Exiting..."
         fi
-        
-        extensions=$(oc get configmap zen5-customization-configmap -n $ZEN_NAMESPACE -o yaml | yq .data.extensions || echo "fail") 
-        if [[ $extensions == "fail" ]]; then
-            error "Failed to get extensions from configmap zen5-customization-configmap in namespace $ZEN_NAMESPACE"
+
+        extensions=$(oc get zenextension -n $EXT_NAMESPACE -o custom-columns=NAME:.metadata.name --no-headers | tr '\n' ',')
+        if [[ -z $extensions ]]; then
+            info "No extensions found in namespace $EXT_NAMESPACE, exiting."
         else
-            info "Extensions to cleanup in namespace $ZEN_NAMESPACE: $extensions"
+            info "Extensions to cleanup in namespace $EXT_NAMESPACE: $extensions"
+            # curl -H 'secret: <broker-secret>' -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=bawtest-bas-extension,ibm-bts-zen-frontdoor,icp4adeploy-ban-zen-extension,icp4adeploy-cp4ba-zen-extension,icp4adeploy-graphql-zen-extension,icp4adeploy-cmis-zen-extension,icp4adeploy-cpe-zen-extension,icp4adeploy-rr-bawtest-zen-ext
+            curl_output=$(curl -H "secret: ${broker_secret}" -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=${extensions})
+
+            # Extract ID of each extension
+            id_list=$(echo $curl_output | yq eval '.data[] | select(.id == "*") | .id' | tr '\n' ' ') #space separated list of ids
+            if [[ -z $id_list ]] || [[ $id_list == "" ]]; then
+                error "The list of extensions provdided returned an empty ID list from the database. These extensions may not be present in this database."
+            else
+                info "List of extension IDs populated, continuing with deletion."
+            fi
+
+            # Delete each extension using the ID
+            # curl -H 'secret: <broker-secret>' -ks -X DELETE https://zen-core-api-svc:4444/v1/extensions/{id}
+            for id in $id_list; do
+                info "Deleting extension with ID $id."
+                curl -H "secret: ${broker_secret}" -ks -X DELETE https://zen-core-api-svc:4444/v1/extensions/{$id}
+            done
+
+            success "Zen extension cleanup complete."
         fi
-
-        # curl -H 'secret: <broker-secret>' -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=bawtest-bas-extension,ibm-bts-zen-frontdoor,icp4adeploy-ban-zen-extension,icp4adeploy-cp4ba-zen-extension,icp4adeploy-graphql-zen-extension,icp4adeploy-cmis-zen-extension,icp4adeploy-cpe-zen-extension,icp4adeploy-rr-bawtest-zen-ext
-        curl_output=$(curl -H "secret: ${broker_secret}" -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=${extensions})
-
-        # Extract ID of each extension
-        id_list=$(echo $curl_output | yq eval '.data[] | select(.id == "*") | .id' | tr '\n' ' ') #space separated list of ids
-        if [[ -z $id_list ]] || [[ $id_list == "" ]]; then
-            error "The list of extensions provdided returned an empty ID list from the database. These extensions may not be present in this database."
-        else
-            info "List of extension IDs populated, continuing with deletion."
-        fi
-
-        # Delete each extension using the ID
-        # curl -H 'secret: <broker-secret>' -ks -X DELETE https://zen-core-api-svc:4444/v1/extensions/{id}
-        for id in $id_list; do
-            info "Deleting extension with ID $id."
-            curl -H "secret: ${broker_secret}" -ks -X DELETE https://zen-core-api-svc:4444/v1/extensions/{$id}
-        done
-
-        success "Zen extension cleanup complete."
     }
 
     function msg() {
