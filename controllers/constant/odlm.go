@@ -410,6 +410,7 @@ spec:
         kind: ConfigMap
         force: false
         name: keycloak-bindinfo
+        namespace: {{ .OperatorNs }}
         data:
           data:
             keycloak-bindinfo.yaml: |
@@ -432,6 +433,7 @@ spec:
       - apiVersion: v1
         kind: ConfigMap
         name: keycloak-setup-script
+        namespace: {{ .OperatorNs }}
         data:
           data:  
             keycloak-setup-script.sh: |
@@ -464,14 +466,9 @@ spec:
               set -o errtrace
               set -o nounset
               
-              if [ -z "$NAMESPACE" ]; then
-                  resource_namespace=$(oc project -q)
-              else
-                  resource_namespace=$NAMESPACE
-              fi
-              
-              if [ -z "$WATCH_NAMESPACE" ]; then
-                  config_namespace_list=$(oc project -q)
+              resource_namespace=$(oc get commonservice common-service -n $OPERATOR_NAMESPACE -o jsonpath='{.spec.servicesNamespace}')
+              if [ -z "$WATCH_NAMESPACE" ] || [ "$WATCH_NAMESPACE" == "''" ]; then
+                  config_namespace_list=$resource_namespace
               else
                   config_namespace_list=$WATCH_NAMESPACE
               fi
@@ -590,6 +587,7 @@ spec:
       - apiVersion: batch/v1
         kind: Job
         name: keycloak-setup-job
+        namespace: {{ .OperatorNs }}
         data:
           spec:
             template:
@@ -606,7 +604,7 @@ spec:
                   - name: keycloak-setup-script
                     mountPath: /setup-script
                   env:
-                    - name: NAMESPACE
+                    - name: OPERATOR_NAMESPACE
                       valueFrom:
                         fieldRef:
                           apiVersion: v1
@@ -616,6 +614,7 @@ spec:
                           configMapKeyRef:
                             name: namespace-scope
                             key: namespaces
+                            optional: true
                 volumes:
                 - name: keycloak-setup-script
                   configMap:
@@ -638,6 +637,7 @@ spec:
       - apiVersion: v1
         kind: ConfigMap
         name: keycloak-bindinfo-script
+        namespace: {{ .OperatorNs }}
         data:  
           data:
             keycloak-bindinfo-script.sh: |
@@ -645,18 +645,7 @@ spec:
           
               KIND_LIST="route,service"
               config_yaml=$(cat /bindinfo-data/keycloak-bindinfo.yaml)
-          
-              if [ -z "$NAMESPACE" ]; then
-                  resource_namespace=$(oc project -q)
-              else
-                  resource_namespace=$NAMESPACE
-              fi
-          
-              if [ -z "$WATCH_NAMESPACE" ]; then
-                  config_namespace_list=$(oc project -q)
-              else
-                  config_namespace_list=$WATCH_NAMESPACE
-              fi
+              resource_namespace=$(oc get commonservice common-service -n $OPERATOR_NAMESPACE -o jsonpath='{.spec.servicesNamespace}')
           
               function parse_schema() {
                   local kind="$1"
@@ -739,7 +728,12 @@ spec:
                   echo "ConfigMap $resource_name created in namespace $config_namespace"
               }
           
-              while true; do 
+              while true; do
+                  if [ -z "$WATCH_NAMESPACE" ] || [ "$WATCH_NAMESPACE" == "''" ]; then
+                      config_namespace_list=$(oc get OperandRequest --all-namespaces -o custom-columns='NAMESPACE:.metadata.namespace' --no-headers | tr '\n' ',' | sed 's/,$//')
+                  else
+                      config_namespace_list=$WATCH_NAMESPACE
+                  fi
                   while IFS=',' read -ra kind; do
                       for i in "${kind[@]}"; do
                           echo $i
@@ -767,6 +761,7 @@ spec:
       - apiVersion: apps/v1
         kind: Deployment
         name: keycloak-bindinfo-deployment
+        namespace: {{ .OperatorNs }}
         force: false
         data:
           spec:
@@ -790,7 +785,7 @@ spec:
                   - name: keycloak-bindinfo-script
                     mountPath: /bindinfo-script
                   env:
-                    - name: NAMESPACE
+                    - name: OPERATOR_NAMESPACE
                       valueFrom:
                         fieldRef:
                           apiVersion: v1
@@ -800,6 +795,7 @@ spec:
                           configMapKeyRef:
                             name: namespace-scope
                             key: namespaces
+                            optional: true
                   securityContext:
                     runAsNonRoot: true
                     seccompProfile:
