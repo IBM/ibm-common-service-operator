@@ -510,7 +510,23 @@ spec:
                           sleep 10
                       fi
                   done
-              
+
+                  # wait for secret keycloak-edb-cluster-app and raise error msg if it does not exist after 5 minutes
+                  title "Wait for Secret keycloak-edb-cluster-app in namespace $resource_namespace"
+                  for i in {1..30}; do
+                      oc get secret keycloak-edb-cluster-app -n "$resource_namespace" >/dev/null 2>&1
+                      if [ $? -eq 0 ]; then
+                          success "Secret keycloak-edb-cluster-app found in namespace $resource_namespace"
+                          break
+                      else
+                          if [ $i -eq 30 ]; then
+                              error "Secret keycloak-edb-cluster-app not found in namespace $resource_namespace"
+                          fi
+                          warning "Secret keycloak-edb-cluster-app not found in namespace $resource_namespace, retrying in 10 seconds..."
+                          sleep 10
+                      fi
+                  done
+
                   # Wait for KeyCloak CR named cs-keycloak to be created
                   title "Wait for KeyCloak CR named cs-keycloak to be created in namespace $resource_namespace"
                   for i in {1..30}; do
@@ -526,7 +542,7 @@ spec:
                           sleep 10
                       fi
                   done
-              
+
                   # Refresh KeyCloak CR annotation to allow it to reload the secret
                   title "Refresh KeyCloak CR annotation to allow it to reload the secret"
                   oc patch keycloak cs-keycloak -n "$resource_namespace" --type merge -p '{"metadata":{"annotations":{"operator.ibm.com/reloaded-for-tls-secret":"'"$(date '+%Y-%m-%dT%T')"'"}}}'
