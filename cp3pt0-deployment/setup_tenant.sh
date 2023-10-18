@@ -679,8 +679,8 @@ EOF
 
         # Check if the patch was successful
         if [[ $? -eq 0 ]]; then
-            operator_ns_in_cr=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | yq '.spec.operatorNamespace')
-            services_ns_in_cr=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | yq '.spec.servicesNamespace')
+            operator_ns_in_cr=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | "${YQ}" '.spec.operatorNamespace')
+            services_ns_in_cr=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | "${YQ}" '.spec.servicesNamespace')
             if [[ "$operator_ns_in_cr" == "$OPERATOR_NS" ]] && [[ "$services_ns_in_cr" == "$SERVICES_NS" ]]; then
                 success "Successfully patched CommonService CR in ${OPERATOR_NS}"
                 break
