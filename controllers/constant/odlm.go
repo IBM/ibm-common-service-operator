@@ -208,8 +208,6 @@ spec:
     namespace: "{{ .ServicesNs }}"
     packageName: keycloak-operator
     scope: public
-    sourceName: community-operators
-    sourceNamespace: openshift-marketplace
   - channel: stable
     installPlanApproval: {{ .ApprovalMode }}
     name: edb-keycloak
