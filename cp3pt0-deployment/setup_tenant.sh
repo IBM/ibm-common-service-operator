@@ -203,7 +203,7 @@ function pre_req() {
     # Check if channel is semantic vx.y
     if [[ $CHANNEL =~ ^v[0-9]+\.[0-9]+$ ]]; then
         # Check if channel is equal or greater than v4.0
-        if [[ $CHANNEL == v[4-9].* || $CHANNEL == v[4-9] ]]; then  
+        if [[ $CHANNEL == v[4-9].* || $CHANNEL == v[4-9] ]]; then
             success "Channel $CHANNEL is valid"
         else
             error "Channel $CHANNEL is less than v4.0"
@@ -258,7 +258,7 @@ function pre_req() {
     fi
 
     # Check public CatalogSource and CatalogSource Namespace
-    validate_cs_catalogsource    
+    validate_cs_catalogsource
     echo ""
 }
 
@@ -406,7 +406,7 @@ function install_nss() {
         wait_for_csv "$OPERATOR_NS" "ibm-namespace-scope-operator"
         wait_for_operator "$OPERATOR_NS" "ibm-namespace-scope-operator"
     fi
-    
+
     # namespaceMembers should at least have Bedrock operators' namespace
     local ns=$(cat <<EOF
 
@@ -417,12 +417,11 @@ EOF
     title "Adding the tethered optional namespaces and removing excluded namespaces for a tenant to namespaceMembers..."
     # add the tethered optional namespaces for a tenant to namespaceMembers
     # ${TETHERED_NS} is comma delimited, so need to replace commas with space
-    local nss_exists="fail"
     if [ $PREVIEW_MODE -eq 0 ]; then
-        nss_exists=$(${OC} get nss common-service -n $OPERATOR_NS || echo "fail")
-    fi 
+        nss_exists=$(${OC} get nss common-service -n $OPERATOR_NS --ignore-not-found)
+    fi
 
-    if [[ $nss_exists != "fail" ]]; then
+    if [[ ! -z "$nss_exists" ]]; then
         debug1 "NamspaceScope common-service exists in namespace $OPERATOR_NS."
         existing_ns=$(${OC} get nss common-service -n $OPERATOR_NS -o=jsonpath='{.spec.namespaceMembers}' | tr -d \" | tr -d [ | tr -d ])
         existing_ns="${existing_ns//,/ }"
@@ -496,7 +495,7 @@ rules:
   - watch
   - deletecollection
 EOF
-
+        
     cat <<EOF > ${PREVIEW_DIR}/rolebinding.yaml
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -516,21 +515,23 @@ EOF
     title "Checking and authorizing NSS to all namespaces in tenant..."
     for ns in $SERVICES_NS ${TETHERED_NS//,/ }; do
 
-        if [[ $($OC get RoleBinding nss-managed-role-from-$OPERATOR_NS -n $ns 2>/dev/null) != "" ]];then
-            info "RoleBinding nss-managed-role-from-$OPERATOR_NS is already existed in $ns, skip creating\n"
+        if [[ $($OC get RoleBinding nss-managed-role-from-$OPERATOR_NS -n $ns 2>/dev/null) != "" ]] && [[ $($OC get Role nss-managed-role-from-$OPERATOR_NS -n $ns 2>/dev/null) != "" ]];then
+            info "Role and RoleBinding nss-managed-role-from-$OPERATOR_NS is already existed in $ns, skip creating\n"
         else
             debug1 "Creating following Role:\n"
-            cat ${PREVIEW_DIR}/role.yaml | sed "s/ns_to_replace/$ns/g"
+            local role=$(cat ${PREVIEW_DIR}/role.yaml | sed "s/ns_to_replace/$ns/g")
+            debug1 "$role"
             echo ""
-            cat ${PREVIEW_DIR}/role.yaml | sed "s/ns_to_replace/$ns/g" | ${OC_CMD} apply -f -
+            echo "$role" | ${OC_CMD} apply -f -
             if [[ $? -ne 0 ]]; then
                 error "Failed to create Role for NSS in namespace $ns, please check if user has proper permission to create role\n"
             fi
 
             debug1 "Creating following RoleBinding:\n"
-            cat ${PREVIEW_DIR}/rolebinding.yaml | sed "s/ns_to_replace/$ns/g"
+            local rb=$(cat ${PREVIEW_DIR}/rolebinding.yaml | sed "s/ns_to_replace/$ns/g")
+            debug1 "$rb"
             echo ""
-            cat ${PREVIEW_DIR}/rolebinding.yaml | sed "s/ns_to_replace/$ns/g" | ${OC_CMD} apply -f -
+            echo "$rb" | ${OC_CMD} apply -f -
             if [[ $? -ne 0 ]]; then
                 error "Failed to create RoleBinding for NSS in namespace $ns, please check if user has proper permission to create rolebinding\n"
             fi
@@ -585,7 +586,7 @@ function install_cs_operator() {
                         wait_for_operator_upgrade $ns $pm $CHANNEL $INSTALL_MODE
                     fi
                 done
-            fi        
+            fi
         fi
     else
         create_subscription "ibm-common-service-operator" "$OPERATOR_NS" "$CHANNEL" "ibm-common-service-operator" "${SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
@@ -601,12 +602,12 @@ function install_cs_operator() {
     else
         info "Preview mode is on, skip waiting for operator and webhook being ready\n"
     fi
-    
+
     if [ "$is_CS_CRD_exist" == "fail" ] || [ $RETRY_CONFIG_CSCR -eq 1 ]; then
         RETRY_CONFIG_CSCR=1
         configure_cs_kind
     fi
-    
+
     # Checking master CommonService CR status
     if [ $PREVIEW_MODE -eq 0 ]; then
         wait_for_csv "$OPERATOR_NS" "ibm-odlm"
@@ -673,9 +674,9 @@ EOF
     echo ""
 
     while [ $retries -gt 0 ]; do
-        
+
         cat "${PREVIEW_DIR}/commonservice.yaml" | ${OC_CMD} apply -f -
-    
+
         # Check if the patch was successful
         if [[ $? -eq 0 ]]; then
             operator_ns_in_cr=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | yq '.spec.operatorNamespace')
