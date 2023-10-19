@@ -82,6 +82,7 @@ function parse_arguments() {
             ;;
         --with-minimal-rbac)
             shift
+            MINIMAL_RBAC_ENABLED=1
             MINIMAL_RBAC=$1
             ;;
         --operator-namespace)
@@ -481,7 +482,7 @@ EOF
 
 function authorize_nss() {
 
-    if [ $MINIMAL_RBAC -eq "" ]; then
+    if [ $MINIMAL_RBAC_ENABLED -eq 0 ]; then
         cat <<EOF > ${PREVIEW_DIR}/role.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
