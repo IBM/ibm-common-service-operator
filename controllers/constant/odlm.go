@@ -202,7 +202,7 @@ metadata:
     excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators,ibm-cp-automation-foundation-catalog,operatorhubio-catalog
 spec:
   operators:
-  - channel: fast
+  - channel: "22"
     installPlanApproval: {{ .ApprovalMode }}
     name: keycloak-operator
     namespace: "{{ .ServicesNs }}"
