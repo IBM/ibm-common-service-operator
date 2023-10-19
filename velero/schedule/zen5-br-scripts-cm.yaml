@@ -155,6 +155,19 @@ data:
             info "Zen watchdog present, scaling down."
             oc scale deploy zen-watchdog --replicas=0 -n ${ZEN_NAMESPACE}
         fi
+        
+        #waiting for deployments to be cleaned up after scaling down
+        deployments_clear=$(oc get pods -n $ZEN_NAMESPACE | grep "ibm-nginx\|zen-core\|usermgmt\|zen-watcher\|zen-core-api\|zen-watchdog" | grep -v "usermgmt-ensure-tables-job\|ibm-nginx-tester\|zen-core-pre-requisite-job" || echo clear)
+        while [[ $deployments_clear != "clear" ]];
+        do
+            sleep 10
+            deployments_clear=$(oc get pods -n $ZEN_NAMESPACE | grep "ibm-nginx\|zen-core\|usermgmt\|zen-watcher\|zen-core-api\|zen-watchdog" | grep -v "usermgmt-ensure-tables-job\|ibm-nginx-tester\|zen-core-pre-requisite-job" || echo clear)
+            if [[ $deployments_clear != "clear" ]]; then
+                info "Waiting on deployments ibm-nginx zen-core usermgmt zen-watcher zen-core-api to clean up..."
+            else
+                info "Deployments ibm-nginx zen-core usermgmt zen-watcher zen-core-api successfully scaled down. Moving on..."
+            fi
+        done
 
         info "Reset patform metadata and configuration data"
         #[2.2.3] Reset platform metadata and configuration data
