@@ -732,10 +732,12 @@ func (b *Bootstrap) InstallOrUpdateOpcon(forceUpdateODLMCRs bool) error {
 		constant.CSV3OperandConfig, err = constant.ConcatenateConfigs(constant.CSV3OperandConfig, con, b.CSData)
 		if err != nil {
 			klog.Errorf("failed to append CP3 services into OperandConfig: %v", err)
+			return err
 		}
 		constant.CSV3SaasOperandConfig, err = constant.ConcatenateConfigs(constant.CSV3SaasOperandConfig, con, b.CSData)
 		if err != nil {
 			klog.Errorf("failed to append CP3 services into SaaS OperandConfig: %v", err)
+			return err
 		}
 	}
 

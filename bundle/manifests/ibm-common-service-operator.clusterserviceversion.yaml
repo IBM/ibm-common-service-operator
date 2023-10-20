@@ -22,13 +22,13 @@ metadata:
       ]
     capabilities: Seamless Upgrades
     containerImage: icr.io/cpopen/common-service-operator:latest
-    createdAt: "2023-09-14T20:58:07Z"
+    createdAt: "2023-09-20T20:40:14Z"
     description: The IBM Common Service Operator is used to deploy IBM Common Services
     nss.operator.ibm.com/managed-operators: ibm-common-service-operator
     nss.operator.ibm.com/managed-webhooks: ""
-    olm.skipRange: ">=3.3.0 <4.2.0"
-    operatorChannel: v4.2
-    operatorVersion: 4.2.0
+    olm.skipRange: ">=3.3.0 <4.3.0"
+    operatorChannel: v4.3
+    operatorVersion: 4.3.0
     operators.openshift.io/infrastructure-features: '["disconnected"]'
     operators.operatorframework.io/builder: operator-sdk-v1.31.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
@@ -39,7 +39,7 @@ metadata:
     operatorframework.io/arch.ppc64le: supported
     operatorframework.io/arch.s390x: supported
     operatorframework.io/os.linux: supported
-  name: ibm-common-service-operator.v4.2.0
+  name: ibm-common-service-operator.v4.3.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -124,7 +124,7 @@ spec:
 
     ## Operator versions
 
-     - 4.2.0
+     - 4.3.0
 
     ## Prerequisites
 
@@ -230,6 +230,7 @@ spec:
             app.kubernetes.io/instance: ibm-common-service-operator
             app.kubernetes.io/managed-by: ibm-common-service-operator
             app.kubernetes.io/name: ibm-common-service-operator
+            productName: IBM_Cloud_Platform_Common_Services
           name: ibm-common-service-operator
           spec:
             replicas: 1
@@ -248,6 +249,7 @@ spec:
                   app.kubernetes.io/instance: ibm-common-service-operator
                   app.kubernetes.io/managed-by: ibm-common-service-operator
                   app.kubernetes.io/name: ibm-common-service-operator
+                  productName: IBM_Cloud_Platform_Common_Services
                   name: ibm-common-service-operator
               spec:
                 affinity:
@@ -480,13 +482,13 @@ spec:
       version: v1
   provider:
     name: IBM
-  version: 4.2.0
+  version: 4.3.0
   webhookdefinitions:
     - admissionReviewVersions:
         - v1
       containerPort: 443
       deploymentName: ibm-common-service-operator
-      failurePolicy: Fail
+      failurePolicy: Ignore
       generateName: moperandrequest.kb.io
       rules:
         - apiGroups:
@@ -523,7 +525,7 @@ spec:
       type: ValidatingAdmissionWebhook
       webhookPath: /validate-operator-ibm-com-v3-commonservice
   relatedImages:
-    - image: icr.io/cpopen/common-service-operator:4.2.0
+    - image: icr.io/cpopen/common-service-operator:4.3.0
       name: COMMON_SERVICE_OPERATOR_IMAGE
     - image: icr.io/cpopen/cpfs/cpfs-utils:latest
       name: CPFS_UTILS_IMAGE
