@@ -1630,7 +1630,6 @@ func (b *Bootstrap) UpdateResourceLabel(instance *apiv3.CommonService) error {
 func (b *Bootstrap) UpdateResourceWithLabel(resources *unstructured.UnstructuredList, labels map[string]string) error {
 	for _, resource := range resources.Items {
 		util.EnsureLabels(&resource, labels)
-		klog.Infof("updating resorece %")
 		if err := b.UpdateObject(&resource); err != nil {
 			klog.Errorf("Failed to update label in kind:%v namespace/name:%v/%v, %v", resource.GetKind(), resource.GetNamespace(), resource.GetName(), err)
 			return err
