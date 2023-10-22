@@ -86,21 +86,11 @@ spec:
                   and other foundational services: Manual or Automatic'
                 type: string
               labels:
+                additionalProperties:
+                  type: string
                 description: Labels describes  foundational services will use this
                   labels to labels their corresponding resources
-                items:
-                  description: LabelConfig defines the label in common service corresponding
-                    resources
-                  properties:
-                    name:
-                      type: string
-                    value:
-                      type: string
-                  required:
-                  - name
-                  - value
-                  type: object
-                type: array
+                type: object
               license:
                 description: LicenseList defines the license specification in CSV
                 properties:
@@ -145,7 +135,7 @@ spec:
                       type: string
                     spec:
                       additionalProperties:
-                        x-kubernetes-preserve-unknown-fields: true
+                        type: object
                       type: object
                   required:
                   - name

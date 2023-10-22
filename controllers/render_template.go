@@ -17,12 +17,15 @@
 package controllers
 
 import (
+	"context"
 	"strconv"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 
+	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/controllers/size"
 )
@@ -34,6 +37,12 @@ var (
 func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, inScope bool) ([]interface{}, map[string]string, error) {
 	var newConfigs []interface{}
 	var err error
+
+	csObject := &apiv3.CommonService{}
+	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: cs.GetName(), Namespace: cs.GetNamespace()}, csObject); err != nil {
+		return nil, nil, err
+	}
+
 	// Update storageclass in OperandConfig
 	if cs.Object["spec"].(map[string]interface{})["storageClass"] != nil {
 		klog.Info("Applying storageClass configuration")
@@ -99,17 +108,14 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 	}
 	klog.Info("Applying label configuration")
 	if labels := cs.Object["spec"].(map[string]interface{})["labels"]; labels != nil {
-		for _, label := range labels.([]interface{}) {
-			if labelname := label.(map[string]interface{})["name"]; labelname != nil {
-				if labelvalue := label.(map[string]interface{})["value"]; labelvalue != nil {
-					replacer := strings.NewReplacer("placeholder1", labelname.(string), "placeholder2", labelvalue.(string))
-					labelConfig, err := convertStringToSlice(replacer.Replace(constant.ServiceLabelTemplate))
-					if err != nil {
-						return nil, nil, err
-					}
-					newConfigs = append(newConfigs, labelConfig...)
-				}
+		labelset := csObject.Spec.Labels
+		for key, value := range labelset {
+			replacer := strings.NewReplacer("placeholder1", key, "placeholder2", value)
+			labelConfig, err := convertStringToSlice(replacer.Replace(constant.ServiceLabelTemplate))
+			if err != nil {
+				return nil, nil, err
 			}
+			newConfigs = append(newConfigs, labelConfig...)
 		}
 	}
 

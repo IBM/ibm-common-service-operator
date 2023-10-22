@@ -1507,9 +1507,8 @@ func (b *Bootstrap) UpdateResourceLabel(instance *apiv3.CommonService) error {
 	needUpdate := false
 	for _, cs := range csObjectList.Items {
 		labels := cs.Spec.Labels
-		for _, l := range labels {
-			needUpdate = true
-			labelsMap[l.Name] = l.Value
+		for key, val := range labels {
+			(labelsMap)[key] = val
 		}
 	}
 

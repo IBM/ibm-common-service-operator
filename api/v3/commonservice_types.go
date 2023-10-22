@@ -96,16 +96,10 @@ type CommonServiceSpec struct {
 	DefaultAdminUser string `json:"defaultAdminUser,omitempty"`
 	// Labels describes  foundational services will use this
 	// labels to labels their corresponding resources
-	Labels []LabelConfig `json:"labels,omitempty"`
+	Labels map[string]string `json:"labels,omitempty"`
 
 	// +optional
 	License LicenseList `json:"license"`
-}
-
-// LabelConfig defines the label in common service corresponding resources
-type LabelConfig struct {
-	Name  string `json:"name"`
-	Value string `json:"value"`
 }
 
 // LicenseList defines the license specification in CSV
