@@ -42,10 +42,15 @@ type CSData struct {
 	WatchNamespaces    string
 }
 
+// +kubebuilder:pruning:PreserveUnknownFields
+type ExtensionWithMarker struct {
+	runtime.RawExtension `json:",inline"`
+}
+
 type ServiceConfig struct {
-	Name               string                          `json:"name"`
-	Spec               map[string]runtime.RawExtension `json:"spec"`
-	ManagementStrategy string                          `json:"managementStrategy,omitempty"`
+	Name               string                         `json:"name"`
+	Spec               map[string]ExtensionWithMarker `json:"spec"`
+	ManagementStrategy string                         `json:"managementStrategy,omitempty"`
 }
 
 // CommonServiceSpec defines the desired state of CommonService
