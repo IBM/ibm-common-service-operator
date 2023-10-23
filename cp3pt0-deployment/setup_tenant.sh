@@ -425,12 +425,11 @@ EOF
     title "Adding the tethered optional namespaces and removing excluded namespaces for a tenant to namespaceMembers..."
     # add the tethered optional namespaces for a tenant to namespaceMembers
     # ${TETHERED_NS} is comma delimited, so need to replace commas with space
-    local nss_exists="fail"
     if [ $PREVIEW_MODE -eq 0 ]; then
-        nss_exists=$(${OC} get nss common-service -n $OPERATOR_NS || echo "fail")
+        nss_exists=$(${OC} get nss common-service -n $OPERATOR_NS --ignore-not-found)
     fi
 
-    if [[ $nss_exists != "fail" ]]; then
+    if [[ ! -z "$nss_exists" ]]; then
         debug1 "NamspaceScope common-service exists in namespace $OPERATOR_NS."
         existing_ns=$(${OC} get nss common-service -n $OPERATOR_NS -o=jsonpath='{.spec.namespaceMembers}' | tr -d \" | tr -d [ | tr -d ])
         existing_ns="${existing_ns//,/ }"
@@ -529,13 +528,14 @@ EOF
     title "Checking and authorizing NSS to all namespaces in tenant..."
     for ns in $SERVICES_NS ${TETHERED_NS//,/ }; do
 
-        if [[ $($OC get RoleBinding nss-managed-role-from-$OPERATOR_NS -n $ns 2>/dev/null) != "" ]];then
-            info "RoleBinding nss-managed-role-from-$OPERATOR_NS is already existed in $ns, skip creating\n"
+        if [[ $($OC get RoleBinding nss-managed-role-from-$OPERATOR_NS -n $ns 2>/dev/null) != "" ]] && [[ $($OC get Role nss-managed-role-from-$OPERATOR_NS -n $ns 2>/dev/null) != "" ]];then
+            info "Role and RoleBinding nss-managed-role-from-$OPERATOR_NS is already existed in $ns, skip creating\n"
         else
             debug1 "Creating following Role:\n"
-            cat ${PREVIEW_DIR}/role.yaml | sed "s/ns_to_replace/$ns/g"
+            local role=$(cat ${PREVIEW_DIR}/role.yaml | sed "s/ns_to_replace/$ns/g")
+            debug1 "$role"
             echo ""
-            cat ${PREVIEW_DIR}/role.yaml | sed "s/ns_to_replace/$ns/g" | ${OC_CMD} apply -f -
+            echo "$role" | ${OC_CMD} apply -f -
             if [[ $? -ne 0 ]]; then
                 error "Failed to create Role for NSS in namespace $ns, please check if user has proper permission to create role\n"
             fi
@@ -547,9 +547,10 @@ EOF
             fi
 
             debug1 "Creating following RoleBinding:\n"
-            cat ${PREVIEW_DIR}/rolebinding.yaml | sed "s/ns_to_replace/$ns/g"
+            local rb=$(cat ${PREVIEW_DIR}/rolebinding.yaml | sed "s/ns_to_replace/$ns/g")
+            debug1 "$rb"
             echo ""
-            cat ${PREVIEW_DIR}/rolebinding.yaml | sed "s/ns_to_replace/$ns/g" | ${OC_CMD} apply -f -
+            echo "$rb" | ${OC_CMD} apply -f -
             if [[ $? -ne 0 ]]; then
                 error "Failed to create RoleBinding for NSS in namespace $ns, please check if user has proper permission to create rolebinding\n"
             fi
@@ -703,8 +704,8 @@ EOF
 
         # Check if the patch was successful
         if [[ $? -eq 0 ]]; then
-            operator_ns_in_cr=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | yq '.spec.operatorNamespace')
-            services_ns_in_cr=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | yq '.spec.servicesNamespace')
+            operator_ns_in_cr=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | "${YQ}" '.spec.operatorNamespace')
+            services_ns_in_cr=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | "${YQ}" '.spec.servicesNamespace')
             if [[ "$operator_ns_in_cr" == "$OPERATOR_NS" ]] && [[ "$services_ns_in_cr" == "$SERVICES_NS" ]]; then
                 success "Successfully patched CommonService CR in ${OPERATOR_NS}"
                 break

@@ -18,6 +18,10 @@ data:
 
     # ---------- Command arguments ----------
     #should probably defualt this to zen with an optional parameter
+    
+    set -o errtrace
+    set -o errexit
+
     ZEN_NAMESPACE=$1
     BACKUP_DIR=/zen5/zen-backup
 
@@ -119,6 +123,9 @@ data:
     # This is an internal component, bundled with an official IBM product.
     # Please refer to that particular license for additional information.
 
+    set -o errtrace
+    set -o errexit
+    
     #[2.2] Restore
     #[2.2.1] Set Zen namespace
     ZEN_NAMESPACE=$1 #should probably defualt this to zen with an optional parameter
@@ -133,6 +140,14 @@ data:
         #suspend backup cronjob
         oc patch cj zen-metastore-backup-cron-job --namespace ${ZEN_NAMESPACE} --type=merge --patch '{"spec": {"suspend": true}}'
         oc get deploy ibm-nginx zen-core usermgmt zen-watcher  zen-watchdog zen-core-api -n ${ZEN_NAMESPACE}
+        
+        #Getting the replica count before scaling down the required pods
+        IBM_NGINX_RC=$(oc get deploy ibm-nginx -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}')
+        ZEN_CORE_RC=$(oc get deploy zen-core -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}')
+        USERMGMT_RC=$(oc get deploy usermgmt -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}')
+        ZEN_CORE_API_RC=$(oc get deploy zen-core-api -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}')
+        ZEN_WATCHER_RC=$(oc get deploy zen-watcher -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}')
+        
         oc scale deploy ibm-nginx zen-core usermgmt zen-watcher zen-core-api --replicas=0 -n ${ZEN_NAMESPACE}
         # zen-watchdog is applicable only for CloudPak for Data 
         zen_watchdog_present=$(oc get deploy zen-watchdog -n ${ZEN_NAMESPACE} || echo "fail")
@@ -187,11 +202,11 @@ data:
         #[2.2.5] Scale up deployments and Disable Zen operator maintenance mode
         #[2.2.5.1] Scale up the deployments
         info "Scale up deployments."
-        oc scale deploy zen-watcher --replicas=1 -n $ZEN_NAMESPACE
-        oc scale deploy usermgmt --replicas=2 -n $ZEN_NAMESPACE
-        oc scale deploy zen-core-api --replicas=2 -n $ZEN_NAMESPACE
-        oc scale deploy zen-core --replicas=2 -n $ZEN_NAMESPACE
-        oc scale deploy ibm-nginx --replicas=2 -n $ZEN_NAMESPACE
+        oc scale deploy zen-watcher --replicas=$ZEN_WATCHER_RC -n $ZEN_NAMESPACE
+        oc scale deploy usermgmt --replicas=$USERMGMT_RC -n $ZEN_NAMESPACE
+        oc scale deploy zen-core-api --replicas=$ZEN_CORE_API_RC -n $ZEN_NAMESPACE
+        oc scale deploy zen-core --replicas=$ZEN_CORE_RC -n $ZEN_NAMESPACE
+        oc scale deploy ibm-nginx --replicas=$IBM_NGINX_RC -n $ZEN_NAMESPACE
         if [[ $zen_watchdog_present != "fail" ]]; then
             oc scale deploy zen-watchdog --replicas=1 -n $ZEN_NAMESPACE # (Only for CloudPak for Data)
         fi
