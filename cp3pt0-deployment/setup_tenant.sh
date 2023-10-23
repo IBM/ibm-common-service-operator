@@ -507,7 +507,7 @@ rules:
 EOF
     else
         debug1 "Creating nss minimal rbac role from $MINIMAL_RBAC:\n"
-        cat ${MINIMAL_RBAC} | sed "s/operator_ns_to_replace/$OPERATOR_NS/g" > ${PREVIEW_DIR}/role.yaml
+        cat ${MINIMAL_RBAC} | sed "s/^.*name: .*/  name: nss-managed-role-from-$OPERATOR_NS/g" > ${PREVIEW_DIR}/role.yaml
     fi
 
     cat <<EOF > ${PREVIEW_DIR}/rolebinding.yaml
