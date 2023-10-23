@@ -315,12 +315,7 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 			}
 			newConfigForCR := newConfigForOperator.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
 
-			var overwrite bool
-			if opcon.Object["status"] != nil && opcon.Object["status"].(map[string]interface{})["serviceStatus"] != nil {
-				overwrite = checkCRFromOperandConfig(opcon.Object["status"].(map[string]interface{})["serviceStatus"].(map[string]interface{}), opService.(map[string]interface{})["name"].(string), cr)
-			} else {
-				overwrite = true
-			}
+			overwrite := true
 			if rules != nil && rules.(map[string]interface{})["spec"] != nil && rules.(map[string]interface{})["spec"].(map[string]interface{})[cr] != nil {
 				ruleForCR := rules.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
 				opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsIntoOperandConfig(spec.(map[string]interface{}), newConfigForCR, ruleForCR, overwrite, true)
