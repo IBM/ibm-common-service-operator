@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"strings"
 
 	utilyaml "github.com/ghodss/yaml"
 	"github.com/mohae/deepcopy"
@@ -359,24 +358,6 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 	}
 
 	return isEqual, nil
-}
-
-func checkCRFromOperandConfig(serviceStatus map[string]interface{}, operatorName, crName string) bool {
-	opStatus, ok := serviceStatus[operatorName]
-	if !ok {
-		return true
-	}
-
-	if opStatus.(map[string]interface{})["customResourceStatus"] == nil {
-		return true
-	}
-
-	for cr := range opStatus.(map[string]interface{})["customResourceStatus"].(map[string]interface{}) {
-		if strings.EqualFold(cr, crName) {
-			return false
-		}
-	}
-	return true
 }
 
 func (r *CommonServiceReconciler) getExtremeizes(ctx context.Context, opconServices, ruleSlice []interface{}, extreme Extreme) ([]interface{}, error) {
