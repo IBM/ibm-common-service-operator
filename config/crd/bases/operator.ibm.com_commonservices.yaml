@@ -83,6 +83,12 @@ spec:
                 description: 'InstallPlanApproval sets the approval mode for ODLM
                   and other foundational services: Manual or Automatic'
                 type: string
+              labels:
+                additionalProperties:
+                  type: string
+                description: Labels describes  foundational services will use this labels to labels their corresponding resources
+                type: object
+                type: array
               license:
                 description: LicenseList defines the license specification in CSV
                 properties:

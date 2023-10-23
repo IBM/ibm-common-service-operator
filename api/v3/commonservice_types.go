@@ -99,6 +99,9 @@ type CommonServiceSpec struct {
 	// DefalutAdminUser is the name of the default admin user for foundational
 	// services IM, default is cpadmin
 	DefaultAdminUser string `json:"defaultAdminUser,omitempty"`
+	// Labels describes  foundational services will use this
+	// labels to labels their corresponding resources
+	Labels map[string]string `json:"labels,omitempty"`
 
 	// +optional
 	License LicenseList `json:"license"`
