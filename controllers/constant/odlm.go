@@ -202,14 +202,12 @@ metadata:
     excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators,ibm-cp-automation-foundation-catalog,operatorhubio-catalog
 spec:
   operators:
-  - channel: fast
+  - channel: stable-v22
     installPlanApproval: {{ .ApprovalMode }}
     name: keycloak-operator
     namespace: "{{ .ServicesNs }}"
-    packageName: keycloak-operator
+    packageName: rhbk-operator
     scope: public
-    sourceName: community-operators
-    sourceNamespace: openshift-marketplace
   - channel: stable
     installPlanApproval: {{ .ApprovalMode }}
     name: edb-keycloak
