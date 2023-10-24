@@ -212,7 +212,7 @@ data:
         oc patch secret -n $ZEN_NAMESPACE admin-user-details --patch="{\"data\": { \"initial_admin_password\": \"$(base64 -w0 $BACKUP_DIR/secrets/initial_admin_password)\" }}"
 
         #Possible site for running extension script
-        ./zen5/customize-zen-extensions.sh $ZEN_NAMESPACE $ZENSERVICE_NAME $EXT_NAMESPACE
+        ./zen5/customize-zen-extensions.sh $ZEN_NAMESPACE $EXT_NAMESPACE
         
         #[2.2.5] Scale up deployments and Disable Zen operator maintenance mode
         #[2.2.5.1] Scale up the deployments
