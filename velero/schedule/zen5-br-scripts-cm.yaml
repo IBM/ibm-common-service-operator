@@ -341,10 +341,11 @@ data:
         else
             info "Extensions to cleanup in namespace $EXT_NAMESPACE: $extensions"
             # curl -H 'secret: <broker-secret>' -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=bawtest-bas-extension,ibm-bts-zen-frontdoor,icp4adeploy-ban-zen-extension,icp4adeploy-cp4ba-zen-extension,icp4adeploy-graphql-zen-extension,icp4adeploy-cmis-zen-extension,icp4adeploy-cpe-zen-extension,icp4adeploy-rr-bawtest-zen-ext
-            curl_output=$(curl -H "secret: ${broker_secret}" -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=${extensions})
+            #curl_output=$(curl -H "secret: ${broker_secret}" -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=${extensions})
 
             # Extract ID of each extension
-            id_list=$(echo $curl_output | yq eval '.data[] | select(.id == "*") | .id' | tr '\n' ' ') #space separated list of ids
+            id_list=$(curl -H "secret: ${broker_secret}" -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=${extensions} | yq eval '.data[] | select(.id == "*") | .id' | tr '\n' ' ') #space separated list of ids
+            info "id_list: $id_list bookend"
             if [[ -z $id_list ]] || [[ $id_list == "" ]]; then
                 error "The list of extensions provdided returned an empty ID list from the database. These extensions may not be present in this database."
             else
