@@ -25,10 +25,15 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+// +kubebuilder:pruning:PreserveUnknownFields
+type ExtensionWithMarker struct {
+	runtime.RawExtension `json:",inline"`
+}
+
 type ServiceConfig struct {
-	Name               string                          `json:"name"`
-	Spec               map[string]runtime.RawExtension `json:"spec"`
-	ManagementStrategy string                          `json:"managementStrategy,omitempty"`
+	Name               string                         `json:"name"`
+	Spec               map[string]ExtensionWithMarker `json:"spec"`
+	ManagementStrategy string                         `json:"managementStrategy,omitempty"`
 }
 
 // CommonServiceSpec defines the desired state of CommonService
@@ -46,13 +51,15 @@ type CommonServiceSpec struct {
 	StorageClass        string               `json:"storageClass,omitempty"`
 	BYOCACertificate    bool                 `json:"BYOCACertificate,omitempty"`
 	ProfileController   string               `json:"profileController,omitempty"`
-	License             LicenseList          `json:"license"`
+	// +optional
+	License LicenseList `json:"license"`
 }
 
 // LicenseList defines the license specification in CSV
 type LicenseList struct {
 	// Accepting the license - URL: https://ibm.biz/integration-licenses
 	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:hidden"
+	// +optional
 	Accept bool `json:"accept"`
 	// The type of license being accepted.
 	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:hidden"
