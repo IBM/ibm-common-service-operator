@@ -165,7 +165,7 @@ function print_usage() {
     echo "   --excluded-namespaces string   Optional. Remove namespaces from this tenant, comma-delimited, e.g. 'ns1,ns2'"
     echo "   --license-accept               Required. Set this flag to accept the license agreement"
     echo "   --enable-private-catalog       Optional. Set this flag to use namespace scoped CatalogSource. Default is in openshift-marketplace namespace"
-    echo "   --with-minimal-rbac string     Optional. File path to the minimal RBAC permissions required by the namespace scope operator for all to be deployed services"
+    echo "   --with-minimal-rbac string     Optional. Provide "skip" or file path to the minimal RBAC permissions required by the namespace scope operator for all to be deployed services"
     echo "   -c, --channel string           Optional. Channel for Subscription(s). Default is v4.3"
     echo "   -i, --install-mode string      Optional. InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
     echo "   -s, --source string            Optional. CatalogSource name. This assumes your CatalogSource is already created. Default is opencloud-operators"
