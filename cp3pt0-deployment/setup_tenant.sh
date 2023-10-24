@@ -265,6 +265,13 @@ function pre_req() {
         MAINTAINED_CHANNEL="$CHANNEL"
     fi
 
+    # Check if the file path to the minimal RBAC permissions exists
+    if [[ $MINIMAL_RBAC_ENABLED -eq 1 ]]; then
+        if [[ ! -f "$MINIMAL_RBAC" ]] && [[ "$MINIMAL_RBAC" != "skip" ]] ; then
+            error "File $MINIMAL_RBAC does not exist"
+        fi
+    fi
+
     # Check public CatalogSource and CatalogSource Namespace
     validate_cs_catalogsource
     echo ""
@@ -505,6 +512,10 @@ rules:
   - deletecollection
 EOF
     else
+        if [[ "$MINIMAL_RBAC" == "skip" ]]; then
+            warning "Skipping creating minimal RBAC for NSS\n"
+            return
+        fi
         debug1 "Creating nss minimal rbac role from $MINIMAL_RBAC:\n"
         cat ${MINIMAL_RBAC} | sed "s/^.*name: .*/  name: nss-managed-role-from-$OPERATOR_NS/g" > ${PREVIEW_DIR}/role.yaml
     fi
@@ -526,8 +537,7 @@ roleRef:
 EOF
 
     title "Checking and authorizing NSS to all namespaces in tenant..."
-    for ns in $SERVICES_NS ${TETHERED_NS//,/ }; do
-
+    for ns in $OPERATOR_NS $SERVICES_NS ${TETHERED_NS//,/ }; do
         if [[ $($OC get RoleBinding nss-managed-role-from-$OPERATOR_NS -n $ns 2>/dev/null) != "" ]] && [[ $($OC get Role nss-managed-role-from-$OPERATOR_NS -n $ns 2>/dev/null) != "" ]];then
             info "Role and RoleBinding nss-managed-role-from-$OPERATOR_NS is already existed in $ns, skip creating\n"
         else
