@@ -123,10 +123,6 @@ data:
     #[2.2.1] Set Zen namespace
     ZEN_NAMESPACE=$1 #should probably defualt this to zen with an optional parameter
     ZENSERVICE_NAME=$2
-    EXT_NAMESPACE=$3
-    if [[ -z $EXT_NAMESPACE ]]; then
-        $EXT_NAMESPACE=$ZEN_NAMESPACE
-    fi
 
     BACKUP_DIR=/zen5/zen-backup
 
@@ -212,7 +208,7 @@ data:
         oc patch secret -n $ZEN_NAMESPACE admin-user-details --patch="{\"data\": { \"initial_admin_password\": \"$(base64 -w0 $BACKUP_DIR/secrets/initial_admin_password)\" }}"
 
         #Possible site for running extension script
-        ./zen5/customize-zen-extensions.sh $ZEN_NAMESPACE $EXT_NAMESPACE
+        ./zen5/customize-zen-extensions.sh $ZEN_NAMESPACE
         
         #[2.2.5] Scale up deployments and Disable Zen operator maintenance mode
         #[2.2.5.1] Scale up the deployments
@@ -319,10 +315,6 @@ data:
     set -o errexit
 
     ZEN_NAMESPACE=$1
-    EXT_NAMESPACE=$2
-    if [[ -z $EXT_NAMESPACE ]]; then
-        $EXT_NAMESPACE=$ZEN_NAMESPACE
-    fi
 
     function main(){
 
@@ -335,11 +327,11 @@ data:
             info "Broker Secret obtained in namespace $ZEN_NAMESPACE"
         fi
 
-        extensions=$(oc get zenextension -n $EXT_NAMESPACE -o custom-columns=NAME:.metadata.name --no-headers | tr '\n' ',')
+        extensions=$(oc get zenextension -n $ZEN_NAMESPACE -o custom-columns=NAME:.metadata.name --no-headers | tr '\n' ',')
         if [[ -z $extensions ]]; then
-            info "No extensions found in namespace $EXT_NAMESPACE, exiting."
+            info "No extensions found in namespace $ZEN_NAMESPACE, exiting."
         else
-            info "Extensions to cleanup in namespace $EXT_NAMESPACE: $extensions"
+            info "Extensions to cleanup in namespace $ZEN_NAMESPACE: $extensions"
             # curl -H 'secret: <broker-secret>' -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=bawtest-bas-extension,ibm-bts-zen-frontdoor,icp4adeploy-ban-zen-extension,icp4adeploy-cp4ba-zen-extension,icp4adeploy-graphql-zen-extension,icp4adeploy-cmis-zen-extension,icp4adeploy-cpe-zen-extension,icp4adeploy-rr-bawtest-zen-ext
             #curl_output=$(curl -H "secret: ${broker_secret}" -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=${extensions})
 
