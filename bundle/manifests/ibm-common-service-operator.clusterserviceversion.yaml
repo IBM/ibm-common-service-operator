@@ -22,7 +22,7 @@ metadata:
       ]
     capabilities: Seamless Upgrades
     containerImage: icr.io/cpopen/common-service-operator:latest
-    createdAt: "2023-10-24T21:17:05Z"
+    createdAt: "2023-10-25T20:16:26Z"
     description: The IBM Common Service Operator is used to deploy IBM Common Services
     nss.operator.ibm.com/managed-operators: cloud-native-postgresql,ibm-bts-operator
     olm.skipRange: ">=3.3.0 <3.19.17"
@@ -175,39 +175,44 @@ spec:
             - apiGroups:
                 - ""
               resources:
+                - configmaps
+              verbs:
+                - create
+                - get
+                - list
+                - watch
+            - apiGroups:
+                - ""
+              resourceNames:
+                - common-service-maps
+                - ibm-common-services-status
+                - namespace-scope
+                - odlm-scope
+              resources:
+                - configmaps
+              verbs:
+                - delete
+                - update
+            - apiGroups:
+                - ""
+              resources:
+                - events
+                - serviceaccounts
+              verbs:
+                - create
+                - get
+                - patch
+                - update
+            - apiGroups:
+                - ""
+              resources:
                 - namespaces
               verbs:
                 - create
                 - get
                 - list
-                - watch
-                - update
-            - apiGroups:
-                - operators.coreos.com
-              resources:
-                - subscriptions
-                - operatorgroups
-              verbs:
-                - list
-                - get
-                - create
                 - update
                 - watch
-            - apiGroups:
-                - operators.coreos.com
-              resources:
-                - catalogsources
-              verbs:
-                - get
-            - apiGroups:
-                - operators.coreos.com
-              resources:
-                - subscriptions
-                - clusterserviceversions
-              verbs:
-                - delete
-                - get
-                - list
             - apiGroups:
                 - apiextensions.ibm.crossplane.io
               resources:
@@ -219,65 +224,9 @@ spec:
                 - list
                 - watch
             - apiGroups:
-                - operator.ibm.com
-              resources:
-                - commonservices
-                - commonservices/status
-              verbs:
-                - get
-                - list
-                - watch
-                - update
-            - apiGroups:
                 - apiextensions.k8s.io
               resources:
                 - customresourcedefinitions
-              verbs:
-                - create
-                - get
-                - update
-            - apiGroups:
-                - rbac.authorization.k8s.io
-              resources:
-                - clusterroles
-                - roles
-                - clusterrolebindings
-                - rolebindings
-              verbs:
-                - create
-                - delete
-                - get
-                - list
-                - update
-                - watch
-                - escalate
-                - bind
-            - apiGroups:
-                - ""
-              resourceNames:
-                - common-service-maps
-                - ibm-common-services-status
-                - odlm-scope
-                - namespace-scope
-              resources:
-                - configmaps
-              verbs:
-                - delete
-                - update
-            - apiGroups:
-                - ""
-              resources:
-                - configmaps
-              verbs:
-                - create
-                - get
-                - list
-                - watch
-            - apiGroups:
-                - ""
-              resources:
-                - serviceaccounts
-                - events
               verbs:
                 - create
                 - get
@@ -299,21 +248,14 @@ spec:
               verbs:
                 - update
             - apiGroups:
-                - pkg.ibm.crossplane.io
+                - config.openshift.io
               resources:
-                - locks
-                - configurations
+                - infrastructures
               verbs:
-                - create
-                - delete
                 - get
-                - list
-                - patch
-                - update
-                - watch
             - apiGroups:
-                - kubernetes.crossplane.io
                 - ibmcloud.crossplane.io
+                - kubernetes.crossplane.io
               resources:
                 - providerconfigs
               verbs:
@@ -340,16 +282,23 @@ spec:
             - apiGroups:
                 - operator.ibm.com
               resources:
-                - podpresets
-                - podpresets/status
+                - commonservices
+                - commonservices/finalizers
+                - commonservices/status
               verbs:
-                - create
                 - delete
                 - get
                 - list
                 - patch
                 - update
                 - watch
+            - apiGroups:
+                - operator.ibm.com
+              resources:
+                - meteringreportservers
+              verbs:
+                - delete
+                - get
             - apiGroups:
                 - operator.ibm.com
               resources:
@@ -363,26 +312,84 @@ spec:
                 - update
                 - watch
             - apiGroups:
+                - operator.ibm.com
+              resources:
+                - podpresets
+                - podpresets/status
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
+            - apiGroups:
+                - operators.coreos.com
+              resources:
+                - catalogsources
+              verbs:
+                - get
+            - apiGroups:
+                - operators.coreos.com
+              resources:
+                - clusterserviceversions
+                - subscriptions
+              verbs:
+                - delete
+                - get
+                - list
+                - patch
+                - update
+            - apiGroups:
+                - operators.coreos.com
+              resources:
+                - operatorgroups
+                - subscriptions
+              verbs:
+                - create
+                - get
+                - list
+                - update
+                - watch
+            - apiGroups:
+                - pkg.ibm.crossplane.io
+              resources:
+                - configurations
+                - locks
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
+            - apiGroups:
+                - rbac.authorization.k8s.io
+              resources:
+                - clusterrolebindings
+                - clusterroles
+                - rolebindings
+                - roles
+              verbs:
+                - bind
+                - create
+                - delete
+                - escalate
+                - get
+                - list
+                - update
+                - watch
+            - apiGroups:
                 - storage.k8s.io
               resources:
                 - storageclasses
               verbs:
+                - create
                 - get
                 - list
                 - watch
-            - apiGroups:
-                - operator.ibm.com
-              resources:
-                - meteringreportservers
-              verbs:
-                - delete
-                - get
-            - apiGroups:
-                - config.openshift.io
-              resources:
-                - infrastructures
-              verbs:
-                - get
           serviceAccountName: ibm-common-service-operator
       deployments:
         - label:
@@ -471,9 +478,39 @@ spec:
       permissions:
         - rules:
             - apiGroups:
-                - '*'
+                - elasticstack.ibm.com
               resources:
-                - '*'
+                - elasticstacks
+              verbs:
+                - delete
+            - apiGroups:
+                - monitoring.operator.ibm.com
+              resources:
+                - exporters
+                - prometheusexts
+              verbs:
+                - delete
+            - apiGroups:
+                - operator.ibm.com
+              resources:
+                - cataloguis
+                - helmapis
+                - helmrepos
+                - operandbindinfos
+                - operandrequests
+              verbs:
+                - delete
+            - apiGroups:
+                - operator.ibm.com
+              resources:
+                - commonservices
+              verbs:
+                - create
+            - apiGroups:
+                - operator.ibm.com
+              resources:
+                - operandconfigs
+                - operandregistries
               verbs:
                 - create
                 - delete

@@ -78,7 +78,7 @@ REGISTRY ?= "docker-na-public.artifactory.swg-devops.com/hyc-cloud-private-scrat
 # Current Operator image name
 OPERATOR_IMAGE_NAME ?= common-service-operator
 # Current Operator bundle image name
-BUNDLE_IMAGE_NAME ?= dev-common-service-operator-bundle
+BUNDLE_IMAGE_NAME ?= common-service-operator-bundle
 
 CHANNELS := v3
 DEFAULT_CHANNEL := v3
@@ -188,13 +188,12 @@ build-dev-image:
 
 build-bundle-image:
 	@cp -f bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml /tmp/ibm-common-service-operator.clusterserviceversion.yaml
-	yq eval -i 'del(.spec.replaces)' bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
 	docker build -f bundle.Dockerfile -t $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(RELEASE_VERSION) .
 	docker push $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(RELEASE_VERSION)
 	@mv /tmp/ibm-common-service-operator.clusterserviceversion.yaml bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
 
 run-bundle:
-	$(OPERATOR_SDK) run bundle $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(RELEASE_VERSION)
+	$(OPERATOR_SDK) run bundle $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(RELEASE_VERSION) --install-mode OwnNamespace 
 	sleep 30
 	$(KUBECTL) get sub ibm-namespace-scope-operator -o custom-columns=":status.installplan.name" --no-headers \
 		| xargs oc patch installplan --type merge --patch '{"spec":{"approved":true}}'
