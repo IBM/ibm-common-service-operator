@@ -165,7 +165,7 @@ function print_usage() {
     echo "   --excluded-namespaces string   Optional. Remove namespaces from this tenant, comma-delimited, e.g. 'ns1,ns2'"
     echo "   --license-accept               Required. Set this flag to accept the license agreement"
     echo "   --enable-private-catalog       Optional. Set this flag to use namespace scoped CatalogSource. Default is in openshift-marketplace namespace"
-    echo "   --with-minimal-rbac string     Optional. File path to the minimal RBAC permissions required by the namespace scope operator for all to be deployed services"
+    echo "   --with-minimal-rbac string     Optional. Provide "skip" or file path to the minimal RBAC permissions required by the namespace scope operator for all to be deployed services"
     echo "   -c, --channel string           Optional. Channel for Subscription(s). Default is v4.3"
     echo "   -i, --install-mode string      Optional. InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
     echo "   -s, --source string            Optional. CatalogSource name. This assumes your CatalogSource is already created. Default is opencloud-operators"
@@ -263,6 +263,13 @@ function pre_req() {
     local maintained_channel_numeric="${MAINTAINED_CHANNEL#v}"
     if awk -v num="$channel_numeric" "BEGIN { exit !(num < $maintained_channel_numeric) }"; then
         MAINTAINED_CHANNEL="$CHANNEL"
+    fi
+
+    # Check if the file path to the minimal RBAC permissions exists
+    if [[ $MINIMAL_RBAC_ENABLED -eq 1 ]]; then
+        if [[ ! -f "$MINIMAL_RBAC" ]] && [[ "$MINIMAL_RBAC" != "skip" ]] ; then
+            error "File $MINIMAL_RBAC does not exist"
+        fi
     fi
 
     # Check public CatalogSource and CatalogSource Namespace
@@ -505,6 +512,10 @@ rules:
   - deletecollection
 EOF
     else
+        if [[ "$MINIMAL_RBAC" == "skip" ]]; then
+            warning "Skipping creating minimal RBAC for NSS\n"
+            return
+        fi
         debug1 "Creating nss minimal rbac role from $MINIMAL_RBAC:\n"
         cat ${MINIMAL_RBAC} | sed "s/^.*name: .*/  name: nss-managed-role-from-$OPERATOR_NS/g" > ${PREVIEW_DIR}/role.yaml
     fi
@@ -526,8 +537,7 @@ roleRef:
 EOF
 
     title "Checking and authorizing NSS to all namespaces in tenant..."
-    for ns in $SERVICES_NS ${TETHERED_NS//,/ }; do
-
+    for ns in $OPERATOR_NS $SERVICES_NS ${TETHERED_NS//,/ }; do
         if [[ $($OC get RoleBinding nss-managed-role-from-$OPERATOR_NS -n $ns 2>/dev/null) != "" ]] && [[ $($OC get Role nss-managed-role-from-$OPERATOR_NS -n $ns 2>/dev/null) != "" ]];then
             info "Role and RoleBinding nss-managed-role-from-$OPERATOR_NS is already existed in $ns, skip creating\n"
         else
