@@ -155,6 +155,19 @@ data:
             info "Zen watchdog present, scaling down."
             oc scale deploy zen-watchdog --replicas=0 -n ${ZEN_NAMESPACE}
         fi
+        
+        #waiting for deployments to be cleaned up after scaling down
+        deployments_clear=$(oc get deploy -n $ZEN_NAMESPACE | grep "1/1" | grep "ibm-nginx\|zen-core\|usermgmt\|zen-watcher\|zen-core-api\|zen-watchdog" | grep -v "ibm-nginx-tester" || echo clear)
+        while [[ $deployments_clear != "clear" ]];
+        do
+            sleep 10
+            deployments_clear=$(oc get deploy -n $ZEN_NAMESPACE | grep "1/1" | grep "ibm-nginx\|zen-core\|usermgmt\|zen-watcher\|zen-core-api\|zen-watchdog" | grep -v "ibm-nginx-tester" || echo clear)
+            if [[ $deployments_clear != "clear" ]]; then
+                info "Waiting on deployments ibm-nginx zen-core usermgmt zen-watcher zen-core-api to clean up..."
+            else
+                info "Deployments ibm-nginx zen-core usermgmt zen-watcher zen-core-api successfully scaled down. Moving on..."
+            fi
+        done
 
         info "Reset patform metadata and configuration data"
         #[2.2.3] Reset platform metadata and configuration data
@@ -202,6 +215,26 @@ data:
         #[2.2.5] Scale up deployments and Disable Zen operator maintenance mode
         #[2.2.5.1] Scale up the deployments
         info "Scale up deployments."
+        if [[ $IBM_NGINX_RC == "0" ]]; then
+            info "ibm-nginx deployment not scaled up before rerunning, setting replica value to 2"
+            IBM_NGINX_RC=2
+        fi
+        if [[ $ZEN_CORE_RC == "0" ]]; then
+            info "zen-core deployment not scaled up before rerunning, setting replica value to 2"
+            ZEN_CORE_RC=2
+        fi
+        if [[ $USERMGMT_RC == "0" ]]; then
+            info "usermgmt deployment not scaled up before rerunning, setting replica value to 2"
+            USERMGMT_RC=2
+        fi
+        if [[ $ZEN_CORE_API_RC == "0" ]]; then
+            info "zen-core-api deployment not scaled up before rerunning, setting replica value to 2"
+            ZEN_CORE_API_RC=2
+        fi
+        if [[ $ZEN_WATCHER_RC == "0" ]]; then
+            info "zen-watcher deployment not scaled up before rerunning, setting replica value to 1"
+            ZEN_WATCHER_RC=1
+        fi
         oc scale deploy zen-watcher --replicas=$ZEN_WATCHER_RC -n $ZEN_NAMESPACE
         oc scale deploy usermgmt --replicas=$USERMGMT_RC -n $ZEN_NAMESPACE
         oc scale deploy zen-core-api --replicas=$ZEN_CORE_API_RC -n $ZEN_NAMESPACE
