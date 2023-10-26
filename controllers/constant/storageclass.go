@@ -38,4 +38,9 @@ const StorageClassTemplate = `
     mustgatherService:
       persistentVolumeClaim:
         storageClassName: placeholder
+- name: edb-keycloak
+  spec:
+    Cluster:
+      storage:
+        storageClass: placeholder
 `
