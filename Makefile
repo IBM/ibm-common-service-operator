@@ -19,7 +19,7 @@ KUBECTL ?= $(shell which kubectl)
 OPERATOR_SDK ?= $(shell which operator-sdk)
 CONTROLLER_GEN ?= $(shell which controller-gen)
 KUSTOMIZE ?= $(shell which kustomize)
-YQ_VERSION=v4.3.1
+YQ_VERSION=v4.17.2
 KUSTOMIZE_VERSION=v3.8.7
 OPERATOR_SDK_VERSION=v1.24.0
 CONTROLLER_TOOLS_VERSION ?= v0.6.1
@@ -78,7 +78,7 @@ REGISTRY ?= "docker-na-public.artifactory.swg-devops.com/hyc-cloud-private-scrat
 # Current Operator image name
 OPERATOR_IMAGE_NAME ?= common-service-operator
 # Current Operator bundle image name
-BUNDLE_IMAGE_NAME ?= dev-common-service-operator-bundle
+BUNDLE_IMAGE_NAME ?= common-service-operator-bundle
 
 CHANNELS := v3.23
 DEFAULT_CHANNEL := v3.23
@@ -188,13 +188,12 @@ build-dev-image:
 
 build-bundle-image:
 	@cp -f bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml /tmp/ibm-common-service-operator.clusterserviceversion.yaml
-	yq eval -i 'del(.spec.replaces)' bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
 	docker build -f bundle.Dockerfile -t $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(RELEASE_VERSION) .
 	docker push $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(RELEASE_VERSION)
 	@mv /tmp/ibm-common-service-operator.clusterserviceversion.yaml bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
 
 run-bundle:
-	$(OPERATOR_SDK) run bundle $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(RELEASE_VERSION)
+	$(OPERATOR_SDK) run bundle $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(RELEASE_VERSION) --install-mode OwnNamespace 
 	sleep 30
 	$(KUBECTL) get sub ibm-namespace-scope-operator -o custom-columns=":status.installplan.name" --no-headers \
 		| xargs oc patch installplan --type merge --patch '{"spec":{"approved":true}}'
@@ -241,7 +240,7 @@ bundle-manifests: clis
 	-q --overwrite --version $(RELEASE_VERSION) $(BUNDLE_METADATA_OPTS)
 	$(OPERATOR_SDK) bundle validate ./bundle
 	$(YQ) eval -i '.metadata.annotations."olm.skipRange" = ">=3.3.0 <${RELEASE_VERSION}"' ${CSV_PATH}
-	$(YQ) eval -i '.spec.replaces = "ibm-common-service-operator.v$(PREVIOUS_VERSION)"' ${CSV_PATH}
+	$(YQ) eval-all -i '.spec.relatedImages = load("config/manifests/bases/ibm-common-service-operator.clusterserviceversion.yaml").spec.relatedImages' bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
 
 generate-all: yq kustomize operator-sdk generate manifests ## Generate bundle manifests, metadata and package manifests
 	$(OPERATOR_SDK) generate kustomize manifests -q
