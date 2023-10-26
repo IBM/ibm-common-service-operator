@@ -18,7 +18,7 @@ ENABLE_PRIVATE_CATALOG=0
 MIGRATE_SINGLETON=0
 OPERATOR_NS=""
 CONTROL_NS=""
-CHANNEL="v4.3"
+CHANNEL="v4.2"
 INSTALL_MODE="Automatic"
 CM_SOURCE_NS="openshift-marketplace"
 LIS_SOURCE_NS="openshift-marketplace"
@@ -200,7 +200,7 @@ function print_usage() {
     echo "   -cmNs, --cert-manager-namespace string                 Optional. Set custom namespace for ibm-cert-manager-operator. Default is ibm-cert-manager"
     echo "   --license-accept                                       Required. Set this flag to accept the license agreement."
     echo "   --preview                                              Optional.  Enable preview mode (dry run)"
-    echo "   -c, --channel string                                   Optional. Channel for Subscription(s). Default is v4.3"
+    echo "   -c, --channel string                                   Optional. Channel for Subscription(s). Default is v4.2"
     echo "   -i, --install-mode string                              Optional. InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
     echo "   -v, --debug integer                                    Optional. Verbosity of logs. Default is 0. Set to 1 for debug logs"
     echo "   -h, --help                                             Print usage information"
