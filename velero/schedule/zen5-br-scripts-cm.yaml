@@ -327,7 +327,7 @@ data:
             info "Broker Secret obtained in namespace $ZEN_NAMESPACE"
         fi
 
-        extensions=$(oc get zenextension -n $ZEN_NAMESPACE -o yaml | grep "extension_name" | awk '{print $2}' | tr '\"\n' ' ' | tr ',' " ")
+        extensions=$(oc get zenextension -n $ZEN_NAMESPACE -o yaml | grep "extension_name" | grep -v "bedrock-idp-locations\|zen-watchdog-routes" | awk '{print $2}' | tr '\"\n' ' ' | tr ',' " ")
         extensions=$(echo $extensions | tr " " ",")
         if [[ -z $extensions ]]; then
             info "No extensions found in namespace $ZEN_NAMESPACE, exiting."
