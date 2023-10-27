@@ -674,4 +674,15 @@ const Large = `
   spec:
     apicatalogmanager:
       profile: large
+- name: edb-keycloak
+  spec:
+    Cluster:
+      instances: 3
+      resources:
+        requests:
+          cpu: 1000m
+          memory: 1Gi
+        limits:
+          cpu: 1000m
+          memory: 1Gi
 `

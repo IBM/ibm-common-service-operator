@@ -674,4 +674,15 @@ const Medium = `
   spec:
     apicatalogmanager:
       profile: medium
+- name: edb-keycloak
+  spec:
+    Cluster:
+      instances: 2
+      resources:
+        requests:
+          cpu: 1000m
+          memory: 1Gi
+        limits:
+          cpu: 1000m
+          memory: 1Gi
 `

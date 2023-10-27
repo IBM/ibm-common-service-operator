@@ -845,4 +845,14 @@ const ConfigurationRules = `
   spec:
     apicatalogmanager:
       profile: LARGEST_VALUE
+- name: edb-keycloak
+  spec:
+    Cluster:
+      resources:
+        requests:
+          cpu: LARGEST_VALUE
+          memory: LARGEST_VALUE
+        limits:
+          cpu: LARGEST_VALUE
+          memory: LARGEST_VALUE
 `

@@ -674,4 +674,15 @@ const StarterSet = `
   spec:
     apicatalogmanager:
       profile: small
+- name: edb-keycloak
+  spec:
+    Cluster:
+      instances: 1
+      resources:
+        requests:
+          cpu: 1000m
+          memory: 1Gi
+        limits:
+          cpu: 1000m
+          memory: 1Gi
 `
