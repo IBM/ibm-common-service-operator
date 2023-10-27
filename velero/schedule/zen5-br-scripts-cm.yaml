@@ -156,6 +156,7 @@ data:
             oc scale deploy zen-watchdog --replicas=0 -n ${ZEN_NAMESPACE}
         fi
         
+        sleep 15
         #waiting for deployments to be cleaned up after scaling down
         deployments_clear=$(oc get deploy -n $ZEN_NAMESPACE  | grep "ibm-nginx\|zen-core\|usermgmt\|zen-watcher\|zen-core-api\|zen-watchdog" | grep -v "ibm-nginx-tester" | grep -v 0/0 || echo clear)
         while [[ $deployments_clear != "clear" ]];
