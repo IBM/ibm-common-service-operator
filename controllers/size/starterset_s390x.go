@@ -682,9 +682,9 @@ const StarterSet = `
       instances: 1
       resources:
         requests:
-          cpu: 1000m
-          memory: 1Gi
+          cpu: 200m
+          memory: 512Mi
         limits:
-          cpu: 1000m
-          memory: 1Gi
+          cpu: 200m
+          memory: 512Mi
 `

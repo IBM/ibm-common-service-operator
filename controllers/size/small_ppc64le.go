@@ -680,9 +680,9 @@ const Small = `
       instances: 1
       resources:
         requests:
-          cpu: 1000m
-          memory: 1Gi
+          cpu: 200m
+          memory: 768Mi
         limits:
-          cpu: 1000m
-          memory: 1Gi
+          cpu: 200m
+          memory: 768Mi
 `

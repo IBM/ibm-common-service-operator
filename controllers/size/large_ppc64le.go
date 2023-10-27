@@ -680,9 +680,9 @@ const Large = `
       instances: 3
       resources:
         requests:
-          cpu: 1000m
-          memory: 1Gi
+          cpu: 750m
+          memory: 1500Mi
         limits:
-          cpu: 1000m
-          memory: 1Gi
+          cpu: 750m
+          memory: 1500Mi
 `

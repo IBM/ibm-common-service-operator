@@ -680,9 +680,9 @@ const Medium = `
       instances: 2
       resources:
         requests:
-          cpu: 1000m
-          memory: 1Gi
+          cpu: 500m
+          memory: 1024Mi
         limits:
-          cpu: 1000m
-          memory: 1Gi
+          cpu: 500m
+          memory: 1024Mi
 `
