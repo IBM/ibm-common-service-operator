@@ -86,6 +86,8 @@ var ctx = context.Background()
 //+kubebuilder:rbac:groups=operator.ibm.com,namespace="placeholder",resources=operandrequests;operandbindinfos;cataloguis;helmapis;helmrepos,verbs=delete
 //+kubebuilder:rbac:groups=elasticstack.ibm.com,namespace="placeholder",resources=elasticstacks,verbs=delete
 //+kubebuilder:rbac:groups=monitoring.operator.ibm.com,namespace="placeholder",resources=exporters;prometheusexts,verbs=delete
+//+kubebuilder:rbac:groups=cert-manager.io,namespace="placeholder",resources=certificates;issuers,verbs=create;get;list;watch;update;patch;delete
+//+kubebuilder:rbac:groups=batch,namespace="placeholder",resources=jobs,verbs=create;get;list;watch
 
 func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 
