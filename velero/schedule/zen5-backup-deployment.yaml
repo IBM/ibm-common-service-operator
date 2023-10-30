@@ -19,6 +19,7 @@ spec:
         post.hook.restore.velero.io/command: '["sh", "-c", "/zen5/restore_zen5.sh <zenservice namespace> <zenservice name>"]'
         post.hook.restore.velero.io/wait-timeout: 300s
         post.hook.restore.velero.io/exec-timeout: 300s
+        post.hook.restore.velero.io/timeout: 600s
       name: zen5-backup
       namespace: zen
       labels:
