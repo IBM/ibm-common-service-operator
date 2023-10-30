@@ -59,6 +59,36 @@ const (
 
 var ctx = context.Background()
 
+//+kubebuilder:rbac:groups="",resources=namespaces,verbs=create;get;list;watch;update
+//+kubebuilder:rbac:groups=operators.coreos.com,resources=subscriptions;operatorgroups,verbs=create;get;list;watch;update
+//+kubebuilder:rbac:groups=operators.coreos.com,resources=catalogsources,verbs=get
+//+kubebuilder:rbac:groups=operators.coreos.com,resources=subscriptions;clusterserviceversions,verbs=get;list;update;patch;delete
+//+kubebuilder:rbac:groups=apiextensions.ibm.crossplane.io,resources=compositeresourcedefinitions;compositions,verbs=get;list;watch;delete
+//+kubebuilder:rbac:groups=operator.ibm.com,resources=commonservices;commonservices/status;commonservices/finalizers,verbs=get;list;watch;update;patch;delete
+//+kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=create;get;update
+//+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;roles;clusterrolebindings;rolebindings,verbs=create;get;list;watch;update;delete;escalate;bind
+//+kubebuilder:rbac:groups="",resources=configmaps,resourceNames=common-service-maps;ibm-common-services-status;odlm-scope;namespace-scope,verbs=update;delete
+//+kubebuilder:rbac:groups="",resources=configmaps,verbs=create;get;list;watch
+//+kubebuilder:rbac:groups="",resources=serviceaccounts;events,verbs=create;get;update;patch
+//+kubebuilder:rbac:groups=apps,resources=deployments,verbs=create;get
+//+kubebuilder:rbac:groups=apps,resources=deployments,resourceNames=ibm-common-service-webhook;secretshare,verbs=update
+//+kubebuilder:rbac:groups=pkg.ibm.crossplane.io,resources=locks;configurations,verbs=create;get;list;watch;update;patch;delete
+//+kubebuilder:rbac:groups=kubernetes.crossplane.io;ibmcloud.crossplane.io,resources=providerconfigs,verbs=create;get;list;watch;update;patch;delete
+//+kubebuilder:rbac:groups=ibmcpcs.ibm.com,resources=secretshares;secretshares/status,verbs=create;get;list;watch;update;patch;delete
+//+kubebuilder:rbac:groups=operator.ibm.com,resources=podpresets;podpresets/status,verbs=create;get;list;watch;update;patch;delete
+//+kubebuilder:rbac:groups=operator.ibm.com,resources=namespacescopes,verbs=create;get;list;watch;update;patch;delete
+//+kubebuilder:rbac:groups=storage.k8s.io,resources=storageclasses,verbs=create;get;list;watch
+//+kubebuilder:rbac:groups=operator.ibm.com,resources=meteringreportservers,verbs=get;delete
+//+kubebuilder:rbac:groups=config.openshift.io,resources=infrastructures,verbs=get
+
+//+kubebuilder:rbac:groups=operator.ibm.com,namespace="placeholder",resources=commonservices,verbs=create
+//+kubebuilder:rbac:groups=operator.ibm.com,namespace="placeholder",resources=operandregistries;operandconfigs,verbs=create;get;list;watch;update;patch;delete
+//+kubebuilder:rbac:groups=operator.ibm.com,namespace="placeholder",resources=operandrequests;operandbindinfos;cataloguis;helmapis;helmrepos,verbs=delete
+//+kubebuilder:rbac:groups=elasticstack.ibm.com,namespace="placeholder",resources=elasticstacks,verbs=delete
+//+kubebuilder:rbac:groups=monitoring.operator.ibm.com,namespace="placeholder",resources=exporters;prometheusexts,verbs=delete
+//+kubebuilder:rbac:groups=cert-manager.io,namespace="placeholder",resources=certificates;issuers,verbs=create;get;list;watch;update;patch;delete
+//+kubebuilder:rbac:groups=batch,namespace="placeholder",resources=jobs,verbs=create;get;list;watch
+
 func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 
 	klog.Infof("Reconciling CommonService: %s", req.NamespacedName)

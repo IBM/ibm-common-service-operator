@@ -58,7 +58,7 @@ spec:
           periodSeconds: 60
           failureThreshold: 10
         image: icr.io/cpopen/common-service-operator:latest
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         name: ibm-common-service-operator
         env:
         - name: OPERATOR_NAME
