@@ -2,6 +2,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: zen5-backup-role
+  labels:
+    foundationservices.cloudpak.ibm.com: zen5-data
 rules:
   - verbs:
       - create

@@ -33,8 +33,9 @@ LICENSE_ACCEPT=0
 PREVIEW_MODE=0
 DEBUG=0
 
+CUSTOMIZED_CM_NAMESPACE=0
 CUSTOMIZED_LICENSING_NAMESPACE=0
-SKIP_INSTALL=0
+VALIDATE_ONLY=0
 CHECK_LICENSING_ONLY=0
 CERT_MANAGER_V1_OWNER="operator.ibm.com/v1"
 CERT_MANAGER_V1ALPHA1_OWNER="operator.ibm.com/v1alpha1"
@@ -127,15 +128,16 @@ function parse_arguments() {
             LICENSE_ACCEPT=1
             ;;
         --check-cert-manager)
-            SKIP_INSTALL=1
+            VALIDATE_ONLY=1
             ;;
         --check-licensing)
             CHECK_LICENSING_ONLY=1
-            SKIP_INSTALL=1
+            VALIDATE_ONLY=1
             ;;
         -cmNs | --cert-manager-namespace)
             shift
             CERT_MANAGER_NAMESPACE=$1
+            CUSTOMIZED_CM_NAMESPACE=1
             ;;
         -licensingNs | --licensing-namespace)
             shift
@@ -293,22 +295,30 @@ function install_cert_manager() {
     if [ ! -z "$webhook_ns" ]; then
         warning "There is a cert-manager-webhook pod Running, so most likely another cert-manager is already installed\n"
         info "Continue to upgrade check\n"
-    elif [ $SKIP_INSTALL -eq 1 ]; then
-        error "There is no cert-manager-webhook pod running\n"
-    fi
+        
+        # check if the cert-manager-webhook is owned by ibm-cert-manager-operator
+        local api_version=$("$OC" get deployments -n "$webhook_ns" cert-manager-webhook -o jsonpath='{.metadata.ownerReferences[*].apiVersion}' --ignore-not-found)
+        if [ ! -z "$api_version" ]; then
+            if [ "$api_version" == "$CERT_MANAGER_V1ALPHA1_OWNER" ]; then
+                error "Cluster has not deactivated LTSR ibm-cert-manager-operator yet, please re-run this script"
+            fi
 
-    local api_version=$("$OC" get deployments -n "$webhook_ns" cert-manager-webhook -o jsonpath='{.metadata.ownerReferences[*].apiVersion}' --ignore-not-found)
-    if [ ! -z "$api_version" ]; then
-        if [ "$api_version" == "$CERT_MANAGER_V1ALPHA1_OWNER" ]; then
-            error "Cluster has not deactivated LTSR ibm-cert-manager-operator yet, please re-run this script"
-        fi
+            if [ "$api_version" != "$CERT_MANAGER_V1_OWNER" ]; then
+                warning "Cluster has a non ibm-cert-manager-operator already installed, skipping"
+                return 0
+            fi
 
-        if [ "$api_version" != "$CERT_MANAGER_V1_OWNER" ]; then
-            warning "Cluster has a non ibm-cert-manager-operator already installed, skipping"
+            info "Upgrading ibm-cert-manager-operator to channel: $CHANNEL\n"
+            if [[ "$webhook_ns" != "$CERT_MANAGER_NAMESPACE" ]] && [[ "$CUSTOMIZED_CM_NAMESPACE" -eq 1 ]]; then
+                error "An ibm-cert-manager-operator already installed in namespace: $webhook_ns, please do not set parameter '-cmNs $CERT_MANAGER_NAMESPACE"
+            fi
+            CERT_MANAGER_NAMESPACE="$webhook_ns"
+        else
+            warning "Cluster has a RedHat cert-manager or Helm cert-manager, skipping"
             return 0
         fi
-        
-        info "Upgrading ibm-cert-manager-operator to channel: $CHANNEL\n"
+    elif [ $VALIDATE_ONLY -eq 1 ]; then
+        error "There is no cert-manager-webhook pod running\n"
     fi
     
     create_namespace "${CERT_MANAGER_NAMESPACE}"
@@ -334,7 +344,7 @@ function install_licensing() {
     is_sub_exist "ibm-licensing-operator-app" # this will catch the packagenames of all ibm-licensing-operator-app
     if [ $? -eq 0 ]; then
         warning "There is an ibm-licensing-operator-app Subscription already, so will upgrade it\n"
-    elif [ $SKIP_INSTALL -eq 1 ]; then
+    elif [ $VALIDATE_ONLY -eq 1 ]; then
         error "There is no ibm-licensing-operator-app Subscription installed\n"
     fi
 
@@ -388,7 +398,7 @@ function install_license_service_reporter() {
     is_sub_exist "ibm-license-service-reporter-operator" # this will catch the package names of all ibm-license-service-reporter-operator
     if [ $? -eq 0 ]; then
         warning "There is an ibm-license-service-reporter-operator Subscription already, so will upgrade it\n"
-    elif [ $SKIP_INSTALL -eq 1 ]; then
+    elif [ $VALIDATE_ONLY -eq 1 ]; then
         error "There is no ibm-license-service-reporter-operator Subscription installed\n"
     fi
 
@@ -492,7 +502,7 @@ function pre_req() {
         success "oc command logged in as ${user}"
     fi
 
-    if [ "$LICENSE_ACCEPT" -ne 1 ] && [ "$SKIP_INSTALL" -ne 1 ]; then
+    if [ "$LICENSE_ACCEPT" -ne 1 ] && [ "$VALIDATE_ONLY" -ne 1 ]; then
         error "License not accepted. Rerun script with --license-accept flag set. See https://ibm.biz/integration-licenses for more details"
     fi
 
@@ -537,64 +547,26 @@ function get_and_validate_arguments() {
 }
 
 function verify_cert_manager(){
-  info "Checking cert manager readiness."
-  #check webhook pod runnning
-  local name="cert-manager-webhook"
-  local retries=20
-  local sleep_time=15
-  local total_time_mins=$(( sleep_time * retries / 60))
-  local condition="${OC} get pod -A --no-headers --ignore-not-found | egrep '1/1' | grep ${name} || true"
-  local wait_message="Waiting for pod ${name} to be running ..."
-  local success_message="Pod ${name} is running."
-  local error_message="Timeout after ${total_time_mins} minutes waiting for pod ${name} to be running."
-  wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+    info "Checking cert manager readiness."
+    #check webhook pod runnning
+    local name="cert-manager-webhook"
+    local retries=20
+    local sleep_time=15
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local condition="${OC} get pod -A --no-headers --ignore-not-found | egrep '1/1' | grep ${name} || true"
+    local wait_message="Waiting for pod ${name} to be running ..."
+    local success_message="Pod ${name} is running."
+    local error_message="Timeout after ${total_time_mins} minutes waiting for pod ${name} to be running."
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 
-  #check no duplicate webhook pod
-  webhook_deployments=$(${OC} get deploy -A --no-headers --ignore-not-found | grep ${name} -c)
-  if [[ $webhook_deployments != "1" ]]; then
+    #check no duplicate webhook pod
+    webhook_deployments=$(${OC} get deploy -A --no-headers --ignore-not-found | grep ${name} -c)
+    if [[ $webhook_deployments != "1" ]]; then
     error "More than one cert-manager-webhook deployment exists on the cluster."
-  fi
-
-  debug1 "Creating test issuer in namespace $CERT_MANAGER_NAMESPACE ."
-  cat << EOF | ${OC} apply -f -
-apiVersion: cert-manager.io/v1
-kind: Issuer
-metadata:
-  name: test-issuer
-  namespace: $CERT_MANAGER_NAMESPACE 
-spec:
-  selfSigned: {}
-EOF
-  return_value_issuer=$(${OC} get issuer.v1.cert-manager.io -n $CERT_MANAGER_NAMESPACE --ignore-not-found | grep test-issuer || echo "false")
-  if [[ $return_value_issuer == "false" ]]; then
-    error "Failed to create test issuer."
-  else
-    debug1 "Creating test certificate in namespace $CERT_MANAGER_NAMESPACE ."
-    cat << EOF | ${OC} apply -f -
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: test-certificate
-  namespace: $CERT_MANAGER_NAMESPACE 
-spec:
-  commonName: test-certificate
-  duration: 17520h0m0s
-  issuerRef:
-    kind: Issuer
-    name: test-issuer
-  renewBefore: 720h0m0s
-  secretName: test-certificate-secret
-EOF
-    return_value_cert=$(${OC} get certificate.v1.cert-manager.io -n $CERT_MANAGER_NAMESPACE  --ignore-not-found | grep test-certificate || echo "false")
-    if [[ $return_value_cert == "false" ]]; then
-      ${OC} delete issuer.v1.cert-manager.io test-issuer -n $CERT_MANAGER_NAMESPACE  --ignore-not-found
-      error "Failed to create test certificate."
-    else
-      ${OC} delete certificate.v1.cert-manager.io test-certificate -n $CERT_MANAGER_NAMESPACE  --ignore-not-found
-      ${OC} delete issuer.v1.cert-manager.io test-issuer -n $CERT_MANAGER_NAMESPACE  --ignore-not-found
     fi
-  fi  
-  success "Cert manager is ready."
+
+    cm_smoke_test "test-issuer" "test-certificate" "test-certificate-secret" $CERT_MANAGER_NAMESPACE
+    success "Cert manager is ready."
 }
 
 main "$@"

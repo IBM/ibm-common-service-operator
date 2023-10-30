@@ -13,8 +13,10 @@
 OC=oc
 YQ=yq
 ENABLE_LICENSING=0
-CHANNEL="v4.2"
-NSS_CHANNEL="v4.2"
+MINIMAL_RBAC_ENABLED=0
+MINIMAL_RBAC=""
+CHANNEL="v4.3"
+MAINTAINED_CHANNEL="v4.2"
 SOURCE="opencloud-operators"
 SOURCE_NS="openshift-marketplace"
 OPERATOR_NS=""
@@ -77,6 +79,11 @@ function parse_arguments() {
             ;;
         --enable-licensing)
             ENABLE_LICENSING=1
+            ;;
+        --with-minimal-rbac)
+            shift
+            MINIMAL_RBAC_ENABLED=1
+            MINIMAL_RBAC=$1
             ;;
         --operator-namespace)
             shift
@@ -158,7 +165,8 @@ function print_usage() {
     echo "   --excluded-namespaces string   Optional. Remove namespaces from this tenant, comma-delimited, e.g. 'ns1,ns2'"
     echo "   --license-accept               Required. Set this flag to accept the license agreement"
     echo "   --enable-private-catalog       Optional. Set this flag to use namespace scoped CatalogSource. Default is in openshift-marketplace namespace"
-    echo "   -c, --channel string           Optional. Channel for Subscription(s). Default is v4.2"
+    echo "   --with-minimal-rbac string     Optional. Provide "skip" or file path to the minimal RBAC permissions required by the namespace scope operator for all to be deployed services"
+    echo "   -c, --channel string           Optional. Channel for Subscription(s). Default is v4.3"
     echo "   -i, --install-mode string      Optional. InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
     echo "   -s, --source string            Optional. CatalogSource name. This assumes your CatalogSource is already created. Default is opencloud-operators"
     echo "   -n, --namespace string         Optional. Namespace of CatalogSource. Default is openshift-marketplace"
@@ -203,7 +211,7 @@ function pre_req() {
     # Check if channel is semantic vx.y
     if [[ $CHANNEL =~ ^v[0-9]+\.[0-9]+$ ]]; then
         # Check if channel is equal or greater than v4.0
-        if [[ $CHANNEL == v[4-9].* || $CHANNEL == v[4-9] ]]; then  
+        if [[ $CHANNEL == v[4-9].* || $CHANNEL == v[4-9] ]]; then
             success "Channel $CHANNEL is valid"
         else
             error "Channel $CHANNEL is less than v4.0"
@@ -249,8 +257,23 @@ function pre_req() {
         error "Must provide additional namespaces for --tethered-namespaces, different from operator-namespace and services-namespace"
     fi
 
+    # When Common Service channel info is less then maintained channel, update maintained channel for backward compatibility e.g., v4.1 and v4.0
+    # Otherwise, maintained channel is pinned at v4.2
+    local channel_numeric="${CHANNEL#v}"
+    local maintained_channel_numeric="${MAINTAINED_CHANNEL#v}"
+    if awk -v num="$channel_numeric" "BEGIN { exit !(num < $maintained_channel_numeric) }"; then
+        MAINTAINED_CHANNEL="$CHANNEL"
+    fi
+
+    # Check if the file path to the minimal RBAC permissions exists
+    if [[ $MINIMAL_RBAC_ENABLED -eq 1 ]]; then
+        if [[ ! -f "$MINIMAL_RBAC" ]] && [[ "$MINIMAL_RBAC" != "skip" ]] ; then
+            error "File $MINIMAL_RBAC does not exist"
+        fi
+    fi
+
     # Check public CatalogSource and CatalogSource Namespace
-    validate_cs_catalogsource    
+    validate_cs_catalogsource
     echo ""
 }
 
@@ -383,31 +406,22 @@ function check_singleton_service() {
 function install_nss() {
     title "Checking whether Namespace Scope operator exist..."
 
-    # Extract the numeric part from the CHANNEL variable using parameter expansion
-    local cs_channel="${CHANNEL#v}"
-    local nss_channel="${NSS_CHANNEL#v}"
-
-    # Check if cs_channel is less than nss_channel, if yes, let NSS channel be the same as CS channel
-    if (( $(echo "$cs_channel < $nss_channel" | bc -l) )); then
-        NSS_CHANNEL="$CHANNEL"
-    fi
-
     is_sub_exist "ibm-namespace-scope-operator" "$OPERATOR_NS"
     if [ $? -eq 0 ]; then
         warning "There is an ibm-namespace-scope-operator subscription already deployed\n"
         if [ $PREVIEW_MODE -eq 0 ]; then
-            update_operator "ibm-namespace-scope-operator" "$OPERATOR_NS" $NSS_CHANNEL $SOURCE $SOURCE_NS $INSTALL_MODE
-            wait_for_operator_upgrade $OPERATOR_NS "ibm-namespace-scope-operator" $NSS_CHANNEL $INSTALL_MODE
+            update_operator "ibm-namespace-scope-operator" "$OPERATOR_NS" $MAINTAINED_CHANNEL $SOURCE $SOURCE_NS $INSTALL_MODE
+            wait_for_operator_upgrade $OPERATOR_NS "ibm-namespace-scope-operator" $MAINTAINED_CHANNEL $INSTALL_MODE
         fi
     else
-        create_subscription "ibm-namespace-scope-operator" "$OPERATOR_NS" "$NSS_CHANNEL" "ibm-namespace-scope-operator" "${SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
+        create_subscription "ibm-namespace-scope-operator" "$OPERATOR_NS" "$MAINTAINED_CHANNEL" "ibm-namespace-scope-operator" "${SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
     fi
 
     if [ $PREVIEW_MODE -eq 0 ]; then
         wait_for_csv "$OPERATOR_NS" "ibm-namespace-scope-operator"
         wait_for_operator "$OPERATOR_NS" "ibm-namespace-scope-operator"
     fi
-    
+
     # namespaceMembers should at least have Bedrock operators' namespace
     local ns=$(cat <<EOF
 
@@ -418,12 +432,11 @@ EOF
     title "Adding the tethered optional namespaces and removing excluded namespaces for a tenant to namespaceMembers..."
     # add the tethered optional namespaces for a tenant to namespaceMembers
     # ${TETHERED_NS} is comma delimited, so need to replace commas with space
-    local nss_exists="fail"
     if [ $PREVIEW_MODE -eq 0 ]; then
-        nss_exists=$(${OC} get nss common-service -n $OPERATOR_NS || echo "fail")
-    fi 
+        nss_exists=$(${OC} get nss common-service -n $OPERATOR_NS --ignore-not-found)
+    fi
 
-    if [[ $nss_exists != "fail" ]]; then
+    if [[ ! -z "$nss_exists" ]]; then
         debug1 "NamspaceScope common-service exists in namespace $OPERATOR_NS."
         existing_ns=$(${OC} get nss common-service -n $OPERATOR_NS -o=jsonpath='{.spec.namespaceMembers}' | tr -d \" | tr -d [ | tr -d ])
         existing_ns="${existing_ns//,/ }"
@@ -476,7 +489,8 @@ EOF
 
 function authorize_nss() {
 
-    cat <<EOF > ${PREVIEW_DIR}/role.yaml
+    if [ $MINIMAL_RBAC_ENABLED -eq 0 ]; then
+        cat <<EOF > ${PREVIEW_DIR}/role.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -497,6 +511,14 @@ rules:
   - watch
   - deletecollection
 EOF
+    else
+        if [[ "$MINIMAL_RBAC" == "skip" ]]; then
+            warning "Skipping creating minimal RBAC for NSS\n"
+            return
+        fi
+        debug1 "Creating nss minimal rbac role from $MINIMAL_RBAC:\n"
+        cat ${MINIMAL_RBAC} | sed "s/^.*name: .*/  name: nss-managed-role-from-$OPERATOR_NS/g" > ${PREVIEW_DIR}/role.yaml
+    fi
 
     cat <<EOF > ${PREVIEW_DIR}/rolebinding.yaml
 kind: RoleBinding
@@ -515,25 +537,38 @@ roleRef:
 EOF
 
     title "Checking and authorizing NSS to all namespaces in tenant..."
-    for ns in $SERVICES_NS ${TETHERED_NS//,/ }; do
-
-        if [[ $($OC get RoleBinding nss-managed-role-from-$OPERATOR_NS -n $ns 2>/dev/null) != "" ]];then
-            info "RoleBinding nss-managed-role-from-$OPERATOR_NS is already existed in $ns, skip creating\n"
+    for ns in $OPERATOR_NS $SERVICES_NS ${TETHERED_NS//,/ }; do
+        if [[ $($OC get RoleBinding nss-managed-role-from-$OPERATOR_NS -n $ns 2>/dev/null) != "" ]] && [[ $($OC get Role nss-managed-role-from-$OPERATOR_NS -n $ns 2>/dev/null) != "" ]];then
+            info "Role and RoleBinding nss-managed-role-from-$OPERATOR_NS is already existed in $ns, skip creating\n"
         else
             debug1 "Creating following Role:\n"
-            cat ${PREVIEW_DIR}/role.yaml | sed "s/ns_to_replace/$ns/g"
+            local role=$(cat ${PREVIEW_DIR}/role.yaml | sed "s/ns_to_replace/$ns/g")
+            debug1 "$role"
             echo ""
-            cat ${PREVIEW_DIR}/role.yaml | sed "s/ns_to_replace/$ns/g" | ${OC_CMD} apply -f -
+            echo "$role" | ${OC_CMD} apply -f -
             if [[ $? -ne 0 ]]; then
                 error "Failed to create Role for NSS in namespace $ns, please check if user has proper permission to create role\n"
             fi
 
+            if [ $PREVIEW_MODE -eq 0 ]; then
+                wait_for_role $ns nss-managed-role-from-$OPERATOR_NS
+            else
+                info "Preview mode is on, skip waiting for role\n"
+            fi
+
             debug1 "Creating following RoleBinding:\n"
-            cat ${PREVIEW_DIR}/rolebinding.yaml | sed "s/ns_to_replace/$ns/g"
+            local rb=$(cat ${PREVIEW_DIR}/rolebinding.yaml | sed "s/ns_to_replace/$ns/g")
+            debug1 "$rb"
             echo ""
-            cat ${PREVIEW_DIR}/rolebinding.yaml | sed "s/ns_to_replace/$ns/g" | ${OC_CMD} apply -f -
+            echo "$rb" | ${OC_CMD} apply -f -
             if [[ $? -ne 0 ]]; then
                 error "Failed to create RoleBinding for NSS in namespace $ns, please check if user has proper permission to create rolebinding\n"
+            fi
+
+            if [ $PREVIEW_MODE -eq 0 ]; then
+                wait_for_role_binding $ns nss-managed-role-from-$OPERATOR_NS
+            else
+                info "Preview mode is on, skip waiting for role binding\n"
             fi
         fi
     done
@@ -586,7 +621,7 @@ function install_cs_operator() {
                         wait_for_operator_upgrade $ns $pm $CHANNEL $INSTALL_MODE
                     fi
                 done
-            fi        
+            fi
         fi
     else
         create_subscription "ibm-common-service-operator" "$OPERATOR_NS" "$CHANNEL" "ibm-common-service-operator" "${SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
@@ -602,12 +637,12 @@ function install_cs_operator() {
     else
         info "Preview mode is on, skip waiting for operator and webhook being ready\n"
     fi
-    
+
     if [ "$is_CS_CRD_exist" == "fail" ] || [ $RETRY_CONFIG_CSCR -eq 1 ]; then
         RETRY_CONFIG_CSCR=1
         configure_cs_kind
     fi
-    
+
     # Checking master CommonService CR status
     if [ $PREVIEW_MODE -eq 0 ]; then
         wait_for_csv "$OPERATOR_NS" "ibm-odlm"
@@ -674,13 +709,13 @@ EOF
     echo ""
 
     while [ $retries -gt 0 ]; do
-        
+
         cat "${PREVIEW_DIR}/commonservice.yaml" | ${OC_CMD} apply -f -
-    
+
         # Check if the patch was successful
         if [[ $? -eq 0 ]]; then
-            operator_ns_in_cr=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | yq '.spec.operatorNamespace')
-            services_ns_in_cr=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | yq '.spec.servicesNamespace')
+            operator_ns_in_cr=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | "${YQ}" '.spec.operatorNamespace')
+            services_ns_in_cr=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | "${YQ}" '.spec.servicesNamespace')
             if [[ "$operator_ns_in_cr" == "$OPERATOR_NS" ]] && [[ "$services_ns_in_cr" == "$SERVICES_NS" ]]; then
                 success "Successfully patched CommonService CR in ${OPERATOR_NS}"
                 break

@@ -5,8 +5,8 @@
 # US Government Users Restricted Rights -
 # Use, duplication or disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
 #
-# This is an internal component, bundled with an official IBM product. 
-# Please refer to that particular license for additional information. 
+# This is an internal component, bundled with an official IBM product.
+# Please refer to that particular license for additional information.
 
 # ---------- Info functions ----------#
 
@@ -69,7 +69,7 @@ function check_version() {
 function check_return_code() {
     local rc=$1
     local error_message=$2
-    
+
     if [ "${rc}" -ne 0 ]; then
         error "${error_message}"
     else
@@ -83,7 +83,7 @@ function restart_job() {
 
     if [[ ! -z "$(${OC} -n ${namespace} get job ${job_name} --ignore-not-found)" ]]; then
         ${OC} -n ${namespace} patch job ${job_name} --type json -p \
-            '[{ "op": "remove", "path": "/spec/selector"}, 
+            '[{ "op": "remove", "path": "/spec/selector"},
               { "op": "remove", "path": "/spec/template/metadata/labels/controller-uid"}]' \
             -o yaml --dry-run \
             | ${OC} -n ${namespace} replace --force --timeout=20s -f - 2> /dev/null
@@ -112,10 +112,10 @@ function wait_for_condition() {
         if [[ ( ${retries} -eq 0 ) && ( -z "${result}" ) ]]; then
             error "${error_message}"
         fi
- 
+
         sleep ${sleep_time}
         result=$(eval "${condition}")
-        
+
         if [[ -z "${result}" ]]; then
             info "RETRYING: ${wait_message} (${retries} left)"
             retries=$(( retries - 1 ))
@@ -144,10 +144,10 @@ function wait_for_not_condition() {
         if [[ ( ${retries} -eq 0 ) && ( ! -z "${result}" ) ]]; then
             error "${error_message}"
         fi
- 
+
         sleep ${sleep_time}
         result=$(eval "${condition}")
-        
+
         if [[ ! -z "${result}" ]]; then
             info "RETRYING: ${wait_message} (${retries} left)"
             retries=$(( retries - 1 ))
@@ -171,7 +171,7 @@ function wait_for_configmap() {
     local wait_message="Waiting for ConfigMap ${name} in namespace ${namespace} to become available"
     local success_message="ConfigMap ${name} in namespace ${namespace} is available"
     local error_message="Timeout after ${total_time_mins} minutes waiting for ConfigMap ${name} in namespace ${namespace} to become available"
- 
+
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
@@ -185,7 +185,7 @@ function wait_for_pod() {
     local wait_message="Waiting for pod ${name} in namespace ${namespace} to be running"
     local success_message="Pod ${name} in namespace ${namespace} is running"
     local error_message="Timeout after ${total_time_mins} minutes waiting for pod ${name} in namespace ${namespace} to be running"
- 
+
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
@@ -199,7 +199,7 @@ function wait_for_no_pod() {
     local wait_message="Waiting for pod ${name} in namespace ${namespace} to be deleting"
     local success_message="Pod ${name} in namespace ${namespace} is deleted"
     local error_message="Timeout after ${total_time_mins} minutes waiting for pod ${name} in namespace ${namespace} to be deleted"
- 
+
     wait_for_not_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
@@ -212,7 +212,7 @@ function wait_for_project() {
     local wait_message="Waiting for project ${name} to be created"
     local success_message="Project ${name} is created"
     local error_message="Timeout after ${total_time_mins} minutes waiting for project ${name} to be created"
- 
+
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
@@ -226,7 +226,35 @@ function wait_for_operator() {
     local wait_message="Waiting for operator ${operator_name} in namespace ${namespace} to become available"
     local success_message="Operator ${operator_name} in namespace ${namespace} is available"
     local error_message="Timeout after ${total_time_mins} minutes waiting for ${operator_name} in namespace ${namespace} to become available"
- 
+
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
+function wait_for_issuer() {
+    local issuer=$1
+    local namespace=$2
+    local condition="${OC} -n ${namespace} get issuer.v1.cert-manager.io ${issuer} --ignore-not-found -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}' | grep 'True'"
+    local retries=10
+    local sleep_time=6
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for Issuer ${issuer} in namespace ${namespace} to be Ready"
+    local success_message="Issuer ${issuer} in namespace ${namespace} is Ready"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for Issuer ${issuer} in namespace ${namespace} to be Ready"
+
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
+function wait_for_certificate() {
+    local certificate=$1
+    local namespace=$2
+    local condition="${OC} -n ${namespace} get certificate.v1.cert-manager.io ${certificate} --ignore-not-found -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}' | grep 'True'"
+    local retries=10
+    local sleep_time=6
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for Certificate ${certificate} in namespace ${namespace} to be Ready"
+    local success_message="Certificate ${certificate} in namespace ${namespace} is Ready"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for Certificate ${certificate} in namespace ${namespace} to be Ready"
+
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
@@ -234,13 +262,13 @@ function wait_for_csv() {
     local namespace=$1
     local package_name=$2
     local condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${package_name}.${namespace}='' -n ${namespace} -o yaml -o jsonpath='{.items[*].status.installedCSV}'"
-    local retries=30
+    local retries=60
     local sleep_time=10
     local total_time_mins=$(( sleep_time * retries / 60))
     local wait_message="Waiting for operator ${package_name} CSV in namespace ${namespace} to be bound to Subscription"
     local success_message="Operator ${package_name} CSV in namespace ${namespace} is bound to Subscription"
     local error_message="Timeout after ${total_time_mins} minutes waiting for ${package_name} CSV in namespace ${namespace} to be bound to Subscription"
- 
+
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
@@ -254,7 +282,7 @@ function wait_for_service_account() {
     local wait_message="Waiting for service account ${name} to be created"
     local success_message="Service account ${name} is created"
     local error_message="Timeout after ${total_time_mins} minutes waiting for service account ${name} to be created"
- 
+
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
@@ -268,7 +296,7 @@ function wait_for_cscr_status(){
     local wait_message="Waiting for CommonService CR ${name} in ${namespace} to be ready"
     local success_message="CommonService CR in ${namespace} is in Succeeded Phase"
     local error_message="Timeout after ${total_time_mins} minutes waiting for CommonService CR in ${namespace} to be ready"
- 
+
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
@@ -282,7 +310,7 @@ function wait_for_operand_request() {
     local wait_message="Waiting for operand request ${name} to be running"
     local success_message="Operand request ${name} is running"
     local error_message="Timeout after ${total_time_mins} minutes waiting for operand request ${name} to be running"
- 
+
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
@@ -316,8 +344,8 @@ function wait_for_nss_patch() {
             wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
             break
         fi
- 
-        
+
+
         if [ -z "${result}" ]; then
             info "RETRYING: ${wait_message} (${retries} left)"
             retries=$(( retries - 1 ))
@@ -331,12 +359,12 @@ function wait_for_nss_patch() {
     if [[ ! -z "${success_message}" ]]; then
         success "${success_message}\n"
     fi
-    
+
     # wait for deployment to be ready
     local deployment_name="ibm-common-service-operator"
     wait_for_nss_env_var ${namespace} ${deployment_name}
     wait_for_deployment ${namespace} ${deployment_name}
-    
+
 }
 
 function wait_for_nss_env_var() {
@@ -363,8 +391,8 @@ function wait_for_nss_env_var() {
             wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
             break
         fi
- 
-        
+
+
         if [ -z "${result}" ]; then
             info "RETRYING: ${wait_message} (${retries} left)"
             retries=$(( retries - 1 ))
@@ -410,7 +438,7 @@ function patch_watch_namespace() {
         else
             warning "Failed to patch WATCH_NAMESPACE in Deployment ${name} in ${namespace}. Retrying in ${delay} seconds..."
             sleep ${delay}
-            retries=$((retries - 1))            
+            retries=$((retries - 1))
         fi
     done
     rm /tmp/deployment.yaml
@@ -475,6 +503,34 @@ function wait_for_cs_webhook() {
     local wait_message="Waiting for CS webhook service to be ready"
     local success_message="CS Webhook Service ${name} is ready"
     local error_message="Timeout after ${total_time_mins} minutes waiting for common service webhook service to be ready"
+
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
+function wait_for_role() {
+    local namespace=$1
+    local name=$2
+    local condition="${OC} -n ${namespace} get role ${name} --no-headers --ignore-not-found"
+    local retries=10
+    local sleep_time=10
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for role ${name} in namespace ${namespace} to be created"
+    local success_message="Role ${name} in namespace ${namespace} is created"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for role ${name} in namespace ${namespace} to be created"
+
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
+function wait_for_role_binding() {
+    local namespace=$1
+    local name=$2
+    local condition="${OC} -n ${namespace} get rolebinding ${name} --no-headers --ignore-not-found"
+    local retries=10
+    local sleep_time=10
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for rolebinding ${name} in namespace ${namespace} to be created"
+    local success_message="Role binding ${name} in namespace ${namespace} is created"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for role binding ${name} in namespace ${namespace} to be created"
 
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
@@ -554,17 +610,17 @@ function catalogsource_correction() {
 
 # Validate operator CatalogSource and CatalogSourceNamespace
 function validate_operator_catalogsource(){
-    local pm="$1" 
+    local pm="$1"
     local operator_ns="$2"
     local source="$3"
     local source_ns="$4"
     local channel="$5"
 
     title "Validate CatalogSource for operator $pm in $operator_ns namespace"
-    
+
     correct_result=$(catalogsource_correction $source $source_ns $pm $operator_ns $channel)
     IFS=" " read -r return_value correct_source correct_source_ns <<< "$correct_result"
-    
+
     # return_value: 0 - correct, 1 - multiple, 2 - none, 3 - wrong and corrected
     if [[ $return_value -eq 0 ]]; then
         success "CatalogSource $source from $source_ns CatalogSourceNamespace is available for $pm in $operator_ns namespace"
@@ -595,20 +651,40 @@ function is_sub_exist() {
 }
 
 function check_cert_manager(){
-    local service_name=$1    
+    local service_name=$1
     local namespace=$2
-    title " Checking whether Cert Manager exist..." 
+    title " Checking whether Cert Manager exist..."
     if [[ $PREVIEW_MODE -eq 1 ]]; then
         info "Preview mode is on, skip checking whether Cert Manager exist\n"
-        return 0       
+        return 0
     fi
+
     csv_count=`$OC get csv -n "$namespace" | grep "$service_name" | wc -l`
     if [[ $csv_count == 1 ]]; then
-        success "Found only one Cert Manager exists in namespace "$namespace"\n"
+        success "Found only one Cert Manager CSV exists in namespace "$namespace", continue smoke checking\n"
     elif [[ $csv_count == 0 ]]; then
-        error "Missing a Cert Manager\n"
+        warning "Missing a Cert Manager, continue smoke checking\n"
     elif [[ $csv_count > 1 ]]; then
         error "Multiple Cert Manager csv found. Only one should be installed per cluster\n"
+    fi
+
+    cm_smoke_test "test-issuer" "test-certificate" "test-certificate-secret" $namespace
+}
+
+function cm_smoke_test(){
+    local issuer_name=$1
+    local cert_name=$2
+    local sercret_name=$3
+    local namespace=$4
+
+    title " Smoke test for Cert Manager existence..."
+    cleanup_cm_resources $issuer_name $cert_name $sercret_name $namespace
+    create_issuer $issuer_name $namespace
+    create_certificate $issuer_name $cert_name $sercret_name $namespace
+    wait_for_issuer $issuer_name $namespace
+    wait_for_certificate $cert_name $namespace
+    if [[ $? -eq 0 ]]; then
+        cleanup_cm_resources $issuer_name $cert_name $sercret_name $namespace
     fi
 }
 
@@ -708,6 +784,58 @@ EOF
     fi
 }
 
+function create_issuer() {
+    local issuer_name=$1
+    local namespace=$2
+    debug1 "Creating Issuer $issuer_name in namespace $namespace ."
+    cat <<EOF > ${PREVIEW_DIR}/issuer.yaml
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: $issuer_name
+  namespace: $namespace
+spec:
+  selfSigned: {}
+EOF
+
+    info "Creating following issuer:\n"
+    cat ${PREVIEW_DIR}/issuer.yaml
+    echo ""
+    cat ${PREVIEW_DIR}/issuer.yaml | ${OC} apply -f -
+    if [[ $? -ne 0 ]]; then
+        error "Failed to create Issuer $issuer_name in $namespace \n"
+    fi
+}
+
+function create_certificate() {
+    local issuer_name=$1
+    local cert_name=$2
+    local sercret_name=$3
+    local namespace=$4
+    debug1 "Creating Certificate $cert_name in namespace $namespace ."
+    cat <<EOF > ${PREVIEW_DIR}/certificate.yaml
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: $cert_name
+  namespace: $namespace
+spec:
+  commonName: $cert_name
+  issuerRef:
+    kind: Issuer
+    name: $issuer_name
+  secretName: $sercret_name
+EOF
+
+    info "Creating following certificate:\n"
+    cat ${PREVIEW_DIR}/certificate.yaml
+    echo ""
+    cat ${PREVIEW_DIR}/certificate.yaml | ${OC} apply -f -
+    if [[ $? -ne 0 ]]; then
+        error "Failed to create test Certificate $cert_name in $namespace \n"
+    fi
+}
+
 # Update/create cs cr
 function update_cscr() {
     local operator_ns=$1
@@ -725,7 +853,7 @@ function update_cscr() {
         else
             info "Configuring CommonService CR common-service in $namespace"
             ${OC} get commonservice common-service -n "${namespace}" -o yaml | ${YQ} eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
-        fi  
+        fi
         ${YQ} eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.namespace = "'${namespace}'"' common-service.yaml | ${OC} apply --overwrite=true -f -
         if [[ $? -ne 0 ]]; then
             error "Failed to apply CommonService CR in ${namespace}"
@@ -763,7 +891,7 @@ spec:
     intent: projected
 EOF
     )
-    
+
     echo
     info "Updating the NamespaceScope object"
     echo "$object" | ${OC} apply -f -
@@ -790,7 +918,7 @@ function cleanup_cp2() {
         cleanup_secretshare $control_ns $nss_list
         cleanup_crossplane
     fi
-    
+
 
     cleanup_OperandBindInfo $operator_ns
     cleanup_NamespaceScope $operator_ns
@@ -816,6 +944,33 @@ function cleanup_webhook() {
 
     info "Deleting ValidatingWebhookConfiguration..."
     ${OC} delete ValidatingWebhookConfiguration ibm-cs-ns-mapping-webhook-configuration --ignore-not-found
+
+}
+
+# clean up issuers, certificates and secrets
+function cleanup_cm_resources() {
+    local issuer_name=$1
+    local cert_name=$2
+    local sercret_name=$3
+    local namespace=$4
+
+    return_value_issuer=$(${OC} get issuer.v1.cert-manager.io $issuer_name -n $namespace --ignore-not-found )
+    if [[ ! -z $return_value_issuer ]]; then
+        info "Deleting $issuer_name Issuer ..."
+        ${OC} delete issuer.v1.cert-manager.io $issuer_name -n $namespace --ignore-not-found
+        msg ""
+    fi
+
+    return_value_cert=$(${OC} get certificate.v1.cert-manager.io $cert_name -n $namespace --ignore-not-found )
+    if [[ ! -z $return_value_cert ]]; then
+        info "Deleting $cert_name Certificate ..."
+        ${OC} delete certificate.v1.cert-manager.io $cert_name -n $namespace --ignore-not-found
+        msg ""
+
+        info "Deleting $$secret_name Secret ..."
+        ${OC} delete secret $sercret_name -n $namespace --ignore-not-found
+        msg ""
+    fi
 
 }
 
@@ -937,7 +1092,7 @@ function compare_semantic_version() {
     else
         error "Invalid version format: $1"
     fi
-    
+
     # If the versions have different number of components, add the missing parts
     if [[ -z "$minor1" && -z "$minor2" ]]; then
         minor1=0
@@ -997,7 +1152,7 @@ function update_operator() {
     local install_mode=$6
     local retries=5 # Number of retries
     local delay=5 # Delay between retries in seconds
-    
+
     local sub_name=$(${OC} get subscription.operators.coreos.com -n ${ns} -l operators.coreos.com/${package_name}.${ns}='' --no-headers | awk '{print $1}')
     if [ -z "$sub_name" ]; then
         warning "Not found subscription ${package_name} in ${ns}"
@@ -1008,7 +1163,7 @@ function update_operator() {
     while [ $retries -gt 0 ]; do
         # Retrieve the latest version of the subscription
         ${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml > sub.yaml
-    
+
         existing_channel=$(${YQ} eval '.spec.channel' sub.yaml)
         existing_catalogsource=$(${YQ} eval '.spec.source' sub.yaml)
 
@@ -1021,7 +1176,7 @@ function update_operator() {
         if [[ $return_channel_value -eq 1 ]]; then
             error "Failed to update channel subscription ${package_name} in ${ns}"
         elif [[ $return_channel_value -eq 2 || $return_catsrc_value -eq 1 ]]; then
-            info "$package_name is ready for updating the subscription."      
+            info "$package_name is ready for updating the subscription."
         elif [[ $return_channel_value -eq 0 && $return_catsrc_value -eq 0 ]]; then
             info "$package_name has already updated channel $existing_channel and catalogsource $existing_catalogsource in the subscription."
         fi
@@ -1038,7 +1193,7 @@ function update_operator() {
 
         # Apply the patch
         ${OC} apply -f sub.yaml
-    
+
         # Check if the patch was successful
         if [[ $? -eq 0 ]]; then
             success "Successfully patched subscription ${package_name} in ${ns}"
@@ -1086,7 +1241,7 @@ function check_deployment(){
     local ns=$1
     local deployment=$2
     local replicas=$3
-    local retries=5 
+    local retries=5
     local count=0
 
     while [ $count -lt $retries ]; do
@@ -1095,7 +1250,7 @@ function check_deployment(){
         if [[ -z "$current_replicas" ]]; then
             current_replicas=0
         fi
-            
+
         if [ "$current_replicas" -eq "$replicas" ]; then
             success "Replicas count is as expected: $current_replicas"
             return 0
@@ -1125,7 +1280,7 @@ function scale_down() {
     local cs_CSV=$(${OC} get subscription.operators.coreos.com ${cs_sub} -n ${operator_ns} --ignore-not-found -o jsonpath={.status.installedCSV})
     local odlm_sub=$(${OC} get subscription.operators.coreos.com -n ${operator_ns} -l operators.coreos.com/ibm-odlm.${operator_ns}='' --no-headers | awk '{print $1}')
     local odlm_CSV=$(${OC} get subscription.operators.coreos.com ${odlm_sub} -n ${operator_ns} --ignore-not-found -o jsonpath={.status.installedCSV})
-    
+
     ${OC} get subscription.operators.coreos.com ${cs_sub} -n ${operator_ns} -o yaml > sub.yaml
 
     existing_channel=$(${YQ} eval '.spec.channel' sub.yaml)
@@ -1136,7 +1291,7 @@ function scale_down() {
     compare_catalogsource $existing_catalogsource $source
     return_catsrc_value=$?
 
-    if [[ $return_channel_value -eq 1 ]]; then 
+    if [[ $return_channel_value -eq 1 ]]; then
         error "Must provide correct channel. The channel $CHANNEl is less than $existing_channel found in subscription ibm-common-service-operator in $operator_ns"
     elif [[ $return_channel_value -eq 2 || $return_catsrc_value -eq 1 ]]; then
         info "$cs_sub is ready for scaling down."
@@ -1154,7 +1309,7 @@ function scale_down() {
         msg "Scaling down ibm-common-service-operator deployment in ${operator_ns} namespace to 0..."
         scale_deployment $operator_ns ibm-common-service-operator 0
     fi
-    
+
     # Scale down ODLM
     msg "Patching CSV to scale down operand-deployment-lifecycle-manager deployment in ${operator_ns} namespace to 0..."
     if [[ ! -z "$odlm_CSV" ]]; then
@@ -1165,14 +1320,14 @@ function scale_down() {
         msg "Scaling down operand-deployment-lifecycle-manager deployment in ${operator_ns} namespace to 0..."
         scale_deployment $operator_ns operand-deployment-lifecycle-manager 0
     fi
-    
+
     # delete OperandRegistry
     msg "Deleting OperandRegistry common-service in ${services_ns} namespace..."
     ${OC} delete operandregistry common-service -n ${services_ns} --ignore-not-found
     # delete validatingwebhookconfiguration
     msg "Deleting ValidatingWebhookConfiguration ibm-common-service-validating-webhook-${operator_ns} in ${operator_ns} namespace..."
     ${OC} delete ValidatingWebhookConfiguration ibm-common-service-validating-webhook-${operator_ns} --ignore-not-found
-    rm sub.yaml 
+    rm sub.yaml
 }
 
 function wait_for_operand_registry() {
@@ -1185,7 +1340,7 @@ function wait_for_operand_registry() {
     local wait_message="Waiting for OperandRegistry ${name} to be present"
     local success_message="OperandRegistry ${name} is present"
     local error_message="Timeout after ${total_time_mins} minutes waiting for operand registry ${name} to be present"
- 
+
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
@@ -1216,7 +1371,7 @@ function accept_license() {
     title "Accepting license for $kind $cr_name in namespace $namespace..."
     if [[ $PREVIEW_MODE -eq 1 ]]; then
         info "Preview mode is on, skip patching license acceptance\n"
-        return 0       
+        return 0
     fi
 
     if [[ -z "$(${OC} get $kind $cr_name -n $namespace --ignore-not-found)" ]]; then

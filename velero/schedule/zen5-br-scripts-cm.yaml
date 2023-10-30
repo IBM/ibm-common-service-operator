@@ -18,6 +18,10 @@ data:
 
     # ---------- Command arguments ----------
     #should probably defualt this to zen with an optional parameter
+    
+    set -o errtrace
+    set -o errexit
+
     ZEN_NAMESPACE=$1
     BACKUP_DIR=/zen5/zen-backup
 
@@ -119,6 +123,9 @@ data:
     # This is an internal component, bundled with an official IBM product.
     # Please refer to that particular license for additional information.
 
+    set -o errtrace
+    set -o errexit
+    
     #[2.2] Restore
     #[2.2.1] Set Zen namespace
     ZEN_NAMESPACE=$1 #should probably defualt this to zen with an optional parameter
@@ -143,6 +150,14 @@ data:
         ZEN_WATCHER_RC=$(oc get deploy zen-watcher -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}')
 
         oc get deploy ibm-nginx zen-core usermgmt zen-watcher  zen-watchdog zen-core-api -n ${ZEN_NAMESPACE}
+        
+        #Getting the replica count before scaling down the required pods
+        IBM_NGINX_RC=$(oc get deploy ibm-nginx -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}')
+        ZEN_CORE_RC=$(oc get deploy zen-core -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}')
+        USERMGMT_RC=$(oc get deploy usermgmt -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}')
+        ZEN_CORE_API_RC=$(oc get deploy zen-core-api -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}')
+        ZEN_WATCHER_RC=$(oc get deploy zen-watcher -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}')
+        
         oc scale deploy ibm-nginx zen-core usermgmt zen-watcher zen-core-api --replicas=0 -n ${ZEN_NAMESPACE}
         # zen-watchdog is applicable only for CloudPak for Data 
         zen_watchdog_present=$(oc get deploy zen-watchdog -n ${ZEN_NAMESPACE} || echo "fail")
@@ -150,6 +165,19 @@ data:
             info "Zen watchdog present, scaling down."
             oc scale deploy zen-watchdog --replicas=0 -n ${ZEN_NAMESPACE}
         fi
+        
+        #waiting for deployments to be cleaned up after scaling down
+        deployments_clear=$(oc get deploy -n $ZEN_NAMESPACE | grep "1/1" | grep "ibm-nginx\|zen-core\|usermgmt\|zen-watcher\|zen-core-api\|zen-watchdog" | grep -v "ibm-nginx-tester" || echo clear)
+        while [[ $deployments_clear != "clear" ]];
+        do
+            sleep 10
+            deployments_clear=$(oc get deploy -n $ZEN_NAMESPACE | grep "1/1" | grep "ibm-nginx\|zen-core\|usermgmt\|zen-watcher\|zen-core-api\|zen-watchdog" | grep -v "ibm-nginx-tester" || echo clear)
+            if [[ $deployments_clear != "clear" ]]; then
+                info "Waiting on deployments ibm-nginx zen-core usermgmt zen-watcher zen-core-api to clean up..."
+            else
+                info "Deployments ibm-nginx zen-core usermgmt zen-watcher zen-core-api successfully scaled down. Moving on..."
+            fi
+        done
 
         #waiting for deployments to be cleaned up after scaling down
         deployments_clear=$(oc get deploy -n $ZEN_NAMESPACE  | grep "ibm-nginx\|zen-core\|usermgmt\|zen-watcher\|zen-core-api\|zen-watchdog" | grep -v "ibm-nginx-tester" | grep -v 0/0 || echo clear)
@@ -233,7 +261,7 @@ data:
             info "zen-watcher deployment not scaled up before rerunning, setting replica value to 1"
             ZEN_WATCHER_RC=1
         fi
-
+        
         oc scale deploy zen-watcher --replicas=$ZEN_WATCHER_RC -n $ZEN_NAMESPACE
         oc scale deploy usermgmt --replicas=$USERMGMT_RC -n $ZEN_NAMESPACE
         oc scale deploy zen-core-api --replicas=$ZEN_CORE_API_RC -n $ZEN_NAMESPACE
@@ -380,5 +408,5 @@ data:
     function info() {
         msg "[INFO] ${1}"
     }
-
+    
     main $*

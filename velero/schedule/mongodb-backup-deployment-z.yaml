@@ -1,0 +1,65 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: mongodb-backup
+  namespace: ibm-common-services
+  labels:
+    foundationservices.cloudpak.ibm.com: mongo-data
+spec:
+  selector:
+    matchLabels:
+      foundationservices.cloudpak.ibm.com: mongo-data
+  template:
+    metadata:
+      annotations:
+        backup.velero.io/backup-volumes: mongodump
+        pre.hook.backup.velero.io/command: '["bash", "-c", "cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongodump --oplog --out /dump/dump --host mongodb:$MONGODB_SERVICE_PORT --username $ADMIN_USER --password $ADMIN_PASSWORD --authenticationDatabase admin"]'
+        post.hook.backup.velero.io/command: '["bash", "-c", "rm -rf /dump/dump/*"]'
+        post.hook.restore.velero.io/command: '["bash", "-c", "cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongorestore --host rs0/mongodb:$MONGODB_SERVICE_PORT --username $ADMIN_USER --password $ADMIN_PASSWORD --authenticationDatabase admin /dump/dump"]'
+        pre.hook.backup.velero.io/wait-timeout: 300s
+        pre.hook.backup.velero.io/exec-timeout: 300s
+        pre.hook.backup.velero.io/timeout: 600s
+        post.hook.restore.velero.io/timeout: 600s
+      name: mongodb-backup
+      namespace: ibm-common-services
+      labels:
+        foundationservices.cloudpak.ibm.com: mongo-data
+    spec:
+      containers:
+      - name: mongodb-backup
+        image: icr.io/cpopen/cpfs/ibm-mongodb@sha256:3a44fcf5656cdd3f062d3ca45d7fd0a46ff3ed90f6ed34ba260ad50938e95f57
+        command: ["bash", "-c", "sleep infinity"]
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: "/dump"
+          subpath: dump
+          name: mongodump
+        - mountPath: "/cred/mongo-certs"
+          name: icp-mongodb-client-cert
+        - mountPath: "/cred/cluster-ca"
+          name: cluster-ca-cert
+        env:
+          - name: ADMIN_USER
+            valueFrom:
+              secretKeyRef:
+                name: icp-mongodb-admin
+                key: user
+          - name: ADMIN_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: icp-mongodb-admin
+                key: password
+      schedulerName: default-scheduler
+      volumes:
+      - name: mongodump
+        persistentVolumeClaim:
+          claimName: cs-mongodump
+      - name: icp-mongodb-client-cert
+        secret:
+          secretName: icp-mongodb-client-cert
+      - name: cluster-ca-cert
+        secret:
+          secretName: mongodb-root-ca-cert
+      - name: tmp-mongodb
+        emptyDir: {}
