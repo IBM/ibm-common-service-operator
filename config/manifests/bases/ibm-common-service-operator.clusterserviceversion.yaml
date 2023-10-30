@@ -181,7 +181,7 @@ spec:
   provider:
     name: IBM
   relatedImages:
-  - image: icr.io/cpopen/common-service-operator:3.19.17
+  - image: icr.io/cpopen/common-service-operator:3.23.9
     name: COMMON_SERVICE_OPERATOR_IMAGE
   - image: icr.io/cpopen/cpfs/ibm-cs-webhook:1.19.9
     name: IBM_CS_WEBHOOK_IMAGE

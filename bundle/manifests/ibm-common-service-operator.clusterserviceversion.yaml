@@ -22,7 +22,7 @@ metadata:
       ]
     capabilities: Seamless Upgrades
     containerImage: icr.io/cpopen/common-service-operator:latest
-    createdAt: "2023-10-27T16:25:39Z"
+    createdAt: "2023-10-30T22:11:31Z"
     description: The IBM Common Service Operator is used to deploy IBM Common Services
     nss.operator.ibm.com/managed-operators: cloud-native-postgresql,ibm-bts-operator
     olm.skipRange: ">=3.3.0 <3.23.9"
@@ -565,6 +565,7 @@ spec:
   minKubeVersion: 1.19.0
   provider:
     name: IBM
+  version: 3.23.9
   relatedImages:
     - image: icr.io/cpopen/common-service-operator:3.23.9
       name: COMMON_SERVICE_OPERATOR_IMAGE
@@ -574,4 +575,3 @@ spec:
       name: IBM_SECRETSHARE_OPERATOR_IMAGE
     - image: icr.io/cpopen/cpfs/multi-instance-conversion:latest
       name: CS_MULTI_INSTANCE_CONVERSION_IMAGE
-  version: 3.23.9
