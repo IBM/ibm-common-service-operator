@@ -871,6 +871,18 @@ spec:
         force: false
         kind: Keycloak
         name: cs-keycloak
+      - apiVersion: k8s.keycloak.org/v2alpha1
+        kind: KeycloakRealmImport
+        name: cs-cloudpak-realm
+        force: false
+        data:
+          spec:
+            keycloakCRName: cs-keycloak
+            realm:
+              displayName: cloudpak
+              enabled: true
+              id: cloudpak
+              realm: cloudpak
   - name: edb-keycloak
     resources:
       - apiVersion: batch/v1
