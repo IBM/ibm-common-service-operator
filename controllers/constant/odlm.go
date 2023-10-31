@@ -107,6 +107,14 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+  - name: ibm-im-operator-v4.3
+    namespace: "{{ .CPFSNs }}"
+    channel: v4.3
+    packageName: ibm-iam-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
 	IdpConfigUIOpReg = `
@@ -146,6 +154,14 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+  - name: ibm-idp-config-ui-operator-v4.3
+    namespace: "{{ .CPFSNs }}"
+    channel: v4.3
+    packageName: ibm-commonui-operator-app
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
 	PlatformUIOpReg = `
@@ -180,6 +196,14 @@ spec:
   - name: ibm-platformui-operator-v4.2
     namespace: "{{ .CPFSNs }}"
     channel: v4.2
+    packageName: ibm-zen-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+  - name: ibm-platformui-operator-v4.3
+    namespace: "{{ .CPFSNs }}"
+    channel: v4.3
     packageName: ibm-zen-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -295,6 +319,19 @@ spec:
               - name: ibm-im-mongodb-operator-v4.2
               - name: ibm-idp-config-ui-operator-v4.2
             registry: common-service
+  - name: ibm-im-operator-v4.3
+    spec:
+      authentication:
+        config:
+          onPremMultipleDeploy: {{ .OnPremMultiEnable }}
+      operandBindInfo: 
+        operand: ibm-im-operator
+      operandRequest:
+        requests:
+          - operands:
+              - name: ibm-im-mongodb-operator-v4.2
+              - name: ibm-idp-config-ui-operator-v4.3
+            registry: common-service
 `
 
 	IdpConfigUIOpCon = `
@@ -324,6 +361,11 @@ spec:
       commonWebUI: {}
       switcheritem: {}
       navconfiguration: {}
+  - name: ibm-idp-config-ui-operator-v4.3
+    spec:
+      commonWebUI: {}
+      switcheritem: {}
+      navconfiguration: {}
 `
 
 	PlatformUIOpCon = `
@@ -345,6 +387,9 @@ spec:
     spec:
       operandBindInfo: {}
   - name: ibm-platformui-operator-v4.2
+    spec:
+      operandBindInfo: {}
+  - name: ibm-platformui-operator-v4.3
     spec:
       operandBindInfo: {}
 `
@@ -1319,7 +1364,7 @@ spec:
     sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-im-mongodb-operator
     namespace: "{{ .CPFSNs }}"
-    channel: v4.2s
+    channel: v4.2
     packageName: ibm-mongodb-operator-app
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}

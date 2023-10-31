@@ -157,6 +157,9 @@ spec:
   - name: ibm-im-operator-v4.2
     spec:
       authentication: {}
+  - name: ibm-im-operator-v4.3
+    spec:
+      authentication: {}
   - name: ibm-healthcheck-operator
     spec:
       healthService: {}
@@ -176,6 +179,11 @@ spec:
       legacyHeader: {}
       navconfiguration: {}
   - name: ibm-idp-config-ui-operator-v4.2
+    spec:
+      commonWebUI: {}
+      legacyHeader: {}
+      navconfiguration: {}
+  - name: ibm-idp-config-ui-operator-v4.3
     spec:
       commonWebUI: {}
       legacyHeader: {}
