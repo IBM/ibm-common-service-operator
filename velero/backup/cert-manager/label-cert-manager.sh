@@ -107,7 +107,7 @@ zen_namespace_list=$(oc get zenservice -A | awk '{if (NR!=1) {print $1}}' || ech
 if [[ $zen_namespace_list != "fail" ]]; then 
     for zen_namespace in $zen_namespace_list
     do
-        zenservice_list=$(oc get zenservice -n $zen_namespace | awk '{if (NR!=1) {print $2}}')
+        zenservice_list=$(oc get zenservice -n $zen_namespace | awk '{if (NR!=1) {print $1}}')
         for zenservice in $zenservice_list
         do
             zen_secret_name=$(oc get zenservice $zenservice -n $zen_namespace -o=jsonpath='{.spec.zenCustomRoute.route_secret}')
