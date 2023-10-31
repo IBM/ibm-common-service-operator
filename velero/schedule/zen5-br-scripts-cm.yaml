@@ -181,7 +181,7 @@ data:
         done
 
         #waiting for deployments to be cleaned up after scaling down
-        deployments_clear=$(oc get deploy -n $ZEN_NAMESPACE  | grep "ibm-nginx\|zen-core\|usermgmt\|zen-watcher\|zen-core-api\|zen-watchdog" | grep -v "ibm-nginx-tester" | grep -v 0/0 || echo clear)
+        deployments_clear=$(oc get deploy -n $ZEN_NAMESPACE | grep "ibm-nginx\|zen-core\|usermgmt\|zen-watcher\|zen-core-api\|zen-watchdog" | grep -v "ibm-nginx-tester" | awk '{print $4}' | grep -v 0 || echo clear)
         while [[ $deployments_clear != "clear" ]];
         do
             sleep 10
@@ -190,7 +190,7 @@ data:
             else
                 info "Deployments ibm-nginx zen-core usermgmt zen-watcher zen-core-api successfully scaled down. Moving on..."
             fi
-            deployments_clear=$(oc get deploy -n $ZEN_NAMESPACE  | grep "ibm-nginx\|zen-core\|usermgmt\|zen-watcher\|zen-core-api\|zen-watchdog" | grep -v "ibm-nginx-tester" | grep -v 0/0  || echo clear)
+            deployments_clear=$(oc get deploy -n $ZEN_NAMESPACE | grep "ibm-nginx\|zen-core\|usermgmt\|zen-watcher\|zen-core-api\|zen-watchdog" | grep -v "ibm-nginx-tester" | awk '{print $4}' | grep -v 0 || echo clear)
         done
         
         info "Reset patform metadata and configuration data"
