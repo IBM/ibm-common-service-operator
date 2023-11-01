@@ -861,6 +861,7 @@ spec:
                   configMapKeyRef:
                     name: cloud-native-postgresql-image-list
                     key: ibm-postgresql-14-operand-image
+                    namespace: {{ .OperatorNs }}
                 configMapKeyRef:
                     name: edb-keycloak-operand-image
                     key: ibm-cpp-config
