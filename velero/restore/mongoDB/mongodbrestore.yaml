@@ -7,8 +7,8 @@ spec:
     spec:
       containers:
       - name: icp-mongodb-restore
-        image: quay.io/opencloudio/ibm-mongodb:4.0.24
-        command: ["bash", "-c", "cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongorestore --host rs0/mongodb:$MONGODB_SERVICE_PORT --username $ADMIN_USER --password $ADMIN_PASSWORD --authenticationDatabase admin --ssl --sslCAFile /work-dir/ca.pem --sslPEMKeyFile /work-dir/mongo.pem /dump/dump"]
+        image: icr.io/cpopen/cpfs/ibm-mongodb@sha256:d62f7145428f62466622160005eafcfee39cbf866df88aaeaee4d99173d1882f
+        command: ["bash", "-c", "cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongorestore --db platform-db --host mongodb:$MONGODB_SERVICE_PORT --username $ADMIN_USER --password $ADMIN_PASSWORD --authenticationDatabase admin --ssl --sslCAFile /work-dir/ca.pem --sslPEMKeyFile /work-dir/mongo.pem /dump/dump/platform-db --drop"]
         volumeMounts:
         - mountPath: "/dump"
           name: mongodump
