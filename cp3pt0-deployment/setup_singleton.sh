@@ -564,8 +564,9 @@ function verify_cert_manager(){
     if [[ $webhook_deployments != "1" ]]; then
     error "More than one cert-manager-webhook deployment exists on the cluster."
     fi
-
-    cm_smoke_test "test-issuer" "test-certificate" "test-certificate-secret" $CERT_MANAGER_NAMESPACE
+    local webhook_ns=$("$OC" get deployments -A | grep cert-manager-webhook | cut -d ' ' -f1)
+    
+    cm_smoke_test "test-issuer" "test-certificate" "test-certificate-secret" $webhook_ns
     success "Cert manager is ready."
 }
 

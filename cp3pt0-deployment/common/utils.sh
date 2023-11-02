@@ -629,7 +629,7 @@ function validate_operator_catalogsource(){
         error "Multiple CatalogSource are available for $pm in $operator_ns namespace, please specify the correct CatalogSource name and namespace"
     elif [[ $return_value -eq 2 ]]; then
         warning "CatalogSource $source from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace"
-        error "No CatalogSource is available for $pm in $operator_ns namespace"
+        error "No CatalogSource is available for $pm in $operator_ns namespace in the given channel $channel"
     elif [[ $return_value -eq 3 ]]; then
         warning "CatalogSource $source from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace"
         success "CatalogSource $correct_source from $correct_source_ns CatalogSourceNamespace is available for $pm in $operator_ns namespace"
