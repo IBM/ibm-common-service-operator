@@ -685,4 +685,19 @@ const Small = `
         limits:
           cpu: 200m
           memory: 768Mi
+- name: keycloak-operator
+  spec:
+    Keycloak:
+      instances: 2
+      unsupported:
+        podTemplate:
+          spec:
+            containers:
+              - resources:
+                  limits:
+                    cpu: 1000m
+                    memory: 1Gi
+                  requests:
+                    cpu: 1000m
+                    memory: 1Gi
 `

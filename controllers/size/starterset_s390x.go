@@ -687,4 +687,19 @@ const StarterSet = `
         limits:
           cpu: 200m
           memory: 512Mi
+- name: keycloak-operator
+  spec:
+    Keycloak:
+      instances: 1
+      unsupported:
+        podTemplate:
+          spec:
+            containers:
+              - resources:
+                  limits:
+                    cpu: 1000m
+                    memory: 1Gi
+                  requests:
+                    cpu: 1000m
+                    memory: 1Gi
 `

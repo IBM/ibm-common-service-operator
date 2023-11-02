@@ -855,4 +855,18 @@ const ConfigurationRules = `
         limits:
           cpu: LARGEST_VALUE
           memory: LARGEST_VALUE
+- name: keycloak-operator
+  spec:
+    Keycloak:
+      unsupported:
+        podTemplate:
+          spec:
+            containers:
+              - resources:
+                  limits:
+                    cpu: LARGEST_VALUE
+                    memory: LARGEST_VALUE
+                  requests:
+                    cpu: LARGEST_VALUE
+                    memory: LARGEST_VALUE
 `

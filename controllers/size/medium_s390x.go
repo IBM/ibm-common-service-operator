@@ -685,4 +685,19 @@ const Medium = `
         limits:
           cpu: 500m
           memory: 1024Mi
+- name: keycloak-operator
+  spec:
+    Keycloak:
+      instances: 2
+      unsupported:
+        podTemplate:
+          spec:
+            containers:
+              - resources:
+                  limits:
+                    cpu: 1000m
+                    memory: 1Gi
+                  requests:
+                    cpu: 1000m
+                    memory: 1Gi
 `

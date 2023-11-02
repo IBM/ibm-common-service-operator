@@ -685,4 +685,19 @@ const Large = `
         limits:
           cpu: 750m
           memory: 1500Mi
+- name: keycloak-operator
+  spec:
+    Keycloak:
+      instances: 3
+      unsupported:
+        podTemplate:
+          spec:
+            containers:
+              - resources:
+                  limits:
+                    cpu: 1000m
+                    memory: 1Gi
+                  requests:
+                    cpu: 1000m
+                    memory: 1Gi
 `
