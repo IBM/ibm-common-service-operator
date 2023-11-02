@@ -418,7 +418,7 @@ spec:
                   - name: edb-keycloak
                 registry: common-service
                 registryNamespace: {{ .ServicesNs }}
-        force: false
+        force: true
         kind: OperandRequest
         name: edb-keycloak-request
       - apiVersion: operator.ibm.com/v1alpha1
@@ -431,11 +431,12 @@ spec:
             operand: keycloak-operator
             registry: common-service
             registryNamespace: {{ .ServicesNs }}
-        force: false
+        force: true
         kind: OperandBindInfo
         name: keycloak-bindinfo
       - apiVersion: cert-manager.io/v1
         kind: Certificate
+        force: true
         name: cs-keycloak-tls-cert
         data:
           spec:
@@ -451,7 +452,7 @@ spec:
             secretName: cs-keycloak-tls-secret
       - apiVersion: v1
         kind: ConfigMap
-        force: false
+        force: true
         name: keycloak-bindinfo
         namespace: {{ .OperatorNs }}
         data:
@@ -473,226 +474,46 @@ spec:
                   SERVICE_NAME: .metadata.name
                   SERVICE_NAMESPACE: .metadata.namespace
                   SERVICE_ENDPOINT: https://+.metadata.name+.+.metadata.namespace+.+svc:+.spec.ports[0].port
-      - apiVersion: v1
-        kind: ConfigMap
-        name: keycloak-setup-script
-        namespace: {{ .OperatorNs }}
-        data:
-          data:  
-            keycloak-setup-script.sh: |
-              #!/usr/bin/env bash
-              #
-              # Copyright 2023 IBM Corporation
-              #
-              # Licensed under the Apache License, Version 2.0 (the "License");
-              # you may not use this file except in compliance with the License.
-              # You may obtain a copy of the License at
-              #
-              # http://www.apache.org/licenses/LICENSE-2.0
-              #
-              # Unless required by applicable law or agreed to in writing, software
-              # distributed under the License is distributed on an "AS IS" BASIS,
-              # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-              # See the License for the specific language governing permissions and
-              # limitations under the License.
-              #
-              
-              # create Certificates for Keycloak
-              # wait for Secret
-              # Get secret
-              # Wait for ODLM to create KeyCloak CR, refresh KeyCloak CR annotation, so it could reload the secret
-              # Wait for Route to be created(needs to verify if it supports Customization other than what is defined in ODLM template)
-              # Load Certificate into Route
-              
-              
-              set -o pipefail
-              set -o errtrace
-              set -o nounset
-              
-              resource_namespace=$(oc get commonservice common-service -n $OPERATOR_NAMESPACE -o jsonpath='{.spec.servicesNamespace}')
-              if [ -z "$WATCH_NAMESPACE" ] || [ "$WATCH_NAMESPACE" == "''" ]; then
-                  config_namespace_list=$resource_namespace
-              else
-                  config_namespace_list=$WATCH_NAMESPACE
-              fi
-              
-              function main() {
-                  #     # create Certificates for Keycloak
-                  #     title "Create Certificates for Keycloak in namespace $resource_namespace"
-                  #     cat <<EOF | oc apply -f -
-                  # apiVersion: cert-manager.io/v1
-                  # kind: Certificate
-                  # apiVersion: cert-manager.io/v1
-                  # metadata:
-                  #     name: keycloak-tls-cert
-                  #     namespace: $resource_namespace
-                  # spec:
-                  #     commonName: cs-keycloak-service
-                  #     dnsNames:
-                  #         - cs-keycloak-service
-                  #         - cs-keycloak-service.$resource_namespace
-                  #         - cs-keycloak-service.$resource_namespace.svc
-                  #         - cs-keycloak-service.$resource_namespace.svc.cluster.local
-                  #     issuerRef:
-                  #         kind: Issuer
-                  #         name: cs-ca-issuer
-                  #     secretName: keycloak-tls-secret
-                  # EOF
-                  # wait for Secret keycloak-tls-secret and raise error msg if it does not exist after 5 minutes
-                  title "Wait for Secret cs-keycloak-tls-secret in namespace $resource_namespace"
-                  for i in {1..30}; do
-                      oc get secret cs-keycloak-tls-secret -n "$resource_namespace" >/dev/null 2>&1
-                      if [ $? -eq 0 ]; then
-                          success "Secret cs-keycloak-tls-secret found in namespace $resource_namespace"
-                          break
-                      else
-                          if [ $i -eq 30 ]; then
-                              error "Secret cs-keycloak-tls-secret not found in namespace $resource_namespace"
-                          fi
-                          warning "Secret cs-keycloak-tls-secret not found in namespace $resource_namespace, retrying in 10 seconds..."
-                          sleep 10
-                      fi
-                  done
-
-                  # wait for secret keycloak-edb-cluster-app and raise error msg if it does not exist after 5 minutes
-                  title "Wait for Secret keycloak-edb-cluster-app in namespace $resource_namespace"
-                  for i in {1..30}; do
-                      oc get secret keycloak-edb-cluster-app -n "$resource_namespace" >/dev/null 2>&1
-                      if [ $? -eq 0 ]; then
-                          success "Secret keycloak-edb-cluster-app found in namespace $resource_namespace"
-                          break
-                      else
-                          if [ $i -eq 30 ]; then
-                              error "Secret keycloak-edb-cluster-app not found in namespace $resource_namespace"
-                          fi
-                          warning "Secret keycloak-edb-cluster-app not found in namespace $resource_namespace, retrying in 10 seconds..."
-                          sleep 10
-                      fi
-                  done
-
-                  # Wait for KeyCloak CR named cs-keycloak to be created
-                  title "Wait for KeyCloak CR named cs-keycloak to be created in namespace $resource_namespace"
-                  for i in {1..30}; do
-                      oc get keycloak cs-keycloak -n "$resource_namespace" >/dev/null 2>&1
-                      if [ $? -eq 0 ]; then
-                          success "KeyCloak CR named cs-keycloak found in namespace $resource_namespace"
-                          break
-                      else
-                          if [ $i -eq 30 ]; then
-                              error "KeyCloak CR named cs-keycloak not found in namespace $resource_namespace"
-                          fi
-                          warning "KeyCloak CR named cs-keycloak not found in namespace $resource_namespace, retrying in 10 seconds..."
-                          sleep 10
-                      fi
-                  done
-
-                  # Refresh KeyCloak CR annotation to allow it to reload the secret
-                  title "Refresh KeyCloak CR annotation to allow it to reload the secret"
-                  oc patch keycloak cs-keycloak -n "$resource_namespace" --type merge -p '{"metadata":{"annotations":{"operator.ibm.com/reloaded-for-tls-secret":"'"$(date '+%Y-%m-%dT%T')"'"}}}'
-              
-                  ca_crt=$(oc get secret cs-keycloak-tls-secret -n "$resource_namespace" -o jsonpath='{.data.ca\.crt}' | base64 -d)
-                  # Create a route for KeyCloak named keycloak
-                  title "Create a route for KeyCloak named keycloak"
-                  # store contect of route yaml into a file
-                cat <<EOF | oc apply -f -
-              apiVersion: route.openshift.io/v1
-              kind: Route
-              metadata:
-                  name: keycloak
-                  namespace: $resource_namespace
-              spec:
-                  port:
-                      targetPort: 8443
-                  to:
-                      kind: Service
-                      name: cs-keycloak-service
-                  tls:
-                      termination: reencrypt
-                      destinationCACertificate: |-
-              $(echo "$ca_crt" | sed 's/^/          /')
-                  wildcardPolicy: None
-              EOF
-              
-              }
-              
-              function msg() {
-                  printf '%b\n' "$1"
-              }
-              
-              function success() {
-                  msg "\33[32m[✔] ${1}\33[0m"
-              }
-              
-              function error() {
-                  msg "\33[31m[✘] ${1}\33[0m"
-                  exit 1
-              }
-              
-              function title() {
-                  msg "\33[34m# ${1}\33[0m"
-              }
-              
-              function info() {
-                  msg "[INFO] ${1}"
-              }
-              
-              function warning() {
-                  msg "\33[33m[✗] ${1}\33[0m"
-              }
-              
-              # --- Run ---
-              
-              main $*
-      - apiVersion: batch/v1
-        kind: Job
-        name: keycloak-setup-job
-        namespace: {{ .OperatorNs }}
+      - apiVersion: route.openshift.io/v1
         data:
           spec:
-            template:
-              metadata:
-                labels:
-                  app: keycloak-setup-job
-              spec:
-                containers:
-                - name: keycloak-setup-job
-                  image: icr.io/cpopen/cpfs/cpfs-utils:latest
-                  command: ["/bin/bash"]
-                  args: ["-c", "/setup-script/keycloak-setup-script.sh"]
-                  volumeMounts:
-                  - name: keycloak-setup-script
-                    mountPath: /setup-script
-                  env:
-                    - name: OPERATOR_NAMESPACE
-                      valueFrom:
-                        fieldRef:
-                          apiVersion: v1
-                          fieldPath: metadata.namespace
-                    - name: WATCH_NAMESPACE
-                      valueFrom:
-                          configMapKeyRef:
-                            name: namespace-scope
-                            key: namespaces
-                            optional: true
-                volumes:
-                - name: keycloak-setup-script
-                  configMap:
-                    name: keycloak-setup-script
-                    defaultMode: 0777
-                    items:
-                    - key: keycloak-setup-script.sh
-                      path: keycloak-setup-script.sh
-                securityContext:
-                  runAsNonRoot: true
-                  seccompProfile:
-                    type: RuntimeDefault
-                  capabilities:
-                    drop:
-                    - ALL
-                  allowPrivilegeEscalation: false
-                restartPolicy: OnFailure
-                serviceAccountName: operand-deployment-lifecycle-manager
-            backoffLimit: 1
+            host:
+              templatingValueFrom:
+                configMapKeyRef:
+                  key: keycloak_route_name
+                  name: ibm-cpp-config
+            port:
+              targetPort: 8443
+            tls:
+              caCertificate:
+                templatingValueFrom:
+                  secretKeyRef:
+                    key: ca.crt
+                    name: keycloak-custom-tls-secret
+              certificate:
+                templatingValueFrom:
+                  secretKeyRef:
+                    key: tls.crt
+                    name: keycloak-custom-tls-secret
+              destinationCACertificate:
+                templatingValueFrom:
+                  required: true
+                  secretKeyRef:
+                    key: ca.crt
+                    name: cs-keycloak-tls-secret
+              key:
+                templatingValueFrom:
+                  secretKeyRef:
+                    key: tls.key
+                    name: keycloak-custom-tls-secret
+              termination: reencrypt
+            to:
+              kind: Service
+              name: cs-keycloak-service
+            wildcardPolicy: None
+        force: true
+        kind: Route
+        name: keycloak
       - apiVersion: v1
         kind: ConfigMap
         name: keycloak-bindinfo-script
@@ -895,12 +716,18 @@ spec:
                 name: keycloak-edb-cluster-app
               vendor: postgres
             hostname:
-              strict: false
+              hostname:
+                templatingValueFrom:
+                  objectRef:
+                    apiVersion: route.openshift.io/v1
+                    kind: Route
+                    name: keycloak
+                    path: spec.host
+                  required: true
             http:
               tlsSecret: cs-keycloak-tls-secret
             ingress:
-              className: openshift-default
-              enabled: true
+              enabled: false
             instances: 1
             unsupported:
               podTemplate:
@@ -913,7 +740,7 @@ spec:
                         requests:
                           cpu: 1000m
                           memory: 1Gi
-        force: false
+        force: true
         kind: Keycloak
         name: cs-keycloak
       - apiVersion: k8s.keycloak.org/v2alpha1
@@ -932,6 +759,7 @@ spec:
     resources:
       - apiVersion: batch/v1
         kind: Job
+        force: true
         name: create-postgres-license-config
         namespace: "{{ .OperatorNs }}"
         data:
@@ -972,7 +800,15 @@ spec:
                     data:
                       EDB_LICENSE_KEY: $(base64 /license_keys/edb/EDB_LICENSE_KEY | tr -d '\n')
                     EOF
-                  image: cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:e683c4bfceb5a99f7971409d4028cf326cdedb007f9cf3daf28b8141835535f1
+                  image:
+                    templatingValueFrom:
+                      default:
+                        required: true
+                        defaultValue: cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:2f302acebe51e10c5ddb24e425b70eebda3cd0cc1696a01e9aa1c51558da5f99
+                        configMapKeyRef:
+                          name: cloud-native-postgresql-image-list
+                          key: edb-postgres-license-provider-image
+                          namespace: {{ .OperatorNs }}
                   name: edb-license
                   resources:
                     limits:
@@ -994,8 +830,15 @@ spec:
                   - '-c'
                   - >-
                     kubectl delete pods -l app.kubernetes.io/name=cloud-native-postgresql
-                  image: >-
-                    cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:e683c4bfceb5a99f7971409d4028cf326cdedb007f9cf3daf28b8141835535f1
+                  image:
+                    templatingValueFrom:
+                      default:
+                        required: true
+                        defaultValue: cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:2f302acebe51e10c5ddb24e425b70eebda3cd0cc1696a01e9aa1c51558da5f99
+                        configMapKeyRef:
+                          name: cloud-native-postgresql-image-list
+                          key: edb-postgres-license-provider-image
+                          namespace: {{ .OperatorNs }}
                   name: restart-edb-pod
                   resources:
                     limits:
@@ -1025,8 +868,18 @@ spec:
               initdb:
                 database: keycloak
                 owner: app
-            imageName: >-
-              icr.io/cpopen/edb/postgresql:14.7@sha256:d2e21251c5b0e3a4a45bdef592f9293e258124793b529e622808dc010900b7ea
+            imageName:
+              templatingValueFrom:
+                default:
+                  required: true
+                  defaultValue: icr.io/cpopen/edb/postgresql:14.9@sha256:90136074adcbafb5033668b07fe1efea9addf0168fa83b0c8a6984536fc22264
+                  configMapKeyRef:
+                    name: cloud-native-postgresql-image-list
+                    key: ibm-postgresql-14-operand-image
+                    namespace: {{ .OperatorNs }}
+                configMapKeyRef:
+                    name: edb-keycloak-operand-image
+                    key: ibm-cpp-config
             imagePullSecrets:
               - name: ibm-entitlement-key
             instances: 1
@@ -1043,7 +896,7 @@ spec:
               size: 1Gi
             walStorage:
               size: 1Gi
-        force: false
+        force: true
         kind: Cluster
         name: keycloak-edb-cluster
 `
@@ -1539,7 +1392,15 @@ spec:
                     data:
                       EDB_LICENSE_KEY: $(base64 /license_keys/edb/EDB_LICENSE_KEY | tr -d '\n')
                     EOF
-                  image: cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:e683c4bfceb5a99f7971409d4028cf326cdedb007f9cf3daf28b8141835535f1
+                  image:
+                    templatingValueFrom:
+                      default:
+                        required: true
+                        defaultValue: cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:2f302acebe51e10c5ddb24e425b70eebda3cd0cc1696a01e9aa1c51558da5f99
+                        configMapKeyRef:
+                          name: cloud-native-postgresql-image-list
+                          key: edb-postgres-license-provider-image
+                          namespace: {{ .OperatorNs }}
                   name: edb-license
                   resources:
                     limits:
@@ -1561,8 +1422,15 @@ spec:
                   - '-c'
                   - >-
                     kubectl delete pods -l app.kubernetes.io/name=cloud-native-postgresql
-                  image: >-
-                    cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:e683c4bfceb5a99f7971409d4028cf326cdedb007f9cf3daf28b8141835535f1
+                  image:
+                    templatingValueFrom:
+                      default:
+                        required: true
+                        defaultValue: cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:2f302acebe51e10c5ddb24e425b70eebda3cd0cc1696a01e9aa1c51558da5f99
+                        configMapKeyRef:
+                          name: cloud-native-postgresql-image-list
+                          key: edb-postgres-license-provider-image
+                          namespace: {{ .OperatorNs }}
                   name: restart-edb-pod
                   resources:
                     limits:
