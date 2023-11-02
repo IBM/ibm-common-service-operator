@@ -43,6 +43,7 @@ rules:
     resources:
       - zenservice
       - zenservices
+      - zenextensions
       - clusters
   - verbs:
       - get

@@ -2,7 +2,7 @@ kind: Deployment
 apiVersion: apps/v1
 metadata:
   name: zen5-backup
-  namespace: zen
+  namespace: <zenservice namespace>
   labels:
     foundationservices.cloudpak.ibm.com: zen5-data
 spec:
@@ -21,7 +21,7 @@ spec:
         post.hook.restore.velero.io/exec-timeout: 300s
         post.hook.restore.velero.io/timeout: 600s
       name: zen5-backup
-      namespace: zen
+      namespace: <zenservice namespace>
       labels:
         foundationservices.cloudpak.ibm.com: zen5-data
     spec:
@@ -30,7 +30,7 @@ spec:
           - sh
           - -c
           - sleep infinity
-          image: icr.io/cpopen/cpfs/cpfs-utils:4.0.0 #4.1.0 if using CS 4.1, 4.2.0 if using CS 4.2
+          image: icr.io/cpopen/cpfs/cpfs-utils:4.3.0 #4.1.0 if using CS 4.1, 4.2.0 if using CS 4.2
           imagePullPolicy: IfNotPresent
           name: zen5-backup-job
           resources:

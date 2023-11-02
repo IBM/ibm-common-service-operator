@@ -103,35 +103,27 @@ do
 done
 
 #ensure zenservice custom route secrets are labeled
-zen_namespace_list=$(oc get zenservice -A | awk '{if (NR!=1) {print $1}}' || echo "fail")
-if [[ $zen_namespace_list != "fail" ]]; then 
-    for zen_namespace in $zen_namespace_list
+zen_namespace_list=$(oc get zenservice -A | awk '{if (NR!=1) {print $1}}')
+for zen_namespace in $zen_namespace_list
+do
+    zenservice_list=$(oc get zenservice -n $zen_namespace | awk '{if (NR!=1) {print $2}}')
+    for zenservice in $zenservice_list
     do
-        zenservice_list=$(oc get zenservice -n $zen_namespace | awk '{if (NR!=1) {print $2}}')
-        for zenservice in $zenservice_list
-        do
-            zen_secret_name=$(oc get zenservice $zenservice -n $zen_namespace -o=jsonpath='{.spec.zenCustomRoute.route_secret}')
-            echo $zen_secret_name
-            echo $zen_namespace
-            echo "---"
-            oc label secret $zen_secret_name -n $zen_namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
-        done
+        zen_secret_name=$(oc get zenservice $zenservice -n $zen_namespace -o=jsonpath='{.spec.zenCustomRoute.route_secret}')
+        echo $zen_secret_name
+        echo $zen_namespace
+        echo "---"
+        oc label secret $zen_secret_name -n $zen_namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
     done
-else
-    echo "[INFO] No zenservices found on cluster, skipping labeling zen custom route secrets..."
-fi
+done
 
 #ensure iam custom route secrets are labeled
-cm_namespace_list=$(oc get configmap -A | grep cs-onprem-tenant-config | awk '{if (NR!=1) {print $1}}' || echo "fail")
-if [[ $cm_namespace_list != "fail" ]]; then
-    for tenant_config_namespace in $cm_namespace_list
-    do
-        iam_secret_name=$(oc get configmap cs-onprem-tenant-config -n $tenant_config_namespace -o=jsonpath='{.data.custom_host_certificate_secret}')
-        echo $iam_secret_name
-        echo $tenant_config_namespace
-        echo "---"
-        oc label secret $iam_secret_name -n $tenant_config_namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
-    done
-else
-    echo "[INFO] Configmap cs-onprem-tenant-config not found, skipping copying custom secrets..."
-fi
+cm_namespace_list=$(oc get configmap -A | grep cs-onprem-tenant-config | awk '{if (NR!=1) {print $1}}')
+for tenant_config_namespace in $cm_namespace_list
+do
+    iam_secret_name=$(oc get configmap cs-onprem-tenant-config -n $tenant_config_namespace -o=jsonpath='{.data.custom_host_certificate_secret}')
+    echo $iam_secret_name
+    echo $tenant_config_namespace
+    echo "---"
+    oc label secret $iam_secret_name -n $tenant_config_namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
+done
