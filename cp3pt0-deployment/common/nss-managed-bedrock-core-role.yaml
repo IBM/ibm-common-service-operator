@@ -2071,3 +2071,13 @@ rules:
   - secrets
   verbs:
   - get
+- apiGroups:
+  - snapshot.storage.k8s.io
+  resources:
+  - volumesnapshots 
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - watch
