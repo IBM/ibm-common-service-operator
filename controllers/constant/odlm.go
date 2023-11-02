@@ -872,7 +872,7 @@ spec:
               templatingValueFrom:
                 default:
                   required: true
-                  defaultValue: icr.io/cpopen/edb/postgresql:14.9@sha256:3c93761aa053c4f5e11a7f22fcbf97a30e22838847e4ee43d19cbf7347e1c751
+                  defaultValue: icr.io/cpopen/edb/postgresql:14.9@sha256:90136074adcbafb5033668b07fe1efea9addf0168fa83b0c8a6984536fc22264
                   configMapKeyRef:
                     name: cloud-native-postgresql-image-list
                     key: ibm-postgresql-14-operand-image
