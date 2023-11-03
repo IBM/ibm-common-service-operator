@@ -804,7 +804,7 @@ spec:
                     templatingValueFrom:
                       default:
                         required: true
-                        defaultValue: cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:2f302acebe51e10c5ddb24e425b70eebda3cd0cc1696a01e9aa1c51558da5f99
+                        defaultValue: cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:05f30f2117ff6e0e853487f17785024f6bb226f3631425eaf1498b9d3b753345
                         configMapKeyRef:
                           name: cloud-native-postgresql-image-list
                           key: edb-postgres-license-provider-image
@@ -834,7 +834,7 @@ spec:
                     templatingValueFrom:
                       default:
                         required: true
-                        defaultValue: cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:2f302acebe51e10c5ddb24e425b70eebda3cd0cc1696a01e9aa1c51558da5f99
+                        defaultValue: cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:05f30f2117ff6e0e853487f17785024f6bb226f3631425eaf1498b9d3b753345
                         configMapKeyRef:
                           name: cloud-native-postgresql-image-list
                           key: edb-postgres-license-provider-image
@@ -861,6 +861,41 @@ spec:
                 securityContext:
                   runAsNonRoot: true
                 serviceAccountName: edb-license-sa
+      - apiVersion: v1
+        kind: ServiceAccount
+        name: edb-license-sa
+        namespace: "{{ .OperatorNs }}"
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: Role
+        name: edb-license-role
+        namespace: "{{ .OperatorNs }}"
+        data:
+          rules:
+          - apiGroups:
+            - ""
+            resources:
+            - pods
+            - secrets
+            verbs:
+            - create
+            - update
+            - patch
+            - get
+            - list
+            - delete
+            - watch
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        name: edb-license-rolebinding
+        namespace: "{{ .OperatorNs }}"
+        data:
+          subjects:
+          - kind: ServiceAccount
+            name: edb-license-sa
+          roleRef:
+            kind: Role
+            name: edb-license-role
+            apiGroup: rbac.authorization.k8s.io
       - apiVersion: postgresql.k8s.enterprisedb.io/v1
         data:
           spec:
@@ -1396,7 +1431,7 @@ spec:
                     templatingValueFrom:
                       default:
                         required: true
-                        defaultValue: cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:2f302acebe51e10c5ddb24e425b70eebda3cd0cc1696a01e9aa1c51558da5f99
+                        defaultValue: cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:05f30f2117ff6e0e853487f17785024f6bb226f3631425eaf1498b9d3b753345
                         configMapKeyRef:
                           name: cloud-native-postgresql-image-list
                           key: edb-postgres-license-provider-image
@@ -1426,7 +1461,7 @@ spec:
                     templatingValueFrom:
                       default:
                         required: true
-                        defaultValue: cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:2f302acebe51e10c5ddb24e425b70eebda3cd0cc1696a01e9aa1c51558da5f99
+                        defaultValue: cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:05f30f2117ff6e0e853487f17785024f6bb226f3631425eaf1498b9d3b753345
                         configMapKeyRef:
                           name: cloud-native-postgresql-image-list
                           key: edb-postgres-license-provider-image
