@@ -905,23 +905,22 @@ EOF
 
 function cleanup_cp2() {
     local operator_ns=$1
-    local control_ns=$2
-    local nss_list=$3
-    local enable_multi_instance=0
+    local service_ns=$2
+    local control_ns=$3
+    local nss_list=$4
 
-    if [[ "$operator_ns" != "$control_ns" ]]; then
-        enable_multi_instance=1
-    fi
-
-    if [[ enable_multi_instance -eq 0 ]]; then
+    # Clean up the webhook, secretshare and crossplane for single shared CS instance or all namespaces mode
+    if [[ "$operator_ns" == "$control_ns" ]] || [[ "$control_ns" == "$service_ns" ]]; then
+        title "This is a single shared Common Service instance or all namespace mode upgrade, clean up webhook, secretshare and crossplane"
         cleanup_webhook $control_ns $nss_list
         cleanup_secretshare $control_ns $nss_list
         cleanup_crossplane
+        cleanup_OperandBindInfo $control_ns
+        cleanup_NamespaceScope $control_ns
+    else
+        cleanup_OperandBindInfo $operator_ns
+        cleanup_NamespaceScope $operator_ns
     fi
-
-
-    cleanup_OperandBindInfo $operator_ns
-    cleanup_NamespaceScope $operator_ns
 }
 
 # clean up webhook deployment and webhookconfiguration
@@ -1050,7 +1049,7 @@ function get_control_namespace() {
 
     # Check if the ConfigMap exists
     if [[ -z "${config_map_data}" ]]; then
-        warning "Not found common-serivce-maps ConfigMap in kube-public namespace. It is a single shared Common Service instance upgrade"
+        warning "Not found common-serivce-maps ConfigMap in kube-public namespace. It is a single shared Common Service instance or all namespace mode upgrade"
     else
         # Get the controlNamespace value
         control_namespace=$(echo "${config_map_data}" | ${YQ} -r '.controlNamespace')
@@ -1278,8 +1277,8 @@ function scale_down() {
     local source=$4
     local cs_sub=$(${OC} get subscription.operators.coreos.com -n ${operator_ns} -l operators.coreos.com/ibm-common-service-operator.${operator_ns}='' --no-headers | awk '{print $1}')
     local cs_CSV=$(${OC} get subscription.operators.coreos.com ${cs_sub} -n ${operator_ns} --ignore-not-found -o jsonpath={.status.installedCSV})
-    local odlm_sub=$(${OC} get subscription.operators.coreos.com -n ${operator_ns} -l operators.coreos.com/ibm-odlm.${operator_ns}='' --no-headers | awk '{print $1}')
-    local odlm_CSV=$(${OC} get subscription.operators.coreos.com ${odlm_sub} -n ${operator_ns} --ignore-not-found -o jsonpath={.status.installedCSV})
+    local odlm_sub=$(${OC} get subscription.operators.coreos.com -n ${services_ns} -l operators.coreos.com/ibm-odlm.${services_ns}='' --no-headers | awk '{print $1}')
+    local odlm_CSV=$(${OC} get subscription.operators.coreos.com ${odlm_sub} -n ${services_ns} --ignore-not-found -o jsonpath={.status.installedCSV})
 
     ${OC} get subscription.operators.coreos.com ${cs_sub} -n ${operator_ns} -o yaml > sub.yaml
 
@@ -1300,7 +1299,7 @@ function scale_down() {
     fi
 
     # Scale down CS
-    msg "Patching CSV ${cs_sub} to scale down deployment in ${operator_ns} namespace to 0..."
+    title "Patching CSV ${cs_sub} to scale down deployment in ${operator_ns} namespace to 0..."
     if [[ ! -z "$cs_CSV" ]]; then
         scale_deployment_csv $operator_ns $cs_CSV 0
     fi
@@ -1311,21 +1310,22 @@ function scale_down() {
     fi
 
     # Scale down ODLM
-    msg "Patching CSV to scale down operand-deployment-lifecycle-manager deployment in ${operator_ns} namespace to 0..."
+    title "Patching CSV to scale down operand-deployment-lifecycle-manager deployment in ${services_ns} namespace to 0..."
     if [[ ! -z "$odlm_CSV" ]]; then
-        scale_deployment_csv $operator_ns $odlm_CSV 0
+        scale_deployment_csv $services_ns $odlm_CSV 0
     fi
-    check_deployment $operator_ns operand-deployment-lifecycle-manager 0
+    check_deployment $services_ns operand-deployment-lifecycle-manager 0
     if [[ $? -ne 0 ]]; then
-        msg "Scaling down operand-deployment-lifecycle-manager deployment in ${operator_ns} namespace to 0..."
-        scale_deployment $operator_ns operand-deployment-lifecycle-manager 0
+        msg "Scaling down operand-deployment-lifecycle-manager deployment in ${services_ns} namespace to 0..."
+        scale_deployment $services_ns operand-deployment-lifecycle-manager 0
     fi
 
     # delete OperandRegistry
-    msg "Deleting OperandRegistry common-service in ${services_ns} namespace..."
+    info "Deleting OperandRegistry common-service in ${services_ns} namespace..."
     ${OC} delete operandregistry common-service -n ${services_ns} --ignore-not-found
+
     # delete validatingwebhookconfiguration
-    msg "Deleting ValidatingWebhookConfiguration ibm-common-service-validating-webhook-${operator_ns} in ${operator_ns} namespace..."
+    info "Deleting ValidatingWebhookConfiguration ibm-common-service-validating-webhook-${operator_ns} in ${operator_ns} namespace..."
     ${OC} delete ValidatingWebhookConfiguration ibm-common-service-validating-webhook-${operator_ns} --ignore-not-found
     rm sub.yaml
 }
