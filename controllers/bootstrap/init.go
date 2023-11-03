@@ -180,6 +180,12 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		return err
 	}
 
+	// Temporary solution for EDB image ConfigMap reference
+	if err := b.CreateEDBImageMaps(); err != nil {
+		klog.Errorf("Failed to create EDB Image ConfigMap: %v", err)
+		return err
+	}
+
 	// Backward compatible for All Namespace Installation Mode upgrade
 	// Uninstall ODLM in servicesNamespace(ibm-common-services)
 	if b.CSData.CPFSNs != b.CSData.ServicesNs {
@@ -759,6 +765,15 @@ func (b *Bootstrap) InstallOrUpdateOpcon(forceUpdateODLMCRs bool) error {
 // CreateNsScopeConfigmap creates nss configmap for operators
 func (b *Bootstrap) CreateNsScopeConfigmap() error {
 	cmRes := constant.NamespaceScopeConfigMap
+	if err := b.renderTemplate(cmRes, b.CSData, false); err != nil {
+		return err
+	}
+	return nil
+}
+
+// CreateEDBImageConfig creates a ConfigMap contains EDB image reference
+func (b *Bootstrap) CreateEDBImageMaps() error {
+	cmRes := constant.EDBImageConfigMap
 	if err := b.renderTemplate(cmRes, b.CSData, false); err != nil {
 		return err
 	}
