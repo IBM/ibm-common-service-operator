@@ -33,6 +33,8 @@ LICENSE_ACCEPT=0
 ENABLE_LICENSE_SERVICE_REPORTER=0
 LSR_NAMESPACE="ibm-lsr"
 LSR_SOURCE="ibm-license-service-reporter-bundle-catalog"
+IS_ALL_NS=0
+IS_SIMPlE=0
 
 # ---------- Command variables ----------
 
@@ -59,12 +61,8 @@ function main() {
     pre_req
     prepare_preview_mode
 
-    # TODO check Cloud Pak compatibility
+    # # TODO check Cloud Pak compatibility
 
-
-    # # Update common-serivce-maps ConfigMap
-    # ${BASE_DIR}/common/mapping_tenant.sh --operator-namespace $OPERATOR_NS --services-namespace $SERVICES_NS --tethered-namespaces $TETHERED_NS --control-namespace $CONTROL_NS
-    
     # Scale down CS, ODLM and delete OperandReigsrty
     # It helps to prevent re-installing licensing and cert-manager services
     scale_down $OPERATOR_NS $SERVICES_NS $CHANNEL $SOURCE
@@ -84,69 +82,83 @@ function main() {
         arguments+=" --enable-private-catalog"
     fi
     
-    ${BASE_DIR}/setup_singleton.sh "--operator-namespace" "$OPERATOR_NS" "-c" "$MAINTAINED_CHANNEL" "--cert-manager-source" "$CERT_MANAGER_SOURCE" "--licensing-source" "$LICENSING_SOURCE" "--license-accept" $arguments
+    ${BASE_DIR}/setup_singleton.sh "--operator-namespace" "$SERVICES_NS" "-c" "$MAINTAINED_CHANNEL" "--cert-manager-source" "$CERT_MANAGER_SOURCE" "--licensing-source" "$LICENSING_SOURCE" "--license-accept" $arguments
+
     if [ $? -ne 0 ]; then
         error "Failed to migrate singleton services"
         exit 1
     fi
 
-    # Update CommonService CR with OPERATOR_NS and SERVICES_NS
-    # Propogate CommonService CR to every namespace in the tenant
-    update_cscr "$OPERATOR_NS" "$SERVICES_NS" "$NS_LIST"
-    accept_license "commonservice" "$OPERATOR_NS"  "common-service"
-
-    # Validate ibm-common-service-operator CatalogSource and CatalogSourceNamespaces
-    # Update ibm-common-service-operator channel
-    for ns in ${NS_LIST//,/ }; do
-        local pm="ibm-common-service-operator"
-        local sub_name=$(${OC} get subscription.operators.coreos.com -n ${ns} -l operators.coreos.com/${pm}.${ns}='' --no-headers | awk '{print $1}')
-        if [ ! -z "$sub_name" ]; then
-            op_source=$SOURCE
-            op_source_ns=$SOURCE_NS
-            if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
-                op_source_ns=$ns
+    local pm="ibm-common-service-operator"
+    if [[ $IS_ALL_NS -eq 0 ]]; then
+        # Update CommonService CR with OPERATOR_NS and SERVICES_NS
+        # Propogate CommonService CR to every namespace in the tenant
+        update_cscr "$OPERATOR_NS" "$SERVICES_NS" "$NS_LIST"
+        
+        # Validate ibm-common-service-operator CatalogSource and CatalogSourceNamespaces
+        # Update ibm-common-service-operator channel
+        for ns in ${NS_LIST//,/ }; do
+            local sub_name=$(${OC} get subscription.operators.coreos.com -n ${ns} -l operators.coreos.com/${pm}.${ns}='' --no-headers --ignore-not-found| awk '{print $1}')
+            if [ ! -z "$sub_name" ]; then
+                op_source=$SOURCE
+                op_source_ns=$SOURCE_NS
+                if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
+                    op_source_ns=$ns
+                fi
+                validate_operator_catalogsource $pm $ns $op_source $op_source_ns $CHANNEL op_source op_source_ns
+                update_operator $pm $ns $CHANNEL $op_source $op_source_ns $INSTALL_MODE
             fi
-            validate_operator_catalogsource $pm $ns $op_source $op_source_ns $CHANNEL op_source op_source_ns
-            update_operator $pm $ns $CHANNEL $op_source $op_source_ns $INSTALL_MODE
-        fi
-    done
+        done
+    else
+        title "Updating ibm-common-service-operator subscrition in all namespace mode"
+        op_source=$SOURCE
+        op_source_ns=$SOURCE_NS
+        validate_operator_catalogsource $pm "$OPERATOR_NS" $op_source $op_source_ns $CHANNEL op_source op_source_ns
+        update_operator $pm "$OPERATOR_NS" $CHANNEL $op_source $op_source_ns $INSTALL_MODE
+    fi
 
     # Wait for CS operator upgrade
-    wait_for_operator_upgrade $OPERATOR_NS ibm-common-service-operator $CHANNEL $INSTALL_MODE
+    wait_for_operator_upgrade $OPERATOR_NS "ibm-common-service-operator" $CHANNEL $INSTALL_MODE
     # Scale up CS
-    scale_up $OPERATOR_NS $SERVICES_NS ibm-common-service-operator ibm-common-service-operator
+    scale_up $OPERATOR_NS $SERVICES_NS "ibm-common-service-operator" "ibm-common-service-operator"
 
     # Wait for ODLM upgrade
     wait_for_operator_upgrade $OPERATOR_NS ibm-odlm $MAINTAINED_CHANNEL $INSTALL_MODE
     # Scale up ODLM
     scale_up $OPERATOR_NS $SERVICES_NS ibm-odlm operand-deployment-lifecycle-manager
 
+    accept_license "commonservice" "$OPERATOR_NS"  "common-service"
+
     # Clean resources
-    cleanup_cp2 "$OPERATOR_NS" "$CONTROL_NS" "$NS_LIST"
-
-    # Update ibm-namespace-scope-operator channel
-    is_sub_exist ibm-namespace-scope-operator-restricted $OPERATOR_NS
-    if [ $? -eq 0 ]; then
-        warning "There is a ibm-namespace-scope-operator-restricted Subscription\n"
-        delete_operator ibm-namespace-scope-operator-restricted $OPERATOR_NS
-        create_subscription ibm-namespace-scope-operator $OPERATOR_NS $MAINTAINED_CHANNEL ibm-namespace-scope-operator $SOURCE $SOURCE_NS $INSTALL_MODE
+    cleanup_cp2 "$OPERATOR_NS" "$SERVICES_NS" "$CONTROL_NS" "$NS_LIST"
+    
+    if [[ $IS_ALL_NS -eq 1 ]] || [[ $IS_SIMPlE -eq 1 ]]; then
+        # Delete NamesapceScope operator in simple topology or all namespaces topology
+        delete_operator ibm-namespace-scope-operator-restricted "$SERVICES_NS"
+        delete_operator ibm-namespace-scope-operator "$SERVICES_NS"
+        
     else
-        update_operator ibm-namespace-scope-operator $OPERATOR_NS $MAINTAINED_CHANNEL $SOURCE $SOURCE_NS $INSTALL_MODE
-    fi
-
-    wait_for_operator_upgrade "$OPERATOR_NS" "ibm-namespace-scope-operator" "$MAINTAINED_CHANNEL" $INSTALL_MODE
-    # Authroize NSS operator
-    for ns in ${NS_LIST//,/ }; do
-        if [ "$ns" != "$OPERATOR_NS" ]; then
-            ${BASE_DIR}/common/authorize-namespace.sh $ns -to $OPERATOR_NS
+        # Update ibm-namespace-scope-operator channel
+        is_sub_exist ibm-namespace-scope-operator-restricted $OPERATOR_NS
+        if [ $? -eq 0 ]; then
+            warning "There is a ibm-namespace-scope-operator-restricted Subscription\n"
+            delete_operator ibm-namespace-scope-operator-restricted $OPERATOR_NS
+            create_subscription ibm-namespace-scope-operator $OPERATOR_NS $MAINTAINED_CHANNEL ibm-namespace-scope-operator $SOURCE $SOURCE_NS $INSTALL_MODE
+        else
+            update_operator ibm-namespace-scope-operator $OPERATOR_NS $MAINTAINED_CHANNEL $SOURCE $SOURCE_NS $INSTALL_MODE
         fi
-    done
 
-    # Update NamespaceScope CR common-service
-    update_nss_kind "$OPERATOR_NS" "$NS_LIST"
+        wait_for_operator_upgrade "$OPERATOR_NS" "ibm-namespace-scope-operator" "$MAINTAINED_CHANNEL" $INSTALL_MODE
+        # Authroize NSS operator
+        for ns in ${NS_LIST//,/ }; do
+            ${BASE_DIR}/common/authorize-namespace.sh $ns -to $OPERATOR_NS
+        done
 
-    accept_license "namespacescope" "$OPERATOR_NS" "common-service"
+        # Update NamespaceScope CR common-service
+        update_nss_kind "$OPERATOR_NS" "$NS_LIST"
 
+        accept_license "namespacescope" "$OPERATOR_NS" "common-service"
+    fi
     # Check master CommonService CR status
     wait_for_cscr_status "$OPERATOR_NS" "common-service"
     
@@ -288,13 +300,32 @@ function pre_req() {
         error "Must provide operator namespace"
     fi
 
-    if [ "$SERVICES_NS" == "" ]; then
-        SERVICES_NS=$OPERATOR_NS
+    # Determine deployment topology
+    determine_topology "ibm-common-service-operator" $OPERATOR_NS
+
+    if [[ "$SERVICES_NS" == "" ]]; then
+        if [[ $IS_ALL_NS -eq 1 ]]; then
+            SERVICES_NS="ibm-common-services"
+        else
+            SERVICES_NS=$OPERATOR_NS
+        fi
+    elif [[ "$SERVICES_NS" != "" ]] && [[ "$SERVICES_NS" != "$OPERATOR_NS" ]] && [[ $IS_ALL_NS -eq 0 ]]; then
+        error "Services namespace must be the same as operator namespace, try again"
     fi
 
-    if [ "$CONTROL_NS" == "" ]; then
-        CONTROL_NS=$OPERATOR_NS
+    if [[ "$CONTROL_NS" == "" ]]; then 
+        if [[ $IS_ALL_NS -eq 1 ]]; then
+            CONTROL_NS="ibm-common-services"
+        else
+            CONTROL_NS=$OPERATOR_NS
+        fi
     fi
+
+    if [[ -z "$NS_LIST" ]] && [[ $IS_ALL_NS -eq 0 ]]; then
+        error "Failed to get tenant scope from ConfigMap namespace-scope in namespace ${OPERATOR_NS}"
+    fi  
+
+    get_and_validate_arguments
 
     if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
         SOURCE_NS=$OPERATOR_NS
@@ -318,14 +349,7 @@ function pre_req() {
     else
         error "Channel is not semantic vx.y"
     fi
-
-    NS_LIST=$(${OC} get configmap namespace-scope -n ${OPERATOR_NS} -o jsonpath='{.data.namespaces}')
-    if [[ -z "$NS_LIST" ]]; then
-        error "Failed to get tenant scope from ConfigMap namespace-scope in namespace ${OPERATOR_NS}"
-    fi
     
-    get_and_validate_arguments
-
     # When Common Service channel info is less then maintained channel, update maintained channel for backward compatibility e.g., v4.1 and v4.0
     # Otherwise, maintained channel is pinned at v4.2
     local channel_numeric="${CHANNEL#v}"
@@ -333,6 +357,34 @@ function pre_req() {
     if awk -v num="$channel_numeric" "BEGIN { exit !(num < $maintained_channel_numeric) }"; then
         MAINTAINED_CHANNEL="$CHANNEL"
     fi
+}
+
+# It is a allnamespace topology as long as:
+# the subscription of ibm-common-service operator is in the `opencloud-operators` namespace
+function determine_topology() {
+    local package_name=$1
+    local operator_ns=$2
+    local cs_sub=$(${OC} get subscription.operators.coreos.com -n ${operator_ns} --ignore-not-found | grep "${package_name}")
+    if [ ! -z "$cs_sub"  ]; then
+        # Check if it is all namespaces topology by checking if there is targetNamespace in OperatorGroup
+        local og_name=$(${OC} get operatorgroup -n ${operator_ns} --ignore-not-found --no-headers | awk '{print $1}')
+        if [ ! -z "$og_name" ]; then
+            if [[ $(${OC} get operatorgroup ${og_name} -n ${operator_ns}  -oyaml | ${YQ} eval '.spec.targetNamespaces' -) ]]; then
+                info "It is all namespaces topology\n"
+                IS_ALL_NS=1
+                NS_LIST=$(${OC} get configmap namespace-scope -n ibm-common-services -o jsonpath='{.data.namespaces}')
+
+            else
+                NS_LIST=$(${OC} get configmap namespace-scope -n ${OPERATOR_NS} -o jsonpath='{.data.namespaces}')
+                local count=$(echo "$NS_LIST" | tr ',' '\n' | wc -l)
+                info "It is simple topology\n"
+                if [[ $count -eq 1 ]]; then
+                    IS_SIMPlE=1
+                fi
+            fi
+        fi
+    fi
+
 }
 
 function isolate_license_service_reporter(){
