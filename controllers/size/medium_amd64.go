@@ -675,29 +675,37 @@ const Medium = `
     apicatalogmanager:
       profile: medium
 - name: edb-keycloak
-  spec:
-    Cluster:
-      instances: 2
-      resources:
-        requests:
-          cpu: 500m
-          memory: 1024Mi
-        limits:
-          cpu: 500m
-          memory: 1024Mi
+  resources:
+  - apiVersion: postgresql.k8s.enterprisedb.io/v1
+    kind: Cluster
+    name: keycloak-edb-cluster
+    data:
+      spec:
+        instances: 2
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1024Mi
+          requests:
+            cpu: 500m
+            memory: 1024Mi
 - name: keycloak-operator
-  spec:
-    Keycloak:
-      instances: 2
-      unsupported:
-        podTemplate:
-          spec:
-            containers:
-              - resources:
-                  limits:
-                    cpu: 1000m
-                    memory: 1Gi
-                  requests:
-                    cpu: 1000m
-                    memory: 1Gi
+  resources:
+  - apiVersion: k8s.keycloak.org/v2alpha1
+    kind: Keycloak
+    name: cs-keycloak
+    data:
+      spec:
+        instances: 2
+        unsupported:
+          podTemplate:
+            spec:
+              containers:
+                - resources:
+                    limits:
+                      cpu: 1000m
+                      memory: 1Gi
+                    requests:
+                      cpu: 1000m
+                      memory: 1Gi
 `
