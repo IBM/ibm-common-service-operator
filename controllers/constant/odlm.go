@@ -812,11 +812,11 @@ spec:
                   name: edb-license
                   resources:
                     limits:
-                      cpu: 500m
-                      memory: 512Mi
+                      cpu: 200m
+                      memory: 768Mi
                     requests:
-                      cpu: 100m
-                      memory: 50Mi
+                      cpu: 200m
+                      memory: 512Mi
                   securityContext:
                     allowPrivilegeEscalation: false
                     capabilities:

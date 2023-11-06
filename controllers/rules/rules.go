@@ -925,4 +925,38 @@ const ConfigurationRules = `
   spec:
     apicatalogmanager:
       profile: LARGEST_VALUE
+- name: edb-keycloak
+  resources:
+  - apiVersion: postgresql.k8s.enterprisedb.io/v1
+    kind: Cluster
+    name: keycloak-edb-cluster
+    data:
+      spec:
+        instances: LARGEST_VALUE
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+- name: keycloak-operator
+  resources:
+  - apiVersion: k8s.keycloak.org/v2alpha1
+    kind: Keycloak
+    name: cs-keycloak
+    data:
+      spec:
+        instances: LARGEST_VALUE
+        unsupported:
+          podTemplate:
+            spec:
+              containers:
+                - resources:
+                    limits:
+                      cpu: LARGEST_VALUE
+                      memory: LARGEST_VALUE
+                    requests:
+                      cpu: LARGEST_VALUE
+                      memory: LARGEST_VALUE
 `
