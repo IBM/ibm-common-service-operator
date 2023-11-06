@@ -365,20 +365,22 @@ function determine_topology() {
     local package_name=$1
     local operator_ns=$2
     local cs_sub=$(${OC} get subscription.operators.coreos.com -n ${operator_ns} --ignore-not-found | grep "${package_name}")
+
     if [ ! -z "$cs_sub"  ]; then
         # Check if it is all namespaces topology by checking if there is targetNamespace in OperatorGroup
         local og_name=$(${OC} get operatorgroup -n ${operator_ns} --ignore-not-found --no-headers | awk '{print $1}')
         if [ ! -z "$og_name" ]; then
-            if [[ $(${OC} get operatorgroup ${og_name} -n ${operator_ns}  -oyaml | ${YQ} eval '.spec.targetNamespaces' -) ]]; then
+            local target_ns=$(${OC} get operatorgroup ${og_name} -n ${operator_ns}  -oyaml --ignore-not-found | ${YQ} eval '.spec.targetNamespaces')
+            if [[ -z "$target_ns" || "$target_ns" == "null" ]]; then
                 info "It is all namespaces topology\n"
                 IS_ALL_NS=1
-                NS_LIST=$(${OC} get configmap namespace-scope -n ibm-common-services -o jsonpath='{.data.namespaces}')
+                NS_LIST=$(${OC} get configmap namespace-scope -n ibm-common-services --ignore-not-found -o jsonpath='{.data.namespaces}')
 
             else
                 NS_LIST=$(${OC} get configmap namespace-scope -n ${OPERATOR_NS} -o jsonpath='{.data.namespaces}')
                 local count=$(echo "$NS_LIST" | tr ',' '\n' | wc -l)
-                info "It is simple topology\n"
                 if [[ $count -eq 1 ]]; then
+                    info "It is simple topology\n"
                     IS_SIMPlE=1
                 fi
             fi
