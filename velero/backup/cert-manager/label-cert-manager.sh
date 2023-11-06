@@ -135,3 +135,17 @@ if [[ $cm_namespace_list != "fail" ]]; then
 else
     echo "[INFO] Configmap cs-onprem-tenant-config not found, skipping copying custom secrets..."
 fi
+
+#grab default admin credentials
+auth_namespace_list=$(oc get secret -A | grep platform-auth-idp-credentials | grep -v "bindinfo" |  awk '{print $1}' | tr "\n" " " || echo "none")
+if [[ $auth_namespace_list != "none" ]]; then
+    for auth_namespace in $auth_namespace_list
+    do
+        echo "platform-auth-idp-credentials"
+        echo $auth_namespace
+        echo "---"
+        oc label secret platform-auth-idp-credentials -n $auth_namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
+    done
+else
+    echo "[INFO] Secret platform-auth-idp-credentials not present in namespace $auth_namespace. Skipping..."
+fi
