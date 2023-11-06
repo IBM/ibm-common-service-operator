@@ -86,9 +86,9 @@ spec:
               labels:
                 additionalProperties:
                   type: string
-                description: Labels describes  foundational services will use this labels to labels their corresponding resources
+                description: Labels describes  foundational services will use this
+                  labels to labels their corresponding resources
                 type: object
-                type: array
               license:
                 description: LicenseList defines the license specification in CSV
                 properties:
@@ -131,6 +131,11 @@ spec:
                       type: string
                     name:
                       type: string
+                    resources:
+                      items:
+                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
+                      type: array
                     spec:
                       additionalProperties:
                         type: object
@@ -138,7 +143,6 @@ spec:
                       type: object
                   required:
                   - name
-                  - spec
                   type: object
                 type: array
               servicesNamespace:

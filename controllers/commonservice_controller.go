@@ -218,7 +218,7 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 		return ctrl.Result{}, err
 	}
-	newConfigs, serviceControllerMapping, err := r.getNewConfigs(cs, true)
+	newConfigs, serviceControllerMapping, err := r.getNewConfigs(cs)
 	if err != nil {
 		if err := r.updatePhase(ctx, instance, CRFailed); err != nil {
 			klog.Error(err)
@@ -306,7 +306,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(ctx context.Context, instan
 		return ctrl.Result{}, err
 	}
 
-	newConfigs, serviceControllerMapping, err := r.getNewConfigs(cs, true)
+	newConfigs, serviceControllerMapping, err := r.getNewConfigs(cs)
 	if err != nil {
 		if err := r.updatePhase(ctx, instance, CRFailed); err != nil {
 			klog.Error(err)

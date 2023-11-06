@@ -22,7 +22,7 @@ metadata:
       ]
     capabilities: Seamless Upgrades
     containerImage: icr.io/cpopen/common-service-operator:latest
-    createdAt: "2023-09-20T20:40:14Z"
+    createdAt: "2023-11-06T04:32:47Z"
     description: The IBM Common Service Operator is used to deploy IBM Common Services
     nss.operator.ibm.com/managed-operators: ibm-common-service-operator
     nss.operator.ibm.com/managed-webhooks: ""
@@ -249,8 +249,8 @@ spec:
                   app.kubernetes.io/instance: ibm-common-service-operator
                   app.kubernetes.io/managed-by: ibm-common-service-operator
                   app.kubernetes.io/name: ibm-common-service-operator
-                  productName: IBM_Cloud_Platform_Common_Services
                   name: ibm-common-service-operator
+                  productName: IBM_Cloud_Platform_Common_Services
               spec:
                 affinity:
                   nodeAffinity:

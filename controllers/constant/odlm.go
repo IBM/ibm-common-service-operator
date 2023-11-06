@@ -1058,6 +1058,13 @@ spec:
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
     installMode: no-op
+  - channel: v3.23
+    name: ibm-zen-cpp-operator
+    namespace: "{{ .CPFSNs }}"
+    packageName: zen-cpp-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    installMode: no-op
 `
 
 	CSV3OpReg = `
@@ -1140,12 +1147,6 @@ spec:
     name: ibm-automation-elastic
     namespace: "{{ .CPFSNs }}"
     packageName: ibm-automation-elastic
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-  - channel: v3.23
-    name: ibm-zen-cpp-operator
-    namespace: "{{ .CPFSNs }}"
-    packageName: zen-cpp-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
 `
@@ -1775,7 +1776,7 @@ spec:
 `
 
 // ConcatenateRegistries concatenate the two YAML strings and return the new YAML string
-func ConcatenateRegistries(baseRegistryTemplate, insertedRegistryTemplate string, data interface{}) (string, error) {
+func ConcatenateRegistries(baseRegistryTemplate string, insertedRegistryTemplateList []string, data interface{}) (string, error) {
 	baseRegistry := &odlm.OperandRegistry{}
 	insertedRegistry := &odlm.OperandRegistry{}
 	var template []byte
@@ -1789,19 +1790,20 @@ func ConcatenateRegistries(baseRegistryTemplate, insertedRegistryTemplate string
 		return "", fmt.Errorf("failed to fetch data of OprandRegistry %v: %v", baseRegistry, err)
 	}
 
-	// unmarshal second OprandRegistry
-	if template, err = applyTemplate(insertedRegistryTemplate, data); err != nil {
-		return "", err
-	}
-	if err := utilyaml.Unmarshal(template, &insertedRegistry); err != nil {
-		return "", fmt.Errorf("failed to fetch data of OprandRegistry %v: %v", insertedRegistry, err)
+	for _, registryTemplate := range insertedRegistryTemplateList {
+		if template, err = applyTemplate(registryTemplate, data); err != nil {
+			return "", err
+		}
+		if err := utilyaml.Unmarshal(template, &insertedRegistry); err != nil {
+			return "", fmt.Errorf("failed to fetch data of OprandRegistry %v/%v: %v", insertedRegistry.Namespace, insertedRegistry.Name, err)
+		}
+
+		var newOperators []odlm.Operator
+		newOperators = append(newOperators, baseRegistry.Spec.Operators...)
+		newOperators = append(newOperators, insertedRegistry.Spec.Operators...)
+		baseRegistry.Spec.Operators = newOperators
 	}
 
-	var newOperators []odlm.Operator
-	newOperators = append(newOperators, baseRegistry.Spec.Operators...)
-	newOperators = append(newOperators, insertedRegistry.Spec.Operators...)
-
-	baseRegistry.Spec.Operators = newOperators
 	opregBytes, err := utilyaml.Marshal(baseRegistry)
 	if err != nil {
 		return "", err
@@ -1811,7 +1813,7 @@ func ConcatenateRegistries(baseRegistryTemplate, insertedRegistryTemplate string
 }
 
 // ConcatenateConfigs concatenate the two YAML strings and return the new YAML string
-func ConcatenateConfigs(baseConfigTemplate, insertedConfigTemplate string, data interface{}) (string, error) {
+func ConcatenateConfigs(baseConfigTemplate string, insertedConfigTemplateList []string, data interface{}) (string, error) {
 	baseConfig := &odlm.OperandConfig{}
 	insertedConfig := &odlm.OperandConfig{}
 	var template []byte
@@ -1825,19 +1827,20 @@ func ConcatenateConfigs(baseConfigTemplate, insertedConfigTemplate string, data 
 		return "", fmt.Errorf("failed to fetch data of OprandConfig %v: %v", baseConfig, err)
 	}
 
-	// unmarshal second OprandConfig
-	if template, err = applyTemplate(insertedConfigTemplate, data); err != nil {
-		return "", err
-	}
-	if err := utilyaml.Unmarshal(template, &insertedConfig); err != nil {
-		return "", fmt.Errorf("failed to fetch data of OprandConfig %v: %v", insertedConfig, err)
+	for _, configTemplate := range insertedConfigTemplateList {
+		if template, err = applyTemplate(configTemplate, data); err != nil {
+			return "", err
+		}
+		if err := utilyaml.Unmarshal(template, &insertedConfig); err != nil {
+			return "", fmt.Errorf("failed to fetch data of OprandConfig %v/%v: %v", insertedConfig.Namespace, insertedConfig.Name, err)
+		}
+
+		var newServices []odlm.ConfigService
+		newServices = append(newServices, baseConfig.Spec.Services...)
+		newServices = append(newServices, insertedConfig.Spec.Services...)
+		baseConfig.Spec.Services = newServices
 	}
 
-	var newServices []odlm.ConfigService
-	newServices = append(newServices, baseConfig.Spec.Services...)
-	newServices = append(newServices, insertedConfig.Spec.Services...)
-
-	baseConfig.Spec.Services = newServices
 	opconBytes, err := utilyaml.Marshal(baseConfig)
 	if err != nil {
 		return "", err
