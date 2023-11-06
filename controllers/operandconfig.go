@@ -24,7 +24,6 @@ import (
 
 	utilyaml "github.com/ghodss/yaml"
 	"github.com/mohae/deepcopy"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
@@ -98,47 +97,86 @@ func mergeProfileController(serviceControllerMappingSummary, serviceControllerMa
 	return serviceControllerMappingSummary
 }
 
-func mergeCSCRs(csSummary, csCR, ruleSlice []interface{}, serviceControllerMappingSummary map[string]string) []interface{} {
+func mergeCSCRs(csSummary, csCR, ruleSlice []interface{}, serviceControllerMappingSummary map[string]string, opconNs string) []interface{} {
 	for _, operator := range csCR {
 		summaryCR := getItemByName(csSummary, operator.(map[string]interface{})["name"].(string))
 		rules := getItemByName(ruleSlice, operator.(map[string]interface{})["name"].(string))
-		if summaryCR == nil || summaryCR.(map[string]interface{})["spec"] == nil {
+		if summaryCR == nil || summaryCR.(map[string]interface{})["spec"] == nil || summaryCR.(map[string]interface{})["resources"] == nil {
 			summaryCR = map[string]interface{}{
-				"name": operator.(map[string]interface{})["name"].(string),
-				"spec": map[string]interface{}{},
+				"name":      operator.(map[string]interface{})["name"].(string),
+				"spec":      map[string]interface{}{},
+				"resources": []interface{}{},
 			}
 		}
 		serviceController := serviceControllerMappingSummary["profileController"]
 		if controller, ok := serviceControllerMappingSummary[operator.(map[string]interface{})["name"].(string)]; ok {
 			serviceController = controller
 		}
-		for cr, spec := range operator.(map[string]interface{})["spec"].(map[string]interface{}) {
-			if _, ok := nonDefaultProfileController[serviceController]; ok {
-				// clean up merged CS CR
-				operator.(map[string]interface{})["spec"].(map[string]interface{})[cr] = resetResourceInTemplate(spec.(map[string]interface{}), cr, rules)
+		if operator.(map[string]interface{})["spec"] != nil {
+			for cr, spec := range operator.(map[string]interface{})["spec"].(map[string]interface{}) {
+				if _, ok := nonDefaultProfileController[serviceController]; ok {
+					// clean up merged CS CR
+					operator.(map[string]interface{})["spec"].(map[string]interface{})[cr] = resetResourceInTemplate(spec.(map[string]interface{}), cr, rules)
+				}
+				if summaryCR.(map[string]interface{})["spec"].(map[string]interface{})[cr] == nil {
+					summaryCR.(map[string]interface{})["spec"].(map[string]interface{})[cr] = map[string]interface{}{}
+				}
+				if rules != nil && rules.(map[string]interface{})["spec"] != nil && rules.(map[string]interface{})["spec"].(map[string]interface{})[cr] != nil {
+					ruleForCR := rules.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
+					sizeForCR := summaryCR.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
+					summaryCR.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsIntoOperandConfig(sizeForCR, spec.(map[string]interface{}), ruleForCR, false, false)
+				}
 			}
-			if summaryCR.(map[string]interface{})["spec"].(map[string]interface{})[cr] == nil {
-				summaryCR.(map[string]interface{})["spec"].(map[string]interface{})[cr] = map[string]interface{}{}
-			}
-			if rules != nil && rules.(map[string]interface{})["spec"] != nil && rules.(map[string]interface{})["spec"].(map[string]interface{})[cr] != nil {
-				ruleForCR := rules.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
-				sizeForCR := summaryCR.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
-				summaryCR.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsIntoOperandConfig(sizeForCR, spec.(map[string]interface{}), ruleForCR, false, false)
-			}
+			csSummary = setSpecByName(csSummary, operator.(map[string]interface{})["name"].(string), summaryCR.(map[string]interface{})["spec"])
 		}
-		csSummary = setSpecByName(csSummary, operator.(map[string]interface{})["name"].(string), summaryCR.(map[string]interface{})["spec"])
+
+		// check if operator.(map[string]interface{})["resources"] is nil
+		if operator.(map[string]interface{})["resources"] != nil {
+			for i, opResource := range operator.(map[string]interface{})["resources"].([]interface{}) {
+				var apiVersion, kind, name, namespace string
+				if opResource.(map[string]interface{})["apiVersion"] != nil {
+					apiVersion = opResource.(map[string]interface{})["apiVersion"].(string)
+				}
+				if opResource.(map[string]interface{})["kind"] != nil {
+					kind = opResource.(map[string]interface{})["kind"].(string)
+				}
+				if opResource.(map[string]interface{})["name"] != nil {
+					name = opResource.(map[string]interface{})["name"].(string)
+				}
+				if opResource.(map[string]interface{})["namespace"] != nil {
+					namespace = opResource.(map[string]interface{})["namespace"].(string)
+				}
+				// check if above 4 fields are all set
+				if apiVersion == "" || kind == "" || name == "" {
+					klog.Warningf("Skipping merging resource %s/%s/%s/%s, because apiVersion, kind or name is not set", apiVersion, kind, name, namespace)
+					continue
+				}
+				// check if namespace is set, if not, set it to OperandConfig namespace
+				if namespace == "" {
+					namespace = opconNs
+				}
+				if summaryCR == nil || summaryCR.(map[string]interface{})["resources"] == nil {
+					continue
+				}
+				newResource := getItemByGVKNameNamespace(summaryCR.(map[string]interface{})["resources"].([]interface{}), opconNs, apiVersion, kind, name, namespace)
+				if newResource != nil {
+					operator.(map[string]interface{})["resources"].([]interface{})[i] = mergeCRsIntoOperandConfigWithDefaultRules(opResource.(map[string]interface{}), newResource.(map[string]interface{}))
+				}
+			}
+			csSummary = setResByName(csSummary, operator.(map[string]interface{})["name"].(string), operator.(map[string]interface{})["resources"].([]interface{}))
+		}
 	}
 	return csSummary
 }
 
 // mergeCRsIntoOperandConfig merges CRs by specific rules
-func mergeCRsIntoOperandConfigWithDefaultRules(defaultMap map[string]interface{}, changedMap map[string]interface{}, directAssign bool) map[string]interface{} {
+func mergeCRsIntoOperandConfigWithDefaultRules(defaultMap map[string]interface{}, changedMap map[string]interface{}) map[string]interface{} {
 	// TODO: Apply default rules
 	for key := range defaultMap {
 		if reflect.DeepEqual(defaultMap[key], changedMap[key]) {
 			continue
 		}
-		mergeChangedMap(key, defaultMap[key], changedMap[key], changedMap, directAssign)
+		mergeChangedMap(key, defaultMap[key], changedMap[key], changedMap, false)
 	}
 	return changedMap
 }
@@ -182,6 +220,25 @@ func mergeChangedMap(key string, defaultMap interface{}, changedMap interface{},
 					mergeChangedMap(newKey, defaultMapRef[newKey], changedMapRef[newKey], finalMap[key].(map[string]interface{}), directAssign)
 				}
 			}
+		case []interface{}:
+			//Check that the changed map value doesn't contain this map at all and is nil
+			if changedMap == nil {
+				finalMap[key] = defaultMap
+			} else if _, ok := changedMap.([]interface{}); ok { //Check that the changed map value is also a []interface
+				defaultMapRef := defaultMap
+				changedMapRef := changedMap.([]interface{})
+				for i := range defaultMapRef {
+					if _, ok := defaultMapRef[i].(map[string]interface{}); ok {
+						for newKey := range defaultMapRef[i].(map[string]interface{}) {
+							// check if the changedMapRef[i] is nil
+							if changedMapRef[i] == nil {
+								changedMapRef[i] = map[string]interface{}{}
+							}
+							mergeChangedMap(newKey, defaultMapRef[i].(map[string]interface{})[newKey], changedMapRef[i].(map[string]interface{})[newKey], finalMap[key].([]interface{})[i].(map[string]interface{}), directAssign)
+						}
+					}
+				}
+			}
 		default:
 			//Check if the value was set, otherwise set it
 			if changedMap == nil {
@@ -194,6 +251,7 @@ func mergeChangedMap(key string, defaultMap interface{}, changedMap interface{},
 					"profile":      true,
 					"fipsEnabled":  true,
 					"fips_enabled": true,
+					"instances":    true,
 				}
 				if _, ok := comparableKeys[key]; ok {
 					if directAssign {
@@ -218,6 +276,18 @@ func mergeChangedMapWithExtremeSize(key string, defaultMap interface{}, changedM
 				changedMapRef := changedMap.(map[string]interface{})
 				for newKey := range changedMapRef {
 					mergeChangedMapWithExtremeSize(newKey, defaultMapRef[newKey], changedMapRef[newKey], finalMap[key].(map[string]interface{}), extreme)
+				}
+			}
+		case []interface{}:
+			if _, ok := defaultMap.([]interface{}); ok {
+				defaultMapRef := defaultMap.([]interface{})
+				changedMapRef := changedMap.([]interface{})
+				for i := range changedMapRef {
+					for newKey := range changedMapRef[i].(map[string]interface{}) {
+						if _, ok := defaultMapRef[i].(map[string]interface{}); ok {
+							mergeChangedMapWithExtremeSize(newKey, defaultMapRef[i].(map[string]interface{})[newKey], changedMapRef[i].(map[string]interface{})[newKey], finalMap[key].([]interface{})[i].(map[string]interface{}), extreme)
+						}
+					}
 				}
 			}
 		default:
@@ -259,6 +329,25 @@ func deepMergeTwoMaps(key string, defaultMap interface{}, changedMap interface{}
 				deepMergeTwoMaps(newKey, defaultMapRef[newKey], changedMapRef[newKey], finalMap[key].(map[string]interface{}))
 			}
 		}
+	case []interface{}:
+		//Check that the changed map value doesn't contain this map at all and is nil
+		if changedMap == nil {
+			finalMap[key] = defaultMap
+		} else if _, ok := changedMap.([]interface{}); ok { //Check that the changed map value is also a []interface
+			defaultMapRef := defaultMap
+			changedMapRef := changedMap.([]interface{})
+			for i := range defaultMapRef {
+				if _, ok := defaultMapRef[i].(map[string]interface{}); ok {
+					for newKey := range defaultMapRef[i].(map[string]interface{}) {
+						// check if the changedMapRef[i] is nil
+						if changedMapRef[i] == nil {
+							changedMapRef[i] = map[string]interface{}{}
+						}
+						deepMergeTwoMaps(newKey, defaultMapRef[i].(map[string]interface{})[newKey], changedMapRef[i].(map[string]interface{})[newKey], finalMap[key].([]interface{})[i].(map[string]interface{}))
+					}
+				}
+			}
+		}
 	default:
 		//Check if the value was set, otherwise set it
 		if changedMap == nil {
@@ -278,7 +367,7 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 		return true, err
 	}
 
-	// Keep a version of existing config for comparasion later
+	// Keep a version of existing config for comparison later
 	opconServices := opcon.Object["spec"].(map[string]interface{})["services"].([]interface{})
 	existingOpconServices := deepcopy.Copy(opconServices)
 
@@ -303,27 +392,66 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 		// Fetch newConfigForOperator and rules for an operator
 		rules := getItemByName(ruleSlice, opService.(map[string]interface{})["name"].(string))
 
-		for cr, spec := range opService.(map[string]interface{})["spec"].(map[string]interface{}) {
-			if _, ok := nonDefaultProfileController[serviceController]; ok {
-				// clean up OperandConfig
-				opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = resetResourceInTemplate(spec.(map[string]interface{}), cr, rules)
-			}
+		if opService.(map[string]interface{})["spec"] != nil && newConfigForOperator.(map[string]interface{})["spec"] != nil {
+			for cr, spec := range opService.(map[string]interface{})["spec"].(map[string]interface{}) {
+				if _, ok := nonDefaultProfileController[serviceController]; ok {
+					// clean up OperandConfig
+					opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = resetResourceInTemplate(spec.(map[string]interface{}), cr, rules)
+				}
 
-			if newConfigForOperator.(map[string]interface{})["spec"].(map[string]interface{})[cr] == nil {
-				continue
-			}
-			newConfigForCR := newConfigForOperator.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
+				if newConfigForOperator.(map[string]interface{})["spec"].(map[string]interface{})[cr] == nil {
+					continue
+				}
+				newConfigForCR := newConfigForOperator.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
 
-			overwrite := true
-			if rules != nil && rules.(map[string]interface{})["spec"] != nil && rules.(map[string]interface{})["spec"].(map[string]interface{})[cr] != nil {
-				ruleForCR := rules.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
-				opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsIntoOperandConfig(spec.(map[string]interface{}), newConfigForCR, ruleForCR, overwrite, true)
-			} else {
-				if overwrite {
-					opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsIntoOperandConfigWithDefaultRules(spec.(map[string]interface{}), newConfigForCR, false)
+				overwrite := true
+				if rules != nil && rules.(map[string]interface{})["spec"] != nil && rules.(map[string]interface{})["spec"].(map[string]interface{})[cr] != nil {
+					ruleForCR := rules.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
+					opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsIntoOperandConfig(spec.(map[string]interface{}), newConfigForCR, ruleForCR, overwrite, true)
+				} else {
+					if overwrite {
+						opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsIntoOperandConfigWithDefaultRules(spec.(map[string]interface{}), newConfigForCR)
+					}
 				}
 			}
 		}
+
+		if opService.(map[string]interface{})["resources"] != nil {
+			if opResources, ok := opService.(map[string]interface{})["resources"].([]interface{}); ok {
+				for i, opResource := range opResources {
+					// get resource by checking apiVersion, kind, name, namespace
+					var apiVersion, kind, name, namespace string
+					if opResource.(map[string]interface{})["apiVersion"] != nil {
+						apiVersion = opResource.(map[string]interface{})["apiVersion"].(string)
+					}
+					if opResource.(map[string]interface{})["kind"] != nil {
+						kind = opResource.(map[string]interface{})["kind"].(string)
+					}
+					if opResource.(map[string]interface{})["name"] != nil {
+						name = opResource.(map[string]interface{})["name"].(string)
+					}
+					if opResource.(map[string]interface{})["namespace"] != nil {
+						namespace = opResource.(map[string]interface{})["namespace"].(string)
+					}
+					// check if above 4 fields are all set
+					if apiVersion == "" || kind == "" || name == "" {
+						klog.Warningf("Skipping merging resource %s/%s/%s/%s, because apiVersion, kind or name is not set", apiVersion, kind, name, namespace)
+						continue
+					}
+					// check if namespace is set, if not, set it to OperandConfig namespace
+					if namespace == "" {
+						namespace = opconKey.Namespace
+					}
+
+					newResource := getItemByGVKNameNamespace(newConfigForOperator.(map[string]interface{})["resources"].([]interface{}), opconKey.Namespace, apiVersion, kind, name, namespace)
+					if newResource != nil {
+						opResources[i] = mergeCRsIntoOperandConfigWithDefaultRules(opResource.(map[string]interface{}), newResource.(map[string]interface{}))
+					}
+				}
+				opService.(map[string]interface{})["resources"] = opResources
+			}
+		}
+
 	}
 
 	// Checking all the common service CRs to get the minimal(unique largest) size
@@ -384,20 +512,7 @@ func (r *CommonServiceReconciler) getExtremeizes(ctx context.Context, opconServi
 			continue
 		}
 
-		inScope := true
-		cm, err := util.GetCmOfMapCs(r.Reader)
-		if err == nil {
-			csScope, err := util.GetCsScope(cm, r.Bootstrap.CSData.CPFSNs)
-			if err != nil {
-				return configSummary, err
-			}
-			inScope = r.checkScope(csScope, cs.GetNamespace())
-		} else if !errors.IsNotFound(err) {
-			klog.Errorf("Failed to get common-service-maps: %v", err)
-			return configSummary, err
-		}
-
-		csConfigs, serviceControllerMapping, err := r.getNewConfigs(&cs, inScope)
+		csConfigs, serviceControllerMapping, err := r.getNewConfigs(&cs)
 		if err != nil {
 			return []interface{}{}, err
 		}
@@ -406,7 +521,7 @@ func (r *CommonServiceReconciler) getExtremeizes(ctx context.Context, opconServi
 		tmpConfigsSlice[len(tmpConfigsSlice)] = csConfigs
 	}
 	for _, csConfigs := range tmpConfigsSlice {
-		configSummary = mergeCSCRs(configSummary, csConfigs, ruleSlice, serviceControllerMappingSummary)
+		configSummary = mergeCSCRs(configSummary, csConfigs, ruleSlice, serviceControllerMappingSummary, r.CSData.ServicesNs)
 	}
 
 	for _, opService := range opconServices {
@@ -429,6 +544,46 @@ func (r *CommonServiceReconciler) getExtremeizes(ctx context.Context, opconServi
 			}
 			serviceForCR := crSummary.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
 			opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = shrinkSize(spec.(map[string]interface{}), serviceForCR, extreme)
+		}
+
+		if opService.(map[string]interface{})["resources"] != nil {
+			if opResources, ok := opService.(map[string]interface{})["resources"].([]interface{}); ok {
+				for i, opResource := range opResources {
+					// get resource by checking apiVersion, kind, name, namespace
+					var apiVersion, kind, name, namespace string
+					if opResource.(map[string]interface{})["apiVersion"] != nil {
+						apiVersion = opResource.(map[string]interface{})["apiVersion"].(string)
+					}
+					if opResource.(map[string]interface{})["kind"] != nil {
+						kind = opResource.(map[string]interface{})["kind"].(string)
+					}
+					if opResource.(map[string]interface{})["name"] != nil {
+						name = opResource.(map[string]interface{})["name"].(string)
+					}
+					if opResource.(map[string]interface{})["namespace"] != nil {
+						namespace = opResource.(map[string]interface{})["namespace"].(string)
+					}
+					// check if above 4 fields are all set
+					if apiVersion == "" || kind == "" || name == "" {
+						klog.Warningf("Skipping merging resource %s/%s/%s/%s, because apiVersion, kind or name is not set", apiVersion, kind, name, namespace)
+						continue
+					}
+					// check if namespace is set, if not, set it to OperandConfig namespace
+					if namespace == "" {
+						namespace = r.CSData.ServicesNs
+					}
+
+					if crSummary == nil || crSummary.(map[string]interface{})["resources"] == nil {
+						continue
+					}
+
+					summarizedRes := getItemByGVKNameNamespace(crSummary.(map[string]interface{})["resources"].([]interface{}), r.CSData.ServicesNs, apiVersion, kind, name, namespace)
+					if summarizedRes != nil {
+						opResources[i] = shrinkSize(opResource.(map[string]interface{}), summarizedRes.(map[string]interface{}), extreme)
+					}
+				}
+				opService.(map[string]interface{})["resources"] = opResources
+			}
 		}
 	}
 
@@ -509,6 +664,20 @@ func setSpecByName(slice []interface{}, name string, spec interface{}) []interfa
 	return append(slice, newItem)
 }
 
+func setResByName(slice []interface{}, name string, resources []interface{}) []interface{} {
+	for _, item := range slice {
+		if item.(map[string]interface{})["name"].(string) == name {
+			item.(map[string]interface{})["resources"] = resources
+			return slice
+		}
+	}
+	newItem := map[string]interface{}{
+		"name":      name,
+		"resources": resources,
+	}
+	return append(slice, newItem)
+}
+
 // Check if the request's NamespacedName is the "master" CR
 func (r *CommonServiceReconciler) checkNamespace(key string) bool {
 	return key == r.Bootstrap.CSData.OperatorNs+"/common-service"
@@ -518,17 +687,6 @@ func (r *CommonServiceReconciler) checkNamespace(key string) bool {
 func (r *CommonServiceReconciler) updatePhase(ctx context.Context, instance *apiv3.CommonService, status string) error {
 	instance.Status.Phase = status
 	return r.Client.Status().Update(ctx, instance)
-}
-
-// checkScope checks whether the namespace is in scope
-func (r *CommonServiceReconciler) checkScope(csScope []string, key string) bool {
-	inScope := false
-	if !r.Bootstrap.MultiInstancesEnable || len(csScope) == 0 {
-		inScope = true
-	} else {
-		inScope = util.Contains(csScope, key)
-	}
-	return inScope
 }
 
 func resetResourceInTemplate(changedMap map[string]interface{}, cr string, rules interface{}) map[string]interface{} {
@@ -570,4 +728,23 @@ func resetChangedMap(key string, changedMap interface{}, rulesForCR, finalMap ma
 			}
 		}
 	}
+}
+
+func getItemByGVKNameNamespace(opResources []interface{}, opconNs, apiVersion, kind, name, namespace string) interface{} {
+	for _, opResource := range opResources {
+		if opResource.(map[string]interface{})["apiVersion"].(string) == apiVersion &&
+			opResource.(map[string]interface{})["kind"].(string) == kind &&
+			opResource.(map[string]interface{})["name"].(string) == name {
+			if opResNs, ok := opResource.(map[string]interface{})["namespace"]; ok {
+				if opResNs.(string) == namespace {
+					return opResource
+				}
+			} else {
+				if opconNs == namespace {
+					return opResource
+				}
+			}
+		}
+	}
+	return nil
 }
