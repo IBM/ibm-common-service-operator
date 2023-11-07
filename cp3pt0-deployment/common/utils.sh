@@ -1330,6 +1330,21 @@ function scale_down() {
     rm sub.yaml
 }
 
+function delete_webhook_configuration(){
+    local operator_ns=$1
+    # Find the webhook that matches the labels 
+    local webhook_name=$(oc get validatingwebhookconfiguration -n $operator_ns -l olm.owner.kind=ClusterServiceVersion,olm.owner.namespace=$operator_ns -o=yaml | yq e '.items[] | select(.metadata.labels."olm.owner" | test("ibm-common-service-operator.v[0-9.]+")) | .metadata.name' -)
+
+    # Check if a matching webhook was found, and delete it if so
+    if [ -n "$webhook_name" ]; then
+        info "Deleting ValidatingWebhookConfiguration '$webhook_name' in '$operator_ns'..."
+        ${OC} delete ValidatingWebhookConfiguration "$webhook_name"
+        echo "Webhook '$webhook_name' deleted."
+    else
+        echo "No matching webhook found."
+    fi
+}
+
 function wait_for_operand_registry() {
     local namespace=$1
     local name=$2
