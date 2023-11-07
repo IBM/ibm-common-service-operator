@@ -665,11 +665,7 @@ func (b *Bootstrap) InstallOrUpdateOpcon(forceUpdateODLMCRs bool) error {
 		constant.KeyCloakOpCon,
 	}
 
-	if b.SaasEnable {
-		baseCon = constant.CSV3SaasOpCon
-	} else {
-		baseCon = constant.CSV3OpCon
-	}
+	baseCon = constant.CSV3OpCon
 
 	concatenatedCon, err := constant.ConcatenateConfigs(baseCon, configs, b.CSData)
 	if err != nil {

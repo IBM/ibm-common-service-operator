@@ -427,6 +427,10 @@ spec:
             bindings:
               public-keycloak-tls-secret:
                 secret: cs-keycloak-tls-secret
+              public-cs-keycloak-route:
+                configmap: cs-keycloak-route
+              public-cs-keycloak-service:
+                configmap: cs-keycloak-service
             description: Binding information that should be accessible to Keycloak adopters
             operand: keycloak-operator
             registry: common-service
@@ -450,30 +454,6 @@ spec:
                 kind: Issuer
                 name: cs-ca-issuer
             secretName: cs-keycloak-tls-secret
-      - apiVersion: v1
-        kind: ConfigMap
-        force: true
-        name: keycloak-bindinfo
-        namespace: {{ .OperatorNs }}
-        data:
-          data:
-            keycloak-bindinfo.yaml: |
-              route:
-                name: keycloak
-                configmap: keycloak-bindinfo-cs-keycloak-route
-                data:
-                  HOSTNAME: https://+.spec.host
-                  TERMINATION: .spec.tls.termination
-                  BACKEND_SERVICE: .spec.to.name
-              service:
-                name: cs-keycloak-service
-                configmap: keycloak-bindinfo-cs-keycloak-service
-                data:
-                  PORT: .spec.ports[0].port
-                  CLUSTER_IP: .spec.clusterIP
-                  SERVICE_NAME: .metadata.name
-                  SERVICE_NAMESPACE: .metadata.namespace
-                  SERVICE_ENDPOINT: https://+.metadata.name+.+.metadata.namespace+.+svc:+.spec.ports[0].port
       - apiVersion: route.openshift.io/v1
         data:
           spec:
@@ -514,195 +494,6 @@ spec:
         force: true
         kind: Route
         name: keycloak
-      - apiVersion: v1
-        kind: ConfigMap
-        name: keycloak-bindinfo-script
-        namespace: {{ .OperatorNs }}
-        data:  
-          data:
-            keycloak-bindinfo-script.sh: |
-              #!/bin/bash
-          
-              KIND_LIST="route,service"
-              config_yaml=$(cat /bindinfo-data/keycloak-bindinfo.yaml)
-              resource_namespace=$(oc get commonservice common-service -n $OPERATOR_NAMESPACE -o jsonpath='{.spec.servicesNamespace}')
-          
-              function parse_schema() {
-                  local kind="$1"
-                  local resource_name="$2"
-                  local resource_namespace="$3"
-                  local schema="$4"
-          
-                  result=""
-                  IFS='+'
-          
-                  read -ra items <<< "$schema"
-          
-                  for item in "${items[@]}"; do
-                      
-                      # if the item start with dot, and length is greater than 1, then it is a jsonpath
-                      if [[ "$item" == .* ]] && [[ ${#item} -gt 1 ]]; then
-                          echo $item is jsonpath
-                          value=""
-                          parse_jsonpath $kind $resource_name $resource_namespace $item value
-                      else
-                          echo $item is not jsonpath
-                          value=$item
-                      fi
-                      result+=$value
-                  done
-          
-                  eval "$5=$result"
-          
-              }
-          
-              function parse_jsonpath() {
-                  local kind="$1"
-                  local resource_name="$2"
-                  local resource_namespace="$3"
-                  local jsonpath="$4"
-                  
-                  value=$(oc get $kind "$resource_name" -n "$resource_namespace" -o yaml | yq eval "$jsonpath" -)
-          
-                  eval "$5=$value"
-              }
-          
-              function copy_secret() {
-                  local secret_name="$1"
-                  local source_namespace="$2"
-                  local target_namespace="$3"
-                  local new_secret_name="$4"
-          
-                  oc get secret "$secret_name" -n "$source_namespace" -o yaml | sed "s/$secret_name/$new_secret_name/g" | oc apply -n "$target_namespace" -f -
-                  echo "Secret $secret_name copied from namespace $source_namespace to namespace $target_namespace"
-              }
-          
-              function create_configmap() {
-                  local kind="$1"
-                  local resource_name="$2"
-                  local resource_namespace="$3"
-                  local configmap_name="$4"
-                  local config_namespace="$5"
-                  local data_fields="$6"
-          
-                  cat <<EOF >/tmp/configmap.yaml
-              apiVersion: v1
-              kind: ConfigMap
-              metadata:
-                  name: $configmap_name
-                  namespace: $config_namespace
-              data:
-              EOF
-          
-                  while read -r field; do
-                      key=$(echo "$field" | awk -F ': ' '{print $1}')
-                      complete_path=$(echo "$field" | awk -F ': ' '{print $2}')
-                      echo $complete_path
-                      value=""
-                      parse_schema "$kind" "$resource_name" "$resource_namespace" "$complete_path" value
-                      echo "  $key: '$value'" >> /tmp/configmap.yaml
-                  done <<< "$data_fields"
-          
-                  oc apply -f /tmp/configmap.yaml
-          
-                  echo "ConfigMap $resource_name created in namespace $config_namespace"
-              }
-          
-              while true; do
-                  if [ -z "$WATCH_NAMESPACE" ] || [ "$WATCH_NAMESPACE" == "''" ]; then
-                      config_namespace_list=$(oc get OperandRequest --all-namespaces -o custom-columns='NAMESPACE:.metadata.namespace' --no-headers | tr '\n' ',' | sed 's/,$//')
-                  else
-                      config_namespace_list=$WATCH_NAMESPACE
-                  fi
-                  while IFS=',' read -ra kind; do
-                      for i in "${kind[@]}"; do
-                          echo $i
-                          resource_name=$(echo "$config_yaml" | yq eval ".$i.name" -)
-                          configmap_name=$(echo "$config_yaml" | yq eval ".$i.configmap" -)
-                          data_fields=$(echo "$config_yaml" | yq eval ".$i.data" -)
-          
-                          # check if this resource already exists
-                          oc get $i "$resource_name" -n "$resource_namespace" >/dev/null 2>&1
-                          if [ $? -ne 0 ]; then
-                              echo "Resource $i/$resource_name does not exist in namespace $resource_namespace, skipping..."
-                              continue
-                          fi
-                          
-                          while IFS=',' read -ra config_namespace; do
-                              for j in "${config_namespace[@]}"; do
-                                  create_configmap "$i" "$resource_name" "$resource_namespace" "$configmap_name" "$j" "$data_fields"
-                              done
-                          done <<< "$config_namespace_list"
-                          
-                      done
-                  done <<< "$KIND_LIST"
-                  sleep 120
-              done
-      - apiVersion: apps/v1
-        kind: Deployment
-        name: keycloak-bindinfo-deployment
-        namespace: {{ .OperatorNs }}
-        force: false
-        data:
-          spec:
-            replicas: 1
-            selector:
-              matchLabels:
-                app: keycloak-bindinfo
-            template:
-              metadata:
-                labels:
-                  app: keycloak-bindinfo
-              spec:
-                containers:
-                - name: keycloak-bindinfo-container
-                  image: icr.io/cpopen/cpfs/cpfs-utils:latest
-                  command: ["/bin/bash"]
-                  args: ["-c", "/bindinfo-script/keycloak-bindinfo-script.sh"]
-                  volumeMounts:
-                  - name: keycloak-bindinfo-data
-                    mountPath: /bindinfo-data
-                  - name: keycloak-bindinfo-script
-                    mountPath: /bindinfo-script
-                  env:
-                    - name: OPERATOR_NAMESPACE
-                      valueFrom:
-                        fieldRef:
-                          apiVersion: v1
-                          fieldPath: metadata.namespace
-                    - name: WATCH_NAMESPACE
-                      valueFrom:
-                          configMapKeyRef:
-                            name: namespace-scope
-                            key: namespaces
-                            optional: true
-                  securityContext:
-                    runAsNonRoot: true
-                    seccompProfile:
-                      type: RuntimeDefault
-                    capabilities:
-                      drop:
-                        - ALL
-                    allowPrivilegeEscalation: false
-                volumes:
-                - name: keycloak-bindinfo-data
-                  configMap:
-                    name: keycloak-bindinfo
-                    items:
-                    - key: keycloak-bindinfo.yaml
-                      path: keycloak-bindinfo.yaml
-                - name: keycloak-bindinfo-script
-                  configMap:
-                    name: keycloak-bindinfo-script
-                    defaultMode: 0777
-                    items:
-                    - key: keycloak-bindinfo-script.sh
-                      path: keycloak-bindinfo-script.sh
-                securityContext:
-                  runAsNonRoot: true
-                  seccompProfile:
-                    type: RuntimeDefault
-                serviceAccountName: operand-deployment-lifecycle-manager
       - apiVersion: k8s.keycloak.org/v2alpha1
         data:
           spec:
@@ -743,6 +534,74 @@ spec:
         force: true
         kind: Keycloak
         name: cs-keycloak
+      - apiVersion: v1
+        kind: ConfigMap
+        force: true
+        name: cs-keycloak-route
+        data:
+          data:
+            HOSTNAME:
+              templatingValueFrom:
+                objectRef:
+                  apiVersion: route.openshift.io/v1
+                  kind: Route
+                  name: keycloak
+                  path: https://+.spec.host
+                required: true
+            TERMINATION:
+              templatingValueFrom:
+                objectRef:
+                  apiVersion: route.openshift.io/v1
+                  kind: Route
+                  name: keycloak
+                  path: .spec.tls.termination
+                required: true
+            BACKEND_SERVICE:
+              templatingValueFrom:
+                objectRef:
+                  apiVersion: route.openshift.io/v1
+                  kind: Route
+                  name: keycloak
+                  path: .spec.to.name
+                required: true
+      - apiVersion: v1
+        kind: ConfigMap
+        force: true
+        name: cs-keycloak-service
+        data:
+          data:
+            PORT:
+              templatingValueFrom:
+                objectRef:
+                  apiVersion: v1
+                  kind: Service
+                  name: cs-keycloak-service
+                  path: .spec.ports[0].port
+                required: true
+            CLUSTER_IP:
+              templatingValueFrom:
+                objectRef:
+                  apiVersion: v1
+                  kind: Service
+                  name: cs-keycloak-service
+                  path: .spec.clusterIP
+                required: true
+            SERVICE_NAME:
+              templatingValueFrom:
+                objectRef:
+                  apiVersion: v1
+                  kind: Service
+                  name: cs-keycloak-service
+                  path: .metadata.name
+                required: true
+            SERVICE_NAMESPACE: {{ .ServicesNs }}
+            SERVICE_ENDPOINT:
+              templatingValueFrom:
+                objectRef:
+                  apiVersion: v1
+                  kind: Service
+                  name: cs-keycloak-service
+                  path: https://+.metadata.name+.+.metadata.namespace+.+svc:+.spec.ports[0].port
       - apiVersion: k8s.keycloak.org/v2alpha1
         kind: KeycloakRealmImport
         name: cs-cloudpak-realm
@@ -1229,70 +1088,6 @@ spec:
     sourceNamespace: "{{ .CatalogSourceNs }}"
     installMode: no-op
   `
-
-	CSV3SaasOpReg = `
-apiVersion: operator.ibm.com/v1alpha1
-kind: OperandRegistry
-metadata:
-  name: common-service
-  namespace: "{{ .ServicesNs }}"
-  labels:
-    operator.ibm.com/managedByCsOperator: "true"
-  annotations:
-    version: {{ .Version }}
-    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators,ibm-cp-automation-foundation-catalog,operatorhubio-catalog
-spec:
-  operators:
-  - name: ibm-im-operator
-    namespace: "{{ .CPFSNs }}"
-    channel: {{ .Channel }}
-    packageName: ibm-iam-operator
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: "{{ .CatalogSourceNs }}"
-  - name: ibm-im-mongodb-operator
-    namespace: "{{ .CPFSNs }}"
-    channel: v4.2
-    packageName: ibm-mongodb-operator-app
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: "{{ .CatalogSourceNs }}"
-  - channel: v3
-    name: ibm-events-operator
-    namespace: "{{ .CPFSNs }}"
-    packageName: ibm-events-operator
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: "{{ .CatalogSourceNs }}"
-  - name: ibm-platformui-operator
-    namespace: "{{ .CPFSNs }}"
-    channel: {{ .Channel }}
-    packageName: ibm-zen-operator
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: "{{ .CatalogSourceNs }}"
-  - channel: v3
-    name: ibm-bts-operator
-    namespace: "{{ .CPFSNs }}"
-    packageName: ibm-bts-operator
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-  - channel: v1.3
-    name: ibm-automation-flink
-    namespace: "{{ .CPFSNs }}"
-    packageName: ibm-automation-flink
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-  - channel: v1.3
-    name: ibm-automation-elastic
-    namespace: "{{ .CPFSNs }}"
-    packageName: ibm-automation-elastic
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-`
 )
 
 const CSV3OpCon = `
@@ -1599,168 +1394,6 @@ spec:
       operandBindInfo: {}
 `
 
-const CSV3SaasOpCon = `
-apiVersion: operator.ibm.com/v1alpha1
-kind: OperandConfig
-metadata:
-  name: common-service
-  namespace: "{{ .ServicesNs }}"
-  labels:
-    operator.ibm.com/managedByCsOperator: "true"
-  annotations:
-    version: {{ .Version }}
-spec:
-  services:
-  - name: ibm-licensing-operator
-    spec:
-      operandBindInfo: {}
-  - name: ibm-mongodb-operator
-    spec:
-      mongoDB: {}
-      operandRequest: {}
-  - name: ibm-im-mongodb-operator
-    spec:
-      mongoDB: {}
-      operandRequest: {}
-  - name: ibm-im-operator
-    spec:
-      authentication:
-        config:
-          onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      operandBindInfo:
-        operand: ibm-im-operator
-        bindings: {}
-      operandRequest:
-        requests:
-          - operands:
-              - name: ibm-im-mongodb-operator
-              - name: ibm-idp-config-ui-operator
-            registry: common-service
-  - name: ibm-iam-operator
-    spec:
-      authentication:
-        config:
-          ibmCloudSaas: true
-      oidcclientwatcher: {}
-      pap: {}
-      policycontroller: {}
-      policydecision: {}
-      secretwatcher: {}
-      securityonboarding: {}
-      operandBindInfo: {}
-      operandRequest: {}
-  - name: ibm-healthcheck-operator
-    spec:
-      healthService: {}
-      mustgatherService: {}
-      mustgatherConfig: {}
-  - name: ibm-commonui-operator
-    spec:
-      commonWebUI: {}
-      switcheritem: {}
-      operandRequest: {}
-      navconfiguration: {}
-      operandBindInfo: {}
-  - name: ibm-idp-config-ui-operator
-    spec:
-      commonWebUI: {}
-      switcheritem: {}
-      navconfiguration: {}
-  - name: ibm-management-ingress-operator
-    spec:
-      managementIngress: {}
-      operandBindInfo: {}
-      operandRequest: {}
-  - name: ibm-ingress-nginx-operator
-    spec:
-      nginxIngress: {}
-  - name: ibm-auditlogging-operator
-    spec:
-      operandBindInfo: {}
-      operandRequest: {}
-  - name: ibm-platform-api-operator
-    spec:
-      platformApi: {}
-      operandRequest: {}
-  - name: ibm-monitoring-grafana-operator
-    spec:
-      grafana: {}
-      operandRequest: {}
-  - name: ibm-bts-operator
-    spec:
-      operandRequest:
-        requests:
-          - operands:
-              - name: ibm-im-operator
-            registry: common-service
-  - name: ibm-zen-operator
-    spec:
-      operandBindInfo: {}
-    resources:
-      - apiVersion: batch/v1
-        data:
-          spec:
-            activeDeadlineSeconds: 600
-            backoffLimit: 5
-            template:
-              metadata:
-                annotations:
-                  productID: 068a62892a1e4db39641342e592daa25
-                  productMetric: FREE
-                  productName: IBM Cloud Platform Common Services
-              spec:
-                affinity:
-                  nodeAffinity:
-                    requiredDuringSchedulingIgnoredDuringExecution:
-                      nodeSelectorTerms:
-                        - matchExpressions:
-                            - key: kubernetes.io/arch
-                              operator: In
-                              values:
-                                - amd64
-                                - ppc64le
-                                - s390x
-                containers:
-                  - command:
-                      - bash
-                      - '-c'
-                      - bash /setup/pre-zen.sh
-                    env:
-                      - name: common_services_namespace
-                        valueFrom:
-                          fieldRef:
-                            fieldPath: metadata.namespace
-                    image: {{ .ZenOperatorImage }}
-                    name: pre-zen-job
-                    resources:
-                      limits:
-                        cpu: 500m
-                        memory: 512Mi
-                      requests:
-                        cpu: 100m
-                        memory: 50Mi
-                    securityContext:
-                      allowPrivilegeEscalation: false
-                      capabilities:
-                        drop:
-                          - ALL
-                      privileged: false
-                      readOnlyRootFilesystem: false
-                restartPolicy: OnFailure
-                securityContext:
-                  runAsNonRoot: true
-                serviceAccount: operand-deployment-lifecycle-manager
-                serviceAccountName: operand-deployment-lifecycle-manager
-                terminationGracePeriodSeconds: 30
-        force: true
-        kind: Job
-        name: pre-zen-operand-config-job
-        namespace: "{{ .OperatorNs }}"
-  - name: ibm-platformui-operator
-    spec:
-      operandBindInfo: {}
-`
-
 const ODLMSubscription = `
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
@@ -1777,8 +1410,7 @@ spec:
 
 // ConcatenateRegistries concatenate the two YAML strings and return the new YAML string
 func ConcatenateRegistries(baseRegistryTemplate string, insertedRegistryTemplateList []string, data interface{}) (string, error) {
-	baseRegistry := &odlm.OperandRegistry{}
-	insertedRegistry := &odlm.OperandRegistry{}
+	baseRegistry := odlm.OperandRegistry{}
 	var template []byte
 	var err error
 
@@ -1790,7 +1422,10 @@ func ConcatenateRegistries(baseRegistryTemplate string, insertedRegistryTemplate
 		return "", fmt.Errorf("failed to fetch data of OprandRegistry %v: %v", baseRegistry, err)
 	}
 
+	var newOperators []odlm.Operator
 	for _, registryTemplate := range insertedRegistryTemplateList {
+		insertedRegistry := odlm.OperandRegistry{}
+
 		if template, err = applyTemplate(registryTemplate, data); err != nil {
 			return "", err
 		}
@@ -1798,11 +1433,10 @@ func ConcatenateRegistries(baseRegistryTemplate string, insertedRegistryTemplate
 			return "", fmt.Errorf("failed to fetch data of OprandRegistry %v/%v: %v", insertedRegistry.Namespace, insertedRegistry.Name, err)
 		}
 
-		var newOperators []odlm.Operator
-		newOperators = append(newOperators, baseRegistry.Spec.Operators...)
 		newOperators = append(newOperators, insertedRegistry.Spec.Operators...)
-		baseRegistry.Spec.Operators = newOperators
 	}
+	// add new operators to baseRegistry
+	baseRegistry.Spec.Operators = append(baseRegistry.Spec.Operators, newOperators...)
 
 	opregBytes, err := utilyaml.Marshal(baseRegistry)
 	if err != nil {
@@ -1814,8 +1448,7 @@ func ConcatenateRegistries(baseRegistryTemplate string, insertedRegistryTemplate
 
 // ConcatenateConfigs concatenate the two YAML strings and return the new YAML string
 func ConcatenateConfigs(baseConfigTemplate string, insertedConfigTemplateList []string, data interface{}) (string, error) {
-	baseConfig := &odlm.OperandConfig{}
-	insertedConfig := &odlm.OperandConfig{}
+	baseConfig := odlm.OperandConfig{}
 	var template []byte
 	var err error
 
@@ -1827,7 +1460,9 @@ func ConcatenateConfigs(baseConfigTemplate string, insertedConfigTemplateList []
 		return "", fmt.Errorf("failed to fetch data of OprandConfig %v: %v", baseConfig, err)
 	}
 
+	var newServices []odlm.ConfigService
 	for _, configTemplate := range insertedConfigTemplateList {
+		insertedConfig := odlm.OperandConfig{}
 		if template, err = applyTemplate(configTemplate, data); err != nil {
 			return "", err
 		}
@@ -1835,11 +1470,10 @@ func ConcatenateConfigs(baseConfigTemplate string, insertedConfigTemplateList []
 			return "", fmt.Errorf("failed to fetch data of OprandConfig %v/%v: %v", insertedConfig.Namespace, insertedConfig.Name, err)
 		}
 
-		var newServices []odlm.ConfigService
-		newServices = append(newServices, baseConfig.Spec.Services...)
 		newServices = append(newServices, insertedConfig.Spec.Services...)
-		baseConfig.Spec.Services = newServices
 	}
+	// add new services to baseConfig
+	baseConfig.Spec.Services = append(baseConfig.Spec.Services, newServices...)
 
 	opconBytes, err := utilyaml.Marshal(baseConfig)
 	if err != nil {
