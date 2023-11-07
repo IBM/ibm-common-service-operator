@@ -2091,3 +2091,13 @@ rules:
   - list
   - patch
   - watch
+- apiGroups:
+  - ibm.com
+  resources:
+  - paralleljob
+  - paralleljobs
+  - paralleljob/status
+  - paralleljobs/status
+  verbs:
+  - get
+  - list
