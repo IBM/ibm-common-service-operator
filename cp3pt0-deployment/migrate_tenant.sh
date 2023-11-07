@@ -91,6 +91,9 @@ function main() {
 
     local pm="ibm-common-service-operator"
     if [[ $IS_ALL_NS -eq 0 ]]; then
+        # Delete webhook configuration
+        delete_webhook_configuration "$OPERATOR_NS"
+        
         # Update CommonService CR with OPERATOR_NS and SERVICES_NS
         # Propogate CommonService CR to every namespace in the tenant
         update_cscr "$OPERATOR_NS" "$SERVICES_NS" "$NS_LIST"
