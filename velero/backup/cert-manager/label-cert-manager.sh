@@ -141,3 +141,31 @@ if [[ $auth_namespace_list != "none" ]]; then
 else
     echo "[INFO] Secret platform-auth-idp-credentials not present in namespace $auth_namespace. Skipping..."
 fi
+
+#grab default scim credentials
+scim_secret_namespace_list=$(oc get secret -A | grep platform-auth-scim-credentials | grep -v "bindinfo" |  awk '{print $1}' | tr "\n" " " || echo "none")
+if [[ $scim_secret_namespace_list != "none" ]]; then
+    for scim_namespace in $scim_secret_namespace_list
+    do
+        echo "platform-auth-scim-credentials"
+        echo $scim_namespace
+        echo "---"
+        oc label secret platform-auth-scim-credentials -n $scim_namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
+    done
+else
+    echo "[INFO] Secret platform-auth-scim-credentials not present in namespace $scim_namespace. Skipping..."
+fi
+
+#grab LDAP TLS certificate
+ldaps_secret_namespace_list=$(oc get secret -A | grep platform-auth-ldaps-ca-cert | grep -v "bindinfo" |  awk '{print $1}' | tr "\n" " " || echo "none")
+if [[ $ldaps_secret_namespace_list != "none" ]]; then
+    for ldaps_namespace in $ldaps_secret_namespace_list
+    do
+        echo "platform-auth-ldaps-ca-cert"
+        echo $ldaps_namespace
+        echo "---"
+        oc label secret platform-auth-ldaps-ca-cert -n $ldaps_namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
+    done
+else
+    echo "[INFO] Secret platform-auth-ldaps-ca-cert not present in namespace $ldaps_namespace. Skipping..."
+fi
