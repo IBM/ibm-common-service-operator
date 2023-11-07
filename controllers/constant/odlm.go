@@ -1229,70 +1229,6 @@ spec:
     sourceNamespace: "{{ .CatalogSourceNs }}"
     installMode: no-op
   `
-
-	CSV3SaasOpReg = `
-apiVersion: operator.ibm.com/v1alpha1
-kind: OperandRegistry
-metadata:
-  name: common-service
-  namespace: "{{ .ServicesNs }}"
-  labels:
-    operator.ibm.com/managedByCsOperator: "true"
-  annotations:
-    version: {{ .Version }}
-    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,redhat-operators,ibm-cp-automation-foundation-catalog,operatorhubio-catalog
-spec:
-  operators:
-  - name: ibm-im-operator
-    namespace: "{{ .CPFSNs }}"
-    channel: {{ .Channel }}
-    packageName: ibm-iam-operator
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: "{{ .CatalogSourceNs }}"
-  - name: ibm-im-mongodb-operator
-    namespace: "{{ .CPFSNs }}"
-    channel: v4.2
-    packageName: ibm-mongodb-operator-app
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: "{{ .CatalogSourceNs }}"
-  - channel: v3
-    name: ibm-events-operator
-    namespace: "{{ .CPFSNs }}"
-    packageName: ibm-events-operator
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: "{{ .CatalogSourceNs }}"
-  - name: ibm-platformui-operator
-    namespace: "{{ .CPFSNs }}"
-    channel: {{ .Channel }}
-    packageName: ibm-zen-operator
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: "{{ .CatalogSourceNs }}"
-  - channel: v3
-    name: ibm-bts-operator
-    namespace: "{{ .CPFSNs }}"
-    packageName: ibm-bts-operator
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-  - channel: v1.3
-    name: ibm-automation-flink
-    namespace: "{{ .CPFSNs }}"
-    packageName: ibm-automation-flink
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-  - channel: v1.3
-    name: ibm-automation-elastic
-    namespace: "{{ .CPFSNs }}"
-    packageName: ibm-automation-elastic
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-`
 )
 
 const CSV3OpCon = `
@@ -1599,168 +1535,6 @@ spec:
       operandBindInfo: {}
 `
 
-const CSV3SaasOpCon = `
-apiVersion: operator.ibm.com/v1alpha1
-kind: OperandConfig
-metadata:
-  name: common-service
-  namespace: "{{ .ServicesNs }}"
-  labels:
-    operator.ibm.com/managedByCsOperator: "true"
-  annotations:
-    version: {{ .Version }}
-spec:
-  services:
-  - name: ibm-licensing-operator
-    spec:
-      operandBindInfo: {}
-  - name: ibm-mongodb-operator
-    spec:
-      mongoDB: {}
-      operandRequest: {}
-  - name: ibm-im-mongodb-operator
-    spec:
-      mongoDB: {}
-      operandRequest: {}
-  - name: ibm-im-operator
-    spec:
-      authentication:
-        config:
-          onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      operandBindInfo:
-        operand: ibm-im-operator
-        bindings: {}
-      operandRequest:
-        requests:
-          - operands:
-              - name: ibm-im-mongodb-operator
-              - name: ibm-idp-config-ui-operator
-            registry: common-service
-  - name: ibm-iam-operator
-    spec:
-      authentication:
-        config:
-          ibmCloudSaas: true
-      oidcclientwatcher: {}
-      pap: {}
-      policycontroller: {}
-      policydecision: {}
-      secretwatcher: {}
-      securityonboarding: {}
-      operandBindInfo: {}
-      operandRequest: {}
-  - name: ibm-healthcheck-operator
-    spec:
-      healthService: {}
-      mustgatherService: {}
-      mustgatherConfig: {}
-  - name: ibm-commonui-operator
-    spec:
-      commonWebUI: {}
-      switcheritem: {}
-      operandRequest: {}
-      navconfiguration: {}
-      operandBindInfo: {}
-  - name: ibm-idp-config-ui-operator
-    spec:
-      commonWebUI: {}
-      switcheritem: {}
-      navconfiguration: {}
-  - name: ibm-management-ingress-operator
-    spec:
-      managementIngress: {}
-      operandBindInfo: {}
-      operandRequest: {}
-  - name: ibm-ingress-nginx-operator
-    spec:
-      nginxIngress: {}
-  - name: ibm-auditlogging-operator
-    spec:
-      operandBindInfo: {}
-      operandRequest: {}
-  - name: ibm-platform-api-operator
-    spec:
-      platformApi: {}
-      operandRequest: {}
-  - name: ibm-monitoring-grafana-operator
-    spec:
-      grafana: {}
-      operandRequest: {}
-  - name: ibm-bts-operator
-    spec:
-      operandRequest:
-        requests:
-          - operands:
-              - name: ibm-im-operator
-            registry: common-service
-  - name: ibm-zen-operator
-    spec:
-      operandBindInfo: {}
-    resources:
-      - apiVersion: batch/v1
-        data:
-          spec:
-            activeDeadlineSeconds: 600
-            backoffLimit: 5
-            template:
-              metadata:
-                annotations:
-                  productID: 068a62892a1e4db39641342e592daa25
-                  productMetric: FREE
-                  productName: IBM Cloud Platform Common Services
-              spec:
-                affinity:
-                  nodeAffinity:
-                    requiredDuringSchedulingIgnoredDuringExecution:
-                      nodeSelectorTerms:
-                        - matchExpressions:
-                            - key: kubernetes.io/arch
-                              operator: In
-                              values:
-                                - amd64
-                                - ppc64le
-                                - s390x
-                containers:
-                  - command:
-                      - bash
-                      - '-c'
-                      - bash /setup/pre-zen.sh
-                    env:
-                      - name: common_services_namespace
-                        valueFrom:
-                          fieldRef:
-                            fieldPath: metadata.namespace
-                    image: {{ .ZenOperatorImage }}
-                    name: pre-zen-job
-                    resources:
-                      limits:
-                        cpu: 500m
-                        memory: 512Mi
-                      requests:
-                        cpu: 100m
-                        memory: 50Mi
-                    securityContext:
-                      allowPrivilegeEscalation: false
-                      capabilities:
-                        drop:
-                          - ALL
-                      privileged: false
-                      readOnlyRootFilesystem: false
-                restartPolicy: OnFailure
-                securityContext:
-                  runAsNonRoot: true
-                serviceAccount: operand-deployment-lifecycle-manager
-                serviceAccountName: operand-deployment-lifecycle-manager
-                terminationGracePeriodSeconds: 30
-        force: true
-        kind: Job
-        name: pre-zen-operand-config-job
-        namespace: "{{ .OperatorNs }}"
-  - name: ibm-platformui-operator
-    spec:
-      operandBindInfo: {}
-`
-
 const ODLMSubscription = `
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
@@ -1777,8 +1551,7 @@ spec:
 
 // ConcatenateRegistries concatenate the two YAML strings and return the new YAML string
 func ConcatenateRegistries(baseRegistryTemplate string, insertedRegistryTemplateList []string, data interface{}) (string, error) {
-	baseRegistry := &odlm.OperandRegistry{}
-	insertedRegistry := &odlm.OperandRegistry{}
+	baseRegistry := odlm.OperandRegistry{}
 	var template []byte
 	var err error
 
@@ -1790,7 +1563,10 @@ func ConcatenateRegistries(baseRegistryTemplate string, insertedRegistryTemplate
 		return "", fmt.Errorf("failed to fetch data of OprandRegistry %v: %v", baseRegistry, err)
 	}
 
+	var newOperators []odlm.Operator
 	for _, registryTemplate := range insertedRegistryTemplateList {
+		insertedRegistry := odlm.OperandRegistry{}
+
 		if template, err = applyTemplate(registryTemplate, data); err != nil {
 			return "", err
 		}
@@ -1798,11 +1574,10 @@ func ConcatenateRegistries(baseRegistryTemplate string, insertedRegistryTemplate
 			return "", fmt.Errorf("failed to fetch data of OprandRegistry %v/%v: %v", insertedRegistry.Namespace, insertedRegistry.Name, err)
 		}
 
-		var newOperators []odlm.Operator
-		newOperators = append(newOperators, baseRegistry.Spec.Operators...)
 		newOperators = append(newOperators, insertedRegistry.Spec.Operators...)
-		baseRegistry.Spec.Operators = newOperators
 	}
+	// add new operators to baseRegistry
+	baseRegistry.Spec.Operators = append(baseRegistry.Spec.Operators, newOperators...)
 
 	opregBytes, err := utilyaml.Marshal(baseRegistry)
 	if err != nil {
@@ -1814,8 +1589,7 @@ func ConcatenateRegistries(baseRegistryTemplate string, insertedRegistryTemplate
 
 // ConcatenateConfigs concatenate the two YAML strings and return the new YAML string
 func ConcatenateConfigs(baseConfigTemplate string, insertedConfigTemplateList []string, data interface{}) (string, error) {
-	baseConfig := &odlm.OperandConfig{}
-	insertedConfig := &odlm.OperandConfig{}
+	baseConfig := odlm.OperandConfig{}
 	var template []byte
 	var err error
 
@@ -1827,7 +1601,9 @@ func ConcatenateConfigs(baseConfigTemplate string, insertedConfigTemplateList []
 		return "", fmt.Errorf("failed to fetch data of OprandConfig %v: %v", baseConfig, err)
 	}
 
+	var newServices []odlm.ConfigService
 	for _, configTemplate := range insertedConfigTemplateList {
+		insertedConfig := odlm.OperandConfig{}
 		if template, err = applyTemplate(configTemplate, data); err != nil {
 			return "", err
 		}
@@ -1835,11 +1611,10 @@ func ConcatenateConfigs(baseConfigTemplate string, insertedConfigTemplateList []
 			return "", fmt.Errorf("failed to fetch data of OprandConfig %v/%v: %v", insertedConfig.Namespace, insertedConfig.Name, err)
 		}
 
-		var newServices []odlm.ConfigService
-		newServices = append(newServices, baseConfig.Spec.Services...)
 		newServices = append(newServices, insertedConfig.Spec.Services...)
-		baseConfig.Spec.Services = newServices
 	}
+	// add new services to baseConfig
+	baseConfig.Spec.Services = append(baseConfig.Spec.Services, newServices...)
 
 	opconBytes, err := utilyaml.Marshal(baseConfig)
 	if err != nil {
