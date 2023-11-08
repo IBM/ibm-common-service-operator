@@ -391,7 +391,7 @@ function wait_for_license_instance() {
 
 function install_license_service_reporter() {
     if [ $ENABLE_LICENSE_SERVICE_REPORTER -ne 1 ] ; then
-    return
+        return
     fi
 
     title "Installing License Service Reporter\n"
