@@ -356,11 +356,11 @@ data:
             info "Broker Secret obtained in namespace $ZEN_NAMESPACE"
         fi
 
-        extensions=$(oc get zenextension -n $ZEN_NAMESPACE -o yaml | grep "extension_name" | grep -v "bedrock-idp-locations\|zen-watchdog-routes" | awk '{print $2}' | tr '\"\n' ' ' | tr ',' " ")
-        extensions=$(echo $extensions | tr " " ",")
-        if [[ -z $extensions ]]; then
-            info "No extensions found in namespace $ZEN_NAMESPACE, exiting."
-        else
+        extension_check=$(oc get zenextension -n $ZEN_NAMESPACE -o name | grep -v "common-web-ui-zen-extension\|zen-watchdog-frontdoor-extension" || echo "empty")
+        if [[ $extension_check != "empty" ]]; then
+            extensions=$(oc get zenextension -n $ZEN_NAMESPACE -o name | grep -v "common-web-ui-zen-extension\|zen-watchdog-frontdoor-extension" | xargs -L 1 oc get -n $ZEN_NAMESPACE -o jsonpath={.spec.extensions} | grep extension_name | awk '{print $2}' | tr '\"\n' ' ' | tr ',' ' ')
+            extensions=$(echo $extensions | tr " " ",") #clean up the output for later use
+            
             info "Extensions to cleanup in namespace $ZEN_NAMESPACE: $extensions"
             # curl -H 'secret: <broker-secret>' -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=bawtest-bas-extension,ibm-bts-zen-frontdoor,icp4adeploy-ban-zen-extension,icp4adeploy-cp4ba-zen-extension,icp4adeploy-graphql-zen-extension,icp4adeploy-cmis-zen-extension,icp4adeploy-cpe-zen-extension,icp4adeploy-rr-bawtest-zen-ext
             #curl_output=$(curl -H "secret: ${broker_secret}" -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=${extensions})
@@ -369,7 +369,7 @@ data:
             id_list=$(curl -H "secret: ${broker_secret}" -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=${extensions} | yq eval '.data[] | select(.id == "*") | .id' | tr '\n' ' ') #space separated list of ids
             info "id_list: $id_list bookend"
             if [[ -z $id_list ]] || [[ $id_list == "" ]]; then
-                error "The list of extensions provdided returned an empty ID list from the database. These extensions may not be present in this database."
+                error "The list of extensions provided returned an empty ID list from the database. These extensions may not be present in this database."
             else
                 info "List of extension IDs populated, continuing with deletion."
             fi
@@ -382,6 +382,9 @@ data:
             done
 
             success "Zen extension cleanup complete."
+
+        else
+            info "No extensions found in namespace $ZEN_NAMESPACE other than defaults, exiting."
         fi
     }
 
