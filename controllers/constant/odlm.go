@@ -513,7 +513,7 @@ spec:
                     apiVersion: route.openshift.io/v1
                     kind: Route
                     name: keycloak
-                    path: spec.host
+                    path: .spec.host
                   required: true
             http:
               tlsSecret: cs-keycloak-tls-secret
