@@ -610,7 +610,7 @@ spec:
           spec:
             keycloakCRName: cs-keycloak
             realm:
-              displayName: cloudpak
+              displayName: IBM Cloud Pak
               enabled: true
               id: cloudpak
               realm: cloudpak
