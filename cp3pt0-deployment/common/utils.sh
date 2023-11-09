@@ -899,6 +899,30 @@ EOF
         error "Failed to create NSS CR in ${OPERATOR_NS}"
     fi
 }
+
+function create_nss_configmap(){
+    local services_ns=$1
+    local nss_list=$2
+    local object=$(
+        cat <<EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: namespace-scope
+  namespace: $services_ns
+data:
+    namespaces: ${nss_list}
+EOF
+    )
+
+    echo
+    info "Creating the ConfigMap namesapce-scope in ${services_ns}"
+    echo "$object" | ${OC} apply -f -
+    if [[ $? -ne 0 ]]; then
+        error "Failed to create NamespaceScope ConfigMap in ${services_ns}"
+    fi
+}
+
 # ---------- creation functions end----------#
 
 # ---------- cleanup functions start----------#

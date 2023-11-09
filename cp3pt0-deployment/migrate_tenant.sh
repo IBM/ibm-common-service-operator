@@ -140,6 +140,8 @@ function main() {
         delete_operator ibm-namespace-scope-operator-restricted "$SERVICES_NS"
         delete_operator ibm-namespace-scope-operator "$SERVICES_NS"
         
+        # Create namespace-scope ConfigMap in services namespace
+        create_nss_configmap "$SERVICES_NS" "$SERVICES_NS"
     else
         # Update ibm-namespace-scope-operator channel
         is_sub_exist ibm-namespace-scope-operator-restricted $OPERATOR_NS
