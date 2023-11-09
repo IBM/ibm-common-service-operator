@@ -49,6 +49,8 @@ spec:
             name: zen5-backup-mount
           - name: scripts
             mountPath: "/zen5"
+          - name: tmp
+            mountPath: /tmp
         dnsPolicy: ClusterFirst
         schedulerName: default-scheduler
         securityContext:
@@ -64,3 +66,5 @@ spec:
           configMap:
             name: zen5-br-configmap
             defaultMode: 0777
+        - emptyDir: {}
+          name: tmp
