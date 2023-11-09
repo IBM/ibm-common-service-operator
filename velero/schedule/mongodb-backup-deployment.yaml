@@ -2,7 +2,7 @@ kind: Deployment
 apiVersion: apps/v1
 metadata:
   name: mongodb-backup
-  namespace: ibm-common-services
+  namespace: <mongo namespace>
   labels:
     foundationservices.cloudpak.ibm.com: mongo-data
 spec:
@@ -17,7 +17,7 @@ spec:
         post.hook.backup.velero.io/command: '["bash", "-c", "rm -rf /dump/dump/*"]'
         post.hook.restore.velero.io/command: '["bash", "-c", "cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongorestore --db platform-db --host mongodb:$MONGODB_SERVICE_PORT --username $ADMIN_USER --password $ADMIN_PASSWORD --authenticationDatabase admin --ssl --sslCAFile /work-dir/ca.pem --sslPEMKeyFile /work-dir/mongo.pem /dump/dump/platform-db --drop"]'
       name: mongodb-backup
-      namespace: ibm-common-services
+      namespace: <mongo namespace>
       labels:
         foundationservices.cloudpak.ibm.com: mongo-data
     spec:
