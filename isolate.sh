@@ -395,10 +395,17 @@ function uninstall_singletons() {
 }
 
 function restart() {
+    # patch CR for management ingress before sclaing up ibm-common-service-operator deployment if CS CR exists
+    local isExists=$("${OC}" get commonservice common-service -n "${MASTER_NS}" --ignore-not-found)
+    if [ ! -z "$isExists" ]; then
+        patch_cs_cr_for_management_ingress
+    fi
+
     title "Scaling up ibm-common-service-operator deployment in ${MASTER_NS} namespace"
     msg "-----------------------------------------------------------------------"
     ${OC} scale deployment -n ${MASTER_NS} ibm-common-service-operator --replicas=1
     ${OC} scale deployment -n ${MASTER_NS} operand-deployment-lifecycle-manager --replicas=1
+    patch_management_ingress_cr
     check_CSCR "$MASTER_NS"
     success "Common Service Operator restarted."
 }
@@ -822,6 +829,121 @@ function wait_for_nss_exist() {
     local wait_message="Waiting for configmap namespace-scope in namespace ${MASTER_NS} to be created ..."
     local success_message="Namespace-scope configmap created in ${MASTER_NS}."
     local error_message="Timeout after ${total_time_mins} minutes waiting for namespace-scope configmap to be created."
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
+function patch_cs_cr_for_management_ingress() {
+    title "Updating commonservice common-service in namespace ${MASTER_NS} for management ingress CR ..."
+    "${OC}" get commonservice common-service -n "${MASTER_NS}" -o yaml > tmp_cs_cr.yaml
+
+    local is_exist_in_cs=$("${YQ}" eval '.spec.services[].name' tmp_cs_cr.yaml | grep "ibm-management-ingress-operator" || echo "false")
+    if [[ "${is_exist_in_cs}" == "false" ]]; then
+        "${YQ}" -i eval '.spec.services += [{"name": "ibm-management-ingress-operator", "spec": {"managementIngress": {"multipleInstancesEnabled": false}}}]' tmp_cs_cr.yaml
+    else
+        info "ibm-management-ingress-operator already exists in CS CR .spec.services, updating it ..."
+        "${YQ}" -i eval '(.spec.services[] |= select(.name == "ibm-management-ingress-operator").spec.managementIngress.multipleInstancesEnabled = false)' tmp_cs_cr.yaml
+    fi
+  
+    local retries=10
+    local sleep_time=5
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for commonservice common-service in namespace ${MASTER_NS} to be updated for management ingress CR ..."
+    local success_message="Commonservice common-service updated in ${MASTER_NS} for management ingress CR."
+    local error_message="Timeout after ${total_time_mins} minutes waiting for commonservice common-service to be updated for management ingress CR."
+    while true; do
+        if [[ ${retries} -eq 0 ]]; then
+            rm -f tmp_cs_cr.yaml
+            error "${error_message}"
+        fi
+
+        local result=$("${OC}" apply -n "${MASTER_NS}" -f tmp_cs_cr.yaml 2>&1 || echo "fail")
+        if [[ "${result}" == "fail" ]]; then
+            retries=$(( retries - 1 ))
+            info "RETRYING: ${wait_message} (${retries} left)"
+            sleep ${sleep_time}
+        else
+            success "${success_message}"
+            break
+        fi
+    done
+    rm -f tmp_cs_cr.yaml
+}
+
+function patch_opconfig_for_management_ingress() {
+    title "Updating operandconfig common-service in namespace ${MASTER_NS} for management ingress CR ..."
+    "${OC}" get operandconfig common-service -n "${MASTER_NS}" -o yaml > tmp_oc_cr.yaml
+
+    local is_exist_in_opcon=$("${YQ}" eval '.spec.services[].name' tmp_oc_cr.yaml | grep "ibm-management-ingress-operator" || echo "false")
+    if [[ "${is_exist_in_opcon}" == "false" ]]; then
+        "${YQ}" -i eval '.spec.services += [{"name": "ibm-management-ingress-operator", "spec": {"managementIngress": {"multipleInstancesEnabled": false}}}]' tmp_oc_cr.yaml
+    else
+        info "ibm-management-ingress-operator already exists in operandconfig CR .spec.services, updating it ..."
+        "${YQ}" -i eval '(.spec.services[] |= select(.name == "ibm-management-ingress-operator").spec.managementIngress.multipleInstancesEnabled = false)' tmp_oc_cr.yaml
+    fi
+
+    local retries=10
+    local sleep_time=5
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for operandconfig common-service in namespace ${MASTER_NS} to be updated for management ingress CR ..."
+    local success_message="Operandconfig common-service updated in ${MASTER_NS} for management ingress CR."
+    local error_message="Timeout after ${total_time_mins} minutes waiting for operandconfig common-service to be updated for management ingress CR."
+    while true; do
+        if [[ ${retries} -eq 0 ]]; then
+            rm -f tmp_oc_cr.yaml
+            error "${error_message}"
+        fi
+
+        local result=$("${OC}" apply -n "${MASTER_NS}" -f tmp_oc_cr.yaml 2>&1 || echo "fail")
+        if [[ "${result}" == "fail" ]]; then
+            retries=$(( retries - 1 ))
+            info "RETRYING: ${wait_message} (${retries} left)"
+            sleep ${sleep_time}
+        else
+            success "${success_message}"
+            break
+        fi
+    done
+    rm -f tmp_oc_cr.yaml
+}
+
+function wait_for_management_ingress_be_patched() {
+    local condition="${OC} get managementingress default -n ${MASTER_NS} -o jsonpath='{.spec.multipleInstancesEnabled}' | grep 'false' || true"
+    local retries=10
+    local sleep_time=5
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for managementingress default in namespace ${MASTER_NS} to be patched with multipleInstancesEnabled false ..."
+    local success_message="Managementingress default in ${MASTER_NS} patched with multipleInstancesEnabled false."
+    local error_message="Timeout after ${total_time_mins} minutes waiting for managementingress default to be patched with multipleInstancesEnabled false."
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
+function patch_management_ingress_cr() {
+    wait_for_cs_cr_exist
+    patch_cs_cr_for_management_ingress
+    wait_for_opconfig_exist
+    patch_opconfig_for_management_ingress
+    wait_for_management_ingress_be_patched
+}
+
+function wait_for_cs_cr_exist() {
+    local condition="${OC} get commonservice common-service -n ${MASTER_NS} --ignore-not-found || true"
+    local retries=20
+    local sleep_time=5
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for commonservice common-service in namespace ${MASTER_NS} to be created ..."
+    local success_message="Commonservice common-service created in ${MASTER_NS}."
+    local error_message="Timeout after ${total_time_mins} minutes waiting for commonservice common-service to be created."
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
+function wait_for_opconfig_exist() {
+    local condition="${OC} get operandconfig common-service -n ${MASTER_NS} --ignore-not-found || true"
+    local retries=20
+    local sleep_time=10
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for operandconfig common-service in namespace ${MASTER_NS} to be created ..."
+    local success_message="Operandconfig common-service created in ${MASTER_NS}."
+    local error_message="Timeout after ${total_time_mins} minutes waiting for operandconfig common-service to be created."
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
