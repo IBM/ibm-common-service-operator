@@ -11,8 +11,8 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: zen5-backup-sa
-  namespace: zen
+  namespace: <zenservice namespace>
 #If more than one zenservice is to be restored, add each serviceaccount to the clusterrolebinding
 # - kind: ServiceAccount
 #   name: zen5-backup-sa
-#   namespace: zen2
+#   namespace: <zenservice namespace>
