@@ -443,6 +443,10 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 						namespace = opconKey.Namespace
 					}
 
+					if newConfigForOperator.(map[string]interface{})["resources"] == nil {
+						continue
+					}
+
 					newResource := getItemByGVKNameNamespace(newConfigForOperator.(map[string]interface{})["resources"].([]interface{}), opconKey.Namespace, apiVersion, kind, name, namespace)
 					if newResource != nil {
 						opResources[i] = mergeCRsIntoOperandConfigWithDefaultRules(opResource.(map[string]interface{}), newResource.(map[string]interface{}))
