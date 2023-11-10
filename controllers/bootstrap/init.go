@@ -282,33 +282,15 @@ func (b *Bootstrap) CreateCsCR() error {
 
 	if len(b.CSData.WatchNamespaces) == 0 {
 		// All Namespaces Mode:
-		// using `ibm-common-services` ns as ServicesNs if it exists
-		// Otherwise, do not create default CR
-		// Tolerate if someone manually create the default CR in operator NS
-		defaultCRReady := false
-		for !defaultCRReady {
-			_, err := b.GetObject(cs)
-			if errors.IsNotFound(err) {
-				ctx := context.Background()
-				ns := &corev1.Namespace{}
-				if err := b.Reader.Get(ctx, types.NamespacedName{Name: constant.MasterNamespace}, ns); err != nil {
-					if errors.IsNotFound(err) {
-						klog.Warningf("Not found well-known default namespace %v, please manually create the namespace", constant.MasterNamespace)
-						time.Sleep(10 * time.Second)
-						continue
-					}
-					return err
-				}
-				b.CSData.ServicesNs = constant.MasterNamespace
-				return b.renderTemplate(constant.CsCR, b.CSData)
-			} else if err != nil {
-				return err
-			}
-			defaultCRReady = true
+		// using `ibm-common-services` ns as ServicesNs if CS CR does not exist
+		if _, err := b.GetObject(cs); errors.IsNotFound(err) {
+			b.CSData.ServicesNs = constant.MasterNamespace
+			return b.renderTemplate(constant.CsCR, b.CSData)
+		} else if err != nil {
+			return err
 		}
 	} else {
-		_, err := b.GetObject(cs)
-		if errors.IsNotFound(err) { // Only if it's a fresh install
+		if _, err := b.GetObject(cs); errors.IsNotFound(err) { // Only if it's a fresh install
 			// Fresh Intall: No ODLM and NO CR
 			return b.renderTemplate(constant.CsCR, b.CSData)
 		} else if err != nil {

@@ -73,7 +73,7 @@ func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			}
 			return ctrl.Result{}, client.IgnoreNotFound(err)
 		}
-		return r.ReconileNonConfigurableCR(ctx, instance)
+		return r.ReconcileNonConfigurableCR(ctx, instance)
 	}
 
 	if err := r.Bootstrap.Client.Get(ctx, req.NamespacedName, instance); err != nil {
@@ -169,6 +169,19 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 			if err := r.Client.Update(context.TODO(), cm); err != nil {
 				klog.Errorf("Failed to update namespaceMapping in common-service-maps: %v", err)
 				os.Exit(1)
+			}
+		}
+	} else {
+		// check if the servicesNamespace is created
+		ns := &corev1.Namespace{}
+		if err := r.Reader.Get(ctx, types.NamespacedName{Name: r.Bootstrap.CSData.ServicesNs}, ns); err != nil {
+			if errors.IsNotFound(err) {
+				klog.Errorf("Not found servicesNamespace %s specified in the common-service CR.", r.Bootstrap.CSData.ServicesNs)
+				if err := r.updatePhase(ctx, instance, CRFailed); err != nil {
+					klog.Error(err)
+				}
+				klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
+				return ctrl.Result{}, err
 			}
 		}
 	}
@@ -344,7 +357,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(ctx context.Context, instan
 }
 
 // ReconileNonConfigurableCR is for setting the cloned Master CR status for advanced topologies
-func (r *CommonServiceReconciler) ReconileNonConfigurableCR(ctx context.Context, instance *apiv3.CommonService) (ctrl.Result, error) {
+func (r *CommonServiceReconciler) ReconcileNonConfigurableCR(ctx context.Context, instance *apiv3.CommonService) (ctrl.Result, error) {
 
 	if instance.Status.Phase == "" {
 		if err := r.updatePhase(ctx, instance, CRInitializing); err != nil {

@@ -24,8 +24,6 @@ import (
 
 	// certmanagerv1alpha1 "github.com/ibm/ibm-cert-manager-operator/apis/certmanager/v1alpha1"
 
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -138,21 +136,7 @@ func (r *Defaulter) CheckNamespace(name string) (bool, error) {
 	if name == "" {
 		return false, nil
 	}
-	// in cluster scope
-	if len(watchNamespaces) == 0 {
-		ctx := context.Background()
-		ns := &corev1.Namespace{}
-		nsKey := types.NamespacedName{
-			Name: name,
-		}
-		// check if this namespace exist
-		if err := r.Client.Get(ctx, nsKey, ns); err != nil {
-			klog.Errorf("Failed to get namespace %v: %v", name, err)
-			return true, err
-
-		}
-		// if it is not cluster scope
-	} else if len(watchNamespaces) != 0 && !util.Contains(strings.Split(watchNamespaces, ","), name) {
+	if len(watchNamespaces) != 0 && !util.Contains(strings.Split(watchNamespaces, ","), name) {
 		denied = true
 	}
 	return denied, nil
