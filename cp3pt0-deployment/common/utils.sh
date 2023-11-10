@@ -1188,7 +1188,7 @@ function update_operator() {
         # Retrieve the latest version of the subscription
         ${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml > sub.yaml
 
-        if [ -z "$remove_opreq_label" ]; then
+        if [ ! -z "$remove_opreq_label" ]; then
             ${YQ} eval 'del(.metadata.labels["operator.ibm.com/opreq-control"])' sub.yaml
         fi
 
