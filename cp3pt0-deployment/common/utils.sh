@@ -1173,6 +1173,7 @@ function update_operator() {
     local source=$4
     local source_ns=$5
     local install_mode=$6
+    local remove_opreq_label=$7
     local retries=5 # Number of retries
     local delay=5 # Delay between retries in seconds
 
@@ -1186,6 +1187,10 @@ function update_operator() {
     while [ $retries -gt 0 ]; do
         # Retrieve the latest version of the subscription
         ${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml > sub.yaml
+
+        if [ -z "$remove_opreq_label" ]; then
+            ${YQ} eval 'del(.metadata.labels["operator.ibm.com/opreq-control"])' sub.yaml
+        fi
 
         existing_channel=$(${YQ} eval '.spec.channel' sub.yaml)
         existing_catalogsource=$(${YQ} eval '.spec.source' sub.yaml)
