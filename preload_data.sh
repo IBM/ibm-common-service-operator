@@ -119,6 +119,9 @@ function prereq() {
         error "Invalid value for DEBUG. Expected 0 or 1."
     fi
 
+    # check yq version
+    check_yq
+
     if [[ -z "$FROM_NAMESPACE" ]] || [[ -z "$TO_NAMESPACE" ]]; then
         error "Both Original-CommonService-Namespace and Services-Namespace need to be set for script to execute. Please rerun script with both parameters set. Run with \"-h\" flag for more details"
         exit 1
@@ -1921,6 +1924,24 @@ EOF
     fi
   fi  
   success "Cert manager is ready, preload can proceed."
+}
+
+#
+# check yq version
+# update it if not in the correct version
+#
+function check_yq() {
+  yq_version=$("${YQ}" --version | awk '{print $NF}' | sed 's/^v//')
+  yq_minimun_version=4.18.1
+
+  if [ "$(printf '%s\n' "$yq_minimun_version" "$yq_version" | sort -V | head -n1)" = "$yq_minimun_version" ]; then 
+    msg "YQ version is greater than or equal to ${yq_minimun_version}"
+  else
+    msg "YQ version is less than ${$yq_minimun_version}, updating yq"
+    wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
+    sudo chmod +x /usr/local/bin/yq
+    YQ=yq
+  fi
 }
 
 function msg() {
