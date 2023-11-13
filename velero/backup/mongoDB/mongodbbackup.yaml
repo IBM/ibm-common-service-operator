@@ -7,7 +7,7 @@ spec:
     spec:
       containers:
       - name: cs-mongodb-backup
-        image: icr.io/cpopen/cpfs/ibm-mongodb@sha256:d62f7145428f62466622160005eafcfee39cbf866df88aaeaee4d99173d1882f
+        image: icr.io/cpopen/cpfs/ibm-mongodb@sha256:16a5587c212963d9b4c323762d89df7d9357decba59369102e10e4bd2ef4ccd2
         command: ["bash", "-c", "cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongodump --oplog --out /dump/dump --host mongodb:$MONGODB_SERVICE_PORT --username $ADMIN_USER --password $ADMIN_PASSWORD --authenticationDatabase admin --ssl --sslCAFile /work-dir/ca.pem --sslPEMKeyFile /work-dir/mongo.pem"]
         volumeMounts:
         - mountPath: "/work-dir"

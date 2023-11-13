@@ -34,7 +34,7 @@ spec:
     spec:
       containers:
       - name: icp-mongodb-restore
-        image: icr.io/cpopen/cpfs/ibm-mongodb:4.2.1-mongodb.4.0.24
+        image: icr.io/cpopen/cpfs/ibm-mongodb@sha256:16a5587c212963d9b4c323762d89df7d9357decba59369102e10e4bd2ef4ccd2
         command: ["bash", "-c", "cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongorestore --db platform-db --host mongodb:$MONGODB_SERVICE_PORT --username $ADMIN_USER --password $ADMIN_PASSWORD --authenticationDatabase admin --ssl --sslCAFile /work-dir/ca.pem --sslPEMKeyFile /work-dir/mongo.pem /dump/dump/platform-db --drop"]
         resources:
           limits:
