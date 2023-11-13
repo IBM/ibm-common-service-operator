@@ -2,6 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: zen5-br-configmap
+  namespace: <zenservice namespace>
   labels:
     foundationservices.cloudpak.ibm.com: zen5-data
 data:
@@ -74,6 +75,9 @@ data:
             oc cp $ZEN_NAMESPACE/zen-minio-0:/tmp/backup $BACKUP_DIR/objstorage && oc exec -t zen-minio-0 -- bash -c "rm -rf /tmp/backup"
         fi
 
+        #store list of extensions from source cluster to be restored later
+        ./zen5/customize-zen-extensions.sh $ZEN_NAMESPACE true
+
         #Backup JWT configuration
         info "Backing up JWT secrets"
         oc extract -n ${ZEN_NAMESPACE} secret/ibm-zen-secret-jwks --to=$BACKUP_DIR/secrets/jwks || warning "Failed to backup secret/ibm-zen-secret-jwks in namespace ${ZEN_NAMESPACE}"
@@ -143,22 +147,15 @@ data:
         oc patch cj zen-metastore-backup-cron-job --namespace ${ZEN_NAMESPACE} --type=merge --patch '{"spec": {"suspend": true}}'
         
         #Getting the replica count before scaling down the required pods
-        IBM_NGINX_RC=$(oc get deploy ibm-nginx -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}')
-        ZEN_CORE_RC=$(oc get deploy zen-core -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}')
-        USERMGMT_RC=$(oc get deploy usermgmt -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}')
-        ZEN_CORE_API_RC=$(oc get deploy zen-core-api -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}')
-        ZEN_WATCHER_RC=$(oc get deploy zen-watcher -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}')
+        IBM_NGINX_RC=$(oc get deploy ibm-nginx -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}' --ignore-not-found)
+        ZEN_CORE_RC=$(oc get deploy zen-core -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}'--ignore-not-found )
+        USERMGMT_RC=$(oc get deploy usermgmt -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}' --ignore-not-found)
+        ZEN_CORE_API_RC=$(oc get deploy zen-core-api -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}' --ignore-not-found)
+        ZEN_WATCHER_RC=$(oc get deploy zen-watcher -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}'--ignore-not-found)
 
-        oc get deploy ibm-nginx zen-core usermgmt zen-watcher  zen-watchdog zen-core-api -n ${ZEN_NAMESPACE}
+        oc get deploy ibm-nginx zen-core usermgmt zen-watcher zen-core-api -n ${ZEN_NAMESPACE} --ignore-not-found
         
-        #Getting the replica count before scaling down the required pods
-        IBM_NGINX_RC=$(oc get deploy ibm-nginx -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}')
-        ZEN_CORE_RC=$(oc get deploy zen-core -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}')
-        USERMGMT_RC=$(oc get deploy usermgmt -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}')
-        ZEN_CORE_API_RC=$(oc get deploy zen-core-api -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}')
-        ZEN_WATCHER_RC=$(oc get deploy zen-watcher -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}')
-        
-        oc scale deploy ibm-nginx zen-core usermgmt zen-watcher zen-core-api --replicas=0 -n ${ZEN_NAMESPACE}
+        oc scale deploy ibm-nginx zen-core usermgmt zen-watcher zen-core-api --replicas=0 -n ${ZEN_NAMESPACE} --ignore-not-found
         # zen-watchdog is applicable only for CloudPak for Data 
         zen_watchdog_present=$(oc get deploy zen-watchdog -n ${ZEN_NAMESPACE} || echo "fail")
         if [[ $zen_watchdog_present != "fail" ]]; then
@@ -236,8 +233,8 @@ data:
         oc patch secret -n $ZEN_NAMESPACE zen-secrets-aes-key --patch="{\"data\": { \"aes_key\": \"$(base64 -w0 $BACKUP_DIR/secrets/aes_key)\" }}"
         oc patch secret -n $ZEN_NAMESPACE admin-user-details --patch="{\"data\": { \"initial_admin_password\": \"$(base64 -w0 $BACKUP_DIR/secrets/initial_admin_password)\" }}"
 
-        #Possible site for running extension script
-        ./zen5/customize-zen-extensions.sh $ZEN_NAMESPACE
+        #Update zen extensions
+        ./zen5/customize-zen-extensions.sh $ZEN_NAMESPACE false
         
         #[2.2.5] Scale up deployments and Disable Zen operator maintenance mode
         #[2.2.5.1] Scale up the deployments
@@ -344,6 +341,7 @@ data:
     set -o errexit
 
     ZEN_NAMESPACE=$1
+    BACKUP=$2
 
     function main(){
 
@@ -355,36 +353,60 @@ data:
         else
             info "Broker Secret obtained in namespace $ZEN_NAMESPACE"
         fi
-
-        extension_check=$(oc get zenextension -n $ZEN_NAMESPACE -o name | grep -v "common-web-ui-zen-extension\|zen-watchdog-frontdoor-extension" || echo "empty")
-        if [[ $extension_check != "empty" ]]; then
-            extensions=$(oc get zenextension -n $ZEN_NAMESPACE -o name | grep -v "common-web-ui-zen-extension\|zen-watchdog-frontdoor-extension" | xargs -L 1 oc get -n $ZEN_NAMESPACE -o jsonpath={.spec.extensions} | grep extension_name | awk '{print $2}' | tr '\"\n' ' ' | tr ',' ' ')
-            extensions=$(echo $extensions | tr " " ",") #clean up the output for later use
-            
-            info "Extensions to cleanup in namespace $ZEN_NAMESPACE: $extensions"
-            # curl -H 'secret: <broker-secret>' -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=bawtest-bas-extension,ibm-bts-zen-frontdoor,icp4adeploy-ban-zen-extension,icp4adeploy-cp4ba-zen-extension,icp4adeploy-graphql-zen-extension,icp4adeploy-cmis-zen-extension,icp4adeploy-cpe-zen-extension,icp4adeploy-rr-bawtest-zen-ext
-            #curl_output=$(curl -H "secret: ${broker_secret}" -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=${extensions})
-
-            # Extract ID of each extension
-            id_list=$(curl -H "secret: ${broker_secret}" -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=${extensions} | yq eval '.data[] | select(.id == "*") | .id' | tr '\n' ' ') #space separated list of ids
-            info "id_list: $id_list bookend"
-            if [[ -z $id_list ]] || [[ $id_list == "" ]]; then
-                error "The list of extensions provided returned an empty ID list from the database. These extensions may not be present in this database."
+        if [[ $BACKUP == "true" ]]; then
+            extension_check=$(oc get zenextension -n $ZEN_NAMESPACE -o name | grep -v "common-web-ui-zen-extension\|zen-watchdog-frontdoor-extension" || echo "empty")
+            if [[ $extension_check != "empty" ]]; then
+                extensions=""
+                for ext in $extension_check
+                do
+                    ext_name=$(oc get $ext -n $ZEN_NAMESPACE -o jsonpath={.spec.extensions} | grep extension_name | awk '{print $2}' | tr '\"\n' ' ' | tr "," " ")
+                    if [[ $extensions == "" ]]; then
+                        extensions="$ext_name,"
+                    else
+                        extensions="$extensions,$ext_name"
+                    fi
+                done
+                
+                extensions=$(echo $extensions | tr "," " ")
+                echo $extensions
+                
+                cat <<< $extensions > /zen5/extensions/extensions.txt
+                success "Extensions captured for backup:"
+                cat /zen5/extensions/extensions.txt
             else
-                info "List of extension IDs populated, continuing with deletion."
+                info "No extensions found in namespace $ZEN_NAMESPACE other than defaults, exiting."
             fi
+        fi
+        
+        if [[ $BACKUP == "false" ]]; then
+            if [[ -f /zen5/extensions/extensions.txt ]]; then
+                extensions=$(cat /zen5/extensions/extensions.txt)
+                echo $extensions
+                extensions=$(echo $extensions | tr " " ",")
+                info "Extensions to cleanup in namespace $ZEN_NAMESPACE: $extensions"
+                # curl -H 'secret: <broker-secret>' -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=bawtest-bas-extension,ibm-bts-zen-frontdoor,icp4adeploy-ban-zen-extension,icp4adeploy-cp4ba-zen-extension,icp4adeploy-graphql-zen-extension,icp4adeploy-cmis-zen-extension,icp4adeploy-cpe-zen-extension,icp4adeploy-rr-bawtest-zen-ext
+                #curl_output=$(curl -H "secret: ${broker_secret}" -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=${extensions})
 
-            # Delete each extension using the ID
-            # curl -H 'secret: <broker-secret>' -ks -X DELETE https://zen-core-api-svc:4444/v1/extensions/{id}
-            for id in $id_list; do
-                info "Deleting extension with ID $id."
-                curl -H "secret: ${broker_secret}" -ks -X DELETE https://zen-core-api-svc:4444/v1/extensions/{$id}
-            done
+                # Extract ID of each extension
+                id_list=$(curl -H "secret: ${broker_secret}" -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=${extensions} | yq eval '.data[] | select(.id == "*") | .id' | tr '\n' ' ') #space separated list of ids
+                info "id_list: $id_list bookend"
+                if [[ -z $id_list ]] || [[ $id_list == "" ]]; then
+                    error "The list of extensions provided returned an empty ID list from the database. These extensions may not be present in this database."
+                else
+                    info "List of extension IDs populated, continuing with deletion."
+                fi
 
-            success "Zen extension cleanup complete."
+                # Delete each extension using the ID
+                # curl -H 'secret: <broker-secret>' -ks -X DELETE https://zen-core-api-svc:4444/v1/extensions/{id}
+                for id in $id_list; do
+                    info "Deleting extension with ID $id."
+                    curl -H "secret: ${broker_secret}" -ks -X DELETE https://zen-core-api-svc:4444/v1/extensions/{$id}
+                done
 
-        else
-            info "No extensions found in namespace $ZEN_NAMESPACE other than defaults, exiting."
+                success "Zen extension cleanup complete."
+            else
+                info "File /zen5/extensions/extensions.txt not found, skipping zenextension cleanup."
+            fi
         fi
     }
 
@@ -412,5 +434,5 @@ data:
     function info() {
         msg "[INFO] ${1}"
     }
-    
+
     main $*

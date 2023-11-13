@@ -2,7 +2,7 @@ kind: Deployment
 apiVersion: apps/v1
 metadata:
   name: zen-backup
-  namespace: ibm-common-services
+  namespace: <zenservice namespace>
   labels:
     foundationservices.cloudpak.ibm.com: zen-data
 spec:
@@ -18,7 +18,7 @@ spec:
         post.hook.backup.velero.io/command: '["sh", "-c", "rm -rf /user-home/zen-metastoredb-backup"]'
         post.hook.restore.velero.io/command: '["sh", "-c", "/tmp/backup/restore_script.sh regular cron-job"]'
       name: zen-backup
-      namespace: ibm-common-services
+      namespace: <zenservice namespace>
       labels:
         foundationservices.cloudpak.ibm.com: zen-data
     spec:

@@ -30,7 +30,7 @@ spec:
           - sh
           - -c
           - sleep infinity
-          image: icr.io/cpopen/cpfs/cpfs-utils:4.2.0 #4.1.0 if using CS 4.1, 4.2.0 if using CS 4.2
+          image: icr.io/cpopen/cpfs/cpfs-utils:4.3.0 #4.1.0 if using CS 4.1, 4.2.0 if using CS 4.2
           imagePullPolicy: IfNotPresent
           name: zen5-backup-job
           resources:
@@ -49,6 +49,8 @@ spec:
             name: zen5-backup-mount
           - name: scripts
             mountPath: "/zen5"
+          - name: ext
+            mountPath: /zen5/extensions
         dnsPolicy: ClusterFirst
         schedulerName: default-scheduler
         securityContext:
@@ -64,3 +66,5 @@ spec:
           configMap:
             name: zen5-br-configmap
             defaultMode: 0777
+        - emptyDir: {}
+          name: ext
