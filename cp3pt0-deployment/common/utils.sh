@@ -1189,7 +1189,7 @@ function update_operator() {
         ${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml > sub.yaml
 
         if [ ! -z "$remove_opreq_label" ]; then
-            ${YQ} eval 'del(.metadata.labels["operator.ibm.com/opreq-control"])' sub.yaml
+            ${YQ} -i eval 'del(.metadata.labels["operator.ibm.com/opreq-control"])' sub.yaml
         fi
 
         existing_channel=$(${YQ} eval '.spec.channel' sub.yaml)
