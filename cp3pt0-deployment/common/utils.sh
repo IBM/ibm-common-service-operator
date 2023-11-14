@@ -1189,7 +1189,7 @@ function update_operator() {
     # something (either Open Shift or OLM), so need to use patch
     # "~1" is the escape sequence for "/" character
     if [ ! -z "$remove_opreq_label" ]; then
-        ${OC} patch sub ${sub_name} --type='json' -p='[{"op": "remove", "path": "/metadata/labels/operator.ibm.com~1opreq-control"}]' || info "Could not patch Subscription to remove label"
+        ${OC} patch subscription.operators.coreos.com ${sub_name} -n ${ns} --type='json' -p='[{"op": "remove", "path": "/metadata/labels/operator.ibm.com~1opreq-control"}]' || warning "Could not patch Subscription ${sub_name} in ${ns} to remove label"
     fi
 
     while [ $retries -gt 0 ]; do
