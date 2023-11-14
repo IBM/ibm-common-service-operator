@@ -1184,13 +1184,17 @@ function update_operator() {
     fi
 
     title "Updating ${sub_name} in namesapce ${ns}..."
+
+    # there is currently a bug with oc apply where the removed labels are added back by
+    # something (either Open Shift or OLM), so need to use patch
+    # "~1" is the escape sequence for "/" character
+    if [ ! -z "$remove_opreq_label" ]; then
+        ${OC} patch sub ${sub_name} --type='json' -p='[{"op": "remove", "path": "/metadata/labels/operator.ibm.com~1opreq-control"}]' || info "Could not patch Subscription to remove label"
+    fi
+
     while [ $retries -gt 0 ]; do
         # Retrieve the latest version of the subscription
         ${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml > sub.yaml
-
-        if [ ! -z "$remove_opreq_label" ]; then
-            ${YQ} -i eval 'del(.metadata.labels["operator.ibm.com/opreq-control"])' sub.yaml
-        fi
 
         existing_channel=$(${YQ} eval '.spec.channel' sub.yaml)
         existing_catalogsource=$(${YQ} eval '.spec.source' sub.yaml)
