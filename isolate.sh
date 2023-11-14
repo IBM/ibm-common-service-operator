@@ -922,7 +922,13 @@ function patch_management_ingress_cr() {
     patch_cs_cr_for_management_ingress
     wait_for_opconfig_exist
     patch_opconfig_for_management_ingress
-    wait_for_management_ingress_be_patched
+    
+    local is_mgmt_CRD_exist=$((${OC} get managementingress -n ${MASTER_NS} --ignore-not-found > /dev/null && echo exists) || echo fail)
+    if [[ "$is_CS_CRD_exist" == "exists" ]]; then
+        wait_for_management_ingress_be_patched
+    else 
+        warning "managementingress CR not found, skipping waiting for managementingress CR to be patched."
+    fi
 }
 
 function wait_for_cs_cr_exist() {
