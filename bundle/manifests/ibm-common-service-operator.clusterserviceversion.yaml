@@ -50,13 +50,28 @@ spec:
         kind: CommonService
         name: commonservices.operator.ibm.com
         specDescriptors:
-          - description: 'Accepting the license - URL: https://ibm.biz/integration-licenses'
+          - displayName: License
+            path: license
+            description: License information for this instance. You must accept the license.
+          - description: Read and accept the license that is applicable to your installation. For more information, see https://ibm.biz/integration-licenses'
             displayName: Accept
             path: license.accept
             value:
               - false
             x-descriptors:
               - urn:alm:descriptor:com.tectonic.ui:checkbox
+          - path: license.license
+            x-descriptors:
+              - 'urn:alm:descriptor:com.tectonic.ui:hidden'
+          - path: license.use
+            x-descriptors:
+              - 'urn:alm:descriptor:com.tectonic.ui:hidden'
+          - path: license.key
+            x-descriptors:
+              - 'urn:alm:descriptor:com.tectonic.ui:hidden'
+          - path: license.use
+            x-descriptors:
+              - 'urn:alm:descriptor:com.tectonic.ui:hidden'
           - description: The size of deployment profile for IBM Cloud Pak foundational services
             displayName: Size
             path: size
