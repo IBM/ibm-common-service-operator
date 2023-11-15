@@ -1,7 +1,8 @@
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
+kind: Role
 metadata:
   name: zen5-backup-role
+  namespace: <zenservice namespace>
   labels:
     foundationservices.cloudpak.ibm.com: zen5-data
 rules:
@@ -21,18 +22,13 @@ rules:
       - policy
     resources:
       - pods
-      - pods/log
       - secrets
-      - jobs
       - configmaps
       - deployments
       - deployments/scale
       - cronjobs
       - pods/exec
-      - pods/portforward
-      - endpoints
       - cronjob
-      - pods/status
   - verbs:
       - get
       - list
@@ -41,7 +37,6 @@ rules:
       - zen.cpd.ibm.com
       - postgresql.k8s.enterprisedb.io
     resources:
-      - zenservice
       - zenservices
       - zenextensions
       - clusters
