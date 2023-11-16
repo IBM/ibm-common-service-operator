@@ -13,9 +13,8 @@ spec:
     metadata:
       annotations:
         backup.velero.io/backup-volumes: zendump
-        pre.hook.backup.velero.io/command: '["sh", "-c", "/tmp/backup/backup_script.sh regular cron-job"]'
+        pre.hook.backup.velero.io/command: '["sh", "-c", "rm -rf /user-home/zen-metastoredb-backup; /tmp/backup/backup_script.sh regular cron-job"]'
         pre.hook.backup.velero.io/timeout: 120s
-        post.hook.backup.velero.io/command: '["sh", "-c", "rm -rf /user-home/zen-metastoredb-backup"]'
         post.hook.restore.velero.io/command: '["sh", "-c", "/tmp/backup/restore_script.sh regular cron-job"]'
       name: zen-backup
       namespace: <zenservice namespace>
