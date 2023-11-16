@@ -1,18 +1,16 @@
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: RoleBinding
 metadata:
   name: zen5-backup-rolebinding
+  namespace: <zenservice name>
   labels:
     foundationservices.cloudpak.ibm.com: zen5-data
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: zen5-backup-role
+  namespace: <zenservice namespace>
 subjects:
 - kind: ServiceAccount
   name: zen5-backup-sa
   namespace: <zenservice namespace>
-#If more than one zenservice is to be restored, add each serviceaccount to the clusterrolebinding
-# - kind: ServiceAccount
-#   name: zen5-backup-sa
-#   namespace: <zenservice namespace>
