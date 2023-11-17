@@ -10,7 +10,7 @@ metadata:
     nss.operator.ibm.com/managed-operators: cloud-native-postgresql,ibm-bts-operator
     olm.skipRange: ""
     operatorChannel: v3.23
-    operatorVersion: 3.23.10
+    operatorVersion: 3.23.11
     operators.openshift.io/infrastructure-features: '["disconnected"]'
     operators.operatorframework.io/builder: operator-sdk-v1.2.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
@@ -109,7 +109,7 @@ spec:
 
     ## Operator versions
 
-     - 3.23.10
+     - 3.23.11
 
     ## Prerequisites
 
@@ -181,7 +181,7 @@ spec:
   provider:
     name: IBM
   relatedImages:
-  - image: icr.io/cpopen/common-service-operator:3.23.10
+  - image: icr.io/cpopen/common-service-operator:3.23.11
     name: COMMON_SERVICE_OPERATOR_IMAGE
   - image: icr.io/cpopen/cpfs/ibm-cs-webhook:1.19.10
     name: IBM_CS_WEBHOOK_IMAGE
