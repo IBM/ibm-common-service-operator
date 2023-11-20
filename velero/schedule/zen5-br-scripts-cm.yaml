@@ -378,19 +378,19 @@ data:
                 id_list=$(curl -H "secret: ${broker_secret}" -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=${extensions} | yq eval '.data[] | select(.id == "*") | .id' | tr '\n' ' ') #space separated list of ids
                 info "id_list: $id_list bookend"
                 if [[ -z $id_list ]] || [[ $id_list == "" ]]; then
-                    error "The list of extensions provided returned an empty ID list from the database. These extensions may not be present in this database."
+                    warning "The list of extensions provided returned an empty ID list from the database. These extensions may not be present in this database."
                 else
                     info "List of extension IDs populated, continuing with deletion."
+
+                    # Delete each extension using the ID
+                    # curl -H 'secret: <broker-secret>' -ks -X DELETE https://zen-core-api-svc:4444/v1/extensions/{id}
+                    for id in $id_list; do
+                        info "Deleting extension with ID $id."
+                        curl -H "secret: ${broker_secret}" -ks -X DELETE https://zen-core-api-svc:4444/v1/extensions/{$id}
+                    done
+
+                    success "Zen extension cleanup complete."
                 fi
-
-                # Delete each extension using the ID
-                # curl -H 'secret: <broker-secret>' -ks -X DELETE https://zen-core-api-svc:4444/v1/extensions/{id}
-                for id in $id_list; do
-                    info "Deleting extension with ID $id."
-                    curl -H "secret: ${broker_secret}" -ks -X DELETE https://zen-core-api-svc:4444/v1/extensions/{$id}
-                done
-
-                success "Zen extension cleanup complete."
             else
                 info "File /zen5/extensions/extensions.txt not found, skipping zenextension cleanup."
             fi
