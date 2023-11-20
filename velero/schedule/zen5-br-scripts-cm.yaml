@@ -336,7 +336,7 @@ data:
         # Get broker secret value from secret zen-service-broker-secret
         broker_secret=$(oc get secret zen-service-broker-secret -o yaml -n $ZEN_NAMESPACE | yq .data.token | base64 -d || echo "fail") 
         if [[ $broker_secret == "fail" ]]; then
-            error "Failed to grab broker secret zen-service-broker-secret in namespace $ZEN_NAMESPACE"
+            error "Failed to grab broker secret zen-service-broker-secret in namespace $ZEN_NAMESPACE, exiting"
         else
             info "Broker Secret obtained in namespace $ZEN_NAMESPACE"
         fi
