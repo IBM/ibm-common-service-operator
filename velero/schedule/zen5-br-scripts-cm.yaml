@@ -151,7 +151,7 @@ data:
         ZEN_CORE_RC=$(oc get deploy zen-core -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}' --ignore-not-found )
         USERMGMT_RC=$(oc get deploy usermgmt -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}' --ignore-not-found)
         ZEN_CORE_API_RC=$(oc get deploy zen-core-api -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}' --ignore-not-found)
-        ZEN_WATCHER_RC=$(oc get deploy zen-watcher -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}'--ignore-not-found)
+        ZEN_WATCHER_RC=$(oc get deploy zen-watcher -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}' --ignore-not-found)
 
         oc get deploy ibm-nginx zen-core usermgmt zen-watcher zen-core-api -n ${ZEN_NAMESPACE} --ignore-not-found
         
