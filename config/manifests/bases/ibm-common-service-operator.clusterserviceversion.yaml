@@ -35,7 +35,7 @@ spec:
       kind: CommonService
       name: commonservices.operator.ibm.com
       specDescriptors:
-      - description: 'Accepting the license - URL: https://ibm.biz/integration-licenses'
+      - description: 'Accepting the license - URL: https://ibm.biz/icpfs39license'
         displayName: Accept
         path: license.accept
         value:

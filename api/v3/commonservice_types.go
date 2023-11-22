@@ -110,7 +110,7 @@ type CommonServiceSpec struct {
 
 // LicenseList defines the license specification in CSV
 type LicenseList struct {
-	// Accepting the license - URL: https://ibm.biz/integration-licenses
+	// Accepting the license - URL: https://ibm.biz/icpfs39license
 	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:hidden"
 	// +optional
 	Accept bool `json:"accept"`
