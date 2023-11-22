@@ -16,7 +16,7 @@ spec:
       annotations:
         description: The IBM Common Service Operator is used to deploy IBM Common Services
         operatorChannel: v4.3
-        operatorVersion: 4.3.0
+        operatorVersion: 4.3.1
     spec:
       affinity:
         nodeAffinity:
@@ -36,9 +36,9 @@ spec:
         - name: OPERATOR_NAME
           value: ibm-common-service-operator
         - name: IBM_CS_WEBHOOK_IMAGE
-          value: icr.io/cpopen/cpfs/ibm-cs-webhook:1.18.0
+          value: icr.io/cpopen/cpfs/:1.18.0
         - name: IBM_SECRETSHARE_OPERATOR_IMAGE
-          value: icr.io/cpopen/cpfs/ibm-secretshare-operator:1.19.0
+          value: icr.io/cpopen/cpfs/:1.19.0
         - name: IBM_ZEN_OPERATOR_IMAGE
           value: icr.io/cpopen/ibm-zen-operator:1.7.0
         image: siji/operator:cs
