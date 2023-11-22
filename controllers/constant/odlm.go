@@ -671,11 +671,11 @@ spec:
                   name: edb-license
                   resources:
                     limits:
-                      cpu: 200m
-                      memory: 768Mi
-                    requests:
-                      cpu: 200m
+                      cpu: 500m
                       memory: 512Mi
+                    requests:
+                      cpu: 100m
+                      memory: 50Mi
                   securityContext:
                     allowPrivilegeEscalation: false
                     capabilities:
@@ -779,11 +779,11 @@ spec:
             instances: 1
             resources:
               limits:
-                cpu: 1000m
-                memory: 1Gi
+                cpu: 200m
+                memory: 512Mi
               requests:
-                cpu: 1000m
-                memory: 1Gi
+                cpu: 200m
+                memory: 512Mi
             logLevel: info
             primaryUpdateStrategy: unsupervised
             storage:
