@@ -491,6 +491,46 @@ const StarterSet = `
             ephemeral-storage: 256Mi
             cpu: 80m
             memory: 130Mi
+- name: ibm-im-operator-v4.4
+  spec:
+    authentication:
+      replicas: 1
+      authService:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 650Mi
+          requests:
+            ephemeral-storage: 256Mi
+            cpu: 140m
+            memory: 525Mi
+      clientRegistration:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 50Mi
+          requests:
+            ephemeral-storage: 256Mi
+            cpu: 20m
+            memory: 50Mi
+      identityManager:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 220Mi
+          requests:
+            ephemeral-storage: 256Mi
+            cpu: 50m
+            memory: 120Mi
+      identityProvider:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 230Mi
+          requests:
+            ephemeral-storage: 256Mi
+            cpu: 80m
+            memory: 130Mi
 - name: ibm-management-ingress-operator
   spec:
     managementIngress:
