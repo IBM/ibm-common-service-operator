@@ -10,8 +10,8 @@ metadata:
     nss.operator.ibm.com/managed-operators: ibm-common-service-operator
     nss.operator.ibm.com/managed-webhooks: ""
     olm.skipRange: ""
-    operatorChannel: v4.3
-    operatorVersion: 4.3.1
+    operatorChannel: v4.4
+    operatorVersion: 4.4.0
     operators.openshift.io/infrastructure-features: '["disconnected"]'
     operators.operatorframework.io/builder: operator-sdk-v1.2.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
@@ -110,7 +110,7 @@ spec:
 
     ## Operator versions
 
-     - 4.3.1
+     - 4.4.0
 
     ## Prerequisites
 
@@ -186,7 +186,7 @@ spec:
   provider:
     name: IBM
   relatedImages:
-  - image: icr.io/cpopen/common-service-operator:4.3.1
+  - image: icr.io/cpopen/common-service-operator:4.4.0
     name: COMMON_SERVICE_OPERATOR_IMAGE
   - image: icr.io/cpopen/cpfs/cpfs-utils:latest
     name: CPFS_UTILS_IMAGE

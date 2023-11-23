@@ -160,6 +160,9 @@ spec:
   - name: ibm-im-operator-v4.3
     spec:
       authentication: {}
+  - name: ibm-im-operator-v4.4
+    spec:
+      authentication: {}
   - name: ibm-healthcheck-operator
     spec:
       healthService: {}
