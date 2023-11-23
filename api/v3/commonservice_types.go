@@ -38,7 +38,6 @@ type CSData struct {
 	IsolatedModeEnable string
 	ApprovalMode       string
 	OnPremMultiEnable  string
-	ZenOperatorImage   string
 	WatchNamespaces    string
 }
 

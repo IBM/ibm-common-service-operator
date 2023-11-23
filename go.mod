@@ -7,7 +7,6 @@ require (
 	github.com/IBM/ibm-namespace-scope-operator v1.11.0
 	github.com/IBM/ibm-secretshare-operator v1.20.3
 	github.com/IBM/operand-deployment-lifecycle-manager v1.19.0
-	github.com/deckarep/golang-set v1.7.1
 	github.com/ghodss/yaml v1.0.0
 	github.com/ibm/ibm-cert-manager-operator v0.0.0-20230705134954-f3b9b344298a
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826

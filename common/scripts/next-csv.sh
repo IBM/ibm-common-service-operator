@@ -26,12 +26,6 @@ PREVIOUS_DEV_CSV=$3
 # cs operator channel
 CURRENT_CHANNEL=$4
 NEW_CHANNEL=$5
-# secretshare
-CURRENT_SECRETSHARE_CSV=$6
-NEW_SECRETSHARE_CSV=$7
-# webhook
-CURRENT_WEBHOOK_CSV=$8
-NEW_WEBHOOK_CSV=$9
 
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     # Linux OS
@@ -39,15 +33,11 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     sed -i "s/$CURRENT_DEV_CSV/$NEW_DEV_CSV/g" bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
     sed -i "s/$PREVIOUS_DEV_CSV/$CURRENT_DEV_CSV/g" bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
     sed -i "/operatorChannel/s/$CURRENT_CHANNEL/$NEW_CHANNEL/g" bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
-    sed -i "/ibm-secretshare-operator/s/$CURRENT_SECRETSHARE_CSV/$NEW_SECRETSHARE_CSV/g" bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
-    sed -i "/ibm-cs-webhook/s/$CURRENT_WEBHOOK_CSV/$NEW_WEBHOOK_CSV/g" bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
     echo "Updated the bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml"
 
     # Update config/manifests/bases/ibm-common-service-operator.clusterserviceversion.yaml
     sed -i "s/$CURRENT_DEV_CSV/$NEW_DEV_CSV/g" config/manifests/bases/ibm-common-service-operator.clusterserviceversion.yaml
     sed -i "/operatorChannel/s/$CURRENT_CHANNEL/$NEW_CHANNEL/g" config/manifests/bases/ibm-common-service-operator.clusterserviceversion.yaml
-    sed -i "/ibm-secretshare-operator/s/$CURRENT_SECRETSHARE_CSV/$NEW_SECRETSHARE_CSV/g" config/manifests/bases/ibm-common-service-operator.clusterserviceversion.yaml
-    sed -i "/ibm-cs-webhook/s/$CURRENT_WEBHOOK_CSV/$NEW_WEBHOOK_CSV/g" config/manifests/bases/ibm-common-service-operator.clusterserviceversion.yaml
     echo "Updated the config/manifests/bases/ibm-common-service-operator.clusterserviceversion.yaml"
 
     # Update cs operator version only
@@ -57,22 +47,11 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     echo "Updated the multiarch_image.sh"
     sed -i "s/$CURRENT_DEV_CSV/$NEW_DEV_CSV/g" README.md
     echo "Updated the README.md"
-    sed -i "s/$CURRENT_DEV_CSV/$NEW_DEV_CSV/g" controllers/constant/secretshare.go
-    echo "Updated the controllers/constant/secretshare.go"
-    sed -i "s/$CURRENT_DEV_CSV/$NEW_DEV_CSV/g" controllers/constant/webhook.go
-    echo "Updated the controllers/constant/webhook.go"
 
-    # update cs operator & channel & webhook & secretshare version in deply.yaml
+    # update cs operator & channel in deply.yaml
     sed -i "s/$CURRENT_DEV_CSV/$NEW_DEV_CSV/g" testdata/deploy/deploy.yaml
     sed -i "/operatorChannel/s/$CURRENT_CHANNEL/$NEW_CHANNEL/g" testdata/deploy/deploy.yaml
-    sed -i "/ibm-secretshare-operator/s/$CURRENT_SECRETSHARE_CSV/$NEW_SECRETSHARE_CSV/g" testdata/deploy/deploy.yaml
-    sed -i "/ibm-cs-webhook/s/$CURRENT_WEBHOOK_CSV/$NEW_WEBHOOK_CSV/g" testdata/deploy/deploy.yaml
     echo "Updated the testdata/deploy/deploy.yaml"
-
-    # update webhook & secretshare version in manager.yaml
-    sed -i "/ibm-secretshare-operator/s/$CURRENT_SECRETSHARE_CSV/$NEW_SECRETSHARE_CSV/g" config/manager/manager.yaml
-    sed -i "/ibm-cs-webhook/s/$CURRENT_WEBHOOK_CSV/$NEW_WEBHOOK_CSV/g" config/manager/manager.yaml
-    echo "Updated the config/manager/manager.yaml"
 
     # update cs operator channel in Makefile & bundle.Dockerfile & annotations.yaml
     sed -i "s/$CURRENT_CHANNEL/$NEW_CHANNEL/g" Makefile
@@ -90,15 +69,11 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
     sed -i "" "s/$CURRENT_DEV_CSV/$NEW_DEV_CSV/g" bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
     sed -i "" "s/$PREVIOUS_DEV_CSV/$CURRENT_DEV_CSV/g" bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
     sed -i "" "/operatorChannel/s/$CURRENT_CHANNEL/$NEW_CHANNEL/g" bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
-    sed -i "" "/ibm-secretshare-operator/s/$CURRENT_SECRETSHARE_CSV/$NEW_SECRETSHARE_CSV/g" bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
-    sed -i "" "/ibm-cs-webhook/s/$CURRENT_WEBHOOK_CSV/$NEW_WEBHOOK_CSV/g" bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
     echo "Updated the bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml"
 
     # Update config/manifests/bases/ibm-common-service-operator.clusterserviceversion.yaml
     sed -i "" "s/$CURRENT_DEV_CSV/$NEW_DEV_CSV/g" config/manifests/bases/ibm-common-service-operator.clusterserviceversion.yaml
     sed -i "" "/operatorChannel/s/$CURRENT_CHANNEL/$NEW_CHANNEL/g" config/manifests/bases/ibm-common-service-operator.clusterserviceversion.yaml
-    sed -i "" "/ibm-secretshare-operator/s/$CURRENT_SECRETSHARE_CSV/$NEW_SECRETSHARE_CSV/g" config/manifests/bases/ibm-common-service-operator.clusterserviceversion.yaml
-    sed -i "" "/ibm-cs-webhook/s/$CURRENT_WEBHOOK_CSV/$NEW_WEBHOOK_CSV/g" config/manifests/bases/ibm-common-service-operator.clusterserviceversion.yaml
     echo "Updated the config/manifests/bases/ibm-common-service-operator.clusterserviceversion.yaml"
 
     # Update cs operator version only
@@ -108,22 +83,11 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
     echo "Updated the multiarch_image.sh"
     sed -i "" "s/$CURRENT_DEV_CSV/$NEW_DEV_CSV/g" README.md
     echo "Updated the README.md"
-    sed -i "" "s/$CURRENT_DEV_CSV/$NEW_DEV_CSV/g" controllers/constant/secretshare.go
-    echo "Updated the controllers/constant/secretshare.go"
-    sed -i "" "s/$CURRENT_DEV_CSV/$NEW_DEV_CSV/g" controllers/constant/webhook.go
-    echo "Updated the controllers/constant/webhook.go"
 
-    # update cs operator & channel & webhook & secretshare version in deply.yaml
+    # update cs operator & channel in deply.yaml
     sed -i "" "s/$CURRENT_DEV_CSV/$NEW_DEV_CSV/g" testdata/deploy/deploy.yaml
     sed -i "" "/operatorChannel/s/$CURRENT_CHANNEL/$NEW_CHANNEL/g" testdata/deploy/deploy.yaml
-    sed -i "" "/ibm-secretshare-operator/s/$CURRENT_SECRETSHARE_CSV/$NEW_SECRETSHARE_CSV/g" testdata/deploy/deploy.yaml
-    sed -i "" "/ibm-cs-webhook/s/$CURRENT_WEBHOOK_CSV/$NEW_WEBHOOK_CSV/g" testdata/deploy/deploy.yaml
     echo "Updated the testdata/deploy/deploy.yaml"
-
-    # update webhook & secretshare version in manager.yaml
-    sed -i "" "/ibm-secretshare-operator/s/$CURRENT_SECRETSHARE_CSV/$NEW_SECRETSHARE_CSV/g" config/manager/manager.yaml
-    sed -i "" "/ibm-cs-webhook/s/$CURRENT_WEBHOOK_CSV/$NEW_WEBHOOK_CSV/g" config/manager/manager.yaml
-    echo "Updated the config/manager/manager.yaml"
 
     # update cs operator channel in Makefile & bundle.Dockerfile & annotations.yaml
     sed -i "" "s/$CURRENT_CHANNEL/$NEW_CHANNEL/g" Makefile
