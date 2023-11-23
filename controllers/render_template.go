@@ -69,16 +69,6 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured) (
 		newConfigs = append(newConfigs, adminUsernameConfig...)
 	}
 
-	// Update multipleInstancesEnabled when multi-instances
-	if r.Bootstrap.MultiInstancesEnable {
-		klog.Info("Applying multipleInstancesEnabled configuration")
-		multipleinstancesenabledConfig, err := convertStringToSlice(strings.ReplaceAll(constant.MultipleInstancesEnabledTemplate, "placeholder", "true"))
-		if err != nil {
-			return nil, nil, err
-		}
-		newConfigs = append(newConfigs, multipleinstancesenabledConfig...)
-	}
-
 	// if there is a fipsEnabled field for overall
 	if enabled := cs.Object["spec"].(map[string]interface{})["fipsEnabled"]; enabled != nil {
 		klog.Info("Applying fips configuration")
