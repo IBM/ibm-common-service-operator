@@ -115,7 +115,6 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		CatalogSourceName: catalogSourceName,
 		CatalogSourceNs:   catalogSourceNs,
 		ApprovalMode:      approvalMode,
-		ZenOperatorImage:  util.GetImage("IBM_ZEN_OPERATOR_IMAGE"),
 		WatchNamespaces:   util.GetWatchNamespace(),
 		OnPremMultiEnable: strconv.FormatBool(util.CheckMultiInstances(mgr.GetAPIReader())),
 	}
