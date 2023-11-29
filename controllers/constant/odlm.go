@@ -646,6 +646,10 @@ spec:
               enabled: true
               id: cloudpak
               realm: cloudpak
+              ssoSessionIdleTimeout: 43200
+              ssoSessionMaxLifespan: 43200
+              rememberMe: true
+              passwordPolicy: "length(15) and notUsername(undefined) and notEmail(undefined) and passwordHistory(3)"
   - name: edb-keycloak
     resources:
       - apiVersion: batch/v1
