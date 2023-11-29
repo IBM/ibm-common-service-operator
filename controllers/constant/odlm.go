@@ -556,13 +556,32 @@ spec:
               podTemplate:
                 spec:
                   containers:
-                    - resources:
+                    - args:
+                        - $(ARGS)
+                      env:
+                        - name: ARGS
+                          value:
+                            templatingValueFrom:
+                              configMapKeyRef:
+                                key: args
+                                name: cs-keycloak-container-args
+                              default:
+                                defaultValue: start
+                      resources:
                         limits:
                           cpu: 1000m
                           memory: 1Gi
                         requests:
                           cpu: 1000m
                           memory: 1Gi
+                      volumeMounts:
+                        - mountPath: /mnt/truststore
+                          name: truststore-volume
+                  volumes:
+                    - name: truststore-volume
+                      secret:
+                        optional: true
+                        secretName: cs-keycloak-truststore
         force: true
         kind: Keycloak
         name: cs-keycloak
