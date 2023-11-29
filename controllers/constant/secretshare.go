@@ -60,7 +60,7 @@ spec:
     - namespace: kube-system
   - configmapname: oauth-client-map
     sharewith:
-    - namespace: services
+    - namespace: kube-public
   - configmapname: ibmcloud-cluster-info
     sharewith:
     - namespace: kube-public
