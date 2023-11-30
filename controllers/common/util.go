@@ -428,6 +428,35 @@ func UpdateAllNSList(r client.Reader, c client.Client, cm *corev1.ConfigMap, nss
 	return nil
 }
 
+// ExcludeNsFromNSS remove a list of namespaces from NamespaceScope CR
+func ExcludeNsFromNSS(r client.Reader, c client.Client, nssName, nssNs string, excludedNsList []string) error {
+	nsScope := &nssv1.NamespaceScope{}
+	nsScopeKey := types.NamespacedName{Name: nssName, Namespace: nssNs}
+	if err := r.Get(context.TODO(), nsScopeKey, nsScope); err != nil {
+		return err
+	}
+	var nsMems []string
+	nsSet := make(map[string]interface{})
+
+	for _, ns := range nsScope.Spec.NamespaceMembers {
+		if !Contains(excludedNsList, ns) {
+			nsSet[ns] = struct{}{}
+		}
+	}
+
+	for ns := range nsSet {
+		nsMems = append(nsMems, ns)
+	}
+
+	nsScope.Spec.NamespaceMembers = nsMems
+
+	if err := c.Update(context.TODO(), nsScope); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // CheckSaas checks whether it is a SaaS deployment for Common Services
 func CheckSaas(r client.Reader) (enable bool) {
 	cmName := constant.SaasConfigMap

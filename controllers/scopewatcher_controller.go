@@ -24,6 +24,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 )
@@ -96,13 +97,79 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, err
 	}
 
+	// Delete existing OperandConfig and OperandRegistry CRs
+	var ODLMCRs = []*bootstrap.Resource{
+		{
+			Name:    "common-service",
+			Version: "v1alpha1",
+			Group:   "operator.ibm.com",
+			Kind:    "OperandRegistry",
+			Scope:   "namespaceScope",
+		},
+		{
+			Name:    "common-service",
+			Version: "v1alpha1",
+			Group:   "operator.ibm.com",
+			Kind:    "OperandConfig",
+			Scope:   "namespaceScope",
+		},
+	}
+	for _, cr := range ODLMCRs {
+		if err := r.Bootstrap.Cleanup(r.Bootstrap.CSData.MasterNs, cr); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
 	// TODO: Re-construct CP2 tenant scope
 	// 1. Refresh CommonService Operator memory/cache to re-construct the tenant scope.
-	// - Update Bootstrap and CSdata structure.
+	r.Bootstrap.CSData.ControlNs = util.GetControlNs(r.Reader)
+	r.Bootstrap.MultiInstancesEnable = util.CheckMultiInstances(r.Reader)
+
+	// (Optionally) Patch CommonService CR with multiInstanceEnabled: false
+	// covert following bash script
+	// oc get commonservice common-service -n <operator-namespace> -o json |
+	// jq '.spec.services |= (if type == "array" then map(if .name == "ibm-management-ingress-operator" then .spec.managementIngress.multipleInstancesEnabled = false else . end) else . end // []) |
+	// 	if (.spec.services | map(.name == "ibm-management-ingress-operator") | any == false) then .spec.services += [{"name": "ibm-management-ingress-operator", "spec": {"managementIngress": {"multipleInstancesEnabled": false}}}] else . end' |
+	// oc apply -f -
+
+	// 2. Re-construct the NamespaceScope CRs in ibm-common-services namespace.
+	var NSSCRs = []*bootstrap.Resource{
+		{
+			Name:    "nss-managedby-odlm",
+			Version: "v1",
+			Group:   "operator.ibm.com",
+			Kind:    "NamespaceScope",
+			Scope:   "namespaceScope",
+		},
+		{
+			Name:    "odlm-scope-managedby-odlm",
+			Version: "v1",
+			Group:   "operator.ibm.com",
+			Kind:    "NamespaceScope",
+			Scope:   "namespaceScope",
+		},
+	}
+	for _, cr := range NSSCRs {
+		if err := r.Bootstrap.Cleanup(r.Bootstrap.CSData.MasterNs, cr); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
+	if err := util.ExcludeNsFromNSS(r.Reader, r.Client, "common-service", r.Bootstrap.CSData.MasterNs, excludedNsList); err != nil {
+		klog.Errorf("Failed to exclude namespaces from NamespaceScope CR %s/%s: %v", r.Bootstrap.CSData.MasterNs, "common-service", err)
+		return ctrl.Result{}, err
+	}
+
+	if err := util.ExcludeNsFromNSS(r.Reader, r.Client, "nss-odlm-scope", r.Bootstrap.CSData.MasterNs, excludedNsList); err != nil {
+		klog.Errorf("Failed to exclude namespaces from NamespaceScope CR %s/%s: %v", r.Bootstrap.CSData.MasterNs, "nss-odlm-scope", err)
+		return ctrl.Result{}, err
+	}
 
 	// 2. Patch ODLM subscription
-
-	// 3. Re-construct the NamespaceScope CRs in ibm-common-services namespace.
+	if err := r.Bootstrap.IsolateODLM(excludedNsList); err != nil {
+		klog.Errorf("Failed to isolate ODLM: %v", err)
+		return ctrl.Result{}, err
+	}
 
 	// TODO: Migrate old services by following isolate documentation
 
