@@ -17,8 +17,9 @@
 package controllers
 
 import (
-	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	"k8s.io/klog"
+
+	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 )
 
 const (
@@ -29,7 +30,7 @@ const (
 
 func (r *CommonServiceReconciler) reconcilePauseRequest(instance *apiv3.CommonService) bool {
 
-	klog.Info("Request Stage: reconcilePauseRequest")
+	klog.Info("Request Stage: ReconcilePauseRequest")
 
 	// if the given CommnService CR has not been existing
 	if instance == nil {
@@ -66,9 +67,8 @@ func (r *CommonServiceReconciler) pauseRequestExists(instance *apiv3.CommonServi
 			return instance.ObjectMeta.Annotations[PauseRequestAnnoKey] == PauseRequestValue
 		} else if selfpauseRequestFound {
 			return instance.ObjectMeta.Annotations[SelfPauseRequestAnnoKey] == PauseRequestValue
-		} else {
-			return false
 		}
+		return false
 	}
 	return false
 }
