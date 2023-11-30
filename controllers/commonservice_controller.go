@@ -53,6 +53,7 @@ type CommonServiceReconciler struct {
 const (
 	CRInitializing string = "Initializing"
 	CRUpdating     string = "Updating"
+	CRPending      string = "Pending"
 	CRSucceeded    string = "Succeeded"
 	CRFailed       string = "Failed"
 )
@@ -133,10 +134,20 @@ func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	if r.checkNamespace(req.NamespacedName.String()) {
-		return r.ReconcileMasterCR(ctx, instance, inScope)
+	if !r.reconcilePauseRequest(instance) {
+		if r.checkNamespace(req.NamespacedName.String()) {
+			return r.ReconcileMasterCR(ctx, instance, inScope)
+		}
+		return r.ReconcileGeneralCR(ctx, instance, inScope)
+	} else {
+		if err := r.updatePhase(ctx, instance, CRPending); err != nil {
+			klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
+			return ctrl.Result{}, err
+		} else {
+			klog.Infof("%s/%s is in pending status due to pause request", instance.Namespace, instance.Name)
+			return ctrl.Result{}, nil
+		}
 	}
-	return r.ReconcileGeneralCR(ctx, instance, inScope)
 }
 
 func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instance *apiv3.CommonService, inScope bool) (ctrl.Result, error) {
