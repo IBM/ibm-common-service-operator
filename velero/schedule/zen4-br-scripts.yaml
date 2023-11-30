@@ -64,7 +64,7 @@ data:
         
         # 3. Backup secret/zen-secrets-aes-key
         # Backup secret/metastore-secret, secret/zen-secrets-aes-key
-        oc extract secret/zen-secrets-aes-key --to=.$BACKUP_ROOT_DIR/aes-key
+        oc extract secret/zen-secrets-aes-key --to=.$BACKUP_ROOT_DIR/aes-key --confirm
         info "Secret aes-key backed up."
         
         # 4. Backup JWT configuration
