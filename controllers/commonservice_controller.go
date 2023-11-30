@@ -56,6 +56,7 @@ type CommonServiceReconciler struct {
 const (
 	CRInitializing string = "Initializing"
 	CRUpdating     string = "Updating"
+	CRPending      string = "Pending"
 	CRSucceeded    string = "Succeeded"
 	CRFailed       string = "Failed"
 )
@@ -101,10 +102,20 @@ func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		klog.Error("Accept license by changing .spec.license.accept to true in the CommonService CR. Operator will not proceed until then")
 	}
 
-	if r.checkNamespace(req.NamespacedName.String()) {
-		return r.ReconcileMasterCR(ctx, instance)
+	if !r.reconcilePauseRequest(instance) {
+		if r.checkNamespace(req.NamespacedName.String()) {
+			return r.ReconcileMasterCR(ctx, instance)
+		}
+		return r.ReconcileGeneralCR(ctx, instance)
+	} else {
+		if err := r.updatePhase(ctx, instance, CRPending); err != nil {
+			klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
+			return ctrl.Result{}, err
+		} else {
+			klog.Infof("%s/%s is in pending status due to pause request", instance.Namespace, instance.Name)
+			return ctrl.Result{}, nil
+		}
 	}
-	return r.ReconcileGeneralCR(ctx, instance)
 }
 
 func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instance *apiv3.CommonService) (ctrl.Result, error) {
