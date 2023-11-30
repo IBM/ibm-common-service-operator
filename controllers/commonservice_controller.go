@@ -53,6 +53,7 @@ type CommonServiceReconciler struct {
 const (
 	CRInitializing string = "Initializing"
 	CRUpdating     string = "Updating"
+	CRPending      string = "Pending"
 	CRSucceeded    string = "Succeeded"
 	CRFailed       string = "Failed"
 )
@@ -133,10 +134,20 @@ func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	if r.checkNamespace(req.NamespacedName.String()) {
-		return r.ReconcileMasterCR(ctx, instance, inScope)
+	// If the CommonService CR is not paused, continue to reconcile
+	if !r.reconcilePauseRequest(instance) {
+		if r.checkNamespace(req.NamespacedName.String()) {
+			return r.ReconcileMasterCR(ctx, instance, inScope)
+		}
+		return r.ReconcileGeneralCR(ctx, instance, inScope)
 	}
-	return r.ReconcileGeneralCR(ctx, instance, inScope)
+	// If the CommonService CR is paused, update the status to pending
+	if err := r.updatePhase(ctx, instance, CRPending); err != nil {
+		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
+		return ctrl.Result{}, err
+	}
+	klog.Infof("%s/%s is in pending status due to pause request", instance.Namespace, instance.Name)
+	return ctrl.Result{}, nil
 }
 
 func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instance *apiv3.CommonService, inScope bool) (ctrl.Result, error) {
@@ -352,7 +363,12 @@ func (r *CommonServiceReconciler) certSubToCsRequest() handler.MapFunc {
 
 func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&apiv3.CommonService{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		// AnnotationChangedPredicate is intended to be used in conjunction with the GenerationChangedPredicate
+		For(&apiv3.CommonService{}, builder.WithPredicates(
+			predicate.Or(
+				predicate.GenerationChangedPredicate{},
+				predicate.AnnotationChangedPredicate{},
+				predicate.LabelChangedPredicate{}))).
 		Watches(
 			&source.Kind{Type: &corev1.ConfigMap{}},
 			handler.EnqueueRequestsFromMapFunc(r.mappingToCsRequest()),
