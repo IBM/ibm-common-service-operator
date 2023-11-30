@@ -168,7 +168,7 @@ data:
 
         # Restore secret/metastore-secret, secret/zen-secrets-aes-key
         # 6. Restore secret/zen-secrets-aes-key
-        AES_KEY_B64=$(base64 < "$BACKUP_ROOT_DIR/aes-key" | tr -d '\n')
+        AES_KEY_B64=$(base64 < "${BACKUP_ROOT_DIR}/aes_key" | tr -d '\n')
         oc patch secret \
         zen-secrets-aes-key \
         -p "{\"data\":{\"aes_key\":\"${AES_KEY_B64}\"}}"
