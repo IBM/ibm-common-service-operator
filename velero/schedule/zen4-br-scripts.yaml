@@ -64,7 +64,7 @@ data:
         
         # 3. Backup secret/zen-secrets-aes-key
         # Backup secret/metastore-secret, secret/zen-secrets-aes-key
-        oc extract secret/zen-secrets-aes-key --to=.$BACKUP_ROOT_DIR/aes-key --confirm
+        oc extract secret/zen-secrets-aes-key --to=.$BACKUP_ROOT_DIR/ --confirm
         info "Secret aes-key backed up."
         
         # 4. Backup JWT configuration
@@ -135,34 +135,34 @@ data:
         done
 
         # 5. Reset DB (WARNING - THIS WILL DELETE DATABASE and ITS DATA.)
-        cockroach_version=$(oc exec -it zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb ./cockroach version)
+        cockroach_version=$(oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb ./cockroach version)
         higher=""
         if [ $(version $cockroach_version) -ge $(version "22.1.5") ]; then
             # For version 22.1.5 and higher
             info "Cockroach DB version >= 22.1.5. Version: $cockroach_version"
-            oc exec -it zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cp -r /certs/..data/ /tmp/certs
-            oc exec -it zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cd /tmp && chmod 0600 ./certs/*
+            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cp -r /certs/..data/ /tmp/certs
+            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cd /tmp && chmod 0600 ./certs/*
             higher="true"
         else
             # For version below 22.1.5
             info "Cockroach DB version < 22.1.5. Version: $cockroach_version"
-            oc exec -it zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cp -r /certs/ /tmp/
-            oc exec -it zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cd /tmp/ && chmod -R  0700 certs/
+            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cp -r /certs/ /tmp/
+            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cd /tmp/ && chmod -R  0700 certs/
             higher="false"
         fi
 
-        oc exec -it zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cd  /cockroach
-        oc exec -it zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute="drop database if exists zen cascade;"
-        oc exec -it zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute="drop database if exists spark cascade;"
+        oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cd  /cockroach
+        oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute="drop database if exists zen cascade;"
+        oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute="drop database if exists spark cascade;"
 
         if [[ $higher == "false" ]]; then
             # For version below 22.1.5
-            oc exec -it zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute="create database if not exists zen; create user if not exists zen_user; grant all on database zen to zen_user;"
-            oc exec -it zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute="create database if not exists spark; create user if not exists spark_user; grant all on database spark to spark_user;"
+            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute="create database if not exists zen; create user if not exists zen_user; grant all on database zen to zen_user;"
+            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute="create database if not exists spark; create user if not exists spark_user; grant all on database spark to spark_user;"
         else
             # For version 22.1.5 and higher
-            oc exec -it zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute="create database if not exists zen; create user if not exists zen_user; use zen; grant all on database zen to zen_user WITH GRANT OPTION; grant all PRIVILEGES on ALL TABLES in SCHEMA public to zen_user WITH GRANT OPTION;"
-            oc exec -it zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute="create database if not exists spark; create user if not exists spark_user; use spark; grant all on database spark to spark_user WITH GRANT OPTION; grant all PRIVILEGES on ALL TABLES in SCHEMA public to spark_user WITH GRANT OPTION;"
+            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute="create database if not exists zen; create user if not exists zen_user; use zen; grant all on database zen to zen_user WITH GRANT OPTION; grant all PRIVILEGES on ALL TABLES in SCHEMA public to zen_user WITH GRANT OPTION;"
+            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute="create database if not exists spark; create user if not exists spark_user; use spark; grant all on database spark to spark_user WITH GRANT OPTION; grant all PRIVILEGES on ALL TABLES in SCHEMA public to spark_user WITH GRANT OPTION;"
         fi
 
         # Restore secret/metastore-secret, secret/zen-secrets-aes-key
@@ -174,9 +174,9 @@ data:
 
         # Restore /user-home/global/config/jwt
         # 7. Restore JWT configuration
-        oc -n $ZEN_NAMESPACE exec -it zen-metastoredb-0 -- ls -altrR /user-home/_global_/config/jwt
+        oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -- ls -altrR /user-home/_global_/config/jwt
         oc -n $ZEN_NAMESPACE cp $BACKUP_ROOT_DIR/jwt zen-metastoredb-0:/user-home/_global_/config/jwt
-        oc -n $ZEN_NAMESPACE exec -it zen-metastoredb-0 -- ls -altrR /user-home/_global_/config/jwt
+        oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -- ls -altrR /user-home/_global_/config/jwt
         
         # 8. Restore metadata
         info "Running metastoredb restore script in namespace $ZEN_NAMESPACE."
