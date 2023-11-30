@@ -148,7 +148,7 @@ data:
             # For version below 22.1.5
             info "Cockroach DB version < 22.1.5. Version: $cockroach_version"
             oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb -- cp -r /certs/ /tmp/
-            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb -- bash -c "cd /tmp/ && chmod -R  0700 certs/""
+            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb -- bash -c "cd /tmp/ && chmod -R  0700 certs/"
             higher="false"
         fi
 
