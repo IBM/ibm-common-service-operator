@@ -210,6 +210,15 @@ func GetOperatorNamespace() (string, error) {
 	return ns, nil
 }
 
+// GetScopenWatcher return whether scope watcher is enabled
+func GetScopeWatcher() bool {
+	isEnable, found := os.LookupEnv("SCOPE_WATCHER_ENABLED")
+	if found && isEnable == "false" {
+		return false
+	}
+	return true
+}
+
 // Contains returns whether the sub-string is contained
 func Contains(list []string, s string) bool {
 	for _, v := range list {
@@ -563,7 +572,7 @@ func ValidateCsMaps(cm *corev1.ConfigMap) error {
 	return nil
 }
 
-// GetCsScope fetchs the namespaces from its own requested-from-namespace and map-to-common-service-namespace
+// GetCsScope fetches the namespaces from its own requested-from-namespace and map-to-common-service-namespace
 func GetCsScope(cm *corev1.ConfigMap, masterNs string) ([]string, error) {
 	var nsMems []string
 	nsSet := make(map[string]interface{})
@@ -581,6 +590,37 @@ func GetCsScope(cm *corev1.ConfigMap, masterNs string) ([]string, error) {
 	for _, nsMapping := range cmData.NsMappingList {
 		if masterNs == nsMapping.CsNs {
 			nsSet[masterNs] = struct{}{}
+			for _, ns := range nsMapping.RequestNs {
+				nsSet[ns] = struct{}{}
+			}
+		}
+	}
+
+	for ns := range nsSet {
+		nsMems = append(nsMems, ns)
+	}
+
+	return nsMems, nil
+}
+
+// GetExcludedScope fetches the namespaces, which are not part of existing tenant scope, and exists in the common-service-maps ConfigMap
+func GetExcludedScope(cm *corev1.ConfigMap, masterNs string) ([]string, error) {
+	var nsMems []string
+	nsSet := make(map[string]interface{})
+
+	commonServiceMaps, ok := cm.Data["common-service-maps.yaml"]
+	if !ok {
+		return nsMems, fmt.Errorf("there is no common-service-maps.yaml in configmap kube-public/common-service-maps")
+	}
+
+	var cmData CsMaps
+	if err := utilyaml.Unmarshal([]byte(commonServiceMaps), &cmData); err != nil {
+		return nsMems, fmt.Errorf("failed to fetch data of configmap common-service-maps: %v", err)
+	}
+
+	for _, nsMapping := range cmData.NsMappingList {
+		if masterNs != nsMapping.CsNs {
+			nsSet[nsMapping.CsNs] = struct{}{}
 			for _, ns := range nsMapping.RequestNs {
 				nsSet[ns] = struct{}{}
 			}
@@ -698,4 +738,36 @@ func GetResourcesDynamically(ctx context.Context, dynamic dynamic.Interface, gro
 	}
 
 	return list.Items, nil
+}
+
+func FindIntersection(sliceA, sliceB []string) []string {
+	intersection := make([]string, 0)
+
+	uniqueElements := make(map[string]struct{})
+	for _, elem := range sliceA {
+		uniqueElements[elem] = struct{}{}
+	}
+	for _, elem := range sliceB {
+		if _, found := uniqueElements[elem]; found {
+			intersection = append(intersection, elem)
+		}
+	}
+
+	return intersection
+}
+
+func FindDifference(superset, subset []string) []string {
+	difference := make([]string, 0)
+
+	subsetMap := make(map[string]struct{})
+	for _, elem := range subset {
+		subsetMap[elem] = struct{}{}
+	}
+	for _, elem := range superset {
+		if _, found := subsetMap[elem]; !found {
+			difference = append(difference, elem)
+		}
+	}
+
+	return difference
 }
