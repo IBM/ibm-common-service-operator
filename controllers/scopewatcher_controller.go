@@ -77,7 +77,11 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, nil
 	}
 
-	// TODO: Silence CS 3.x CR reconciliation by enabling maintenance mode
+	// Silence CS 3.x CR reconciliation by enabling maintenance mode
+	if err = util.EnableMaintenanceMode(r.Client, r.Bootstrap.CSData.MasterNs); err != nil {
+		klog.Errorf("Failed to enable maintenance mode: %v", err)
+		return ctrl.Result{}, err
+	}
 
 	// TODO: Re-construct CP2 tenant scope
 	// 1. Refresh CommonService Operator memory/cache to re-construct the tenant scope.
@@ -99,7 +103,11 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 
 	// 7. Delete Crossplane, webhook, and secretshare deployment
 
-	// TODO: Release the maintenance mode on CS CR reconciliation
+	// Release the maintenance mode on CS CR reconciliation
+	if err = util.DisableMaintenanceMode(r.Client, r.Bootstrap.CSData.MasterNs); err != nil {
+		klog.Errorf("Failed to disable maintenance mode: %v", err)
+		return ctrl.Result{}, err
+	}
 
 	return ctrl.Result{}, nil
 
