@@ -181,7 +181,7 @@ data:
         
         # 8. Restore metadata
         info "Running metastoredb restore script in namespace $ZEN_NAMESPACE."
-        oc exec -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -c zen-metastoredb ./../tmp/backup/backup_script.sh regular cron-job
+        oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -c zen-metastoredb ./../tmp/backup/backup_script.sh regular cron-job
         
         # 9. Scale up zen components and wait for ready
         #Update zen extensions
