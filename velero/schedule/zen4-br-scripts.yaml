@@ -135,19 +135,20 @@ data:
         done
 
         # 5. Reset DB (WARNING - THIS WILL DELETE DATABASE and ITS DATA.)
-        cockroach_version=$(oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -- /bin/bash -c "./cockroach version | grep "Build Tag" | awk '{print $3}'")
+        cockroach_output=$(oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -- /bin/bash -c "./cockroach version")
+        cockroach_version=$(echo $cockroach_output | grep "Build Tag" | awk '{print $3}')
         higher=""
         if [ $(version $cockroach_version) -ge $(version "v22.1.5") ]; then
             # For version 22.1.5 and higher
             info "Cockroach DB version >= 22.1.5. Version: $cockroach_version"
-            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cp -r /certs/..data/ /tmp/certs
-            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cd /tmp && chmod 0600 ./certs/*
+            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb -- cp -r /certs/..data/ /tmp/certs
+            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb -- cd /tmp && chmod 0600 ./certs/*
             higher="true"
         else
             # For version below 22.1.5
             info "Cockroach DB version < 22.1.5. Version: $cockroach_version"
-            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cp -r /certs/ /tmp/
-            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cd /tmp/ && chmod -R  0700 certs/
+            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb -- cp -r /certs/ /tmp/
+            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb -- cd /tmp/ && chmod -R  0700 certs/
             higher="false"
         fi
 
