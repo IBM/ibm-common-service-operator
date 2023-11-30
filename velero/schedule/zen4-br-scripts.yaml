@@ -153,17 +153,17 @@ data:
         fi
 
         oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cd  /cockroach
-        oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute="drop database if exists zen cascade;"
-        oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute="drop database if exists spark cascade;"
+        oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb -- /bin/bash -c "./cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute='drop database if exists zen cascade;'"
+        oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb -- /bin/bash -c "./cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute='drop database if exists spark cascade;'"
 
         if [[ $higher == "false" ]]; then
             # For version below 22.1.5
-            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute="create database if not exists zen; create user if not exists zen_user; grant all on database zen to zen_user;"
-            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute="create database if not exists spark; create user if not exists spark_user; grant all on database spark to spark_user;"
+            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb -- /bin/bash -c "./cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute='create database if not exists zen; create user if not exists zen_user; grant all on database zen to zen_user;'"
+            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb -- /bin/bash -c "./cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute='create database if not exists spark; create user if not exists spark_user; grant all on database spark to spark_user;'"
         else
             # For version 22.1.5 and higher
-            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute="create database if not exists zen; create user if not exists zen_user; use zen; grant all on database zen to zen_user WITH GRANT OPTION; grant all PRIVILEGES on ALL TABLES in SCHEMA public to zen_user WITH GRANT OPTION;"
-            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute="create database if not exists spark; create user if not exists spark_user; use spark; grant all on database spark to spark_user WITH GRANT OPTION; grant all PRIVILEGES on ALL TABLES in SCHEMA public to spark_user WITH GRANT OPTION;"
+            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb -- /bin/bash -c "./cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute='create database if not exists zen; create user if not exists zen_user; use zen; grant all on database zen to zen_user WITH GRANT OPTION; grant all PRIVILEGES on ALL TABLES in SCHEMA public to zen_user WITH GRANT OPTION;'"
+            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb -- /bin/bash -c "./cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute='create database if not exists spark; create user if not exists spark_user; use spark; grant all on database spark to spark_user WITH GRANT OPTION; grant all PRIVILEGES on ALL TABLES in SCHEMA public to spark_user WITH GRANT OPTION;'"
         fi
 
         # Restore secret/metastore-secret, secret/zen-secrets-aes-key
