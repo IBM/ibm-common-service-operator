@@ -4,7 +4,7 @@ metadata:
   name: zen4-backup-role
   namespace: <zenservice namespace>
   labels:
-    foundationservices.cloudpak.ibm.com: zen4-data
+    foundationservices.cloudpak.ibm.com: zen-data
 rules:
   - verbs:
       - create

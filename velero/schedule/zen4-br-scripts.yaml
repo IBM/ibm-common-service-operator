@@ -56,7 +56,7 @@ data:
         
         # 1. run backup script
         info "Running metastoredb backup script in namespace $ZEN_NAMESPACE."
-        oc exec -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -c zen-metastoredb ./../tmp/backup/backup_script.sh regular cron-job
+        oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -c zen-metastoredb ./../tmp/backup/backup_script.sh regular cron-job
         
         # 2. move backup files to velero specific deployment
         oc cp $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/zen-metastoredb-backup/zen_backup.sql $BACKUP_ROOT_DIR/zen_backup.sql
