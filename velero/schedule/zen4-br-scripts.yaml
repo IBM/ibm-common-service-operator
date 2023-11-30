@@ -138,7 +138,7 @@ data:
         cockroach_output=$(oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -- /bin/bash -c "./cockroach version")
         cockroach_version=$(echo $cockroach_output | grep "Build Tag" | awk '{print $3}')
         higher=""
-        if [ $(version $cockroach_version) -ge $(version "v22.1.5") ]; then
+        if [ $(version "${cockroach_version//v}") -ge $(version "22.1.5") ]; then
             # For version 22.1.5 and higher
             info "Cockroach DB version >= 22.1.5. Version: $cockroach_version"
             oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 bash  -c zen-metastoredb -- cp -r /certs/..data/ /tmp/certs
