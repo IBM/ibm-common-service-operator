@@ -114,27 +114,6 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 			Kind:    "Deployment",
 			Scope:   "namespaceScope",
 		},
-		{
-			Name:    "ibm-crossplane",
-			Version: "v1",
-			Group:   "apps",
-			Kind:    "Deployment",
-			Scope:   "namespaceScope",
-		},
-		{
-			Name:    "ibm-crossplane-provider-ibm-cloud-controller",
-			Version: "v1",
-			Group:   "apps",
-			Kind:    "Deployment",
-			Scope:   "namespaceScope",
-		},
-		{
-			Name:    "ibm-crossplane-provider-kubernetes-controller",
-			Version: "v1",
-			Group:   "apps",
-			Kind:    "Deployment",
-			Scope:   "namespaceScope",
-		},
 	}
 
 	var CP2Resources = []*bootstrap.Resource{
@@ -173,36 +152,29 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 			Kind:    "SecretShare",
 			Scope:   "namespaceScope",
 		},
-		{
-			Name:    "ibm-crossplane-bedrock-shim-config",
-			Version: "v1",
-			Group:   "pkg.ibm.crossplane.io",
-			Kind:    "Configuration",
-			Scope:   "clusterScope",
-		},
-		{
-			Name:    "lock",
-			Version: "v1beta1",
-			Group:   "pkg.ibm.crossplane.io",
-			Kind:    "Lock",
-			Scope:   "clusterScope",
-		},
-		{
-			Name:    "kubernetes-provider",
-			Version: "v1alpha1",
-			Group:   "kubernetes.crossplane.io",
-			Kind:    "ProviderConfig",
-			Scope:   "clusterScope",
-		},
-		{
-			Name:    "ibm-crossplane-provider-ibm-cloud",
-			Version: "v1alpha1",
-			Group:   "kubernetes.crossplane.io",
-			Kind:    "ProviderConfig",
-			Scope:   "clusterScope",
-		},
 	}
 
+	// remove crossplane
+	if err := r.Bootstrap.DeleteSubscription(constant.ICPPKOperator, r.Bootstrap.CSData.ControlNs); err != nil {
+		klog.Errorf("Failed to delete %s in %s: %v", constant.ICPPKOperator, r.Bootstrap.CSData.ControlNs, err)
+		return ctrl.Result{}, err
+	}
+
+	if err := r.Bootstrap.DeleteSubscription(constant.ICPPICOperator, r.Bootstrap.CSData.ControlNs); err != nil {
+		klog.Errorf("Failed to delete %s in %s: %v", constant.ICPPICOperator, r.Bootstrap.CSData.ControlNs, err)
+		return ctrl.Result{}, err
+	}
+
+	if err := r.Bootstrap.DeleteSubscription(constant.ICPOperator, r.Bootstrap.CSData.ControlNs); err != nil {
+		klog.Errorf("Failed to delete %s in %s: %v", constant.ICPOperator, r.Bootstrap.CSData.ControlNs, err)
+		return ctrl.Result{}, err
+	}
+
+	if updateErr := r.Bootstrap.CreateorUpdateCFCrossplaneConfigMap("'true'"); updateErr != nil {
+		return ctrl.Result{}, updateErr
+	}
+
+	// remove webhook and secretshare
 	for _, deployment := range CP2Deployments {
 		if err := r.Bootstrap.Cleanup(r.Bootstrap.CSData.ControlNs, deployment); err != nil {
 			return ctrl.Result{}, err

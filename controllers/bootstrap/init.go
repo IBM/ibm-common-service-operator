@@ -344,7 +344,7 @@ func (b *Bootstrap) DeleteCrossplaneAndProviderSubscription(namespace string) er
 
 			// delete Kubernetes Provider subscription
 			klog.Infof("Trying to delete %s in %s", constant.ICPPKOperator, namespace)
-			if err := b.deleteSubscription(constant.ICPPKOperator, namespace); err != nil {
+			if err := b.DeleteSubscription(constant.ICPPKOperator, namespace); err != nil {
 				klog.Errorf("Failed to delete %s in %s: %v", constant.ICPPKOperator, namespace, err)
 				return err
 			}
@@ -365,7 +365,7 @@ func (b *Bootstrap) DeleteCrossplaneAndProviderSubscription(namespace string) er
 
 			// delete IBM Cloud Provider subscription
 			klog.Infof("Trying to delete %s in %s", constant.ICPPICOperator, namespace)
-			if err := b.deleteSubscription(constant.ICPPICOperator, namespace); err != nil {
+			if err := b.DeleteSubscription(constant.ICPPICOperator, namespace); err != nil {
 				klog.Errorf("Failed to delete %s in %s: %v", constant.ICPPICOperator, namespace, err)
 				return err
 			}
@@ -383,7 +383,7 @@ func (b *Bootstrap) DeleteCrossplaneAndProviderSubscription(namespace string) er
 
 			// delete crossplane operator subscription
 			klog.Infof("Trying to delete %s in %s", constant.ICPOperator, namespace)
-			if err := b.deleteSubscription(constant.ICPOperator, namespace); err != nil {
+			if err := b.DeleteSubscription(constant.ICPOperator, namespace); err != nil {
 				klog.Errorf("Failed to delete %s in %s: %v", constant.ICPOperator, namespace, err)
 				return err
 			}
@@ -442,7 +442,7 @@ func (b *Bootstrap) DeleteCrossplaneProviderSubscription(namespace string) error
 		} else {
 			// delete Kubernetes Provider subscription
 			klog.Infof("Trying to delete %s in %s", constant.ICPPKOperator, namespace)
-			if err := b.deleteSubscription(constant.ICPPKOperator, namespace); err != nil {
+			if err := b.DeleteSubscription(constant.ICPPKOperator, namespace); err != nil {
 				klog.Errorf("Failed to delete %s in %s: %v", constant.ICPPKOperator, namespace, err)
 				return err
 			}
@@ -457,7 +457,7 @@ func (b *Bootstrap) DeleteCrossplaneProviderSubscription(namespace string) error
 		} else {
 			// delete IBM Cloud Provider subscription
 			klog.Infof("Trying to delete %s in %s", constant.ICPPICOperator, namespace)
-			if err := b.deleteSubscription(constant.ICPPICOperator, namespace); err != nil {
+			if err := b.DeleteSubscription(constant.ICPPICOperator, namespace); err != nil {
 				klog.Errorf("Failed to delete %s in %s: %v", constant.ICPPICOperator, namespace, err)
 				return err
 			}
@@ -753,7 +753,7 @@ func (b *Bootstrap) CheckCsSubscription() error {
 	// check all the CS subscrtipions and delete the operator not deployed by ibm-common-service-operator
 	for _, sub := range subs.Items {
 		if sub.GetName() != "ibm-common-service-operator" {
-			if err := b.deleteSubscription(sub.GetName(), sub.GetNamespace()); err != nil {
+			if err := b.DeleteSubscription(sub.GetName(), sub.GetNamespace()); err != nil {
 				return err
 			}
 		}
@@ -1177,7 +1177,7 @@ func (b *Bootstrap) installIBMCloudProvider() error {
 func (b *Bootstrap) installODLM(operatorNs string) error {
 	// Delete the previous version ODLM operator
 	klog.Info("Trying to delete ODLM operator in openshift-operators")
-	if err := b.deleteSubscription("operand-deployment-lifecycle-manager-app", "openshift-operators"); err != nil {
+	if err := b.DeleteSubscription("operand-deployment-lifecycle-manager-app", "openshift-operators"); err != nil {
 		klog.Errorf("Failed to delete ODLM operator in openshift-operators: %v", err)
 		return err
 	}
@@ -1218,7 +1218,7 @@ func (b *Bootstrap) createNsSubscription(manualManagement bool) error {
 		subNameToRemove = constant.NsSubName
 	}
 
-	if err := b.deleteSubscription(subNameToRemove, b.CSData.MasterNs); err != nil {
+	if err := b.DeleteSubscription(subNameToRemove, b.CSData.MasterNs); err != nil {
 		return err
 	}
 
@@ -1250,7 +1250,7 @@ func (b *Bootstrap) createNsSubscription(manualManagement bool) error {
 		if isLater {
 			klog.Infof("Namespace Scope operator already exists at a later version in control namespace. Skipping.")
 		} else {
-			if err := b.deleteSubscription(subNameToRemove, b.CSData.ControlNs); err != nil {
+			if err := b.DeleteSubscription(subNameToRemove, b.CSData.ControlNs); err != nil {
 				return err
 			}
 			if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
@@ -1361,7 +1361,7 @@ func (b *Bootstrap) createCrossplaneIBMCloudProviderConfig() error {
 	return nil
 }
 
-func (b *Bootstrap) deleteSubscription(name, namespace string) error {
+func (b *Bootstrap) DeleteSubscription(name, namespace string) error {
 	key := types.NamespacedName{Name: name, Namespace: namespace}
 	sub := &olmv1alpha1.Subscription{}
 	if err := b.Reader.Get(context.TODO(), key, sub); err != nil {

@@ -202,7 +202,7 @@ func CleanUpDeprecatedServices(bs *bootstrap.Bootstrap) {
 
 					// delete sub & csv
 					if !getResourceFailed {
-						if err := deleteSubscription(bs, service, MasterNamespace); err != nil {
+						if err := DeleteSubscription(bs, service, MasterNamespace); err != nil {
 							klog.Errorf("Delete subscription failed: %v", err)
 							continue
 						}
@@ -216,7 +216,7 @@ func CleanUpDeprecatedServices(bs *bootstrap.Bootstrap) {
 	}
 }
 
-func deleteSubscription(bs *bootstrap.Bootstrap, name, namespace string) error {
+func DeleteSubscription(bs *bootstrap.Bootstrap, name, namespace string) error {
 	key := types.NamespacedName{Name: name, Namespace: namespace}
 	sub := &olmv1alpha1.Subscription{}
 	if err := bs.Reader.Get(context.TODO(), key, sub); err != nil {
