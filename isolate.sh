@@ -991,7 +991,7 @@ function check_yq() {
     yq_version=$("${YQ}" --version | awk '{print $NF}' | sed 's/^v//')
     yq_minimum_version=4.18.1
 
-    if [ "$(printf '%s\n' "$yq_minimum_version" "$yq_version" | sort -V | head -n1)" = "$yq_minimum_version" ]; then 
+    if [ "$(printf '%s\n' "$yq_minimum_version" "$yq_version" | sort -V | head -n1)" != "$yq_minimum_version" ]; then 
         error "yq version $yq_version must be at least $yq_minimum_version or higher.\nInstructions for installing/upgrading yq are available here: https://github.com/marketplace/actions/yq-portable-yaml-processor"
     fi
 }
