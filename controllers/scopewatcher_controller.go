@@ -24,6 +24,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 )
@@ -98,6 +99,121 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 	// 6. Migrate Cert-Manager
 
 	// 7. Delete Crossplane, webhook, and secretshare deployment
+	var CP2Deployments = []*bootstrap.Resource{
+		{
+			Name:    "secretshare",
+			Version: "v1",
+			Group:   "apps",
+			Kind:    "Deployment",
+			Scope:   "namespaceScope",
+		},
+		{
+			Name:    "ibm-common-service-webhook",
+			Version: "v1",
+			Group:   "apps",
+			Kind:    "Deployment",
+			Scope:   "namespaceScope",
+		},
+		{
+			Name:    "ibm-crossplane",
+			Version: "v1",
+			Group:   "apps",
+			Kind:    "Deployment",
+			Scope:   "namespaceScope",
+		},
+		{
+			Name:    "ibm-crossplane-provider-ibm-cloud-controller",
+			Version: "v1",
+			Group:   "apps",
+			Kind:    "Deployment",
+			Scope:   "namespaceScope",
+		},
+		{
+			Name:    "ibm-crossplane-provider-kubernetes-controller",
+			Version: "v1",
+			Group:   "apps",
+			Kind:    "Deployment",
+			Scope:   "namespaceScope",
+		},
+	}
+
+	var CP2Resources = []*bootstrap.Resource{
+		{
+			Name:    "ibm-common-service-webhook",
+			Version: "v1alpha1",
+			Group:   "operator.ibm.com",
+			Kind:    "PodPreset",
+			Scope:   "namespaceScope",
+		},
+		{
+			Name:    "ibm-common-service-webhook-configuration",
+			Version: "v1",
+			Group:   "admissionregistration.k8s.io",
+			Kind:    "MutatingWebhookConfiguration",
+			Scope:   "clusterScope",
+		},
+		{
+			Name:    "ibm-operandrequest-webhook-configuration",
+			Version: "v1",
+			Group:   "admissionregistration.k8s.io",
+			Kind:    "MutatingWebhookConfiguration",
+			Scope:   "clusterScope",
+		},
+		{
+			Name:    "ibm-cs-ns-mapping-webhook-configuration",
+			Version: "v1",
+			Group:   "admissionregistration.k8s.io",
+			Kind:    "ValidatingWebhookConfiguration",
+			Scope:   "clusterScope",
+		},
+		{
+			Name:    "common-services",
+			Version: "v1",
+			Group:   "ibmcpcs.ibm.com",
+			Kind:    "SecretShare",
+			Scope:   "namespaceScope",
+		},
+		{
+			Name:    "ibm-crossplane-bedrock-shim-config",
+			Version: "v1",
+			Group:   "pkg.ibm.crossplane.io",
+			Kind:    "Configuration",
+			Scope:   "clusterScope",
+		},
+		{
+			Name:    "lock",
+			Version: "v1beta1",
+			Group:   "pkg.ibm.crossplane.io",
+			Kind:    "Lock",
+			Scope:   "clusterScope",
+		},
+		{
+			Name:    "kubernetes-provider",
+			Version: "v1alpha1",
+			Group:   "kubernetes.crossplane.io",
+			Kind:    "ProviderConfig",
+			Scope:   "clusterScope",
+		},
+		{
+			Name:    "ibm-crossplane-provider-ibm-cloud",
+			Version: "v1alpha1",
+			Group:   "kubernetes.crossplane.io",
+			Kind:    "ProviderConfig",
+			Scope:   "clusterScope",
+		},
+	}
+
+	for _, deployment := range CP2Deployments {
+		if err := r.Bootstrap.Cleanup(r.Bootstrap.CSData.ControlNs, deployment); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
+	for _, resource := range CP2Resources {
+		if err := r.Bootstrap.Cleanup(r.Bootstrap.CSData.ControlNs, resource); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
 
 	// TODO: Release the maintenance mode on CS CR reconciliation
 
