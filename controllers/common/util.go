@@ -931,14 +931,14 @@ func TurnOffRouteChangeInMgmtIngress(c client.Client, csCR string, masterNs stri
 				return err
 			}
 			if serviceMap["name"] == "ibm-management-ingress-operator" {
-				managementIngress, found, err := unstructured.NestedMap(serviceMap, "spec", "managementIngress")
+				_, found, err := unstructured.NestedMap(serviceMap, "spec", "managementIngress")
 				if err != nil {
 					klog.Errorf("Failed to get managementIngress in CommonService CR %s/%s: %v", masterNs, csCR, err)
 					return err
 				}
 				if !found {
 					// add managementIngress template
-					managementIngress = map[string]interface{}{
+					managementIngress := map[string]interface{}{
 						"multipleInstancesEnabled": false,
 					}
 					if err := unstructured.SetNestedMap(serviceMap, managementIngress, "spec", "managementIngress"); err != nil {

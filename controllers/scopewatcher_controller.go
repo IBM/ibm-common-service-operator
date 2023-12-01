@@ -48,7 +48,7 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 	// Determine if the cluster is multi instance enabled, if it is not enabled, no isolation process is required
 	r.Bootstrap.CSData.ControlNs = util.GetControlNs(r.Reader)
 	MultiInstanceStatusFromCluster := util.CheckMultiInstances(r.Reader)
-	if MultiInstanceStatusFromCluster == false {
+	if !MultiInstanceStatusFromCluster {
 		klog.Infof("MultiInstancesEnable is not enabled in cluster, skip isolation process")
 		return ctrl.Result{}, nil
 	}
@@ -131,7 +131,7 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 	// TODO: Re-construct CP2 tenant scope
 	// 1. Refresh CommonService Operator memory/cache to re-construct the tenant scope.
 	klog.Infof("Converting MultiInstancesEnable from %v to %v", r.Bootstrap.MultiInstancesEnable, MultiInstanceStatusFromCluster)
-	if r.Bootstrap.MultiInstancesEnable == false && MultiInstanceStatusFromCluster == true {
+	if !r.Bootstrap.MultiInstancesEnable && MultiInstanceStatusFromCluster {
 		if err := util.TurnOffRouteChangeInMgmtIngress(r.Client, "common-service", r.Bootstrap.CSData.MasterNs); err != nil {
 			klog.Errorf("Failed to keep Route unchanged for %s/common-service: %v", r.Bootstrap.CSData.MasterNs, err)
 			return ctrl.Result{}, err
