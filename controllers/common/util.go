@@ -51,11 +51,10 @@ import (
 
 type CsMaps struct {
 	ControlNs     string      `json:"controlNamespace"`
-	NsMappingList []nsMapping `json:"namespaceMapping"`
-	// DefaultCsNs   string      `json:"defaultCsNs"`
+	NsMappingList []NsMapping `json:"namespaceMapping"`
 }
 
-type nsMapping struct {
+type NsMapping struct {
 	RequestNs []string `json:"requested-from-namespace"`
 	CsNs      string   `json:"map-to-common-service-namespace"`
 }
@@ -771,6 +770,34 @@ func FindDifference(superset, subset []string) []string {
 	}
 
 	return difference
+}
+
+// UpdateCsMaps will update namespaceMapping in common-service-maps
+func UpdateCsMaps(cm *corev1.ConfigMap, requestNsList []string, masterNS string) error {
+	commonServiceMaps, ok := cm.Data["common-service-maps.yaml"]
+	if !ok {
+		return fmt.Errorf("there is no common-service-maps.yaml in configmap kube-public/common-service-maps")
+	}
+
+	var cmData CsMaps
+	if err := utilyaml.Unmarshal([]byte(commonServiceMaps), &cmData); err != nil {
+		return fmt.Errorf("failed to fetch data of configmap common-service-maps: %v", err)
+	}
+
+	var newNsMapping NsMapping
+
+	// construct new mapping
+	newNsMapping.RequestNs = requestNsList
+	newNsMapping.CsNs = masterNS
+
+	cmData.NsMappingList = append(cmData.NsMappingList, newNsMapping)
+	commonServiceMap, error := utilyaml.Marshal(&cmData)
+	if error != nil {
+		return fmt.Errorf("failed to marshal data of configmap common-service-maps: %v", error)
+	}
+	cm.Data["common-service-maps.yaml"] = string(commonServiceMap)
+
+	return nil
 }
 
 // EnableMaintenanceMode enables maintenance mode for CommonService CR

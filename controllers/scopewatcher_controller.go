@@ -67,8 +67,21 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 	if len(csScope) == 0 {
 		klog.Infof("No entry found in common-service-maps ConfigMap for %s", r.Bootstrap.CSData.MasterNs)
 
-		// TODO: Update the ConfigMap to add latest scope, it should be the updatedNsList as requested-from-namespace, and MasterNs as map-to-common-service-namespace
-		klog.Infof("%v, %s", updatedNsList, r.Bootstrap.CSData.MasterNs)
+		// Update the ConfigMap to add latest scope, it should be the updatedNsList as requested-from-namespace, and MasterNs as map-to-common-service-namespace
+		klog.Infof("Updating namespace mapping with latest scope %v for %s", updatedNsList, r.Bootstrap.CSData.MasterNs)
+		if err := util.UpdateCsMaps(cm, updatedNsList, r.Bootstrap.CSData.MasterNs); err != nil {
+			klog.Errorf("Failed to update common-service-maps: %v", err)
+			return ctrl.Result{}, err
+		}
+		// Validate common-service-maps
+		if err := util.ValidateCsMaps(cm); err != nil {
+			klog.Errorf("Unsupported common-service-maps: %v", err)
+			return ctrl.Result{}, err
+		}
+		if err := r.Client.Update(context.TODO(), cm); err != nil {
+			klog.Errorf("Failed to update namespaceMapping in common-service-maps: %v", err)
+			return ctrl.Result{}, err
+		}
 	}
 
 	// If the intersection is empty, then do nothing
