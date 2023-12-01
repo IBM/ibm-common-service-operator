@@ -44,6 +44,7 @@ import (
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	nssv1 "github.com/IBM/ibm-namespace-scope-operator/api/v1"
 )
@@ -770,4 +771,61 @@ func FindDifference(superset, subset []string) []string {
 	}
 
 	return difference
+}
+
+// EnableMaintenanceMode enables maintenance mode for CommonService CR
+func EnableMaintenanceMode(c client.Client, csCR string, masterNs string) error {
+	// Fetch CommonService CR
+	instance := &apiv3.CommonService{}
+	if err := c.Get(context.TODO(), types.NamespacedName{
+		Name:      csCR,
+		Namespace: masterNs,
+	}, instance); err != nil && !errors.IsNotFound(err) {
+		klog.Errorf("Failed to get CommonService CR in %s: %v", masterNs, err)
+		return err
+	} else if errors.IsNotFound(err) {
+		klog.Infof("CommonService CR is not found in %s", masterNs)
+		return nil
+	} else {
+		// Set annotation: commonservices.operator.ibm.com/self-pause to true
+		if instance.ObjectMeta.Annotations == nil {
+			instance.ObjectMeta.Annotations = make(map[string]string)
+		}
+		instance.ObjectMeta.Annotations["commonservices.operator.ibm.com/self-pause"] = "true"
+	}
+
+	// Update CommonService CR
+	if err := c.Update(context.Background(), instance); err != nil {
+		klog.Errorf("Failed to update CommonService CR: %v", err)
+		return err
+	}
+	return nil
+}
+
+// DisableMaintenanceMode disables maintenance mode for CommonService CR
+func DisableMaintenanceMode(c client.Client, csCR string, masterNs string) error {
+	// Fetch CommonService CR
+	instance := &apiv3.CommonService{}
+	if err := c.Get(context.TODO(), types.NamespacedName{
+		Name:      csCR,
+		Namespace: masterNs,
+	}, instance); err != nil && !errors.IsNotFound(err) {
+		klog.Errorf("Failed to get CommonService CR in %s: %v", masterNs, err)
+		return err
+	} else if errors.IsNotFound(err) {
+		klog.Infof("CommonService CR is not found in %s", masterNs)
+		return nil
+	} else {
+		// Set annotation: commonservices.operator.ibm.com/self-pause to false
+		if instance.ObjectMeta.Annotations != nil {
+			instance.ObjectMeta.Annotations["commonservices.operator.ibm.com/self-pause"] = "false"
+		}
+	}
+
+	// Update CommonService CR
+	if err := c.Update(context.Background(), instance); err != nil {
+		klog.Errorf("Failed to update CommonService CR: %v", err)
+		return err
+	}
+	return nil
 }
