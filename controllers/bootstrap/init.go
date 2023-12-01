@@ -1855,3 +1855,60 @@ func (b *Bootstrap) Cleanup(operatorNs string, resource *Resource) error {
 	klog.Infof("Deleting resource %s/%s", operatorNs, resource.Name)
 	return nil
 }
+
+func (b *Bootstrap) IsolateODLM(excludedNsList []string) error {
+	odlmSub, err := b.GetSubscription(ctx, constant.IBMODLMPackage, b.CSData.MasterNs)
+	if err != nil {
+		klog.Errorf("Failed to get ODLM subscription: %v", err)
+		return err
+	}
+	// Patch ODLM subscription with ISOLATED_MODE and PARTIAL_WATCH_NAMESPACE
+	if odlmSub.Object["spec"].(map[string]interface{})["config"] != nil {
+		if odlmSub.Object["spec"].(map[string]interface{})["config"].(map[string]interface{})["env"] != nil {
+			env := odlmSub.Object["spec"].(map[string]interface{})["config"].(map[string]interface{})["env"].([]interface{})
+			for _, e := range env {
+				if e.(map[string]interface{})["name"] == "ISOLATED_MODE" {
+					e.(map[string]interface{})["value"] = "true"
+				}
+				if e.(map[string]interface{})["name"] == "PARTIAL_WATCH_NAMESPACE" {
+					if e.(map[string]interface{})["value"] == nil {
+						e.(map[string]interface{})["value"] = ""
+					}
+					e.(map[string]interface{})["value"] = e.(map[string]interface{})["value"].(string) + "," + strings.Join(excludedNsList, ",")
+				}
+			}
+		} else {
+			odlmSub.Object["spec"].(map[string]interface{})["config"].(map[string]interface{})["env"] = []interface{}{
+				map[string]interface{}{
+					"name":  "ISOLATED_MODE",
+					"value": "true",
+				},
+				map[string]interface{}{
+					"name":  "PARTIAL_WATCH_NAMESPACE",
+					"value": strings.Join(excludedNsList, ","),
+				},
+			}
+		}
+	} else {
+		odlmSub.Object["spec"].(map[string]interface{})["config"] = map[string]interface{}{
+			"env": []interface{}{
+				map[string]interface{}{
+					"name":  "ISOLATED_MODE",
+					"value": "true",
+				},
+				map[string]interface{}{
+					"name":  "PARTIAL_WATCH_NAMESPACE",
+					"value": strings.Join(excludedNsList, ","),
+				},
+			},
+		}
+	}
+
+	// Update ODLM subscription
+	if err := b.Client.Update(ctx, odlmSub); err != nil {
+		klog.Errorf("Failed to update ODLM subscription: %v", err)
+		return err
+	}
+
+	return nil
+}

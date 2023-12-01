@@ -366,17 +366,26 @@ func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	scopeWatchEnabled := util.GetScopeWatcher()
 	if scopeWatchEnabled {
-		// only reconcile the common-service-maps configmap in kube-public namespace, ignore the other configmaps
+		// only reconcile the any changes for common-service-maps configmap in kube-public namespace, ignore the other configmaps
 		err = ctrl.NewControllerManagedBy(mgr).
 			For(&corev1.ConfigMap{}, builder.WithPredicates(predicate.Funcs{
+				CreateFunc: func(e event.CreateEvent) bool {
+					return e.Object.GetName() == constant.CsMapConfigMap && e.Object.GetNamespace() == "kube-public"
+				},
+				DeleteFunc: func(e event.DeleteEvent) bool {
+					return e.Object.GetName() == constant.CsMapConfigMap && e.Object.GetNamespace() == "kube-public"
+				},
+				UpdateFunc: func(e event.UpdateEvent) bool {
+					return e.ObjectNew.GetName() == constant.CsMapConfigMap && e.ObjectNew.GetNamespace() == "kube-public"
+				},
 				GenericFunc: func(e event.GenericEvent) bool {
 					return e.Object.GetName() == constant.CsMapConfigMap && e.Object.GetNamespace() == "kube-public"
 				},
-			})).
-			Complete(reconcile.Func(r.ScopeReconcile))
+			})).Complete(reconcile.Func(r.ScopeReconcile))
 		if err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
