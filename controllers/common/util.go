@@ -774,11 +774,11 @@ func FindDifference(superset, subset []string) []string {
 }
 
 // EnableMaintenanceMode enables maintenance mode for CommonService CR
-func EnableMaintenanceMode(c client.Client, masterNs string) error {
+func EnableMaintenanceMode(c client.Client, csCR string, masterNs string) error {
 	// Fetch CommonService CR
 	instance := &apiv3.CommonService{}
 	if err := c.Get(context.TODO(), types.NamespacedName{
-		Name:      "common-service",
+		Name:      csCR,
 		Namespace: masterNs,
 	}, instance); err != nil && !errors.IsNotFound(err) {
 		klog.Errorf("Failed to get CommonService CR in %s: %v", masterNs, err)
@@ -803,11 +803,11 @@ func EnableMaintenanceMode(c client.Client, masterNs string) error {
 }
 
 // DisableMaintenanceMode disables maintenance mode for CommonService CR
-func DisableMaintenanceMode(c client.Client, masterNs string) error {
+func DisableMaintenanceMode(c client.Client, csCR string, masterNs string) error {
 	// Fetch CommonService CR
 	instance := &apiv3.CommonService{}
 	if err := c.Get(context.TODO(), types.NamespacedName{
-		Name:      "common-service",
+		Name:      csCR,
 		Namespace: masterNs,
 	}, instance); err != nil && !errors.IsNotFound(err) {
 		klog.Errorf("Failed to get CommonService CR in %s: %v", masterNs, err)
