@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
       - name: mongodb-backup
-        image: icr.io/cpopen/cpfs/ibm-mongodb@sha256:d62f7145428f62466622160005eafcfee39cbf866df88aaeaee4d99173d1882f
+        image: icr.io/cpopen/cpfs/ibm-mongodb:4.2.1-mongodb.4.0.24
         command: ["bash", "-c", "sleep infinity"]
         volumeMounts:
         - mountPath: "/dump"
