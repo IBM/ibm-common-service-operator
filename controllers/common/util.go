@@ -429,6 +429,35 @@ func UpdateAllNSList(r client.Reader, c client.Client, cm *corev1.ConfigMap, nss
 	return nil
 }
 
+// ExcludeNsFromNSS remove a list of namespaces from NamespaceScope CR
+func ExcludeNsFromNSS(r client.Reader, c client.Client, nssName, nssNs string, excludedNsList []string) error {
+	nsScope := &nssv1.NamespaceScope{}
+	nsScopeKey := types.NamespacedName{Name: nssName, Namespace: nssNs}
+	if err := r.Get(context.TODO(), nsScopeKey, nsScope); err != nil {
+		return err
+	}
+	var nsMems []string
+	nsSet := make(map[string]interface{})
+
+	for _, ns := range nsScope.Spec.NamespaceMembers {
+		if !Contains(excludedNsList, ns) {
+			nsSet[ns] = struct{}{}
+		}
+	}
+
+	for ns := range nsSet {
+		nsMems = append(nsMems, ns)
+	}
+
+	nsScope.Spec.NamespaceMembers = nsMems
+
+	if err := c.Update(context.TODO(), nsScope); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // CheckSaas checks whether it is a SaaS deployment for Common Services
 func CheckSaas(r client.Reader) (enable bool) {
 	cmName := constant.SaasConfigMap
@@ -781,10 +810,10 @@ func EnableMaintenanceMode(c client.Client, csCR string, masterNs string) error 
 		Name:      csCR,
 		Namespace: masterNs,
 	}, instance); err != nil && !errors.IsNotFound(err) {
-		klog.Errorf("Failed to get CommonService CR in %s: %v", masterNs, err)
+		klog.Errorf("Failed to get CommonService CR %s in %s: %v", csCR, masterNs, err)
 		return err
 	} else if errors.IsNotFound(err) {
-		klog.Infof("CommonService CR is not found in %s", masterNs)
+		klog.Infof("CommonService CR %s is not found in %s", csCR, masterNs)
 		return nil
 	} else {
 		// Set annotation: commonservices.operator.ibm.com/self-pause to true
@@ -796,7 +825,7 @@ func EnableMaintenanceMode(c client.Client, csCR string, masterNs string) error 
 
 	// Update CommonService CR
 	if err := c.Update(context.Background(), instance); err != nil {
-		klog.Errorf("Failed to update CommonService CR: %v", err)
+		klog.Errorf("Failed to update CommonService CR %s/%s: %v", masterNs, csCR, err)
 		return err
 	}
 	return nil
@@ -810,10 +839,10 @@ func DisableMaintenanceMode(c client.Client, csCR string, masterNs string) error
 		Name:      csCR,
 		Namespace: masterNs,
 	}, instance); err != nil && !errors.IsNotFound(err) {
-		klog.Errorf("Failed to get CommonService CR in %s: %v", masterNs, err)
+		klog.Errorf("Failed to get CommonService CR %s in %s: %v", csCR, masterNs, err)
 		return err
 	} else if errors.IsNotFound(err) {
-		klog.Infof("CommonService CR is not found in %s", masterNs)
+		klog.Infof("CommonService CR %s is not found in %s", csCR, masterNs)
 		return nil
 	} else {
 		// Set annotation: commonservices.operator.ibm.com/self-pause to false
@@ -824,7 +853,85 @@ func DisableMaintenanceMode(c client.Client, csCR string, masterNs string) error
 
 	// Update CommonService CR
 	if err := c.Update(context.Background(), instance); err != nil {
-		klog.Errorf("Failed to update CommonService CR: %v", err)
+		klog.Errorf("Failed to update CommonService CR %s/%s: %v", masterNs, csCR, err)
+		return err
+	}
+	return nil
+}
+
+// TurnOffRouteChangeInMgmtIngress set multipleInstancesEnabled to false for ibm-management-ingress-operator in CommonService CR
+func TurnOffRouteChangeInMgmtIngress(c client.Client, csCR string, masterNs string) error {
+	// Fetch CommonService CR
+	instance := NewUnstructured("operator.ibm.com", "CommonService", "v3")
+	if err := c.Get(context.TODO(), types.NamespacedName{
+		Name:      csCR,
+		Namespace: masterNs,
+	}, instance); err != nil && !errors.IsNotFound(err) {
+		klog.Errorf("Failed to get CommonService CR %s in %s: %v", csCR, masterNs, err)
+		return err
+	} else if errors.IsNotFound(err) {
+		klog.Infof("CommonService CR %s is not found in %s", csCR, masterNs)
+		return nil
+	}
+
+	services, found, err := unstructured.NestedSlice(instance.Object, "spec", "services")
+	if err != nil {
+		klog.Errorf("Failed to get services in CommonService CR %s/%s: %v", masterNs, csCR, err)
+		return err
+	}
+	if !found {
+		// add services, and add managementIngress template
+		services = []interface{}{
+			map[string]interface{}{
+				"name": "ibm-management-ingress-operator",
+				"spec": map[string]interface{}{
+					"managementIngress": map[string]interface{}{
+						"multipleInstancesEnabled": false,
+					},
+				},
+			},
+		}
+		if err := unstructured.SetNestedSlice(instance.Object, services, "spec", "services"); err != nil {
+			klog.Errorf("Failed to set services in CommonService CR %s/%s: %v", masterNs, csCR, err)
+			return err
+		}
+	} else {
+		// add managementIngress template
+		for _, service := range services {
+			serviceMap, ok := service.(map[string]interface{})
+			if !ok {
+				klog.Errorf("Failed to convert service to map[string]interface{}: %v", err)
+				return err
+			}
+			if serviceMap["name"] == "ibm-management-ingress-operator" {
+				_, found, err := unstructured.NestedMap(serviceMap, "spec", "managementIngress")
+				if err != nil {
+					klog.Errorf("Failed to get managementIngress in CommonService CR %s/%s: %v", masterNs, csCR, err)
+					return err
+				}
+				if !found {
+					// add managementIngress template
+					managementIngress := map[string]interface{}{
+						"multipleInstancesEnabled": false,
+					}
+					if err := unstructured.SetNestedMap(serviceMap, managementIngress, "spec", "managementIngress"); err != nil {
+						klog.Errorf("Failed to set managementIngress in CommonService CR %s/%s: %v", masterNs, csCR, err)
+						return err
+					}
+				} else {
+					// set multipleInstancesEnabled to false
+					if err := unstructured.SetNestedField(serviceMap, false, "spec", "managementIngress", "multipleInstancesEnabled"); err != nil {
+						klog.Errorf("Failed to set multipleInstancesEnabled as false in CommonService CR %s/%s: %v", masterNs, csCR, err)
+						return err
+					}
+				}
+			}
+		}
+	}
+
+	// Update CommonService CR
+	if err := c.Update(context.Background(), instance); err != nil {
+		klog.Errorf("Failed to update CommonService CR %s/%s: %v", masterNs, csCR, err)
 		return err
 	}
 	return nil
