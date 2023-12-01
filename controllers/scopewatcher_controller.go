@@ -45,6 +45,14 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, err
 	}
 
+	// Determine if the cluster is multi instance enabled, if it is not enabled, no isolation process is required
+	r.Bootstrap.CSData.ControlNs = util.GetControlNs(r.Reader)
+	MultiInstanceStatusFromCluster := util.CheckMultiInstances(r.Reader)
+	if MultiInstanceStatusFromCluster == false {
+		klog.Infof("MultiInstancesEnable is not enabled in cluster, skip isolation process")
+		return ctrl.Result{}, nil
+	}
+
 	// Get all namespaces which are not part of existing tenant scope from ConfigMap
 	excludedScope, err := util.GetExcludedScope(cm, r.Bootstrap.CSData.MasterNs)
 	if err != nil {
@@ -85,7 +93,7 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 		}
 	}
 
-	// If the intersection is empty, then do nothing
+	// If the intersection is empty, there is no isolation process required
 	if len(excludedNsList) == 0 {
 		klog.Infof("Existing Common Service tenant scope contains following namespaces: %v, there is no isolation process required", nsScope)
 		return ctrl.Result{}, nil
@@ -122,15 +130,15 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 
 	// TODO: Re-construct CP2 tenant scope
 	// 1. Refresh CommonService Operator memory/cache to re-construct the tenant scope.
-	r.Bootstrap.CSData.ControlNs = util.GetControlNs(r.Reader)
-	r.Bootstrap.MultiInstancesEnable = util.CheckMultiInstances(r.Reader)
-
-	// (Optionally) Patch CommonService CR with multiInstanceEnabled: false
-	// covert following bash script
-	// oc get commonservice common-service -n <operator-namespace> -o json |
-	// jq '.spec.services |= (if type == "array" then map(if .name == "ibm-management-ingress-operator" then .spec.managementIngress.multipleInstancesEnabled = false else . end) else . end // []) |
-	// 	if (.spec.services | map(.name == "ibm-management-ingress-operator") | any == false) then .spec.services += [{"name": "ibm-management-ingress-operator", "spec": {"managementIngress": {"multipleInstancesEnabled": false}}}] else . end' |
-	// oc apply -f -
+	klog.Infof("Converting MultiInstancesEnable from %v to %v", r.Bootstrap.MultiInstancesEnable, MultiInstanceStatusFromCluster)
+	if r.Bootstrap.MultiInstancesEnable == false && MultiInstanceStatusFromCluster == true {
+		if err := util.TurnOffRouteChangeInMgmtIngress(r.Client, "common-service", r.Bootstrap.CSData.MasterNs); err != nil {
+			klog.Errorf("Failed to keep Route unchanged for %s/common-service: %v", r.Bootstrap.CSData.MasterNs, err)
+			return ctrl.Result{}, err
+		}
+		klog.Infof("MultiInstancesEnable is changed from %v to %v", r.Bootstrap.MultiInstancesEnable, MultiInstanceStatusFromCluster)
+		r.Bootstrap.MultiInstancesEnable = MultiInstanceStatusFromCluster
+	}
 
 	// 2. Re-construct the NamespaceScope CRs in ibm-common-services namespace.
 	var NSSCRs = []*bootstrap.Resource{
