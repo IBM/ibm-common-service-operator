@@ -108,6 +108,7 @@ func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 		if inScope = r.checkScope(csScope, req.NamespacedName.Namespace); !inScope {
 			klog.Infof("CommonService CR %v is not in the scope, only reconciles its configuration of cluster scope resource", req.NamespacedName.String())
+			return ctrl.Result{}, nil
 		}
 	} else if !errors.IsNotFound(err) {
 		klog.Errorf("Failed to get common-service-maps: %v", err)
