@@ -62,17 +62,15 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 	nsScope := util.GetNssCmNs(r.Client, r.Bootstrap.CSData.MasterNs)
 	// Compare ns_scope and excludedScope and get the to-be-detached namespace
 	excludedNsList := util.FindIntersection(nsScope, excludedScope)
+
+	// TODO:
+	// Only checking ExcludedNsList is not reliable.
+	// If an error happens AFTER we update NamespaceScope CR to remove ExcludedNsList but BEFORE we finish the isolation, then in the second reconciliation here, CS will skip isolation because Excluded Ns List is already empty.
+	// We need to have a marker(use pause annotation) temporarily to indicate that previous isolation is not done yet(a error happened during isolation), and continue isolation even ExcludedNsList is empty
 	// If the intersection is empty, there is no isolation process required
 	if len(excludedNsList) == 0 {
 		klog.Infof("Existing Common Service tenant scope contains following namespaces: %v, there is no isolation process required", nsScope)
 		return ctrl.Result{}, nil
-	}
-	// Get the latest tenant scope by removing the to-be-detached namespace from existing scope
-	updatedNsList := util.FindDifference(nsScope, excludedNsList)
-	// Get the existing tenant scope configuration from ConfigMap
-	csScope, err := util.GetCsScope(cm, r.Bootstrap.CSData.MasterNs)
-	if err != nil {
-		return ctrl.Result{}, err
 	}
 
 	// Silence CS 3.x CR reconciliation by enabling maintenance mode
@@ -257,6 +255,14 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 	// Release the maintenance mode on CS CR reconciliation
 	if err = util.DisableMaintenanceMode(r.Client, "common-service", r.Bootstrap.CSData.MasterNs); err != nil {
 		klog.Errorf("Failed to disable maintenance mode: %v", err)
+		return ctrl.Result{}, err
+	}
+
+	// Get the latest tenant scope by removing the to-be-detached namespace from existing scope
+	updatedNsList := util.FindDifference(nsScope, excludedNsList)
+	// Get the existing tenant scope configuration from ConfigMap
+	csScope, err := util.GetCsScope(cm, r.Bootstrap.CSData.MasterNs)
+	if err != nil {
 		return ctrl.Result{}, err
 	}
 
