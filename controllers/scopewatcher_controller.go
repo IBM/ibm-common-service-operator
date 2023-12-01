@@ -155,18 +155,18 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 	}
 
 	// remove crossplane
-	if err := r.Bootstrap.DeleteSubscription(constant.ICPPKOperator, r.Bootstrap.CSData.ControlNs); err != nil {
-		klog.Errorf("Failed to delete %s in %s: %v", constant.ICPPKOperator, r.Bootstrap.CSData.ControlNs, err)
+	if err := r.Bootstrap.DeleteSubscription(constant.ICPPKOperator, r.Bootstrap.CSData.MasterNs); err != nil {
+		klog.Errorf("Failed to delete %s in %s: %v", constant.ICPPKOperator, r.Bootstrap.CSData.MasterNs, err)
 		return ctrl.Result{}, err
 	}
 
-	if err := r.Bootstrap.DeleteSubscription(constant.ICPPICOperator, r.Bootstrap.CSData.ControlNs); err != nil {
-		klog.Errorf("Failed to delete %s in %s: %v", constant.ICPPICOperator, r.Bootstrap.CSData.ControlNs, err)
+	if err := r.Bootstrap.DeleteSubscription(constant.ICPPICOperator, r.Bootstrap.CSData.MasterNs); err != nil {
+		klog.Errorf("Failed to delete %s in %s: %v", constant.ICPPICOperator, r.Bootstrap.CSData.MasterNs, err)
 		return ctrl.Result{}, err
 	}
 
-	if err := r.Bootstrap.DeleteSubscription(constant.ICPOperator, r.Bootstrap.CSData.ControlNs); err != nil {
-		klog.Errorf("Failed to delete %s in %s: %v", constant.ICPOperator, r.Bootstrap.CSData.ControlNs, err)
+	if err := r.Bootstrap.DeleteSubscription(constant.ICPOperator, r.Bootstrap.CSData.MasterNs); err != nil {
+		klog.Errorf("Failed to delete %s in %s: %v", constant.ICPOperator, r.Bootstrap.CSData.MasterNs, err)
 		return ctrl.Result{}, err
 	}
 
@@ -176,13 +176,13 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 
 	// remove webhook and secretshare
 	for _, deployment := range CP2Deployments {
-		if err := r.Bootstrap.Cleanup(r.Bootstrap.CSData.ControlNs, deployment); err != nil {
+		if err := r.Bootstrap.Cleanup(r.Bootstrap.CSData.MasterNs, deployment); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
 
 	for _, resource := range CP2Resources {
-		if err := r.Bootstrap.Cleanup(r.Bootstrap.CSData.ControlNs, resource); err != nil {
+		if err := r.Bootstrap.Cleanup(r.Bootstrap.CSData.MasterNs, resource); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
