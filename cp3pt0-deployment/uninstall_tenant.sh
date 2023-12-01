@@ -107,6 +107,8 @@ function pre_req() {
     fi
 
     check_command "${OC}"
+    check_command "${YQ}"
+    check_yq_version
 
     # Checking oc command logged in
     user=$(${OC} whoami 2> /dev/null)

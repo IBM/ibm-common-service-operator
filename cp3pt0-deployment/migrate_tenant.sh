@@ -284,6 +284,7 @@ function pre_req() {
 
     check_command "${OC}"
     check_command "${YQ}"
+    check_yq_version
 
     # TODO: add more compatibility
     # # checking yq version is v4.30+
