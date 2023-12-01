@@ -951,7 +951,7 @@ func (b *Bootstrap) DeleteFromYaml(objectTemplate string, data interface{}) erro
 func (b *Bootstrap) GetSubscription(ctx context.Context, name, namespace string) (*unstructured.Unstructured, error) {
 	klog.Infof("Fetch Subscription: %v/%v", namespace, name)
 	sub := &unstructured.Unstructured{}
-	sub.SetGroupVersionKind(olmv1alpha1.SchemeGroupVersion.WithKind("subscription"))
+	sub.SetGroupVersionKind(olmv1alpha1.SchemeGroupVersion.WithKind("Subscription"))
 	subKey := types.NamespacedName{
 		Name:      name,
 		Namespace: namespace,
