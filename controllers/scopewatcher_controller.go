@@ -62,41 +62,17 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 	nsScope := util.GetNssCmNs(r.Client, r.Bootstrap.CSData.MasterNs)
 	// Compare ns_scope and excludedScope and get the to-be-detached namespace
 	excludedNsList := util.FindIntersection(nsScope, excludedScope)
-	// Get the latest tenant scope by removing the to-be-detached namespace from existing scope
-	updatedNsList := util.FindDifference(nsScope, excludedNsList)
-
-	// Get the existing tenant scope configuration from ConfigMap
-	csScope, err := util.GetCsScope(cm, r.Bootstrap.CSData.MasterNs)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	// Common Service v3 should not manipulate tenant scope entry in ConfigMap if this v3 tenant has been added into ConfigMap by user
-	// if no entry found in common-service-maps ConfigMap, then add latest scope into the ConfigMap
-	if len(csScope) == 0 {
-		klog.Infof("No entry found in common-service-maps ConfigMap for %s", r.Bootstrap.CSData.MasterNs)
-
-		// Update the ConfigMap to add latest scope, it should be the updatedNsList as requested-from-namespace, and MasterNs as map-to-common-service-namespace
-		klog.Infof("Updating namespace mapping with latest scope %v for %s", updatedNsList, r.Bootstrap.CSData.MasterNs)
-		if err := util.UpdateCsMaps(cm, updatedNsList, r.Bootstrap.CSData.MasterNs); err != nil {
-			klog.Errorf("Failed to update common-service-maps: %v", err)
-			return ctrl.Result{}, err
-		}
-		// Validate common-service-maps
-		if err := util.ValidateCsMaps(cm); err != nil {
-			klog.Errorf("Unsupported common-service-maps: %v", err)
-			return ctrl.Result{}, err
-		}
-		if err := r.Client.Update(context.TODO(), cm); err != nil {
-			klog.Errorf("Failed to update namespaceMapping in common-service-maps: %v", err)
-			return ctrl.Result{}, err
-		}
-	}
-
 	// If the intersection is empty, there is no isolation process required
 	if len(excludedNsList) == 0 {
 		klog.Infof("Existing Common Service tenant scope contains following namespaces: %v, there is no isolation process required", nsScope)
 		return ctrl.Result{}, nil
+	}
+	// Get the latest tenant scope by removing the to-be-detached namespace from existing scope
+	updatedNsList := util.FindDifference(nsScope, excludedNsList)
+	// Get the existing tenant scope configuration from ConfigMap
+	csScope, err := util.GetCsScope(cm, r.Bootstrap.CSData.MasterNs)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 
 	// Silence CS 3.x CR reconciliation by enabling maintenance mode
@@ -128,7 +104,7 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 		}
 	}
 
-	// TODO: Re-construct CP2 tenant scope
+	// Re-construct CP2 tenant scope
 	// 1. Refresh CommonService Operator memory/cache to re-construct the tenant scope.
 	klog.Infof("Converting MultiInstancesEnable from %v to %v", r.Bootstrap.MultiInstancesEnable, MultiInstanceStatusFromCluster)
 	if !r.Bootstrap.MultiInstancesEnable && MultiInstanceStatusFromCluster {
@@ -195,6 +171,28 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 	if err = util.DisableMaintenanceMode(r.Client, "common-service", r.Bootstrap.CSData.MasterNs); err != nil {
 		klog.Errorf("Failed to disable maintenance mode: %v", err)
 		return ctrl.Result{}, err
+	}
+
+	// Common Service v3 should not manipulate tenant scope entry in ConfigMap if this v3 tenant has been added into ConfigMap by user
+	// if no entry found in common-service-maps ConfigMap, then add latest scope into the ConfigMap
+	if len(csScope) == 0 {
+		klog.Infof("No entry found in common-service-maps ConfigMap for %s", r.Bootstrap.CSData.MasterNs)
+
+		// Update the ConfigMap to add latest scope, it should be the updatedNsList as requested-from-namespace, and MasterNs as map-to-common-service-namespace
+		klog.Infof("Updating namespace mapping with latest scope %v for %s", updatedNsList, r.Bootstrap.CSData.MasterNs)
+		if err := util.UpdateCsMaps(cm, updatedNsList, r.Bootstrap.CSData.MasterNs); err != nil {
+			klog.Errorf("Failed to update common-service-maps: %v", err)
+			return ctrl.Result{}, err
+		}
+		// Validate common-service-maps
+		if err := util.ValidateCsMaps(cm); err != nil {
+			klog.Errorf("Unsupported common-service-maps: %v", err)
+			return ctrl.Result{}, err
+		}
+		if err := r.Client.Update(context.TODO(), cm); err != nil {
+			klog.Errorf("Failed to update namespaceMapping in common-service-maps: %v", err)
+			return ctrl.Result{}, err
+		}
 	}
 
 	return ctrl.Result{}, nil
