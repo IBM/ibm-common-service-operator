@@ -190,6 +190,93 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 	// 6. Migrate Cert-Manager
 
 	// 7. Delete Crossplane, webhook, and secretshare deployment
+	var CP2Deployments = []*bootstrap.Resource{
+		{
+			Name:    "secretshare",
+			Version: "v1",
+			Group:   "apps",
+			Kind:    "Deployment",
+			Scope:   "namespaceScope",
+		},
+		{
+			Name:    "ibm-common-service-webhook",
+			Version: "v1",
+			Group:   "apps",
+			Kind:    "Deployment",
+			Scope:   "namespaceScope",
+		},
+	}
+
+	var CP2Resources = []*bootstrap.Resource{
+		{
+			Name:    "ibm-common-service-webhook",
+			Version: "v1alpha1",
+			Group:   "operator.ibm.com",
+			Kind:    "PodPreset",
+			Scope:   "namespaceScope",
+		},
+		{
+			Name:    "ibm-common-service-webhook-configuration",
+			Version: "v1",
+			Group:   "admissionregistration.k8s.io",
+			Kind:    "MutatingWebhookConfiguration",
+			Scope:   "clusterScope",
+		},
+		{
+			Name:    "ibm-operandrequest-webhook-configuration",
+			Version: "v1",
+			Group:   "admissionregistration.k8s.io",
+			Kind:    "MutatingWebhookConfiguration",
+			Scope:   "clusterScope",
+		},
+		{
+			Name:    "ibm-cs-ns-mapping-webhook-configuration",
+			Version: "v1",
+			Group:   "admissionregistration.k8s.io",
+			Kind:    "ValidatingWebhookConfiguration",
+			Scope:   "clusterScope",
+		},
+		{
+			Name:    "common-services",
+			Version: "v1",
+			Group:   "ibmcpcs.ibm.com",
+			Kind:    "SecretShare",
+			Scope:   "namespaceScope",
+		},
+	}
+
+	// remove crossplane
+	if err := r.Bootstrap.DeleteSubscription(constant.ICPPKOperator, r.Bootstrap.CSData.MasterNs); err != nil {
+		klog.Errorf("Failed to delete %s in %s: %v", constant.ICPPKOperator, r.Bootstrap.CSData.MasterNs, err)
+		return ctrl.Result{}, err
+	}
+
+	if err := r.Bootstrap.DeleteSubscription(constant.ICPPICOperator, r.Bootstrap.CSData.MasterNs); err != nil {
+		klog.Errorf("Failed to delete %s in %s: %v", constant.ICPPICOperator, r.Bootstrap.CSData.MasterNs, err)
+		return ctrl.Result{}, err
+	}
+
+	if err := r.Bootstrap.DeleteSubscription(constant.ICPOperator, r.Bootstrap.CSData.MasterNs); err != nil {
+		klog.Errorf("Failed to delete %s in %s: %v", constant.ICPOperator, r.Bootstrap.CSData.MasterNs, err)
+		return ctrl.Result{}, err
+	}
+
+	if updateErr := r.Bootstrap.CreateorUpdateCFCrossplaneConfigMap("'true'"); updateErr != nil {
+		return ctrl.Result{}, updateErr
+	}
+
+	// remove webhook and secretshare
+	for _, deployment := range CP2Deployments {
+		if err := r.Bootstrap.Cleanup(r.Bootstrap.CSData.MasterNs, deployment); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
+	for _, resource := range CP2Resources {
+		if err := r.Bootstrap.Cleanup(r.Bootstrap.CSData.MasterNs, resource); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
 
 	// Release the maintenance mode on CS CR reconciliation
 	if err = util.DisableMaintenanceMode(r.Client, "common-service", r.Bootstrap.CSData.MasterNs); err != nil {
