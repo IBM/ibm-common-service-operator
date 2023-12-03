@@ -498,6 +498,8 @@ spec:
               echo "Building the truststore file..."
               cp /etc/pki/java/cacerts ${TRUSTSTORE_DIR}/keycloak-truststore.jks
               chmod +w ${TRUSTSTORE_DIR}/keycloak-truststore.jks
+              echo "Importing default service account certificates ..."
+              keytool -importcert -file /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -keystore ${TRUSTSTORE_DIR}/keycloak-truststore.jks -storepass changeit -alias serviceaccount-ca-crt -noprompt
               for cert in $(ls ${CA_DIR}); do
                   echo "Importing ${cert} into the truststore file..."
                   keytool -importcert -file ${CA_DIR}/${cert} -keystore ${TRUSTSTORE_DIR}/keycloak-truststore.jks -storepass changeit -alias ${cert} -noprompt
