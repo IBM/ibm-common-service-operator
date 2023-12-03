@@ -29,11 +29,13 @@ import (
 
 	utilyaml "github.com/ghodss/yaml"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/runtime/serializer/streaming"
@@ -829,6 +831,32 @@ func UpdateCsMaps(cm *corev1.ConfigMap, requestNsList []string, masterNS string)
 	return nil
 }
 
+// GetMaintenanceMode gets maintenance mode for CommonService CR
+func GetMaintenanceMode(c client.Client, csCR string, masterNs string) (bool, error) {
+	// Fetch CommonService CR
+	instance := &apiv3.CommonService{}
+	if err := c.Get(context.TODO(), types.NamespacedName{
+		Name:      csCR,
+		Namespace: masterNs,
+	}, instance); err != nil && !errors.IsNotFound(err) {
+		klog.Errorf("Failed to get CommonService CR %s in %s: %v", csCR, masterNs, err)
+		return false, err
+	} else if errors.IsNotFound(err) {
+		klog.Infof("CommonService CR %s is not found in %s", csCR, masterNs)
+		return false, nil
+	} else {
+		// Get annotation: commonservices.operator.ibm.com/self-pause
+		if instance.ObjectMeta.Annotations != nil {
+			if value, ok := instance.ObjectMeta.Annotations["commonservices.operator.ibm.com/self-pause"]; ok {
+				if value == "true" {
+					return true, nil
+				}
+			}
+		}
+	}
+	return false, nil
+}
+
 // EnableMaintenanceMode enables maintenance mode for CommonService CR
 func EnableMaintenanceMode(c client.Client, csCR string, masterNs string) error {
 	// Fetch CommonService CR
@@ -961,5 +989,59 @@ func TurnOffRouteChangeInMgmtIngress(c client.Client, csCR string, masterNs stri
 		klog.Errorf("Failed to update CommonService CR %s/%s: %v", masterNs, csCR, err)
 		return err
 	}
+	return nil
+}
+
+// ScaleDeployment scales the deployment
+func ScaleDeployment(c client.Client, deploymentName string, namespace string, replicas int32) error {
+	deployment := &appsv1.Deployment{}
+	if err := c.Get(context.TODO(), types.NamespacedName{
+		Name:      deploymentName,
+		Namespace: namespace,
+	}, deployment); err != nil {
+		klog.Errorf("Failed to get Deployment %s in %s: %v", deploymentName, namespace, err)
+		return err
+	}
+
+	deployment.Spec.Replicas = &replicas
+
+	if err := c.Update(context.Background(), deployment); err != nil {
+		klog.Errorf("Failed to update Deployment %s/%s: %v", namespace, deploymentName, err)
+		return err
+	}
+	return nil
+}
+
+func ScaleOperator(r client.Reader, c client.Client, packageName string, namespace string, replicas int32) error {
+	// list CSV in namespace namespace
+	operatorCSVList := &olmv1alpha1.ClusterServiceVersionList{}
+	if err := r.List(context.TODO(), operatorCSVList, &client.ListOptions{
+		Namespace: namespace,
+		LabelSelector: labels.SelectorFromSet(map[string]string{
+			fmt.Sprintf("operators.coreos.com/%s.%s", packageName, namespace): "",
+		}),
+	}); err != nil {
+		klog.Errorf("Failed to list ClusterServiceVersion in %s: %v", namespace, err)
+		return err
+	}
+
+	if len(operatorCSVList.Items) == 0 {
+		klog.Warningf("No ClusterServiceVersion found for %s in %s", packageName, namespace)
+		return nil
+	}
+
+	// Edit the operator CSV to change the replicas
+	for _, operatorCSV := range operatorCSVList.Items {
+		operatorCSV.Spec.InstallStrategy.StrategySpec.DeploymentSpecs[0].Spec.Replicas = &replicas
+		if err := c.Update(context.Background(), &operatorCSV); err != nil {
+			klog.Errorf("Failed to ClusterServiceVersion %s/%s: %v", operatorCSV.Namespace, operatorCSV.Name, err)
+			return err
+		}
+		deploymentName := operatorCSV.Spec.InstallStrategy.StrategySpec.DeploymentSpecs[0].Name
+		if err := ScaleDeployment(c, deploymentName, namespace, replicas); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }

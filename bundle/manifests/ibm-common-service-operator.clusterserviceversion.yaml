@@ -22,7 +22,7 @@ metadata:
       ]
     capabilities: Seamless Upgrades
     containerImage: icr.io/cpopen/common-service-operator:latest
-    createdAt: "2023-10-30T22:11:31Z"
+    createdAt: "2023-12-03T05:54:52Z"
     description: The IBM Common Service Operator is used to deploy IBM Common Services
     nss.operator.ibm.com/managed-operators: cloud-native-postgresql,ibm-bts-operator
     olm.skipRange: ">=3.3.0 <3.23.11"
@@ -214,6 +214,19 @@ spec:
                 - update
                 - watch
             - apiGroups:
+                - admissionregistration.k8s.io
+              resources:
+                - mutatingwebhookconfigurations
+                - validatingwebhookconfigurations
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
+            - apiGroups:
                 - apiextensions.ibm.crossplane.io
               resources:
                 - compositeresourcedefinitions
@@ -237,7 +250,12 @@ spec:
                 - deployments
               verbs:
                 - create
+                - delete
                 - get
+                - list
+                - patch
+                - update
+                - watch
             - apiGroups:
                 - apps
               resourceNames:
@@ -282,6 +300,15 @@ spec:
             - apiGroups:
                 - operator.ibm.com
               resources:
+                - certmanagers
+              verbs:
+                - delete
+                - get
+                - list
+                - watch
+            - apiGroups:
+                - operator.ibm.com
+              resources:
                 - commonservices
                 - commonservices/finalizers
                 - commonservices/status
@@ -291,6 +318,15 @@ spec:
                 - list
                 - patch
                 - update
+                - watch
+            - apiGroups:
+                - operator.ibm.com
+              resources:
+                - ibmlicensings
+              verbs:
+                - delete
+                - get
+                - list
                 - watch
             - apiGroups:
                 - operator.ibm.com
@@ -536,6 +572,16 @@ spec:
               verbs:
                 - create
                 - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
+            - apiGroups:
+                - operators.coreos.com
+              resources:
+                - clusterServiceVersions
+              verbs:
                 - get
                 - list
                 - patch
