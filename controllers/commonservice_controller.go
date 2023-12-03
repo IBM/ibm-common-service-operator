@@ -71,7 +71,7 @@ var ctx = context.Background()
 //+kubebuilder:rbac:groups="",resources=configmaps,resourceNames=common-service-maps;ibm-common-services-status;odlm-scope;namespace-scope,verbs=update;delete
 //+kubebuilder:rbac:groups="",resources=configmaps,verbs=create;get;list;watch
 //+kubebuilder:rbac:groups="",resources=serviceaccounts;events,verbs=create;get;update;patch
-//+kubebuilder:rbac:groups=apps,resources=deployments,verbs=create;get
+//+kubebuilder:rbac:groups=apps,resources=deployments,verbs=create;get;create;get;list;watch;update;patch;delete
 //+kubebuilder:rbac:groups=apps,resources=deployments,resourceNames=ibm-common-service-webhook;secretshare,verbs=update
 //+kubebuilder:rbac:groups=pkg.ibm.crossplane.io,resources=locks;configurations,verbs=create;get;list;watch;update;patch;delete
 //+kubebuilder:rbac:groups=kubernetes.crossplane.io;ibmcloud.crossplane.io,resources=providerconfigs,verbs=create;get;list;watch;update;patch;delete
@@ -81,6 +81,9 @@ var ctx = context.Background()
 //+kubebuilder:rbac:groups=storage.k8s.io,resources=storageclasses,verbs=create;get;list;watch
 //+kubebuilder:rbac:groups=operator.ibm.com,resources=meteringreportservers,verbs=get;delete
 //+kubebuilder:rbac:groups=config.openshift.io,resources=infrastructures,verbs=get
+//+kubebuilder:rbac:groups=admissionregistration.k8s.io,resources=mutatingwebhookconfigurations;validatingwebhookconfigurations,verbs=create;get;list;watch;update;patch;delete
+//+kubebuilder:rbac:groups=operator.ibm.com,resources=ibmlicensings,verbs=get;list;watch;delete
+//+kubebuilder:rbac:groups=operator.ibm.com,resources=certmanagers,verbs=get;list;watch;delete
 
 //+kubebuilder:rbac:groups=operator.ibm.com,namespace="placeholder",resources=commonservices,verbs=create
 //+kubebuilder:rbac:groups=operator.ibm.com,namespace="placeholder",resources=operandregistries;operandconfigs,verbs=create;get;list;watch;update;patch;delete
@@ -89,6 +92,7 @@ var ctx = context.Background()
 //+kubebuilder:rbac:groups=monitoring.operator.ibm.com,namespace="placeholder",resources=exporters;prometheusexts,verbs=delete
 //+kubebuilder:rbac:groups=cert-manager.io,namespace="placeholder",resources=certificates;issuers,verbs=create;get;list;watch;update;patch;delete
 //+kubebuilder:rbac:groups=batch,namespace="placeholder",resources=jobs,verbs=create;get;list;watch
+//+kubebuilder:rbac:groups=operators.coreos.com,namespace="placeholder",resources=clusterServiceVersions,verbs=get;list;patch;update;watch
 
 func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 

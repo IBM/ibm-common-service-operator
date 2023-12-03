@@ -951,7 +951,7 @@ func (b *Bootstrap) DeleteFromYaml(objectTemplate string, data interface{}) erro
 func (b *Bootstrap) GetSubscription(ctx context.Context, name, namespace string) (*unstructured.Unstructured, error) {
 	klog.Infof("Fetch Subscription: %v/%v", namespace, name)
 	sub := &unstructured.Unstructured{}
-	sub.SetGroupVersionKind(olmv1alpha1.SchemeGroupVersion.WithKind("subscription"))
+	sub.SetGroupVersionKind(olmv1alpha1.SchemeGroupVersion.WithKind("Subscription"))
 	subKey := types.NamespacedName{
 		Name:      name,
 		Namespace: namespace,
@@ -1852,7 +1852,7 @@ func (b *Bootstrap) Cleanup(operatorNs string, resource *Resource) error {
 		}
 		return err
 	}
-	klog.Infof("Deleting resource %s/%s", operatorNs, resource.Name)
+	klog.Infof("Deleting %s resource %s/%s", resource.Kind, operatorNs, resource.Name)
 	return nil
 }
 
@@ -1866,17 +1866,44 @@ func (b *Bootstrap) IsolateODLM(excludedNsList []string) error {
 	if odlmSub.Object["spec"].(map[string]interface{})["config"] != nil {
 		if odlmSub.Object["spec"].(map[string]interface{})["config"].(map[string]interface{})["env"] != nil {
 			env := odlmSub.Object["spec"].(map[string]interface{})["config"].(map[string]interface{})["env"].([]interface{})
-			for _, e := range env {
+			// Update ISOLATED_MODE, if it doesn't exist, add it
+			// Update PARTIAL_WATCH_NAMESPACE, if it doesn't exist, add it
+			updatedIsolated := false
+			updatedPartialNs := false
+			for i, e := range env {
 				if e.(map[string]interface{})["name"] == "ISOLATED_MODE" {
-					e.(map[string]interface{})["value"] = "true"
+					env[i].(map[string]interface{})["value"] = "true"
+					updatedIsolated = true
 				}
 				if e.(map[string]interface{})["name"] == "PARTIAL_WATCH_NAMESPACE" {
-					if e.(map[string]interface{})["value"] == nil {
-						e.(map[string]interface{})["value"] = ""
+					if env[i].(map[string]interface{})["value"] == nil {
+						env[i].(map[string]interface{})["value"] = ""
 					}
-					e.(map[string]interface{})["value"] = e.(map[string]interface{})["value"].(string) + "," + strings.Join(excludedNsList, ",")
+					// check if the excludedNsList is already in PARTIAL_WATCH_NAMESPACE
+					// if it is, skip
+					// if it isn't, add it
+					partialNsList := strings.Split(env[i].(map[string]interface{})["value"].(string), ",")
+					for _, ns := range excludedNsList {
+						if !util.Contains(partialNsList, ns) {
+							env[i].(map[string]interface{})["value"] = e.(map[string]interface{})["value"].(string) + "," + ns
+						}
+					}
+					updatedPartialNs = true
 				}
 			}
+			if !updatedIsolated {
+				env = append(env, map[string]interface{}{
+					"name":  "ISOLATED_MODE",
+					"value": "true",
+				})
+			}
+			if !updatedPartialNs {
+				env = append(env, map[string]interface{}{
+					"name":  "PARTIAL_WATCH_NAMESPACE",
+					"value": strings.Join(excludedNsList, ","),
+				})
+			}
+			odlmSub.Object["spec"].(map[string]interface{})["config"].(map[string]interface{})["env"] = env
 		} else {
 			odlmSub.Object["spec"].(map[string]interface{})["config"].(map[string]interface{})["env"] = []interface{}{
 				map[string]interface{}{
