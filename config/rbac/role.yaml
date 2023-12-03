@@ -48,6 +48,19 @@ rules:
   - update
   - watch
 - apiGroups:
+  - admissionregistration.k8s.io
+  resources:
+  - mutatingwebhookconfigurations
+  - validatingwebhookconfigurations
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
   - apiextensions.ibm.crossplane.io
   resources:
   - compositeresourcedefinitions
@@ -71,7 +84,12 @@ rules:
   - deployments
   verbs:
   - create
+  - delete
   - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - apps
   resourceNames:
@@ -116,6 +134,15 @@ rules:
 - apiGroups:
   - operator.ibm.com
   resources:
+  - certmanagers
+  verbs:
+  - delete
+  - get
+  - list
+  - watch
+- apiGroups:
+  - operator.ibm.com
+  resources:
   - commonservices
   - commonservices/finalizers
   - commonservices/status
@@ -125,6 +152,15 @@ rules:
   - list
   - patch
   - update
+  - watch
+- apiGroups:
+  - operator.ibm.com
+  resources:
+  - ibmlicensings
+  verbs:
+  - delete
+  - get
+  - list
   - watch
 - apiGroups:
   - operator.ibm.com
@@ -292,6 +328,16 @@ rules:
   verbs:
   - create
   - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - operators.coreos.com
+  resources:
+  - clusterServiceVersions
+  verbs:
   - get
   - list
   - patch
