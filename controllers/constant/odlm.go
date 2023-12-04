@@ -486,6 +486,26 @@ spec:
                 kind: Issuer
                 name: cs-ca-issuer
             secretName: cs-keycloak-tls-secret
+      - apiVersion: v1
+        kind: ConfigMap
+        name: cs-keycloak-entrypoint
+        data:
+          data:
+            cs-keycloak-entrypoint.sh: |
+              #!/usr/bin/env bash
+              CA_DIR=/mnt/trust-ca
+              TRUSTSTORE_DIR=/mnt/truststore
+              echo "Building the truststore file..."
+              cp /etc/pki/java/cacerts ${TRUSTSTORE_DIR}/keycloak-truststore.jks
+              chmod +w ${TRUSTSTORE_DIR}/keycloak-truststore.jks
+              echo "Importing default service account certificates ..."
+              keytool -importcert -file /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -keystore ${TRUSTSTORE_DIR}/keycloak-truststore.jks -storepass changeit -alias serviceaccount-ca-crt -noprompt
+              for cert in $(ls ${CA_DIR}); do
+                  echo "Importing ${cert} into the truststore file..."
+                  keytool -importcert -file ${CA_DIR}/${cert} -keystore ${TRUSTSTORE_DIR}/keycloak-truststore.jks -storepass changeit -alias ${cert} -noprompt
+              done
+              echo "Truststore file built, starting Keycloak ..."
+              "/opt/keycloak/bin/kc.sh" "$@" --spi-truststore-file-file=${TRUSTSTORE_DIR}/keycloak-truststore.jks --spi-truststore-file-password=changeit --spi-truststore-file-hostname-verification-policy=WILDCARD
       - apiVersion: route.openshift.io/v1
         data:
           spec:
@@ -556,13 +576,34 @@ spec:
               podTemplate:
                 spec:
                   containers:
-                    - resources:
+                    - command:
+                        - /bin/sh
+                        - /mnt/startup/cs-keycloak-entrypoint.sh
+                      resources:
                         limits:
                           cpu: 1000m
                           memory: 1Gi
                         requests:
                           cpu: 1000m
                           memory: 1Gi
+                      volumeMounts:
+                        - mountPath: /mnt/truststore
+                          name: truststore-volume
+                        - mountPath: /mnt/startup
+                          name: startup-volume
+                        - mountPath: /mnt/trust-ca
+                          name: trust-ca-volume
+                  volumes:
+                    - name: truststore-volume
+                      emptyDir:
+                        sizeLimit: 2Mi
+                    - name: startup-volume
+                      configMap:
+                        name: cs-keycloak-entrypoint                      
+                    - name: trust-ca-volume
+                      configMap:
+                        name: cs-keycloak-ca-certs
+                        optional: true
         force: true
         kind: Keycloak
         name: cs-keycloak
