@@ -69,7 +69,7 @@ var ctx = context.Background()
 //+kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=create;get;update
 //+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;roles;clusterrolebindings;rolebindings,verbs=create;get;list;watch;update;delete;escalate;bind
 //+kubebuilder:rbac:groups="",resources=configmaps,resourceNames=common-service-maps;ibm-common-services-status;odlm-scope;namespace-scope,verbs=update;delete
-//+kubebuilder:rbac:groups="",resources=configmaps,verbs=create;get;list;watch
+//+kubebuilder:rbac:groups="",resources=configmaps,verbs=create;get;list;watch;update
 //+kubebuilder:rbac:groups="",resources=serviceaccounts;events,verbs=create;get;update;patch
 //+kubebuilder:rbac:groups=apps,resources=deployments,verbs=create;get;list;watch;update;patch;delete
 //+kubebuilder:rbac:groups=apps,resources=deployments,resourceNames=ibm-common-service-webhook;secretshare,verbs=update
@@ -82,7 +82,7 @@ var ctx = context.Background()
 //+kubebuilder:rbac:groups=operator.ibm.com,resources=meteringreportservers,verbs=get;delete
 //+kubebuilder:rbac:groups=config.openshift.io,resources=infrastructures,verbs=get
 //+kubebuilder:rbac:groups=admissionregistration.k8s.io,resources=mutatingwebhookconfigurations;validatingwebhookconfigurations,verbs=create;get;list;watch;update;patch;delete
-//+kubebuilder:rbac:groups=operator.ibm.com,resources=ibmlicensings,verbs=get;list;watch;delete
+//+kubebuilder:rbac:groups=operator.ibm.com,resources=ibmlicensings,verbs=get;list;watch;delete;create;update;patch
 //+kubebuilder:rbac:groups=operator.ibm.com,resources=certmanagers,verbs=get;list;watch;delete
 
 //+kubebuilder:rbac:groups=operator.ibm.com,namespace="placeholder",resources=commonservices,verbs=create

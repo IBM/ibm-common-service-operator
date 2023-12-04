@@ -191,6 +191,10 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, nil
 	}
 	r.Bootstrap.CSData.ControlNs = util.GetControlNs(r.Reader)
+	if err := r.Bootstrap.CreateNamespace(r.Bootstrap.CSData.ControlNs); err != nil {
+		klog.Errorf("Failed to create control namespace: %v", err)
+		return ctrl.Result{}, err
+	}
 
 	// Get all namespaces which are not part of existing tenant scope from ConfigMap
 	excludedScope, err := util.GetExcludedScope(cm, r.Bootstrap.CSData.MasterNs)
@@ -320,7 +324,7 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 	LicensingDeploy = &appsv1.Deployment{}
 	if err := r.Client.Get(context.TODO(), types.NamespacedName{
 		Name:      constant.LicensingSub,
-		Namespace: r.Bootstrap.CSData.MasterNs,
+		Namespace: r.Bootstrap.CSData.ControlNs,
 	}, LicensingDeploy); err != nil {
 		if errors.IsNotFound(err) {
 			klog.Infof("%s deployment is not found in %s", constant.LicensingSub, r.Bootstrap.CSData.MasterNs)
