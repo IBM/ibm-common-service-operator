@@ -14,6 +14,7 @@ rules:
   - create
   - get
   - list
+  - update
   - watch
 - apiGroups:
   - ""
@@ -158,9 +159,12 @@ rules:
   resources:
   - ibmlicensings
   verbs:
+  - create
   - delete
   - get
   - list
+  - patch
+  - update
   - watch
 - apiGroups:
   - operator.ibm.com

@@ -69,9 +69,9 @@ var ctx = context.Background()
 //+kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=create;get;update
 //+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;roles;clusterrolebindings;rolebindings,verbs=create;get;list;watch;update;delete;escalate;bind
 //+kubebuilder:rbac:groups="",resources=configmaps,resourceNames=common-service-maps;ibm-common-services-status;odlm-scope;namespace-scope,verbs=update;delete
-//+kubebuilder:rbac:groups="",resources=configmaps,verbs=create;get;list;watch
+//+kubebuilder:rbac:groups="",resources=configmaps,verbs=create;get;list;watch;update
 //+kubebuilder:rbac:groups="",resources=serviceaccounts;events,verbs=create;get;update;patch
-//+kubebuilder:rbac:groups=apps,resources=deployments,verbs=create;get;create;get;list;watch;update;patch;delete
+//+kubebuilder:rbac:groups=apps,resources=deployments,verbs=create;get;list;watch;update;patch;delete
 //+kubebuilder:rbac:groups=apps,resources=deployments,resourceNames=ibm-common-service-webhook;secretshare,verbs=update
 //+kubebuilder:rbac:groups=pkg.ibm.crossplane.io,resources=locks;configurations,verbs=create;get;list;watch;update;patch;delete
 //+kubebuilder:rbac:groups=kubernetes.crossplane.io;ibmcloud.crossplane.io,resources=providerconfigs,verbs=create;get;list;watch;update;patch;delete
@@ -82,7 +82,7 @@ var ctx = context.Background()
 //+kubebuilder:rbac:groups=operator.ibm.com,resources=meteringreportservers,verbs=get;delete
 //+kubebuilder:rbac:groups=config.openshift.io,resources=infrastructures,verbs=get
 //+kubebuilder:rbac:groups=admissionregistration.k8s.io,resources=mutatingwebhookconfigurations;validatingwebhookconfigurations,verbs=create;get;list;watch;update;patch;delete
-//+kubebuilder:rbac:groups=operator.ibm.com,resources=ibmlicensings,verbs=get;list;watch;delete
+//+kubebuilder:rbac:groups=operator.ibm.com,resources=ibmlicensings,verbs=get;list;watch;delete;create;update;patch
 //+kubebuilder:rbac:groups=operator.ibm.com,resources=certmanagers,verbs=get;list;watch;delete
 
 //+kubebuilder:rbac:groups=operator.ibm.com,namespace="placeholder",resources=commonservices,verbs=create
@@ -230,7 +230,7 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 
 	// Create Event if there is no update in OperandConfig after applying current CR
 	if isEqual {
-		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.MasterNs, "common-service", instance.Namespace, instance.Name))
+		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.MasterNs, constant.MasterCR, instance.Namespace, instance.Name))
 	}
 
 	if err := r.updatePhase(ctx, instance, CRSucceeded); err != nil {
@@ -259,7 +259,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(ctx context.Context, instan
 
 	opcon := util.NewUnstructured("operator.ibm.com", "OperandConfig", "v1alpha1")
 	opconKey := types.NamespacedName{
-		Name:      "common-service",
+		Name:      constant.MasterCR,
 		Namespace: r.Bootstrap.CSData.MasterNs,
 	}
 	if err := r.Reader.Get(ctx, opconKey, opcon); err != nil {
@@ -318,7 +318,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(ctx context.Context, instan
 
 	// Create Event if there is no update in OperandConfig after applying current CR
 	if isEqual {
-		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.MasterNs, "common-service", instance.Namespace, instance.Name))
+		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.MasterNs, constant.MasterCR, instance.Namespace, instance.Name))
 	}
 
 	if err := r.updatePhase(ctx, instance, CRSucceeded); err != nil {
@@ -336,7 +336,7 @@ func (r *CommonServiceReconciler) certSubToCsRequest() handler.MapFunc {
 		certSubName := object.GetName()
 		certSubNs := object.GetNamespace()
 		if certSubName == constant.CertManagerSub && certSubNs == r.Bootstrap.CSData.ControlNs {
-			CsInstance = append(CsInstance, reconcile.Request{NamespacedName: types.NamespacedName{Name: "common-service", Namespace: r.Bootstrap.CSData.MasterNs}})
+			CsInstance = append(CsInstance, reconcile.Request{NamespacedName: types.NamespacedName{Name: constant.MasterCR, Namespace: r.Bootstrap.CSData.MasterNs}})
 		}
 		return CsInstance
 	}
