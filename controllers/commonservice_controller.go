@@ -71,7 +71,7 @@ var ctx = context.Background()
 //+kubebuilder:rbac:groups="",resources=configmaps,resourceNames=common-service-maps;ibm-common-services-status;odlm-scope;namespace-scope,verbs=update;delete
 //+kubebuilder:rbac:groups="",resources=configmaps,verbs=create;get;list;watch
 //+kubebuilder:rbac:groups="",resources=serviceaccounts;events,verbs=create;get;update;patch
-//+kubebuilder:rbac:groups=apps,resources=deployments,verbs=create;get;create;get;list;watch;update;patch;delete
+//+kubebuilder:rbac:groups=apps,resources=deployments,verbs=create;get;list;watch;update;patch;delete
 //+kubebuilder:rbac:groups=apps,resources=deployments,resourceNames=ibm-common-service-webhook;secretshare,verbs=update
 //+kubebuilder:rbac:groups=pkg.ibm.crossplane.io,resources=locks;configurations,verbs=create;get;list;watch;update;patch;delete
 //+kubebuilder:rbac:groups=kubernetes.crossplane.io;ibmcloud.crossplane.io,resources=providerconfigs,verbs=create;get;list;watch;update;patch;delete
@@ -230,7 +230,7 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 
 	// Create Event if there is no update in OperandConfig after applying current CR
 	if isEqual {
-		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.MasterNs, "common-service", instance.Namespace, instance.Name))
+		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.MasterNs, constant.MasterCR, instance.Namespace, instance.Name))
 	}
 
 	if err := r.updatePhase(ctx, instance, CRSucceeded); err != nil {
@@ -259,7 +259,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(ctx context.Context, instan
 
 	opcon := util.NewUnstructured("operator.ibm.com", "OperandConfig", "v1alpha1")
 	opconKey := types.NamespacedName{
-		Name:      "common-service",
+		Name:      constant.MasterCR,
 		Namespace: r.Bootstrap.CSData.MasterNs,
 	}
 	if err := r.Reader.Get(ctx, opconKey, opcon); err != nil {
@@ -318,7 +318,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(ctx context.Context, instan
 
 	// Create Event if there is no update in OperandConfig after applying current CR
 	if isEqual {
-		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.MasterNs, "common-service", instance.Namespace, instance.Name))
+		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.MasterNs, constant.MasterCR, instance.Namespace, instance.Name))
 	}
 
 	if err := r.updatePhase(ctx, instance, CRSucceeded); err != nil {
@@ -336,7 +336,7 @@ func (r *CommonServiceReconciler) certSubToCsRequest() handler.MapFunc {
 		certSubName := object.GetName()
 		certSubNs := object.GetNamespace()
 		if certSubName == constant.CertManagerSub && certSubNs == r.Bootstrap.CSData.ControlNs {
-			CsInstance = append(CsInstance, reconcile.Request{NamespacedName: types.NamespacedName{Name: "common-service", Namespace: r.Bootstrap.CSData.MasterNs}})
+			CsInstance = append(CsInstance, reconcile.Request{NamespacedName: types.NamespacedName{Name: constant.MasterCR, Namespace: r.Bootstrap.CSData.MasterNs}})
 		}
 		return CsInstance
 	}

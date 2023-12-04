@@ -30,6 +30,8 @@ const (
 	// UseExistingCluster is the constant for env variable USE_EXISTING_CLUSTER
 	// it used to control unit test run into existing cluster or kubebuilder
 	UseExistingCluster = "USE_EXISTING_CLUSTER"
+	// CS master CR name
+	MasterCR = "common-service"
 	// CS main namespace
 	MasterNamespace = "ibm-common-services"
 	// Cluster Operator namespace
@@ -80,6 +82,8 @@ const (
 	CSCACertificate = "cs-ca-certificate"
 	// CertManagerSub is the name of ibm-cert-manager-operator subscription
 	CertManagerSub = "ibm-cert-manager-operator"
+	// LicensingSub is the name of ibm-licensing-operator subscription
+	LicensingSub = "ibm-licensing-operator"
 )
 
 // CsOg is OperatorGroup constent for the common service operator
