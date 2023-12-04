@@ -29,6 +29,7 @@ import (
 
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
+	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 )
 
 const (
@@ -182,7 +183,7 @@ var deprecatedServicesMap = map[string][]*bootstrap.Resource{
 // CleanUpDeprecatedServices will clean up deprecated services' CRD, operandBindInfo, operandRequest, subscription, CSV
 func CleanUpDeprecatedServices(bs *bootstrap.Bootstrap) {
 	for {
-		opreg := bs.GetOperandRegistry(ctx, "common-service", bs.CSData.MasterNs)
+		opreg := bs.GetOperandRegistry(ctx, constant.MasterCR, bs.CSData.MasterNs)
 		if opreg != nil {
 			if opreg.GetAnnotations() != nil && opreg.GetAnnotations()["version"] == bs.CSData.Version {
 				for service, resourcesList := range deprecatedServicesMap {
@@ -202,7 +203,7 @@ func CleanUpDeprecatedServices(bs *bootstrap.Bootstrap) {
 
 					// delete sub & csv
 					if !getResourceFailed {
-						if err := DeleteSubscription(bs, service, MasterNamespace); err != nil {
+						if err := DeleteOperator(bs, service, MasterNamespace); err != nil {
 							klog.Errorf("Delete subscription failed: %v", err)
 							continue
 						}
@@ -216,7 +217,7 @@ func CleanUpDeprecatedServices(bs *bootstrap.Bootstrap) {
 	}
 }
 
-func DeleteSubscription(bs *bootstrap.Bootstrap, name, namespace string) error {
+func DeleteOperator(bs *bootstrap.Bootstrap, name, namespace string) error {
 	key := types.NamespacedName{Name: name, Namespace: namespace}
 	sub := &olmv1alpha1.Subscription{}
 	if err := bs.Reader.Get(context.TODO(), key, sub); err != nil {

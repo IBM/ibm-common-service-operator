@@ -29,13 +29,15 @@ import (
 
 	utilyaml "github.com/ghodss/yaml"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/runtime/serializer/json"
+	utiljson "k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/runtime/serializer/streaming"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/apimachinery/pkg/types"
@@ -120,7 +122,7 @@ func YamlToObjects(yamlContent []byte) ([]*unstructured.Unstructured, error) {
 
 	yamlDecoder := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
 
-	reader := json.YAMLFramer.NewFrameReader(io.NopCloser(bytes.NewReader(yamlContent)))
+	reader := utiljson.YAMLFramer.NewFrameReader(io.NopCloser(bytes.NewReader(yamlContent)))
 	decoder := streaming.NewDecoder(reader, yamlDecoder)
 	for {
 		obj, _, err := decoder.Decode(nil, nil)
@@ -829,6 +831,32 @@ func UpdateCsMaps(cm *corev1.ConfigMap, requestNsList []string, masterNS string)
 	return nil
 }
 
+// GetMaintenanceMode gets maintenance mode for CommonService CR
+func GetMaintenanceMode(c client.Client, csCR string, masterNs string) (bool, error) {
+	// Fetch CommonService CR
+	instance := &apiv3.CommonService{}
+	if err := c.Get(context.TODO(), types.NamespacedName{
+		Name:      csCR,
+		Namespace: masterNs,
+	}, instance); err != nil && !errors.IsNotFound(err) {
+		klog.Errorf("Failed to get CommonService CR %s in %s: %v", csCR, masterNs, err)
+		return false, err
+	} else if errors.IsNotFound(err) {
+		klog.Infof("CommonService CR %s is not found in %s", csCR, masterNs)
+		return false, nil
+	} else {
+		// Get annotation: commonservices.operator.ibm.com/self-pause
+		if instance.ObjectMeta.Annotations != nil {
+			if value, ok := instance.ObjectMeta.Annotations["commonservices.operator.ibm.com/self-pause"]; ok {
+				if value == "true" {
+					return true, nil
+				}
+			}
+		}
+	}
+	return false, nil
+}
+
 // EnableMaintenanceMode enables maintenance mode for CommonService CR
 func EnableMaintenanceMode(c client.Client, csCR string, masterNs string) error {
 	// Fetch CommonService CR
@@ -962,4 +990,130 @@ func TurnOffRouteChangeInMgmtIngress(c client.Client, csCR string, masterNs stri
 		return err
 	}
 	return nil
+}
+
+// ScaleDeployment scales the deployment
+func ScaleDeployment(c client.Client, deploymentName string, namespace string, replicas int32) error {
+	deployment := &appsv1.Deployment{}
+	if err := c.Get(context.TODO(), types.NamespacedName{
+		Name:      deploymentName,
+		Namespace: namespace,
+	}, deployment); err != nil {
+		klog.Errorf("Failed to get Deployment %s in %s: %v", deploymentName, namespace, err)
+		return err
+	}
+
+	deployment.Spec.Replicas = &replicas
+
+	if err := c.Update(context.Background(), deployment); err != nil {
+		klog.Errorf("Failed to update Deployment %s/%s: %v", namespace, deploymentName, err)
+		return err
+	}
+	return nil
+}
+
+func ScaleOperator(r client.Reader, c client.Client, packageName string, namespace string, replicas int32) error {
+	// list CSV in namespace namespace
+	operatorCSVList := &olmv1alpha1.ClusterServiceVersionList{}
+	if err := r.List(context.TODO(), operatorCSVList, &client.ListOptions{
+		Namespace: namespace,
+		LabelSelector: labels.SelectorFromSet(map[string]string{
+			fmt.Sprintf("operators.coreos.com/%s.%s", packageName, namespace): "",
+		}),
+	}); err != nil {
+		klog.Errorf("Failed to list ClusterServiceVersion in %s: %v", namespace, err)
+		return err
+	}
+
+	if len(operatorCSVList.Items) == 0 {
+		klog.Warningf("No ClusterServiceVersion found for %s in %s", packageName, namespace)
+		return nil
+	}
+
+	// Edit the operator CSV to change the replicas
+	for _, operatorCSV := range operatorCSVList.Items {
+		operatorCSV.Spec.InstallStrategy.StrategySpec.DeploymentSpecs[0].Spec.Replicas = &replicas
+		if err := c.Update(context.Background(), &operatorCSV); err != nil {
+			klog.Errorf("Failed to ClusterServiceVersion %s/%s: %v", operatorCSV.Namespace, operatorCSV.Name, err)
+			return err
+		}
+		deploymentName := operatorCSV.Spec.InstallStrategy.StrategySpec.DeploymentSpecs[0].Name
+		if err := ScaleDeployment(c, deploymentName, namespace, replicas); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// migrateConfigMap migrates ConfigMap from one namespace to another
+func MigrateConfigMap(r client.Reader, c client.Client, cmName string, cmNs string, newNs string) error {
+	cm := &corev1.ConfigMap{}
+	if err := r.Get(context.TODO(), types.NamespacedName{
+		Name:      cmName,
+		Namespace: cmNs,
+	}, cm); err != nil {
+		// If the configmap is not found, return nil
+		if errors.IsNotFound(err) {
+			klog.Infof("ConfigMap %s is not found in %s, skip migration", cmName, cmNs)
+			return nil
+		}
+		klog.Errorf("Failed to get ConfigMap %s in %s: %v", cmName, cmNs, err)
+		return err
+	}
+
+	cm.Namespace = newNs
+	cm.ResourceVersion = ""
+
+	klog.Infof("Migrate ConfigMap %s from %s to %s", cmName, cmNs, newNs)
+	if err := c.Create(context.Background(), cm); err != nil {
+		// If the configmap already exists, update it
+		if errors.IsAlreadyExists(err) {
+			if err := c.Update(context.Background(), cm); err != nil {
+				klog.Errorf("Failed to update ConfigMap %s/%s: %v", newNs, cmName, err)
+				return err
+			}
+		} else {
+			klog.Errorf("Failed to create ConfigMap %s/%s: %v", newNs, cmName, err)
+			return err
+		}
+	}
+	return nil
+}
+
+// deleteConfigMap deletes ConfigMap by name and namespace
+func DeleteConfigMap(c client.Client, cmName string, cmNs string) error {
+	cm := &corev1.ConfigMap{}
+	if err := c.Get(context.TODO(), types.NamespacedName{
+		Name:      cmName,
+		Namespace: cmNs,
+	}, cm); err != nil {
+		// If the configmap is not found, return nil
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		klog.Errorf("Failed to get ConfigMap %s in %s: %v", cmName, cmNs, err)
+		return err
+	}
+
+	if err := c.Delete(context.Background(), cm); err != nil {
+		klog.Errorf("Failed to delete ConfigMap %s/%s: %v", cmNs, cmName, err)
+		return err
+	}
+	return nil
+}
+
+// ObjectToYaml converts object to yaml string
+func ObjectToYaml(obj *unstructured.Unstructured) (string, error) {
+	// Convert Object to yaml string
+	objJSONBytes, err := obj.MarshalJSON()
+	if err != nil {
+		return "", err
+	}
+	objYamlBytes, err := utilyaml.JSONToYAML(objJSONBytes)
+	if err != nil {
+		return "", fmt.Errorf("could not convert json to yaml: %v", err)
+	}
+
+	return string(objYamlBytes), nil
 }

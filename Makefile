@@ -21,7 +21,7 @@ CONTROLLER_GEN ?= $(shell which controller-gen)
 KUSTOMIZE ?= $(shell which kustomize)
 YQ_VERSION=v4.17.2
 KUSTOMIZE_VERSION=v3.8.7
-OPERATOR_SDK_VERSION=v1.24.0
+OPERATOR_SDK_VERSION=v1.29.0
 CONTROLLER_TOOLS_VERSION ?= v0.6.1
 
 CSV_PATH=bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
