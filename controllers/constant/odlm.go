@@ -829,7 +829,7 @@ spec:
                     defaultValue: false
                   configMapKeyRef:
                     name: ibm-cpp-config
-                    key: keycloak-edb-maintenance
+                    key: keycloak_edb_maintenance
               reusePVC: true
             storage:
               size: 1Gi
