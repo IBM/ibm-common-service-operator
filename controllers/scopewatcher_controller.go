@@ -154,6 +154,16 @@ var (
 		"ibm-licensing-cloudpaks-metrics-groups",
 		"ibm-licensing-services",
 	}
+
+	licenseservicereporterCR = []*bootstrap.Resource{
+		{
+			Name:    "instance",
+			Version: "v1alpha1",
+			Group:   "operator.ibm.com",
+			Kind:    "IBMLicenseServiceReporter",
+			Scope:   "clusterScope",
+		},
+	}
 )
 
 func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -399,6 +409,15 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 	for _, resource := range cp2Resources {
 		if err := r.Bootstrap.Cleanup(r.Bootstrap.CSData.MasterNs, resource); err != nil {
 			klog.Errorf("Failed to delete %s in %s: %v", resource.Name, r.Bootstrap.CSData.MasterNs, err)
+			return ctrl.Result{}, err
+		}
+	}
+
+	// 8. Isolate License Service Reporter
+	klog.Infof("Migrating License Service Reporter from %s to %s", r.Bootstrap.CSData.MasterNs, r.Bootstrap.CSData.ControlNs)
+	for _, cr := range licenseservicereporterCR {
+		if err := r.Bootstrap.IsolateLSR(r.Bootstrap.CSData.MasterNs, cr); err != nil {
+			klog.Errorf("Failed to isolate License Service Reporter: %v", err)
 			return ctrl.Result{}, err
 		}
 	}
