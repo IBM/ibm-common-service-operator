@@ -808,8 +808,8 @@ spec:
                     key: ibm-postgresql-14-operand-image
                     namespace: {{ .OperatorNs }}
                 configMapKeyRef:
-                    name: edb-keycloak-operand-image
-                    key: ibm-cpp-config
+                    name: ibm-cpp-config
+                    key: edb-keycloak-operand-image
             imagePullSecrets:
               - name: ibm-entitlement-key
             instances: 1
