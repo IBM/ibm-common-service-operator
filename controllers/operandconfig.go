@@ -31,6 +31,7 @@ import (
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
+	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/controllers/rules"
 )
 
@@ -267,7 +268,7 @@ func deepMergeTwoMaps(key string, defaultMap interface{}, changedMap interface{}
 func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newConfigs []interface{}, serviceControllerMapping map[string]string) (bool, error) {
 	opcon := util.NewUnstructured("operator.ibm.com", "OperandConfig", "v1alpha1")
 	opconKey := types.NamespacedName{
-		Name:      "common-service",
+		Name:      constant.MasterCR,
 		Namespace: r.Bootstrap.CSData.MasterNs,
 	}
 	if err := r.Reader.Get(ctx, opconKey, opcon); err != nil {
@@ -448,7 +449,7 @@ func (r *CommonServiceReconciler) getExtremeizes(ctx context.Context, opconServi
 func (r *CommonServiceReconciler) handleDelete(ctx context.Context) error {
 	opcon := util.NewUnstructured("operator.ibm.com", "OperandConfig", "v1alpha1")
 	opconKey := types.NamespacedName{
-		Name:      "common-service",
+		Name:      constant.MasterCR,
 		Namespace: r.Bootstrap.CSData.MasterNs,
 	}
 	if err := r.Reader.Get(ctx, opconKey, opcon); err != nil {

@@ -35,7 +35,7 @@ import (
 func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 	for {
 		instance := &apiv3.CommonService{}
-		if err := bs.Reader.Get(ctx, types.NamespacedName{Name: "common-service", Namespace: MasterNamespace}, instance); err != nil {
+		if err := bs.Reader.Get(ctx, types.NamespacedName{Name: constant.MasterCR, Namespace: MasterNamespace}, instance); err != nil {
 			klog.Warningf("Getting Common-service CR with error: %s", err)
 			time.Sleep(5 * time.Second)
 			continue
@@ -51,7 +51,7 @@ func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 			continue
 		}
 
-		opreg := bs.GetOperandRegistry(ctx, "common-service", bs.CSData.MasterNs)
+		opreg := bs.GetOperandRegistry(ctx, constant.MasterCR, bs.CSData.MasterNs)
 		if opreg == nil {
 			klog.Warning("OperandRegistry common-service is not ready, retry in 5 seconds")
 			time.Sleep(5 * time.Second)

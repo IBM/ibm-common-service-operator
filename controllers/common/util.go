@@ -37,7 +37,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/runtime/serializer/json"
+	utiljson "k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/apimachinery/pkg/runtime/serializer/streaming"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/apimachinery/pkg/types"
@@ -122,7 +122,7 @@ func YamlToObjects(yamlContent []byte) ([]*unstructured.Unstructured, error) {
 
 	yamlDecoder := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
 
-	reader := json.YAMLFramer.NewFrameReader(io.NopCloser(bytes.NewReader(yamlContent)))
+	reader := utiljson.YAMLFramer.NewFrameReader(io.NopCloser(bytes.NewReader(yamlContent)))
 	decoder := streaming.NewDecoder(reader, yamlDecoder)
 	for {
 		obj, _, err := decoder.Decode(nil, nil)
@@ -1044,4 +1044,76 @@ func ScaleOperator(r client.Reader, c client.Client, packageName string, namespa
 	}
 
 	return nil
+}
+
+// migrateConfigMap migrates ConfigMap from one namespace to another
+func MigrateConfigMap(r client.Reader, c client.Client, cmName string, cmNs string, newNs string) error {
+	cm := &corev1.ConfigMap{}
+	if err := r.Get(context.TODO(), types.NamespacedName{
+		Name:      cmName,
+		Namespace: cmNs,
+	}, cm); err != nil {
+		// If the configmap is not found, return nil
+		if errors.IsNotFound(err) {
+			klog.Infof("ConfigMap %s is not found in %s, skip migration", cmName, cmNs)
+			return nil
+		}
+		klog.Errorf("Failed to get ConfigMap %s in %s: %v", cmName, cmNs, err)
+		return err
+	}
+
+	cm.Namespace = newNs
+	cm.ResourceVersion = ""
+
+	klog.Infof("Migrate ConfigMap %s from %s to %s", cmName, cmNs, newNs)
+	if err := c.Create(context.Background(), cm); err != nil {
+		// If the configmap already exists, update it
+		if errors.IsAlreadyExists(err) {
+			if err := c.Update(context.Background(), cm); err != nil {
+				klog.Errorf("Failed to update ConfigMap %s/%s: %v", newNs, cmName, err)
+				return err
+			}
+		} else {
+			klog.Errorf("Failed to create ConfigMap %s/%s: %v", newNs, cmName, err)
+			return err
+		}
+	}
+	return nil
+}
+
+// deleteConfigMap deletes ConfigMap by name and namespace
+func DeleteConfigMap(c client.Client, cmName string, cmNs string) error {
+	cm := &corev1.ConfigMap{}
+	if err := c.Get(context.TODO(), types.NamespacedName{
+		Name:      cmName,
+		Namespace: cmNs,
+	}, cm); err != nil {
+		// If the configmap is not found, return nil
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		klog.Errorf("Failed to get ConfigMap %s in %s: %v", cmName, cmNs, err)
+		return err
+	}
+
+	if err := c.Delete(context.Background(), cm); err != nil {
+		klog.Errorf("Failed to delete ConfigMap %s/%s: %v", cmNs, cmName, err)
+		return err
+	}
+	return nil
+}
+
+// ObjectToYaml converts object to yaml string
+func ObjectToYaml(obj *unstructured.Unstructured) (string, error) {
+	// Convert Object to yaml string
+	objJSONBytes, err := obj.MarshalJSON()
+	if err != nil {
+		return "", err
+	}
+	objYamlBytes, err := utilyaml.JSONToYAML(objJSONBytes)
+	if err != nil {
+		return "", fmt.Errorf("could not convert json to yaml: %v", err)
+	}
+
+	return string(objYamlBytes), nil
 }

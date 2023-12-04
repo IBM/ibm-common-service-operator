@@ -344,7 +344,7 @@ func (b *Bootstrap) DeleteCrossplaneAndProviderSubscription(namespace string) er
 
 			// delete Kubernetes Provider subscription
 			klog.Infof("Trying to delete %s in %s", constant.ICPPKOperator, namespace)
-			if err := b.DeleteSubscription(constant.ICPPKOperator, namespace); err != nil {
+			if err := b.DeleteOperator(constant.ICPPKOperator, namespace); err != nil {
 				klog.Errorf("Failed to delete %s in %s: %v", constant.ICPPKOperator, namespace, err)
 				return err
 			}
@@ -365,7 +365,7 @@ func (b *Bootstrap) DeleteCrossplaneAndProviderSubscription(namespace string) er
 
 			// delete IBM Cloud Provider subscription
 			klog.Infof("Trying to delete %s in %s", constant.ICPPICOperator, namespace)
-			if err := b.DeleteSubscription(constant.ICPPICOperator, namespace); err != nil {
+			if err := b.DeleteOperator(constant.ICPPICOperator, namespace); err != nil {
 				klog.Errorf("Failed to delete %s in %s: %v", constant.ICPPICOperator, namespace, err)
 				return err
 			}
@@ -383,7 +383,7 @@ func (b *Bootstrap) DeleteCrossplaneAndProviderSubscription(namespace string) er
 
 			// delete crossplane operator subscription
 			klog.Infof("Trying to delete %s in %s", constant.ICPOperator, namespace)
-			if err := b.DeleteSubscription(constant.ICPOperator, namespace); err != nil {
+			if err := b.DeleteOperator(constant.ICPOperator, namespace); err != nil {
 				klog.Errorf("Failed to delete %s in %s: %v", constant.ICPOperator, namespace, err)
 				return err
 			}
@@ -442,7 +442,7 @@ func (b *Bootstrap) DeleteCrossplaneProviderSubscription(namespace string) error
 		} else {
 			// delete Kubernetes Provider subscription
 			klog.Infof("Trying to delete %s in %s", constant.ICPPKOperator, namespace)
-			if err := b.DeleteSubscription(constant.ICPPKOperator, namespace); err != nil {
+			if err := b.DeleteOperator(constant.ICPPKOperator, namespace); err != nil {
 				klog.Errorf("Failed to delete %s in %s: %v", constant.ICPPKOperator, namespace, err)
 				return err
 			}
@@ -457,7 +457,7 @@ func (b *Bootstrap) DeleteCrossplaneProviderSubscription(namespace string) error
 		} else {
 			// delete IBM Cloud Provider subscription
 			klog.Infof("Trying to delete %s in %s", constant.ICPPICOperator, namespace)
-			if err := b.DeleteSubscription(constant.ICPPICOperator, namespace); err != nil {
+			if err := b.DeleteOperator(constant.ICPPICOperator, namespace); err != nil {
 				klog.Errorf("Failed to delete %s in %s: %v", constant.ICPPICOperator, namespace, err)
 				return err
 			}
@@ -753,7 +753,7 @@ func (b *Bootstrap) CheckCsSubscription() error {
 	// check all the CS subscrtipions and delete the operator not deployed by ibm-common-service-operator
 	for _, sub := range subs.Items {
 		if sub.GetName() != "ibm-common-service-operator" {
-			if err := b.DeleteSubscription(sub.GetName(), sub.GetNamespace()); err != nil {
+			if err := b.DeleteOperator(sub.GetName(), sub.GetNamespace()); err != nil {
 				return err
 			}
 		}
@@ -764,7 +764,7 @@ func (b *Bootstrap) CheckCsSubscription() error {
 
 func (b *Bootstrap) CreateCsCR() error {
 	cs := util.NewUnstructured("operator.ibm.com", "CommonService", "v3")
-	cs.SetName("common-service")
+	cs.SetName(constant.MasterCR)
 	cs.SetNamespace(b.CSData.MasterNs)
 	_, err := b.GetObject(cs)
 	if errors.IsNotFound(err) { // Only if it's a fresh install or upgrade from 3.4
@@ -1100,12 +1100,12 @@ func (b *Bootstrap) installNssOperator(manualManagement bool) error {
 
 	cm, err := util.GetCmOfMapCs(b.Reader)
 	if err == nil {
-		err := util.UpdateNSList(b.Reader, b.Client, cm, "common-service", b.CSData.MasterNs, false)
+		err := util.UpdateNSList(b.Reader, b.Client, cm, constant.MasterCR, b.CSData.MasterNs, false)
 		if err != nil {
 			return err
 		}
 		if b.MultiInstancesEnable {
-			err := util.UpdateAllNSList(b.Reader, b.Client, cm, "common-service", b.CSData.ControlNs)
+			err := util.UpdateAllNSList(b.Reader, b.Client, cm, constant.MasterCR, b.CSData.ControlNs)
 			if err != nil {
 				return err
 			}
@@ -1177,7 +1177,7 @@ func (b *Bootstrap) installIBMCloudProvider() error {
 func (b *Bootstrap) installODLM(operatorNs string) error {
 	// Delete the previous version ODLM operator
 	klog.Info("Trying to delete ODLM operator in openshift-operators")
-	if err := b.DeleteSubscription("operand-deployment-lifecycle-manager-app", "openshift-operators"); err != nil {
+	if err := b.DeleteOperator("operand-deployment-lifecycle-manager-app", "openshift-operators"); err != nil {
 		klog.Errorf("Failed to delete ODLM operator in openshift-operators: %v", err)
 		return err
 	}
@@ -1218,7 +1218,7 @@ func (b *Bootstrap) createNsSubscription(manualManagement bool) error {
 		subNameToRemove = constant.NsSubName
 	}
 
-	if err := b.DeleteSubscription(subNameToRemove, b.CSData.MasterNs); err != nil {
+	if err := b.DeleteOperator(subNameToRemove, b.CSData.MasterNs); err != nil {
 		return err
 	}
 
@@ -1250,7 +1250,7 @@ func (b *Bootstrap) createNsSubscription(manualManagement bool) error {
 		if isLater {
 			klog.Infof("Namespace Scope operator already exists at a later version in control namespace. Skipping.")
 		} else {
-			if err := b.DeleteSubscription(subNameToRemove, b.CSData.ControlNs); err != nil {
+			if err := b.DeleteOperator(subNameToRemove, b.CSData.ControlNs); err != nil {
 				return err
 			}
 			if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
@@ -1358,44 +1358,6 @@ func (b *Bootstrap) createCrossplaneIBMCloudProviderConfig() error {
 	if err := b.renderTemplate(resourceName, b.CSData, true); err != nil {
 		return err
 	}
-	return nil
-}
-
-func (b *Bootstrap) DeleteSubscription(name, namespace string) error {
-	key := types.NamespacedName{Name: name, Namespace: namespace}
-	sub := &olmv1alpha1.Subscription{}
-	if err := b.Reader.Get(context.TODO(), key, sub); err != nil {
-		if errors.IsNotFound(err) {
-			klog.V(3).Infof("NotFound subscription %s/%s", namespace, name)
-		} else {
-			klog.Errorf("Failed to get subscription %s/%s", namespace, name)
-		}
-		return client.IgnoreNotFound(err)
-	}
-
-	klog.Infof("Deleting subscription %s/%s", namespace, name)
-
-	// Delete csv
-	csvName := sub.Status.InstalledCSV
-	if csvName != "" {
-		csv := &olmv1alpha1.ClusterServiceVersion{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      csvName,
-				Namespace: namespace,
-			},
-		}
-		if err := b.Client.Delete(context.TODO(), csv); err != nil && !errors.IsNotFound(err) {
-			klog.Errorf("Failed to delete Cluster Service Version: %v", err)
-			return err
-		}
-	}
-
-	// Delete subscription
-	if err := b.Client.Delete(context.TODO(), sub); err != nil && !errors.IsNotFound(err) {
-		klog.Errorf("Failed to delete subscription: %s", err)
-		return err
-	}
-
 	return nil
 }
 
@@ -1607,7 +1569,7 @@ func (b *Bootstrap) UpdateCsOpApproval() error {
 func (b *Bootstrap) updateApprovalMode() error {
 	opreg := &odlm.OperandRegistry{}
 	opregKey := types.NamespacedName{
-		Name:      "common-service",
+		Name:      constant.MasterCR,
 		Namespace: b.CSData.MasterNs,
 	}
 
@@ -1934,6 +1896,124 @@ func (b *Bootstrap) IsolateODLM(excludedNsList []string) error {
 	if err := b.Client.Update(ctx, odlmSub); err != nil {
 		klog.Errorf("Failed to update ODLM subscription: %v", err)
 		return err
+	}
+
+	return nil
+}
+
+// BackupCRtoCm backs up arbitrary CR to ConfigMap into a given namespace
+func (b *Bootstrap) BackupCRtoCm(crNs, cmName, cmKey, targetNs string, resource *Resource) error {
+	// check if crd exist
+	dc := discovery.NewDiscoveryClientForConfigOrDie(b.Config)
+	APIGroupVersion := resource.Group + "/" + resource.Version
+	exist, err := b.ResourceExists(dc, APIGroupVersion, resource.Kind)
+	if err != nil {
+		klog.Errorf("Failed to check resource with kind: %s, apiGroupVersion: %s", resource.Kind, APIGroupVersion)
+	}
+	if !exist {
+		return nil
+	}
+
+	backupCr := &unstructured.Unstructured{}
+	backupCr.SetGroupVersionKind(schema.GroupVersionKind{Group: resource.Group, Version: resource.Version, Kind: resource.Kind})
+	if resource.Scope == "namespaceScope" {
+		if err := b.Client.Get(context.TODO(), types.NamespacedName{
+			Name:      resource.Name,
+			Namespace: crNs,
+		}, backupCr); err != nil {
+			if errors.IsNotFound(err) {
+				return nil
+			}
+			return err
+		}
+	} else {
+		if err := b.Client.Get(context.TODO(), types.NamespacedName{
+			Name: resource.Name,
+		}, backupCr); err != nil {
+			if errors.IsNotFound(err) {
+				return nil
+			}
+			return err
+		}
+		crNs = ""
+	}
+
+	backupCr.SetResourceVersion("")
+	objYaml, err := util.ObjectToYaml(backupCr)
+	if err != nil {
+		klog.Errorf("Failed to convert %s object %s to yaml: %v", backupCr.GetKind(), backupCr.GetName(), err)
+		return err
+	}
+
+	cm := &corev1.ConfigMap{}
+	if err := b.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      cmName,
+		Namespace: targetNs,
+	}, cm); err != nil {
+		if errors.IsNotFound(err) {
+			cm = &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      cmName,
+					Namespace: targetNs,
+				},
+				Data: map[string]string{
+					cmKey:  objYaml,
+					"crNs": crNs,
+				},
+			}
+			if err := b.Client.Create(context.TODO(), cm); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	} else {
+		cm.Data[cmKey] = objYaml
+		cm.Data["crNs"] = crNs
+		if err := b.Client.Update(context.Background(), cm); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// RestoreCmtoCR re-create the custom resource stored in ConfigMap
+func (b *Bootstrap) RestoreCmtoCR(cmName, cnNs, objKey string) error {
+	cm := &corev1.ConfigMap{}
+	if err := b.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      cmName,
+		Namespace: cnNs,
+	}, cm); err != nil {
+		// if not found, skip
+		if errors.IsNotFound(err) {
+			klog.Infof("ConfigMap %s/%s not found, skip restoring data from it", cnNs, cmName)
+			return nil
+		}
+		return err
+	}
+
+	objYaml := cm.Data[objKey]
+	crNs := cm.Data["crNs"]
+
+	objects, err := util.YamlToObjects([]byte(objYaml))
+	if err != nil {
+		return err
+	}
+
+	for _, obj := range objects {
+		if crNs != "" {
+			obj.SetNamespace(crNs)
+		}
+		if err := b.Client.Create(context.Background(), obj); err != nil {
+			if errors.IsAlreadyExists(err) {
+				if err := b.Client.Update(context.Background(), obj); err != nil {
+					return err
+				}
+			} else {
+				return err
+			}
+		}
 	}
 
 	return nil
