@@ -822,6 +822,15 @@ spec:
                 memory: 512Mi
             logLevel: info
             primaryUpdateStrategy: unsupervised
+            nodeMaintenanceWindow:
+              inProgress:
+                templatingValueFrom:
+                  default:
+                    defaultValue: false
+                  configMapKeyRef:
+                    name: ibm-cpp-config
+                    key: keycloak-edb-maintenance
+              reusePVC: true
             storage:
               size: 1Gi
             walStorage:
