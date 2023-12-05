@@ -18,22 +18,12 @@ package constant
 
 // still need flink and elastic
 const ServiceLabelTemplate = `
+- name: ibm-iam-operator
+  spec:
+    authentication:
+      labels:
+        placeholder1: placeholder2
 - name: ibm-im-mongodb-operator
-  spec:
-    mongoDB:
-      labels:
-        placeholder1: placeholder2
-- name: ibm-im-mongodb-operator-v4.0
-  spec:
-    mongoDB:
-      labels:
-        placeholder1: placeholder2
-- name: ibm-im-mongodb-operator-v4.1
-  spec:
-    mongoDB:
-      labels:
-        placeholder1: placeholder2
-- name: ibm-im-mongodb-operator-v4.2
   spec:
     mongoDB:
       labels:
@@ -59,11 +49,6 @@ const ServiceLabelTemplate = `
       labels:
         placeholder1: placeholder2
 - name: ibm-im-operator-v4.3
-  spec:
-    authentication:
-      labels:
-        placeholder1: placeholder2
-- name: ibm-im-operator-v4.4
   spec:
     authentication:
       labels:
