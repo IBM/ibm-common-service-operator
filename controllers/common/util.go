@@ -430,8 +430,8 @@ func UpdateAllNSList(r client.Reader, c client.Client, cm *corev1.ConfigMap, nss
 	return nil
 }
 
-// ExcludeNsFromNSS remove a list of namespaces from NamespaceScope CR
-func ExcludeNsFromNSS(r client.Reader, c client.Client, nssName, nssNs string, excludedNsList []string) error {
+// UpdateNsToNSS update a list of namesapces into NamespaceScope CR
+func UpdateNsToNSS(r client.Reader, c client.Client, nssName, nssNs string, updatedNsList []string, excludedNsList []string) error {
 	nsScope := &nssv1.NamespaceScope{}
 	nsScopeKey := types.NamespacedName{Name: nssName, Namespace: nssNs}
 	if err := r.Get(context.TODO(), nsScopeKey, nsScope); err != nil {
@@ -439,23 +439,29 @@ func ExcludeNsFromNSS(r client.Reader, c client.Client, nssName, nssNs string, e
 	}
 	var nsMems []string
 	nsSet := make(map[string]interface{})
-
+	// convert updatedNsList into nsSet
+	for _, ns := range updatedNsList {
+		if !Contains(excludedNsList, ns) {
+			nsSet[ns] = struct{}{}
+		}
+	}
+	// convert excludedNsList into nsSet
 	for _, ns := range nsScope.Spec.NamespaceMembers {
 		if !Contains(excludedNsList, ns) {
 			nsSet[ns] = struct{}{}
 		}
 	}
 
+	// add nsSet back into nsScope.Spec.NamespaceMembers
 	for ns := range nsSet {
 		nsMems = append(nsMems, ns)
 	}
 
 	nsScope.Spec.NamespaceMembers = nsMems
-
-	if err := c.Update(context.TODO(), nsScope); err != nil {
+	// update nsScope
+	if err := c.Update(context.Background(), nsScope); err != nil {
 		return err
 	}
-
 	return nil
 }
 
