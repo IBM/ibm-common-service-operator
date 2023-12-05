@@ -2018,3 +2018,73 @@ func (b *Bootstrap) RestoreCmtoCR(cmName, cnNs, objKey string) error {
 
 	return nil
 }
+
+// IsolateLSR will isolate the LSR instance from the given namespace
+func (b *Bootstrap) IsolateLSR(masterNs string, lsrCR *Resource) error {
+
+	dc := discovery.NewDiscoveryClientForConfigOrDie(b.Config)
+	APIGroupVersion := lsrCR.Group + "/" + lsrCR.Version
+	exist, err := b.ResourceExists(dc, APIGroupVersion, lsrCR.Kind)
+	if err != nil {
+		klog.Errorf("Failed to check resource with kind: %s, apiGroupVersion: %s", lsrCR.Kind, APIGroupVersion)
+	}
+	if !exist {
+		return nil
+	}
+	// get ibmlicenseservicereporter instance
+	lsr := &unstructured.Unstructured{}
+	lsr.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   lsrCR.Group,
+		Version: lsrCR.Version,
+		Kind:    lsrCR.Kind,
+	})
+	if err := b.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      lsrCR.Name,
+		Namespace: b.CSData.MasterNs,
+	}, lsr); err != nil {
+		if errors.IsNotFound(err) {
+			klog.Infof("%s instance is not found in %s", lsrCR.Name, b.CSData.MasterNs)
+			return nil
+		}
+		klog.Errorf("Failed to get %s instance in %s: %v", lsrCR.Name, b.CSData.MasterNs, err)
+		return err
+	}
+	// get pvc name if pvc is "Bound"
+	pvc := &corev1.PersistentVolumeClaim{}
+	if err := b.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      "license-service-reporter-pvc",
+		Namespace: b.CSData.MasterNs,
+	}, pvc); err != nil {
+		klog.Errorf("Failed to get license-service-reporter-pvc in %s: %v", b.CSData.MasterNs, err)
+		return err
+	}
+	if pvc.Status.Phase == corev1.ClaimBound {
+		// get PersistentVolumes
+		pvName := pvc.Spec.VolumeName
+		pv, err := util.GetPV(b.Client, pvName)
+		if err != nil {
+			klog.Errorf("Failed to get pv %s in %s: %v", pvName, b.CSData.MasterNs, err)
+			return err
+		}
+		// add label license-service-reporter-pv=true
+		klog.Infof("Adding label to LSR PV %s in %s", pvName, b.CSData.MasterNs)
+		pvLabels := pv.GetLabels()
+		if pvLabels == nil {
+			pvLabels = make(map[string]string)
+		}
+		pvLabels["license-service-reporter-pv"] = "true"
+		pv.SetLabels(pvLabels)
+		if err := b.Client.Update(context.Background(), pv); err != nil {
+			klog.Errorf("Failed to update pv %s in %s: %v", pvName, b.CSData.MasterNs, err)
+			return err
+		}
+		// change persistentVolumeReclaimPolicy to "Retain" by patching "persistentVolumeReclaimPolicy" : "Retain" in spec section
+		klog.Infof("Changing persistentVolumeReclaimPolicy to 'retain' for LSR PV %s in %s", pvName, b.CSData.MasterNs)
+		pvPatch := []byte(`{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}`)
+		if err := b.Client.Patch(context.Background(), pv, client.RawPatch(types.MergePatchType, pvPatch)); err != nil {
+			klog.Errorf("Failed to patch pv %s in %s: %v", pvName, b.CSData.MasterNs, err)
+			return err
+		}
+	}
+	return nil
+}
