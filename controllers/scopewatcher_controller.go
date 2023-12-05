@@ -343,6 +343,11 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 				klog.Errorf("Failed to restore Licensing CR in %s: %v", r.Bootstrap.CSData.ControlNs, err)
 				return ctrl.Result{}, err
 			}
+			// delete the `ibmlicensing-instance-bak` ConfigMap after restore
+			if err := util.DeleteConfigMap(r.Client, "ibmlicensing-instance-bak", r.Bootstrap.CSData.ControlNs); err != nil {
+				klog.Errorf("Failed to delete ConfigMap ibmlicensing-instance-bak in %s: %v", r.Bootstrap.CSData.ControlNs, err)
+				return ctrl.Result{}, err
+			}
 		} else {
 			klog.Errorf("Failed to get Deployment %s in %s: %v", constant.LicensingSub, r.Bootstrap.CSData.MasterNs, err)
 			return ctrl.Result{}, err
