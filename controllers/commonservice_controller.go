@@ -84,6 +84,8 @@ var ctx = context.Background()
 //+kubebuilder:rbac:groups=admissionregistration.k8s.io,resources=mutatingwebhookconfigurations;validatingwebhookconfigurations,verbs=create;get;list;watch;update;patch;delete
 //+kubebuilder:rbac:groups=operator.ibm.com,resources=ibmlicensings,verbs=get;list;watch;delete;create;update;patch
 //+kubebuilder:rbac:groups=operator.ibm.com,resources=certmanagers,verbs=get;list;watch;delete
+//+kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;update
+//+kubebuilder:rbac:groups="",resources=persistentvolumes,verbs=get;list;watch;update;patch
 
 //+kubebuilder:rbac:groups=operator.ibm.com,namespace="placeholder",resources=commonservices,verbs=create
 //+kubebuilder:rbac:groups=operator.ibm.com,namespace="placeholder",resources=operandregistries;operandconfigs,verbs=create;get;list;watch;update;patch;delete
@@ -93,6 +95,7 @@ var ctx = context.Background()
 //+kubebuilder:rbac:groups=cert-manager.io,namespace="placeholder",resources=certificates;issuers,verbs=create;get;list;watch;update;patch;delete
 //+kubebuilder:rbac:groups=batch,namespace="placeholder",resources=jobs,verbs=create;get;list;watch
 //+kubebuilder:rbac:groups=operators.coreos.com,namespace="placeholder",resources=clusterServiceVersions,verbs=get;list;patch;update;watch
+//+kubebuilder:rbac:groups=operator.ibm.com,namespace="placeholder",resources=ibmlicenseservicereporters,verbs=get;list;watch;delete;create;update;patch
 
 func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 
