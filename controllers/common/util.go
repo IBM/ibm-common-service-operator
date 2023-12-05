@@ -1117,3 +1117,15 @@ func ObjectToYaml(obj *unstructured.Unstructured) (string, error) {
 
 	return string(objYamlBytes), nil
 }
+
+// GetPV Get PersistentVolumes name
+func GetPV(c client.Client, pvName string) (*corev1.PersistentVolume, error) {
+	pv := &corev1.PersistentVolume{}
+	if err := c.Get(context.TODO(), types.NamespacedName{
+		Name: pvName,
+	}, pv); err != nil {
+		klog.Errorf("Failed to get pv %s: %v", pvName, err)
+		return nil, err
+	}
+	return pv, nil
+}

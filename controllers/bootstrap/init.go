@@ -2060,18 +2060,15 @@ func (b *Bootstrap) IsolateLSR(masterNs string, lsrCR *Resource) error {
 		return err
 	}
 	if pvc.Status.Phase == corev1.ClaimBound {
-		// get pvc name
-		pvcName := pvc.Spec.VolumeName
-		// get pv name
-		pv := &corev1.PersistentVolume{}
-		if err := b.Client.Get(context.TODO(), types.NamespacedName{
-			Name: pvcName,
-		}, pv); err != nil {
-			klog.Errorf("Failed to get pv %s in %s: %v", pvcName, b.CSData.MasterNs, err)
+		// get PersistentVolumes
+		pvName := pvc.Spec.VolumeName
+		pv, err := util.GetPV(b.Client, pvName)
+		if err != nil {
+			klog.Errorf("Failed to get pv %s in %s: %v", pvName, b.CSData.MasterNs, err)
 			return err
 		}
-
 		// add label license-service-reporter-pv=true
+		klog.Infof("Adding label to LSR PV %s in %s", pvName, b.CSData.MasterNs)
 		pvLabels := pv.GetLabels()
 		if pvLabels == nil {
 			pvLabels = make(map[string]string)
@@ -2079,13 +2076,14 @@ func (b *Bootstrap) IsolateLSR(masterNs string, lsrCR *Resource) error {
 		pvLabels["license-service-reporter-pv"] = "true"
 		pv.SetLabels(pvLabels)
 		if err := b.Client.Update(context.Background(), pv); err != nil {
-			klog.Errorf("Failed to update pv %s in %s: %v", pvcName, b.CSData.MasterNs, err)
+			klog.Errorf("Failed to update pv %s in %s: %v", pvName, b.CSData.MasterNs, err)
 			return err
 		}
 		// change persistentVolumeReclaimPolicy to "Retain" by patching "persistentVolumeReclaimPolicy" : "Retain" in spec section
+		klog.Infof("Changing persistentVolumeReclaimPolicy to 'retain' for LSR PV %s in %s", pvName, b.CSData.MasterNs)
 		pvPatch := []byte(`{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}`)
 		if err := b.Client.Patch(context.Background(), pv, client.RawPatch(types.MergePatchType, pvPatch)); err != nil {
-			klog.Errorf("Failed to patch pv %s in %s: %v", pvcName, b.CSData.MasterNs, err)
+			klog.Errorf("Failed to patch pv %s in %s: %v", pvName, b.CSData.MasterNs, err)
 			return err
 		}
 	}
