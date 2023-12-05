@@ -495,14 +495,27 @@ spec:
               #!/usr/bin/env bash
               CA_DIR=/mnt/trust-ca
               TRUSTSTORE_DIR=/mnt/truststore
-              echo "Building the truststore file..."
+              echo "Building the truststore file ..."
               cp /etc/pki/java/cacerts ${TRUSTSTORE_DIR}/keycloak-truststore.jks
               chmod +w ${TRUSTSTORE_DIR}/keycloak-truststore.jks
               echo "Importing default service account certificates ..."
-              keytool -importcert -file /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -keystore ${TRUSTSTORE_DIR}/keycloak-truststore.jks -storepass changeit -alias serviceaccount-ca-crt -noprompt
+              index=0
+              while read -r line; do
+                if [ "$line" = "-----BEGIN CERTIFICATE-----" ]; then
+                  echo "$line" > ${TRUSTSTORE_DIR}/temp_cert.pem
+                elif [ "$line" = "-----END CERTIFICATE-----" ]; then
+                  echo "$line" >> ${TRUSTSTORE_DIR}/temp_cert.pem
+                  let "index++"
+                  echo "Importing service account certificate entry number ${index} ..."
+                  keytool -importcert -alias "serviceaccount-ca-crt_$index" -file ${TRUSTSTORE_DIR}/temp_cert.pem -keystore ${TRUSTSTORE_DIR}/keycloak-truststore.jks -storepass changeit -noprompt
+                  rm -f ${TRUSTSTORE_DIR}/temp_cert.pem
+                else
+                  echo "$line" >> ${TRUSTSTORE_DIR}/temp_cert.pem
+                fi
+              done < /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
               for cert in $(ls ${CA_DIR}); do
-                  echo "Importing ${cert} into the truststore file..."
-                  keytool -importcert -file ${CA_DIR}/${cert} -keystore ${TRUSTSTORE_DIR}/keycloak-truststore.jks -storepass changeit -alias ${cert} -noprompt
+                echo "Importing ${cert} into the truststore file ..."
+                keytool -importcert -file ${CA_DIR}/${cert} -keystore ${TRUSTSTORE_DIR}/keycloak-truststore.jks -storepass changeit -alias ${cert} -noprompt
               done
               echo "Truststore file built, starting Keycloak ..."
               "/opt/keycloak/bin/kc.sh" "$@" --spi-truststore-file-file=${TRUSTSTORE_DIR}/keycloak-truststore.jks --spi-truststore-file-password=changeit --spi-truststore-file-hostname-verification-policy=WILDCARD
