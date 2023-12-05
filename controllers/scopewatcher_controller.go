@@ -215,6 +215,8 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 	nsScope := util.GetNssCmNs(r.Client, r.Bootstrap.CSData.MasterNs)
 	// Compare ns_scope and excludedScope and get the to-be-detached namespace
 	excludedNsList := util.FindIntersection(nsScope, excludedScope)
+	// Get the latest tenant scope by removing the to-be-detached namespace from existing scope
+	updatedNsList := util.FindDifference(nsScope, excludedNsList)
 
 	// Only checking ExcludedNsList is not reliable.
 	// If an error happens AFTER we update NamespaceScope CR to remove ExcludedNsList but BEFORE we finish the isolation, then in the second reconciliation here, CS will skip isolation because Excluded Ns List is already empty.
@@ -258,31 +260,34 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 	}
 
 	// Re-construct CP2 tenant scope
-	// Re-construct the NamespaceScope CRs in ibm-common-services namespace.
+	// 1. Re-construct the NamespaceScope CRs in ibm-common-services namespace.
+	klog.Infof("Updating NamespaceScope CRs in %s by adding %v and removing %v", r.Bootstrap.CSData.MasterNs, updatedNsList, excludedNsList)
+	if err := util.UpdateNsToNSS(r.Reader, r.Client, constant.MasterCR, r.Bootstrap.CSData.MasterNs, updatedNsList, excludedNsList); err != nil {
+		klog.Errorf("Failed to update namespaces in NamespaceScope CR %s/%s: %v", r.Bootstrap.CSData.MasterNs, constant.MasterCR, err)
+		return ctrl.Result{}, err
+	}
+
+	klog.Infof("Updating NamespaceScope CRs in nss-odlm-scope by adding %v and removing %v", updatedNsList, excludedNsList)
+	if err := util.UpdateNsToNSS(r.Reader, r.Client, "nss-odlm-scope", r.Bootstrap.CSData.MasterNs, updatedNsList, excludedNsList); err != nil {
+		klog.Errorf("Failed to update namespaces in NamespaceScope CR %s/%s: %v", r.Bootstrap.CSData.MasterNs, "nss-odlm-scope", err)
+		return ctrl.Result{}, err
+	}
+
+	// 2. Delete NamespaceScope CRs managed by ODLM
 	for _, cr := range nssCRs {
 		if err := r.Bootstrap.Cleanup(r.Bootstrap.CSData.MasterNs, cr); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
 
-	klog.Infof("Re-constructing NamespaceScope CRs in %s by removing %v", r.Bootstrap.CSData.MasterNs, excludedNsList)
-	if err := util.ExcludeNsFromNSS(r.Reader, r.Client, constant.MasterCR, r.Bootstrap.CSData.MasterNs, excludedNsList); err != nil {
-		klog.Errorf("Failed to exclude namespaces from NamespaceScope CR %s/%s: %v", r.Bootstrap.CSData.MasterNs, constant.MasterCR, err)
-		return ctrl.Result{}, err
-	}
-
-	if err := util.ExcludeNsFromNSS(r.Reader, r.Client, "nss-odlm-scope", r.Bootstrap.CSData.MasterNs, excludedNsList); err != nil {
-		klog.Errorf("Failed to exclude namespaces from NamespaceScope CR %s/%s: %v", r.Bootstrap.CSData.MasterNs, "nss-odlm-scope", err)
-		return ctrl.Result{}, err
-	}
-
-	// 2. Patch ODLM subscription
+	// 3. Patch ODLM subscription
 	klog.Infof("Isolating ODLM in %s by excluding %v", r.Bootstrap.CSData.MasterNs, excludedNsList)
 	if err := r.Bootstrap.IsolateODLM(excludedNsList); err != nil {
 		klog.Errorf("Failed to isolate ODLM: %v", err)
 		return ctrl.Result{}, err
 	}
 
+	// Migrate datum
 	// 1. Migrate Licensing data
 	klog.Infof("Migrating Licensing data from %s to %s", r.Bootstrap.CSData.MasterNs, r.Bootstrap.CSData.ControlNs)
 	for _, licensingCm := range licensingConfigMaps {
@@ -356,7 +361,7 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 		klog.Infof("%s deployment is found in %s, skipping restore Licensing CR", constant.LicensingSub, r.Bootstrap.CSData.MasterNs)
 	}
 
-	// 6. Migrate Cert-Manager
+	// 5. Migrate Cert-Manager
 	certManagerDeploy := &appsv1.Deployment{}
 	if err := r.Client.Get(context.TODO(), types.NamespacedName{
 		Name:      constant.CertManagerSub,
@@ -384,7 +389,7 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, err
 	}
 
-	// 7. Delete Crossplane, webhook, and secretshare deployment
+	// 6. Delete Crossplane, webhook, and secretshare deployment
 	klog.Infof("Deleting operator %s in %s", constant.ICPPKOperator, r.Bootstrap.CSData.MasterNs)
 	if err := r.Bootstrap.DeleteOperator(constant.ICPPKOperator, r.Bootstrap.CSData.MasterNs); err != nil {
 		klog.Errorf("Failed to delete operator %s in %s: %v", constant.ICPPKOperator, r.Bootstrap.CSData.MasterNs, err)
@@ -403,7 +408,7 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, err
 	}
 
-	// remove webhook and secretshare
+	// 7. Remove webhook and secretshare
 	for _, deployment := range cp2Deployments {
 		if err := r.Bootstrap.Cleanup(r.Bootstrap.CSData.MasterNs, deployment); err != nil {
 			klog.Errorf("Failed to delete %s in %s: %v", deployment.Name, r.Bootstrap.CSData.MasterNs, err)
@@ -419,7 +424,7 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 	}
 
 	// 8. Isolate License Service Reporter
-	klog.Infof("Migrating License Service Reporter from %s to %s", r.Bootstrap.CSData.MasterNs, r.Bootstrap.CSData.ControlNs)
+	klog.Infof("Isolating License Service Reporter")
 	for _, cr := range licenseservicereporterCR {
 		if err := r.Bootstrap.IsolateLSR(r.Bootstrap.CSData.MasterNs, cr); err != nil {
 			klog.Errorf("Failed to isolate License Service Reporter: %v", err)
@@ -439,8 +444,6 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, err
 	}
 
-	// Get the latest tenant scope by removing the to-be-detached namespace from existing scope
-	updatedNsList := util.FindDifference(nsScope, excludedNsList)
 	// Get the existing tenant scope configuration from ConfigMap
 	csScope, err := util.GetCsScope(cm, r.Bootstrap.CSData.MasterNs)
 	if err != nil {
