@@ -333,6 +333,18 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(ctx context.Context, instan
 	return ctrl.Result{}, nil
 }
 
+func (r *CommonServiceReconciler) mappingToCsRequest() handler.MapFunc {
+	return func(object client.Object) []reconcile.Request {
+		CsInstance := []reconcile.Request{}
+		cmName := object.GetName()
+		cmNs := object.GetNamespace()
+		if cmName == constant.CsMapConfigMap && cmNs == "kube-public" {
+			CsInstance = append(CsInstance, reconcile.Request{NamespacedName: types.NamespacedName{Name: "common-service", Namespace: r.Bootstrap.CSData.MasterNs}})
+		}
+		return CsInstance
+	}
+}
+
 func (r *CommonServiceReconciler) certSubToCsRequest() handler.MapFunc {
 	return func(object client.Object) []reconcile.Request {
 		CsInstance := []reconcile.Request{}
@@ -353,6 +365,20 @@ func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				predicate.GenerationChangedPredicate{},
 				predicate.AnnotationChangedPredicate{},
 				predicate.LabelChangedPredicate{}))).
+		Watches(
+			&source.Kind{Type: &corev1.ConfigMap{}},
+			handler.EnqueueRequestsFromMapFunc(r.mappingToCsRequest()),
+			builder.WithPredicates(predicate.Funcs{
+				CreateFunc: func(e event.CreateEvent) bool {
+					return true
+				},
+				DeleteFunc: func(e event.DeleteEvent) bool {
+					return !e.DeleteStateUnknown
+				},
+				UpdateFunc: func(e event.UpdateEvent) bool {
+					return true
+				},
+			})).
 		Watches(
 			&source.Kind{Type: &olmv1alpha1.Subscription{}},
 			handler.EnqueueRequestsFromMapFunc(r.certSubToCsRequest()),
