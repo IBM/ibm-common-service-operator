@@ -101,12 +101,16 @@ func mergeCSCRs(csSummary, csCR, ruleSlice []interface{}, serviceControllerMappi
 	for _, operator := range csCR {
 		summaryCR := getItemByName(csSummary, operator.(map[string]interface{})["name"].(string))
 		rules := getItemByName(ruleSlice, operator.(map[string]interface{})["name"].(string))
-		if summaryCR == nil || summaryCR.(map[string]interface{})["spec"] == nil || summaryCR.(map[string]interface{})["resources"] == nil {
+		if summaryCR == nil {
 			summaryCR = map[string]interface{}{
 				"name":      operator.(map[string]interface{})["name"].(string),
 				"spec":      map[string]interface{}{},
 				"resources": []interface{}{},
 			}
+		} else if summaryCR.(map[string]interface{})["spec"] == nil {
+			summaryCR.(map[string]interface{})["spec"] = map[string]interface{}{}
+		} else if summaryCR.(map[string]interface{})["resources"] == nil {
+			summaryCR.(map[string]interface{})["resources"] = []interface{}{}
 		}
 		serviceController := serviceControllerMappingSummary["profileController"]
 		if controller, ok := serviceControllerMappingSummary[operator.(map[string]interface{})["name"].(string)]; ok {
