@@ -69,7 +69,7 @@ var ctx = context.Background()
 //+kubebuilder:rbac:groups=apiextensions.k8s.io,resources=customresourcedefinitions,verbs=create;get;update
 //+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=clusterroles;roles;clusterrolebindings;rolebindings,verbs=create;get;list;watch;update;delete;escalate;bind
 //+kubebuilder:rbac:groups="",resources=configmaps,resourceNames=common-service-maps;ibm-common-services-status;odlm-scope;namespace-scope,verbs=update;delete
-//+kubebuilder:rbac:groups="",resources=configmaps,verbs=create;get;list;watch;update
+//+kubebuilder:rbac:groups="",resources=configmaps,verbs=create;get;list;watch;update;delete
 //+kubebuilder:rbac:groups="",resources=serviceaccounts;events,verbs=create;get;update;patch
 //+kubebuilder:rbac:groups=apps,resources=deployments,verbs=create;get;list;watch;update;patch;delete
 //+kubebuilder:rbac:groups=apps,resources=deployments,resourceNames=ibm-common-service-webhook;secretshare,verbs=update

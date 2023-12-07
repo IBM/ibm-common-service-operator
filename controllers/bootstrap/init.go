@@ -1940,6 +1940,7 @@ func (b *Bootstrap) BackupCRtoCm(crNs, cmName, cmKey, targetNs string, resource 
 	}
 
 	backupCr.SetResourceVersion("")
+	backupCr.SetUID("")
 	objYaml, err := util.ObjectToYaml(backupCr)
 	if err != nil {
 		klog.Errorf("Failed to convert %s object %s to yaml: %v", backupCr.GetKind(), backupCr.GetName(), err)
@@ -2008,6 +2009,19 @@ func (b *Bootstrap) RestoreCmtoCR(cmName, cnNs, objKey string) error {
 		}
 		if err := b.Client.Create(context.Background(), obj); err != nil {
 			if errors.IsAlreadyExists(err) {
+				// if the instance object already exists, get its resourceVersion and uid and update the object
+				existingObj, err := b.GetObject(obj)
+				if errors.IsNotFound(err) {
+					klog.Errorf("No existing object %s/%s: %v", obj.GetNamespace(), obj.GetName(), err)
+					return err
+				} else if err != nil {
+					klog.Errorf("Failed to get existing object %s/%s: %v", obj.GetNamespace(), obj.GetName(), err)
+					return err
+				}
+
+				obj.SetResourceVersion(existingObj.GetResourceVersion())
+				obj.SetUID(existingObj.GetUID())
+
 				if err := b.Client.Update(context.Background(), obj); err != nil {
 					return err
 				}
@@ -2044,10 +2058,10 @@ func (b *Bootstrap) IsolateLSR(masterNs string, lsrCR *Resource) error {
 		Namespace: b.CSData.MasterNs,
 	}, lsr); err != nil {
 		if errors.IsNotFound(err) {
-			klog.Infof("%s instance is not found in %s", lsrCR.Name, b.CSData.MasterNs)
+			klog.Infof("LSR instance %s is not found in %s", lsrCR.Name, b.CSData.MasterNs)
 			return nil
 		}
-		klog.Errorf("Failed to get %s instance in %s: %v", lsrCR.Name, b.CSData.MasterNs, err)
+		klog.Errorf("Failed to get LSR instance %s in %s: %v", lsrCR.Name, b.CSData.MasterNs, err)
 		return err
 	}
 	// get pvc name if pvc is "Bound"
