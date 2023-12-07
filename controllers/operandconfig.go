@@ -530,24 +530,23 @@ func (r *CommonServiceReconciler) getExtremeizes(ctx context.Context, opconServi
 
 	for _, opService := range opconServices {
 		crSummary := getItemByName(configSummary, opService.(map[string]interface{})["name"].(string))
-		if opService.(map[string]interface{})["spec"] == nil {
-			continue
-		}
-		rules := getItemByName(ruleSlice, opService.(map[string]interface{})["name"].(string))
-		serviceController := serviceControllerMappingSummary["profileController"]
-		if controller, ok := serviceControllerMappingSummary[opService.(map[string]interface{})["name"].(string)]; ok {
-			serviceController = controller
-		}
-		for cr, spec := range opService.(map[string]interface{})["spec"].(map[string]interface{}) {
-			if _, ok := nonDefaultProfileController[serviceController]; ok {
-				// clean up OperandConfig
-				opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = resetResourceInTemplate(spec.(map[string]interface{}), cr, rules)
+		if opService.(map[string]interface{})["spec"] != nil {
+			rules := getItemByName(ruleSlice, opService.(map[string]interface{})["name"].(string))
+			serviceController := serviceControllerMappingSummary["profileController"]
+			if controller, ok := serviceControllerMappingSummary[opService.(map[string]interface{})["name"].(string)]; ok {
+				serviceController = controller
 			}
-			if crSummary == nil || crSummary.(map[string]interface{})["spec"] == nil || crSummary.(map[string]interface{})["spec"].(map[string]interface{})[cr] == nil {
-				continue
+			for cr, spec := range opService.(map[string]interface{})["spec"].(map[string]interface{}) {
+				if _, ok := nonDefaultProfileController[serviceController]; ok {
+					// clean up OperandConfig
+					opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = resetResourceInTemplate(spec.(map[string]interface{}), cr, rules)
+				}
+				if crSummary == nil || crSummary.(map[string]interface{})["spec"] == nil || crSummary.(map[string]interface{})["spec"].(map[string]interface{})[cr] == nil {
+					continue
+				}
+				serviceForCR := crSummary.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
+				opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = shrinkSize(spec.(map[string]interface{}), serviceForCR, extreme)
 			}
-			serviceForCR := crSummary.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
-			opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = shrinkSize(spec.(map[string]interface{}), serviceForCR, extreme)
 		}
 
 		if opService.(map[string]interface{})["resources"] != nil {
