@@ -22,7 +22,7 @@ metadata:
       ]
     capabilities: Seamless Upgrades
     containerImage: icr.io/cpopen/common-service-operator:latest
-    createdAt: "2023-12-05T20:36:47Z"
+    createdAt: "2023-12-07T04:57:51Z"
     description: The IBM Common Service Operator is used to deploy IBM Common Services
     nss.operator.ibm.com/managed-operators: cloud-native-postgresql,ibm-bts-operator
     olm.skipRange: ">=3.3.0 <3.23.11"
@@ -178,6 +178,7 @@ spec:
                 - configmaps
               verbs:
                 - create
+                - delete
                 - get
                 - list
                 - update
