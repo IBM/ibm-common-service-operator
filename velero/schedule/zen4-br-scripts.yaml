@@ -68,8 +68,12 @@ data:
         info "Secret aes-key backed up."
         
         # 4. Backup JWT configuration
-        # Backup JWT configuration /user-home/global/config/jwt
+        # Backup JWT configuration /user-home/_global_/config/jwt
         oc cp zen-metastoredb-0:/user-home/_global_/config/jwt .$BACKUP_ROOT_DIR/jwt
+        oc cp $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/_global_/config/jwt $BACKUP_ROOT_DIR/jwt
+        oc cp $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/_global_/config/branding $BACKUP_ROOT_DIR/branding
+        oc cp $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/_global_/config/oidc $BACKUP_ROOT_DIR/oidc
+        oc cp $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/_global_/config/saml $BACKUP_ROOT_DIR/saml
         info "JWT config backed up."
 
         #need steps for extensions and custom route
@@ -173,11 +177,17 @@ data:
         zen-secrets-aes-key \
         -p "{\"data\":{\"aes_key\":\"${AES_KEY_B64}\"}}"
 
-        # Restore /user-home/global/config/jwt
+        # Restore /user-home/_global_/config/jwt
         # 7. Restore JWT configuration
         oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -- ls -altrR /user-home/_global_/config/jwt
         oc -n $ZEN_NAMESPACE cp $BACKUP_ROOT_DIR/jwt zen-metastoredb-0:/user-home/_global_/config/jwt
         oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -- ls -altrR /user-home/_global_/config/jwt
+        oc -n $ZEN_NAMESPACE cp $BACKUP_ROOT_DIR/branding zen-metastoredb-0:/user-home/_global_/config/branding
+        oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -- ls -altrR /user-home/_global_/config/branding
+        oc -n $ZEN_NAMESPACE cp $BACKUP_ROOT_DIR/oidc zen-metastoredb-0:/user-home/_global_/config/oidc
+        oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -- ls -altrR /user-home/_global_/config/oidc
+        oc -n $ZEN_NAMESPACE cp $BACKUP_ROOT_DIR/saml zen-metastoredb-0:/user-home/_global_/config/saml
+        oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -- ls -altrR /user-home/_global_/config/saml
         
         # 8. Restore metadata
         info "Running metastoredb restore script in namespace $ZEN_NAMESPACE."
