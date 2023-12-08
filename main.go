@@ -117,7 +117,14 @@ func main() {
 				os.Exit(1)
 			}
 		}
-	} else if !errors.IsNotFound(err) {
+	} else if errors.IsNotFound(err) {
+		// create empty common-service-maps ConfigMap
+		if error := util.CreateCsMaps(mgr.GetClient()); error != nil {
+			klog.Errorf("Failed to create empty common-service-maps: %v", error)
+			os.Exit(1)
+		}
+		klog.Info("Created empty common-service-maps ConfigMap to add CommonService watch labels")
+	} else {
 		klog.Errorf("Failed to get common-service-maps: %v", err)
 		os.Exit(1)
 	}
