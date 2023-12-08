@@ -270,6 +270,32 @@ func GetCmOfMapCs(r client.Reader) (*corev1.ConfigMap, error) {
 	return csConfigmap, nil
 }
 
+// CreateCsMaps will create a empty common-service-maps configmap if not exists
+func CreateCsMaps(c client.Client) error {
+
+	data := make(map[string]string)
+	data["common-service-maps.yaml"] = ""
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      constant.CsMapConfigMap,
+			Namespace: "kube-public",
+		},
+		Data: data,
+	}
+
+	if !(cm.Labels != nil && cm.Labels[constant.CsManagedLabel] == "true") {
+		EnsureLabelsForConfigMap(cm, map[string]string{
+			constant.CsManagedLabel: "true",
+		})
+	}
+
+	if err := c.Create(context.TODO(), cm); err != nil {
+		klog.Errorf("could not create empty common-service-map in kube-public: %v", err)
+		return err
+	}
+	return nil
+}
+
 // CheckStorageClass gets StorageClassList in current cluster, then validates whether StorageClass created
 func CheckStorageClass(r client.Reader) error {
 	csStorageClass := &storagev1.StorageClassList{}
