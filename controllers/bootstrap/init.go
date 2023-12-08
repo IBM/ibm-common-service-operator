@@ -703,6 +703,12 @@ func (b *Bootstrap) CreateCsMaps() error {
 		Data: data,
 	}
 
+	if !(cm.Labels != nil && cm.Labels[constant.CsManagedLabel] == "true") {
+		util.EnsureLabelsForConfigMap(cm, map[string]string{
+			constant.CsManagedLabel: "true",
+		})
+	}
+
 	if err := b.Client.Create(ctx, cm); err != nil {
 		klog.Errorf("could not create common-service-map in kube-public: %v", err)
 	}
