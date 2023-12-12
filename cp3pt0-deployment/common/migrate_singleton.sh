@@ -211,23 +211,28 @@ function restore_ibmlicensing() {
 function backup_ibmlicensing() {
     create_namespace "${LICENSING_NS}"
 
-    is_exist=$("${OC}" get IBMLicensing instance --ignore-not-found)
-    if [[ -z "${is_exist}" ]]; then
+    ls_instance=$("${OC}" get IBMLicensing instance --ignore-not-found -o yaml)
+    if [[ -z "${ls_instance}" ]]; then
         echo "No IBMLicensing instance found, skipping backup"
         return
     fi
-
-    # for LS + LSR installed in the same cluster, the sender needs to be removed as it is not valid any more after migration
-    local reporterURL=$("${OC}" get IBMLicensing instance  --ignore-not-found -o=jsonpath='{.spec.sender.reporterURL}')
-    if [[ $reporterURL == "https://ibm-license-service-reporter:8080" ]]; then
-        debug1 "Removing sender section for local configuration"
+ 
+    # If LS connected to LicSvcReporter, set a template for sender configuration with url pointing to the IBM LSR docs
+    # And create an empty secret 'ibm-license-service-reporter-token' in LS_new_namespace to ensure that LS instance pod will start
+    local reporterURL=$(echo "${ls_instance}" | "${YQ}" '.spec.sender.reporterURL')
+    if [[ "$reporterURL" != "null" ]]; then
+        info "The current sender configuration for sending data from License Service to License Servive Reporter:" 
+        echo "${ls_instance}" | "${YQ}" '.spec.sender'
+        info "Setting a template for sender configuration"
+        "${OC}" create secret generic -n ${LICENSING_NS} ibm-license-service-reporter-token
         instance=`"${OC}" get IBMLicensing instance -o yaml --ignore-not-found | "${YQ}" '
             with(.; del(.metadata.creationTimestamp) |
             del(.metadata.managedFields) |
             del(.metadata.resourceVersion) |
             del(.metadata.uid) |
             del(.status) | 
-            del(.spec.sender)
+            (.spec.sender.reporterURL)="https://READ_(ibm.biz/lsr_sender_config)" |
+            (.spec.sender.reporterSecretToken)="ibm-license-service-reporter-token"
             )
         ' | sed -e 's/^/    /g'`
     else
