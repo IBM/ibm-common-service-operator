@@ -15,7 +15,7 @@ YQ=yq
 ENABLE_LICENSING=0
 MINIMAL_RBAC_ENABLED=0
 MINIMAL_RBAC=""
-CHANNEL="v4.3"
+CHANNEL="v4.4"
 MAINTAINED_CHANNEL="v4.2"
 SOURCE="opencloud-operators"
 SOURCE_NS="openshift-marketplace"
@@ -166,7 +166,7 @@ function print_usage() {
     echo "   --license-accept               Required. Set this flag to accept the license agreement"
     echo "   --enable-private-catalog       Optional. Set this flag to use namespace scoped CatalogSource. Default is in openshift-marketplace namespace"
     echo "   --with-minimal-rbac string     Optional. Provide "skip" or file path to the minimal RBAC permissions required by the namespace scope operator for all to be deployed services"
-    echo "   -c, --channel string           Optional. Channel for Subscription(s). Default is v4.3"
+    echo "   -c, --channel string           Optional. Channel for Subscription(s). Default is v4.4"
     echo "   -i, --install-mode string      Optional. InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
     echo "   -s, --source string            Optional. CatalogSource name. This assumes your CatalogSource is already created. Default is opencloud-operators"
     echo "   -n, --namespace string         Optional. Namespace of CatalogSource. Default is openshift-marketplace"
