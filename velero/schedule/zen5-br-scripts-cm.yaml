@@ -379,7 +379,7 @@ data:
                 #curl_output=$(curl -H "secret: ${broker_secret}" -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=${extensions})
 
                 # Extract ID of each extension
-                id_list=$(curl -H "secret: ${broker_secret}" -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=${extensions} | yq eval '.data[] | select(.id == "*") | .id' | tr '\n' ' ') #space separated list of ids
+                id_list=$(curl -H "secret: ${broker_secret}" -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=${extensions} | yq eval '.data[] | select(.source == "*") | .source' | tr '\n' ' ') #space separated list of ids
                 info "id_list: $id_list bookend"
                 if [[ -z $id_list ]] || [[ $id_list == "" ]]; then
                     warning "The list of extensions provided returned an empty ID list from the database. These extensions may not be present in this database."
@@ -387,10 +387,10 @@ data:
                     info "List of extension IDs populated, continuing with deletion."
 
                     # Delete each extension using the ID
-                    # curl -H 'secret: <broker-secret>' -ks -X DELETE https://zen-core-api-svc:4444/v1/extensions/{id}
+                    # curl -H 'secret: <broker-secret>' -ks -X DELETE https://zen-core-api-svc:4444/v1/internal/extensions/{source_id}
                     for id in $id_list; do
                         info "Deleting extension with ID $id."
-                        curl -H "secret: ${broker_secret}" -ks -X DELETE https://zen-core-api-svc:4444/v1/extensions/{$id}
+                        curl -H "secret: ${broker_secret}" -ks -X DELETE https://zen-core-api-svc:4444/v1/internal/extensions/{$id}
                     done
 
                     success "Zen extension cleanup complete."
