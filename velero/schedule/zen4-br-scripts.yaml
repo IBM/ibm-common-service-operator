@@ -71,12 +71,12 @@ data:
         
         # 3. Backup secret/zen-secrets-aes-key
         # Backup secret/metastore-secret, secret/zen-secrets-aes-key
-        oc extract secret/zen-secrets-aes-key --to=.$BACKUP_ROOT_DIR/ --confirm
+        oc -n $ZEN_NAMESPACE extract secret/zen-secrets-aes-key --to=.$BACKUP_ROOT_DIR/ --confirm
         info "Secret aes-key backed up."
         
         # 4. Backup JWT configuration
         # Backup JWT configuration /user-home/_global_/config/jwt
-        oc cp zen-metastoredb-0:/user-home/_global_/config/jwt .$BACKUP_ROOT_DIR/jwt
+        oc cp $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/_global_/config/jwt .$BACKUP_ROOT_DIR/jwt
         oc cp $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/_global_/config/jwt $BACKUP_ROOT_DIR/jwt
         oc cp $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/_global_/config/branding $BACKUP_ROOT_DIR/branding
         oc cp $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/_global_/config/oidc $BACKUP_ROOT_DIR/oidc
@@ -108,8 +108,8 @@ data:
         
         # 2. Backup current configuration on target cluster
         info "Backing up current config."
-        oc get secret/zen-secrets-aes-key -o yaml > $BACKUP_ROOT_DIR/zen-secrets-aes-key.bkup.yaml
-        oc cp zen-metastoredb-0:/user-home/_global_/config/jwt $BACKUP_ROOT_DIR/jwt-backup
+        oc -n $ZEN_NAMESPACE get secret/zen-secrets-aes-key -o yaml > $BACKUP_ROOT_DIR/zen-secrets-aes-key.bkup.yaml
+        oc cp $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/_global_/config/jwt $BACKUP_ROOT_DIR/jwt-backup
 
         #copy over previous backup files to metastoredb pod
         if [[ -f $BACKUP_ROOT_DIR/tmp/spark_backup.sql ]]; then
