@@ -52,7 +52,14 @@ data:
             # 4. Backup JWT configuration
         # Scale down zen-metastoredb statefulset to 0
         # Backup all zen-metastoredb volumes (all of them)
-        rm -rf $BACKUP_ROOT_DIR
+        info "Clean up prior run"
+        rm -rf $BACKUP_ROOT_DIR/jwt
+        rm -rf $BACKUP_ROOT_DIR/branding
+        rm -rf $BACKUP_ROOT_DIR/oidc
+        rm -rf $BACKUP_ROOT_DIR/saml
+        rm -rf $BACKUP_ROOT_DIR/tmp/
+        rm -f $BACKUP_ROOT_DIR/zen_backup.sql
+        rm -f $BACKUP_ROOT_DIR/zen-secrets-aes-key.bkup.yaml
         
         # 1. run backup script
         info "Running metastoredb backup script in namespace $ZEN_NAMESPACE."
@@ -103,6 +110,18 @@ data:
         info "Backing up current config."
         oc get secret/zen-secrets-aes-key -o yaml > $BACKUP_ROOT_DIR/zen-secrets-aes-key.bkup.yaml
         oc cp zen-metastoredb-0:/user-home/_global_/config/jwt $BACKUP_ROOT_DIR/jwt-backup
+
+        #copy over previous backup files to metastoredb pod
+        if [[ -f $BACKUP_ROOT_DIR/tmp/spark_backup.sql ]]; then
+            oc cp $BACKUP_ROOT_DIR/tmp/spark_backup.sql $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/zen-metastoredb-backup/spark_backup.sql 
+        else
+            info "spark_backup.sql file not found in backup, skipping."
+        fi
+        if [[ -f $BACKUP_ROOT_DIR/zen_backup.sql ]]; then
+            oc cp $BACKUP_ROOT_DIR/zen_backup.sql $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/zen-metastoredb-backup/zen_backup.sql
+        else
+            error "zen_backup.sql file not found in backup. Please run the backup before proceeding. Exiting."
+        fi
         
         # Restore zen-metastoredb volumes
         # 3. Getting the replica count before scaling down the required pods
@@ -188,9 +207,7 @@ data:
         oc -n $ZEN_NAMESPACE cp $BACKUP_ROOT_DIR/saml zen-metastoredb-0:/user-home/_global_/config/
         oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -- ls -altrR /user-home/_global_/config/saml 
         
-        # 8. Restore metadata
-        oc cp $BACKUP_ROOT_DIR/zen_backup.sql $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/zen-metastoredb-backup/zen_backup.sql 
-        oc cp $BACKUP_ROOT_DIR/tmp/spark_backup.sql $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/zen-metastoredb-backup/spark_backup.sql 
+        # 8. Restore metadata 
         info "Running metastoredb restore script in namespace $ZEN_NAMESPACE."
         oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -c zen-metastoredb ./../tmp/backup/restore_script.sh regular zen-operator
         
