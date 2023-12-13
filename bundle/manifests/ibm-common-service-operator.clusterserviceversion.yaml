@@ -189,11 +189,6 @@ spec:
               resources:
                 - configmaps
               verbs:
-                - create
-                - get
-                - list
-                - watch
-                - update
                 - delete
             - apiGroups:
                 - ""
@@ -204,6 +199,7 @@ spec:
                 - get
                 - list
                 - watch
+                - update
             - apiGroups:
                 - ""
               resources:
