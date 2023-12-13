@@ -184,6 +184,19 @@ spec:
                 - update
             - apiGroups:
                 - ""
+              resourceNames:
+                - cloud-native-postgresql-image-list
+              resources:
+                - configmaps
+              verbs:
+                - create
+                - get
+                - list
+                - watch
+                - update
+                - delete
+            - apiGroups:
+                - ""
               resources:
                 - configmaps
               verbs:
