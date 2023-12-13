@@ -36,3 +36,5 @@ spec:
         - zen5
         - zen5-data
         - crd
+        - lsr
+        - lsr-data
