@@ -223,7 +223,7 @@ function backup_ibmlicensing() {
     if [[ "$reporterURL" != "null" ]]; then
         info "The current sender configuration for sending data from License Service to License Servive Reporter:" 
         echo "${ls_instance}" | "${YQ}" '.spec.sender'
-        info "Setting a template for sender configuration"
+        info "Resetting to a sender configuration template. Please follow the link ibm.biz/lsr_sender_config for more information"
         "${OC}" create secret generic -n ${LICENSING_NS} ibm-license-service-reporter-token
         instance=`"${OC}" get IBMLicensing instance -o yaml --ignore-not-found | "${YQ}" '
             with(.; del(.metadata.creationTimestamp) |
