@@ -112,6 +112,9 @@ data:
         oc cp $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/_global_/config/jwt $BACKUP_ROOT_DIR/jwt-backup
 
         #copy over previous backup files to metastoredb pod
+        if [[ ! $(oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 bash -c zen-metastoredb -- test -d /user-home/zen-metastoredb-backup) ]]; then
+            oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 bash -c zen-metastoredb -- mkdir /user-home/zen-metastoredb-backup
+        fi
         if [[ -f $BACKUP_ROOT_DIR/tmp/spark_backup.sql ]]; then
             oc cp $BACKUP_ROOT_DIR/tmp/spark_backup.sql $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/zen-metastoredb-backup/spark_backup.sql 
         else
