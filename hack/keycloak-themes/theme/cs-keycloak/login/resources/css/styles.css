@@ -41,6 +41,10 @@ sample image usage
   display: none;
 }
 
+#kc-locale-wrapper {
+  display: none;
+}
+
 #kc-content-wrapper {
   border-top: 1px solid #393939;
   padding-top: 5px;
