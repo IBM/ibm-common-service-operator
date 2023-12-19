@@ -2,7 +2,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: lsr-backup-pvc
-  namespace: <mongo namespace>
+  namespace: <lsr namespace>
   labels:
     foundationservices.cloudpak.ibm.com: lsr-data
 spec:
