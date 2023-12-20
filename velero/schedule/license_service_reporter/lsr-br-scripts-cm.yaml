@@ -22,8 +22,8 @@ data:
     set -o errtrace
     set -o errexit
 
-    MODE=$1
-    LSR_NAMESPACE=$2
+    LSR_NAMESPACE=$1
+    MODE=$2
 
     BACKUP_DIR=/lsr/lsr-backup
 
