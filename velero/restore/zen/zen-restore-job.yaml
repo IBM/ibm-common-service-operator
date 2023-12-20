@@ -1,8 +1,8 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: zen-metastore-restore-job
-  namespace: ibm-common-services
+  name: zen4-restore-job
+  namespace: <zenservice namespace>
 spec:
   template:
     spec:
@@ -10,10 +10,10 @@ spec:
         - command:
           - sh
           - -c
-          - /tmp/backup/restore_script.sh regular cron-job
-          image: icr.io/cpopen/cpfs/zen-metastoredb@sha256:8dfa918ef9329316cf8e7ea06a277dc4021e217da59fceffabfd73c2b1f808ae
-          imagePullPolicy: IfNotPresent
-          name: zen-metastore-restore-job
+          - /zen4/zen4-br.sh <zenservice namespace> false
+          image: icr.io/cpopen/cpfs/cpfs-utils:4.3.0 #4.1.0 if using CS 4.1, 4.2.0 if using CS 4.2
+          imagePullPolicy: Always
+          name: zen4-restore-job
           resources:
             limits:
               cpu: 500m
@@ -38,13 +38,17 @@ spec:
             name: metastore-secret
           - mountPath: /tmp/backup
             name: zen-metastoredb-backup-scripts
+          - name: scripts
+            mountPath: "/zen4"
+          - name: ext
+            mountPath: /zen4/extensions
         dnsPolicy: ClusterFirst
         restartPolicy: OnFailure
         schedulerName: default-scheduler
         securityContext:
           runAsNonRoot: true
-        serviceAccount: zen-norbac-sa
-        serviceAccountName: zen-norbac-sa
+        serviceAccount: zen4-backup-sa
+        serviceAccountName: zen4-backup-sa
         terminationGracePeriodSeconds: 30
         volumes:
         - name: user-home-mount
@@ -58,3 +62,9 @@ spec:
             defaultMode: 511
             name: zen-metastoredb-backup-scripts
           name: zen-metastoredb-backup-scripts
+        - name: scripts
+          configMap:
+            name: zen4-br-configmap
+            defaultMode: 0777
+        - emptyDir: {}
+          name: ext
