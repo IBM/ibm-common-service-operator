@@ -42,8 +42,9 @@ data:
     function backup {
         mkdir -p $BACKUP_DIR/database
         CNPG_PRIMARY_POD=`oc get pods -n $LSR_NAMESPACE | grep ibm-license-service-reporter-instance | awk '{print $1}'` && \
+        oc -n $LSR_NAMESPACE exec -t $CNPG_PRIMARY_POD -c database -- rm -rf /run/lsr_backup && \
         oc -n $LSR_NAMESPACE exec -t $CNPG_PRIMARY_POD -c database -- mkdir -p /run/lsr_backup && \
-        oc -n $LSR_NAMESPACE exec -t $CNPG_PRIMARY_POD -c database -- pg_dump -v --username=postgres --dbname=postgres -f /run/lsr_backup/lsr_db_backup.dump
+        oc -n $LSR_NAMESPACE exec -t $CNPG_PRIMARY_POD -c database -- pg_dump -v --username=postgres --dbname=postgres -f /run/lsr_backup/lsr_db_backup.dump --format=c
 
         #Move backup to backup location
         oc cp $LSR_NAMESPACE/$CNPG_PRIMARY_POD:/run/lsr_backup/lsr_db_backup.dump $BACKUP_DIR/database/lsr_db_backup.dump
@@ -54,7 +55,7 @@ data:
         oc exec $CNPG_PRIMARY_POD -n $LSR_NAMESPACE -- mkdir -p /run/lsr_backup
         oc cp $BACKUP_DIR/database/lsr_db_backup.dump $LSR_NAMESPACE/$CNPG_PRIMARY_POD:/run/lsr_backup/lsr_db_backup.dump
         oc -n $LSR_NAMESPACE exec -t $CNPG_PRIMARY_POD -c database -- psql -U postgres -c "\list" -c "\dn" -c "\du"
-        oc -n $LSR_NAMESPACE exec -t $CNPG_PRIMARY_POD -c database -- pg_restore -U postgres -f /run/lsr_backup/lsr_db_backup.dump --clean -v --if-exists
+        oc -n $LSR_NAMESPACE exec -t $CNPG_PRIMARY_POD -c database -- pg_restore -U postgres --dbname postgres --format=c --clean -v /run/lsr_backup/lsr_db_backup.dump
         oc -n $LSR_NAMESPACE exec -t $CNPG_PRIMARY_POD -c database -- psql -U postgres -c "\list" -c "\dn" -c "\du"
     }
 
