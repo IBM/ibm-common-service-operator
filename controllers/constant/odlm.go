@@ -115,6 +115,14 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+  - name: ibm-im-operator-v4.4
+    namespace: "{{ .CPFSNs }}"
+    channel: v4.4
+    packageName: ibm-iam-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
 	IdpConfigUIOpReg = `
@@ -204,6 +212,14 @@ spec:
   - name: ibm-platformui-operator-v4.3
     namespace: "{{ .CPFSNs }}"
     channel: v4.3
+    packageName: ibm-zen-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+  - name: ibm-platformui-operator-v4.4
+    namespace: "{{ .CPFSNs }}"
+    channel: v4.4
     packageName: ibm-zen-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -332,6 +348,19 @@ spec:
               - name: ibm-im-mongodb-operator-v4.2
               - name: ibm-idp-config-ui-operator-v4.3
             registry: common-service
+  - name: ibm-im-operator-v4.4
+    spec:
+      authentication:
+        config:
+          onPremMultipleDeploy: {{ .OnPremMultiEnable }}
+      operandBindInfo: 
+        operand: ibm-im-operator
+      operandRequest:
+        requests:
+          - operands:
+              - name: ibm-im-mongodb-operator-v4.2
+              - name: ibm-idp-config-ui-operator-v4.3
+            registry: common-service
 `
 
 	IdpConfigUIOpCon = `
@@ -390,6 +419,9 @@ spec:
     spec:
       operandBindInfo: {}
   - name: ibm-platformui-operator-v4.3
+    spec:
+      operandBindInfo: {}
+  - name: ibm-platformui-operator-v4.4
     spec:
       operandBindInfo: {}
 `
@@ -454,6 +486,39 @@ spec:
                 kind: Issuer
                 name: cs-ca-issuer
             secretName: cs-keycloak-tls-secret
+      - apiVersion: v1
+        kind: ConfigMap
+        name: cs-keycloak-entrypoint
+        data:
+          data:
+            cs-keycloak-entrypoint.sh: |
+              #!/usr/bin/env bash
+              CA_DIR=/mnt/trust-ca
+              TRUSTSTORE_DIR=/mnt/truststore
+              echo "Building the truststore file ..."
+              cp /etc/pki/java/cacerts ${TRUSTSTORE_DIR}/keycloak-truststore.jks
+              chmod +w ${TRUSTSTORE_DIR}/keycloak-truststore.jks
+              echo "Importing default service account certificates ..."
+              index=0
+              while read -r line; do
+                if [ "$line" = "-----BEGIN CERTIFICATE-----" ]; then
+                  echo "$line" > ${TRUSTSTORE_DIR}/temp_cert.pem
+                elif [ "$line" = "-----END CERTIFICATE-----" ]; then
+                  echo "$line" >> ${TRUSTSTORE_DIR}/temp_cert.pem
+                  let "index++"
+                  echo "Importing service account certificate entry number ${index} ..."
+                  keytool -importcert -alias "serviceaccount-ca-crt_$index" -file ${TRUSTSTORE_DIR}/temp_cert.pem -keystore ${TRUSTSTORE_DIR}/keycloak-truststore.jks -storepass changeit -noprompt
+                  rm -f ${TRUSTSTORE_DIR}/temp_cert.pem
+                else
+                  echo "$line" >> ${TRUSTSTORE_DIR}/temp_cert.pem
+                fi
+              done < /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+              for cert in $(ls ${CA_DIR}); do
+                echo "Importing ${cert} into the truststore file ..."
+                keytool -importcert -file ${CA_DIR}/${cert} -keystore ${TRUSTSTORE_DIR}/keycloak-truststore.jks -storepass changeit -alias ${cert} -noprompt
+              done
+              echo "Truststore file built, starting Keycloak ..."
+              "/opt/keycloak/bin/kc.sh" "$@" --spi-truststore-file-file=${TRUSTSTORE_DIR}/keycloak-truststore.jks --spi-truststore-file-password=changeit --spi-truststore-file-hostname-verification-policy=WILDCARD
       - apiVersion: route.openshift.io/v1
         data:
           spec:
@@ -524,13 +589,34 @@ spec:
               podTemplate:
                 spec:
                   containers:
-                    - resources:
+                    - command:
+                        - /bin/sh
+                        - /mnt/startup/cs-keycloak-entrypoint.sh
+                      resources:
                         limits:
                           cpu: 1000m
                           memory: 1Gi
                         requests:
                           cpu: 1000m
                           memory: 1Gi
+                      volumeMounts:
+                        - mountPath: /mnt/truststore
+                          name: truststore-volume
+                        - mountPath: /mnt/startup
+                          name: startup-volume
+                        - mountPath: /mnt/trust-ca
+                          name: trust-ca-volume
+                  volumes:
+                    - name: truststore-volume
+                      emptyDir:
+                        sizeLimit: 2Mi
+                    - name: startup-volume
+                      configMap:
+                        name: cs-keycloak-entrypoint                      
+                    - name: trust-ca-volume
+                      configMap:
+                        name: cs-keycloak-ca-certs
+                        optional: true
         force: true
         kind: Keycloak
         name: cs-keycloak
@@ -614,6 +700,10 @@ spec:
               enabled: true
               id: cloudpak
               realm: cloudpak
+              ssoSessionIdleTimeout: 43200
+              ssoSessionMaxLifespan: 43200
+              rememberMe: true
+              passwordPolicy: "length(15) and notUsername(undefined) and notEmail(undefined)"
   - name: edb-keycloak
     resources:
       - apiVersion: batch/v1
@@ -671,11 +761,11 @@ spec:
                   name: edb-license
                   resources:
                     limits:
-                      cpu: 200m
-                      memory: 768Mi
-                    requests:
-                      cpu: 200m
+                      cpu: 500m
                       memory: 512Mi
+                    requests:
+                      cpu: 100m
+                      memory: 50Mi
                   securityContext:
                     allowPrivilegeEscalation: false
                     capabilities:
@@ -772,18 +862,18 @@ spec:
                     key: ibm-postgresql-14-operand-image
                     namespace: {{ .OperatorNs }}
                 configMapKeyRef:
-                    name: edb-keycloak-operand-image
-                    key: ibm-cpp-config
+                    name: ibm-cpp-config
+                    key: edb-keycloak-operand-image
             imagePullSecrets:
               - name: ibm-entitlement-key
             instances: 1
             resources:
               limits:
-                cpu: 1000m
-                memory: 1Gi
+                cpu: 200m
+                memory: 512Mi
               requests:
-                cpu: 1000m
-                memory: 1Gi
+                cpu: 200m
+                memory: 512Mi
             logLevel: info
             primaryUpdateStrategy: unsupervised
             storage:
@@ -964,7 +1054,7 @@ spec:
     sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-platformui-operator
     namespace: "{{ .CPFSNs }}"
-    channel: {{ .Channel }}
+    channel: v4.4
     packageName: ibm-zen-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -972,7 +1062,7 @@ spec:
     sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-idp-config-ui-operator
     namespace: "{{ .CPFSNs }}"
-    channel: {{ .Channel }}
+    channel: v4.3
     packageName: ibm-commonui-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -1329,66 +1419,6 @@ spec:
   - name: ibm-zen-operator
     spec:
       operandBindInfo: {}
-    resources:
-      - apiVersion: batch/v1
-        data:
-          spec:
-            activeDeadlineSeconds: 600
-            backoffLimit: 5
-            template:
-              metadata:
-                annotations:
-                  productID: 068a62892a1e4db39641342e592daa25
-                  productMetric: FREE
-                  productName: IBM Cloud Platform Common Services
-              spec:
-                affinity:
-                  nodeAffinity:
-                    requiredDuringSchedulingIgnoredDuringExecution:
-                      nodeSelectorTerms:
-                        - matchExpressions:
-                            - key: kubernetes.io/arch
-                              operator: In
-                              values:
-                                - amd64
-                                - ppc64le
-                                - s390x
-                containers:
-                  - command:
-                      - bash
-                      - '-c'
-                      - bash /setup/pre-zen.sh
-                    env:
-                      - name: common_services_namespace
-                        valueFrom:
-                          fieldRef:
-                            fieldPath: metadata.namespace
-                    image: {{ .ZenOperatorImage }}
-                    name: pre-zen-job
-                    resources:
-                      limits:
-                        cpu: 500m
-                        memory: 512Mi
-                      requests:
-                        cpu: 100m
-                        memory: 50Mi
-                    securityContext:
-                      allowPrivilegeEscalation: false
-                      capabilities:
-                        drop:
-                          - ALL
-                      privileged: false
-                      readOnlyRootFilesystem: false
-                restartPolicy: OnFailure
-                securityContext:
-                  runAsNonRoot: true
-                serviceAccount: operand-deployment-lifecycle-manager
-                serviceAccountName: operand-deployment-lifecycle-manager
-                terminationGracePeriodSeconds: 30
-        force: true
-        kind: Job
-        name: pre-zen-operand-config-job 
-        namespace: "{{ .OperatorNs }}"
   - name: ibm-platformui-operator
     spec:
       operandBindInfo: {}

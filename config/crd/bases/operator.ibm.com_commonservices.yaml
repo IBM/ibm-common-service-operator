@@ -93,7 +93,7 @@ spec:
                 description: LicenseList defines the license specification in CSV
                 properties:
                   accept:
-                    description: 'Accepting the license - URL: https://ibm.biz/integration-licenses'
+                    description: 'Accepting the license - URL: https://ibm.biz/icpfs39license'
                     type: boolean
                   key:
                     description: The license key for this deployment.

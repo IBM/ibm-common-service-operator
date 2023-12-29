@@ -115,7 +115,6 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		CatalogSourceName: catalogSourceName,
 		CatalogSourceNs:   catalogSourceNs,
 		ApprovalMode:      approvalMode,
-		ZenOperatorImage:  util.GetImage("IBM_ZEN_OPERATOR_IMAGE"),
 		WatchNamespaces:   util.GetWatchNamespace(),
 		OnPremMultiEnable: strconv.FormatBool(util.CheckMultiInstances(mgr.GetAPIReader())),
 	}
@@ -702,6 +701,12 @@ func (b *Bootstrap) CreateCsMaps() error {
 			Namespace: "kube-public",
 		},
 		Data: data,
+	}
+
+	if !(cm.Labels != nil && cm.Labels[constant.CsManagedLabel] == "true") {
+		util.EnsureLabelsForConfigMap(cm, map[string]string{
+			constant.CsManagedLabel: "true",
+		})
 	}
 
 	if err := b.Client.Create(ctx, cm); err != nil {

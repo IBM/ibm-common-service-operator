@@ -1,0 +1,183 @@
+/*
+:root {
+    --textColor: #f6f5f7;
+  }
+*/
+
+body {
+  background: #161616 !important;
+  color: #f4f4f4;
+}
+
+body .login-pf-page {
+  font-family: IBM Plex Sans, Helvetica Neue, Arial, sans-serif;
+}
+
+.login-pf-page .login-pf-header h1 {
+  line-height: 1.4;
+  letter-spacing: 0;
+  color: #f4f4f4;
+  font-size: 28px;
+}
+
+
+/*
+sample image usage
+.kc-logo-text {
+  display: none;
+  background-image: url(../img/ibm-logo.png);
+  background-repeat: no-repeat;
+  height: 128px;
+  width: 320px;
+  margin: 0 auto;
+}
+.kc-logo-text span {
+  display: none;
+}
+*/
+
+/* Turn off logo text */
+.kc-logo-text {
+  display: none;
+}
+
+#kc-locale-wrapper {
+  display: none;
+}
+
+#kc-content-wrapper {
+  border-top: 1px solid #393939;
+  padding-top: 5px;
+}
+
+.kc-form-wrapper {
+  background-color: #262626;
+}
+
+.login-pf-page .card-pf {
+  background: #161616;
+  margin: auto auto;
+  max-width: 500px;
+}
+
+/* input fields and labels */
+.pf-c-form__label.pf-c-form__label-text {
+  margin: .5rem 0;
+  color: #c6c6c6;
+}
+
+#username,#password {
+  background-color: #262626;
+  background: #262626;
+  font-size: .875rem;
+  font-weight: 300;
+  line-height: 1.28572;
+  letter-spacing: .16px;
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  padding: 0 1rem;
+  border: none;
+  border-bottom: 1px solid #6f6f6f;
+  transition: background-color 70ms cubic-bezier(.2,0,.38,.9),outline 70ms cubic-bezier(.2,0,.38,.9);
+  color: #f4f4f4;
+}
+
+/* input fields */
+#username:focus,#password:focus {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
+}
+
+/* login button */
+#kc-login {
+  border: 1px solid transparent;
+  background-color: #0f62fe;
+  color: #fff;
+  min-height: 3rem;
+  cursor: pointer;
+  text-align: left;
+  font-size: .875rem;
+  font-weight: 300;
+  letter-spacing: .16px;
+  outline: none;
+}
+
+#kc-login:hover {
+  background-color: #0353e9
+}
+
+#kc-login:focus {
+  border-color: #fff;
+  box-shadow: inset 0 0 0 1px #fff,inset 0 0 0 2px #161616;
+}
+
+/* Turn off view password button */
+.pf-c-button.pf-m-control {
+  display: none;
+}
+
+/* additional providers styling */
+.kc-social-section hr {
+  border-top: 1px solid #393939;
+}
+
+.kc-social-item {
+  text-align: center;
+}
+
+.kc-social-links li {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.pf-c-button.pf-m-block {
+  display: block;
+  width: 100%;
+}
+
+.pf-c-button::after {
+  border: 1px solid transparent;
+  /*display: none;*/
+}
+
+.pf-c-button.kc-social-item {
+  background-color: #393939;
+  color: #ffffff;
+  border-width: 1px;
+  border-style: solid;
+  border-color: transparent;
+  text-decoration: none;
+  outline: none;
+}
+
+.pf-c-button.kc-social-item:focus {
+  border-color: #fff;
+  box-shadow: inset 0 0 0 1px #fff,inset 0 0 0 2px #161616;
+}
+
+.pf-c-button.kc-social-item:hover {
+  background-color: #474747;
+  border-width: 1px;
+  border-style: solid;
+  border-color: transparent;
+}
+
+.pf-c-button.kc-social-item:active {
+  background-color: #6f6f6f;
+  border-width: 1px;
+  border-style: solid;
+  border-color: transparent;
+}
+
+.kc-social-provider-logo {
+  font-size: 23px;
+  width: 30px;
+  height: 25px;
+  /* float: left; didn't work */
+  position: absolute;
+  left: 15px;
+}
+
+a:visited,:active {
+  text-decoration:none;
+}

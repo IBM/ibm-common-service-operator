@@ -101,12 +101,16 @@ func mergeCSCRs(csSummary, csCR, ruleSlice []interface{}, serviceControllerMappi
 	for _, operator := range csCR {
 		summaryCR := getItemByName(csSummary, operator.(map[string]interface{})["name"].(string))
 		rules := getItemByName(ruleSlice, operator.(map[string]interface{})["name"].(string))
-		if summaryCR == nil || summaryCR.(map[string]interface{})["spec"] == nil || summaryCR.(map[string]interface{})["resources"] == nil {
+		if summaryCR == nil {
 			summaryCR = map[string]interface{}{
 				"name":      operator.(map[string]interface{})["name"].(string),
 				"spec":      map[string]interface{}{},
 				"resources": []interface{}{},
 			}
+		} else if summaryCR.(map[string]interface{})["spec"] == nil {
+			summaryCR.(map[string]interface{})["spec"] = map[string]interface{}{}
+		} else if summaryCR.(map[string]interface{})["resources"] == nil {
+			summaryCR.(map[string]interface{})["resources"] = []interface{}{}
 		}
 		serviceController := serviceControllerMappingSummary["profileController"]
 		if controller, ok := serviceControllerMappingSummary[operator.(map[string]interface{})["name"].(string)]; ok {
@@ -530,24 +534,23 @@ func (r *CommonServiceReconciler) getExtremeizes(ctx context.Context, opconServi
 
 	for _, opService := range opconServices {
 		crSummary := getItemByName(configSummary, opService.(map[string]interface{})["name"].(string))
-		if opService.(map[string]interface{})["spec"] == nil {
-			continue
-		}
-		rules := getItemByName(ruleSlice, opService.(map[string]interface{})["name"].(string))
-		serviceController := serviceControllerMappingSummary["profileController"]
-		if controller, ok := serviceControllerMappingSummary[opService.(map[string]interface{})["name"].(string)]; ok {
-			serviceController = controller
-		}
-		for cr, spec := range opService.(map[string]interface{})["spec"].(map[string]interface{}) {
-			if _, ok := nonDefaultProfileController[serviceController]; ok {
-				// clean up OperandConfig
-				opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = resetResourceInTemplate(spec.(map[string]interface{}), cr, rules)
+		if opService.(map[string]interface{})["spec"] != nil {
+			rules := getItemByName(ruleSlice, opService.(map[string]interface{})["name"].(string))
+			serviceController := serviceControllerMappingSummary["profileController"]
+			if controller, ok := serviceControllerMappingSummary[opService.(map[string]interface{})["name"].(string)]; ok {
+				serviceController = controller
 			}
-			if crSummary == nil || crSummary.(map[string]interface{})["spec"] == nil || crSummary.(map[string]interface{})["spec"].(map[string]interface{})[cr] == nil {
-				continue
+			for cr, spec := range opService.(map[string]interface{})["spec"].(map[string]interface{}) {
+				if _, ok := nonDefaultProfileController[serviceController]; ok {
+					// clean up OperandConfig
+					opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = resetResourceInTemplate(spec.(map[string]interface{}), cr, rules)
+				}
+				if crSummary == nil || crSummary.(map[string]interface{})["spec"] == nil || crSummary.(map[string]interface{})["spec"].(map[string]interface{})[cr] == nil {
+					continue
+				}
+				serviceForCR := crSummary.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
+				opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = shrinkSize(spec.(map[string]interface{}), serviceForCR, extreme)
 			}
-			serviceForCR := crSummary.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
-			opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = shrinkSize(spec.(map[string]interface{}), serviceForCR, extreme)
 		}
 
 		if opService.(map[string]interface{})["resources"] != nil {

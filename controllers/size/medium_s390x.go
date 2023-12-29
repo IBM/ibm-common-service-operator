@@ -489,6 +489,46 @@ const Medium = `
             cpu: 320m
             memory: 250Mi
       replicas: 2
+- name: ibm-im-operator-v4.4
+  spec:
+    authentication:
+      authService:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 745Mi
+          requests:
+            ephemeral-storage: 256Mi
+            cpu: 230m
+            memory: 695Mi
+      clientRegistration:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 50Mi
+          requests:
+            ephemeral-storage: 256Mi
+            cpu: 20m
+            memory: 50Mi
+      identityManager:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 525Mi
+          requests:
+            ephemeral-storage: 256Mi
+            cpu: 100m
+            memory: 140Mi
+      identityProvider:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 355Mi
+          requests:
+            ephemeral-storage: 256Mi
+            cpu: 320m
+            memory: 250Mi
+      replicas: 2
 - name: ibm-management-ingress-operator
   spec:
     managementIngress:
