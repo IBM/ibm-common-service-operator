@@ -8,11 +8,6 @@ metadata:
           "apiVersion": "operator.ibm.com/v3",
           "kind": "CommonService",
           "metadata": {
-            "labels": {
-              "app.kubernetes.io/instance": "ibm-common-service-operator",
-              "app.kubernetes.io/managed-by": "ibm-common-service-operator",
-              "app.kubernetes.io/name": "ibm-common-service-operator"
-            },
             "name": "example-commonservice"
           },
           "spec": {
