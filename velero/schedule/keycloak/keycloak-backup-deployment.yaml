@@ -13,10 +13,10 @@ spec:
     metadata:
       annotations:
         backup.velero.io/backup-volumes: keycloak-backup
-        pre.hook.backup.velero.io/command: '["sh", "-c", "/keycloak/br.sh backup <keycloak namespace>"]'
+        pre.hook.backup.velero.io/command: '["sh", "-c", "/keycloak/br_keycloak.sh backup <keycloak namespace>"]'
         pre.hook.backup.velero.io/timeout: 300s
         post.hook.backup.velero.io/command: '["sh", "-c", "rm -rf /keycloak/keycloak-backup/database"]'
-        post.hook.restore.velero.io/command: '["sh", "-c", "/keycloak/br.sh restore <keycloak namespace> <keycloak operator namespace if different>"]'
+        post.hook.restore.velero.io/command: '["sh", "-c", "/keycloak/br_keycloak.sh restore <keycloak namespace> <keycloak operator namespace if different>"]'
         post.hook.restore.velero.io/wait-timeout: 300s
         post.hook.restore.velero.io/exec-timeout: 300s
         post.hook.restore.velero.io/timeout: 600s
