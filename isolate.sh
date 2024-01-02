@@ -134,7 +134,7 @@ Usage: ${script} [OPTION]...
 Isolate and prepare Cloud Pak 2.0 Foundational Services for upgrade to or additional installation of Cloud Pak 3.0 Foundational Services
 
 Examples:
-# isolate the existing instance scope in ibm-common-services namespace and re-deploy cluster sigleton services in cs-control namespace
+# isolate the existing instance scope in ibm-common-services namespace and re-deploy cluster singleton services in cs-control namespace
 isolate.sh --original-cs-ns ibm-common-services --control-ns cs-control
 
 # remove cloudpak-1 and cloudpak-2 namespace from the existing instance scope in ibm-common-services
@@ -477,14 +477,41 @@ function migrate_lic_cms() {
 
 function backup_ibmlicensing() {
 
-    instance=`"${OC}" get IBMLicensing instance -o yaml --ignore-not-found | "${YQ}" '
-        with(.; del(.metadata.creationTimestamp) |
-        del(.metadata.managedFields) |
-        del(.metadata.resourceVersion) |
-        del(.metadata.uid) |
-        del(.status)
-        )
-    ' | sed -e 's/^/    /g'`
+    ls_instance=$("${OC}" get IBMLicensing instance --ignore-not-found -o yaml)
+    if [[ -z "${ls_instance}" ]]; then
+        echo "No IBMLicensing instance found, skipping backup"
+        return
+    fi
+ 
+    # If LS connected to LicSvcReporter, set a template for sender configuration with url pointing to the IBM LSR docs
+    # And create an empty secret 'ibm-license-service-reporter-token' in LS_new_namespace to ensure that LS instance pod will start
+    local reporterURL=$(echo "${ls_instance}" | "${YQ}" '.spec.sender.reporterURL')
+    if [[ "$reporterURL" != "null" ]]; then
+        info "The current sender configuration for sending data from License Service to License Servive Reporter:" 
+        echo "${ls_instance}" | "${YQ}" '.spec.sender'
+        info "Resetting to a sender configuration template. Please follow the link ibm.biz/lsr_sender_config for more information"
+        "${OC}" create secret generic -n ${CONTROL_NS} ibm-license-service-reporter-token
+        instance=`"${OC}" get IBMLicensing instance -o yaml --ignore-not-found | "${YQ}" '
+            with(.; del(.metadata.creationTimestamp) |
+            del(.metadata.managedFields) |
+            del(.metadata.resourceVersion) |
+            del(.metadata.uid) |
+            del(.status) | 
+            (.spec.sender.reporterURL)="https://READ_(ibm.biz/lsr_sender_config)" |
+            (.spec.sender.reporterSecretToken)="ibm-license-service-reporter-token"
+            )
+        ' | sed -e 's/^/    /g'`
+    else
+        instance=`"${OC}" get IBMLicensing instance -o yaml --ignore-not-found | "${YQ}" '
+            with(.; del(.metadata.creationTimestamp) |
+            del(.metadata.managedFields) |
+            del(.metadata.resourceVersion) |
+            del(.metadata.uid) |
+            del(.status)
+            )
+        ' | sed -e 's/^/    /g'`
+    fi
+    debug1 "instance: $instance"
 cat << _EOF | oc apply -f -
 apiVersion: v1
 kind: ConfigMap
@@ -496,13 +523,29 @@ data:
 ${instance}
 _EOF
 
+    if [[ $? -ne 0 ]]; then
+        warning "Failed to backup IBMLicensing instance"
+    else
+        success "IBMLicensing instance is backed up"
+    fi
 }
 
 function restore_ibmlicensing() {
 
+    is_exist=$("${OC}" get cm ibmlicensing-instance-bak -n ${CONTROL_NS} --ignore-not-found)
+    if [[ -z "${is_exist}" ]]; then
+        warning "No IBMLicensing instance backup found, skipping restore"
+        return
+    fi
     # extracts the previously saved IBMLicensing CR from ConfigMap and creates the IBMLicensing CR
     "${OC}" get cm ibmlicensing-instance-bak -n ${CONTROL_NS} -o yaml --ignore-not-found | "${YQ}" .data | sed -e 's/.*ibmlicensing.yaml.*//' | 
-    sed -e 's/^  //g' | oc apply -f -
+    sed -e 's/^  //g' | "${OC}" apply -f -
+    
+    if [[ $? -ne 0 ]]; then
+        warning "Failed to restore IBMLicensing instance"
+    else
+        success "IBMLicensing instance is restored"
+    fi
 
 }
 
