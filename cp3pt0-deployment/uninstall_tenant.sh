@@ -317,13 +317,13 @@ function update_namespaceMapping() {
     namespace=$1
     title "Updating common-service-maps $namespace"
     msg "-----------------------------------------------------------------------"
-    local current_yaml=$("${OC}" get -n kube-public cm common-service-maps -o yaml | yq '.data.["common-service-maps.yaml"]')
-    local isExist=$(echo "$current_yaml" | yq '.namespaceMapping[] | select(.map-to-common-service-namespace == "'$namespace'")')
+    local current_yaml=$("${OC}" get -n kube-public cm common-service-maps -o yaml | ${YQ} '.data.["common-service-maps.yaml"]')
+    local isExist=$(echo "$current_yaml" | ${YQ} '.namespaceMapping[] | select(.map-to-common-service-namespace == "'$namespace'")')
 
     if [ "$isExist" ]; then
         info "The map-to-common-service-namespace: $namespace, exist in common-service-maps"
         info "Deleting this tenant in common-service-maps"
-        updated_yaml=$(echo "$current_yaml" | yq 'del(.namespaceMapping[] | select(.map-to-common-service-namespace == "'$namespace'"))')
+        updated_yaml=$(echo "$current_yaml" | ${YQ} 'del(.namespaceMapping[] | select(.map-to-common-service-namespace == "'$namespace'"))')
         local padded_yaml=$(echo "$updated_yaml" | awk '$0="    "$0')
         update_cs_maps "$padded_yaml"
     else
@@ -350,13 +350,13 @@ data:
 ${yaml}
 EOF
 )"
-    echo "$object" | oc apply -f -
+    echo "$object" | ${OC} apply -f -
 }
 
 # check if we need to cleanup contorl namespace and clean it
 function cleanup_cs_control() {
-    local current_yaml=$("${OC}" get -n kube-public cm common-service-maps -o yaml | yq '.data.["common-service-maps.yaml"]')
-    local isExist=$(echo "$current_yaml" | yq '.namespaceMapping[] | has("map-to-common-service-namespace")' )
+    local current_yaml=$("${OC}" get -n kube-public cm common-service-maps -o yaml | ${YQ} '.data.["common-service-maps.yaml"]')
+    local isExist=$(echo "$current_yaml" | ${YQ} '.namespaceMapping[] | has("map-to-common-service-namespace")' )
     if [ "$isExist" ]; then
         info "map-to-common-service-namespace exist in common-service-maps, don't clean up control namespace"
     else
