@@ -220,7 +220,7 @@ data:
 ${yaml}
 EOF
 )"
-    echo "$object" | oc apply -f -
+    echo "$object" | ${OC} apply -f -
 }
 
 # create_empty_csmaps Creates a new common-service-maps configmap and inserts
@@ -512,7 +512,7 @@ function backup_ibmlicensing() {
         ' | sed -e 's/^/    /g'`
     fi
     debug1 "instance: $instance"
-cat << _EOF | oc apply -f -
+cat << _EOF | ${OC} apply -f -
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -579,7 +579,7 @@ function check_CSCR() {
             error "Timeout after ${total_time_mins} minutes waiting for IBM Common Services CR is Succeeded"
         fi
 
-        local phase=$(oc get commonservice common-service -o jsonpath='{.status.phase}' -n ${ns})
+        local phase=$(${OC} get commonservice common-service -o jsonpath='{.status.phase}' -n ${ns})
 
         if [[ "${phase}" != "Succeeded" ]]; then
             retries=$(( retries - 1 ))
@@ -758,7 +758,7 @@ spec:
       registryNamespace: $MASTER_NS
 EOF
 
-    oc apply -f tmp-opreq.yaml
+    ${OC} apply -f tmp-opreq.yaml
     rm -f tmp-opreq.yaml
     fi
 
