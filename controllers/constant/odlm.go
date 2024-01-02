@@ -1098,6 +1098,12 @@ spec:
     packageName: ibm-automation-elastic
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+  - channel: v1.1
+    name: ibm-elasticsearch-operator
+    namespace: "{{ .CPFSNs }}"
+    packageName: ibm-elasticsearch-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode}}
 `
 )
 
