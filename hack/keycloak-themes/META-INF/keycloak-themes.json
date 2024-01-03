@@ -1,6 +1,6 @@
 {
     "themes": [{
-        "name" : "cs-keycloak",
+        "name" : "cloudpak",
         "types": [ "login" ]
     }]
 }
