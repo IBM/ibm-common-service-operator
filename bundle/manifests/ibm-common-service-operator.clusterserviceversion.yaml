@@ -67,8 +67,7 @@ spec:
           - path: license.use
             x-descriptors:
               - urn:alm:descriptor:com.tectonic.ui:hidden
-          - description: The size of deployment profile for IBM Cloud Pak foundational
-              services
+          - description: The size of deployment profile for IBM Cloud Pak foundational services.
             displayName: Size
             path: size
             x-descriptors:
@@ -106,29 +105,29 @@ spec:
             - urn:alm:descriptor:com.tectonic.ui:select:turbonomic
             - urn:alm:descriptor:com.tectonic.ui:select:vpa
             - urn:alm:descriptor:com.tectonic.ui:advanced
-          - displayName: Custom host
+          - displayName: Identity management custom hostname
             path: routeHost
             x-descriptors:
             - urn:alm:descriptor:com.tectonic.ui:advanced
-          - displayName: Custom certificates
+          - displayName: Identity management custom certificates
             path: BYOCACertificate
             x-descriptors:
             - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
             - urn:alm:descriptor:com.tectonic.ui:advanced
-          - displayName: Default admin username
+          - displayName: Identity management default admin username
             path: defaultAdminUser
             x-descriptors:
             - urn:alm:descriptor:com.tectonic.ui:advanced
-          - displayName: Custom catalog name
+          - displayName: Custom OLM catalog name
             path: catalogName
             x-descriptors:
             - urn:alm:descriptor:com.tectonic.ui:advanced
-          - displayName: Custom catalog namespace
+          - displayName: Custom OLM catalog namespace
             path: catalogNamespace
             x-descriptors:
             - urn:alm:descriptor:io.kubernetes:Namespace
             - urn:alm:descriptor:com.tectonic.ui:advanced
-          - displayName: Install plan approval
+          - displayName: OLM Install Plan approval mode
             path: installPlanApproval
             x-descriptors:
             - urn:alm:descriptor:com.tectonic.ui:select:Automatic
