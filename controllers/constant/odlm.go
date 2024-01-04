@@ -777,8 +777,10 @@ spec:
                 - command:
                   - bash
                   - '-c'
-                  - >-
+                  args:
+                  - |
                     kubectl delete pods -l app.kubernetes.io/name=cloud-native-postgresql
+                    kubectl annotate secret postgresql-operator-controller-manager-config license-config-secret-applied=true
                   image:
                     templatingValueFrom:
                       default:
@@ -847,6 +849,15 @@ spec:
             apiGroup: rbac.authorization.k8s.io
       - apiVersion: postgresql.k8s.enterprisedb.io/v1
         data:
+          dummy-field:
+            license-config-secret-applied:
+              templatingValueFrom:
+                objectRef:
+                  apiVersion: v1
+                  kind: Secret
+                  name: postgresql-operator-controller-manager-config
+                  path: .metadata.annotations.license-config-secret-applied
+                required: true
           spec:
             bootstrap:
               initdb:
@@ -1347,8 +1358,10 @@ spec:
                 - command:
                   - bash
                   - '-c'
-                  - >-
+                  args:
+                  - |
                     kubectl delete pods -l app.kubernetes.io/name=cloud-native-postgresql
+                    kubectl annotate secret postgresql-operator-controller-manager-config license-config-secret-applied=true
                   image:
                     templatingValueFrom:
                       default:
