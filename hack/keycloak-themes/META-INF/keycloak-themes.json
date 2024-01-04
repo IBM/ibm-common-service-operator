@@ -1,6 +1,6 @@
 {
     "themes": [{
         "name" : "cloudpak",
-        "types": [ "login" ]
+        "types": [ "login", "account", "admin", "email" ]
     }]
 }
