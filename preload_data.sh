@@ -29,7 +29,7 @@ TO_NAMESPACE=""
 NUM=$#
 TEMPFILE="_TMP.yaml"
 DEBUG=0
-s390x_ENV="false"
+z_or_power_ENV="false"
 
 # ---------- Command variables ----------
 
@@ -140,8 +140,8 @@ function prereq() {
     fi
     mongo_node=$(${OC} get pods -n $FROM_NAMESPACE -o wide | grep icp-mongodb-0 | awk '{print $7}')
     architecture=$(${OC} describe node $mongo_node | grep "Architecture:" | awk '{print $2}')
-    if [[ $architecture == "s390x" ]]; then
-      s390x_ENV="true"
+    if [[ $architecture == "s390x" ]] || [[ $architecture == "ppc64le" ]]; then
+      z_or_power_ENV="true"
       info "Z or Power cluster detected, be prepared for multiple restarts of mongo pods. This is expected behavior."
       mongo_op_scaled=$(${OC} get deploy -n $FROM_NAMESPACE | grep ibm-mongodb-operator | egrep '1/1' || echo false)
       if [[ $mongo_op_scaled == "false" ]]; then
@@ -321,7 +321,7 @@ function dumpmongo() {
   fi
 
   ibm_mongodb_image=$(${OC} get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
-  if [[ $s390x_ENV == "false" ]]; then
+  if [[ $z_or_power_ENV == "false" ]]; then
     cat <<EOF >$TEMPFILE
 apiVersion: batch/v1
 kind: Job
@@ -487,7 +487,7 @@ EOF
   ${OC} get pods -n $FROM_NAMESPACE | grep mongodb-backup || echo ""
   wait_for_job_complete "mongodb-backup" "$FROM_NAMESPACE"
 
-  if [[ $s390x_ENV == "true" ]]; then
+  if [[ $z_or_power_ENV == "true" ]]; then
     #reset changes for z or power environment
     info "Reverting change to icp-mongodb configmap" 
     delete_mongo_pods "$FROM_NAMESPACE"
@@ -586,7 +586,7 @@ function loadmongo() {
 
   ibm_mongodb_image=$(${OC} get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
 
-  if [[ $s390x_ENV == "false" ]]; then
+  if [[ $z_or_power_ENV == "false" ]]; then
     cat <<EOF >$TEMPFILE
 apiVersion: batch/v1
 kind: Job
