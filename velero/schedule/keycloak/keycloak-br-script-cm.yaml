@@ -93,7 +93,7 @@ data:
         # info "Keycloak scaled up."
 
         #don't scale anything, just use pg_restore to prevent downtime
-        CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io keycloak-edb-cluster -o jsonpath="{.status.currentPrimary}" -n $KEYCLOAK_NAMESPACE` && oc -n $KEYCLOAK_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "DROP DATABASE IF EXISTS keycloak;" -c "CREATE DATABASE keycloak;" -c "GRANT CONNECT ON DATABASE keycloak TO public;" -c "ALTER DATABASE keycloak OWNER TO postgres;" -c "GRANT ALL PRIVILEGES ON DATABASE keycloak to postgres;"
+        #CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io keycloak-edb-cluster -o jsonpath="{.status.currentPrimary}" -n $KEYCLOAK_NAMESPACE` && oc -n $KEYCLOAK_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "DROP DATABASE IF EXISTS keycloak;" -c "CREATE DATABASE keycloak;" -c "GRANT CONNECT ON DATABASE keycloak TO public;" -c "ALTER DATABASE keycloak OWNER TO postgres;" -c "GRANT ALL PRIVILEGES ON DATABASE keycloak to postgres;"
         CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io keycloak-edb-cluster -o jsonpath="{.status.currentPrimary}"`
         oc exec $CNPG_PRIMARY_POD -n $KEYCLOAK_NAMESPACE -- mkdir -p /run/keycloak_backup
         oc cp $BACKUP_DIR/database/keycloak_db_backup.dump $KEYCLOAK_NAMESPACE/$CNPG_PRIMARY_POD:/run/keycloak_backup/keycloak_db_backup.dump
