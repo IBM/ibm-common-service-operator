@@ -29,7 +29,7 @@ TO_NAMESPACE=""
 NUM=$#
 TEMPFILE="_TMP.yaml"
 DEBUG=0
-MONGO_IMAGE="icr.io/cpopen/cpfs/ibm-mongodb:4.2.1-mongodb.4.0.24"
+z_or_power_ENV="false"
 
 # ---------- Command variables ----------
 
@@ -121,7 +121,7 @@ function prereq() {
 
     # check yq version
     check_yq
-
+    
     if [[ -z "$FROM_NAMESPACE" ]] || [[ -z "$TO_NAMESPACE" ]]; then
         error "Both Original-CommonService-Namespace and Services-Namespace need to be set for script to execute. Please rerun script with both parameters set. Run with \"-h\" flag for more details"
         exit 1
@@ -137,6 +137,20 @@ function prereq() {
     if [[ -z "$exists" ]]; then
         error "Namespace $TO_NAMESPACE does not exist (or oc command line is not logged in)"
         exit 1
+    fi
+    mongo_node=$(${OC} get pods -n $FROM_NAMESPACE -o wide | grep icp-mongodb-0 | awk '{print $7}')
+    architecture=$(${OC} describe node $mongo_node | grep "Architecture:" | awk '{print $2}')
+    if [[ $architecture == "s390x" ]] || [[ $architecture == "ppc64le" ]]; then
+      z_or_power_ENV="true"
+      info "Z or Power cluster detected, be prepared for multiple restarts of mongo pods. This is expected behavior."
+      mongo_op_scaled=$(${OC} get deploy -n $FROM_NAMESPACE | grep ibm-mongodb-operator | egrep '1/1' || echo false)
+      if [[ $mongo_op_scaled == "false" ]]; then
+        info "Mongo operator still scaled down, scaling up."
+        ${OC} scale deploy -n $FROM_NAMESPACE ibm-mongodb-operator --replicas=1
+        info "Wait for mongo operator to reconcile resources"
+        sleep 60
+        delete_mongo_pods "$FROM_NAMESPACE"
+      fi
     fi
 
     cert_manager_readiness_test
@@ -306,7 +320,9 @@ function dumpmongo() {
     error "Cannot switch to $FROM_NAMESPACE"
   fi
 
-  cat <<EOF >$TEMPFILE
+  ibm_mongodb_image=$(${OC} get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
+  if [[ $z_or_power_ENV == "false" ]]; then
+    cat <<EOF >$TEMPFILE
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -319,7 +335,7 @@ spec:
     spec:
       containers:
       - name: cs-mongodb-backup
-        image: $MONGO_IMAGE
+        image: $ibm_mongodb_image
         resources:
           limits:
             cpu: 500m
@@ -362,11 +378,123 @@ spec:
           secretName: mongodb-root-ca-cert
       restartPolicy: OnFailure
 EOF
+  else #s390x environments do not recognize --ssl options
+    info "Z or Power cluster detected"
+    info "Scaling down MongoDB operator"
+    ${OC} scale deploy -n $FROM_NAMESPACE ibm-mongodb-operator --replicas=0
+
+    #get cache size value
+    cacheSizeGB=$(${OC} get cm icp-mongodb -n $FROM_NAMESPACE -o yaml | grep cacheSizeGB | awk '{print $2}')
+    
+    info "Editing configmap icp-mongodb"
+    cat << EOF | ${OC} apply -f -
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: icp-mongodb
+  labels:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/instance: icp-mongodb
+    app.kubernetes.io/managed-by: operator
+    app.kubernetes.io/name: icp-mongodb
+    app.kubernetes.io/part-of: common-services-cloud-pak
+    app.kubernetes.io/version: 4.0.12-build.3
+    release: mongodb
+data:
+  mongod.conf: |-
+    storage:
+      dbPath: /data/db
+      wiredTiger:
+        engineConfig:
+          cacheSizeGB: $cacheSizeGB
+    net:
+      bindIpAll: true
+      port: 27017
+      ssl:
+        mode: preferSSL
+        CAFile: /data/configdb/tls.crt
+        PEMKeyFile: /work-dir/mongo.pem
+    replication:
+      replSetName: rs0
+    # Uncomment for TLS support or keyfile access control without TLS
+    security:
+      authorization: enabled
+      keyFile: /data/configdb/key.txt
+EOF
+    #need to delete the mongo pods one at a time
+    delete_mongo_pods "$FROM_NAMESPACE"
+    ${OC} delete job mongodb-backup -n $FROM_NAMESPACE --ignore-not-found
+    cat <<EOF >$TEMPFILE
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mongodb-backup
+spec:
+  parallelism: 1
+  completions: 1
+  backoffLimit: 20
+  template:
+    spec:
+      containers:
+      - name: cs-mongodb-backup
+        image: $ibm_mongodb_image
+        resources:
+          limits:
+            cpu: 500m
+            memory: 500Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        command: ["bash", "-c", "cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongodump --oplog --out /dump/dump --host mongodb:27017 --username \$ADMIN_USER --password \$ADMIN_PASSWORD --authenticationDatabase admin"]
+        volumeMounts:
+        - mountPath: "/work-dir"
+          name: tmp-mongodb
+        - mountPath: "/dump"
+          name: mongodump
+        - mountPath: "/cred/mongo-certs"
+          name: icp-mongodb-client-cert
+        - mountPath: "/cred/cluster-ca"
+          name: cluster-ca-cert
+        env:
+          - name: ADMIN_USER
+            valueFrom:
+              secretKeyRef:
+                name: icp-mongodb-admin
+                key: user
+          - name: ADMIN_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: icp-mongodb-admin
+                key: password
+      volumes:
+      - name: mongodump
+        persistentVolumeClaim:
+          claimName: cs-mongodump
+      - name: tmp-mongodb
+        emptyDir: {}
+      - name: icp-mongodb-client-cert
+        secret:
+          secretName: icp-mongodb-client-cert
+      - name: cluster-ca-cert
+        secret:
+          secretName: mongodb-root-ca-cert
+      restartPolicy: OnFailure
+EOF
+  fi
 
   info "Running Backup" 
   ${OC} apply -f $TEMPFILE -n $FROM_NAMESPACE
   ${OC} get pods -n $FROM_NAMESPACE | grep mongodb-backup || echo ""
   wait_for_job_complete "mongodb-backup" "$FROM_NAMESPACE"
+
+  if [[ $z_or_power_ENV == "true" ]]; then
+    #reset changes for z or power environment
+    info "Reverting change to icp-mongodb configmap" 
+    delete_mongo_pods "$FROM_NAMESPACE"
+    info "Scale mongo operator back up to 1"
+    #scaling back up to one will reset the icp-mongodb configmap
+    ${OC} scale deploy -n $FROM_NAMESPACE ibm-mongodb-operator --replicas=1
+  fi
   success "Backup Complete"
 } # dumpmongo
 
@@ -456,7 +584,10 @@ function loadmongo() {
     error "Cannot switch to $TO_NAMESPACE"
   fi
 
-  cat <<EOF >$TEMPFILE
+  ibm_mongodb_image=$(${OC} get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
+
+  if [[ $z_or_power_ENV == "false" ]]; then
+    cat <<EOF >$TEMPFILE
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -469,7 +600,7 @@ spec:
     spec:
       containers:
       - name: icp-mongodb-restore
-        image: $MONGO_IMAGE
+        image: $ibm_mongodb_image
         command: ["bash", "-c", "cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongorestore --host rs0/icp-mongodb:27017 --username \$ADMIN_USER --password \$ADMIN_PASSWORD --authenticationDatabase admin --ssl --sslCAFile /work-dir/ca.pem --sslPEMKeyFile /work-dir/mongo.pem /dump/dump"]
         resources:
           limits:
@@ -512,6 +643,66 @@ spec:
           secretName: mongodb-root-ca-cert
       restartPolicy: Never
 EOF
+  else
+    debug1 "Applying z/power restore job"
+    ${OC} delete job mongodb-restore -n $TO_NAMESPACE --ignore-not-found
+    cat <<EOF >$TEMPFILE
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mongodb-restore
+spec:
+  parallelism: 1
+  completions: 1
+  backoffLimit: 20
+  template:
+    spec:
+      containers:
+      - name: icp-mongodb-restore
+        image: $ibm_mongodb_image
+        command: ["bash", "-c", "cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongorestore --host rs0/icp-mongodb:27017 --username \$ADMIN_USER --password \$ADMIN_PASSWORD --authenticationDatabase admin /dump/dump"]
+        resources:
+          limits:
+            cpu: 500m
+            memory: 500Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        volumeMounts:
+        - mountPath: "/dump"
+          name: mongodump
+        - mountPath: "/work-dir"
+          name: tmp-mongodb
+        - mountPath: "/cred/mongo-certs"
+          name: icp-mongodb-client-cert
+        - mountPath: "/cred/cluster-ca"
+          name: cluster-ca-cert
+        env:
+          - name: ADMIN_USER
+            valueFrom:
+              secretKeyRef:
+                name: icp-mongodb-admin
+                key: user
+          - name: ADMIN_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: icp-mongodb-admin
+                key: password
+      volumes:
+      - name: mongodump
+        persistentVolumeClaim:
+          claimName: cs-mongodump
+      - name: tmp-mongodb
+        emptyDir: {}
+      - name: icp-mongodb-client-cert
+        secret:
+          secretName: icp-mongodb-client-cert
+      - name: cluster-ca-cert
+        secret:
+          secretName: mongodb-root-ca-cert
+      restartPolicy: Never
+EOF
+  fi
 
   info "Running Restore"
   ${OC} apply -f $TEMPFILE -n $TO_NAMESPACE
@@ -1272,6 +1463,7 @@ EOF
     #apply statefulset (in same dir)
     #get images from cp2 namespace
     ibm_mongodb_install_image=$(${OC} get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.initContainers[0]}{.image}{end}')
+    ibm_mongodb_image=$(${OC} get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
     
     #icp-mongodb-ss.yaml
     cat << EOF | ${OC} apply -f -
@@ -1410,7 +1602,7 @@ spec:
               mountPath: /tmp
           terminationMessagePolicy: File
           image: >-
-            $MONGO_IMAGE
+            $ibm_mongodb_image
           args:
             - '-on-start=/init/on-start.sh'
             - '-service=icp-mongodb'
@@ -1505,7 +1697,7 @@ spec:
               mountPath: /tmp
           terminationMessagePolicy: File
           image: >-
-            $MONGO_IMAGE
+            $ibm_mongodb_image
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: topology.kubernetes.io/zone
@@ -1655,6 +1847,24 @@ function deletemongocopy {
   success "MongoDB restored to new namespace $TO_NAMESPACE"
 
 } # deletemongocopy
+
+function delete_mongo_pods() {
+  local namespace=$1
+  local pods=$(${OC} get pods -n $namespace | grep icp-mongodb | awk '{print $1}' | tr "\n" " ")
+  for pod in $pods
+  do
+    debug1 "Deleting pod $pod"
+    ${OC} delete pod $pod -n $FROM_NAMESPACE --ignore-not-found
+    local condition="${OC} get pod -n $namespace --no-headers --ignore-not-found | grep ${pod} | egrep '2/2' || ${OC} get pod -n $namespace --no-headers --ignore-not-found | grep ${pod} | egrep '1/1' || true"
+    local retries=15
+    local sleep_time=15
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for mongo pod $pod to restart "
+    local success_message="Pod $pod restarted with new mongo config"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for pod $pod "
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+  done
+}
 
 function wait_for_job_complete() {
   local job_name=$1
