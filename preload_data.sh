@@ -142,7 +142,7 @@ function prereq() {
     architecture=$(${OC} describe node $mongo_node | grep "Architecture:" | awk '{print $2}')
     if [[ $architecture == "s390x" ]]; then
       s390x_ENV="true"
-      info "Z cluster detected, be prepared for multiple restarts of mongo pods. This is expected behavior."
+      info "Z or Power cluster detected, be prepared for multiple restarts of mongo pods. This is expected behavior."
       mongo_op_scaled=$(${OC} get deploy -n $FROM_NAMESPACE | grep ibm-mongodb-operator | egrep '1/1' || echo false)
       if [[ $mongo_op_scaled == "false" ]]; then
         info "Mongo operator still scaled down, scaling up."
@@ -379,7 +379,7 @@ spec:
       restartPolicy: OnFailure
 EOF
   else #s390x environments do not recognize --ssl options
-    info "Z cluster detected"
+    info "Z or Power cluster detected"
     info "Scaling down MongoDB operator"
     ${OC} scale deploy -n $FROM_NAMESPACE ibm-mongodb-operator --replicas=0
 
@@ -488,7 +488,7 @@ EOF
   wait_for_job_complete "mongodb-backup" "$FROM_NAMESPACE"
 
   if [[ $s390x_ENV == "true" ]]; then
-    #reset changes for z environment
+    #reset changes for z or power environment
     info "Reverting change to icp-mongodb configmap" 
     delete_mongo_pods "$FROM_NAMESPACE"
     info "Scale mongo operator back up to 1"
@@ -644,7 +644,7 @@ spec:
       restartPolicy: Never
 EOF
   else
-    debug1 "Applying z restore job"
+    debug1 "Applying z/power restore job"
     ${OC} delete job mongodb-restore -n $TO_NAMESPACE --ignore-not-found
     cat <<EOF >$TEMPFILE
 apiVersion: batch/v1
