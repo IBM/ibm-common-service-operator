@@ -576,7 +576,7 @@ function check_CSCR() {
             sleep ${sleep_time}
         else
             msg "-----------------------------------------------------------------------"    
-            success "Ready use"
+            success "IBM Common Services CR is Succeeded, Ready to proceed"
             break
         fi
     done

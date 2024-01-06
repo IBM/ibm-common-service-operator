@@ -34,6 +34,7 @@ CERT_MANAGER_MIGRATED="false"
 DEBUG=0
 BACKUP_LICENSING="false"
 PREVIEW_MODE=0
+IS_ISOLATED=0
 
 # ---------- Command variables ----------
 
@@ -396,9 +397,9 @@ function uninstall_singletons() {
 }
 
 function restart() {
-    # patch CR for management ingress before sclaing up ibm-common-service-operator deployment if CS CR exists
+    # patch CR for management ingress before sclaing up ibm-common-service-operator deployment when CS CR exists and previous instance is not isolated
     local isExists=$("${OC}" get commonservice common-service -n "${MASTER_NS}" --ignore-not-found)
-    if [ ! -z "$isExists" ]; then
+    if [[ ! -z "$isExists" ]] && [[ "${IS_ISOLATED}" == "0" ]]; then
         patch_cs_cr_for_management_ingress
     fi
 
@@ -587,7 +588,7 @@ function check_CSCR() {
             sleep ${sleep_time}
         else
             msg "-----------------------------------------------------------------------"    
-            success "Ready use"
+            success "IBM Common Services CR is Succeeded, Ready to proceed"
             break
         fi
     done
@@ -610,8 +611,14 @@ function isolate_odlm() {
     count=0
     for name in $env_range
     do
-        #If isolated mode, set value to true. Otherwise keep name value pairs unchanged.
+        # If isolated mode, set value to true. Otherwise keep name value pairs unchanged.
         if [[ $name == "ISOLATED_MODE" ]]; then
+            # Get the value to check if it is already set to true
+            existing_value=$(${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml | "${YQ}" '.spec.config.env['"${count}"'].value')
+            if [[ $existing_value == "true" ]]; then
+                info "isolated mode already set to true in ODLM subscription..."
+                IS_ISOLATED=1
+            fi
             env_value="true"
         else
             env_value=$(${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml | "${YQ}" '.spec.config.env['"${count}"'].value')
@@ -962,16 +969,13 @@ function wait_for_management_ingress_be_patched() {
 }
 
 function patch_management_ingress_cr() {
-    wait_for_cs_cr_exist
-    patch_cs_cr_for_management_ingress
-    wait_for_opconfig_exist
-    patch_opconfig_for_management_ingress
-    
-    local is_mgmt_CRD_exist=$((${OC} get managementingress -n ${MASTER_NS} --ignore-not-found > /dev/null && echo exists) || echo fail)
-    if [[ "$is_mgmt_CRD_exist" == "exists" ]]; then
-        wait_for_management_ingress_be_patched
-    else 
-        warning "managementingress CR not found, skipping waiting for managementingress CR to be patched."
+    if [[ "${IS_ISOLATED}" == "0" ]]; then
+        wait_for_cs_cr_exist
+        patch_cs_cr_for_management_ingress
+        wait_for_opconfig_exist
+        patch_opconfig_for_management_ingress
+    else
+        warning "Instance has been isolated previously, skipping patching commonservice and operandconfig for management ingress CR..."
     fi
 }
 
