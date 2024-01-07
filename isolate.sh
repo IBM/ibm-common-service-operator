@@ -181,8 +181,10 @@ function prereq() {
     cs_operator_found=false
 
     while read -r ns; do
-        cs_version=$("${OC}" get csv -n "${ns}" | grep common-service-operator | awk '{print $7}')
-        if [[ -n "${cs_version}" ]]; then
+        cs_version=$("${OC}" get csv -n "${ns}" | grep common-service-operator | awk '{print $7}' || echo "")
+        if [[ $cs_version == ""]]; then
+            error "Error happened when trying to get ibm-common-service-operator csv"
+        elif [[ -n "${cs_version}" ]]; then
             IFS='.' read -r major minor patch <<< "${cs_version}"
             if [[ ${major} -lt 3 || (${major} -eq 3 && ${minor} -lt 19) || (${major} -eq 3 && ${minor} -eq 19 && ${patch} -lt 9) ]]; then
                 error "Version of Foundational Services is $cs_version in namespace ${ns} does not meet the minimum version requirement. Upgrade to 3.19.9+"
@@ -801,16 +803,18 @@ function wait_for_certmanager() {
 
 function check_certmanager_count(){
     info "Verifying cert manager is deployed"
-    csv_count=$(${OC} get csv -A | grep "cert-manager"| wc -l | tr -d " " || echo "")
+    csv_count=$(${OC} get csv -A | awk '{print $2}' | grep "cert-manager"| wc -l | tr -d " " || echo "")
     debug1 "cert manager csv count output: $csv_count"
     if [[ "$csv_count" == "0" ]] || [[ "$csv_count" == "" ]]; then
         error "Missing a cert-manager"
     fi
     # if installed in all namespace mode or alongside cp2 cert manager, 
     # csv_count will be >1, need to check for multiple deployments
-    if [[ $csv_count > 1 ]]; then
-        webhook_deployments=$(${OC} get deploy -A --no-headers --ignore-not-found | grep "cert-manager-webhook" -c)
-        if [[ $webhook_deployments != "1" ]]; then
+    if [[ $csv_count > 1 ]]; then 
+        webhook_deployments=$(${OC} get deploy -A --no-headers --ignore-not-found | grep "cert-manager-webhook" -c || echo "")
+        if [[ $webhook_deployments == ""]]; then
+            error "Error happened when trying to get cert-manager csv"
+        elif [[ $webhook_deployments != "1" ]]; then
             error "Multiple cert-managers found. Only one should be installed per cluster"
         fi
     fi
