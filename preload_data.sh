@@ -292,7 +292,7 @@ EOF
 
   ${OC} apply -f $TEMPFILE
 
-  wait_trigger=$(${OC} get sc $NEW_STORAGE_CLASS -o yaml | grep volumeBindingMode: | awk '{print $2}')
+  wait_trigger=$(${OC} get sc $stgclass -o yaml | grep volumeBindingMode: | awk '{print $2}')
   if [[ $wait_trigger == "WaitForFirstConsumer" ]]; then
     info "StorageClass waits for pod to claim PVC, skipping wait for binding."
   else
@@ -517,14 +517,15 @@ function swapmongopvc() {
   fi
 
   ${OC} patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Retain" }}'
-  ${OC} patch pv $VOL --type=merge -p '{"spec": {"claimRef":null}}'
-  ${OC} patch pv $VOL --type json -p '[{ "op": "remove", "path": "/spec/claimRef" }]'
   
   ${OC} delete pvc cs-mongodump -n $FROM_NAMESPACE --ignore-not-found --timeout=10s
   if [ $? -ne 0 ]; then
       info "Failed to delete pvc cs-mongodump, patching its finalizer to null..."
       ${OC} patch pvc cs-mongodump -n $FROM_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
   fi
+
+  ${OC} patch pv $VOL --type=merge -p '{"spec": {"claimRef":null}}'
+  ${OC} patch pv $VOL --type json -p '[{ "op": "remove", "path": "/spec/claimRef" }]' #this line is proving problematic
 
   roks=$(${OC} cluster-info | grep 'containers.cloud.ibm.com')
   if [[ -z $roks ]]; then
@@ -557,17 +558,23 @@ EOF
   ${OC} create -f $TEMPFILE
 
   status=$(${OC} get pvc cs-mongodump -n $TO_NAMESPACE --no-headers | awk '{print $2}')
-  while [[ "$status" != "Bound" ]]
-  do
-    namespace=$(${OC} get pv $VOL -o=jsonpath='{.spec.claimRef.namespace}')
-    if [[ $namespace != $TO_NAMESPACE ]]; then
-      ${OC} patch pv $VOL --type=merge -p '{"spec": {"claimRef":null}}'
-    fi
-    info "Waiting for pvc cs-mongodump to bind"
-    sleep 10
+  wait_trigger=$(${OC} get sc $stgclass -o yaml | grep volumeBindingMode: | awk '{print $2}')
+  if [[ $wait_trigger == "WaitForFirstConsumer" ]]; then
+    info "StorageClass waits for pod to claim PVC, skipping wait for binding."
+  else
     status=$(${OC} get pvc cs-mongodump -n $TO_NAMESPACE --no-headers | awk '{print $2}')
-  done
-
+    while [[ "$status" != "Bound" ]]
+    do
+      namespace=$(${OC} get pv $VOL -o=jsonpath='{.spec.claimRef.namespace}')
+      if [[ $namespace != $TO_NAMESPACE ]]; then
+        ${OC} patch pv $VOL --type=merge -p '{"spec": {"claimRef":null}}'
+      fi
+      info "Waiting for pvc cs-mongodump to bind"
+      sleep 10
+      status=$(${OC} get pvc cs-mongodump -n $TO_NAMESPACE --no-headers | awk '{print $2}')
+    done
+  fi
+  
   success "Restored MongoDB volume moved to namespace $TO_NAMESPACE"
 } # swappvc
 
