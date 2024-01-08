@@ -292,7 +292,7 @@ EOF
 
   ${OC} apply -f $TEMPFILE
 
-  wait_trigger=$(${OC} get sc $NEW_STORAGE_CLASS -o yaml | grep volumeBindingMode: | awk '{print $2}')
+  wait_trigger=$(${OC} get sc $stgclass -o yaml | grep volumeBindingMode: | awk '{print $2}')
   if [[ $wait_trigger == "WaitForFirstConsumer" ]]; then
     info "StorageClass waits for pod to claim PVC, skipping wait for binding."
   else
