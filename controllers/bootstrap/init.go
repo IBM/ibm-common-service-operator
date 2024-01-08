@@ -562,6 +562,37 @@ func (b *Bootstrap) CheckOperatorCatalog(ns string) error {
 	return err
 }
 
+// CheckCRD returns true if the given crd is existent
+func (b *Bootstrap) CheckCRD(apiGroupVersion string, kind string) (bool, error) {
+	dc := discovery.NewDiscoveryClientForConfigOrDie(b.Config)
+	exist, err := b.ResourceExists(dc, apiGroupVersion, kind)
+	if err != nil {
+		return false, err
+	}
+	if !exist {
+		return false, nil
+	}
+	return true, nil
+}
+
+// WaitResourceReady returns true only when the specific resource CRD is created and wait for infinite time
+func (b *Bootstrap) WaitResourceReady(apiGroupVersion string, kind string) error {
+	dc := discovery.NewDiscoveryClientForConfigOrDie(b.Config)
+	if err := utilwait.PollImmediateInfinite(time.Second*10, func() (done bool, err error) {
+		exist, err := b.ResourceExists(dc, apiGroupVersion, kind)
+		if err != nil {
+			return exist, err
+		}
+		if !exist {
+			klog.V(2).Infof("waiting for resource ready with kind: %s, apiGroupVersion: %s", kind, apiGroupVersion)
+		}
+		return exist, nil
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (b *Bootstrap) waitResourceReady(apiGroupVersion, kind string) error {
 	dc := discovery.NewDiscoveryClientForConfigOrDie(b.Config)
 	if err := utilwait.PollImmediate(time.Second*10, time.Minute*2, func() (done bool, err error) {
@@ -879,24 +910,6 @@ func (b *Bootstrap) updateApprovalMode() error {
 	return nil
 }
 
-// WaitResourceReady returns true only when the specific resource CRD is created and wait for infinite time
-func (b *Bootstrap) WaitResourceReady(apiGroupVersion string, kind string) error {
-	dc := discovery.NewDiscoveryClientForConfigOrDie(b.Config)
-	if err := utilwait.PollImmediateInfinite(time.Second*10, func() (done bool, err error) {
-		exist, err := b.ResourceExists(dc, apiGroupVersion, kind)
-		if err != nil {
-			return exist, err
-		}
-		if !exist {
-			klog.V(2).Infof("waiting for resource ready with kind: %s, apiGroupVersion: %s", kind, apiGroupVersion)
-		}
-		return exist, nil
-	}); err != nil {
-		return err
-	}
-	return nil
-}
-
 // deployResource deploys the given resource CR
 func (b *Bootstrap) DeployResource(cr, placeholder string) bool {
 	if err := utilwait.PollImmediateInfinite(time.Second*10, func() (done bool, err error) {
@@ -1051,11 +1064,18 @@ func (b *Bootstrap) DeployCertManagerCR() error {
 
 	klog.Info("Deploying Cert Manager CRs")
 	for _, kind := range constant.CertManagerKinds {
-		// wait for v1 crd ready
-		if err := b.waitResourceReady(constant.CertManagerAPIGroupVersionV1, kind); err != nil {
-			klog.Errorf("Failed to wait for resource ready with kind: %s, apiGroupVersion: %s", kind, constant.CertManagerAPIGroupVersionV1)
+		klog.Infof("Checking if resource %s CRD exsits ", kind)
+		// if the crd is not exist, skip it
+		exist, err := b.CheckCRD(constant.CertManagerAPIGroupVersionV1, kind)
+		if err != nil {
+			klog.Errorf("Failed to check resource with kind: %s, apiGroupVersion: %s", kind, constant.CertManagerAPIGroupVersionV1)
+		}
+		if !exist {
+			klog.Infof("Skiped deploying %s, it is not exist in cluster", kind)
+			return nil
 		}
 	}
+
 	// will use v1 cert instead of v1alpha cert
 	// delete v1alpha1 cert if it exist
 	var resourceList = []*Resource{
