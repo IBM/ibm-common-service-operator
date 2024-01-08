@@ -777,8 +777,10 @@ spec:
                 - command:
                   - bash
                   - '-c'
-                  - >-
+                  args:
+                  - |
                     kubectl delete pods -l app.kubernetes.io/name=cloud-native-postgresql
+                    kubectl annotate secret postgresql-operator-controller-manager-config ibm-license-key-applied="EDB Database with IBM License Key"
                   image:
                     templatingValueFrom:
                       default:
@@ -848,6 +850,14 @@ spec:
       - apiVersion: postgresql.k8s.enterprisedb.io/v1
         data:
           spec:
+            description:
+              templatingValueFrom:
+                objectRef:
+                  apiVersion: v1
+                  kind: Secret
+                  name: postgresql-operator-controller-manager-config
+                  path: .metadata.annotations.ibm-license-key-applied
+                required: true
             bootstrap:
               initdb:
                 database: keycloak
@@ -1347,8 +1357,10 @@ spec:
                 - command:
                   - bash
                   - '-c'
-                  - >-
+                  args:
+                  - |
                     kubectl delete pods -l app.kubernetes.io/name=cloud-native-postgresql
+                    kubectl annotate secret postgresql-operator-controller-manager-config ibm-license-key-applied="EDB Database with IBM License Key"
                   image:
                     templatingValueFrom:
                       default:
