@@ -517,14 +517,15 @@ function swapmongopvc() {
   fi
 
   ${OC} patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Retain" }}'
-  ${OC} patch pv $VOL --type=merge -p '{"spec": {"claimRef":null}}'
-  ${OC} patch pv $VOL --type json -p '[{ "op": "remove", "path": "/spec/claimRef" }]'
   
   ${OC} delete pvc cs-mongodump -n $FROM_NAMESPACE --ignore-not-found --timeout=10s
   if [ $? -ne 0 ]; then
       info "Failed to delete pvc cs-mongodump, patching its finalizer to null..."
       ${OC} patch pvc cs-mongodump -n $FROM_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
   fi
+
+  ${OC} patch pv $VOL --type=merge -p '{"spec": {"claimRef":null}}'
+  ${OC} patch pv $VOL --type json -p '[{ "op": "remove", "path": "/spec/claimRef" }]' #this line is proving problematic
 
   roks=$(${OC} cluster-info | grep 'containers.cloud.ibm.com')
   if [[ -z $roks ]]; then
