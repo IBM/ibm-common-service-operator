@@ -182,8 +182,8 @@ function prereq() {
 
     while read -r ns; do
         cs_version=$("${OC}" get csv -n "${ns}" | grep common-service-operator | awk '{print $7}' || echo "")
-        if [[ $cs_version == ""]]; then
-            error "Error happened when trying to get ibm-common-service-operator csv"
+        if [[ $cs_version == "" ]]; then
+            error "Failed to get ibm-common-service-operator csv in namespace ${ns}."
         elif [[ -n "${cs_version}" ]]; then
             IFS='.' read -r major minor patch <<< "${cs_version}"
             if [[ ${major} -lt 3 || (${major} -eq 3 && ${minor} -lt 19) || (${major} -eq 3 && ${minor} -eq 19 && ${patch} -lt 9) ]]; then
@@ -812,8 +812,8 @@ function check_certmanager_count(){
     # csv_count will be >1, need to check for multiple deployments
     if [[ $csv_count > 1 ]]; then 
         webhook_deployments=$(${OC} get deploy -A --no-headers --ignore-not-found | grep "cert-manager-webhook" -c || echo "")
-        if [[ $webhook_deployments == ""]]; then
-            error "Error happened when trying to get cert-manager csv"
+        if [[ $webhook_deployments == "" ]]; then
+            error "Failed to cert-manager-webhook deployment"
         elif [[ $webhook_deployments != "1" ]]; then
             error "Multiple cert-managers found. Only one should be installed per cluster"
         fi
