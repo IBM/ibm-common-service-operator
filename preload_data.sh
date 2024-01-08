@@ -557,17 +557,23 @@ EOF
   ${OC} create -f $TEMPFILE
 
   status=$(${OC} get pvc cs-mongodump -n $TO_NAMESPACE --no-headers | awk '{print $2}')
-  while [[ "$status" != "Bound" ]]
-  do
-    namespace=$(${OC} get pv $VOL -o=jsonpath='{.spec.claimRef.namespace}')
-    if [[ $namespace != $TO_NAMESPACE ]]; then
-      ${OC} patch pv $VOL --type=merge -p '{"spec": {"claimRef":null}}'
-    fi
-    info "Waiting for pvc cs-mongodump to bind"
-    sleep 10
+  wait_trigger=$(${OC} get sc $stgclass -o yaml | grep volumeBindingMode: | awk '{print $2}')
+  if [[ $wait_trigger == "WaitForFirstConsumer" ]]; then
+    info "StorageClass waits for pod to claim PVC, skipping wait for binding."
+  else
     status=$(${OC} get pvc cs-mongodump -n $TO_NAMESPACE --no-headers | awk '{print $2}')
-  done
-
+    while [[ "$status" != "Bound" ]]
+    do
+      namespace=$(${OC} get pv $VOL -o=jsonpath='{.spec.claimRef.namespace}')
+      if [[ $namespace != $TO_NAMESPACE ]]; then
+        ${OC} patch pv $VOL --type=merge -p '{"spec": {"claimRef":null}}'
+      fi
+      info "Waiting for pvc cs-mongodump to bind"
+      sleep 10
+      status=$(${OC} get pvc cs-mongodump -n $TO_NAMESPACE --no-headers | awk '{print $2}')
+    done
+  fi
+  
   success "Restored MongoDB volume moved to namespace $TO_NAMESPACE"
 } # swappvc
 
