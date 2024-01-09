@@ -19,6 +19,7 @@ package common
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"os"
@@ -805,4 +806,36 @@ func EnsureLabelsForCsCR(cs *apiv3.CommonService, labels map[string]string) {
 
 func CompareCsCR(csCR *apiv3.CommonService, existingCsCR *apiv3.CommonService) (needUpdate bool) {
 	return !equality.Semantic.DeepEqual(csCR.GetLabels(), existingCsCR.GetLabels()) || !equality.Semantic.DeepEqual(csCR.GetAnnotations(), existingCsCR.GetAnnotations()) || !equality.Semantic.DeepEqual(csCR.Spec, existingCsCR.Spec)
+}
+
+// ReadFile reads file from local path
+func ReadFile(path string) ([]byte, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		klog.Error(err)
+		return nil, err
+	}
+	defer file.Close()
+
+	fileInfo, err := file.Stat()
+	if err != nil {
+		klog.Error(err)
+		return nil, err
+	}
+
+	fileSize := fileInfo.Size()
+	buffer := make([]byte, fileSize)
+
+	_, err = file.Read(buffer)
+	if err != nil {
+		klog.Error(err)
+		return nil, err
+	}
+
+	return buffer, nil
+}
+
+// EncodeBase64 encodes data to base64 string
+func EncodeBase64(data []byte) string {
+	return base64.StdEncoding.EncodeToString(data)
 }

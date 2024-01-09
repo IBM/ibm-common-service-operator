@@ -40,6 +40,7 @@ LABEL org.label-schema.vendor="IBM" \
 
 WORKDIR /
 COPY --from=builder /workspace/manager .
+COPY hack/keycloak-themes/cloudpak-theme.jar /hack/keycloak-themes/cloudpak-theme.jar
 
 # copy licenses
 RUN mkdir /licenses
