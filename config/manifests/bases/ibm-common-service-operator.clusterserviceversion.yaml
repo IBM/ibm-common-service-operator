@@ -251,10 +251,6 @@ spec:
     name: IBM Support
   maturity: alpha
   minKubeVersion: 1.19.0
-  nativeAPIs:
-  - group: cert-manager.io
-    kind: Certificate
-    version: v1
   provider:
     name: IBM
   relatedImages:

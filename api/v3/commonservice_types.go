@@ -39,6 +39,7 @@ type CSData struct {
 	ApprovalMode       string
 	OnPremMultiEnable  string
 	WatchNamespaces    string
+	CloudPakThemes     string
 }
 
 // +kubebuilder:pruning:PreserveUnknownFields

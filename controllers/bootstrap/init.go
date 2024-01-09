@@ -175,6 +175,12 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		return err
 	}
 
+	// Create Keycloak themes ConfigMap
+	if err := b.CreateKeycloakThemesConfigMap(); err != nil {
+		klog.Errorf("Failed to create Keycloak Themes ConfigMap: %v", err)
+		return err
+	}
+
 	// Backward compatible for All Namespace Installation Mode upgrade
 	// Uninstall ODLM in servicesNamespace(ibm-common-services)
 	if b.CSData.CPFSNs != b.CSData.ServicesNs {
@@ -672,6 +678,24 @@ func (b *Bootstrap) CreateNsScopeConfigmap() error {
 // CreateEDBImageConfig creates a ConfigMap contains EDB image reference
 func (b *Bootstrap) CreateEDBImageMaps() error {
 	cmRes := constant.EDBImageConfigMap
+	if err := b.renderTemplate(cmRes, b.CSData, false); err != nil {
+		return err
+	}
+	return nil
+}
+
+// CreateKeycloakThemesConfigMap creates a ConfigMap contains Keycloak themes
+func (b *Bootstrap) CreateKeycloakThemesConfigMap() error {
+
+	klog.Info("Extracting Keycloak themes from jar file")
+	themeFile := constant.KeycloakThemesJar
+	themeFileContent, err := util.ReadFile(themeFile)
+	if err != nil {
+		return err
+	}
+	b.CSData.CloudPakThemes = util.EncodeBase64(themeFileContent)
+
+	cmRes := constant.KeycloakThemesConfigMap
 	if err := b.renderTemplate(cmRes, b.CSData, false); err != nil {
 		return err
 	}

@@ -606,6 +606,8 @@ spec:
                           name: startup-volume
                         - mountPath: /mnt/trust-ca
                           name: trust-ca-volume
+                        - mountPath: /opt/keycloak/providers
+                          name: cs-keycloak-theme
                   volumes:
                     - name: truststore-volume
                       emptyDir:
@@ -617,6 +619,12 @@ spec:
                       configMap:
                         name: cs-keycloak-ca-certs
                         optional: true
+                    - name: cs-keycloak-theme
+                      configMap:
+                        items:
+                          - key: cloudpak-theme.jar
+                            path: cloudpak-theme.jar
+                        name: cs-keycloak-theme
         force: true
         kind: Keycloak
         name: cs-keycloak
@@ -704,6 +712,12 @@ spec:
               ssoSessionMaxLifespan: 43200
               rememberMe: true
               passwordPolicy: "length(15) and notUsername(undefined) and notEmail(undefined)"
+              loginTheme: cloudpak
+              adminTheme: cloudpak
+              accountTheme: cloudpak
+              emailTheme: cloudpak
+              internationalizationEnabled: true
+              supportedLocales: [ "en", "de" , "es", "fr", "it", "ja", "ko", "pt_BR", "zh_CN", "zh_TW"]
   - name: edb-keycloak
     resources:
       - apiVersion: batch/v1
@@ -777,8 +791,10 @@ spec:
                 - command:
                   - bash
                   - '-c'
-                  - >-
+                  args:
+                  - |
                     kubectl delete pods -l app.kubernetes.io/name=cloud-native-postgresql
+                    kubectl annotate secret postgresql-operator-controller-manager-config ibm-license-key-applied="EDB Database with IBM License Key"
                   image:
                     templatingValueFrom:
                       default:
@@ -848,6 +864,14 @@ spec:
       - apiVersion: postgresql.k8s.enterprisedb.io/v1
         data:
           spec:
+            description:
+              templatingValueFrom:
+                objectRef:
+                  apiVersion: v1
+                  kind: Secret
+                  name: postgresql-operator-controller-manager-config
+                  path: .metadata.annotations.ibm-license-key-applied
+                required: true
             bootstrap:
               initdb:
                 database: keycloak
@@ -1098,6 +1122,12 @@ spec:
     packageName: ibm-automation-elastic
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+  - channel: v1.1
+    name: ibm-elasticsearch-operator
+    namespace: "{{ .CPFSNs }}"
+    packageName: ibm-elasticsearch-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode}}
 `
 )
 
@@ -1341,8 +1371,10 @@ spec:
                 - command:
                   - bash
                   - '-c'
-                  - >-
+                  args:
+                  - |
                     kubectl delete pods -l app.kubernetes.io/name=cloud-native-postgresql
+                    kubectl annotate secret postgresql-operator-controller-manager-config ibm-license-key-applied="EDB Database with IBM License Key"
                   image:
                     templatingValueFrom:
                       default:

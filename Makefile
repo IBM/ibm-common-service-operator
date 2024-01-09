@@ -101,6 +101,7 @@ ifeq ($(BUILD_LOCALLY),0)
 endif
 
 include common/Makefile.common.mk
+include hack/keycloak-themes/Makefile
 
 ##@ Development
 
@@ -179,7 +180,7 @@ deploy: manifests ## Deploy controller in the configured Kubernetes cluster in ~
 	cd config/manager && $(KUSTOMIZE) edit set image quay.io/opencloudio/common-service-operator=$(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME):$(RELEASE_VERSION)
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
-build-dev-image:
+build-dev-image: cloudpak-theme.jar
 	@echo "Building the $(OPERATOR_IMAGE_NAME) docker dev image for $(LOCAL_ARCH)..."
 	@docker build -t $(REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):dev \
 	--build-arg VCS_REF=$(VCS_REF) --build-arg VCS_URL=$(VCS_URL) \
@@ -255,7 +256,7 @@ e2e-test: ## Run e2e test
 
 ##@ Build
 
-build-operator-image: $(CONFIG_DOCKER_TARGET) ## Build the operator image.
+build-operator-image: $(CONFIG_DOCKER_TARGET) cloudpak-theme.jar ## Build the operator image.
 	@echo "Building the $(OPERATOR_IMAGE_NAME) docker image for $(LOCAL_ARCH)..."
 	@docker build -t $(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(VERSION) \
 	--build-arg VCS_REF=$(VCS_REF) --build-arg VCS_URL=$(VCS_URL) \
