@@ -32,10 +32,12 @@ data:
             info "Mode set to backup, beginning backup process."
             backup
             success "Backup completed successfully."
-        else
+        else if [[ $MODE == "restore" ]]
             info "Mode is set to restore, beginning restore process."
             restore
             success "Restore completed successfully."
+        else
+            error "Invalid mode entered. Please specify \"backup\" or \"restore\"."
         fi
     }
 
