@@ -606,6 +606,8 @@ spec:
                           name: startup-volume
                         - mountPath: /mnt/trust-ca
                           name: trust-ca-volume
+                        - mountPath: /opt/keycloak/providers
+                          name: cs-keycloak-theme
                   volumes:
                     - name: truststore-volume
                       emptyDir:
@@ -617,6 +619,12 @@ spec:
                       configMap:
                         name: cs-keycloak-ca-certs
                         optional: true
+                    - name: cs-keycloak-theme
+                      configMap:
+                        items:
+                          - key: cloudpak-theme.jar
+                            path: cloudpak-theme.jar
+                        name: cs-keycloak-theme
         force: true
         kind: Keycloak
         name: cs-keycloak
@@ -704,6 +712,12 @@ spec:
               ssoSessionMaxLifespan: 43200
               rememberMe: true
               passwordPolicy: "length(15) and notUsername(undefined) and notEmail(undefined)"
+              loginTheme: cloudpak
+              adminTheme: cloudpak
+              accountTheme: cloudpak
+              emailTheme: cloudpak
+              internationalizationEnabled: true
+              supportedLocales: [ "en", "de" , "es", "fr", "it", "ja", "ko", "pt_BR", "zh_CN", "zh_TW"]
   - name: edb-keycloak
     resources:
       - apiVersion: batch/v1
