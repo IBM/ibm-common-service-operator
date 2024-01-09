@@ -6,7 +6,7 @@ metadata:
     capabilities: Seamless Upgrades
     containerImage: icr.io/cpopen/common-service-operator:latest
     createdAt: "2020-10-19T21:38:33Z"
-    description: The IBM Common Service Operator is used to deploy IBM Common Services
+    description: The IBM Cloud Pak foundational services operator is used to deploy IBM foundational services.
     nss.operator.ibm.com/managed-operators: ibm-common-service-operator
     nss.operator.ibm.com/managed-webhooks: ""
     olm.skipRange: ""
@@ -35,15 +35,29 @@ spec:
       kind: CommonService
       name: commonservices.operator.ibm.com
       specDescriptors:
-      - description: 'Accepting the license - URL: https://ibm.biz/icpfs39license'
+      - displayName: License
+        path: license
+        description: License information for this instance. You must accept the license.
+      - description: Read and accept the license that is applicable to your installation. For more information, see https://ibm.biz/icpfs39license
         displayName: Accept
         path: license.accept
         value:
-        - false
+          - false
         x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:checkbox
-      - description: The size of deployment profile for IBM Cloud Pak foundational
-          services
+          - urn:alm:descriptor:com.tectonic.ui:checkbox
+      - path: license.license
+        x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:hidden
+      - path: license.use
+        x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:hidden
+      - path: license.key
+        x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:hidden
+      - path: license.use
+        x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:hidden
+      - description: The size of deployment profile for IBM Cloud Pak foundational services.
         displayName: Size
         path: size
         x-descriptors:
@@ -53,6 +67,25 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:select:medium
         - urn:alm:descriptor:com.tectonic.ui:select:large
         - urn:alm:descriptor:com.tectonic.ui:select:production
+      - displayName: Operator namespace
+        path: operatorNamespace
+        x-descriptors:
+        - urn:alm:descriptor:io.kubernetes:Namespace
+      - displayName: Services namespace
+        path: servicesNamespace
+        x-descriptors:
+        - urn:alm:descriptor:io.kubernetes:Namespace
+      # ----------- Advanced Section -----------
+      - displayName: Storage class
+        path: storageClass
+        x-descriptors:
+        - urn:alm:descriptor:io.kubernetes:StorageClass
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      - displayName: FIPS mode
+        path: fipsEnabled
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+        - urn:alm:descriptor:com.tectonic.ui:advanced
       - description: The profile controller for IBM Cloud Pak foundational services
         displayName: ProfileController
         path: profileController
@@ -61,6 +94,45 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:select:commonservice
         - urn:alm:descriptor:com.tectonic.ui:select:turbonomic
         - urn:alm:descriptor:com.tectonic.ui:select:vpa
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      - displayName: Identity management custom hostname
+        path: routeHost
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      - displayName: Identity management custom certificates
+        path: BYOCACertificate
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      - displayName: Identity management default admin username
+        path: defaultAdminUser
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      - displayName: Custom OLM catalog name
+        path: catalogName
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      - displayName: Custom OLM catalog namespace
+        path: catalogNamespace
+        x-descriptors:
+        - urn:alm:descriptor:io.kubernetes:Namespace
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      - displayName: OLM Install Plan approval mode
+        path: installPlanApproval
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:select:Automatic
+        - urn:alm:descriptor:com.tectonic.ui:select:Manual
+        - urn:alm:descriptor:com.tectonic.ui:advanced
+      # ----------- Hidden Section -----------
+      - path: manualManagement
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:hidden
+      - path: features
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:hidden
+      - path: services
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:hidden
       statusDescriptors:
       - description: Installed Bedrock Operator Name
         displayName: Name
