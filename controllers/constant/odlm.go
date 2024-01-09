@@ -217,14 +217,6 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
-  - name: ibm-platformui-operator-v4.4
-    namespace: "{{ .CPFSNs }}"
-    channel: v4.4
-    packageName: ibm-zen-operator
-    scope: public
-    installPlanApproval: {{ .ApprovalMode }}
-    sourceName: {{ .CatalogSourceName }}
-    sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 )
 
@@ -419,9 +411,6 @@ spec:
     spec:
       operandBindInfo: {}
   - name: ibm-platformui-operator-v4.3
-    spec:
-      operandBindInfo: {}
-  - name: ibm-platformui-operator-v4.4
     spec:
       operandBindInfo: {}
 `
@@ -1078,7 +1067,7 @@ spec:
     sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-platformui-operator
     namespace: "{{ .CPFSNs }}"
-    channel: v4.4
+    channel: v4.3
     packageName: ibm-zen-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
