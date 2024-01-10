@@ -1024,6 +1024,20 @@ func (b *Bootstrap) IsBYOCert() (bool, error) {
 }
 
 func (b *Bootstrap) DeployCertManagerCR() error {
+	for _, kind := range constant.CertManagerKinds {
+		klog.Infof("Checking if resource %s CRD exsits ", kind)
+		// if the crd is not exist, skip it
+		exist, err := b.CheckCRD(constant.CertManagerAPIGroupVersionV1, kind)
+		if err != nil {
+			klog.Errorf("Failed to check resource with kind: %s, apiGroupVersion: %s", kind, constant.CertManagerAPIGroupVersionV1)
+			return err
+		}
+		if !exist {
+			klog.Infof("Skiped deploying %s, it is not exist in cluster", kind)
+			return nil
+		}
+	}
+
 	klog.V(2).Info("Fetch all the CommonService instances")
 	csReq, err := labels.NewRequirement(constant.CsClonedFromLabel, selection.DoesNotExist, []string{})
 	if err != nil {
@@ -1063,19 +1077,6 @@ func (b *Bootstrap) DeployCertManagerCR() error {
 	}
 
 	klog.Info("Deploying Cert Manager CRs")
-	for _, kind := range constant.CertManagerKinds {
-		klog.Infof("Checking if resource %s CRD exsits ", kind)
-		// if the crd is not exist, skip it
-		exist, err := b.CheckCRD(constant.CertManagerAPIGroupVersionV1, kind)
-		if err != nil {
-			klog.Errorf("Failed to check resource with kind: %s, apiGroupVersion: %s", kind, constant.CertManagerAPIGroupVersionV1)
-		}
-		if !exist {
-			klog.Infof("Skiped deploying %s, it is not exist in cluster", kind)
-			return nil
-		}
-	}
-
 	// will use v1 cert instead of v1alpha cert
 	// delete v1alpha1 cert if it exist
 	var resourceList = []*Resource{
