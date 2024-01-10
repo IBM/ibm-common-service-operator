@@ -168,26 +168,38 @@ func main() {
 			klog.Errorf("Unable to create controller CommonService: %v", err)
 			os.Exit(1)
 		}
-		if err = (&certmanagerv1controllers.CertificateRefreshReconciler{
-			Client: mgr.GetClient(),
-			Scheme: mgr.GetScheme(),
-		}).SetupWithManager(mgr); err != nil {
-			klog.Error(err, "unable to create controller", "controller", "CertificateRefresh")
+
+		// check if cert-manager CRD does not exist, then skip cert-manager related controllers initialization
+		exist, err := bs.CheckCRD(constant.CertManagerAPIGroupVersionV1, "certificates")
+		if err != nil {
+			klog.Errorf("Failed to check if cert-manager CRD exists: %v", err)
 			os.Exit(1)
 		}
-		if err = (&certmanagerv1controllers.PodRefreshReconciler{
-			Client: mgr.GetClient(),
-			Scheme: mgr.GetScheme(),
-		}).SetupWithManager(mgr); err != nil {
-			klog.Error(err, "unable to create controller", "controller", "PodRefresh")
-			os.Exit(1)
-		}
-		if err = (&certmanagerv1controllers.V1AddLabelReconciler{
-			Client: mgr.GetClient(),
-			Scheme: mgr.GetScheme(),
-		}).SetupWithManager(mgr); err != nil {
-			klog.Error(err, "unable to create controller", "controller", "V1AddLabel")
-			os.Exit(1)
+		if !exist && err == nil {
+			klog.Infof("cert-manager CRD does not exist, skip cert-manager related controllers initialization")
+		} else if exist && err == nil {
+
+			if err = (&certmanagerv1controllers.CertificateRefreshReconciler{
+				Client: mgr.GetClient(),
+				Scheme: mgr.GetScheme(),
+			}).SetupWithManager(mgr); err != nil {
+				klog.Error(err, "unable to create controller", "controller", "CertificateRefresh")
+				os.Exit(1)
+			}
+			if err = (&certmanagerv1controllers.PodRefreshReconciler{
+				Client: mgr.GetClient(),
+				Scheme: mgr.GetScheme(),
+			}).SetupWithManager(mgr); err != nil {
+				klog.Error(err, "unable to create controller", "controller", "PodRefresh")
+				os.Exit(1)
+			}
+			if err = (&certmanagerv1controllers.V1AddLabelReconciler{
+				Client: mgr.GetClient(),
+				Scheme: mgr.GetScheme(),
+			}).SetupWithManager(mgr); err != nil {
+				klog.Error(err, "unable to create controller", "controller", "V1AddLabel")
+				os.Exit(1)
+			}
 		}
 	} else {
 		klog.Infof("Common Service Operator goes dormant in the namespace %s", operatorNs)
