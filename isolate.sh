@@ -45,7 +45,7 @@ BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 LOG_FILE="isolate_log_$(date +'%Y%m%d%H%M%S').log"
 
 # preview mode directory
-PREVIEW_DIR="/tmp/preview"
+PREVIEW_DIR="/tmp/isolate-$(date +'%Y%m%d%H%M%S')-preview"
 
 # ---------- Main functions ----------
 

@@ -46,7 +46,7 @@ LOG_FILE="setup_tenant_log_$(date +'%Y%m%d%H%M%S').log"
 STEP=0
 
 # preview mode directory
-PREVIEW_DIR="/tmp/preview"
+PREVIEW_DIR="/tmp/setup-tenant-$(date +'%Y%m%d%H%M%S')-preview"
 
 # ---------- Main functions ----------
 
