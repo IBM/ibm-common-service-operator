@@ -49,7 +49,7 @@ BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 LOG_FILE="setup_singleton_log_$(date +'%Y%m%d%H%M%S').log"
 
 # preview mode directory
-PREVIEW_DIR="/tmp/preview"
+PREVIEW_DIR="/tmp/setup-singleton-$(date +'%Y%m%d%H%M%S')-preview"
 
 # counter to keep track of installation steps
 STEP=0
