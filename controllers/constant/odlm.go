@@ -860,6 +860,7 @@ spec:
                   kind: Secret
                   name: postgresql-operator-controller-manager-config
                   path: .metadata.annotations.ibm-license-key-applied
+                  namespace: {{ .OperatorNs }}
                 required: true
             bootstrap:
               initdb:
