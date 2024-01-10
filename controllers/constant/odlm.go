@@ -459,22 +459,6 @@ spec:
         force: true
         kind: OperandBindInfo
         name: keycloak-bindinfo
-      - apiVersion: cert-manager.io/v1
-        kind: Certificate
-        force: true
-        name: cs-keycloak-tls-cert
-        data:
-          spec:
-            commonName: cs-keycloak-service
-            dnsNames:
-                - cs-keycloak-service
-                - cs-keycloak-service.{{ .ServicesNs }}
-                - cs-keycloak-service.{{ .ServicesNs }}.svc
-                - cs-keycloak-service.{{ .ServicesNs }}.svc.cluster.local
-            issuerRef:
-                kind: Issuer
-                name: cs-ca-issuer
-            secretName: cs-keycloak-tls-secret
       - apiVersion: v1
         kind: ConfigMap
         name: cs-keycloak-entrypoint
@@ -508,6 +492,62 @@ spec:
               done
               echo "Truststore file built, starting Keycloak ..."
               "/opt/keycloak/bin/kc.sh" "$@" --spi-truststore-file-file=${TRUSTSTORE_DIR}/keycloak-truststore.jks --spi-truststore-file-password=changeit --spi-truststore-file-hostname-verification-policy=WILDCARD
+      - apiVersion: v1
+        data:
+          metadata:
+            annotations:
+              service.beta.openshift.io/serving-cert-secret-name: cpfs-opcon-cs-keycloak-tls-secret
+            labels:
+              app: keycloak
+              app.kubernetes.io/instance: cs-keycloak
+              app.kubernetes.io/managed-by: keycloak-operator
+              operator.ibm.com/opreq-control: 'true'
+            name: cpfs-opcon-cs-keycloak-service
+            namespace: {{ .ServicesNs }}
+          spec:
+            internalTrafficPolicy: Cluster
+            ipFamilies:
+              - IPv4
+            ipFamilyPolicy: SingleStack
+            ports:
+              - name: https
+                port: 8443
+                protocol: TCP
+                targetPort: 8443
+            selector:
+              app: keycloak
+              app.kubernetes.io/instance: cs-keycloak
+              app.kubernetes.io/managed-by: keycloak-operator
+            sessionAffinity: None
+            type: ClusterIP
+        force: true
+        kind: Service
+        name: cpfs-opcon-cs-keycloak-service
+      - apiVersion: v1
+        data:
+          stringData:
+            ca.crt:
+              templatingValueFrom:
+                configMapKeyRef:
+                  key: service-ca.crt
+                  name: openshift-service-ca.crt
+                required: true
+            tls.crt:
+              templatingValueFrom:
+                required: true
+                secretKeyRef:
+                  key: tls.crt
+                  name: cpfs-opcon-cs-keycloak-tls-secret
+            tls.key:
+              templatingValueFrom:
+                required: true
+                secretKeyRef:
+                  key: tls.key
+                  name: cpfs-opcon-cs-keycloak-tls-secret
+          type: kubernetes.io/tls
+        force: true
+        kind: Secret
+        name: cs-keycloak-tls-secret
       - apiVersion: route.openshift.io/v1
         data:
           spec:
@@ -543,7 +583,7 @@ spec:
               termination: reencrypt
             to:
               kind: Service
-              name: cs-keycloak-service
+              name: cpfs-opcon-cs-keycloak-service
             wildcardPolicy: None
         force: true
         kind: Route
