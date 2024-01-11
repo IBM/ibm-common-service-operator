@@ -493,17 +493,13 @@ spec:
               echo "Truststore file built, starting Keycloak ..."
               "/opt/keycloak/bin/kc.sh" "$@" --spi-truststore-file-file=${TRUSTSTORE_DIR}/keycloak-truststore.jks --spi-truststore-file-password=changeit --spi-truststore-file-hostname-verification-policy=WILDCARD
       - apiVersion: v1
+        annotations:
+          service.beta.openshift.io/serving-cert-secret-name: cpfs-opcon-cs-keycloak-tls-secret
+        labels:
+          app: keycloak
+          app.kubernetes.io/instance: cs-keycloak
+          app.kubernetes.io/managed-by: keycloak-operator
         data:
-          metadata:
-            annotations:
-              service.beta.openshift.io/serving-cert-secret-name: cpfs-opcon-cs-keycloak-tls-secret
-            labels:
-              app: keycloak
-              app.kubernetes.io/instance: cs-keycloak
-              app.kubernetes.io/managed-by: keycloak-operator
-              operator.ibm.com/opreq-control: 'true'
-            name: cpfs-opcon-cs-keycloak-service
-            namespace: {{ .ServicesNs }}
           spec:
             internalTrafficPolicy: Cluster
             ipFamilies:
@@ -524,6 +520,8 @@ spec:
         kind: Service
         name: cpfs-opcon-cs-keycloak-service
       - apiVersion: v1
+        labels:
+          operator.ibm.com/opreq-control: 'true'
         data:
           stringData:
             ca.crt:
