@@ -2101,3 +2101,13 @@ rules:
   verbs:
   - get
   - list
+- apiGroups:
+  - tekton.dev
+  resources:
+  - taskrun/status
+  - taskrun
+  - taskruns/status
+  - taskruns
+  verbs:
+  - get
+  - list
