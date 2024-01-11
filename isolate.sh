@@ -386,6 +386,9 @@ function uninstall_singletons() {
             ${OC} patch -n "${MASTER_NS}" OperandBindInfo ibm-licensing-bindinfo --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
         fi
     fi
+    for ns in ${EXCLUDED_NS//,/ }; do
+        "${OC}" delete -n "${ns}" --ignore-not-found configmap ibm-license-service-reporter-bindinfo-ibm-license-service-reporter-zen
+    done
     "${OC}" delete -n "${MASTER_NS}" --ignore-not-found sub ibm-crossplane-operator-app
     "${OC}" delete -n "${MASTER_NS}" --ignore-not-found sub ibm-crossplane-provider-kubernetes-operator-app
     csv=$("${OC}" get -n "${MASTER_NS}" csv | (grep ibm-crossplane-operator || echo "fail") | awk '{print $1}')
