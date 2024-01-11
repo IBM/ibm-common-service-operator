@@ -14,10 +14,19 @@ rules:
   resourceNames:
   - common-service-maps
 - verbs:
+  - delete
+  apiGroups:
+  - ""
+  resources:
+  - configmaps
+  resourceNames:
+  - cloud-native-postgresql-image-list
+- verbs:
   - create
   - get
   - list
   - watch
+  - update
   apiGroups:
   - ''
   resources:
