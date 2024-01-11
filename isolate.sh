@@ -380,9 +380,9 @@ function uninstall_singletons() {
     if [[ $csv != "fail" ]]; then
         "${OC}" delete -n "${MASTER_NS}" --ignore-not-found sub ibm-licensing-operator
         "${OC}" delete -n "${MASTER_NS}" --ignore-not-found csv "${csv}"
-        local is_deleted=$(("${OC}" delete -n "${MASTER_NS}" --ignore-not-found OperandBindInfo ibm-licensing-bindinfo --timeout=10s > /dev/null && echo "success" ) || echo "fail")
+        local is_deleted=$(("${OC}" delete -n "${MASTER_NS}" --ignore-not-found OperandBindInfo ibm-licensing-bindinfo --timeout=10s > /dev/null 2>&1 && echo "success" ) || echo "fail")
         if [[ $is_deleted == "fail" ]]; then
-            warning "Failed to delete OperandBindInfo, patching its finalizer to null..."
+            warning "Delete OperandBindInfo by patching its finalizer to null..."
             ${OC} patch -n "${MASTER_NS}" OperandBindInfo ibm-licensing-bindinfo --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
         fi
     fi
@@ -880,7 +880,7 @@ function wait_for_nss_update() {
 }
 
 function wait_for_nss_exist() {
-    local condition="${OC} get cm namespace-scope -n ${MASTER_NS} || true"
+    local condition="${OC} get cm namespace-scope -n ${MASTER_NS} --ignore-not-found || true"
     local retries=10
     local sleep_time=15
     local total_time_mins=$(( sleep_time * retries / 60))
