@@ -585,9 +585,11 @@ spec:
                         limits:
                           cpu: 1000m
                           memory: 1Gi
+                          ephemeral-storage: 512Mi
                         requests:
                           cpu: 1000m
                           memory: 1Gi
+                          ephemeral-storage: 256Mi
                       volumeMounts:
                         - mountPath: /mnt/truststore
                           name: truststore-volume
@@ -614,6 +616,17 @@ spec:
                           - key: cloudpak-theme.jar
                             path: cloudpak-theme.jar
                         name: cs-keycloak-theme
+                  affinity:
+                    nodeAffinity:
+                      requiredDuringSchedulingIgnoredDuringExecution:
+                        nodeSelectorTerms:
+                        - matchExpressions:
+                          - key: kubernetes.io/arch
+                            operator: In
+                            values:
+                            - amd64
+                            - ppc64le
+                            - s390x
         force: true
         kind: Keycloak
         name: cs-keycloak
