@@ -709,7 +709,7 @@ spec:
                 objectRef:
                   apiVersion: v1
                   kind: Service
-                  name: cs-keycloak-service
+                  name: cpfs-opcon-cs-keycloak-service
                   path: .spec.ports[0].port
                 required: true
             CLUSTER_IP:
@@ -717,7 +717,7 @@ spec:
                 objectRef:
                   apiVersion: v1
                   kind: Service
-                  name: cs-keycloak-service
+                  name: cpfs-opcon-cs-keycloak-service
                   path: .spec.clusterIP
                 required: true
             SERVICE_NAME:
@@ -725,7 +725,7 @@ spec:
                 objectRef:
                   apiVersion: v1
                   kind: Service
-                  name: cs-keycloak-service
+                  name: cpfs-opcon-cs-keycloak-service
                   path: .metadata.name
                 required: true
             SERVICE_NAMESPACE: {{ .ServicesNs }}
@@ -734,7 +734,7 @@ spec:
                 objectRef:
                   apiVersion: v1
                   kind: Service
-                  name: cs-keycloak-service
+                  name: cpfs-opcon-cs-keycloak-service
                   path: https://+.metadata.name+.+.metadata.namespace+.+svc:+.spec.ports[0].port
       - apiVersion: k8s.keycloak.org/v2alpha1
         kind: KeycloakRealmImport
