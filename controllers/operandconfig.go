@@ -164,7 +164,7 @@ func mergeCSCRs(csSummary, csCR, ruleSlice []interface{}, serviceControllerMappi
 				}
 				newResource := getItemByGVKNameNamespace(summaryCR.(map[string]interface{})["resources"].([]interface{}), opconNs, apiVersion, kind, name, namespace)
 				if newResource != nil {
-					operator.(map[string]interface{})["resources"].([]interface{})[i] = mergeCRsIntoOperandConfigWithDefaultRules(opResource.(map[string]interface{}), newResource.(map[string]interface{}))
+					operator.(map[string]interface{})["resources"].([]interface{})[i] = mergeCRsIntoOperandConfigWithDefaultRules(opResource.(map[string]interface{}), newResource.(map[string]interface{}), true)
 				}
 			}
 			csSummary = setResByName(csSummary, operator.(map[string]interface{})["name"].(string), operator.(map[string]interface{})["resources"].([]interface{}))
@@ -174,13 +174,13 @@ func mergeCSCRs(csSummary, csCR, ruleSlice []interface{}, serviceControllerMappi
 }
 
 // mergeCRsIntoOperandConfig merges CRs by specific rules
-func mergeCRsIntoOperandConfigWithDefaultRules(defaultMap map[string]interface{}, changedMap map[string]interface{}) map[string]interface{} {
+func mergeCRsIntoOperandConfigWithDefaultRules(defaultMap map[string]interface{}, changedMap map[string]interface{}, directAssign bool) map[string]interface{} {
 	// TODO: Apply default rules
 	for key := range defaultMap {
 		if reflect.DeepEqual(defaultMap[key], changedMap[key]) {
 			continue
 		}
-		mergeChangedMap(key, defaultMap[key], changedMap[key], changedMap, false)
+		mergeChangedMap(key, defaultMap[key], changedMap[key], changedMap, directAssign)
 	}
 	return changedMap
 }
@@ -414,7 +414,7 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 					opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsIntoOperandConfig(spec.(map[string]interface{}), newConfigForCR, ruleForCR, overwrite, true)
 				} else {
 					if overwrite {
-						opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsIntoOperandConfigWithDefaultRules(spec.(map[string]interface{}), newConfigForCR)
+						opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsIntoOperandConfigWithDefaultRules(spec.(map[string]interface{}), newConfigForCR, false)
 					}
 				}
 			}
@@ -453,7 +453,7 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 
 					newResource := getItemByGVKNameNamespace(newConfigForOperator.(map[string]interface{})["resources"].([]interface{}), opconKey.Namespace, apiVersion, kind, name, namespace)
 					if newResource != nil {
-						opResources[i] = mergeCRsIntoOperandConfigWithDefaultRules(opResource.(map[string]interface{}), newResource.(map[string]interface{}))
+						opResources[i] = mergeCRsIntoOperandConfigWithDefaultRules(opResource.(map[string]interface{}), newResource.(map[string]interface{}), true)
 					}
 				}
 				opService.(map[string]interface{})["resources"] = opResources
