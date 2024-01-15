@@ -170,7 +170,7 @@ func main() {
 		}
 
 		// check if cert-manager CRD does not exist, then skip cert-manager related controllers initialization
-		exist, err := bs.CheckCRD(constant.CertManagerAPIGroupVersionV1, "certificates")
+		exist, err := bs.CheckCRD(constant.CertManagerAPIGroupVersionV1, "Certificate")
 		if err != nil {
 			klog.Errorf("Failed to check if cert-manager CRD exists: %v", err)
 			os.Exit(1)
