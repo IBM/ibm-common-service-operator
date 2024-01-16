@@ -159,6 +159,8 @@ func main() {
 		go goroutines.UpdateCsCrStatus(bs)
 		// Create CS CR
 		go goroutines.WaitToCreateCsCR(bs)
+		// Delete Keycloak Cert
+		go goroutines.CleanupResources(bs)
 
 		if err = (&controllers.CommonServiceReconciler{
 			Bootstrap: bs,
