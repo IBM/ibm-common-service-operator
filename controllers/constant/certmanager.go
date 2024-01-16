@@ -22,6 +22,7 @@ var (
 	CertManagerKinds                   = []string{"Issuer", "Certificate"}
 	CertManagerIssuers                 = []string{CSSSIssuer, CSCAIssuer}
 	CertManagerCerts                   = []string{CSCACert}
+	KeycloakCert                       = "cs-keycloak-tls-cert"
 )
 
 // CSCAIssuer is the CR of cs-ca-issuer
@@ -82,4 +83,23 @@ spec:
   isCA: true
   duration: 17520h0m0s
   renewBefore: 5840h0m0s
+`
+
+const KeycloakCertTemplate = `
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cs-keycloak-tls-cert
+  namespace: {{ .ServicesNs }}
+spec:
+  commonName: cs-keycloak-service
+  dnsNames:
+      - cs-keycloak-service
+      - cs-keycloak-service.{{ .ServicesNs }}
+      - cs-keycloak-service.{{ .ServicesNs }}.svc
+      - cs-keycloak-service.{{ .ServicesNs }}.svc.cluster.local
+  issuerRef:
+      kind: Issuer
+      name: cs-ca-issuer
+  secretName: cs-keycloak-tls-secret
 `

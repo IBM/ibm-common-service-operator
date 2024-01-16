@@ -400,14 +400,14 @@ func (b *Bootstrap) DeleteFromYaml(objectTemplate string, data interface{}) erro
 
 		_, err := b.GetObject(obj)
 		if errors.IsNotFound(err) {
-			klog.Infof("Not Found name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n, skipping", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
+			klog.Infof("Not Found name: %s, namespace: %s, kind: %s, apiversion: %s/%s, skipping", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
 			continue
 		} else if err != nil {
 			errMsg = err
 			continue
 		}
 
-		klog.Infof("Deleting object with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
+		klog.Infof("Deleting object with name: %s, namespace: %s, kind: %s, apiversion: %s/%s", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
 		if err := b.DeleteObject(obj); err != nil {
 			errMsg = err
 		}
@@ -418,7 +418,7 @@ func (b *Bootstrap) DeleteFromYaml(objectTemplate string, data interface{}) erro
 			if errors.IsNotFound(errNotFound) {
 				return true, nil
 			}
-			klog.Infof("waiting for object with name: %s, namespace: %s, kind: %s, apiversion: %s/%s to delete\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
+			klog.Infof("waiting for object with name: %s, namespace: %s, kind: %s, apiversion: %s/%s to delete", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
 			return false, nil
 		}); err != nil {
 			return err
