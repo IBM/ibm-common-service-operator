@@ -522,6 +522,7 @@ spec:
       - apiVersion: v1
         labels:
           operator.ibm.com/opreq-control: 'true'
+          operator.ibm.com/watched-by-cert-manager: ''
         data:
           stringData:
             ca.crt:
