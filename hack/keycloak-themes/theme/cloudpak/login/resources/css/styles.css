@@ -37,7 +37,7 @@ sample image usage
 */
 
 /* Turn off logo text */
-.kc-logo-text {
+#kc-header {
   display: none;
 }
 
@@ -56,7 +56,7 @@ sample image usage
 
 .login-pf-page .card-pf {
   background: #161616;
-  margin: auto auto;
+  margin: 60px auto auto auto;
   max-width: 500px;
 }
 
@@ -66,7 +66,7 @@ sample image usage
   color: #c6c6c6;
 }
 
-#username,#password {
+#username,#password,#password-new,#password-confirm {
   background-color: #262626;
   background: #262626;
   font-size: .875rem;
@@ -82,31 +82,40 @@ sample image usage
   color: #f4f4f4;
 }
 
+#username[aria-invalid=true], #password[aria-invalid=true] {
+  border: none;
+  border: 2px solid #ffb3b8;
+}
+
+#input-error {
+  color: #ffb3b8;
+}
+
 /* input fields */
-#username:focus,#password:focus {
+#username:focus,#password:focus,#password-new:focus,#password-confirm:focus {
   outline: 2px solid #fff;
   outline-offset: -2px;
 }
 
-/* login button */
-#kc-login {
+/* login button and submit button */
+#kc-login, .pf-c-button.pf-m-primary.pf-m-block.btn-lg {
   border: 1px solid transparent;
   background-color: #0f62fe;
   color: #fff;
   min-height: 3rem;
   cursor: pointer;
-  text-align: left;
+  text-align: center;
   font-size: .875rem;
   font-weight: 300;
   letter-spacing: .16px;
   outline: none;
 }
 
-#kc-login:hover {
+#kc-login:hover, .pf-c-button.pf-m-primary.pf-m-block.btn-lg:hover {
   background-color: #0353e9
 }
 
-#kc-login:focus {
+#kc-login:focus, .pf-c-button.pf-m-primary.pf-m-block.btn-lg:hover {
   border-color: #fff;
   box-shadow: inset 0 0 0 1px #fff,inset 0 0 0 2px #161616;
 }
@@ -180,4 +189,47 @@ sample image usage
 
 a:visited,:active {
   text-decoration:none;
+}
+
+/* Warning dialog - required for set new password */
+.alert-warning.pf-c-alert.pf-m-inline.pf-m-warning {
+  background: #f4f4f4;
+  border-left: 3px solid #f1c21b;
+  border-top: none;
+
+}
+
+.alert-warning.pf-c-alert.pf-m-inline.pf-m-warning .pf-c-alert__icon {
+  color: #f1c21b;
+  font-size: .875rem;
+  font-weight: 600;
+  line-height: 1.28572;
+  letter-spacing: .16px;
+  margin: 0 .25rem 0 0;
+}
+
+.pf-c-alert__title.kc-feedback-text {
+  color: #161616;
+  font-size: .875rem;
+  font-weight: 600;
+  line-height: 1.28572;
+  letter-spacing: .16px;
+  margin: 0 .25rem 0 0;
+}
+
+/* error dialog */
+.alert-error.pf-c-alert.pf-m-inline.pf-m-danger {
+  background: #f4f4f4;
+  color: #161616;
+  border-left: 3px solid #da1e28;
+  border-top: none;
+  font-size: .875rem;
+  font-weight: 600;
+  line-height: 1.28572;
+  letter-spacing: .16px;
+  margin: 0 .25rem 0 0;
+}
+
+#kc-form-options .checkbox {
+  margin-bottom: 20px;
 }
