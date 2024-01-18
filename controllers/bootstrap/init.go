@@ -1939,6 +1939,39 @@ func (b *Bootstrap) BackupCRtoCm(crNs, cmName, cmKey, targetNs string, resource 
 		crNs = ""
 	}
 
+	if resource.Kind == "IBMLicensing" {
+
+		klog.Infof("Creating LSR secret")
+		// Create an empty secret 'ibm-license-service-reporter-token' in targetNs to ensure that LS instance pod will start
+		lsrTokenSecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "ibm-license-service-reporter-token",
+				Namespace: targetNs,
+			},
+		}
+		if err := b.Client.Create(context.Background(), lsrTokenSecret); err != nil {
+			if errors.IsAlreadyExists(err) {
+				klog.Infof("LSR secret %s/%s already exists", targetNs, "ibm-license-service-reporter-token")
+			} else {
+				return err
+			}
+		}
+
+		if backupCr.Object["spec"] != nil {
+			if backupCr.Object["spec"].(map[string]interface{})["sender"] != nil {
+				// If LS connected to LicSvcReporter, set a template for sender configuration with url pointing to the IBM LSR docs
+				if backupCr.Object["spec"].(map[string]interface{})["sender"].(map[string]interface{})["reporterURL"] != nil {
+					klog.Infof("updating LSR sender configuration")
+					backupCr.Object["spec"].(map[string]interface{})["sender"].(map[string]interface{})["reporterURL"] = "https://READ_(ibm.biz/lsr_sender_config)"
+				}
+				if backupCr.Object["spec"].(map[string]interface{})["sender"].(map[string]interface{})["reporterSecretToken"] != nil {
+					klog.Infof("")
+					backupCr.Object["spec"].(map[string]interface{})["sender"].(map[string]interface{})["reporterSecretToken"] = "ibm-license-service-reporter-token"
+				}
+			}
+		}
+	}
+
 	backupCr.SetResourceVersion("")
 	backupCr.SetUID("")
 	objYaml, err := util.ObjectToYaml(backupCr)
