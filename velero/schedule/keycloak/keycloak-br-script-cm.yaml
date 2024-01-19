@@ -54,47 +54,7 @@ data:
     }
 
     function restore {
-        # info "Prepping database..."
-        
-        # keycloak_operator_deploy=(oc get deploy -n $OPERATOR_NAMESPACE | grep rhbk-operator || echo "missing")
-        # keycloak_replicas=(oc get sts cs-keycloak -n ${KEYCLOAK_NAMESPACE} -o=jsonpath='{.spec.replicas}')
-        # if [[ $keycloak_operator_rs != "missing" ]]; then
-        #     info "Scaling down keycloak operator and statefulset."
-        #     oc scale deploy rhbk-operator --replicas=0 -n $OPERATOR_NAMESPACE
-        #     oc scale sts cs-keycloak --replicas=0 -n $KEYCLOAK_NAMESPACE
-        #     info "Keycloak scaled down."
-        # else
-        #     error "Keycloak operator missing from namespace $OPERATOR_NAMESPACE. Re-run script with correct namespace parameters."
-        # fi
-
-        # #waiting for deployments to be cleaned up after scaling down
-        # sleep 10
-        # sts_clear=$(oc get sts -n $KEYCLOAK_NAMESPACE | grep "cs-keycloak" | awk '{print $2}' | grep -v "0/0" || echo clear)
-        # while [[ $sts_clear != "clear" ]];
-        # do
-        #     sleep 10
-        #     if [[ $sts_clear != "clear" ]]; then
-        #         info "Waiting on statefulset cs-keycloak pods to clean up..."
-        #         sts_clear=$(oc get sts -n $KEYCLOAK_NAMESPACE | grep "cs-keycloak" | awk '{print $2}' | grep -v "0/0" || echo clear)
-        #     else
-        #         info "Statefulset cs-keycloak successfully scaled down. Moving on..."
-        #     fi
-        # done
-
-        # CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io keycloak-edb-cluster -o jsonpath="{.status.currentPrimary}" -n $KEYCLOAK_NAMESPACE` && oc -n $KEYCLOAK_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "DROP DATABASE IF EXISTS keycloak;" -c "CREATE DATABASE keycloak;" -c "GRANT CONNECT ON DATABASE keycloak TO public;" -c "ALTER DATABASE keycloak OWNER TO postgres;" -c "GRANT ALL PRIVILEGES ON DATABASE keycloak to postgres;"
-        # CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io keycloak-edb-cluster -o jsonpath="{.status.currentPrimary}"`
-        # oc exec $CNPG_PRIMARY_POD -n $KEYCLOAK_NAMESPACE -- mkdir -p /run/keycloak_backup
-        # oc cp $BACKUP_DIR/database/keycloak_db_backup.dump $KEYCLOAK_NAMESPACE/$CNPG_PRIMARY_POD:/run/keycloak_backup/keycloak_db_backup.dump
-        # oc -n $KEYCLOAK_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
-        # oc -n $KEYCLOAK_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname keycloak --format=c --clean -v /run/keycloak_backup/keycloak_db_backup.dump
-        # oc -n $KEYCLOAK_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
-        
-        # oc scale deploy rhbk-operator --replicas=$keycloak_replicas -n $KEYCLOAK_NAMESPACE
-        # info "Keycloak scaled up."
-
-        #don't scale anything, just use pg_restore to prevent downtime
-        #CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io keycloak-edb-cluster -o jsonpath="{.status.currentPrimary}" -n $KEYCLOAK_NAMESPACE` && oc -n $KEYCLOAK_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "DROP DATABASE IF EXISTS keycloak;" -c "CREATE DATABASE keycloak;" -c "GRANT CONNECT ON DATABASE keycloak TO public;" -c "ALTER DATABASE keycloak OWNER TO postgres;" -c "GRANT ALL PRIVILEGES ON DATABASE keycloak to postgres;"
-        CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io keycloak-edb-cluster -o jsonpath="{.status.currentPrimary}"`
+        CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io keycloak-edb-cluster -o jsonpath="{.status.currentPrimary}" -n $KEYCLOAK_NAMESPACE` 
         oc exec $CNPG_PRIMARY_POD -n $KEYCLOAK_NAMESPACE -- mkdir -p /run/keycloak_backup
         oc cp $BACKUP_DIR/database/keycloak_db_backup.dump $KEYCLOAK_NAMESPACE/$CNPG_PRIMARY_POD:/run/keycloak_backup/keycloak_db_backup.dump
         oc -n $KEYCLOAK_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
