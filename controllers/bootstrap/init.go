@@ -1965,7 +1965,6 @@ func (b *Bootstrap) BackupCRtoCm(crNs, cmName, cmKey, targetNs string, resource 
 					backupCr.Object["spec"].(map[string]interface{})["sender"].(map[string]interface{})["reporterURL"] = "https://READ_(ibm.biz/lsr_sender_config)"
 				}
 				if backupCr.Object["spec"].(map[string]interface{})["sender"].(map[string]interface{})["reporterSecretToken"] != nil {
-					klog.Infof("")
 					backupCr.Object["spec"].(map[string]interface{})["sender"].(map[string]interface{})["reporterSecretToken"] = "ibm-license-service-reporter-token"
 				}
 			}
