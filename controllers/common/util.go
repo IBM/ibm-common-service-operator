@@ -848,12 +848,47 @@ func UpdateCsMaps(cm *corev1.ConfigMap, requestNsList []string, masterNS string)
 	}
 
 	var newNsMapping NsMapping
+	var newNsMappingList []NsMapping
 
 	// construct new mapping
 	newNsMapping.RequestNs = requestNsList
 	newNsMapping.CsNs = masterNS
 
-	cmData.NsMappingList = append(cmData.NsMappingList, newNsMapping)
+	if cm.Data["common-service-maps.yaml"] != "" {
+		for _, nsMapping := range cmData.NsMappingList {
+			if nsMapping.CsNs != masterNS {
+				var copiedNsMapping NsMapping
+				// exclude entire entry if its map-to-cs-namespace is in WATCH_NAMESPACE
+				if Contains(requestNsList, nsMapping.CsNs) {
+					continue
+				}
+				copiedNsMapping.CsNs = nsMapping.CsNs
+
+				for _, ns := range nsMapping.RequestNs {
+					// exclude request namespace if it is in WATCH_NAMESPACE
+					if Contains(requestNsList, ns) {
+						continue
+					}
+					copiedNsMapping.RequestNs = append(copiedNsMapping.RequestNs, ns)
+				}
+
+				// existing entry is valid and add it into new mapping list
+				if len(copiedNsMapping.CsNs) != 0 && len(copiedNsMapping.RequestNs) != 0 {
+					newNsMappingList = append(newNsMappingList, copiedNsMapping)
+				}
+			} else {
+				for _, ns := range nsMapping.RequestNs {
+					// exclude request namespace if it is in WATCH_NAMESPACE
+					if Contains(requestNsList, ns) {
+						continue
+					}
+					newNsMapping.RequestNs = append(newNsMapping.RequestNs, ns)
+				}
+			}
+		}
+	}
+	newNsMappingList = append(newNsMappingList, newNsMapping)
+	cmData.NsMappingList = newNsMappingList
 	commonServiceMap, error := utilyaml.Marshal(&cmData)
 	if error != nil {
 		return fmt.Errorf("failed to marshal data of configmap common-service-maps: %v", error)
