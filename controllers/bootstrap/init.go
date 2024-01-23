@@ -1910,6 +1910,7 @@ func (b *Bootstrap) BackupCRtoCm(crNs, cmName, cmKey, targetNs string, resource 
 	exist, err := b.ResourceExists(dc, APIGroupVersion, resource.Kind)
 	if err != nil {
 		klog.Errorf("Failed to check resource with kind: %s, apiGroupVersion: %s", resource.Kind, APIGroupVersion)
+		return err
 	}
 	if !exist {
 		return nil
@@ -2034,6 +2035,77 @@ func (b *Bootstrap) RestoreCmtoCR(cmName, cnNs, objKey string) error {
 	return nil
 }
 
+// UpdateLicensingCR will update the licensing CR set a tenokate fir sebder configuration and create secret
+func (b *Bootstrap) UpdateLicensingCR(targetNs string, lsCR *Resource) error {
+	// check if crd exist
+	dc := discovery.NewDiscoveryClientForConfigOrDie(b.Config)
+	APIGroupVersion := lsCR.Group + "/" + lsCR.Version
+	exist, err := b.ResourceExists(dc, APIGroupVersion, lsCR.Kind)
+	if err != nil {
+		klog.Errorf("Failed to check resource with kind: %s, apiGroupVersion: %s", lsCR.Kind, APIGroupVersion)
+		return err
+	}
+	if !exist {
+		return nil
+	}
+	// get ibmlicenseservice instance
+	ls := &unstructured.Unstructured{}
+	ls.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   lsCR.Group,
+		Version: lsCR.Version,
+		Kind:    lsCR.Kind,
+	})
+	if err := b.Client.Get(context.TODO(), types.NamespacedName{
+		Name: lsCR.Name,
+	}, ls); err != nil {
+		if errors.IsNotFound(err) {
+			klog.Infof("LS instance %s is not found", lsCR.Name)
+			return nil
+		}
+		klog.Errorf("Failed to get LS instance %s: %v", lsCR.Name, err)
+		return err
+	}
+
+	klog.Infof("Creating LSR secret ibm-license-service-reporter-token in namespace %s", targetNs)
+	// Create an empty secret 'ibm-license-service-reporter-token' in targetNs to ensure that LS instance pod will start
+	lsrTokenSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "ibm-license-service-reporter-token",
+			Namespace: targetNs,
+		},
+		Data: map[string][]byte{
+			"token": []byte(""),
+		},
+	}
+
+	if err := b.Client.Create(context.Background(), lsrTokenSecret); err != nil {
+		if errors.IsAlreadyExists(err) {
+			klog.Infof("LSR secret %s/%s already exists", targetNs, "ibm-license-service-reporter-token")
+		} else {
+			return err
+		}
+	}
+	// If spec.sender is configured in LS lsCR, set a template for sender configuration with url pointing to the IBM LSR docs
+	if ls.Object["spec"] != nil {
+		if ls.Object["spec"].(map[string]interface{})["sender"] != nil {
+			// If LS connected to LicSvcReporter, set a template for sender configuration with url pointing to the IBM LSR docs
+			if ls.Object["spec"].(map[string]interface{})["sender"].(map[string]interface{})["reporterURL"] != nil {
+				klog.Infof("updating LSR sender configuration")
+				ls.Object["spec"].(map[string]interface{})["sender"].(map[string]interface{})["reporterURL"] = "https://READ_(ibm.biz/lsr_sender_config)"
+			}
+			if ls.Object["spec"].(map[string]interface{})["sender"].(map[string]interface{})["reporterSecretToken"] != nil {
+				ls.Object["spec"].(map[string]interface{})["sender"].(map[string]interface{})["reporterSecretToken"] = "ibm-license-service-reporter-token"
+			}
+			// update LS instance
+			if err := b.Client.Update(context.Background(), ls); err != nil {
+				klog.Errorf("Failed to update LS instance %s: %v", lsCR.Name, err)
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 // IsolateLSR will isolate the LSR instance from the given namespace
 func (b *Bootstrap) IsolateLSR(masterNs string, lsrCR *Resource) error {
 
@@ -2042,6 +2114,7 @@ func (b *Bootstrap) IsolateLSR(masterNs string, lsrCR *Resource) error {
 	exist, err := b.ResourceExists(dc, APIGroupVersion, lsrCR.Kind)
 	if err != nil {
 		klog.Errorf("Failed to check resource with kind: %s, apiGroupVersion: %s", lsrCR.Kind, APIGroupVersion)
+		return err
 	}
 	if !exist {
 		return nil
