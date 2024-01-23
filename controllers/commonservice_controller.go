@@ -86,6 +86,7 @@ var ctx = context.Background()
 //+kubebuilder:rbac:groups=operator.ibm.com,resources=certmanagers,verbs=get;list;watch;delete
 //+kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;update
 //+kubebuilder:rbac:groups="",resources=persistentvolumes,verbs=get;list;watch;update;patch
+//+kubebuilder:rbac:groups="",resources=secrets,verbs=create
 
 //+kubebuilder:rbac:groups=operator.ibm.com,namespace="placeholder",resources=commonservices,verbs=create
 //+kubebuilder:rbac:groups=operator.ibm.com,namespace="placeholder",resources=operandregistries;operandconfigs,verbs=create;get;list;watch;update;patch;delete

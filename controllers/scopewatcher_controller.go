@@ -357,6 +357,14 @@ func (r *CommonServiceReconciler) ScopeReconcile(ctx context.Context, req ctrl.R
 			klog.Errorf("Failed to get Deployment %s in %s: %v", constant.LicensingSub, r.Bootstrap.CSData.MasterNs, err)
 			return ctrl.Result{}, err
 		}
+
+		klog.Infof("Upding Licensing CR with setting a template for sender configuration and creating a secret")
+		for _, cr := range licensingCR {
+			if err := r.Bootstrap.UpdateLicensingCR(r.Bootstrap.CSData.ControlNs, cr); err != nil {
+				klog.Errorf("Failed to update Licensing CR in %s: %v", r.Bootstrap.CSData.ControlNs, err)
+				return ctrl.Result{}, err
+			}
+		}
 	} else {
 		klog.Infof("%s deployment is found in %s, skipping restore Licensing CR", constant.LicensingSub, r.Bootstrap.CSData.MasterNs)
 	}
