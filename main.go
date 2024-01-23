@@ -186,6 +186,34 @@ func main() {
 				klog.Errorf("Failed to create OperatorGroup for IBM Common Services in control namespace: %v", err)
 				os.Exit(1)
 			}
+			klog.Info("Updating common-service-maps ConfigMap for v3 dedicated installation")
+			// Get common-service-maps configmap
+			cm, err := util.GetCmOfMapCs(mgr.GetAPIReader())
+			if err != nil {
+				if !errors.IsNotFound(err) {
+					klog.Errorf("Failed to get common-service-maps: %v", err)
+					os.Exit(1)
+				}
+			} else {
+				klog.Infof("Adding new scopt with operator namespace %s in ConfigMap", operatorNs)
+				// Update the ConfigMap to add new scope, it should be the operatorNs as requested-from-namespace, and MasterNs as map-to-common-service-namespace
+				nsScope := []string{bs.CSData.MasterNs, operatorNs}
+				if err := util.UpdateCsMaps(cm, nsScope, bs.CSData.MasterNs); err != nil {
+					klog.Errorf("Failed to update common-service-maps configmap: %v", err)
+					os.Exit(1)
+				}
+				// Validate common-service-maps
+				if err := util.ValidateCsMaps(cm); err != nil {
+					klog.Errorf("Unsupported common-service-maps: %v", err)
+					os.Exit(1)
+				}
+				if err := mgr.GetClient().Update(context.TODO(), cm); err != nil {
+					klog.Errorf("Failed to update namespaceMapping in common-service-maps: %v", err)
+					os.Exit(1)
+				}
+
+			}
+
 		}
 
 		klog.Info("Creating ConfigMap for operators")
