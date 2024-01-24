@@ -26,6 +26,7 @@ LSR_SOURCE_NS="openshift-marketplace"
 CERT_MANAGER_SOURCE="ibm-cert-manager-catalog"
 LICENSING_SOURCE="ibm-licensing-catalog"
 LSR_SOURCE="ibm-license-service-reporter-bundle-catalog"
+LSR_CR_NAME="ibm-lsr-instance"
 CERT_MANAGER_NAMESPACE="ibm-cert-manager"
 LICENSING_NAMESPACE="ibm-licensing"
 LSR_NAMESPACE="ibm-lsr"
@@ -432,19 +433,20 @@ EOF
 
     configure_lsr_instance
     wait_for_lsr_instance
-    accept_license "ibmlicenseservicereporter" "$LSR_NAMESPACE" "ibm-lsr-instance"
+    accept_license "ibmlicenseservicereporter" "$LSR_NAMESPACE" "$LSR_CR_NAME"
 }
 
 
 function configure_lsr_instance() {
     title "Configuring License Service Reporter CR in $LSR_NAMESPACE..."
 
-    result=$("${OC}" get ibmlicenseservicereporter ibm-lsr-instance -n ${LSR_NAMESPACE} -o yaml --ignore-not-found)
-    if [[ ! -z "${result}" ]]; then
-        info "Configure License Service Reporter CR in $LSR_NAMESPACE\n"
-        ${OC} get ibmlicenseservicereporter ibm-lsr-instance -n ${LSR_NAMESPACE} -o yaml | ${YQ} eval '.spec.authentication.useradmin.enabled = true' > ${PREVIEW_DIR}/licensing_service_reporter.yaml
+    count=$("${OC}" get ibmlicenseservicereporter -n ${LSR_NAMESPACE} --no-headers | wc -l)
+    if [[ "$count" -eq 1 ]]; then
+        info "Configure License Service Reporter CR in $LSR_NAME SPACE\n"
+        LSR_CR_NAME=$("${OC}" get ibmlicenseservicereporter -n ${LSR_NAMESPACE} --no-headers | awk '{print $1}')
+        ${OC} get ibmlicenseservicereporter ${LSR_CR_NAME} -n ${LSR_NAMESPACE} -o yaml | ${YQ} eval '.spec.authentication.useradmin.enabled = true' > ${PREVIEW_DIR}/licensing_service_reporter.yaml
         ${YQ} -i eval 'select(.kind == "IBMLicenseServiceReporter") | del(.metadata.resourceVersion) | del(.metadata.uid) | del(.metadata.creationTimestamp) | del(.metadata.generation)' ${PREVIEW_DIR}/licensing_service_reporter.yaml
-    else
+    elif  [[ "$count" -eq 0 ]]; then 
         info "Creating the IBM License Service Reporter object:\n"
         cat <<EOF > ${PREVIEW_DIR}/licensing_service_reporter.yaml
 apiVersion: operator.ibm.com/v1alpha1
@@ -464,6 +466,8 @@ spec:
     useradmin:
       enabled: true
 EOF
+    else
+        error "More than one IBMLicenseServiceReporter instances found in namespace: ${LSR_NAMESPACE}."
     fi
 
     cat ${PREVIEW_DIR}/licensing_service_reporter.yaml
@@ -474,14 +478,13 @@ EOF
 }
 
 function wait_for_lsr_instance() {
-    local name="ibm-lsr-instance"
-    local condition="${OC} get IBMLicenseServiceReporter -A --no-headers --ignore-not-found | grep ${name} || true"
+    local condition="${OC} get IBMLicenseServiceReporter -A --no-headers --ignore-not-found | grep ${LSR_CR_NAME} || true"
     local retries=20
     local sleep_time=15
     local total_time_mins=$(( sleep_time * retries / 60))
-    local wait_message="Waiting for IBMLicenseServiceReporter ${name} to be present."
-    local success_message="IBMLicenseServiceReporter ${name} present"
-    local error_message="Timeout after ${total_time_mins} minutes waiting for IBMLicenseServiceReporter ${name} to be present."
+    local wait_message="Waiting for IBMLicenseServiceReporter ${LSR_CR_NAME} to be present."
+    local success_message="IBMLicenseServiceReporter ${LSR_CR_NAME} present"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for IBMLicenseServiceReporter ${LSR_CR_NAME} to be present."
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
