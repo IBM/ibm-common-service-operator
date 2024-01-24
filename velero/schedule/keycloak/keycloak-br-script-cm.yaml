@@ -58,7 +58,7 @@ data:
         oc exec $CNPG_PRIMARY_POD -n $KEYCLOAK_NAMESPACE -- mkdir -p /run/keycloak_backup
         oc cp $BACKUP_DIR/database/keycloak_db_backup.dump $KEYCLOAK_NAMESPACE/$CNPG_PRIMARY_POD:/run/keycloak_backup/keycloak_db_backup.dump
         oc -n $KEYCLOAK_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
-        oc -n $KEYCLOAK_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname keycloak --format=c --clean -v /run/keycloak_backup/keycloak_db_backup.dump
+        oc -n $KEYCLOAK_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname keycloak --format=c --clean --exit-on-error -v /run/keycloak_backup/keycloak_db_backup.dump
         oc -n $KEYCLOAK_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
     }
 
