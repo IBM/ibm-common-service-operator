@@ -1136,6 +1136,18 @@ func MigrateConfigMap(r client.Reader, c client.Client, cmName string, cmNs stri
 	if err := c.Create(context.Background(), cm); err != nil {
 		// If the configmap already exists, update it
 		if errors.IsAlreadyExists(err) {
+			// if the instance configmap already exists, get its resourceVersion and uid and update the configmap
+			existingCm := &corev1.ConfigMap{}
+			if err := c.Get(context.TODO(), types.NamespacedName{
+				Name:      cmName,
+				Namespace: newNs,
+			}, existingCm); err != nil {
+				klog.Errorf("Failed to get ConfigMap %s in %s: %v", cmName, newNs, err)
+				return err
+			}
+			cm.ResourceVersion = existingCm.ResourceVersion
+			cm.UID = existingCm.UID
+
 			if err := c.Update(context.Background(), cm); err != nil {
 				klog.Errorf("Failed to update ConfigMap %s/%s: %v", newNs, cmName, err)
 				return err
