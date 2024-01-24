@@ -177,3 +177,31 @@ if [[ $ldaps_secret_namespace_list != "none" ]]; then
 else
     echo "[INFO] Secret platform-auth-ldaps-ca-cert not present in namespace $ldaps_namespace. Skipping..."
 fi
+
+#grab icp service id apikey (if it exists)
+icp_serviceid_apikey_secret_namespace_list=$(oc get secret -A | grep icp-serviceid-apikey-secret | grep -v "bindinfo" |  awk '{print $1}' | tr "\n" " " || echo "none")
+if [[ $icp_serviceid_apikey_secret_namespace_list != "none" ]]; then
+    for icp_serviceid_namespace in $icp_serviceid_apikey_secret_namespace_list
+    do
+        echo "icp-serviceid-apikey"
+        echo $icp_serviceid_namespace
+        echo "---"
+        oc label secret icp-serviceid-apikey-secret -n $icp_serviceid_namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
+    done
+else
+    echo "[INFO] Secret icp-serviceid-apikey-secret not present in namespace $icp_serviceid_namespace. Skipping..."
+fi
+
+#grab zen service id apikey (if it exists)
+zen_serviceid_apikey_secret_namespace_list=$(oc get secret -A | grep zen-serviceid-apikey-secret| grep -v "bindinfo" |  awk '{print $1}' | tr "\n" " " || echo "none")
+if [[ $zen_serviceid_apikey_secret_namespace_list != "none" ]]; then
+    for zen_serviceid_namespace in $zen_serviceid_apikey_secret_namespace_list
+    do
+        echo "zen-serviceid-apikey-secret"
+        echo $zen_serviceid_namespace
+        echo "---"
+        oc label secret zen-serviceid-apikey-secret -n $zen_serviceid_namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
+    done
+else
+    echo "[INFO] Secret zen-serviceid-apikey-secret not present in namespace $zen_serviceid_namespace. Skipping..."
+fi
