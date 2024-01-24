@@ -142,6 +142,7 @@ var (
 	}
 
 	licensingConfigMaps = []string{
+		"ibm-licensing-config",
 		"ibm-licensing-annotations",
 		"ibm-licensing-products",
 		"ibm-licensing-products-vpc-hour",
