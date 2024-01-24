@@ -57,7 +57,7 @@ data:
         oc exec $CNPG_PRIMARY_POD -n $LSR_NAMESPACE -- mkdir -p /run/lsr_backup
         oc cp $BACKUP_DIR/database/lsr_db_backup.dump $LSR_NAMESPACE/$CNPG_PRIMARY_POD:/run/lsr_backup/lsr_db_backup.dump
         oc -n $LSR_NAMESPACE exec -t $CNPG_PRIMARY_POD -c database -- psql -U postgres -c "\list" -c "\dn" -c "\du"
-        oc -n $LSR_NAMESPACE exec -t $CNPG_PRIMARY_POD -c database -- pg_restore -U postgres --dbname postgres --format=c --clean -v /run/lsr_backup/lsr_db_backup.dump
+        oc -n $LSR_NAMESPACE exec -t $CNPG_PRIMARY_POD -c database -- pg_restore -U postgres --dbname postgres --format=c --clean --exit-on-error -v /run/lsr_backup/lsr_db_backup.dump
         oc -n $LSR_NAMESPACE exec -t $CNPG_PRIMARY_POD -c database -- psql -U postgres -c "\list" -c "\dn" -c "\du"
     }
 
