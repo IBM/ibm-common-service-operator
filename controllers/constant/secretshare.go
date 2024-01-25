@@ -321,5 +321,6 @@ spec:
             memory: 200Mi
         securityContext:
           runAsNonRoot: true
+          privileged: false
       terminationGracePeriodSeconds: 10
 `
