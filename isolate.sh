@@ -493,10 +493,15 @@ function backup_ibmlicensing() {
     # And create an empty secret 'ibm-license-service-reporter-token' in LS_new_namespace to ensure that LS instance pod will start
     local reporterURL=$(echo "${ls_instance}" | "${YQ}" '.spec.sender.reporterURL')
     if [[ "$reporterURL" != "null" ]]; then
-        info "The current sender configuration for sending data from License Service to License Servive Reporter:" 
+        info "The current sender configuration for sending data from License Service to License Service Reporter:" 
         echo "${ls_instance}" | "${YQ}" '.spec.sender'
+        
         info "Resetting to a sender configuration template. Please follow the link ibm.biz/lsr_sender_config for more information"
-        "${OC}" create secret generic -n ${CONTROL_NS} ibm-license-service-reporter-token
+        exist=$("${OC}" get secret -n ${LICENSING_NS} --ignore-not-found | grep ibm-license-service-reporter-token > /dev/null || echo notexists)
+        if [[ $exist == "notexists" ]]; then
+            "${OC}" create secret generic -n ${LICENSING_NS} ibm-license-service-reporter-token --from-literal=token=''
+        fi
+
         instance=`"${OC}" get IBMLicensing instance -o yaml --ignore-not-found | "${YQ}" '
             with(.; del(.metadata.creationTimestamp) |
             del(.metadata.managedFields) |
