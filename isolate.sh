@@ -497,9 +497,9 @@ function backup_ibmlicensing() {
         echo "${ls_instance}" | "${YQ}" '.spec.sender'
         
         info "Resetting to a sender configuration template. Please follow the link ibm.biz/lsr_sender_config for more information"
-        exist=$("${OC}" get secret -n ${LICENSING_NS} --ignore-not-found | grep ibm-license-service-reporter-token > /dev/null || echo notexists)
+        exist=$("${OC}" get secret -n ${CONTROL_NS} --ignore-not-found | grep ibm-license-service-reporter-token > /dev/null || echo notexists)
         if [[ $exist == "notexists" ]]; then
-            "${OC}" create secret generic -n ${LICENSING_NS} ibm-license-service-reporter-token --from-literal=token=''
+            "${OC}" create secret generic -n ${CONTROL_NS} ibm-license-service-reporter-token --from-literal=token=''
         fi
 
         instance=`"${OC}" get IBMLicensing instance -o yaml --ignore-not-found | "${YQ}" '
