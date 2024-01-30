@@ -123,6 +123,14 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+  - name: ibm-im-operator-v4.5
+    namespace: "{{ .CPFSNs }}"
+    channel: v4.5
+    packageName: ibm-iam-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
 	IdpConfigUIOpReg = `
@@ -165,6 +173,14 @@ spec:
   - name: ibm-idp-config-ui-operator-v4.3
     namespace: "{{ .CPFSNs }}"
     channel: v4.3
+    packageName: ibm-commonui-operator-app
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+  - name: ibm-idp-config-ui-operator-v4.4
+    namespace: "{{ .CPFSNs }}"
+    channel: v4.4
     packageName: ibm-commonui-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -353,6 +369,13 @@ spec:
               - name: ibm-im-mongodb-operator-v4.2
               - name: ibm-idp-config-ui-operator-v4.3
             registry: common-service
+  - name: ibm-im-operator-v4.5
+    spec:
+      authentication:
+        config:
+          onPremMultipleDeploy: {{ .OnPremMultiEnable }}
+      operandBindInfo: 
+        operand: ibm-im-operator
 `
 
 	IdpConfigUIOpCon = `
@@ -383,6 +406,11 @@ spec:
       switcheritem: {}
       navconfiguration: {}
   - name: ibm-idp-config-ui-operator-v4.3
+    spec:
+      commonWebUI: {}
+      switcheritem: {}
+      navconfiguration: {}
+  - name: ibm-idp-config-ui-operator-v4.4
     spec:
       commonWebUI: {}
       switcheritem: {}
@@ -1128,7 +1156,7 @@ spec:
     sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-idp-config-ui-operator
     namespace: "{{ .CPFSNs }}"
-    channel: v4.3
+    channel: v4.4
     packageName: ibm-commonui-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -1505,7 +1533,7 @@ metadata:
   name: operand-deployment-lifecycle-manager-app
   namespace: "{{ .CPFSNs }}"
 spec:
-  channel: v4.2
+  channel: v4.3
   installPlanApproval: {{ .ApprovalMode }}
   name: ibm-odlm
   source: {{ .CatalogSourceName }}
