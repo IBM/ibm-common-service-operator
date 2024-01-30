@@ -222,6 +222,38 @@
     }
   },
   {
+    "name": "ibm-idp-config-ui-operator-v4.4",
+    "spec": {
+      "commonWebUI": {
+        "commonWebUIConfig": {
+          "dashboardData": {
+            "resources": {
+              "limits": {
+                "cpu": "3000m",
+                "memory": "600Mi"
+              },
+              "requests": {
+                "cpu": "390m",
+                "memory": "380Mi"
+              }
+            }
+          }
+        },
+        "replicas": 3,
+        "resources": {
+          "limits": {
+            "cpu": "1000m",
+            "memory": "660Mi"
+          },
+          "requests": {
+            "cpu": "450m",
+            "memory": "490Mi"
+          }
+        }
+      }
+    }
+  },
+  {
     "name": " ibm-idp-config-ui-operator",
     "spec": {
       "commonWebUI": {
@@ -812,6 +844,74 @@
   },
   {
     "name": "ibm-im-operator-v4.4",
+    "spec": {
+      "authentication": {
+        "authService": {
+          "resources": {
+            "limits": {
+              "cpu": "2000m",
+              "memory": "1090Mi"
+            },
+            "requests": {
+              "cpu": "400m",
+              "memory": "540Mi"
+            }
+          }
+        },
+        "clientRegistration": {
+          "resources": {
+            "limits": {
+              "cpu": "1000m",
+              "memory": "50Mi"
+            },
+            "requests": {
+              "cpu": "20m",
+              "memory": "50Mi"
+            }
+          }
+        },
+        "identityManager": {
+          "resources": {
+            "limits": {
+              "cpu": "1000m",
+              "memory": "1270Mi"
+            },
+            "requests": {
+              "cpu": "260m",
+              "memory": "210Mi"
+            }
+          }
+        },
+        "identityProvider": {
+          "resources": {
+            "limits": {
+              "cpu": "1000m",
+              "memory": "920Mi"
+            },
+            "requests": {
+              "cpu": "570m",
+              "memory": "210Mi"
+            }
+          }
+        },
+        "initMongodb": {
+          "resources": {
+            "limits": {
+              "cpu": "100m",
+              "memory": "128Mi"
+            },
+            "requests": {
+              "cpu": "100m",
+              "memory": "128Mi"
+            }
+          }
+        },
+        "replicas": 3
+      }
+    }
+  },
+  {
+    "name": "ibm-im-operator-v4.5",
     "spec": {
       "authentication": {
         "authService": {
