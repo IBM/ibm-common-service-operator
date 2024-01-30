@@ -652,6 +652,7 @@ func (b *Bootstrap) InstallOrUpdateOpreg(forceUpdateODLMCRs bool, installPlanApp
 		constant.IdpConfigUIOpReg,
 		constant.PlatformUIOpReg,
 		constant.KeyCloakOpReg,
+		constant.CommonServicePGOpReg,
 	}
 	if b.SaasEnable {
 		baseReg = constant.CSV2SaasOpReg
@@ -681,6 +682,7 @@ func (b *Bootstrap) InstallOrUpdateOpcon(forceUpdateODLMCRs bool) error {
 		constant.IdpConfigUIOpCon,
 		constant.PlatformUIOpCon,
 		constant.KeyCloakOpCon,
+		constant.CommonServicePGOpCon,
 	}
 
 	baseCon = constant.CSV3OpCon

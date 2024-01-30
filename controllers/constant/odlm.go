@@ -266,6 +266,29 @@ spec:
 )
 
 const (
+	CommonServicePGOpReg = `
+apiVersion: operator.ibm.com/v1alpha1
+kind: OperandRegistry
+metadata:
+  name: common-service
+  namespace: "{{ .ServicesNs }}"
+  labels:
+    operator.ibm.com/managedByCsOperator: "true"
+  annotations:
+    version: {{ .Version }}
+    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,ibm-cp-automation-foundation-catalog,operatorhubio-catalog
+spec:
+  operators:
+  - channel: stable
+    installPlanApproval: {{ .ApprovalMode }}
+    name: common-service-postgresql
+    namespace: "{{ .CPFSNs }}"
+    packageName: cloud-native-postgresql
+    scope: public
+`
+)
+
+const (
 	MongoDBOpCon = `
 apiVersion: operator.ibm.com/v1alpha1
 kind: OperandConfig
@@ -789,147 +812,17 @@ spec:
               supportedLocales: [ "en", "de" , "es", "fr", "it", "ja", "ko", "pt_BR", "zh_CN", "zh_TW"]
   - name: edb-keycloak
     resources:
-      - apiVersion: batch/v1
-        kind: Job
-        force: true
-        name: create-postgres-license-config
-        namespace: "{{ .OperatorNs }}"
+      - apiVersion: operator.ibm.com/v1alpha1
         data:
           spec:
-            activeDeadlineSeconds: 600
-            backoffLimit: 5
-            template:
-              metadata:
-                annotations:
-                  productID: 068a62892a1e4db39641342e592daa25
-                  productMetric: FREE
-                  productName: IBM Cloud Platform Common Services
-              spec:
-                imagePullSecrets:
-                  - name: ibm-entitlement-key
-                affinity:
-                  nodeAffinity:
-                    requiredDuringSchedulingIgnoredDuringExecution:
-                      nodeSelectorTerms:
-                      - matchExpressions:
-                        - key: kubernetes.io/arch
-                          operator: In
-                          values:
-                          - amd64
-                          - ppc64le
-                          - s390x
-                initContainers:
-                - command:
-                  - bash
-                  - -c
-                  - |
-                    cat << EOF | kubectl apply -f -
-                    apiVersion: v1
-                    kind: Secret
-                    type: Opaque
-                    metadata:
-                      name: postgresql-operator-controller-manager-config
-                    data:
-                      EDB_LICENSE_KEY: $(base64 /license_keys/edb/EDB_LICENSE_KEY | tr -d '\n')
-                    EOF
-                  image:
-                    templatingValueFrom:
-                      default:
-                        required: true
-                        defaultValue: cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:05f30f2117ff6e0e853487f17785024f6bb226f3631425eaf1498b9d3b753345
-                        configMapKeyRef:
-                          name: cloud-native-postgresql-image-list
-                          key: edb-postgres-license-provider-image
-                          namespace: {{ .OperatorNs }}
-                  name: edb-license
-                  resources:
-                    limits:
-                      cpu: 500m
-                      memory: 512Mi
-                    requests:
-                      cpu: 100m
-                      memory: 50Mi
-                  securityContext:
-                    allowPrivilegeEscalation: false
-                    capabilities:
-                      drop:
-                      - ALL
-                    privileged: false
-                    readOnlyRootFilesystem: false
-                containers:
-                - command:
-                  - bash
-                  - '-c'
-                  args:
-                  - |
-                    kubectl delete pods -l app.kubernetes.io/name=cloud-native-postgresql
-                    kubectl annotate secret postgresql-operator-controller-manager-config ibm-license-key-applied="EDB Database with IBM License Key"
-                  image:
-                    templatingValueFrom:
-                      default:
-                        required: true
-                        defaultValue: cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:05f30f2117ff6e0e853487f17785024f6bb226f3631425eaf1498b9d3b753345
-                        configMapKeyRef:
-                          name: cloud-native-postgresql-image-list
-                          key: edb-postgres-license-provider-image
-                          namespace: {{ .OperatorNs }}
-                  name: restart-edb-pod
-                  resources:
-                    limits:
-                      cpu: 500m
-                      memory: 512Mi
-                    requests:
-                      cpu: 100m
-                      memory: 50Mi
-                  securityContext:
-                    allowPrivilegeEscalation: false
-                    capabilities:
-                      drop:
-                      - ALL
-                    privileged: false
-                    readOnlyRootFilesystem: false
-                hostIPC: false
-                hostNetwork: false
-                hostPID: false
-                restartPolicy: OnFailure
-                securityContext:
-                  runAsNonRoot: true
-                serviceAccountName: edb-license-sa
-      - apiVersion: v1
-        kind: ServiceAccount
-        name: edb-license-sa
-        namespace: "{{ .OperatorNs }}"
-      - apiVersion: rbac.authorization.k8s.io/v1
-        kind: Role
-        name: edb-license-role
-        namespace: "{{ .OperatorNs }}"
-        data:
-          rules:
-          - apiGroups:
-            - ""
-            resources:
-            - pods
-            - secrets
-            verbs:
-            - create
-            - update
-            - patch
-            - get
-            - list
-            - delete
-            - watch
-      - apiVersion: rbac.authorization.k8s.io/v1
-        kind: RoleBinding
-        name: edb-license-rolebinding
-        namespace: "{{ .OperatorNs }}"
-        data:
-          subjects:
-          - kind: ServiceAccount
-            name: edb-license-sa
-          roleRef:
-            kind: Role
-            name: edb-license-role
-            apiGroup: rbac.authorization.k8s.io
+            requests:
+              - operands:
+                  - name: cloud-native-postgresql
+                registry: common-service
+                registryNamespace: {{ .ServicesNs }}
+        force: true
+        kind: OperandRequest
+        name: postgresql-operator-request
       - apiVersion: postgresql.k8s.enterprisedb.io/v1
         data:
           spec:
@@ -977,6 +870,136 @@ spec:
         force: true
         kind: Cluster
         name: keycloak-edb-cluster
+`
+)
+
+const (
+	CommonServicePGOpCon = `
+apiVersion: operator.ibm.com/v1alpha1
+kind: OperandConfig
+metadata:
+  name: common-service
+  namespace: "{{ .ServicesNs }}"
+  labels:
+    operator.ibm.com/managedByCsOperator: "true"
+  annotations:
+    version: {{ .Version }}
+spec:
+  services:
+  - name: common-service-postgresql
+    resources:
+      - apiVersion: operator.ibm.com/v1alpha1
+        data:
+          spec:
+            requests:
+              - operands:
+                  - name: cloud-native-postgresql
+                registry: common-service
+                registryNamespace: {{ .ServicesNs }}
+        force: true
+        kind: OperandRequest
+        name: postgresql-operator-request
+      - apiVersion: cert-manager.io/v1
+        kind: Certificate
+        name: common-service-db-replica-tls-cert
+        labels:
+            app.kubernetes.io/component: common-service-db-replica-tls-cert
+            component: common-service-db-replica-tls-cert
+        data:
+          spec:
+            commonName: streaming_replica
+            duration: 2160h0m0s
+            issuerRef:
+              kind: Issuer
+              name: cs-ca-issuer
+            renewBefore: 720h0m0s
+            secretName: common-service-db-replica-tls-secret
+            secretTemplate:
+              labels:
+                k8s.enterprisedb.io/reload: ''
+            usages:
+              - client auth
+      - apiVersion: cert-manager.io/v1
+        kind: Certificate
+        labels:
+            app.kubernetes.io/component: common-service-db-tls-cert
+            component: common-service-db-tls-cert
+        name: common-service-db-tls-cert
+        data:  
+          spec:
+            dnsNames:
+              - common-service-db
+              - common-service-db.{{ .ServicesNs }}
+              - common-service-db.{{ .ServicesNs }}.svc
+              - common-service-db-r
+              - common-service-db-r.{{ .ServicesNs }}
+              - common-service-db-r.{{ .ServicesNs }}.svc
+              - common-service-db-ro
+              - common-service-db-ro.{{ .ServicesNs }}
+              - common-service-db-ro.{{ .ServicesNs }}.svc
+              - common-service-db-rw
+            duration: 8760h0m0s
+            issuerRef:
+              kind: Issuer
+              name: cs-ca-issuer
+            renewBefore: 720h0m0s
+            secretName: common-service-db-tls-secret
+            secretTemplate:
+              labels:
+                k8s.enterprisedb.io/reload: ''
+            usages:
+              - server auth
+      - apiVersion: postgresql.k8s.enterprisedb.io/v1
+        kind: Cluster
+        name: common-service-db
+        force: true
+        data:
+          spec:
+            bootstrap:
+              initdb:
+                database: cloudpak
+                owner: cpadmin
+                dataChecksums: true
+                postInitApplicationSQL:
+                  - CREATE USER im_user
+                  - CREATE DATABASE im OWNER im_user
+                  - GRANT ALL PRIVILEGES ON DATABASE im TO im_user
+                  - CREATE USER zen_user
+                  - CREATE DATABASE zen OWNER zen_user
+                  - GRANT ALL PRIVILEGES ON DATABASE zen TO zen_user
+            affinity:
+              topologyKey: topology.kubernetes.io/zone
+            imagePullSecrets:
+              - name: ibm-entitlement-key
+            instances: 1
+            replicationSlots:
+              highAvailability:
+                enabled: true
+            certificates:
+              clientCASecret: cs-ca-certificate-secret
+              replicationTLSSecret: common-service-db-replica-tls-secret
+              serverCASecret: cs-ca-certificate-secret
+              serverTLSSecret: common-service-db-tls-secret
+            resources:
+              limits:
+                cpu: 200m
+                memory: 512Mi
+              requests:
+                cpu: 200m
+                memory: 512Mi
+            primaryUpdateStrategy: unsupervised
+            startDelay: 120
+            stopDelay: 90
+            storage:
+              resizeInUseVolumes: true
+              size: 1Gi
+            postgresql:
+              parameters:
+                max_connections: "600"  
+              pg_hba:
+                - hostssl cloudpak cpadmin all cert
+                - hostssl iam iam_user all cert
+                - hostssl zen zen_user all cert
 `
 )
 
