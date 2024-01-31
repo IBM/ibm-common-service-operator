@@ -949,6 +949,42 @@ spec:
                 k8s.enterprisedb.io/reload: ''
             usages:
               - server auth
+      - apiVersion: cert-manager.io/v1
+        kind: Certificate
+        name: common-service-db-zen-tls-cert
+        data:
+          spec:
+            commonName: zen_user
+            duration: 2160h0m0s
+            issuerRef:
+              kind: Issuer
+              name: cs-ca-issuer
+            renewBefore: 720h0m0s
+            secretName: common-service-db-zen-tls-secret
+            secretTemplate:
+              labels:
+                app.kubernetes.io/instance: common-service-db-zen-tls-secret
+                app.kubernetes.io/name: common-service-db-zen-tls-secret
+            usages:
+              - client auth
+      - apiVersion: cert-manager.io/v1
+        kind: Certificate
+        name: common-service-db-iam-tls-cert
+        data:
+          spec:
+            commonName: iam_user
+            duration: 2160h0m0s
+            issuerRef:
+              kind: Issuer
+              name: cs-ca-issuer
+            renewBefore: 720h0m0s
+            secretName: common-service-db-iam-tls-secret
+            secretTemplate:
+              labels:
+                app.kubernetes.io/instance: common-service-db-iam-tls-secret
+                app.kubernetes.io/name: common-service-db-iam-tls-secret
+            usages:
+              - client auth
       - apiVersion: postgresql.k8s.enterprisedb.io/v1
         kind: Cluster
         name: common-service-db
