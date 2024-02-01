@@ -951,6 +951,24 @@ spec:
               - server auth
       - apiVersion: cert-manager.io/v1
         kind: Certificate
+        name: common-service-db-im-tls-cert
+        data:
+          spec:
+            commonName: im_user
+            duration: 2160h0m0s
+            issuerRef:
+              kind: Issuer
+              name: cs-ca-issuer
+            renewBefore: 720h0m0s
+            secretName: common-service-db-im-tls-secret
+            secretTemplate:
+              labels:
+                app.kubernetes.io/instance: common-service-db-im-tls-secret
+                app.kubernetes.io/name: common-service-db-im-tls-secret
+            usages:
+              - client auth
+      - apiVersion: cert-manager.io/v1
+        kind: Certificate
         name: common-service-db-zen-tls-cert
         data:
           spec:
@@ -967,24 +985,27 @@ spec:
                 app.kubernetes.io/name: common-service-db-zen-tls-secret
             usages:
               - client auth
-      - apiVersion: cert-manager.io/v1
-        kind: Certificate
-        name: common-service-db-iam-tls-cert
+      - apiVersion: operator.ibm.com/v1alpha1
         data:
           spec:
-            commonName: iam_user
-            duration: 2160h0m0s
-            issuerRef:
-              kind: Issuer
-              name: cs-ca-issuer
-            renewBefore: 720h0m0s
-            secretName: common-service-db-iam-tls-secret
-            secretTemplate:
-              labels:
-                app.kubernetes.io/instance: common-service-db-iam-tls-secret
-                app.kubernetes.io/name: common-service-db-iam-tls-secret
-            usages:
-              - client auth
+            bindings:
+              protected-cloudpak-db:
+                secret: common-service-db-app
+              protected-zen-db:
+                configmap: common-service-db-zen
+                secret: common-service-db-zen-tls-secret
+              protected-im-db:
+                configmap: common-service-db-im
+                secret: common-service-db-im-tls-secret
+              private-superuser-db:
+                secret: common-service-db-superuser
+            description: Binding information that should be accessible to Common Service Postgresql Adopters
+            operand: common-service-postgresql
+            registry: common-service
+            registryNamespace: {{ .ServicesNs }}
+        force: true
+        kind: OperandBindInfo
+        name: common-service-postgresql-bindinfo
       - apiVersion: postgresql.k8s.enterprisedb.io/v1
         kind: Cluster
         name: common-service-db
@@ -1034,8 +1055,80 @@ spec:
                 max_connections: "600"  
               pg_hba:
                 - hostssl cloudpak cpadmin all cert
-                - hostssl iam iam_user all cert
+                - hostssl im im_user all cert
                 - hostssl zen zen_user all cert
+      - apiVersion: v1
+        kind: ConfigMap
+        force: true
+        name: common-service-db-zen
+        data:
+          data:
+            IS_EMBEDDED: 'true'
+            DATABASE_PORT:
+              templatingValueFrom:
+                objectRef:
+                  apiVersion: v1
+                  kind: Service
+                  name: common-service-db-rw
+                  path: .spec.ports[0].port
+                required: true
+            DATABASE_R_ENDPOINT:
+              templatingValueFrom:
+                objectRef:
+                  apiVersion: v1
+                  kind: Service
+                  name: common-service-db-r
+                  path: https://+.metadata.name+.+.metadata.namespace+.+svc
+                required: true
+            DATABASE_RW_ENDPOINT:
+              templatingValueFrom:
+                objectRef:
+                  apiVersion: v1
+                  kind: Service
+                  name: common-service-db-rw
+                  path: https://+.metadata.name+.+.metadata.namespace+.+svc
+                required: true
+            DATABASE_NAME: zen
+            DATABASE_USER: zen_user
+            DATABASE_CA_CERT: ca.crt
+            DATABASE_CLIENT_KEY: tls.key
+            DATABASE_CLIENT_CERT: tls.crt
+      - apiVersion: v1
+        kind: ConfigMap
+        force: true
+        name: common-service-db-im
+        data:
+          data:
+            IS_EMBEDDED: 'true'
+            DATABASE_PORT:
+              templatingValueFrom:
+                objectRef:
+                  apiVersion: v1
+                  kind: Service
+                  name: common-service-db-rw
+                  path: .spec.ports[0].port
+                required: true
+            DATABASE_R_ENDPOINT:
+              templatingValueFrom:
+                objectRef:
+                  apiVersion: v1
+                  kind: Service
+                  name: common-service-db-r
+                  path: https://+.metadata.name+.+.metadata.namespace+.+svc
+                required: true
+            DATABASE_RW_ENDPOINT:
+              templatingValueFrom:
+                objectRef:
+                  apiVersion: v1
+                  kind: Service
+                  name: common-service-db-rw
+                  path: https://+.metadata.name+.+.metadata.namespace+.+svc
+                required: true
+            DATABASE_NAME: im
+            DATABASE_USER: im_user
+            DATABASE_CA_CERT: ca.crt
+            DATABASE_CLIENT_KEY: tls.key
+            DATABASE_CLIENT_CERT: tls.crt
 `
 )
 
