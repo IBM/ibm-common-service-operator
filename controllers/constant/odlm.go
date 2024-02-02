@@ -1078,7 +1078,7 @@ spec:
                   apiVersion: v1
                   kind: Service
                   name: common-service-db-r
-                  path: https://+.metadata.name+.+.metadata.namespace+.+svc
+                  path: .metadata.name+.+.metadata.namespace+.+svc
                 required: true
             DATABASE_RW_ENDPOINT:
               templatingValueFrom:
@@ -1086,7 +1086,7 @@ spec:
                   apiVersion: v1
                   kind: Service
                   name: common-service-db-rw
-                  path: https://+.metadata.name+.+.metadata.namespace+.+svc
+                  path: .metadata.name+.+.metadata.namespace+.+svc
                 required: true
             DATABASE_NAME: zen
             DATABASE_USER: zen_user
@@ -1114,7 +1114,7 @@ spec:
                   apiVersion: v1
                   kind: Service
                   name: common-service-db-r
-                  path: https://+.metadata.name+.+.metadata.namespace+.+svc
+                  path: .metadata.name+.+.metadata.namespace+.+svc
                 required: true
             DATABASE_RW_ENDPOINT:
               templatingValueFrom:
@@ -1122,7 +1122,7 @@ spec:
                   apiVersion: v1
                   kind: Service
                   name: common-service-db-rw
-                  path: https://+.metadata.name+.+.metadata.namespace+.+svc
+                  path: .metadata.name+.+.metadata.namespace+.+svc
                 required: true
             DATABASE_NAME: im
             DATABASE_USER: im_user
