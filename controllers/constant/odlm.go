@@ -256,7 +256,7 @@ spec:
     namespace: "{{ .ServicesNs }}"
     packageName: rhbk-operator
     scope: public
-  - channel: stable
+  - channel: stable-v1.22
     installPlanApproval: {{ .ApprovalMode }}
     name: edb-keycloak
     namespace: "{{ .CPFSNs }}"
@@ -279,7 +279,7 @@ metadata:
     excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,ibm-cp-automation-foundation-catalog,operatorhubio-catalog
 spec:
   operators:
-  - channel: stable
+  - channel: stable-v1.22
     installPlanApproval: {{ .ApprovalMode }}
     name: common-service-postgresql
     namespace: "{{ .CPFSNs }}"
@@ -843,7 +843,7 @@ spec:
               templatingValueFrom:
                 default:
                   required: true
-                  defaultValue: icr.io/cpopen/edb/postgresql:14.9@sha256:90136074adcbafb5033668b07fe1efea9addf0168fa83b0c8a6984536fc22264
+                  defaultValue: icr.io/cpopen/edb/postgresql:14.10@sha256:368ede710ca9da45090907e265d70869bc44b0103f81e6980c0c35cdeba3d068
                   configMapKeyRef:
                     name: cloud-native-postgresql-image-list
                     key: ibm-postgresql-14-operand-image
@@ -969,6 +969,15 @@ spec:
                   - GRANT ALL PRIVILEGES ON DATABASE zen TO zen_user
             affinity:
               topologyKey: topology.kubernetes.io/zone
+            imageName:
+              templatingValueFrom:
+                default:
+                  required: true
+                  defaultValue: icr.io/cpopen/edb/postgresql:14.10@sha256:368ede710ca9da45090907e265d70869bc44b0103f81e6980c0c35cdeba3d068
+                  configMapKeyRef:
+                    name: cloud-native-postgresql-image-list
+                    key: ibm-postgresql-14-operand-image
+                    namespace: {{ .OperatorNs }}
             imagePullSecrets:
               - name: ibm-entitlement-key
             instances: 1
