@@ -17,6 +17,7 @@ SERVICES_NS=""
 NS_LIST=""
 CONTROL_NS=""
 CHANNEL="v4.5"
+ODLM_CHANNEL="v4.3"
 MAINTAINED_CHANNEL="v4.2"
 SOURCE="opencloud-operators"
 CERT_MANAGER_SOURCE="ibm-cert-manager-catalog"
@@ -126,7 +127,7 @@ function main() {
     scale_up $OPERATOR_NS $SERVICES_NS "ibm-common-service-operator" "ibm-common-service-operator"
 
     # Wait for ODLM upgrade
-    wait_for_operator_upgrade $OPERATOR_NS ibm-odlm $MAINTAINED_CHANNEL $INSTALL_MODE
+    wait_for_operator_upgrade $OPERATOR_NS ibm-odlm $ODLM_CHANNEL $INSTALL_MODE
     # Scale up ODLM
     scale_up $OPERATOR_NS $SERVICES_NS ibm-odlm operand-deployment-lifecycle-manager
 
@@ -362,6 +363,13 @@ function pre_req() {
     local maintained_channel_numeric="${MAINTAINED_CHANNEL#v}"
     if awk -v num="$channel_numeric" "BEGIN { exit !(num < $maintained_channel_numeric) }"; then
         MAINTAINED_CHANNEL="$CHANNEL"
+    fi
+
+    # When Common Service channel is less than v4.5, use maintained channel for ODLM channel
+    local channel_numeric="${CHANNEL#v}"
+    local odlm_channel_numeric="${ODLM_CHANNEL#v}"
+    if awk -v num="$channel_numeric" "BEGIN { exit !(num < 4.5) }"; then
+        ODLM_CHANNEL="$MAINTAINED_CHANNEL"
     fi
 }
 
