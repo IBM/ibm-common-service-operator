@@ -17,7 +17,10 @@ CLEANUP="false"
 STORAGE_CLASS="default"
 
 function main() {
-    parse_arguments
+    echo "$CLEANUP $KEYCLOAK_NAMESPACE"
+    parse_arguments "$@"
+    echo "$CLEANUP $KEYCLOAK_NAMESPACE"
+    deploy_resources
     if [[ $CLEANUP=="true" ]]; then
         cleanup
     else
