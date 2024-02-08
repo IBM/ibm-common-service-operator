@@ -22,7 +22,7 @@ metadata:
       ]
     capabilities: Seamless Upgrades
     containerImage: icr.io/cpopen/common-service-operator:latest
-    createdAt: "2024-01-10T21:50:05Z"
+    createdAt: "2024-02-08T22:44:51Z"
     description: The IBM Cloud Pak foundational services operator is used to deploy IBM foundational services.
     nss.operator.ibm.com/managed-operators: ibm-common-service-operator
     nss.operator.ibm.com/managed-webhooks: ""
@@ -410,6 +410,16 @@ spec:
                       secretName: webhook-server-cert
       permissions:
         - rules:
+            - apiGroups:
+                - operator.ibm.com
+              resources:
+                - namespacescopes
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - watch
             - apiGroups:
                 - cert-manager.io
               resources:

@@ -216,6 +216,12 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 		return ctrl.Result{}, err
 	}
 
+	// Clean v3 Namespace Scope Operator and CRs in the servicesNamespace
+	if err := r.Bootstrap.CleanNamespaceScopeResources(); err != nil {
+		klog.Errorf("Failed to clean NamespaceScope resources: %v", err)
+		return ctrl.Result{}, err
+	}
+
 	// Init common service bootstrap resource
 	// Including namespace-scope configmap
 	// Deploy OperandConfig and OperandRegistry
