@@ -14,10 +14,11 @@ set -o errtrace
 set -o errexit
 
 CLEANUP="false"
+STORAGE_CLASS="default"
 
 function main() {
     parse_arguments
-    if [[ $CLEANUP ]]; then
+    if [[ $CLEANUP=="true" ]]; then
         cleanup
     else
         deploy_resources
