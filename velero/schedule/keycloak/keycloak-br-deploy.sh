@@ -224,6 +224,11 @@ success "Backup/Restore resources created."
 
 }
 
+function cleanup() {
+  #TODO clean up resources after backup completes
+  info "clean up resources"
+}
+
 function msg() {
     printf '%b\n' "$1"
 }
