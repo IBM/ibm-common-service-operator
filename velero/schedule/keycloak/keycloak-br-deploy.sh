@@ -17,47 +17,62 @@ CLEANUP="false"
 STORAGE_CLASS="default"
 
 function main() {
-    echo "$CLEANUP $KEYCLOAK_NAMESPACE"
-    parse_arguments "$@"
-    echo "$CLEANUP $KEYCLOAK_NAMESPACE"
+  echo "$CLEANUP $KEYCLOAK_NAMESPACE"
+  parse_arguments "$@"
+  echo "$CLEANUP $KEYCLOAK_NAMESPACE"
+  deploy_resources
+  if [[ $CLEANUP=="true" ]]; then
+    cleanup
+  else
     deploy_resources
-    if [[ $CLEANUP=="true" ]]; then
-        cleanup
-    else
-        deploy_resources
-    fi
+  fi
 }
 
 function parse_arguments() {
-    # process options
-    while [[ "$@" != "" ]]; do
-        case "$1" in
-        --keycloak-ns)
-            shift
-            KEYCLOAK_NAMESPACE=$1
-            ;;
-        --storage-class)
-            shift
-            STORAGE_CLASS=$1
-            ;;
-        -c | --cleanup)
-            CLEANUP="true"
-            ;;
-        -h | --help)
-            print_usage
-            exit 1
-            ;;
-        *) 
-            warning "$1 not a supported parameter for keycloak-deploy.sh"
-            ;;
-        esac
-        shift
-    done
+  # process options
+  while [[ "$@" != "" ]]; do
+    case "$1" in
+    --keycloak-ns)
+      shift
+      KEYCLOAK_NAMESPACE=$1
+      ;;
+    --storage-class)
+      shift
+      STORAGE_CLASS=$1
+      ;;
+    "-c" | "--cleanup")
+      CLEANUP="true"
+      ;;
+    -h | --help)
+      print_usage
+      exit 1
+      ;;
+    *) 
+      warning "$1 not a supported parameter for keycloak-deploy.sh"
+      ;;
+    esac
+    shift
+  done
+}
+
+function print_usage() {
+  echo "Usage: ${script_name} --keycloak-ns <Namespace where keycloak is installed> [OPTIONS]..."
+  echo ""
+  echo "Deploy the necessary resources for Backup of Keycloak."
+  #TODO change below to point to correct docs
+  #echo "See step 4 here https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.0?topic=4x-isolated-migration for more information."
+  echo ""
+  echo "Options:"
+  echo "   --keycloak-ns string                           Required. Namespace where Keycloak is installed."
+  echo "   --storage-class string                         Optional. Storage class used by keycloak. Default value is cluster's default storage class."
+  echo "   -c, --cleanup                                  Optional. Automated cleanup of Keycloak BR resources. Will run cleanup instead of deployment logic."
+  echo "   -h, --help                                     Print usage information"
+  echo ""
 }
 
 function deploy_resources(){
-    info "Creating Keycloak Backup/Restore resources"
-    cat << EOF | oc apply -f -
+  info "Creating Keycloak Backup/Restore resources"
+  cat << EOF | oc apply -f -
 kind: Deployment
 apiVersion: apps/v1
 metadata:
@@ -125,14 +140,14 @@ spec:
             name: keycloak-br-configmap
             defaultMode: 0777
 EOF
-    if [[ $STORAGE_CLASS == "default" ]]; then
-        STORAGE_CLASS=$(oc get sc | grep default | awk '{print $1}')
-        info "Using default storage class $STORAGE_CLASS."
-    else
-        info "Using specified storage class $STORAGE_CLASS."
-    fi
+  if [[ $STORAGE_CLASS == "default" ]]; then
+    STORAGE_CLASS=$(oc get sc | grep default | awk '{print $1}')
+    info "Using default storage class $STORAGE_CLASS."
+  else
+    info "Using specified storage class $STORAGE_CLASS."
+  fi
 
-    cat << EOF | oc apply -f -
+  cat << EOF | oc apply -f -
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -150,9 +165,9 @@ spec:
   volumeMode: Filesystem
 EOF
 
-    oc apply -f keycloak-br-script-cm.yaml -n $KEYCLOAK_NAMESPACE
+  oc apply -f keycloak-br-script-cm.yaml -n $KEYCLOAK_NAMESPACE
 
-    cat << EOF | oc apply -f -
+  cat << EOF | oc apply -f -
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -195,7 +210,7 @@ rules:
       - clusters
 EOF
 
-    cat << EOF | oc apply -f -
+  cat << EOF | oc apply -f -
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
@@ -214,7 +229,7 @@ subjects:
   namespace: $KEYCLOAK_NAMESPACE
 EOF
 
-    cat << EOF | oc apply -f -
+  cat << EOF | oc apply -f -
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -224,7 +239,7 @@ metadata:
     foundationservices.cloudpak.ibm.com: keycloak-data
 EOF
 
-success "Backup/Restore resources created."
+  success "Backup/Restore resources created."
 
 }
 
@@ -234,28 +249,28 @@ function cleanup() {
 }
 
 function msg() {
-    printf '%b\n' "$1"
+  printf '%b\n' "$1"
 }
 
 function success() {
-    msg "\33[32m[✔] ${1}\33[0m"
+  msg "\33[32m[✔] ${1}\33[0m"
 }
 
 function warning() {
-    msg "\33[33m[✗] ${1}\33[0m"
+  msg "\33[33m[✗] ${1}\33[0m"
 }
 
 function error() {
-    msg "\33[31m[✘] ${1}\33[0m"
-    exit 1
+  msg "\33[31m[✘] ${1}\33[0m"
+  exit 1
 }
 
 function title() {
-    msg "\33[34m# ${1}\33[0m"
+  msg "\33[34m# ${1}\33[0m"
 }
 
 function info() {
-    msg "[INFO] ${1}"
+  msg "[INFO] ${1}"
 }
 
 main $*
