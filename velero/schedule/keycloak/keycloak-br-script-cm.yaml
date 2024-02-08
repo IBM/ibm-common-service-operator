@@ -24,10 +24,6 @@ data:
 
     MODE=$1
     KEYCLOAK_NAMESPACE=$2
-    OPERATOR_NAMESPACE=$3
-    if [[ -z $OPERATOR_NAMESPACE ]]; then
-        OPERATOR_NAMESPACE=$KEYCLOAK_NAMESPACE
-    fi
 
     BACKUP_DIR=/keycloak/keycloak-backup
 
@@ -38,6 +34,7 @@ data:
             success "Backup completed successfully."
         else
             info "Mode is set to restore, beginning restore process."
+            wait_for_keycloak
             restore
             success "Restore completed successfully."
         fi
@@ -53,6 +50,25 @@ data:
         oc cp $KEYCLOAK_NAMESPACE/$CNPG_PRIMARY_POD:/run/keycloak_backup/keycloak_db_backup.dump $BACKUP_DIR/database/keycloak_db_backup.dump
     }
 
+    function wait_for_keycloak {
+        job_name=cs-cloudpak-realm
+        info "Waiting for job $job_name to complete in namespace $KEYCLOAK_NAMESPACE."
+        completed=$(oc get job $job_name -n $KEYCLOAK_NAMESPACE | awk '{print $2}')
+        retry_count=20
+        while [[ $completed != "1/1" ]] && [[ $retry_count > 0 ]]
+        do
+            info "Wait for job $job_name to complete. Try again in 15s."
+            sleep 15
+            completed=$(oc get job $job_name -n $KEYCLOAK_NAMESPACE | awk '{print $2}')
+        done
+
+        if [[ $retry_count == 0 ]] && [[ $completed != "1/1" ]]; then
+            error "Timed out waiting for job $job_name."
+        else
+            info "Job $job_name completed, ready for restore."
+        fi
+    }
+    
     function restore {
         CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io keycloak-edb-cluster -o jsonpath="{.status.currentPrimary}" -n $KEYCLOAK_NAMESPACE` 
         oc exec $CNPG_PRIMARY_POD -n $KEYCLOAK_NAMESPACE -- mkdir -p /run/keycloak_backup
