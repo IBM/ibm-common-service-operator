@@ -30,11 +30,14 @@ data:
         if [[ $MODE == "backup" ]]; then
             info "Mode set to backup, beginning backup process."
             backup
+            #TODO backup initial admin secret
             success "Backup completed successfully."
         else
             info "Mode is set to restore, beginning restore process."
             wait_for_keycloak
             restore
+            #TODO restore initial admin secret
+            #TODO restart cs-keycloak pod
             success "Restore completed successfully."
         fi
     }
@@ -52,13 +55,14 @@ data:
     function wait_for_keycloak {
         job_name=cs-cloudpak-realm
         info "Waiting for job $job_name to complete in namespace $KEYCLOAK_NAMESPACE."
-        completed=$(oc get job $job_name -n $KEYCLOAK_NAMESPACE | awk '{print $2}')
+        completed=$(oc get job $job_name -n $KEYCLOAK_NAMESPACE --no-headers | awk '{print $2}')
         retry_count=20
         while [[ $completed != "1/1" ]] && [[ $retry_count > 0 ]]
         do
             info "Wait for job $job_name to complete. Try again in 15s."
             sleep 15
-            completed=$(oc get job $job_name -n $KEYCLOAK_NAMESPACE | awk '{print $2}')
+            completed=$(oc get job $job_name -n $KEYCLOAK_NAMESPACE --no-headers | awk '{print $2}')
+            retry_count=$retry_count-1
         done
 
         if [[ $retry_count == 0 ]] && [[ $completed != "1/1" ]]; then
