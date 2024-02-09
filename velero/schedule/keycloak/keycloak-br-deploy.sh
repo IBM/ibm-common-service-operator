@@ -201,6 +201,7 @@ rules:
       - pods/portforward
       - endpoints
       - pods/status
+      - jobs
   - verbs:
       - get
       - list
