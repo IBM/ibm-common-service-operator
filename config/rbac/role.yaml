@@ -80,6 +80,7 @@ rules:
   - get
   - list
   - watch
+  - patch
   resources:
   - namespacescopes
 - apiGroups:
