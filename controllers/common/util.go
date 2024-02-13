@@ -287,15 +287,6 @@ func GetNSSCMSynchronization() bool {
 	return false
 }
 
-func GetItemByName(slice []interface{}, name string) interface{} {
-	for _, item := range slice {
-		if item.(map[string]interface{})["name"].(string) == name {
-			return item
-		}
-	}
-	return nil
-}
-
 // Contains returns whether the sub-string is contained
 func Contains(list []string, s string) bool {
 	for _, v := range list {

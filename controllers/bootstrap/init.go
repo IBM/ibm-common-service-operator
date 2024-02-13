@@ -401,7 +401,7 @@ func (b *Bootstrap) DeleteFromYaml(objectTemplate string, data interface{}) erro
 
 		_, err := b.GetObject(obj)
 		if errors.IsNotFound(err) {
-			klog.Infof("Not Found name: %s, namespace: %s, kind: %s, apiversion: %s/%s, skipping", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
+			klog.V(2).Infof("Not Found name: %s, namespace: %s, kind: %s, apiversion: %s/%s, skipping", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
 			continue
 		} else if err != nil {
 			errMsg = err
@@ -529,6 +529,17 @@ func (b *Bootstrap) ListOperandConfig(ctx context.Context, opts ...client.ListOp
 	}
 
 	return opconfigList
+}
+
+// ListNssCRs returns the NameSpaceScopes instance list with "options"
+func (b *Bootstrap) ListNssCRs(ctx context.Context, namespace string) (*nssv1.NamespaceScopeList, error) {
+	nssCRsList := &nssv1.NamespaceScopeList{}
+	if err := b.Client.List(ctx, nssCRsList, &client.ListOptions{Namespace: namespace}); err != nil {
+		klog.Errorf("failed to List NamespaceScope: %v", err)
+		return nil, err
+	}
+
+	return nssCRsList, nil
 }
 
 // ListCerts returns the Certificate instance list with "options"
@@ -1181,80 +1192,30 @@ func (b *Bootstrap) DeployCertManagerCR() error {
 // CleanNamespaceScopeResources will delete the v3 NamesapceScopes resources and namespace scope operator
 // NamespaceScope resources include common-service, nss-managedby-odlm, nss-odlm-scope, and odlm-scope-managedby-odlm
 func (b *Bootstrap) CleanNamespaceScopeResources() error {
-	operandRegistry, err := b.GetResource(ctx, "operator.ibm.com", "OperandRegistry", "v1alpha1", "common-service", b.CSData.ServicesNs)
-	if err == nil && operandRegistry == nil {
-		klog.Infof("The common-service OperandRegistry is not found in the %s namespace, skip cleaning up", b.CSData.ServicesNs)
-		return nil
-	} else if err != nil {
+	// Get the common-service OperandRegistry
+	operandRegistry, err := b.GetOperandRegistry(ctx, constant.MasterCR, b.CSData.ServicesNs)
+	if err != nil && operandRegistry == nil {
 		klog.Errorf("Failed to get common-service OperandRegistry: %v", err)
 		return err
 	}
 
 	// List all requested operators
-	if operandRegistry.Object["status"].(map[string]interface{})["operatorsStatus"] != nil {
-		operatorsStatus := operandRegistry.Object["status"].(map[string]interface{})["operatorsStatus"].(map[string]interface{})
-		for operator, _ := range operatorsStatus {
+	if operandRegistry.Status.OperatorsStatus != nil {
+		for operator := range operandRegistry.Status.OperatorsStatus {
 			// If there is a requested operator's installMode is "no-op", then skip call delete function
-			operators := operandRegistry.Object["spec"].(map[string]interface{})["operators"].([]interface{})
-			op := util.GetItemByName(operators, operator)
-			if op != nil {
-				if op.(map[string]interface{})["installMode"] == "no-op" {
+			for _, op := range operandRegistry.Spec.Operators {
+				if op.Name == operator && op.InstallMode == "no-op" {
 					klog.Infof("The v3 operator %s is still requested, skip cleaning the resources", operator)
 					return nil
 				}
-
 			}
 		}
 	}
-
-	nslist, err := util.GetNssCmNs(b.Reader, b.CSData.OperatorNs)
-	if err != nil {
-		if createErr := b.CreateNsScopeConfigmap(); createErr != nil {
-			klog.Errorf("Failed to create Namespace Scope ConfigMap: %v", createErr)
-			return createErr
-		}
-	}
-	nslistLen := len(nslist)
 
 	// If the topology is Simple or All Namespaces Mode, delete all NamespaceScope resources
-	if b.CSData.WatchNamespaces == "" || nslistLen == 1 {
-		klog.Info("Cleaning NamespaceScope resources in Simple Topology or All Namespaces Mode")
-		nssCRsList := &nssv1.NamespaceScopeList{}
-		err := b.Client.List(context.TODO(), nssCRsList, &client.ListOptions{Namespace: b.CSData.ServicesNs})
-		if err != nil {
-			return err
-		}
-		// Delete NamespaceScope CRs and wait for those are deleted exactly, if time is out for deleting the CRs, then proceed to delete the operator
-		if len(nssCRsList.Items) > 0 {
-			for _, nssCR := range nssCRsList.Items {
-				if err := b.Client.Delete(context.TODO(), &nssCR); err != nil {
-					klog.Errorf("Failed to delete NamespaceScope CR %s: %v", nssCR.Name, err)
-				}
-			}
+	if b.CSData.WatchNamespaces == "" || len(strings.Split(b.CSData.WatchNamespaces, ",")) == 1 {
 
-			klog.Infof("Waiting for the NamespaceScope CRs to be deleted in the %s namespace", b.CSData.ServicesNs)
-			if err := utilwait.PollImmediate(time.Second*5, time.Second*60, func() (done bool, err error) {
-				nssCRsList = &nssv1.NamespaceScopeList{}
-				if err := b.Client.List(context.TODO(), nssCRsList, &client.ListOptions{Namespace: b.CSData.ServicesNs}); err != nil {
-					klog.Errorf("Failed to list NamespaceScope CRs: %v", err)
-					return false, err
-				}
-				return len(nssCRsList.Items) == 0, nil
-			}); err != nil {
-				klog.Errorf("Patch finalizers to delete the NamespaceScope CRs")
-				for _, nssCR := range nssCRsList.Items {
-					if nssCR.GetDeletionTimestamp() != nil && len(nssCR.ObjectMeta.Finalizers) > 0 {
-						originalCopy := nssCR.DeepCopy()
-						if change := apiv3.RemoveFinalizer(&nssCR.ObjectMeta, constant.NssCRFinalizer); change {
-							if err := b.Client.Patch(context.TODO(), &nssCR, client.MergeFrom(originalCopy)); err != nil {
-								klog.Errorf("Failed to patch finalizers to delete the NamespaceScope CR %s: %v", nssCR.Name, err)
-								return err
-							}
-						}
-					}
-				}
-			}
-		}
+		klog.Info("Cleaning NamespaceScope resources in Simple Topology or All Namespaces Mode")
 		// Delete v3 Namespace Scope operator
 		klog.Infof("Uninstall v3 Namespace Scope operator in servicesNamespace %s when the topology is Simple or All Namespaces Mode", b.CSData.ServicesNs)
 		sub := &olmv1alpha1.Subscription{}
@@ -1266,12 +1227,64 @@ func (b *Bootstrap) CleanNamespaceScopeResources() error {
 				return err
 			}
 		} else {
-			if sub.Spec.Channel != "v3" {
-				klog.Infof("The %s subscription is not in the v3 channel, skip cleaning up", constant.NsSubName)
+			if strings.HasPrefix(sub.Spec.Channel, "v4.") {
+				klog.Infof("The %s subscription is in the v4.x channel, skip cleaning up", constant.NsSubName)
+				return nil
+			} else if err := b.DeleteOperator(constant.NsSubName, b.CSData.ServicesNs); err != nil {
+				klog.Errorf("Failed to uninstall v3 Namespace Scope operator in servicesNamespace %s", b.CSData.ServicesNs)
+				return err
+			}
+		}
+
+		// Patch and remove the ownerReference in the namespace-scope configmap if it exist
+		if nssCm, err := util.GetCmOfNss(b.Reader, b.CSData.OperatorNs); err != nil {
+			if errors.IsNotFound(err) {
+				klog.Infof("The %s configmap is not found in the %s namespace, skip cleaning up", constant.NamespaceScopeConfigmapName, b.CSData.ServicesNs)
 			} else {
-				if err := b.DeleteOperator(constant.NsSubName, b.CSData.ServicesNs); err != nil {
-					klog.Errorf("Failed to uninstall v3 Namespace Scope operator in servicesNamespace %s", b.CSData.ServicesNs)
+				klog.Errorf("Failed to get %s configmap: %v", constant.NamespaceScopeConfigmapName, err)
+				return err
+			}
+		} else {
+			if len(nssCm.OwnerReferences) > 0 {
+				klog.Infof("Remove the ownerReference in the %s configmap", constant.NamespaceScopeConfigmapName)
+				// Patch and remove the ownerReference in the namespace-scope configmap in data section
+				originalCm := nssCm.DeepCopy()
+				nssCm.OwnerReferences = nil
+				if err := b.Client.Patch(context.TODO(), nssCm, client.MergeFrom(originalCm)); err != nil {
+					klog.Errorf("Failed to patch and remove the ownerReference in the %s configmap", constant.NamespaceScopeConfigmapName)
 					return err
+				}
+			}
+		}
+
+		// Delete NamespaceScope CRs and wait for those are deleted exactly, if time is out for deleting the CRs, then proceed to delete the operator
+		nssCRsList, err := b.ListNssCRs(ctx, b.CSData.ServicesNs)
+		if len(nssCRsList.Items) > 0 && err == nil {
+			for _, nssCR := range nssCRsList.Items {
+				if err := b.Client.Delete(context.TODO(), &nssCR); err != nil {
+					klog.Errorf("Failed to delete NamespaceScope CR %s: %v", nssCR.Name, err)
+				}
+			}
+
+			klog.Infof("Waiting for the NamespaceScope CRs to be deleted in the %s namespace", b.CSData.ServicesNs)
+			if err := utilwait.PollImmediate(time.Second*5, time.Second*30, func() (done bool, err error) {
+				if nssCRsList, err := b.ListNssCRs(ctx, b.CSData.ServicesNs); err != nil {
+					return false, err
+				} else {
+					return len(nssCRsList.Items) == 0, nil
+				}
+			}); err != nil {
+				klog.Infof("Patch finalizers to delete the NamespaceScope CRs")
+				for _, nssCR := range nssCRsList.Items {
+					if nssCR.GetDeletionTimestamp() != nil && len(nssCR.ObjectMeta.Finalizers) > 0 {
+						originalCopy := nssCR.DeepCopy()
+						if change := apiv3.RemoveFinalizer(&nssCR.ObjectMeta, constant.NssCRFinalizer); change {
+							if err := b.Client.Patch(context.TODO(), &nssCR, client.MergeFrom(originalCopy)); err != nil {
+								klog.Errorf("Failed to patch finalizers to delete the NamespaceScope CR %s: %v", nssCR.Name, err)
+								return err
+							}
+						}
+					}
 				}
 			}
 		}
