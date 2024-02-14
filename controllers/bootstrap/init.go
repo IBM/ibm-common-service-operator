@@ -1219,21 +1219,21 @@ func (b *Bootstrap) CleanNamespaceScopeResources() error {
 		// Delete v3 Namespace Scope operator
 		klog.Infof("Uninstall v3 Namespace Scope operator in servicesNamespace %s when the topology is Simple or All Namespaces Mode", b.CSData.ServicesNs)
 		sub := &olmv1alpha1.Subscription{}
-		if err := b.Client.Get(ctx, types.NamespacedName{Name: constant.NsSubName, Namespace: b.CSData.ServicesNs}, sub); err != nil {
-			if errors.IsNotFound(err) {
-				klog.Infof("The %s subscription is not found in the %s namespace, skip cleaning up", constant.NsSubName, b.CSData.ServicesNs)
-			} else {
-				klog.Errorf("Failed to get %s subscription: %v", constant.NsSubName, err)
-				return err
-			}
-		} else {
+		if err := b.Client.Get(ctx, types.NamespacedName{Name: constant.NsSubName, Namespace: b.CSData.ServicesNs}, sub); err == nil {
 			if strings.HasPrefix(sub.Spec.Channel, "v4.") {
 				klog.Infof("The %s subscription is in the v4.x channel, skip cleaning up", constant.NsSubName)
 				return nil
-			} else if err := b.DeleteOperator(constant.NsSubName, b.CSData.ServicesNs); err != nil {
+			}
+			if err := b.DeleteOperator(constant.NsSubName, b.CSData.ServicesNs); err != nil {
 				klog.Errorf("Failed to uninstall v3 Namespace Scope operator in servicesNamespace %s", b.CSData.ServicesNs)
 				return err
 			}
+		} else {
+			if !errors.IsNotFound(err) {
+				klog.Errorf("Failed to get %s subscription: %v", constant.NsSubName, err)
+				return err
+			}
+			klog.Infof("The %s subscription is not found in the %s namespace, skip cleaning up", constant.NsSubName, b.CSData.ServicesNs)
 		}
 
 		// Patch and remove the ownerReference in the namespace-scope configmap if it exist

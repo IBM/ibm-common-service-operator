@@ -727,16 +727,15 @@ func GetNssCmNs(r client.Reader, cpfsNamespace string) ([]string, error) {
 	nssConfigMap, err := GetCmOfNss(r, cpfsNamespace)
 	if err != nil {
 		return nil, err
-	} else {
-		nssNsMems, ok := nssConfigMap.Data["namespaces"]
-		if !ok {
-			klog.Infof("There is no namespace in configmap %v/%v", cpfsNamespace, constant.NamespaceScopeConfigmapName)
-			return nil, nil
-		}
-		nssCmNs := strings.Split(nssNsMems, ",")
-
-		return nssCmNs, nil
 	}
+	nssNsMems, ok := nssConfigMap.Data["namespaces"]
+	if !ok {
+		klog.Infof("There is no namespace in configmap %v/%v", cpfsNamespace, constant.NamespaceScopeConfigmapName)
+		return nil, nil
+	}
+	nssCmNs := strings.Split(nssNsMems, ",")
+
+	return nssCmNs, nil
 }
 
 // GetCmOfNss gets ConfigMap of Namespace-scope
