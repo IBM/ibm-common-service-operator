@@ -1,0 +1,13 @@
+apiVersion: data-protection.isf.ibm.com/v1alpha1
+kind: PolicyAssignment
+metadata:
+  name: cert-manager-policy-assignment
+  namespace: ibm-spectrum-fusion-ns
+spec:
+  application: cert-manager-application
+  backupPolicy: cert-manager-backup-policy
+  runNow: false
+  recipe:
+    apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+    name: cert-manager-recipe
+    namespace: ibm-spectrum-fusion-ns

@@ -1,0 +1,10 @@
+apiVersion: application.isf.ibm.com/v1alpha1
+kind: Application
+metadata:
+  name: cert-manager-application
+  namespace: ibm-spectrum-fusion-ns
+spec:
+  enableDR: false
+  includedNamespaces:
+    - ibm-cert-manager
+    - openshift-marketplace
