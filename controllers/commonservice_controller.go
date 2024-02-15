@@ -422,8 +422,7 @@ func (r *CommonServiceReconciler) mappingToCsRequestForOperandRegistry() handler
 			return nil
 		}
 
-		// Your custom logic to filter OperandRegistry instances
-		if operandRegistry.Name == constant.MasterCR && operandRegistry.Namespace == r.Bootstrap.CSData.ServicesNs {
+		if shouldReconcile(operandRegistry) {
 			// Enqueue a reconciliation request for the corresponding CommonService
 			return []reconcile.Request{
 				{NamespacedName: types.NamespacedName{Name: operandRegistry.Name, Namespace: operandRegistry.Namespace}},
@@ -431,6 +430,24 @@ func (r *CommonServiceReconciler) mappingToCsRequestForOperandRegistry() handler
 		}
 		return nil
 	}
+}
+
+// shouldReconcile checks the conditions for reconciliation
+func shouldReconcile(operandRegistry *odlm.OperandRegistry) bool {
+
+	if operandRegistry.Status.OperatorsStatus != nil {
+		// List all requested operators
+		for operator := range operandRegistry.Status.OperatorsStatus {
+			// If there is a requested operator's installMode is "no-op", then skip reconcile
+			for _, op := range operandRegistry.Spec.Operators {
+				if op.Name == operator && op.InstallMode == "no-op" {
+					klog.Infof("The operator %s with 'no-op' installMode is still requested in OperandRegistry, skip reconciliation", operator)
+					return false
+				}
+			}
+		}
+	}
+	return true
 }
 
 func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
