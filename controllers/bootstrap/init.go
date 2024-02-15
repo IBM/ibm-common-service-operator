@@ -49,9 +49,9 @@ import (
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/controllers/deploy"
+	nssv1 "github.com/IBM/ibm-namespace-scope-operator/api/v1"
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/api/v1alpha1"
 
-	nssv1 "github.com/IBM/ibm-namespace-scope-operator/api/v1"
 	certmanagerv1 "github.com/ibm/ibm-cert-manager-operator/apis/cert-manager/v1"
 )
 
