@@ -527,15 +527,9 @@ function swapmongopvc() {
   ${OC} patch pv $VOL --type=merge -p '{"spec": {"claimRef":null}}'
   ${OC} patch pv $VOL --type json -p '[{ "op": "remove", "path": "/spec/claimRef" }]' #this line is proving problematic
 
-  roks=$(${OC} cluster-info | grep 'containers.cloud.ibm.com')
-  if [[ -z $roks ]]; then
-    stgclass=$(${OC} get pvc mongodbdir-icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{.spec.storageClassName}')
-    if [[ -z $stgclass ]]; then
-      error "Cannnot get storage class name from PVC mongodbdir-icp-mongodb-0 in $FROM_NAMESPACE"
-    fi
-  else
-    debug1 "Preload run on ROKS, not setting storageclass name"
-    stgclass=""
+  stgclass=$(${OC} get pvc mongodbdir-icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{.spec.storageClassName}')
+  if [[ -z $stgclass ]]; then
+    error "Cannnot get storage class name from PVC mongodbdir-icp-mongodb-0 in $FROM_NAMESPACE"
   fi
 
   cat <<EOF >$TEMPFILE
