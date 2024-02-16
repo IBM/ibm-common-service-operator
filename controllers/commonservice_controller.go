@@ -421,11 +421,12 @@ func (r *CommonServiceReconciler) mappingToCsRequestForOperandRegistry() handler
 			// It's not an OperandRegistry, ignore
 			return nil
 		}
-
-		if shouldReconcile(operandRegistry) {
-			// Enqueue a reconciliation request for the corresponding CommonService
-			return []reconcile.Request{
-				{NamespacedName: types.NamespacedName{Name: operandRegistry.Name, Namespace: operandRegistry.Namespace}},
+		if operandRegistry.Name == constant.MasterCR && operandRegistry.Namespace == r.Bootstrap.CSData.ServicesNs {
+			if shouldReconcile(operandRegistry) {
+				// Enqueue a reconciliation request for the corresponding CommonService
+				return []reconcile.Request{
+					{NamespacedName: types.NamespacedName{Name: constant.MasterCR, Namespace: r.Bootstrap.CSData.OperatorNs}},
+				}
 			}
 		}
 		return nil

@@ -1274,6 +1274,7 @@ func (b *Bootstrap) CleanNamespaceScopeResources() error {
 							klog.Errorf("Failed to patch finalizers to delete the NamespaceScope CR %s: %v", nssCR.Name, err)
 							return err
 						}
+						klog.Infof("Rmoved finalizers to delete the NamespaceScope CR %s", nssCR.Name)
 					}
 				}
 			}
