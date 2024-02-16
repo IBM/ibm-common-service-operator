@@ -1249,6 +1249,17 @@ func (b *Bootstrap) CleanNamespaceScopeResources() error {
 	}
 
 	// Delete NamespaceScope CRs and wait for those are deleted exactly, if time is out for deleting the CRs, then proceed to delete the operator
+	// Check if the NamespaceScope CRD is existent
+	exist, err := b.CheckCRD(constant.NssAPIVersion, constant.NssKindCR)
+	if err != nil {
+		klog.Errorf("Failed to check resource with kind: %s, apiGroupVersion: %s", constant.NssKindCR, constant.NssAPIVersion)
+		return err
+	}
+	if !exist {
+		klog.Infof("Skiped deleting NamespaceScope CRs, it is not exist in cluster")
+		return nil
+	}
+
 	nssCRsList, err := b.ListNssCRs(ctx, b.CSData.ServicesNs)
 	if len(nssCRsList.Items) > 0 && err == nil {
 		for _, nssCR := range nssCRsList.Items {

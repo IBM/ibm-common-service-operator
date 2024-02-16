@@ -46,10 +46,18 @@ const (
 	SaasConfigMap = "saas-config"
 	// Namespace Scope Operator resource name
 	NsSubResourceName = "nsSubscription"
-	// Namespace Scope Operator Restricted resource name
-	NsRestrictedSubResourceName = "nsRestrictedSubscription"
 	// Namespace Scope Operator sub name
 	NsSubName = "ibm-namespace-scope-operator"
+	// NamespaceScope CRs kind
+	NssKindCR = "NamespaceScope"
+	// NamespaceScope CRs api version
+	NssAPIVersion = "operator.ibm.com/v1"
+	// NamespaceScopeConfigmapName is the name of ConfigMap which stores the NamespaceScope Info
+	NamespaceScopeConfigmapName = "namespace-scope"
+	// NssCRFinalizer is the name for the finalizer to allow for deletion
+	NssCRFinalizer = "finalizer.nss.operator.ibm.com"
+	// Namespace Scope Operator Restricted resource name
+	NsRestrictedSubResourceName = "nsRestrictedSubscription"
 	// Namespace Scope Operator Restricted sub name
 	NsRestrictedSubName = "ibm-namespace-scope-operator-restricted"
 	//DefaultRequeueDuration is the default requeue time duration for request
@@ -76,8 +84,6 @@ const (
 	IBMODLMPackage = "operand-deployment-lifecycle-manager-app"
 	//IBMNSSPackage is the package name of the namespace scope operator
 	IBMNSSPackage = "ibm-namespace-scope-operator"
-	// NamespaceScopeConfigmapName is the name of ConfigMap which stores the NamespaceScope Info
-	NamespaceScopeConfigmapName = "namespace-scope"
 	// DevBuildImage is regular expression of the image address of internal dev build for testing
 	DevBuildImage = `^hyc\-cloud\-private\-(.*)\-docker\-local\.artifactory\.swg\-devops\.com\/ibmcom\/ibm\-common\-service\-catalog\:(.*)`
 	// BedrockCatalogsourcePriority is an annotation defined in the catalogsource
@@ -90,8 +96,6 @@ const (
 	CsClonedFromLabel = "operator.ibm.com/common-services.cloned-from"
 	// IBMCPPCONFIG is the name of ibm-cpp-config ConfigMap
 	IBMCPPCONFIG = "ibm-cpp-config"
-	// NssCRFinalizer is the name for the finalizer to allow for deletion
-	NssCRFinalizer = "finalizer.nss.operator.ibm.com"
 )
 
 // CsOg is OperatorGroup constent for the common service operator

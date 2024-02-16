@@ -62,6 +62,11 @@ const (
 	CRFailed       string = "Failed"
 )
 
+var (
+	OpregAPIGroupVersion = "operator.ibm.com/v1alpha1"
+	OpregKind            = "OperandRegistry"
+)
+
 func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 
 	klog.Infof("Reconciling CommonService: %s", req.NamespacedName)
@@ -452,7 +457,8 @@ func shouldReconcile(operandRegistry *odlm.OperandRegistry) bool {
 }
 
 func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
+
+	controller := ctrl.NewControllerManagedBy(mgr).
 		// AnnotationChangedPredicate is intended to be used in conjunction with the GenerationChangedPredicate
 		For(&apiv3.CommonService{}, builder.WithPredicates(
 			predicate.Or(
@@ -472,8 +478,12 @@ func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				UpdateFunc: func(e event.UpdateEvent) bool {
 					return true
 				},
-			})).
-		Watches(
+			}))
+	if isOpregAPI, err := r.Bootstrap.CheckCRD(OpregAPIGroupVersion, OpregKind); err != nil {
+		klog.Errorf("Failed to check if OperandRegistry CRD exists: %v", err)
+		return err
+	} else if isOpregAPI {
+		controller = controller.Watches(
 			&source.Kind{Type: &odlm.OperandRegistry{}},
 			handler.EnqueueRequestsFromMapFunc(r.mappingToCsRequestForOperandRegistry()),
 			builder.WithPredicates(predicate.Funcs{
@@ -491,6 +501,8 @@ func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					// Check if the .status field has changed
 					return !reflect.DeepEqual(oldOperandRegistry.Status, newOperandRegistry.Status)
 				},
-			}),
-		).Complete(r)
+			},
+			))
+	}
+	return controller.Complete(r)
 }
