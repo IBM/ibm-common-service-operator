@@ -723,32 +723,33 @@ func GetRequestNs(r client.Reader) (requestNs []string) {
 }
 
 // GetNssCmNs gets namespaces from namespace-scope ConfigMap
-func GetNssCmNs(r client.Reader, cpfsNamespace string) (nssCmNs []string) {
-	nssConfigMap := GetCmOfNss(r, cpfsNamespace)
-
+func GetNssCmNs(r client.Reader, cpfsNamespace string) ([]string, error) {
+	nssConfigMap, err := GetCmOfNss(r, cpfsNamespace)
+	if err != nil {
+		return nil, err
+	}
 	nssNsMems, ok := nssConfigMap.Data["namespaces"]
 	if !ok {
 		klog.Infof("There is no namespace in configmap %v/%v", cpfsNamespace, constant.NamespaceScopeConfigmapName)
-		return
+		return nil, nil
 	}
-	nssCmNs = strings.Split(nssNsMems, ",")
+	nssCmNs := strings.Split(nssNsMems, ",")
 
-	return nssCmNs
+	return nssCmNs, nil
 }
 
 // GetCmOfNss gets ConfigMap of Namespace-scope
-func GetCmOfNss(r client.Reader, operatorNs string) *corev1.ConfigMap {
+func GetCmOfNss(r client.Reader, operatorNs string) (*corev1.ConfigMap, error) {
 	cmName := constant.NamespaceScopeConfigmapName
 	cmNs := operatorNs
 	nssConfigmap := &corev1.ConfigMap{}
 
 	for {
-		if err := utilwait.PollImmediateInfinite(time.Second*10, func() (done bool, err error) {
+		if err := utilwait.PollImmediate(time.Second*10, time.Second*60, func() (done bool, err error) {
 			err = r.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: cmNs}, nssConfigmap)
 			if err != nil {
 				if errors.IsNotFound(err) {
 					klog.Infof("waiting for configmap %v/%v", operatorNs, constant.NamespaceScopeConfigmapName)
-					return false, nil
 				}
 				return false, err
 			}
@@ -756,12 +757,12 @@ func GetCmOfNss(r client.Reader, operatorNs string) *corev1.ConfigMap {
 		}); err == nil {
 			break
 		} else {
-			klog.Errorf("Failed to get configmap %v/%v: %v, retry in 10 seconds", operatorNs, constant.NamespaceScopeConfigmapName, err)
-			time.Sleep(10 * time.Second)
+			klog.Errorf("Failed to get configmap %v/%v: %v", operatorNs, constant.NamespaceScopeConfigmapName, err)
+			return nil, err
 		}
 	}
 
-	return nssConfigmap
+	return nssConfigmap, nil
 }
 
 func GetResourcesDynamically(ctx context.Context, dynamic dynamic.Interface, group string, version string, resource string) (

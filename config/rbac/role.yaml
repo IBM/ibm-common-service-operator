@@ -73,6 +73,24 @@ metadata:
   name: ibm-common-service-operator
 rules:
 - apiGroups:
+  - ""
+  verbs:
+  - delete
+  - patch
+  resources:
+  - configmaps
+- apiGroups:
+  - operator.ibm.com
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - watch
+  - patch
+  resources:
+  - namespacescopes
+- apiGroups:
   - cert-manager.io
   resources:
   - certificates

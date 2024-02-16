@@ -30,7 +30,7 @@ const (
 
 func (r *CommonServiceReconciler) reconcilePauseRequest(instance *apiv3.CommonService) bool {
 
-	klog.Info("Request Stage: ReconcilePauseRequest")
+	//klog.Info("Request Stage: ReconcilePauseRequest")
 
 	// if the given CommnService CR has not been existing
 	if instance == nil {
@@ -47,7 +47,7 @@ func (r *CommonServiceReconciler) reconcilePauseRequest(instance *apiv3.CommonSe
 }
 
 func (r *CommonServiceReconciler) pauseRequestExists(instance *apiv3.CommonService) bool {
-	klog.Info("Request Stage: Checking annotations for pause request")
+	klog.Info("Checking annotations for pause request")
 
 	// if there is pause or self-pause request annotation in the CommonService CR, pause request takes precedence over self-pause request
 	var pauseRequestFound bool

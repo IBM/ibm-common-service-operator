@@ -90,6 +90,8 @@ const (
 	CsClonedFromLabel = "operator.ibm.com/common-services.cloned-from"
 	// IBMCPPCONFIG is the name of ibm-cpp-config ConfigMap
 	IBMCPPCONFIG = "ibm-cpp-config"
+	// NssCRFinalizer is the name for the finalizer to allow for deletion
+	NssCRFinalizer = "finalizer.nss.operator.ibm.com"
 )
 
 // CsOg is OperatorGroup constent for the common service operator

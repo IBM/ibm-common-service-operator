@@ -44,6 +44,7 @@ import (
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
+	odlm "github.com/IBM/operand-deployment-lifecycle-manager/api/v1alpha1"
 )
 
 // CommonServiceReconciler reconciles a CommonService object
@@ -407,10 +408,47 @@ func (r *CommonServiceReconciler) mappingToCsRequest() handler.MapFunc {
 		cmName := object.GetName()
 		cmNs := object.GetNamespace()
 		if cmName == constant.CsMapConfigMap && cmNs == "kube-public" {
-			CsInstance = append(CsInstance, reconcile.Request{NamespacedName: types.NamespacedName{Name: "common-service", Namespace: r.Bootstrap.CSData.OperatorNs}})
+			CsInstance = append(CsInstance, reconcile.Request{NamespacedName: types.NamespacedName{Name: constant.MasterCR, Namespace: r.Bootstrap.CSData.OperatorNs}})
 		}
 		return CsInstance
 	}
+}
+
+func (r *CommonServiceReconciler) mappingToCsRequestForOperandRegistry() handler.MapFunc {
+	return func(object client.Object) []reconcile.Request {
+		operandRegistry, ok := object.(*odlm.OperandRegistry)
+		if !ok {
+			// It's not an OperandRegistry, ignore
+			return nil
+		}
+		if operandRegistry.Name == constant.MasterCR && operandRegistry.Namespace == r.Bootstrap.CSData.ServicesNs {
+			if shouldReconcile(operandRegistry) {
+				// Enqueue a reconciliation request for the corresponding CommonService
+				return []reconcile.Request{
+					{NamespacedName: types.NamespacedName{Name: constant.MasterCR, Namespace: r.Bootstrap.CSData.OperatorNs}},
+				}
+			}
+		}
+		return nil
+	}
+}
+
+// shouldReconcile checks the conditions for reconciliation
+func shouldReconcile(operandRegistry *odlm.OperandRegistry) bool {
+
+	if operandRegistry.Status.OperatorsStatus != nil {
+		// List all requested operators
+		for operator := range operandRegistry.Status.OperatorsStatus {
+			// If there is a requested operator's installMode is "no-op", then skip reconcile
+			for _, op := range operandRegistry.Spec.Operators {
+				if op.Name == operator && op.InstallMode == "no-op" {
+					klog.Infof("The operator %s with 'no-op' installMode is still requested in OperandRegistry, skip reconciliation", operator)
+					return false
+				}
+			}
+		}
+	}
+	return true
 }
 
 func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -434,5 +472,25 @@ func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				UpdateFunc: func(e event.UpdateEvent) bool {
 					return true
 				},
-			})).Complete(r)
+			})).
+		Watches(
+			&source.Kind{Type: &odlm.OperandRegistry{}},
+			handler.EnqueueRequestsFromMapFunc(r.mappingToCsRequestForOperandRegistry()),
+			builder.WithPredicates(predicate.Funcs{
+				UpdateFunc: func(e event.UpdateEvent) bool {
+					oldOperandRegistry, ok := e.ObjectOld.(*odlm.OperandRegistry)
+					if !ok {
+						return false
+					}
+
+					newOperandRegistry, ok := e.ObjectNew.(*odlm.OperandRegistry)
+					if !ok {
+						return false
+					}
+
+					// Check if the .status field has changed
+					return !reflect.DeepEqual(oldOperandRegistry.Status, newOperandRegistry.Status)
+				},
+			}),
+		).Complete(r)
 }
