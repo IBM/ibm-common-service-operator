@@ -245,6 +245,7 @@ EOF
 function cleanup() {
   #TODO clean up resources after backup completes
   info "clean up resources"
+  oc delete deploy keycloak-backup -n $KEYCLOAK_NAMESPACE && oc delete sa keycloak-backup-sa -n $KEYCLOAK_NAMESPACE && oc delete role keycloak-backup-role -n -n $KEYCLOAK_NAMESPACE && oc delete rolebinding keycloak-backup-rolebinding -n $KEYCLOAK_NAMESPACE && oc delete pvc keycloak-backup-pvc -n $KEYCLOAK_NAMESPACE
 }
 
 function msg() {
