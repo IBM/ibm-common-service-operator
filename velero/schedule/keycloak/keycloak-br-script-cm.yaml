@@ -52,7 +52,7 @@ data:
         oc cp $KEYCLOAK_NAMESPACE/$CNPG_PRIMARY_POD:/run/keycloak_backup/keycloak_db_backup.dump $BACKUP_DIR/database/keycloak_db_backup.dump
 
         #backup cs-keycloak-initial-admin secret
-        oc get secret cs-keycloak-initial-admin -n $KEYCLOAK_NAMESPACE -o yaml > /run/keycloak_backup/keycloak-init-admin-secret.yaml
+        oc extract -n $KEYCLOAK_NAMESPACE secret/cs-keycloak-initial-admin --to=$BACKUP_DIR/ || warning "Failed to backup secret/cs-keycloak-initial-admin in namespace ${KEYCLOAK_NAMESPACE"
     }
 
     function wait_for_keycloak {
@@ -77,6 +77,7 @@ data:
     
     function restore {
         #restore initial admin secret
+        oc patch secret -n $KEYCLOAK_NAMESPACE cs-keycloak-initial-admin --patch="{\"data\": { \"jwks.json\": \"$(base64 -w0 $BACKUP_DIR/secrets/jwks.json)\" }}"
         oc delete secret cs-keycloak-initial-admin -n $KEYCLOAK_NAMESPACE
         oc apply -f /run/keycloak_backup/keycloak-init-admin-secret.yaml -n $KEYCLOAK_NAMESPACE
         
