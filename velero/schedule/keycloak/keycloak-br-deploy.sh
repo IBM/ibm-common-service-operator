@@ -199,6 +199,7 @@ rules:
       - endpoints
       - pods/status
       - jobs
+      - secrets
   - verbs:
       - get
       - list
