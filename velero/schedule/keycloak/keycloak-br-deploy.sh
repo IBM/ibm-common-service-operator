@@ -21,7 +21,7 @@ function main() {
   parse_arguments "$@"
   echo "$CLEANUP $KEYCLOAK_NAMESPACE"
   deploy_resources
-  if [[ $CLEANUP=="true" ]]; then
+  if [[ $CLEANUP == "true" ]]; then
     cleanup
   else
     deploy_resources
