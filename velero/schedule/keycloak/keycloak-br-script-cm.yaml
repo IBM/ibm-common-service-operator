@@ -56,7 +56,8 @@ data:
     }
 
     function wait_for_keycloak {
-        job_name=cs-cloudpak-realm
+        job_name="cs-cloudpak-realm"
+        echo $job_name
         info "Waiting for job $job_name to complete in namespace $KEYCLOAK_NAMESPACE."
         completed=$(oc get job $job_name -n $KEYCLOAK_NAMESPACE --no-headers | awk '{print $2}')
         retry_count=20
