@@ -5,6 +5,17 @@ metadata:
   namespace: ns_to_replace
 rules:
 - apiGroups:
+  - operator.ibm.com
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - watch
+  - patch
+  resources:
+  - namespacescopes
+- apiGroups:
   - ""
   resources:
   - configmaps
