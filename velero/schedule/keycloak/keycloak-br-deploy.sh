@@ -76,7 +76,7 @@ metadata:
   name: keycloak-backup
   namespace: $KEYCLOAK_NAMESPACE
   labels:
-    foundationservices.cloudpak.ibm.com: keycloak-data
+    foundationservices.cloudpak.ibm.com: keycloak-data-deploy
 spec:
   selector:
     matchLabels:
