@@ -121,6 +121,8 @@ spec:
             name: keycloak-backup-mount
           - name: scripts
             mountPath: "/keycloak"
+          - name: secrets
+            mountPath: /keycloak/keycloak-backup/secrets
         dnsPolicy: ClusterFirst
         schedulerName: default-scheduler
         securityContext:
@@ -136,6 +138,8 @@ spec:
           configMap:
             name: keycloak-br-configmap
             defaultMode: 0777
+        - emptyDir: {}
+          name: secrets
 EOF
   if [[ $STORAGE_CLASS == "default" ]]; then
     STORAGE_CLASS=$(oc get sc | grep default | awk '{print $1}')
