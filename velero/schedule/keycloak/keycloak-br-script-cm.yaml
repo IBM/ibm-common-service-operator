@@ -50,6 +50,8 @@ data:
 
         #backup cs-keycloak-initial-admin secret
         oc extract -n $KEYCLOAK_NAMESPACE secret/cs-keycloak-initial-admin --to=$BACKUP_DIR/secrets/ --confirm || warning "Failed to backup secret/cs-keycloak-initial-admin in namespace ${KEYCLOAK_NAMESPACE"
+        echo "backup completed"
+        exit 0
     }
 
     function wait_for_keycloak {
