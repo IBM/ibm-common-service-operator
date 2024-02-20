@@ -442,7 +442,7 @@ function configure_lsr_instance() {
 
     count=$("${OC}" get ibmlicenseservicereporter -n ${LSR_NAMESPACE} --no-headers | wc -l)
     if [[ "$count" -eq 1 ]]; then
-        info "Configure License Service Reporter CR in $LSR_NAME SPACE\n"
+        info "Configure License Service Reporter CR in $LSR_NAMESPACE\n"
         LSR_CR_NAME=$("${OC}" get ibmlicenseservicereporter -n ${LSR_NAMESPACE} --no-headers | awk '{print $1}')
         ${OC} get ibmlicenseservicereporter ${LSR_CR_NAME} -n ${LSR_NAMESPACE} -o yaml | ${YQ} eval '.spec.authentication.useradmin.enabled = true' > ${PREVIEW_DIR}/licensing_service_reporter.yaml
         ${YQ} -i eval 'select(.kind == "IBMLicenseServiceReporter") | del(.metadata.resourceVersion) | del(.metadata.uid) | del(.metadata.creationTimestamp) | del(.metadata.generation)' ${PREVIEW_DIR}/licensing_service_reporter.yaml
