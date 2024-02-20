@@ -89,7 +89,7 @@ data:
         oc -n $KEYCLOAK_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
 
         #restart keycloak pod
-        Info "Restarting Keycloak pods..."
+        info "Restarting Keycloak pods..."
         oc delete pods -l app=keycloak -n $KEYCLOAK_NAMESPACE
     }
 
