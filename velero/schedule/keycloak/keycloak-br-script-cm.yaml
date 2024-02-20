@@ -30,14 +30,11 @@ data:
         if [[ $MODE == "backup" ]]; then
             info "Mode set to backup, beginning backup process."
             backup
-            #TODO backup initial admin secret
             success "Backup completed successfully."
         else
             info "Mode is set to restore, beginning restore process."
             wait_for_keycloak
             restore
-
-            #TODO restart cs-keycloak pod
             success "Restore completed successfully."
         fi
     }
@@ -52,7 +49,7 @@ data:
         oc cp $KEYCLOAK_NAMESPACE/$CNPG_PRIMARY_POD:/run/keycloak_backup/keycloak_db_backup.dump $BACKUP_DIR/database/keycloak_db_backup.dump
 
         #backup cs-keycloak-initial-admin secret
-        oc extract -n $KEYCLOAK_NAMESPACE secret/cs-keycloak-initial-admin --to=$BACKUP_DIR/secrets/ || warning "Failed to backup secret/cs-keycloak-initial-admin in namespace ${KEYCLOAK_NAMESPACE"
+        oc extract -n $KEYCLOAK_NAMESPACE secret/cs-keycloak-initial-admin --to=$BACKUP_DIR/secrets/ --confirm || warning "Failed to backup secret/cs-keycloak-initial-admin in namespace ${KEYCLOAK_NAMESPACE"
     }
 
     function wait_for_keycloak {
