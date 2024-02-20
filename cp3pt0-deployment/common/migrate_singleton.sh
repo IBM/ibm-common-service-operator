@@ -18,6 +18,7 @@ SOURCE_NS="openshift-marketplace"
 ENABLE_LICENSING=0
 ENABLE_LICENSE_SERVICE_REPORTER=0
 LSR_NAMESPACE="ibm-lsr"
+LSR_CR_NAME="instance"
 LICENSING_NS=""
 NEW_MAPPING=""
 NEW_TENANT=0
@@ -90,7 +91,16 @@ function main() {
 function migrate_license_service_reporter(){
     title "LSR migration from ibm-cmmon-services to ${LSR_NAMESPACE}"
 
-    local lsr_instances=$("$OC" get IBMLicenseServiceReporter instance -n ${OPERATOR_NS} --no-headers | wc -l)
+    local count=$("${OC}" get IBMLicenseServiceReporter -n ${OPERATOR_NS} --no-headers | wc -l)
+
+    if [[ count -eq 0 ]]; then
+        info "No LSR for migration found in ${OPERATOR_NS} namespace"
+        return 0
+    fi
+
+    LSR_CR_NAME=$("${OC}" get IBMLicenseServiceReporter -n ${OPERATOR_NS} --no-headers | awk '{print $1}')
+    local lsr_instances=$("${OC}" get IBMLicenseServiceReporter ${LSR_CR_NAME} -n ${OPERATOR_NS} --no-headers | wc -l)
+
     if [[ lsr_instances -eq 0 ]]; then
         info "No LSR for migration found in ${OPERATOR_NS} namespace"
         return 0
@@ -104,7 +114,7 @@ function migrate_license_service_reporter(){
 
     # Prepare LSR PV/PVC which was decoupled in isolate.sh
     # delete old LSR CR - PV will stay as during isolate.sh the policy was set to Retain
-    ${OC} delete IBMLicenseServiceReporter instance -n ${OPERATOR_NS}
+    ${OC} delete IBMLicenseServiceReporter ${LSR_CR_NAME} -n ${OPERATOR_NS}
 
     # in case PVC is blocked with deletion, the finalizer needs to be removed
     lsr_pvcs=$("${OC}" get pvc license-service-reporter-pvc -n ${OPERATOR_NS}  --no-headers | wc -l)
