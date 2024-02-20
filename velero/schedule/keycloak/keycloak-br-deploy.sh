@@ -75,6 +75,8 @@ apiVersion: apps/v1
 metadata:
   name: keycloak-backup
   namespace: $KEYCLOAK_NAMESPACE
+  labels:
+    foundationservices.cloudpak.ibm.com: keycloak-data
 spec:
   selector:
     matchLabels:
@@ -87,9 +89,9 @@ spec:
         pre.hook.backup.velero.io/timeout: 300s
         post.hook.backup.velero.io/command: '["sh", "-c", "rm -rf /keycloak/keycloak-backup/database"]'
         post.hook.restore.velero.io/command: '["sh", "-c", "/keycloak/br_keycloak.sh restore $KEYCLOAK_NAMESPACE"]'
-        post.hook.restore.velero.io/wait-timeout: 1200s
-        post.hook.restore.velero.io/exec-timeout: 1200s
-        post.hook.restore.velero.io/timeout: 1200s
+        post.hook.restore.velero.io/wait-timeout: 600s
+        post.hook.restore.velero.io/exec-timeout: 600s
+        post.hook.restore.velero.io/timeout: 720s
       name: keycloak-backup
       namespace: $KEYCLOAK_NAMESPACE
       labels:
