@@ -3,8 +3,6 @@ apiVersion: apps/v1
 metadata:
   name: keycloak-backup
   namespace: <keycloak namespace>
-  labels:
-    foundationservices.cloudpak.ibm.com: keycloak-data
 spec:
   selector:
     matchLabels:
