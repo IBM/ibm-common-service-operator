@@ -53,7 +53,7 @@ data:
 
         #backup cs-keycloak-initial-admin secret
         echo "backup secret"
-        oc extract -n $KEYCLOAK_NAMESPACE secret/cs-keycloak-initial-admin --to=$BACKUP_DIR/secrets/ --confirm || warning "Failed to backup secret/cs-keycloak-initial-admin in namespace ${KEYCLOAK_NAMESPACE"
+        oc extract -n $KEYCLOAK_NAMESPACE secret/cs-keycloak-initial-admin --to=$BACKUP_DIR/secrets/ --confirm || warning "Failed to backup secret/cs-keycloak-initial-admin in namespace ${KEYCLOAK_NAMESPACE}"
         echo "backup completed"
         exit 0
     }
