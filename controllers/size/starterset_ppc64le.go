@@ -68,6 +68,22 @@ const StarterSet = `
           limits:
             cpu: 1000m
             memory: 350Mi
+- name: common-service-postgresql
+  resources:
+  - apiVersion: postgresql.k8s.enterprisedb.io/v1
+    kind: Cluster
+    name: common-service-db
+    data:
+      spec:
+        instances: 1
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 700Mi
+          requests:
+            ephemeral-storage: 256Mi
+            cpu: 500m
+            memory: 700Mi
 - name: ibm-im-mongodb-operator
   spec:
     mongoDB:

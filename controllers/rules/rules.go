@@ -74,6 +74,22 @@ const ConfigurationRules = `
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
+- name: common-service-postgresql
+  resources:
+  - apiVersion: postgresql.k8s.enterprisedb.io/v1
+    kind: Cluster
+    name: common-service-db
+    data:
+      spec:
+        instances: LARGEST_VALUE
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+          requests:
+            ephemeral-storage: LARGEST_VALUE
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE    
 - name: ibm-im-mongodb-operator
   spec:
     mongoDB:
