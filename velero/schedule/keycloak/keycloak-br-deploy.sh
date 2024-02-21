@@ -37,7 +37,7 @@ function parse_arguments() {
       shift
       STORAGE_CLASS=$1
       ;;
-    "-c" | "--cleanup")
+    -c | --cleanup)
       CLEANUP="true"
       ;;
     -h | --help)
@@ -247,7 +247,7 @@ function cleanup() {
   oc delete deploy keycloak-backup -n $KEYCLOAK_NAMESPACE --ignore-not-found && oc delete sa keycloak-backup-sa -n $KEYCLOAK_NAMESPACE --ignore-not-found && oc delete role keycloak-backup-role -n $KEYCLOAK_NAMESPACE --ignore-not-found && oc delete rolebinding keycloak-backup-rolebinding -n $KEYCLOAK_NAMESPACE --ignore-not-found
   pod=$(oc get pod -n $KEYCLOAK_NAMESPACE --no-headers --ignore-not-found | grep keycloak-backup | awk '{print $1}' | tr "\n" " ")
   if [[ $pod != "" ]]; then
-    oc delete pod $pod -n $KEYCLOAK_NAMESPACE --ignore-not-found
+    oc delete pod $pod -n $KEYCLOAK_NAMESPACE --ignore-not-found || warning "Keycloak backup pod not found, moving on."
   fi
   oc delete pvc keycloak-backup-pvc -n $KEYCLOAK_NAMESPACE --ignore-not-found
   success "Keycloak BR resources cleaned up."
