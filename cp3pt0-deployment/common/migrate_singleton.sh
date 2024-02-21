@@ -97,26 +97,29 @@ function migrate_license_service_reporter(){
         return 0
     fi
 
-    lsr_cr_name_list=$("${OC}" get IBMLicenseServiceReporter -n ${OPERATOR_NS} --no-headers | awk '{print $1}')
-    for lsr_cr_name in ${lsr_cr_name_list}
-    do 
-        local lsr_instances=$("${OC}" get IBMLicenseServiceReporter ${lsr_cr_name} -n ${OPERATOR_NS} --no-headers | wc -l)
+    if [[ count -ne 1 ]]; then
+        info "Expecting exactly one IBMLicenseServiceReporter in ${OPERATOR_NS} namespace .${count} found."
+        return 0
+    fi
 
-        if [[ lsr_instances -eq 0 ]]; then
-            info "No LSR for migration found in ${OPERATOR_NS} namespace"
-            return 0
-        fi
+    lsr_cr_name=$("${OC}" get IBMLicenseServiceReporter -n ${OPERATOR_NS} --no-headers | awk '{print $1}')
+    local lsr_instances=$("${OC}" get IBMLicenseServiceReporter ${lsr_cr_name} -n ${OPERATOR_NS} --no-headers | wc -l)
 
-        lsr_pv_nr=$("${OC}" get pv -l license-service-reporter-pv=true --no-headers | wc -l )
-        if [[ lsr_pv_nr -ne 1 ]]; then
-            warning "Expecting exactly one PV with label license-service-reporter-pv=true. $lsr_pv_nr found. Migration skipped."
-            return 0
-        fi
+    if [[ lsr_instances -eq 0 ]]; then
+        info "No LSR for migration found in ${OPERATOR_NS} namespace"
+        return 0
+    fi
 
-        # Prepare LSR PV/PVC which was decoupled in isolate.sh
-        # delete old LSR CR - PV will stay as during isolate.sh the policy was set to Retain
-        ${OC} delete IBMLicenseServiceReporter ${lsr_cr_name} -n ${OPERATOR_NS}
-    done
+    lsr_pv_nr=$("${OC}" get pv -l license-service-reporter-pv=true --no-headers | wc -l )
+    if [[ lsr_pv_nr -ne 1 ]]; then
+        warning "Expecting exactly one PV with label license-service-reporter-pv=true. $lsr_pv_nr found. Migration skipped."
+        return 0
+    fi
+
+    # Prepare LSR PV/PVC which was decoupled in isolate.sh
+    # delete old LSR CR - PV will stay as during isolate.sh the policy was set to Retain
+    ${OC} delete IBMLicenseServiceReporter ${lsr_cr_name} -n ${OPERATOR_NS}
+    export LSR_CR_NAME=$lsr_cr_name
 
     # in case PVC is blocked with deletion, the finalizer needs to be removed
     lsr_pvcs=$("${OC}" get pvc license-service-reporter-pvc -n ${OPERATOR_NS}  --no-headers | wc -l)

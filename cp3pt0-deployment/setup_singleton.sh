@@ -26,7 +26,6 @@ LSR_SOURCE_NS="openshift-marketplace"
 CERT_MANAGER_SOURCE="ibm-cert-manager-catalog"
 LICENSING_SOURCE="ibm-licensing-catalog"
 LSR_SOURCE="ibm-license-service-reporter-bundle-catalog"
-LSR_CR_NAME="ibm-lsr-instance"
 CERT_MANAGER_NAMESPACE="ibm-cert-manager"
 LICENSING_NAMESPACE="ibm-licensing"
 LSR_NAMESPACE="ibm-lsr"
@@ -439,7 +438,10 @@ EOF
 
 function configure_lsr_instance() {
     title "Configuring License Service Reporter CR in $LSR_NAMESPACE..."
-
+    # checking LSR_CR_NAME 
+    if [ -z "${LSR_CR_NAME}" ]; then
+        LSR_CR_NAME="ibm-lsr-instance"
+    fi
     count=$("${OC}" get ibmlicenseservicereporter -n ${LSR_NAMESPACE} --no-headers | wc -l)
     if [[ "$count" -eq 1 ]]; then
         info "Configure License Service Reporter CR in $LSR_NAMESPACE\n"
@@ -452,7 +454,7 @@ function configure_lsr_instance() {
 apiVersion: operator.ibm.com/v1alpha1
 kind: IBMLicenseServiceReporter
 metadata:
-  name: ibm-lsr-instance
+  name: ${LSR_CR_NAME}
   namespace: ${LSR_NAMESPACE}
   labels:
     app.kubernetes.io/created-by: ibm-license-service-reporter-operator
