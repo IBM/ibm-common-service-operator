@@ -96,6 +96,10 @@ const (
 	CsClonedFromLabel = "operator.ibm.com/common-services.cloned-from"
 	// IBMCPPCONFIG is the name of ibm-cpp-config ConfigMap
 	IBMCPPCONFIG = "ibm-cpp-config"
+	// OpregAPIGroupVersion is the api group version of OperandRegistry
+	OpregAPIGroupVersion = "operator.ibm.com/v1alpha1"
+	// OpregKind is the kind of OperandRegistry
+	OpregKind = "OperandRegistry"
 )
 
 // CsOg is OperatorGroup constent for the common service operator
