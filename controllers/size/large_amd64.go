@@ -68,6 +68,22 @@ const Large = `
           limits:
             cpu: 1000m
             memory: 350Mi
+- name: common-service-postgresql
+  resources:
+  - apiVersion: postgresql.k8s.enterprisedb.io/v1
+    kind: Cluster
+    name: common-service-db
+    data:
+      spec:
+        instances: 2
+        resources:
+          limits:
+            cpu: 3000m
+            memory: 3Gi
+          requests:
+            ephemeral-storage: 256Mi
+            cpu: 500m
+            memory: 3Gi
 - name: ibm-im-mongodb-operator
   spec:
     mongoDB:
