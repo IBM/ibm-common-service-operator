@@ -26,9 +26,9 @@ metadata:
     description: The IBM Cloud Pak foundational services operator is used to deploy IBM foundational services.
     nss.operator.ibm.com/managed-operators: ibm-common-service-operator
     nss.operator.ibm.com/managed-webhooks: ""
-    olm.skipRange: ">=3.3.0 <4.4.0"
+    olm.skipRange: ">=3.3.0 <4.4.1"
     operatorChannel: v4.4
-    operatorVersion: 4.4.0
+    operatorVersion: 4.4.1
     operators.openshift.io/infrastructure-features: '["disconnected"]'
     operators.operatorframework.io/builder: operator-sdk-v1.31.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
@@ -39,7 +39,7 @@ metadata:
     operatorframework.io/arch.ppc64le: supported
     operatorframework.io/arch.s390x: supported
     operatorframework.io/os.linux: supported
-  name: ibm-common-service-operator.v4.4.0
+  name: ibm-common-service-operator.v4.4.1
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -195,7 +195,7 @@ spec:
 
     ## Operator versions
 
-     - 4.4.0
+     - 4.4.1
 
     ## Prerequisites
 
@@ -552,7 +552,7 @@ spec:
   minKubeVersion: 1.19.0
   provider:
     name: IBM
-  version: 4.4.0
+  version: 4.4.1
   webhookdefinitions:
     - admissionReviewVersions:
         - v1
@@ -595,7 +595,7 @@ spec:
       type: ValidatingAdmissionWebhook
       webhookPath: /validate-operator-ibm-com-v3-commonservice
   relatedImages:
-    - image: icr.io/cpopen/common-service-operator:4.4.0
+    - image: icr.io/cpopen/common-service-operator:4.4.1
       name: COMMON_SERVICE_OPERATOR_IMAGE
     - image: icr.io/cpopen/cpfs/cpfs-utils:latest
       name: CPFS_UTILS_IMAGE
