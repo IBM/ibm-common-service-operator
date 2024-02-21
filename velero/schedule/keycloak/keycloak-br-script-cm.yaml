@@ -85,7 +85,7 @@ data:
     function restore {
         #restore initial admin secret
         info "Restoring secret cs-keycloak-initial-admin..."
-        oc patch secret -n cs2 cs-keycloak-initial-admin --patch="{\"data\": {\"password\": \"$(base64 -w0 $BACKUP_DIR/secrets/password)\" }}"
+        oc patch secret -n $KEYCLOAK_NAMESPACE cs-keycloak-initial-admin --patch="{\"data\": {\"password\": \"$(base64 -w0 $BACKUP_DIR/secrets/password)\" }}"
 
         CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io keycloak-edb-cluster -o jsonpath="{.status.currentPrimary}" -n $KEYCLOAK_NAMESPACE` 
         oc exec $CNPG_PRIMARY_POD -n $KEYCLOAK_NAMESPACE -- mkdir -p /run/keycloak_backup
