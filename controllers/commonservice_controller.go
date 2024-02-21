@@ -62,11 +62,6 @@ const (
 	CRFailed       string = "Failed"
 )
 
-var (
-	OpregAPIGroupVersion = "operator.ibm.com/v1alpha1"
-	OpregKind            = "OperandRegistry"
-)
-
 func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 
 	klog.Infof("Reconciling CommonService: %s", req.NamespacedName)
@@ -479,7 +474,7 @@ func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 					return true
 				},
 			}))
-	if isOpregAPI, err := r.Bootstrap.CheckCRD(OpregAPIGroupVersion, OpregKind); err != nil {
+	if isOpregAPI, err := r.Bootstrap.CheckCRD(constant.OpregAPIGroupVersion, constant.OpregKind); err != nil {
 		klog.Errorf("Failed to check if OperandRegistry CRD exists: %v", err)
 		return err
 	} else if isOpregAPI {

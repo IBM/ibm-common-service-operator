@@ -1185,21 +1185,27 @@ func (b *Bootstrap) CleanNamespaceScopeResources() error {
 		return nil
 	}
 
-	// Get the common-service OperandRegistry
-	operandRegistry, err := b.GetOperandRegistry(ctx, constant.MasterCR, b.CSData.ServicesNs)
-	if err != nil && operandRegistry == nil {
-		klog.Errorf("Failed to get common-service OperandRegistry: %v", err)
+	if isOpregAPI, err := b.CheckCRD(constant.OpregAPIGroupVersion, constant.OpregKind); err != nil {
+		klog.Errorf("Failed to check if %s CRD exists: %v", constant.OpregKind, err)
 		return err
-	}
-
-	// List all requested operators
-	if operandRegistry.Status.OperatorsStatus != nil {
-		for operator := range operandRegistry.Status.OperatorsStatus {
-			// If there is a requested operator's installMode is "no-op", then skip call delete function
-			for _, op := range operandRegistry.Spec.Operators {
-				if op.Name == operator && op.InstallMode == "no-op" {
-					klog.Infof("The operator %s with 'no-op' installMode is still requested in OperandRegistry, skip cleaning the NamespaceScope resources", operator)
-					return nil
+	} else if !isOpregAPI && err == nil {
+		klog.Infof("%s CRD does not exist, skip checking no-op installMode", constant.OpregKind)
+	} else if isOpregAPI && err == nil {
+		// Get the common-service OperandRegistry
+		operandRegistry, err := b.GetOperandRegistry(ctx, constant.MasterCR, b.CSData.ServicesNs)
+		if err != nil && operandRegistry == nil {
+			klog.Errorf("Failed to get common-service OperandRegistry: %v", err)
+			return err
+		}
+		// List all requested operators
+		if operandRegistry.Status.OperatorsStatus != nil {
+			for operator := range operandRegistry.Status.OperatorsStatus {
+				// If there is a requested operator's installMode is "no-op", then skip call delete function
+				for _, op := range operandRegistry.Spec.Operators {
+					if op.Name == operator && op.InstallMode == "no-op" {
+						klog.Infof("The operator %s with 'no-op' installMode is still requested in OperandRegistry, skip cleaning the NamespaceScope resources", operator)
+						return nil
+					}
 				}
 			}
 		}
