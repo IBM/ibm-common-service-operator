@@ -566,6 +566,8 @@ data:
     controlNamespace: cs-control
 EOF
 )"
+    create_namespace "cs-control"
+
     echo "$cm" | ${OC} apply -f -
 
     get_control_namespace
