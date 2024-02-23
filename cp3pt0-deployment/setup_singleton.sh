@@ -253,14 +253,15 @@ function is_migrate_licensing() {
     fi
 
     get_and_validate_arguments
-    if [ ! -z "$CONTROL_NS" ]; then
-        if [[ "$CUSTOMIZED_LICENSING_NAMESPACE" -eq 1 ]] && [[ "$CONTROL_NS" != "$LICENSING_NAMESPACE" ]]; then
-            error "Licensing Migration could only be done in $CONTROL_NS, please do not set parameter '-licensingNs $LICENSING_NAMESPACE'"
-        fi
-        LICENSING_NAMESPACE="$CONTROL_NS"
+    MIGRATE_SINGLETON=1
+    if [ -z "$CONTROL_NS" ]; then
+        return 0
     fi
 
-    MIGRATE_SINGLETON=1
+    if [[ "$CUSTOMIZED_LICENSING_NAMESPACE" -eq 1 ]] && [[ "$CONTROL_NS" != "$LICENSING_NAMESPACE" ]]; then
+        error "Licensing Migration could only be done in $CONTROL_NS, please do not set parameter '-licensingNs $LICENSING_NAMESPACE'"
+    fi
+    LICENSING_NAMESPACE="$CONTROL_NS"
 }
 
 function validate_singleton_catalogsource() {
@@ -547,6 +548,26 @@ function pre_req() {
 
 # TODO validate argument
 function get_and_validate_arguments() {
+    get_control_namespace
+
+    if [ ! -z "$CONTROL_NS" ]; then
+        return
+    fi
+
+    local cm="$(
+        cat <<EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "common-service-maps"
+  namespace: kube-public
+data:
+  common-service-maps.yaml: |
+    controlNamespace: cs-control
+EOF
+)"
+    echo "$cm" | ${OC} apply -f -
+
     get_control_namespace
 }
 
