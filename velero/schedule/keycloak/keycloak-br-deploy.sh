@@ -68,7 +68,7 @@ function print_usage() {
 }
 
 function deploy_resources(){
-  info "Creating Keycloak Backup/Restore resources"
+  info "Creating Keycloak Backup/Restore resources in namespace $KEYCLOAK_NAMESPACE."
   cat << EOF | oc apply -f -
 kind: Deployment
 apiVersion: apps/v1
@@ -238,7 +238,7 @@ metadata:
     foundationservices.cloudpak.ibm.com: keycloak-data
 EOF
 
-  success "Backup/Restore resources created."
+  success "Backup/Restore resources created in namespace $KEYCLOAK_NAMESPACE."
 
 }
 
