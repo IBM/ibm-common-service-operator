@@ -5,6 +5,18 @@ metadata:
   namespace: ns_to_replace
 rules:
 - apiGroups:
+  - k8s.keycloak.org
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+  resources:
+    - keycloakrealmimports
+- apiGroups:
   - operator.ibm.com
   verbs:
   - create
