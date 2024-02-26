@@ -47,7 +47,9 @@ data:
         #mkdir -p $BACKUP_DIR/secrets
         CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io common-service-db -o jsonpath="{.status.currentPrimary}" -n $CSDB_NAMESPACE` && \
         oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- mkdir -p /run/cs-db_backup && \
+        info "Beginning backup of cloudpak database..."
         oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=cloudpak -f /run/cs-db_backup/cs-db_cloudpak_backup.dump --format=c
+        info "Beginning backup of im database..."
         oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=im -f /run/cs-db_backup/cs-db_im_backup.dump --format=c
 
         #Move backup to backup location
@@ -95,7 +97,9 @@ data:
         oc cp $BACKUP_DIR/database/cs-db_cloudpak_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_cloudpak_backup.dump
         oc cp $BACKUP_DIR/database/cs-db_im_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_im_backup.dump
         oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
+        info "Beginning restore of cloudpak database..."
         oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname cloudpak --format=c --clean --exit-on-error -v /run/cs-db_backup/cs-db_cloudpak_backup.dump
+        info "Beginning restore of im database..."
         oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname im --format=c --clean --exit-on-error -v /run/cs-db_backup/cs-db_im_backup.dump
         oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
 

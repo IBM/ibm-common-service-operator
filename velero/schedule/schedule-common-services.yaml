@@ -4,7 +4,7 @@ metadata:
   name: commonservice-backup
   namespace: velero
 spec:
-  schedule: 45 13 * * *
+  schedule: 45 * * * *
   template:
     ttl: 48h0m0s
     defaultVolumesToRestic: true
@@ -38,3 +38,4 @@ spec:
         - crd
         - lsr
         - lsr-data
+        - cs-db-data
