@@ -77,7 +77,10 @@ function parse_arguments() {
     shift
   done
   if [[ $SELECTED == "false" ]]; then
-    error "No component selected. Please us a combination of --im, --mongo, --keycloak, --zen, or --zen4 to select components to deploy resources for."
+    error "No component selected. Please use a combination of --im, --mongo, --keycloak, --zen, or --zen4 to select components to deploy resources for."
+  fi
+  if [[ $TARGET_NAMESPACE == "" ]]; then
+    error "No namespace selected. Please re-run script with --target-ns parameter defined."
   fi
   if [[ $ZEN == "true" && $ZEN4 == "true" ]]; then
     error "Cannot select --zen and --zen4 on the same run of the script. Please verify zen version in the namespace $TARGET_NAMESPACE and select the appropriate option."
