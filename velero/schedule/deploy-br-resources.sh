@@ -122,7 +122,7 @@ function deploy_resources(){
     sed -i -E "s/<cs-db namespace>/$TARGET_NAMESPACE/" common-service-db/cs-db-sa.yaml
     sed -i -E "s/<cs-db namespace>/$TARGET_NAMESPACE/" common-service-db/cs-db-br-script-cm.yaml
     oc apply -f ./common-service-db || error "Unable to deploy resources for IM."
-    info "Resources to backup IM deployed in namespace $TARGET_NAMESPACE."
+    success "Resources to backup IM deployed in namespace $TARGET_NAMESPACE."
   fi
 
   #Deploy IM Mongo resources
@@ -132,7 +132,7 @@ function deploy_resources(){
     sed -i -E "s/<mongo namespace>/$TARGET_NAMESPACE/" mongodb-backup-pvc.yaml
     sed -i -E "s/<storage class>/$STORAGE_CLASS/" mongodb-backup-pvc.yaml
     oc apply -f mongodb-backup-deployment.yaml -f mongodb-backup-pvc.yaml || error "Unable to deploy resources for IM Mongo."
-    info "Resources to backup IM Mongo deployed in namespace $TARGET_NAMESPACE."
+    success "Resources to backup IM Mongo deployed in namespace $TARGET_NAMESPACE."
   fi
 
   #Deploy Keycloak resources
@@ -146,7 +146,7 @@ function deploy_resources(){
     sed -i -E "s/<keycloak namespace>/$TARGET_NAMESPACE/" keycloak/keycloak-sa.yaml
     sed -i -E "s/<keycloak namespace>/$TARGET_NAMESPACE/" keycloak/keycloak-br-script-cm.yaml
     oc apply -f ./keycloak || error "Unable to deploy resources for Keycloak."
-    info "Resources to backup Keycloak deployed in namespace $TARGET_NAMESPACE."
+    success "Resources to backup Keycloak deployed in namespace $TARGET_NAMESPACE."
   fi
 
   #Deploy zen 5 resources
@@ -171,7 +171,7 @@ function deploy_resources(){
         oc apply -f zen5-backup-deployment.yaml -f zen5-backup-pvc.yaml -f zen5-role.yaml -f zen5-rolebinding.yaml -f zen5-sa.yaml -f zen5-br-scripts-cm.yaml || error "Unable to deploy resources for Zen 5."      
       fi
     fi
-    info "Resources to backup Zen deployed in namespace $TARGET_NAMESPACE."
+    success "Resources to backup Zen deployed in namespace $TARGET_NAMESPACE."
   fi
 
   #deploy zen 4 resources
@@ -195,7 +195,7 @@ function deploy_resources(){
         oc apply -f zen4-backup-deployment.yaml -f zen4-backup-pvc.yaml -f zen4-role.yaml -f zen4-rolebinding.yaml -f zen4-sa.yaml -f zen4-br-scripts-cm.yaml || error "Unable to deploy resources for Zen 4."
       fi        
     fi
-    info "Resources to backup Zen 4 deployed in namespace $TARGET_NAMESPACE."
+    success "Resources to backup Zen 4 deployed in namespace $TARGET_NAMESPACE."
   fi
   success "Backup/Restore resources created in namespace $TARGET_NAMESPACE."
 }
