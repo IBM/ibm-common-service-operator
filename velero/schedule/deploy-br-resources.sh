@@ -166,6 +166,7 @@ function deploy_resources(){
         sed -I -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" zen5-sa.yaml
         sed -I -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" zen5-br-scripts-cm.yaml
         oc apply -f zen5-backup-deployment.yaml -f zen5-backup-pvc.yaml -f zen5-role.yaml -f zen5-rolebinding.yaml -f zen5-sa.yaml -f zen5-br-scripts-cm.yaml || error "Unable to deploy resources for Zen 5."      
+      fi
     fi
     info "Resources to backup Zen deployed in namespace $TARGET_NAMESPACE."
   fi
@@ -189,7 +190,8 @@ function deploy_resources(){
         sed -I -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" zen4-rolebinding.yaml
         sed -I -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" zen4-sa.yaml
         sed -I -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" zen4-br-scripts.yaml
-        oc apply -f zen4-backup-deployment.yaml -f zen4-backup-pvc.yaml -f zen4-role.yaml -f zen4-rolebinding.yaml -f zen4-sa.yaml -f zen4-br-scripts-cm.yaml || error "Unable to deploy resources for Zen 4."      
+        oc apply -f zen4-backup-deployment.yaml -f zen4-backup-pvc.yaml -f zen4-role.yaml -f zen4-rolebinding.yaml -f zen4-sa.yaml -f zen4-br-scripts-cm.yaml || error "Unable to deploy resources for Zen 4."
+      fi        
     fi
     info "Resources to backup Zen 4 deployed in namespace $TARGET_NAMESPACE."
   fi
