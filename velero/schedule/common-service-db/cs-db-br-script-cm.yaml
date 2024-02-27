@@ -3,6 +3,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: cs-db-br-configmap
+  namespace: <cs-db namespace>
   labels:
     foundationservices.cloudpak.ibm.com: cs-db-data
 data:
@@ -51,7 +52,7 @@ data:
         oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=cloudpak -f /run/cs-db_backup/cs-db_cloudpak_backup.dump --format=c
         info "Beginning backup of im database..."
         oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=im -f /run/cs-db_backup/cs-db_im_backup.dump --format=c
-        info "Beginning backup of im database..."
+        info "Beginning backup of zen database..."
         oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=zen -f /run/cs-db_backup/cs-db_zen_backup.dump --format=c
 
         #Move backup to backup location
