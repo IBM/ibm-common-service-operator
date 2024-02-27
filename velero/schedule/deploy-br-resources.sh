@@ -96,7 +96,7 @@ function print_usage() {
   echo ""
   echo "Options:"
   echo "   --target-ns string                             Required. Namespace where IM EDB, IM Mongo, Zen, or Keycloak are installed. If installed in different namespaces, script will need to be run separately."
-  echo "   --im, --mongo, --keycloak, --zen, --zen4       Required. Determine which component to deploy backup/restore resources for to the target namespace. At least one is required. Multiple can be specified but only one of --zen or --zen4 can be chosen."
+  echo "   --im, --mongo, --keycloak, --zen, --zen4       Required. Choose which component(s) to deploy backup/restore resources for to the target namespace. At least one is required. Multiple can be specified but only one of --zen or --zen4 can be chosen."
   echo "   --storage-class string                         Optional. Storage class to use for backup/restore resources. Default value is cluster's default storage class."
   echo "   -c, --cleanup                                  Optional. Automated cleanup of backup/restore resources. Will run cleanup instead of deployment logic."
   echo "   -h, --help                                     Print usage information"
