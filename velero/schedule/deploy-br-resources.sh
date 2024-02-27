@@ -229,12 +229,12 @@ function cleanup() {
   #Clean up Keycloak BR resources
   if [[ $KEYCLOAK == "true" ]]; then
     info "Clean up Keycloak BR resources..."
-    oc delete deploy keycloak-backup -n $TARGET_NAMESPACE --ignore-not-found
-    pod=$(oc get pod -n $TARGET_NAMESPACE --no-headers --ignore-not-found | grep mongodb-backup | awk '{print $1}' | tr "\n" " ")
+    oc delete deploy keycloak-backup -n $TARGET_NAMESPACE --ignore-not-found && oc delete sa keycloak-backup-sa -n $TARGET_NAMESPACE --ignore-not-found && oc delete role keycloak-backup-role -n $TARGET_NAMESPACE --ignore-not-found && oc delete rolebinding keycloak-backup-rolebinding -n $TARGET_NAMESPACE --ignore-not-found
+    pod=$(oc get pod -n $TARGET_NAMESPACE --no-headers --ignore-not-found | grep keycloak-backup | awk '{print $1}' | tr "\n" " ")
     if [[ $pod != "" ]]; then
-      oc delete pod $pod -n $TARGET_NAMESPACE --ignore-not-found || warning "Mongo backup pod not found, moving on."
+      oc delete pod $pod -n $TARGET_NAMESPACE --ignore-not-found || warning "Keycloak backup pod not found, moving on."
     fi
-    oc delete pvc cs-mongodump -n $TARGET_NAMESPACE --ignore-not-found
+    oc delete pvc keycloak-backup-pvc -n $TARGET_NAMESPACE --ignore-not-found
     success "IM Mongo BR resources cleaned up."
   fi
 
