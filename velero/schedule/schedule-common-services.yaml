@@ -39,3 +39,4 @@ spec:
         - lsr
         - lsr-data
         - cs-db-data
+        - keycloak-data
