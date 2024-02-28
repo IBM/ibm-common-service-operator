@@ -68,6 +68,7 @@ function main() {
         fi
 
         if [[ $ENABLE_LICENSE_SERVICE_REPORTER -eq 1 ]]; then
+            isolate_license_service_reporter
             migrate_license_service_reporter
         fi
 
@@ -85,6 +86,54 @@ function main() {
     fi
 
     success "Migration is completed for Cloud Pak 3.0 Foundational singleton services."
+}
+
+function isolate_license_service_reporter(){
+    title "Isolating License Service Reporter"
+
+    local lsr_cr=$("${OC}" get IBMLicenseServiceReporter -A --no-headers)
+    local count=$(echo "$lsr_cr" | wc -l)
+
+    if [[ count -eq 0 ]]; then
+        info "No LSR for migration found in cluster"
+        return 0
+    fi
+
+    if [[ count -ne 1 ]]; then
+        info "Expecting exactly one IBMLicenseServiceReporter in cluster.${count} found."
+        return 0
+    fi
+
+    local ns=$(echo "$lsr_cr" | cut -d ' ' -f1)
+
+    local return_value=$( ("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
+    if [[ $return_value == "exists" ]]; then
+
+        return_value=$("${OC}" get ibmlicenseservicereporters -A --no-headers | wc -l)
+        if [[ $return_value -gt 0 ]]; then
+
+            # Change persistentVolumeReclaimPolicy to Retain
+            local status=$("${OC}" get pvc license-service-reporter-pvc --ignore-not-found -n $ns  --no-headers | awk '{print $2}' )
+            debug1 "LSR pvc status: $status"
+            if [[ "$status" == "Bound" ]]; then
+                local VOL=$("${OC}" get pvc license-service-reporter-pvc --ignore-not-found -n $ns  -o=jsonpath='{.spec.volumeName}')
+                debug1 "LSR volume name: $VOL"
+                if [[ -z "$VOL" ]]; then
+                    error "Volume for pvc license-service-reporter-pvc not found in $ns"
+                fi
+
+                # label LSR PV as LSR PV for further LSR upgrade
+                ${OC} label pv $VOL license-service-reporter-pv=true --overwrite 
+                debug1 "License Service Reporter PV labeled with 'license-service-reporter-pv=true'"
+            
+                ${OC} patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Retain" }}'
+                debug1 "License Service Reporter PV reclaim policy set to 'Retain'"
+            else
+                info "No Lisense Service Reporter PVC found in $ns or it is not in 'Bound' state, skipping isolation."
+            fi
+        fi
+    fi
+    success "License Service Reporter isolation process completed."
 }
 
 function migrate_license_service_reporter(){
