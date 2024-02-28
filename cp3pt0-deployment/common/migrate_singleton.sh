@@ -90,7 +90,21 @@ function main() {
 function migrate_license_service_reporter(){
     title "LSR migration from ibm-cmmon-services to ${LSR_NAMESPACE}"
 
-    local lsr_instances=$("$OC" get IBMLicenseServiceReporter instance -n ${OPERATOR_NS} --no-headers | wc -l)
+    local count=$("${OC}" get IBMLicenseServiceReporter -n ${OPERATOR_NS} --no-headers | wc -l)
+
+    if [[ count -eq 0 ]]; then
+        info "No LSR for migration found in ${OPERATOR_NS} namespace"
+        return 0
+    fi
+
+    if [[ count -ne 1 ]]; then
+        info "Expecting exactly one IBMLicenseServiceReporter in ${OPERATOR_NS} namespace .${count} found."
+        return 0
+    fi
+
+    lsr_cr_name=$("${OC}" get IBMLicenseServiceReporter -n ${OPERATOR_NS} --no-headers | awk '{print $1}')
+    local lsr_instances=$("${OC}" get IBMLicenseServiceReporter ${lsr_cr_name} -n ${OPERATOR_NS} --no-headers | wc -l)
+
     if [[ lsr_instances -eq 0 ]]; then
         info "No LSR for migration found in ${OPERATOR_NS} namespace"
         return 0
@@ -104,7 +118,8 @@ function migrate_license_service_reporter(){
 
     # Prepare LSR PV/PVC which was decoupled in isolate.sh
     # delete old LSR CR - PV will stay as during isolate.sh the policy was set to Retain
-    ${OC} delete IBMLicenseServiceReporter instance -n ${OPERATOR_NS}
+    ${OC} delete IBMLicenseServiceReporter ${lsr_cr_name} -n ${OPERATOR_NS}
+    export LSR_CR_NAME=$lsr_cr_name
 
     # in case PVC is blocked with deletion, the finalizer needs to be removed
     lsr_pvcs=$("${OC}" get pvc license-service-reporter-pvc -n ${OPERATOR_NS}  --no-headers | wc -l)

@@ -57,6 +57,8 @@ function main() {
     copy_resource "configmap" "common-web-ui-config"
     copy_resource "configmap" "platform-auth-idp"
     copy_resource "commonservice" "common-service" "preload-common-service-from-$FROM_NAMESPACE"
+    copy_resource "secret" "icp-mongodb-client-cert"
+    copy_resource "secret" "mongodb-root-ca-cert"
     # any extra config
 }
 
@@ -193,6 +195,7 @@ function backup_preload_mongo() {
   swapmongopvc
   loadmongo
   deletemongocopy
+  provision_external_service
 } # backup_preload_mongo
   
 
@@ -1871,6 +1874,32 @@ function delete_mongo_pods() {
     local error_message="Timeout after ${total_time_mins} minutes waiting for pod $pod "
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
   done
+}
+
+function provision_external_connection() {
+  local service=$(${OC} get svc mongodb -n $TO_NAMESPACE --no-headers --ignore-not-found | awk '{print $1}')
+
+  # Create a ConfigMap contain the service endpoint mongodb.$FROM_NAMESPACE.svc.cluster.local
+  if [[ -z "$service" ]]; then
+    cat << EOF | ${OC} apply -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mongodb-preload-endpoint
+  namespace: $TO_NAMESPACE
+  labels:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/instance: mongodb-preload-endpoint
+    app.kubernetes.io/managed-by: preload_data.sh
+    app.kubernetes.io/name: mongodb-preload-endpoint
+    app.kubernetes.io/part-of: common-services-cloud-pak
+data:
+  ENDPOINT: "mongodb.$FROM_NAMESPACE.svc.cluster.local"
+  CA_CERT: mongodb-root-ca-cert
+  CLIENT_CERT: icp-mongodb-client-cert
+EOF
+  fi
+
 }
 
 function wait_for_job_complete() {
