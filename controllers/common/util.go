@@ -726,6 +726,9 @@ func GetRequestNs(r client.Reader) (requestNs []string) {
 func GetNssCmNs(r client.Reader, cpfsNamespace string) ([]string, error) {
 	nssConfigMap, err := GetCmOfNss(r, cpfsNamespace)
 	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil, nil
+		}
 		return nil, err
 	}
 	nssNsMems, ok := nssConfigMap.Data["namespaces"]
@@ -745,7 +748,7 @@ func GetCmOfNss(r client.Reader, operatorNs string) (*corev1.ConfigMap, error) {
 	nssConfigmap := &corev1.ConfigMap{}
 
 	for {
-		if err := utilwait.PollImmediate(time.Second*10, time.Second*60, func() (done bool, err error) {
+		if err := utilwait.PollImmediate(time.Second*5, time.Second*30, func() (done bool, err error) {
 			err = r.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: cmNs}, nssConfigmap)
 			if err != nil {
 				if errors.IsNotFound(err) {
@@ -757,7 +760,6 @@ func GetCmOfNss(r client.Reader, operatorNs string) (*corev1.ConfigMap, error) {
 		}); err == nil {
 			break
 		} else {
-			klog.Errorf("Failed to get configmap %v/%v: %v", operatorNs, constant.NamespaceScopeConfigmapName, err)
 			return nil, err
 		}
 	}
