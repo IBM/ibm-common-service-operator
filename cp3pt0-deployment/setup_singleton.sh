@@ -553,7 +553,13 @@ function get_and_validate_arguments() {
     get_control_namespace
 
     if [ ! -z "$CONTROL_NS" ]; then
-        return
+        return 0
+    fi
+
+    local is_all_ns=$(${OC} get -n openshift-operators deployment ibm-common-service-operator)
+
+    if [ ! -z "$is_all_ns" ]; then
+        return 0
     fi
 
     local cm="$(
