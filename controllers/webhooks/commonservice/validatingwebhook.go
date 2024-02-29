@@ -37,7 +37,7 @@ import (
 
 // +kubebuilder:webhook:path=/validate-operator-ibm-com-v3-commonservice,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.ibm.com,resources=commonservices,verbs=create;update,versions=v3,name=vcommonservice.kb.io,admissionReviewVersions=v1
 
-// CommonServiceDefaulter points to correct ServiceNamespace
+// CommonServiceDefaulter points to correct ServicesNamespace
 type Defaulter struct {
 	Reader    client.Reader
 	Client    client.Client

@@ -1180,8 +1180,19 @@ func (b *Bootstrap) DeployCertManagerCR() error {
 // NamespaceScope resources include common-service, nss-managedby-odlm, nss-odlm-scope, and odlm-scope-managedby-odlm
 func (b *Bootstrap) CleanNamespaceScopeResources() error {
 
+	// get namespace-scope ConfigMap in operatorNamespace
+	nssCmNs, err := util.GetNssCmNs(b.Reader, b.CSData.OperatorNs)
+	if err != nil {
+		klog.Errorf("Failed to get %s configmap: %v", constant.NamespaceScopeConfigmapName, err)
+		return err
+	} else if nssCmNs == nil {
+		klog.Infof("The %s configmap is not found in the %s namespace, skip cleaning the NamespaceScope resources", constant.NamespaceScopeConfigmapName, b.CSData.OperatorNs)
+		return nil
+	}
+
 	// If the topology is (NOT ALL NS Mode) and (NOT Simple) , return
-	if b.CSData.WatchNamespaces != "" && len(strings.Split(b.CSData.WatchNamespaces, ",")) > 1 {
+	if b.CSData.WatchNamespaces != "" && len(nssCmNs) > 1 {
+		klog.Infof("The topology is not All Namespaces Mode or Simple Topology, skip cleaning the NamespaceScope resources")
 		return nil
 	}
 
