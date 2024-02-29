@@ -368,7 +368,7 @@ function pre_req() {
     # When Common Service channel is less than v4.5, use maintained channel for ODLM channel
     local channel_numeric="${CHANNEL#v}"
     local odlm_channel_numeric="${ODLM_CHANNEL#v}"
-    if awk -v num="$channel_numeric" "BEGIN { exit !(num < 4.5) }"; then
+    if awk -v num="$channel_numeric" "BEGIN { exit !(num < 4.6) }"; then
         ODLM_CHANNEL="$MAINTAINED_CHANNEL"
     fi
 }
