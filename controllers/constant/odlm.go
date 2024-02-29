@@ -616,6 +616,9 @@ spec:
       - apiVersion: k8s.keycloak.org/v2alpha1
         data:
           spec:
+            features:
+              enabled:
+                - token-exchange
             db:
               host: keycloak-edb-cluster-rw
               passwordSecret:
