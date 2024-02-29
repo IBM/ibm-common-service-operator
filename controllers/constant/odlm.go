@@ -1378,12 +1378,6 @@ spec:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       operandBindInfo:  
         operand: ibm-im-operator
-      operandRequest: 
-        requests:
-          - operands:
-              - name: ibm-im-mongodb-operator
-              - name: ibm-idp-config-ui-operator
-            registry: common-service
   - name: ibm-iam-operator
     spec:
       authentication:
