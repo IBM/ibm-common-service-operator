@@ -221,7 +221,6 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 	// Including namespace-scope configmap
 	// Deploy OperandConfig and OperandRegistry
 	if err := r.Bootstrap.InitResources(instance, forceUpdateODLMCRs); err != nil {
-		klog.Errorf("Failed to initialize resources: %v", err)
 		if err := r.updatePhase(ctx, instance, CRFailed); err != nil {
 			klog.Error(err)
 		}
