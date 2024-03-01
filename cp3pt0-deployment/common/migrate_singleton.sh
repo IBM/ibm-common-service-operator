@@ -68,6 +68,7 @@ function main() {
         fi
 
         if [[ $ENABLE_LICENSE_SERVICE_REPORTER -eq 1 ]]; then
+            isolate_license_service_reporter
             migrate_license_service_reporter
         fi
 
@@ -87,26 +88,79 @@ function main() {
     success "Migration is completed for Cloud Pak 3.0 Foundational singleton services."
 }
 
-function migrate_license_service_reporter(){
-    title "LSR migration from ibm-cmmon-services to ${LSR_NAMESPACE}"
+function isolate_license_service_reporter(){
+    title "Isolating License Service Reporter"
 
-    local count=$("${OC}" get IBMLicenseServiceReporter -n ${OPERATOR_NS} --no-headers | wc -l)
+    local return_value=$( ("${OC}" get crd ibmlicenseservicereporters.operator.ibm.com > /dev/null && echo exists) || echo fail)
+
+    if [[ $return_value == "fail" ]]; then
+        return 0
+    fi
+
+    local lsr_cr=$("${OC}" get IBMLicenseServiceReporter -A --no-headers)
+    local count=$(echo "$lsr_cr" | wc -l)
 
     if [[ count -eq 0 ]]; then
-        info "No LSR for migration found in ${OPERATOR_NS} namespace"
+        info "No LSR for migration found in cluster"
         return 0
     fi
 
     if [[ count -ne 1 ]]; then
-        info "Expecting exactly one IBMLicenseServiceReporter in ${OPERATOR_NS} namespace .${count} found."
+        info "Expecting exactly one IBMLicenseServiceReporter in cluster.${count} found."
         return 0
     fi
 
-    lsr_cr_name=$("${OC}" get IBMLicenseServiceReporter -n ${OPERATOR_NS} --no-headers | awk '{print $1}')
-    local lsr_instances=$("${OC}" get IBMLicenseServiceReporter ${lsr_cr_name} -n ${OPERATOR_NS} --no-headers | wc -l)
+    local ns=$(echo "$lsr_cr" | cut -d ' ' -f1)
+
+    return_value=$("${OC}" get ibmlicenseservicereporters -A --no-headers | wc -l)
+    if [[ $return_value -gt 0 ]]; then
+
+        # Change persistentVolumeReclaimPolicy to Retain
+        local status=$("${OC}" get pvc license-service-reporter-pvc --ignore-not-found -n $ns  --no-headers | awk '{print $2}' )
+        debug1 "LSR pvc status: $status"
+        if [[ "$status" == "Bound" ]]; then
+            local VOL=$("${OC}" get pvc license-service-reporter-pvc --ignore-not-found -n $ns  -o=jsonpath='{.spec.volumeName}')
+            debug1 "LSR volume name: $VOL"
+            if [[ -z "$VOL" ]]; then
+                error "Volume for pvc license-service-reporter-pvc not found in $ns"
+            fi
+
+            # label LSR PV as LSR PV for further LSR upgrade
+            ${OC} label pv $VOL license-service-reporter-pv=true --overwrite 
+            debug1 "License Service Reporter PV labeled with 'license-service-reporter-pv=true'"
+        
+            ${OC} patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Retain" }}'
+            debug1 "License Service Reporter PV reclaim policy set to 'Retain'"
+        else
+            info "No Lisense Service Reporter PVC found in $ns or it is not in 'Bound' state, skipping isolation."
+        fi
+    fi
+    success "License Service Reporter isolation process completed."
+}
+
+function migrate_license_service_reporter(){
+    title "LSR migration from ibm-cmmon-services to ${LSR_NAMESPACE}"
+
+    local lsr_cr=$("${OC}" get IBMLicenseServiceReporter -A --no-headers)
+    local count=$(echo "$lsr_cr" | wc -l)
+
+    if [[ count -eq 0 ]]; then
+        info "No LSR for migration found in cluster"
+        return 0
+    fi
+
+    if [[ count -ne 1 ]]; then
+        info "Expecting exactly one IBMLicenseServiceReporter in cluster.${count} found."
+        return 0
+    fi
+
+    local ns=$(echo "$lsr_cr" | cut -d ' ' -f1)
+
+    lsr_cr_name=$("${OC}" get IBMLicenseServiceReporter -n ${ns} --no-headers | awk '{print $1}')
+    local lsr_instances=$("${OC}" get IBMLicenseServiceReporter ${lsr_cr_name} -n ${ns} --no-headers | wc -l)
 
     if [[ lsr_instances -eq 0 ]]; then
-        info "No LSR for migration found in ${OPERATOR_NS} namespace"
+        info "No LSR for migration found in ${ns} namespace"
         return 0
     fi
 
@@ -118,14 +172,14 @@ function migrate_license_service_reporter(){
 
     # Prepare LSR PV/PVC which was decoupled in isolate.sh
     # delete old LSR CR - PV will stay as during isolate.sh the policy was set to Retain
-    ${OC} delete IBMLicenseServiceReporter ${lsr_cr_name} -n ${OPERATOR_NS}
+    ${OC} delete IBMLicenseServiceReporter ${lsr_cr_name} -n ${ns}
     export LSR_CR_NAME=$lsr_cr_name
 
     # in case PVC is blocked with deletion, the finalizer needs to be removed
-    lsr_pvcs=$("${OC}" get pvc license-service-reporter-pvc -n ${OPERATOR_NS}  --no-headers | wc -l)
+    lsr_pvcs=$("${OC}" get pvc license-service-reporter-pvc -n ${ns}  --no-headers | wc -l)
     if [[ lsr_pvcs -gt 0 ]]; then
         info "Failed to delete pvc license-service-reporter-pvc, patching its finalizer to null..."
-        ${OC} patch pvc license-service-reporter-pvc -n ${OPERATOR_NS}  --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+        ${OC} patch pvc license-service-reporter-pvc -n ${ns}  --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
     else
         debug1 "No pvc license-service-reporter-pvc as expected"
     fi
