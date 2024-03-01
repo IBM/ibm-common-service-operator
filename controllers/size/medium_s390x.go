@@ -78,12 +78,13 @@ const Medium = `
         instances: 2
         resources:
           limits:
-            cpu: 2000m
-            memory: 2048Mi
-          requests:
-            ephemeral-storage: 256Mi
             cpu: 500m
-            memory: 2048Mi
+            memory: 1024Mi
+            ephemeral-storage: 512Mi
+          requests:
+            ephemeral-storage: 128Mi
+            cpu: 150m
+            memory: 384Mi
 - name: ibm-im-mongodb-operator
   spec:
     mongoDB:

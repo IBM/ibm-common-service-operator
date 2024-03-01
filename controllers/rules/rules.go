@@ -86,6 +86,7 @@ const ConfigurationRules = `
           limits:
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
           requests:
             ephemeral-storage: LARGEST_VALUE
             cpu: LARGEST_VALUE

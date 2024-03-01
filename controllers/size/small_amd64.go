@@ -78,12 +78,13 @@ const Small = `
         instances: 2
         resources:
           limits:
-            cpu: 1000m
-            memory: 640Mi
+            cpu: 200m
+            memory: 768Mi
+            ephemeral-storage: 512Mi
           requests:
-            ephemeral-storage: 256Mi
-            cpu: 500m
-            memory: 640Mi
+            ephemeral-storage: 128Mi
+            cpu: 75m
+            memory: 256Mi
 - name: ibm-im-mongodb-operator
   spec:
     mongoDB:
