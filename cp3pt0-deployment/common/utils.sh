@@ -243,7 +243,7 @@ function wait_for_issuer() {
     local issuer=$1
     local namespace=$2
     local condition="${OC} -n ${namespace} get issuer.v1.cert-manager.io ${issuer} --ignore-not-found -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}' | grep 'True'"
-    local retries=10
+    local retries=50
     local sleep_time=6
     local total_time_mins=$(( sleep_time * retries / 60))
     local wait_message="Waiting for Issuer ${issuer} in namespace ${namespace} to be Ready"
@@ -257,7 +257,7 @@ function wait_for_certificate() {
     local certificate=$1
     local namespace=$2
     local condition="${OC} -n ${namespace} get certificate.v1.cert-manager.io ${certificate} --ignore-not-found -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}' | grep 'True'"
-    local retries=10
+    local retries=50
     local sleep_time=6
     local total_time_mins=$(( sleep_time * retries / 60))
     local wait_message="Waiting for Certificate ${certificate} in namespace ${namespace} to be Ready"
