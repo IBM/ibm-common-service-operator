@@ -59,6 +59,7 @@ function main() {
     copy_resource "commonservice" "common-service" "preload-common-service-from-$FROM_NAMESPACE"
     copy_resource "secret" "icp-mongodb-client-cert"
     copy_resource "secret" "mongodb-root-ca-cert"
+    copy_resource "secret" "icp-mongodb-admin"
     # any extra config
 }
 
@@ -177,9 +178,24 @@ function copy_resource() {
               del(.metadata.labels)
           ' | \
           $OC apply -n $TO_NAMESPACE -f - || error "Failed to copy over $resourceType $resourceName."
-      success "$resourceType $resourceName copied over to $TO_NAMESPACE as $newResourceName"
+      
+      # Check if the resource is created in TO_NAMESPACE
+      check_copied_resource $resourceType $newResourceName $TO_NAMESPACE
     else
       warning "Resource $resourceType $resourceName not found and not migrated from $FROM_NAMESPACE to $TO_NAMESPACE"
+    fi
+}
+
+function check_copied_resource() {
+    local resourceType=$1
+    local resourceName=$2
+    local namespace=$3
+
+    resource_exists=$(${OC} get $resourceType $resourceName -n $namespace --ignore-not-found=true || echo "fail")
+    if [[ $resource_exists != "fail" ]]; then
+        success "$resourceType $resourceName copied over to $namespace."
+    else
+        error "$resourceType $resourceName not copied over to $namespace."
     fi
 }
 
