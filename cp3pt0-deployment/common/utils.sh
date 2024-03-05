@@ -858,18 +858,18 @@ function update_cscr() {
         if [[ -z "${result}" ]]; then
             info "Creating CommonService CR common-service in $namespace"
             # copy commonservice from operator namespace
-            ${OC} get commonservice common-service -n "${operator_ns}" -o yaml | ${YQ} eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
+            ${OC} get commonservice common-service -n "${operator_ns}" -o yaml | ${YQ} eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > /tmp/common-service.yaml
         else
             info "Configuring CommonService CR common-service in $namespace"
-            ${OC} get commonservice common-service -n "${namespace}" -o yaml | ${YQ} eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > common-service.yaml
+            ${OC} get commonservice common-service -n "${namespace}" -o yaml | ${YQ} eval '.spec += {"operatorNamespace": "'${operator_ns}'", "servicesNamespace": "'${service_ns}'"}' > /tmp/common-service.yaml
         fi
-        ${YQ} eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.namespace = "'${namespace}'"' common-service.yaml | ${OC} apply --overwrite=true -f -
+        ${YQ} eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | .metadata.namespace = "'${namespace}'"' /tmp/common-service.yaml | ${OC} apply --overwrite=true -f -
         if [[ $? -ne 0 ]]; then
             error "Failed to apply CommonService CR in ${namespace}"
         fi
     done
 
-    rm common-service.yaml
+    rm /tmp/common-service.yaml
 }
 
 # Update nss cr
@@ -1203,10 +1203,10 @@ function update_operator() {
 
     while [ $retries -gt 0 ]; do
         # Retrieve the latest version of the subscription
-        ${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml > sub.yaml
+        ${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o yaml > /tmp/sub.yaml
 
-        existing_channel=$(${YQ} eval '.spec.channel' sub.yaml)
-        existing_catalogsource=$(${YQ} eval '.spec.source' sub.yaml)
+        existing_channel=$(${YQ} eval '.spec.channel' /tmp/sub.yaml)
+        existing_catalogsource=$(${YQ} eval '.spec.source' /tmp/sub.yaml)
 
         compare_semantic_version $existing_channel $channel
         return_channel_value=$?
@@ -1224,21 +1224,21 @@ function update_operator() {
 
         # Update the subscription with the desired changes
         if [[ "$channel" == "null" ]]; then
-            ${YQ} -i eval 'select(.kind == "Subscription") | .spec += {"channel": null}' sub.yaml
+            ${YQ} -i eval 'select(.kind == "Subscription") | .spec += {"channel": null}' /tmp/sub.yaml
         else
-            ${YQ} -i eval 'select(.kind == "Subscription") | .spec += {"channel": "'${channel}'"}' sub.yaml
+            ${YQ} -i eval 'select(.kind == "Subscription") | .spec += {"channel": "'${channel}'"}' /tmp/sub.yaml
         fi
-        ${YQ} -i eval 'select(.kind == "Subscription") | .spec += {"source": "'${source}'"}' sub.yaml
-        ${YQ} -i eval 'select(.kind == "Subscription") | .spec += {"sourceNamespace": "'${source_ns}'"}' sub.yaml
-        ${YQ} -i eval 'select(.kind == "Subscription") | .spec += {"installPlanApproval": "'${install_mode}'"}' sub.yaml
+        ${YQ} -i eval 'select(.kind == "Subscription") | .spec += {"source": "'${source}'"}' /tmp/sub.yaml
+        ${YQ} -i eval 'select(.kind == "Subscription") | .spec += {"sourceNamespace": "'${source_ns}'"}' /tmp/sub.yaml
+        ${YQ} -i eval 'select(.kind == "Subscription") | .spec += {"installPlanApproval": "'${install_mode}'"}' /tmp/sub.yaml
 
         # Apply the patch
-        ${OC} apply -f sub.yaml
+        ${OC} apply -f /tmp/sub.yaml
 
         # Check if the patch was successful
         if [[ $? -eq 0 ]]; then
             success "Successfully patched subscription ${package_name} in ${ns}"
-            rm sub.yaml
+            rm /tmp/sub.yaml
             return 0
         else
             warning "Failed to patch subscription ${package_name} in ${ns}. Retrying in ${delay} seconds..."
@@ -1248,7 +1248,7 @@ function update_operator() {
     done
 
     error "Maximum retries reached. Failed to patch subscription ${sub_name} in ${ns}"
-    rm sub.yaml
+    rm /tmp/sub.yaml
     return 1
 }
 
@@ -1322,10 +1322,10 @@ function scale_down() {
     local odlm_sub=$(${OC} get subscription.operators.coreos.com -n ${services_ns} -l operators.coreos.com/ibm-odlm.${services_ns}='' --no-headers | awk '{print $1}')
     local odlm_CSV=$(${OC} get subscription.operators.coreos.com ${odlm_sub} -n ${services_ns} --ignore-not-found -o jsonpath={.status.installedCSV})
 
-    ${OC} get subscription.operators.coreos.com ${cs_sub} -n ${operator_ns} -o yaml > sub.yaml
+    ${OC} get subscription.operators.coreos.com ${cs_sub} -n ${operator_ns} -o yaml > /tmp/sub.yaml
 
-    existing_channel=$(${YQ} eval '.spec.channel' sub.yaml)
-    existing_catalogsource=$(${YQ} eval '.spec.source' sub.yaml)
+    existing_channel=$(${YQ} eval '.spec.channel' /tmp/sub.yaml)
+    existing_catalogsource=$(${YQ} eval '.spec.source' /tmp/sub.yaml)
     compare_semantic_version $existing_channel $channel
     return_channel_value=$?
 
