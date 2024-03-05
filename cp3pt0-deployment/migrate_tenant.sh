@@ -144,6 +144,9 @@ function main() {
         # Create namespace-scope ConfigMap in services namespace
         create_nss_configmap "$SERVICES_NS" "$SERVICES_NS"
     else
+        # Create/Update NamespaceScope CR common-service
+        update_nss_kind "$OPERATOR_NS" "$NS_LIST"
+
         # Update ibm-namespace-scope-operator channel
         is_sub_exist ibm-namespace-scope-operator-restricted $OPERATOR_NS
         if [ $? -eq 0 ]; then
@@ -159,9 +162,6 @@ function main() {
         for ns in ${NS_LIST//,/ }; do
             ${BASE_DIR}/common/authorize-namespace.sh $ns -to $OPERATOR_NS
         done
-
-        # Update NamespaceScope CR common-service
-        update_nss_kind "$OPERATOR_NS" "$NS_LIST"
 
         accept_license "namespacescope" "$OPERATOR_NS" "common-service"
     fi
