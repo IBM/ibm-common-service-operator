@@ -1820,6 +1820,10 @@ func (b *Bootstrap) Cleanup(operatorNs string, resource *Resource) error {
 func (b *Bootstrap) IsolateODLM(excludedNsList []string) error {
 	odlmSub, err := b.GetSubscription(ctx, constant.IBMODLMPackage, b.CSData.MasterNs)
 	if err != nil {
+		if errors.IsNotFound(err) {
+			klog.Infof("ODLM subscription not found in namespace %s, skip isolating ODLM", b.CSData.MasterNs)
+			return nil
+		}
 		klog.Errorf("Failed to get ODLM subscription: %v", err)
 		return err
 	}
@@ -2142,6 +2146,10 @@ func (b *Bootstrap) IsolateLSR(masterNs string, lsrCR *Resource) error {
 		Name:      "license-service-reporter-pvc",
 		Namespace: b.CSData.MasterNs,
 	}, pvc); err != nil {
+		if errors.IsNotFound(err) {
+			klog.Infof("PVC license-service-reporter-pvc is not found in %s, skip isolating LSR", b.CSData.MasterNs)
+			return nil
+		}
 		klog.Errorf("Failed to get license-service-reporter-pvc in %s: %v", b.CSData.MasterNs, err)
 		return err
 	}
