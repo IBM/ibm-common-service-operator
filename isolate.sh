@@ -51,7 +51,11 @@ PREVIEW_DIR="/tmp/isolate-$(date +'%Y%m%d%H%M%S')-preview"
 
 . ${BASE_DIR}/cp3pt0-deployment/common/utils.sh
 
+trap 'error "Error occurred in function $FUNCNAME at line $LINENO"' ERR
+
 function main() {
+    echo "All arguments passed into the script: $@"
+
     while [ "$#" -gt "0" ]
     do
         case "$1" in
