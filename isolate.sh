@@ -761,7 +761,7 @@ function check_if_certmanager_deployed() {
 
     if [[ $deployed == "false" ]]; then
         info "Cert manager not requested in scope, deploying..."
-        cat <<EOF > tmp-opreq.yaml
+        cat <<EOF > /tmp/tmp-opreq.yaml
 apiVersion: operator.ibm.com/v1alpha1
 kind: OperandRequest
 metadata:
@@ -779,8 +779,8 @@ spec:
       registryNamespace: $MASTER_NS
 EOF
 
-    ${OC} apply -f tmp-opreq.yaml
-    rm -f tmp-opreq.yaml
+    ${OC} apply -f /tmp/tmp-opreq.yaml
+    rm -f /tmp/tmp-opreq.yaml
     fi
 
 }
@@ -901,14 +901,14 @@ function wait_for_nss_exist() {
 
 function patch_cs_cr_for_management_ingress() {
     title "Updating commonservice common-service in namespace ${MASTER_NS} for management ingress CR ..."
-    "${OC}" get commonservice common-service -n "${MASTER_NS}" -o yaml > tmp_cs_cr.yaml
+    "${OC}" get commonservice common-service -n "${MASTER_NS}" -o yaml > /tmp/tmp_cs_cr.yaml
 
-    local is_exist_in_cs=$("${YQ}" eval '.spec.services[].name' tmp_cs_cr.yaml | grep "ibm-management-ingress-operator" || echo "false")
+    local is_exist_in_cs=$("${YQ}" eval '.spec.services[].name' /tmp/tmp_cs_cr.yaml | grep "ibm-management-ingress-operator" || echo "false")
     if [[ "${is_exist_in_cs}" == "false" ]]; then
-        "${YQ}" -i eval '.spec.services += [{"name": "ibm-management-ingress-operator", "spec": {"managementIngress": {"multipleInstancesEnabled": false}}}]' tmp_cs_cr.yaml
+        "${YQ}" -i eval '.spec.services += [{"name": "ibm-management-ingress-operator", "spec": {"managementIngress": {"multipleInstancesEnabled": false}}}]' /tmp/tmp_cs_cr.yaml
     else
         info "ibm-management-ingress-operator already exists in CS CR .spec.services, updating it ..."
-        "${YQ}" -i eval '(.spec.services[] |= select(.name == "ibm-management-ingress-operator").spec.managementIngress.multipleInstancesEnabled = false)' tmp_cs_cr.yaml
+        "${YQ}" -i eval '(.spec.services[] |= select(.name == "ibm-management-ingress-operator").spec.managementIngress.multipleInstancesEnabled = false)' /tmp/tmp_cs_cr.yaml
     fi
   
     local retries=10
@@ -919,11 +919,11 @@ function patch_cs_cr_for_management_ingress() {
     local error_message="Timeout after ${total_time_mins} minutes waiting for commonservice common-service to be updated for management ingress CR."
     while true; do
         if [[ ${retries} -eq 0 ]]; then
-            rm -f tmp_cs_cr.yaml
+            rm -f /tmp/tmp_cs_cr.yaml
             error "${error_message}"
         fi
 
-        local result=$("${OC}" apply -n "${MASTER_NS}" -f tmp_cs_cr.yaml 2>&1 || echo "fail")
+        local result=$("${OC}" apply -n "${MASTER_NS}" -f /tmp/tmp_cs_cr.yaml 2>&1 || echo "fail")
         if [[ "${result}" == "fail" ]]; then
             retries=$(( retries - 1 ))
             info "RETRYING: ${wait_message} (${retries} left)"
@@ -933,7 +933,7 @@ function patch_cs_cr_for_management_ingress() {
             break
         fi
     done
-    rm -f tmp_cs_cr.yaml
+    rm -f /tmp/tmp_cs_cr.yaml
 }
 
 function patch_opconfig_for_management_ingress() {

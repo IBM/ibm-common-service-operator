@@ -111,7 +111,7 @@ function deactivate_cp2_cert_manager() {
     info "Configuring Common Services Cert Manager.."
     result=$(${OC} get configmap ibm-cpp-config -n ${CONTROL_NS} -o yaml --ignore-not-found)
     if [[ -z "${result}" ]]; then
-        cat <<EOF > ibm-cpp-config.yaml
+        cat <<EOF > /tmp/ibm-cpp-config.yaml
 kind: ConfigMap
 apiVersion: v1
 metadata:
@@ -121,16 +121,16 @@ data:
     deployCSCertManagerOperands: "false"
 EOF
     else
-        ${OC} get configmap ibm-cpp-config -n ${CONTROL_NS} -o yaml | ${YQ} eval 'select(.kind == "ConfigMap") | .data += {"deployCSCertManagerOperands": "'"false"'"}' > ibm-cpp-config.yaml
+        ${OC} get configmap ibm-cpp-config -n ${CONTROL_NS} -o yaml | ${YQ} eval 'select(.kind == "ConfigMap") | .data += {"deployCSCertManagerOperands": "'"false"'"}' > /tmp/ibm-cpp-config.yaml
     fi
     
     
-    ${OC} apply -f ibm-cpp-config.yaml
+    ${OC} apply -f /tmp/ibm-cpp-config.yaml
     if [ $? -ne 0 ]; then
-        rm ibm-cpp-config.yaml
+        rm /tmp/ibm-cpp-config.yaml
         error "Failed to patch ibm-cpp-config ConfigMap in ${CONTROL_NS}"
     fi
-    rm ibm-cpp-config.yaml
+    rm /tmp/ibm-cpp-config.yaml
     msg ""
 
     info "Deleting existing Cert Manager CR..."

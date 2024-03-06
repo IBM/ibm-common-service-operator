@@ -770,7 +770,7 @@ function deploymongocopy {
     error "Cannnot get storage class name from PVC mongodbdir-icp-mongodb-0 in $FROM_NAMESPACE"
   fi
 
-    cat << EOF > mongo-init-cm.yaml
+    cat << EOF > /tmp/mongo-init-cm.yaml
 kind: ConfigMap
 apiVersion: v1
 metadata:
@@ -1130,7 +1130,7 @@ data:
 EOF
 
     #oc apply -f mongo-restore-resources/restore-icp-mongodb-install-cm.yaml
-    cat << EOF > mongo-install-cm.yaml
+    cat << EOF > /tmp/mongo-install-cm.yaml
 kind: ConfigMap
 apiVersion: v1
 metadata:
@@ -1235,11 +1235,11 @@ data:
 
     # chmod -R 777 /tmp
 EOF
-    ${OC} apply -f mongo-install-cm.yaml
-    rm -f mongo-install-cm.yaml
+    ${OC} apply -f /tmp/mongo-install-cm.yaml
+    rm -f /tmp/mongo-install-cm.yaml
 
-    ${OC} apply -f mongo-init-cm.yaml
-    rm -f mongo-init-cm.yaml
+    ${OC} apply -f /tmp/mongo-init-cm.yaml
+    rm -f /tmp/mongo-init-cm.yaml
 
     #god-issuer-issuer.yaml
     cat << EOF | ${OC} apply -f -
