@@ -18,8 +18,6 @@
 # set -o errexit
 set -o pipefail
 set -o errtrace
-set -o nounset
-set -o errtrace
 
 # ---------- Command arguments ----------
 
