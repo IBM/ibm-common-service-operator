@@ -8,9 +8,6 @@
 # This is an internal component, bundled with an official IBM product.
 # Please refer to that particular license for additional information.
 
-set -o nounset
-set -o errtrace
-
 # ---------- Command arguments ----------
 
 OC=oc
@@ -54,8 +51,6 @@ PREVIEW_DIR="/tmp/setup-tenant-$(date +'%Y%m%d%H%M%S')-preview"
 # ---------- Main functions ----------
 
 . ${BASE_DIR}/common/utils.sh
-
-trap 'error "Error occurred in function $FUNCNAME at line $LINENO"' ERR
 
 function main() {
     parse_arguments "$@"
