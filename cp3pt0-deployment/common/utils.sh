@@ -27,7 +27,11 @@ function warning() {
 }
 
 function error() {
-    msg "\33[31m[✘] ${1}\33[0m"
+    local error_message="$1"
+    local function_name="${FUNCNAME[1]}"
+    local line_number="${BASH_LINENO[0]}"
+    local script_name="${BASH_SOURCE[1]}"
+    msg "\33[31m[✘] Error in ${script_name} at line $line_number in function ${function_name}: ${error_message}\33[0m"
     exit 1
 }
 
@@ -876,6 +880,7 @@ function update_cscr() {
 function update_nss_kind() {
     local operator_ns=$1
     local nss_list=$2
+    local members=""
     for n in ${nss_list//,/ }
     do
         local members=$members$(cat <<EOF
@@ -1182,7 +1187,7 @@ function update_operator() {
     local source=$4
     local source_ns=$5
     local install_mode=$6
-    local remove_opreq_label=$7
+    local remove_opreq_label=${7:-}
     local retries=5 # Number of retries
     local delay=5 # Delay between retries in seconds
 
@@ -1436,8 +1441,8 @@ function accept_license() {
         return 0
     fi
 
-    ${OC} patch "$kind" "$cr_name" -n "$namespace" --type='merge' -p '{"spec":{"license":{"accept":true}}}' || export fail="true"
-    if [[ $fail == "true" ]]; then
+    local result=$(${OC} patch "$kind" "$cr_name" -n "$namespace" --type='merge' -p '{"spec":{"license":{"accept":true}}}' || echo "fail")
+    if [[ "${result}" == "fail" ]]; then
         warning "Failed to update license acceptance for $kind CR $cr_name\n"
     else
         success "License accepted for $kind $cr_name\n"

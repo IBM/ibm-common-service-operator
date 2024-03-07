@@ -8,6 +8,8 @@
 # This is an internal component, bundled with an official IBM product.
 # Please refer to that particular license for additional information.
 
+set -o nounset
+
 # ---------- Command arguments ----------
 
 OC=oc
