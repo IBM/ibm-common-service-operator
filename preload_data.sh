@@ -214,7 +214,7 @@ function backup_preload_mongo() {
   swapmongopvc
   loadmongo
   deletemongocopy
-  provision_external_service
+  provision_external_connection
 } # backup_preload_mongo
   
 
@@ -548,8 +548,8 @@ function swapmongopvc() {
 
   ${OC} patch pv $VOL --type=merge -p '{"spec": {"claimRef":null}}'
 
-  roks=$(${OC} cluster-info | grep 'containers.cloud.ibm.com')
-  if [[ -z $roks ]]; then
+  roks=$(${OC} cluster-info | grep 'containers.cloud.ibm.com' || echo "non-roks")
+  if [[ "$roks" == "non-roks" ]]; then
     stgclass=$(${OC} get pvc mongodbdir-icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{.spec.storageClassName}')
     if [[ -z $stgclass ]]; then
       error "Cannnot get storage class name from PVC mongodbdir-icp-mongodb-0 in $FROM_NAMESPACE"
