@@ -547,7 +547,6 @@ function swapmongopvc() {
   fi
 
   ${OC} patch pv $VOL --type=merge -p '{"spec": {"claimRef":null}}'
-  ${OC} patch pv $VOL --type json -p '[{ "op": "remove", "path": "/spec/claimRef" }]' #this line is proving problematic
 
   roks=$(${OC} cluster-info | grep 'containers.cloud.ibm.com')
   if [[ -z $roks ]]; then
