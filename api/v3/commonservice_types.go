@@ -31,9 +31,11 @@ type ExtensionWithMarker struct {
 }
 
 type ServiceConfig struct {
-	Name               string                         `json:"name"`
+	Name string `json:"name"`
+	// +optional
 	Spec               map[string]ExtensionWithMarker `json:"spec"`
 	ManagementStrategy string                         `json:"managementStrategy,omitempty"`
+	Resources          []ExtensionWithMarker          `json:"resources,omitempty"`
 }
 
 // CommonServiceSpec defines the desired state of CommonService
