@@ -821,7 +821,6 @@ spec:
               templatingValueFrom:
                 default:
                   required: true
-                  defaultValue: icr.io/cpopen/edb/postgresql:14.9@sha256:90136074adcbafb5033668b07fe1efea9addf0168fa83b0c8a6984536fc22264
                   configMapKeyRef:
                     name: cloud-native-postgresql-image-list
                     key: ibm-postgresql-14-operand-image
@@ -1004,6 +1003,14 @@ spec:
                   - GRANT ALL PRIVILEGES ON DATABASE zen TO zen_user
             affinity:
               topologyKey: topology.kubernetes.io/zone
+            imageName:
+              templatingValueFrom:
+                default:
+                  required: true
+                  configMapKeyRef:
+                    name: cloud-native-postgresql-image-list
+                    key: ibm-postgresql-16-operand-image
+                    namespace: {{ .OperatorNs }}
             imagePullSecrets:
               - name: ibm-entitlement-key
             instances: 1
@@ -1493,7 +1500,6 @@ spec:
                     templatingValueFrom:
                       default:
                         required: true
-                        defaultValue: cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:05f30f2117ff6e0e853487f17785024f6bb226f3631425eaf1498b9d3b753345
                         configMapKeyRef:
                           name: cloud-native-postgresql-image-list
                           key: edb-postgres-license-provider-image
@@ -1525,7 +1531,6 @@ spec:
                     templatingValueFrom:
                       default:
                         required: true
-                        defaultValue: cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:05f30f2117ff6e0e853487f17785024f6bb226f3631425eaf1498b9d3b753345
                         configMapKeyRef:
                           name: cloud-native-postgresql-image-list
                           key: edb-postgres-license-provider-image
