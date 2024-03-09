@@ -743,12 +743,19 @@ EOF
 # Dump logs for amtching pod
 #
 function dumplogs() {
-  info "Saving $1 logs in _${1}.log"
-  pod=$(${OC} get po | grep $1 | awk '{print $1}')
-  if [[ -n "$pod" ]]; then
-    ${OC} logs $pod >_${1}.log
+  pod=$(${OC} get pods | grep $1 | awk '{print $1}')
+  count=$(echo $pod | wc -w)
+  if [[ $count -eq 1 ]]; then
+    info "Saving $1 logs in _${1}.log"
+    ${OC} logs $pod > _${1}.log
+  elif [[ $count -eq 0 ]]; then
+    info "No pods found for $1"
   else
-    echo "No pod" >_${1}.log
+    info "Multiple pods found for $1"
+    for p in $pod; do
+      info "Saving $p logs in _${1}_${p}.log"
+      ${OC} logs $p > _${1}_${p}.log
+    done
   fi
 } # dumplogs
 
