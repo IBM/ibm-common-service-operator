@@ -1,0 +1,13 @@
+apiVersion: data-protection.isf.ibm.com/v1alpha1
+kind: PolicyAssignment
+metadata:
+  name: licensing-policy-assignment
+  namespace: ibm-spectrum-fusion-ns
+spec:
+  application: licensing-application
+  backupPolicy: licensing-backup-policy
+  runNow: false
+  recipe:
+    apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+    name: licensing-recipe
+    namespace: ibm-spectrum-fusion-ns

@@ -1,0 +1,35 @@
+apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+kind: Recipe
+metadata:
+  name: licensing-recipe
+  namespace: ibm-spectrum-fusion-ns
+spec:
+  appType: fusion
+  groups:
+    - name: licensing-sevice
+      type: resource
+      includedNamespaces:
+        - ibm-licensing
+      includeClusterResources: true
+      excludedResourceTypes:
+        - deployments
+        - services
+        - clusterserviceversions
+        - pods
+        - events
+    - name: licensing-catalogsource
+      type: resource
+      includedNamespaces:
+        - openshift-marketplace
+      includedResourceTypes:
+        - catalogsources
+      labelSelector: foundationservices.cloudpak.ibm.com=licensing
+  workflows:
+  - name: backup
+    sequence:
+    - group: licensing-catalogsource
+    - group: licensing-service
+  - name: restore
+    sequence:
+    - group: licensing-catalogsource
+    - group: licensing-service

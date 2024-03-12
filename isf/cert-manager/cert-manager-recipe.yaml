@@ -1,0 +1,35 @@
+apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+kind: Recipe
+metadata:
+  name: cert-manager-recipe
+  namespace: ibm-spectrum-fusion-ns
+spec:
+  appType: fusion
+  groups:
+    - name: cert-manager-service
+      type: resource
+      includedNamespaces:
+        - ibm-cert-manager
+      includeClusterResources: true
+      excludedResourceTypes:
+        - deployments
+        - services
+        - clusterserviceversions
+        - pods
+        - events
+    - name: cert-manager-catalogsource
+      type: resource
+      includedNamespaces:
+        - openshift-marketplace
+      includedResourceTypes:
+        - catalogsources
+      labelSelector: foundationservices.cloudpak.ibm.com=cert-manager
+  workflows:
+  - name: backup
+    sequence:
+    - group: cert-manager-catalogsource
+    - group: cert-manager-service
+  - name: restore
+    sequence:
+    - group: cert-manager-catalogsource
+    - group: cert-manager-service
