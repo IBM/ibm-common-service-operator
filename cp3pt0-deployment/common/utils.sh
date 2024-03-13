@@ -638,7 +638,31 @@ function validate_operator_catalogsource(){
         error "Multiple CatalogSource are available for $pm in $operator_ns namespace, please specify the correct CatalogSource name and namespace"
     elif [[ $return_value -eq 2 ]]; then
         warning "CatalogSource $source from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace"
-        error "No CatalogSource is available for $pm in $operator_ns namespace in the given channel $channel"
+        
+        # Retry and wait for the CatalogSource to be available
+        retries=5
+        while [[ $retries -gt 0 ]]; do
+            echo "Wait for CatalogSource to be ready..."
+            sleep 20
+            correct_result=$(catalogsource_correction $source $source_ns $pm $operator_ns $channel)
+            IFS=" " read -r return_value correct_source correct_source_ns <<< "$correct_result"
+            
+            if [[ $return_value -eq 0 ]]; then
+                success "CatalogSource $source from $source_ns CatalogSourceNamespace is available for $pm in $operator_ns namespace after retry"
+                break
+            elif [[ $return_value -eq 3 ]]; then
+                success "CatalogSource $correct_source from $correct_source_ns CatalogSourceNamespace is available for $pm in $operator_ns namespace after retry"
+                break
+            fi
+
+            ((retries--))
+        done
+        
+        # If all retries failed, display an error message
+        if [[ $retries -eq 0 ]]; then
+            error "No CatalogSource is available for $pm in $operator_ns namespace in the given channel $channel after multiple attempts"
+        fi
+        
     elif [[ $return_value -eq 3 ]]; then
         warning "CatalogSource $source from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace"
         success "CatalogSource $correct_source from $correct_source_ns CatalogSourceNamespace is available for $pm in $operator_ns namespace"
