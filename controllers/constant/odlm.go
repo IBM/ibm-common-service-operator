@@ -1245,6 +1245,7 @@ spec:
   - name: ibm-im-mongodb-operator
     namespace: "{{ .CPFSNs }}"
     channel: v4.2
+    installMode: no-op
     packageName: ibm-mongodb-operator-app
     installPlanApproval: {{ .ApprovalMode }}
   - channel: v3
