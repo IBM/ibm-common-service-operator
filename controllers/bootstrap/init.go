@@ -664,7 +664,7 @@ func (b *Bootstrap) InstallOrUpdateOpreg(forceUpdateODLMCRs bool, installPlanApp
 
 	var baseReg string
 	registries := []string{
-		constant.CSV3OpReg,
+		constant.CSV4OpReg,
 		constant.MongoDBOpReg,
 		constant.IMOpReg,
 		constant.IdpConfigUIOpReg,
@@ -673,9 +673,9 @@ func (b *Bootstrap) InstallOrUpdateOpreg(forceUpdateODLMCRs bool, installPlanApp
 		constant.CommonServicePGOpReg,
 	}
 	if b.SaasEnable {
-		baseReg = constant.CSV2SaasOpReg
+		baseReg = constant.CSV3SaasOpReg
 	} else {
-		baseReg = constant.CSV2OpReg
+		baseReg = constant.CSV3OpReg
 	}
 
 	concatenatedReg, err := constant.ConcatenateRegistries(baseReg, registries, b.CSData)
@@ -703,7 +703,7 @@ func (b *Bootstrap) InstallOrUpdateOpcon(forceUpdateODLMCRs bool) error {
 		constant.CommonServicePGOpCon,
 	}
 
-	baseCon = constant.CSV3OpCon
+	baseCon = constant.CSV4OpCon
 
 	concatenatedCon, err := constant.ConcatenateConfigs(baseCon, configs, b.CSData)
 	if err != nil {

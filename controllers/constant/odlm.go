@@ -27,10 +27,10 @@ import (
 )
 
 var (
-	CSV3OperandRegistry     string
-	CSV3SaasOperandRegistry string
-	CSV3OperandConfig       string
-	CSV3SaasOperandConfig   string
+	CSV4OperandRegistry     string
+	CSV4SaasOperandRegistry string
+	CSV4OperandConfig       string
+	CSV4SaasOperandConfig   string
 )
 
 const (
@@ -1118,7 +1118,7 @@ spec:
 )
 
 const (
-	CSV2OpReg = `
+	CSV3OpReg = `
 apiVersion: operator.ibm.com/v1alpha1
 kind: OperandRegistry
 metadata:
@@ -1223,7 +1223,7 @@ spec:
     installMode: no-op
 `
 
-	CSV3OpReg = `
+	CSV4OpReg = `
 apiVersion: operator.ibm.com/v1alpha1
 kind: OperandRegistry
 metadata:
@@ -1305,7 +1305,7 @@ spec:
 )
 
 const (
-	CSV2SaasOpReg = `
+	CSV3SaasOpReg = `
 apiVersion: operator.ibm.com/v1alpha1
 kind: OperandRegistry
 metadata:
@@ -1369,7 +1369,7 @@ spec:
   `
 )
 
-const CSV3OpCon = `
+const CSV4OpCon = `
 apiVersion: operator.ibm.com/v1alpha1
 kind: OperandConfig
 metadata:
@@ -1428,6 +1428,9 @@ spec:
       commonWebUI: {}
       switcheritem: {}
       navconfiguration: {}
+  - name: ibm-cert-manager-operator
+    spec:
+      certManager: {}
   - name: ibm-management-ingress-operator
     spec:
       managementIngress: {}
@@ -1438,6 +1441,7 @@ spec:
       nginxIngress: {}
   - name: ibm-auditlogging-operator
     spec:
+      auditLogging: {}
       operandBindInfo: {}
       operandRequest: {}
   - name: ibm-platform-api-operator
