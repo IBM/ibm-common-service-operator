@@ -874,18 +874,32 @@ function isolate_license_service_reporter(){
 
 function wait_for_nss_update() {
     local expected_ns_list=${1//$'\n'/ }
+    local retries=5
+    local wait_time=20
+    
     wait_for_nss_exist
     
-    local actual_ns_list=$(${OC} get cm namespace-scope -n ${MASTER_NS} -o yaml | ${YQ} '.data.namespaces')
-    actual_ns_list=$(echo "${actual_ns_list//,/ }" | xargs -n1 | sort | xargs)
-    expected_ns_list=$(echo "${expected_ns_list}" | xargs -n1 | sort | xargs)
-    debug1 "expected ns list: $expected_ns_list"
-    debug1 "actual ns list: $actual_ns_list"
-    if [[ "${expected_ns_list}" == "${actual_ns_list}" ]]; then
-        success "Namespaces in namespace-scope configmap match expected output."
-    else
-        error "Namespaces in namespace-scope configmap do not match expected output."
-    fi
+    for (( i=1; i<=$retries; i++ )); do
+
+        local actual_ns_list=$(${OC} get cm namespace-scope -n ${MASTER_NS} -o yaml | ${YQ} '.data.namespaces')
+        actual_ns_list=$(echo "${actual_ns_list//,/ }" | xargs -n1 | sort | xargs)
+        expected_ns_list=$(echo "${expected_ns_list}" | xargs -n1 | sort | xargs)
+        
+        debug1 "expected ns list: $expected_ns_list"
+        debug1 "actual ns list: $actual_ns_list"
+        
+        if [[ "${expected_ns_list}" == "${actual_ns_list}" ]]; then
+            success "Namespaces in namespace-scope configmap match expected output."
+            break
+        else
+            if [[ $i -lt $retries ]]; then
+                info "Namespaces in namespace-scope configmap do not match expected output. Retrying in $wait_time seconds..."
+                sleep $wait_time
+            else
+                error "Namespaces in namespace-scope configmap do not match expected output after $retries retries."
+            fi
+        fi
+    done
 }
 
 function wait_for_nss_exist() {
