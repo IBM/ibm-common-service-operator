@@ -442,6 +442,9 @@ EOF
 
 
 function configure_lsr_instance() {
+    # Initialize LSR_CR_NAME only if it's unset or null
+    LSR_CR_NAME="${LSR_CR_NAME:-}"
+
     title "Configuring License Service Reporter CR in $LSR_NAMESPACE..."
     # checking LSR_CR_NAME 
     if [ -z "${LSR_CR_NAME}" ]; then
