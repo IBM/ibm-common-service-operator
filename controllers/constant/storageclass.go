@@ -56,6 +56,8 @@ const StorageClassTemplate = `
         spec:
           storage:
             storageClass: placeholder
+          walStorage:
+            storageClass: placeholder
       kind: Cluster
       name: common-service-db
 `

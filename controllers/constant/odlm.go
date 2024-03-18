@@ -1034,7 +1034,10 @@ spec:
             stopDelay: 90
             storage:
               resizeInUseVolumes: true
-              size: 1Gi
+              size: 10Gi
+            walStorage:
+              resizeInUseVolumes: true
+              size: 10Gi
             postgresql:
               parameters:
                 max_connections: "600"  
