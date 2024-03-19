@@ -769,7 +769,12 @@ spec:
       - apiVersion: k8s.keycloak.org/v2alpha1
         kind: KeycloakRealmImport
         name: cs-cloudpak-realm
-        force: false
+        force: true
+        ownerReferences:
+          - apiVersion: k8s.keycloak.org/v2alpha1
+            kind: Keycloak
+            name: cs-keycloak
+            controller: false
         data:
           spec:
             keycloakCRName: cs-keycloak
