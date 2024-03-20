@@ -11,35 +11,26 @@ body {
 
 body .login-pf-page {
   font-family: IBM Plex Sans, Helvetica Neue, Arial, sans-serif;
+  padding-top: 0px;
+  background: #161616 !important;
 }
 
-.login-pf-page .login-pf-header h1 {
-  line-height: 1.4;
-  letter-spacing: 0;
-  color: #f4f4f4;
-  font-size: 28px;
+.login-pf-page a {
+  color: #0f62fe;
 }
 
-
-/*
-sample image usage
+/* set ibm cloudpak header */
 .kc-logo-text {
-  display: none;
-  background-image: url(../img/ibm-logo.png);
+  background-image: url(../img/login-header.svg);
   background-repeat: no-repeat;
-  height: 128px;
-  width: 320px;
+  height: 48px;
+  width: 100%;
   margin: 0 auto;
 }
 .kc-logo-text span {
   display: none;
 }
-*/
 
-/* Turn off logo text */
-#kc-header {
-  display: none;
-}
 
 #kc-locale-wrapper {
   display: none;
@@ -56,17 +47,35 @@ sample image usage
 
 .login-pf-page .card-pf {
   background: #161616;
-  margin: 60px auto auto auto;
-  max-width: 500px;
+  margin: 56px auto auto auto;
+  width: 288px;
+  padding: 0px;
+}
+
+.login-pf-page .login-pf-header {
+  margin-bottom: 40px;
+}
+
+.login-pf-page .login-pf-header h1 {
+  line-height: 40px;
+  letter-spacing: 0;
+  color: #f4f4f4;
+  font-size: 32px;
+  text-align: left;
+  margin: 0px;
 }
 
 /* input fields and labels */
 .pf-c-form__label.pf-c-form__label-text {
   margin: .5rem 0;
   color: #c6c6c6;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: .32px;
 }
 
-#username,#password,#password-new,#password-confirm {
+#username,#password,#password-new,#password-confirm,#email,#firstName,#lastName {
+  height: 48px;
   background-color: #262626;
   background: #262626;
   font-size: .875rem;
@@ -84,15 +93,22 @@ sample image usage
 
 #username[aria-invalid=true], #password[aria-invalid=true] {
   border: none;
-  border: 2px solid #ffb3b8;
+  border: 2px solid #fa4d56;
+  background-image: var(--pf-c-form-control--invalid--BackgroundUrl);
+  background-position: var(--pf-c-form-control--invalid--BackgroundPosition);
+  background-size: var(--pf-c-form-control--invalid--BackgroundSize);
+  background-repeat: no-repeat;
 }
 
 #input-error {
-  color: #ffb3b8;
+  color: #ff8389;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.32px;
 }
 
 /* input fields */
-#username:focus,#password:focus,#password-new:focus,#password-confirm:focus {
+#username:focus,#password:focus,#password-new:focus,#password-confirm:focus,#email:focus,#firstName:focus,#lastName:focus {
   outline: 2px solid #fff;
   outline-offset: -2px;
 }
@@ -104,7 +120,7 @@ sample image usage
   color: #fff;
   min-height: 3rem;
   cursor: pointer;
-  text-align: center;
+  text-align: left;
   font-size: .875rem;
   font-weight: 300;
   letter-spacing: .16px;
@@ -120,9 +136,71 @@ sample image usage
   box-shadow: inset 0 0 0 1px #fff,inset 0 0 0 2px #161616;
 }
 
-/* Turn off view password button */
-.pf-c-button.pf-m-control {
-  display: none;
+/* show password button */
+.pf-c-input-group .pf-c-button.pf-m-control {
+  background-color: #262626;
+  color: #ffffff;
+  /*border-bottom: 1px solid #6f6f6f; puts text field line under button
+  outline: 2px solid transparent;*/
+  height: 48px;
+}
+
+/* The following block of styling is to get the carbon checkbox */
+.checkbox label {
+  padding-left: 27px;
+  padding-top: 2px;
+}
+label:has( > input[type=checkbox]:focus)::before {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+}
+label:has( > input[type=checkbox]:checked)::before {
+  border-width: 1px;
+  border-color: #f4f4f4;
+  background-color: #f4f4f4;
+}
+label:has( > input[type=checkbox]:checked)::after {
+  transform: scale(1) rotate(-45deg);
+}
+label:has( > input[type=checkbox])::before {
+  position: absolute;
+  top: .125rem;
+  left: 0;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid #f4f4f4;
+  margin: .125rem .125rem .125rem .1875rem;
+  background-color: transparent;
+  border-radius: 1px;
+  content: "";
+}
+label:has( > input[type=checkbox])::after {
+  position: absolute;
+  top: .5rem;
+  left: .4375rem;
+  width: .5625rem;
+  height: .3125rem;
+  border-bottom: 2px solid #161616;
+  border-left: 2px solid #161616;
+  margin-top: -.1875rem;
+  background: none;
+  content: "";
+  transform: scale(0) rotate(-45deg);
+  transform-origin: bottom right;
+}
+#rememberMe {
+  position: absolute;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  margin: -1px;
+  clip: rect(0,0,0,0);
+  visibility: inherit;
+  white-space: nowrap;
+  top: 1.25rem;
+  left: .7rem;
 }
 
 /* additional providers styling */
@@ -131,7 +209,7 @@ sample image usage
 }
 
 .kc-social-item {
-  text-align: center;
+  text-align: left;
 }
 
 .kc-social-links li {
@@ -150,22 +228,30 @@ sample image usage
 }
 
 .pf-c-button.kc-social-item {
-  background-color: #393939;
+  background-color: transparent;
   color: #ffffff;
   border-width: 1px;
   border-style: solid;
-  border-color: transparent;
+  border-color: #ffffff;
   text-decoration: none;
   outline: none;
+  font-size: 14px;
+  line-height: 18px;
+  letter-spacing: 0.16px;
+  font-weight: 300;
+  padding: 13px 10px 13px 10px;
 }
 
 .pf-c-button.kc-social-item:focus {
+  background-color: #ffffff;
+  color: #161616;
   border-color: #fff;
   box-shadow: inset 0 0 0 1px #fff,inset 0 0 0 2px #161616;
 }
 
 .pf-c-button.kc-social-item:hover {
-  background-color: #474747;
+  background-color: #ffffff;
+  color: #161616;
   border-width: 1px;
   border-style: solid;
   border-color: transparent;
@@ -178,7 +264,16 @@ sample image usage
   border-color: transparent;
 }
 
+#kc-social-providers h4 {
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: .32px;
+  color: #c6c6c6;
+  font-weight: 400;
+}
+
 .kc-social-provider-logo {
+  display: none;
   font-size: 23px;
   width: 30px;
   height: 25px;
@@ -193,10 +288,10 @@ a:visited,:active {
 
 /* Warning dialog - required for set new password */
 .alert-warning.pf-c-alert.pf-m-inline.pf-m-warning {
-  background: #f4f4f4;
+  background: #262626;
   border-left: 3px solid #f1c21b;
   border-top: none;
-
+  height: 66px;
 }
 
 .alert-warning.pf-c-alert.pf-m-inline.pf-m-warning .pf-c-alert__icon {
@@ -209,23 +304,23 @@ a:visited,:active {
 }
 
 .pf-c-alert__title.kc-feedback-text {
-  color: #161616;
-  font-size: .875rem;
-  font-weight: 600;
-  line-height: 1.28572;
+  color: #f4f4f4;
+  font-size: 14px;
+  font-weight: 200;
+  line-height: 18px;
   letter-spacing: .16px;
   margin: 0 .25rem 0 0;
 }
 
 /* error dialog */
 .alert-error.pf-c-alert.pf-m-inline.pf-m-danger {
-  background: #f4f4f4;
-  color: #161616;
+  background: #262626;
+  color: #f4f4f4;
   border-left: 3px solid #da1e28;
   border-top: none;
-  font-size: .875rem;
-  font-weight: 600;
-  line-height: 1.28572;
+  font-size: 14px;
+  font-weight: 200;
+  line-height: 18px;
   letter-spacing: .16px;
   margin: 0 .25rem 0 0;
 }
