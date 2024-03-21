@@ -4,19 +4,26 @@
   }
 */
 
+@font-face {
+  font-family: IBM Plex Sans;
+  src: url("../fonts/IBMPlexSans-Regular.woff2") format("woff2"),
+    url("../fonts/IBMPlexSans-Regular.woff") format("woff");
+  font-weight: normal;
+}
+
 body {
   background: #161616 !important;
   color: #f4f4f4;
 }
 
 body .login-pf-page {
-  font-family: IBM Plex Sans, Helvetica Neue, Arial, sans-serif;
+  font-family: IBM Plex Sans;
   padding-top: 0px;
   background: #161616 !important;
 }
 
 .login-pf-page a {
-  color: #0f62fe;
+  color: #78A9FF;
 }
 
 /* set ibm cloudpak header */
@@ -144,6 +151,20 @@ body .login-pf-page {
   outline: 2px solid transparent;*/
   height: 48px;
 }
+.fa.fa-eye {
+  width: 16px;
+  height: 16px;
+}
+.fa-eye::before {
+  content: url("../img/view.svg");
+}
+.fa.fa-eye-slash {
+  width: 16px;
+  height: 16px;
+}
+.fa-eye-slash::before {
+  content: url("../img/view--off.svg");
+}
 
 /* The following block of styling is to get the carbon checkbox */
 .checkbox label {
@@ -201,6 +222,14 @@ label:has( > input[type=checkbox])::after {
   white-space: nowrap;
   top: 1.25rem;
   left: .7rem;
+}
+
+/* hack to align forgot password with remember me */
+/* .form-group.login-pf-settings div span a { */
+a[tabindex="5"] {
+    margin-top: 12px;
+    margin-bottom: 20px;
+    display: block;
 }
 
 /* additional providers styling */
