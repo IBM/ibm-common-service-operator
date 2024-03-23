@@ -1084,7 +1084,14 @@ function cleanup_OperandBindInfo() {
 
 function cleanup_NamespaceScope() {
     local namespace=$1
-    ${OC} delete namespacescope odlm-scope-managedby-odlm nss-odlm-scope nss-managedby-odlm common-service -n ${namespace} --ignore-not-found
+    local resources=("odlm-scope-managedby-odlm" "nss-odlm-scope" "nss-managedby-odlm" "common-service")
+    for resource in "${resources[@]}"; do
+        msg "Delete $resource in namespace $namespace..."
+        if ! ${OC} delete namespacescope $resource -n ${namespace} --ignore-not-found --timeout=10s > /dev/null 2>&1; then
+            warning "Deletion of $resource failed. Patching finalizer..."
+            ${OC} patch -n ${namespace} namespacescope $resource --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+        fi
+    done
 }
 
 function cleanup_OperandRequest() {
