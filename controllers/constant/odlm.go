@@ -845,6 +845,11 @@ spec:
                 memory: 512Mi
             logLevel: info
             primaryUpdateStrategy: unsupervised
+            primaryUpdateMethod: switchover
+            enableSuperuserAccess: true
+            replicationSlots:
+              highAvailability:
+                enabled: false
             storage:
               size: 1Gi
             walStorage:
