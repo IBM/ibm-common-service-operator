@@ -1315,6 +1315,12 @@ spec:
     packageName: ibm-elasticsearch-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode}}
+  - channel: v2.0
+    name: ibm-opencontent-flink
+    namespace: "{{ .CPFSNs }}"
+    packageName: ibm-opencontent-flink
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
 `
 )
 
