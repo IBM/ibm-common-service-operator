@@ -583,7 +583,7 @@ function export_k8s_list_yaml() {
 function check_CSCR() {
     local ns=$1
 
-    local retries=30
+    local retries=60
     local sleep_time=15
     local total_time_mins=$(( sleep_time * retries / 60))
     info "Waiting for IBM Common Services CR is Succeeded"
@@ -962,7 +962,7 @@ function patch_opconfig_for_management_ingress() {
         "${YQ}" -i eval '(.spec.services[] |= select(.name == "ibm-management-ingress-operator").spec.managementIngress.multipleInstancesEnabled = false)' tmp_oc_cr.yaml
     fi
 
-    local retries=10
+    local retries=12
     local sleep_time=5
     local total_time_mins=$(( sleep_time * retries / 60))
     local wait_message="Waiting for operandconfig common-service in namespace ${MASTER_NS} to be updated for management ingress CR ..."
@@ -1022,7 +1022,7 @@ function wait_for_cs_cr_exist() {
 
 function wait_for_opconfig_exist() {
     local condition="${OC} get operandconfig common-service -n ${MASTER_NS} --ignore-not-found || true"
-    local retries=20
+    local retries=60
     local sleep_time=10
     local total_time_mins=$(( sleep_time * retries / 60))
     local wait_message="Waiting for operandconfig common-service in namespace ${MASTER_NS} to be created ..."

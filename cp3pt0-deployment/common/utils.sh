@@ -483,7 +483,7 @@ function wait_for_operator_upgrade() {
     local install_mode=$4
     local condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${package_name}.${namespace}='' -n ${namespace} -o yaml -o jsonpath='{.items[*].status.installedCSV}' | grep -w $channel"
 
-    local retries=10
+    local retries=20
     local sleep_time=30
     local total_time_mins=$(( sleep_time * retries / 60))
     local wait_message="Waiting for operator ${package_name} to be upgraded"
