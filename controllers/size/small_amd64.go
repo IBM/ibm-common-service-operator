@@ -866,7 +866,9 @@ const Small = `
                     limits:
                       cpu: 1000m
                       memory: 1Gi
+                      ephemeral-storage: 512Mi
                     requests:
                       cpu: 1000m
-                      memory: 1Gi
+                      memory: 1Gi 
+                      ephemeral-storage: 256Mi
 `
