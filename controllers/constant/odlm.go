@@ -641,7 +641,6 @@ spec:
               tlsSecret: cs-keycloak-tls-secret
             ingress:
               enabled: false
-            instances: 1
             unsupported:
               podTemplate:
                 spec:
@@ -649,15 +648,6 @@ spec:
                     - command:
                         - /bin/sh
                         - /mnt/startup/cs-keycloak-entrypoint.sh
-                      resources:
-                        limits:
-                          cpu: 1000m
-                          memory: 1Gi
-                          ephemeral-storage: 512Mi
-                        requests:
-                          cpu: 1000m
-                          memory: 1Gi
-                          ephemeral-storage: 256Mi
                       volumeMounts:
                         - mountPath: /mnt/truststore
                           name: truststore-volume
@@ -835,14 +825,6 @@ spec:
                     key: edb-keycloak-operand-image
             imagePullSecrets:
               - name: ibm-entitlement-key
-            instances: 1
-            resources:
-              limits:
-                cpu: 200m
-                memory: 512Mi
-              requests:
-                cpu: 200m
-                memory: 512Mi
             logLevel: info
             primaryUpdateStrategy: unsupervised
             primaryUpdateMethod: switchover
@@ -1023,7 +1005,6 @@ spec:
                     namespace: {{ .OperatorNs }}
             imagePullSecrets:
               - name: ibm-entitlement-key
-            instances: 1
             replicationSlots:
               highAvailability:
                 enabled: true
@@ -1032,13 +1013,6 @@ spec:
               replicationTLSSecret: common-service-db-replica-tls-secret
               serverCASecret: cs-ca-certificate-secret
               serverTLSSecret: common-service-db-tls-secret
-            resources:
-              limits:
-                cpu: 200m
-                memory: 512Mi
-              requests:
-                cpu: 200m
-                memory: 512Mi
             primaryUpdateStrategy: unsupervised
             startDelay: 120
             stopDelay: 90
