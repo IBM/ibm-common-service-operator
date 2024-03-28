@@ -809,6 +809,9 @@ spec:
       - apiVersion: postgresql.k8s.enterprisedb.io/v1
         data:
           spec:
+            inheritedMetadata:
+              annotations:
+                backup.velero.io/backup-volumes: pgdata,pg-wal
             description:
               templatingValueFrom:
                 objectRef:
@@ -855,6 +858,11 @@ spec:
             walStorage:
               size: 1Gi
         force: true
+        annotations:
+          k8s.enterprisedb.io/addons: ["velero"]
+          k8s.enterprisedb.io/snapshotAllowColdBackupOnPrimary: enabled
+        labels:
+          foundationservices.cloudpak.ibm.com: keycloak
         kind: Cluster
         name: keycloak-edb-cluster
 `
