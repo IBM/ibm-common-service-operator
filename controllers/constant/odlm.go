@@ -304,7 +304,7 @@ spec:
       authentication:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      operandBindInfo: 
+      operandBindInfo:
         operand: ibm-im-operator
       operandRequest:
         requests:
@@ -317,7 +317,7 @@ spec:
       authentication:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      operandBindInfo: 
+      operandBindInfo:
         operand: ibm-im-operator
       operandRequest:
         requests:
@@ -330,7 +330,7 @@ spec:
       authentication:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      operandBindInfo: 
+      operandBindInfo:
         operand: ibm-im-operator
       operandRequest:
         requests:
@@ -343,7 +343,7 @@ spec:
       authentication:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      operandBindInfo: 
+      operandBindInfo:
         operand: ibm-im-operator
       operandRequest:
         requests:
@@ -356,7 +356,7 @@ spec:
       authentication:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      operandBindInfo: 
+      operandBindInfo:
         operand: ibm-im-operator
       operandRequest:
         requests:
@@ -369,7 +369,7 @@ spec:
       authentication:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      operandBindInfo: 
+      operandBindInfo:
         operand: ibm-im-operator
 `
 
@@ -673,7 +673,7 @@ spec:
                         sizeLimit: 2Mi
                     - name: startup-volume
                       configMap:
-                        name: cs-keycloak-entrypoint                      
+                        name: cs-keycloak-entrypoint
                     - name: trust-ca-volume
                       configMap:
                         name: cs-keycloak-ca-certs
@@ -780,6 +780,7 @@ spec:
             keycloakCRName: cs-keycloak
             realm:
               displayName: IBM Cloud Pak
+              displayNameHtml: "<div class=\"kc-logo-text\"><span>IBM Cloud Pak</span></div>"
               enabled: true
               id: cloudpak
               realm: cloudpak
@@ -912,7 +913,7 @@ spec:
             app.kubernetes.io/component: common-service-db-tls-cert
             component: common-service-db-tls-cert
         name: common-service-db-tls-cert
-        data:  
+        data:
           spec:
             dnsNames:
               - common-service-db
@@ -1050,7 +1051,7 @@ spec:
               size: 10Gi
             postgresql:
               parameters:
-                max_connections: "600"  
+                max_connections: "600"
               pg_hba:
                 - hostssl cloudpak cpadmin all cert
                 - hostssl im im_user all cert
@@ -1417,7 +1418,7 @@ spec:
       authentication:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      operandBindInfo:  
+      operandBindInfo:
         operand: ibm-im-operator
   - name: ibm-iam-operator
     spec:
