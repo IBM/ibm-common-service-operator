@@ -304,7 +304,7 @@ spec:
       authentication:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      operandBindInfo:
+      operandBindInfo: 
         operand: ibm-im-operator
       operandRequest:
         requests:
@@ -317,7 +317,7 @@ spec:
       authentication:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      operandBindInfo:
+      operandBindInfo: 
         operand: ibm-im-operator
       operandRequest:
         requests:
@@ -330,7 +330,7 @@ spec:
       authentication:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      operandBindInfo:
+      operandBindInfo: 
         operand: ibm-im-operator
       operandRequest:
         requests:
@@ -343,7 +343,7 @@ spec:
       authentication:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      operandBindInfo:
+      operandBindInfo: 
         operand: ibm-im-operator
       operandRequest:
         requests:
@@ -356,7 +356,7 @@ spec:
       authentication:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      operandBindInfo:
+      operandBindInfo: 
         operand: ibm-im-operator
       operandRequest:
         requests:
@@ -369,7 +369,7 @@ spec:
       authentication:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      operandBindInfo:
+      operandBindInfo: 
         operand: ibm-im-operator
 `
 
@@ -673,7 +673,7 @@ spec:
                         sizeLimit: 2Mi
                     - name: startup-volume
                       configMap:
-                        name: cs-keycloak-entrypoint
+                        name: cs-keycloak-entrypoint                      
                     - name: trust-ca-volume
                       configMap:
                         name: cs-keycloak-ca-certs
@@ -810,6 +810,9 @@ spec:
       - apiVersion: postgresql.k8s.enterprisedb.io/v1
         data:
           spec:
+            inheritedMetadata:
+              annotations:
+                backup.velero.io/backup-volumes: pgdata,pg-wal
             description:
               templatingValueFrom:
                 objectRef:
@@ -856,6 +859,11 @@ spec:
             walStorage:
               size: 1Gi
         force: true
+        annotations:
+          k8s.enterprisedb.io/addons: ["velero"]
+          k8s.enterprisedb.io/snapshotAllowColdBackupOnPrimary: enabled
+        labels:
+          foundationservices.cloudpak.ibm.com: keycloak
         kind: Cluster
         name: keycloak-edb-cluster
 `
@@ -913,7 +921,7 @@ spec:
             app.kubernetes.io/component: common-service-db-tls-cert
             component: common-service-db-tls-cert
         name: common-service-db-tls-cert
-        data:
+        data:  
           spec:
             dnsNames:
               - common-service-db
@@ -1051,7 +1059,7 @@ spec:
               size: 10Gi
             postgresql:
               parameters:
-                max_connections: "600"
+                max_connections: "600"  
               pg_hba:
                 - hostssl cloudpak cpadmin all cert
                 - hostssl im im_user all cert
@@ -1418,7 +1426,7 @@ spec:
       authentication:
         config:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
-      operandBindInfo:
+      operandBindInfo:  
         operand: ibm-im-operator
   - name: ibm-iam-operator
     spec:
@@ -1730,3 +1738,4 @@ func applyTemplate(objectTemplate string, data interface{}) ([]byte, error) {
 
 	return buffer.Bytes(), nil
 }
+
