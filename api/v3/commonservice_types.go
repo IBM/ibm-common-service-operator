@@ -18,7 +18,6 @@ package v3
 
 import (
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -206,7 +205,7 @@ type HugePages struct {
 	// HugePagesEnabled enables hugepages settings for foundational services
 	Enable bool `json:"enable,omitempty"`
 	// HugePagesSizes describes the size of the hugepages
-	HugePagesSizes map[string]resource.Quantity `json:"-"`
+	HugePagesSizes map[string]string `json:"-"`
 }
 
 // CommonServiceStatus defines the observed state of CommonService

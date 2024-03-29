@@ -18,6 +18,8 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -26,6 +28,7 @@ import (
 	"k8s.io/klog"
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
+	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/controllers/size"
 )
@@ -80,6 +83,31 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured) (
 		newConfigs = append(newConfigs, fipsEnabledConfig...)
 	}
 
+	// if there is a hugepage setting enabled
+	if hugespages := cs.Object["spec"].(map[string]interface{})["hugepages"]; hugespages != nil {
+		klog.Info("Applying hugepages configuration")
+		if enable := hugespages.(map[string]interface{})["enable"]; enable != nil && enable.(bool) {
+			hugePagesStruct, err := unmarshalHugePages(hugespages.(map[string]interface{}))
+			if err != nil {
+				return nil, nil, err
+			}
+			for size, allocation := range hugePagesStruct.HugePagesSizes {
+				if allocation == "" {
+					allocation = constant.DefaultHugePageAllocation
+				}
+				klog.Infof("Hugepages size: %s, allocation: %s", size, allocation)
+				replacer := strings.NewReplacer("placeholder1", size, "placeholder2", allocation)
+				hugePagesConfig, err := convertStringToSlice(replacer.Replace(constant.HugePagesTemplate))
+				klog.Infof("Hugepages config: %v", hugePagesConfig)
+				if err != nil {
+					return nil, nil, err
+				}
+				newConfigs = append(newConfigs, hugePagesConfig...)
+			}
+
+		}
+	}
+
 	// Update storageclass for API Catalog
 	if features := cs.Object["spec"].(map[string]interface{})["features"]; features != nil {
 		if apiCatalog := features.(map[string]interface{})["apiCatalog"]; apiCatalog != nil {
@@ -92,8 +120,9 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured) (
 			}
 		}
 	}
-	klog.Info("Applying label configuration")
+
 	if labels := cs.Object["spec"].(map[string]interface{})["labels"]; labels != nil {
+		klog.Info("Applying label configuration")
 		labelset := csObject.Spec.Labels
 		for key, value := range labelset {
 			replacer := strings.NewReplacer("placeholder1", key, "placeholder2", value)
@@ -223,4 +252,26 @@ func applySizeTemplate(cs *unstructured.Unstructured, sizeTemplate string, servi
 		}
 	}
 	return sizes, serviceControllerMapping, nil
+}
+
+// unmarshalHugePages unmarshals the hugepages map to HugePages struct
+func unmarshalHugePages(hugespages map[string]interface{}) (*apiv3.HugePages, error) {
+	hugespagesBytes, err := json.Marshal(util.SanitizeData(hugespages, "string", true))
+	if err != nil {
+		return nil, err
+	}
+
+	hugePagesStruct := &apiv3.HugePages{}
+	fmt.Printf("hugespagesBytes: %v\n", string(hugespagesBytes))
+	if err := json.Unmarshal(hugespagesBytes, hugePagesStruct); err != nil {
+		return nil, err
+	}
+	fmt.Printf("hugePagesStruct: %v\n", hugePagesStruct)
+	fmt.Printf("hugespagesBytes: %v\n", string(hugespagesBytes))
+	if err := json.Unmarshal(hugespagesBytes, &hugePagesStruct.HugePagesSizes); err != nil {
+		return nil, err
+	}
+	fmt.Printf("hugePagesStruct: %v\n", hugePagesStruct)
+
+	return hugePagesStruct, nil
 }

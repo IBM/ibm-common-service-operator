@@ -21,7 +21,6 @@
 package v3
 
 import (
-	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -282,9 +281,9 @@ func (in *HugePages) DeepCopyInto(out *HugePages) {
 	*out = *in
 	if in.HugePagesSizes != nil {
 		in, out := &in.HugePagesSizes, &out.HugePagesSizes
-		*out = make(map[string]resource.Quantity, len(*in))
+		*out = make(map[string]string, len(*in))
 		for key, val := range *in {
-			(*out)[key] = val.DeepCopy()
+			(*out)[key] = val
 		}
 	}
 }
