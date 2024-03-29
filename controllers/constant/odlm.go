@@ -842,7 +842,7 @@ spec:
               size: 1Gi
         force: true
         annotations:
-          k8s.enterprisedb.io/addons: ["velero"]
+          k8s.enterprisedb.io/addons: '["velero"]'
           k8s.enterprisedb.io/snapshotAllowColdBackupOnPrimary: enabled
         labels:
           foundationservices.cloudpak.ibm.com: keycloak
