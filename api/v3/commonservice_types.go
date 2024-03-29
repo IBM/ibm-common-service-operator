@@ -18,6 +18,7 @@ package v3
 
 import (
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -100,10 +101,13 @@ type CommonServiceSpec struct {
 	// DefalutAdminUser is the name of the default admin user for foundational
 	// services IM, default is cpadmin
 	DefaultAdminUser string `json:"defaultAdminUser,omitempty"`
-	// Labels describes  foundational services will use this
+	// Labels describes foundational services will use this
 	// labels to labels their corresponding resources
 	Labels map[string]string `json:"labels,omitempty"`
-
+	// +optional
+	// HugePages describes the hugepages settings for foundational services
+	// +kubebuilder:pruning:PreserveUnknownFields
+	HugePages HugePages `json:"hugepages,omitempty"`
 	// +optional
 	License LicenseList `json:"license"`
 }
@@ -195,6 +199,14 @@ type ConfigStatus struct {
 	Configurable bool `json:"configurable,omitempty"`
 	// TopologyConfigurableCRs describes the configurable CommonService CR
 	TopologyConfigurableCRs []ConfigurableCR `json:"topologyConfigurableCRs,omitempty"`
+}
+
+// HugePages defines the various hugepages settings applied to foundational services
+type HugePages struct {
+	// HugePagesEnabled enables hugepages settings for foundational services
+	Enable bool `json:"enable,omitempty"`
+	// HugePagesSizes describes the size of the hugepages
+	HugePagesSizes map[string]resource.Quantity `json:"-"`
 }
 
 // CommonServiceStatus defines the observed state of CommonService

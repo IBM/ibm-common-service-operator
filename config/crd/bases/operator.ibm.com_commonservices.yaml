@@ -1,11 +1,9 @@
-
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.6.1
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.14.0
   name: commonservices.operator.ibm.com
 spec:
   group: operator.ibm.com
@@ -19,23 +17,29 @@ spec:
   - name: v3
     schema:
       openAPIV3Schema:
-        description: CommonService is the Schema for the commonservices API. This
-          API is used to configure general foundational services configurations, such
-          as sizing, catalogsource, etc. See description of fields for more details.
-          An instance of this CRD is automatically created by the ibm-common-service-operator
-          upon installation to trigger the installation of critical installer components
+        description: |-
+          CommonService is the Schema for the commonservices API. This API is used to
+          configure general foundational services configurations, such as sizing,
+          catalogsource, etc. See description of fields for more details. An instance
+          of this CRD is automatically created by the ibm-common-service-operator upon
+          installation to trigger the installation of critical installer components
           such as operand-deployment-lifecycle-manager (ODLM), which is required to
           further install other services from foundational services, such as IM.
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
@@ -43,20 +47,24 @@ spec:
             description: CommonServiceSpec defines the desired state of CommonService
             properties:
               BYOCACertificate:
-                description: BYOCACertificate enables the option to replace the cs-ca-certificate
-                  with your own CA certificate
+                description: |-
+                  BYOCACertificate enables the option to replace the cs-ca-certificate with
+                  your own CA certificate
                 type: boolean
               catalogName:
-                description: CatalogName is the name of the CatalogSource that will
-                  be used for ODLM and other services in foundational services
+                description: |-
+                  CatalogName is the name of the CatalogSource that will be used for ODLM
+                  and other services in foundational services
                 type: string
               catalogNamespace:
-                description: CatalogNamespace is the namespace of the CatalogSource
-                  that will be used for ODLM and other services in foundational services
+                description: |-
+                  CatalogNamespace is the namespace of the CatalogSource that will be used
+                  for ODLM and other services in foundational services
                 type: string
               defaultAdminUser:
-                description: DefalutAdminUser is the name of the default admin user
-                  for foundational services IM, default is cpadmin
+                description: |-
+                  DefalutAdminUser is the name of the default admin user for foundational
+                  services IM, default is cpadmin
                 type: string
               features:
                 description: Features defines the configurations of Cloud Pak Services
@@ -79,14 +87,26 @@ spec:
               fipsEnabled:
                 description: FipsEnabled enables FIPS mode for foundational services
                 type: boolean
+              hugepages:
+                description: HugePages describes the hugepages settings for foundational
+                  services
+                properties:
+                  enable:
+                    description: HugePagesEnabled enables hugepages settings for foundational
+                      services
+                    type: boolean
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
               installPlanApproval:
-                description: 'InstallPlanApproval sets the approval mode for ODLM
-                  and other foundational services: Manual or Automatic'
+                description: |-
+                  InstallPlanApproval sets the approval mode for ODLM and other
+                  foundational services: Manual or Automatic
                 type: string
               labels:
                 additionalProperties:
                   type: string
-                description: Labels describes  foundational services will use this
+                description: |-
+                  Labels describes foundational services will use this
                   labels to labels their corresponding resources
                 type: object
               license:
@@ -109,22 +129,26 @@ spec:
               manualManagement:
                 type: boolean
               operatorNamespace:
-                description: OperatorNamespace describes the namespace where operators
-                  will be installed in such as ODLM. This will also apply to all services
-                  in foundational services, e.g. ODLM will install IM operator in
-                  this namespace
+                description: |-
+                  OperatorNamespace describes the namespace where operators will be
+                  installed in such as ODLM. This will also apply to all services in
+                  foundational services, e.g. ODLM will install IM operator in this
+                  namespace
                 type: string
               profileController:
-                description: ProfileController enables turbonomic to automatically
-                  handle sizing of foundational services. Default value is 'default'
+                description: |-
+                  ProfileController enables turbonomic to automatically handle sizing of
+                  foundational services. Default value is 'default'
                 type: string
               routeHost:
-                description: RouteHost describes the hostname for the foundational
-                  services route, and can only be configured pre-installation of IM
+                description: |-
+                  RouteHost describes the hostname for the foundational services route,
+                  and can only be configured pre-installation of IM
                 type: string
               services:
-                description: Services describes the CPU, memory, and replica configuration
-                  for individual services in foundational services
+                description: |-
+                  Services describes the CPU, memory, and replica configuration for
+                  individual services in foundational services
                 items:
                   properties:
                     managementStrategy:
@@ -146,18 +170,21 @@ spec:
                   type: object
                 type: array
               servicesNamespace:
-                description: ServicesNamespace describes the namespace where operands
-                  will be created in such as OperandRegistry and OperandConfig. This
-                  will also apply to all services in foundational services, e.g. IM
-                  will create operands in this namespace
+                description: |-
+                  ServicesNamespace describes the namespace where operands will be created
+                  in such as OperandRegistry and OperandConfig. This will also apply to all
+                  services in foundational services, e.g. IM will create operands in this
+                  namespace
                 type: string
               size:
-                description: 'Size describes the T-shirt size of foundational services:
-                  starterset, small, medium, or large'
+                description: |-
+                  Size describes the T-shirt size of foundational services: starterset,
+                  small, medium, or large
                 type: string
               storageClass:
-                description: StorageClass describes the storage class to use for the
-                  foundational services PVCs
+                description: |-
+                  StorageClass describes the storage class to use for the foundational
+                  services PVCs
                 type: string
             type: object
             x-kubernetes-preserve-unknown-fields: true
@@ -195,26 +222,30 @@ spec:
                     description: CatalogNamespace is the namesapce of the CatalogSource
                     type: string
                   configurable:
-                    description: Configurable indicates whether this CommonService
-                      CR is the one that can be used to configure the foundational
-                      services' installer. Other CommonService CRs configurations
-                      will not take effect, except for sizing
+                    description: |-
+                      Configurable indicates whether this CommonService CR is the one
+                      that can be used to configure the foundational services' installer. Other
+                      CommonService CRs configurations will not take effect, except for sizing
                     type: boolean
                   operatorDeployed:
-                    description: OperatorDeployed indicates whether the OperandRegistry
-                      has been created or not.
+                    description: |-
+                      OperatorDeployed indicates whether the OperandRegistry has been created
+                      or not.
                     type: boolean
                   operatorNamespace:
-                    description: OperatorNamespace is the namespace of where the foundational
-                      services' operators will be installed in.
+                    description: |-
+                      OperatorNamespace is the namespace of where the foundational services'
+                      operators will be installed in.
                     type: string
                   servicesDeployed:
-                    description: ServicesDeployed indicates whether the OperandConfig
-                      has been created or not.
+                    description: |-
+                      ServicesDeployed indicates whether the OperandConfig has been created or
+                      not.
                     type: boolean
                   servicesNamespace:
-                    description: ServicesNamespace is the namespace where the foundational
-                      services' operands will be created in.
+                    description: |-
+                      ServicesNamespace is the namespace where the foundational services'
+                      operands will be created in.
                     type: string
                   topologyConfigurableCRs:
                     description: TopologyConfigurableCRs describes the configurable
@@ -254,9 +285,3 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []

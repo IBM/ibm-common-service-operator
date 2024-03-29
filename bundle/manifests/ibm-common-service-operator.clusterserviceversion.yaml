@@ -22,7 +22,7 @@ metadata:
       ]
     capabilities: Seamless Upgrades
     containerImage: icr.io/cpopen/common-service-operator:latest
-    createdAt: "2024-02-13T22:52:36Z"
+    createdAt: "2024-03-29T01:19:05Z"
     description: The IBM Cloud Pak foundational services operator is used to deploy IBM foundational services.
     nss.operator.ibm.com/managed-operators: ibm-common-service-operator
     nss.operator.ibm.com/managed-webhooks: ""
@@ -97,6 +97,11 @@ spec:
               - urn:alm:descriptor:com.tectonic.ui:advanced
           - displayName: FIPS mode
             path: fipsEnabled
+            x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+              - urn:alm:descriptor:com.tectonic.ui:advanced
+          - displayName: HugePages Setting
+            path: hugePages.enable
             x-descriptors:
               - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
               - urn:alm:descriptor:com.tectonic.ui:advanced
