@@ -1014,6 +1014,10 @@ spec:
                     namespace: {{ .OperatorNs }}
             imagePullSecrets:
               - name: ibm-entitlement-key
+            logLevel: info
+            primaryUpdateStrategy: unsupervised
+            primaryUpdateMethod: switchover
+            enableSuperuserAccess: true
             replicationSlots:
               highAvailability:
                 enabled: true
@@ -1022,7 +1026,6 @@ spec:
               replicationTLSSecret: common-service-db-replica-tls-secret
               serverCASecret: cs-ca-certificate-secret
               serverTLSSecret: common-service-db-tls-secret
-            primaryUpdateStrategy: unsupervised
             startDelay: 120
             stopDelay: 90
             storage:
