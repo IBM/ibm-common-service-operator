@@ -87,18 +87,20 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured) (
 	if hugespages := cs.Object["spec"].(map[string]interface{})["hugepages"]; hugespages != nil {
 		klog.Info("Applying hugepages configuration")
 		if enable := hugespages.(map[string]interface{})["enable"]; enable != nil && enable.(bool) {
-			hugePagesStruct, err := unmarshalHugePages(hugespages.(map[string]interface{}))
+			hugePagesStruct, err := UnmarshalHugePages(hugespages)
 			if err != nil {
 				return nil, nil, err
 			}
 			for size, allocation := range hugePagesStruct.HugePagesSizes {
+				if !strings.HasPrefix(size, "hugepages-") {
+					return nil, nil, fmt.Errorf("invalid hugepage size format: %s", size)
+				}
+
 				if allocation == "" {
 					allocation = constant.DefaultHugePageAllocation
 				}
-				klog.Infof("Hugepages size: %s, allocation: %s", size, allocation)
 				replacer := strings.NewReplacer("placeholder1", size, "placeholder2", allocation)
 				hugePagesConfig, err := convertStringToSlice(replacer.Replace(constant.HugePagesTemplate))
-				klog.Infof("Hugepages config: %v", hugePagesConfig)
 				if err != nil {
 					return nil, nil, err
 				}
@@ -254,24 +256,25 @@ func applySizeTemplate(cs *unstructured.Unstructured, sizeTemplate string, servi
 	return sizes, serviceControllerMapping, nil
 }
 
-// unmarshalHugePages unmarshals the hugepages map to HugePages struct
-func unmarshalHugePages(hugespages map[string]interface{}) (*apiv3.HugePages, error) {
-	hugespagesBytes, err := json.Marshal(util.SanitizeData(hugespages, "string", true))
+// UnmarshalHugePages unmarshals the hugepages map to HugePages struct
+func UnmarshalHugePages(hugespages interface{}) (*apiv3.HugePages, error) {
+	hugespagesBytes, err := json.Marshal(hugespages)
 	if err != nil {
 		return nil, err
 	}
 
 	hugePagesStruct := &apiv3.HugePages{}
-	fmt.Printf("hugespagesBytes: %v\n", string(hugespagesBytes))
 	if err := json.Unmarshal(hugespagesBytes, hugePagesStruct); err != nil {
 		return nil, err
 	}
-	fmt.Printf("hugePagesStruct: %v\n", hugePagesStruct)
-	fmt.Printf("hugespagesBytes: %v\n", string(hugespagesBytes))
-	if err := json.Unmarshal(hugespagesBytes, &hugePagesStruct.HugePagesSizes); err != nil {
+
+	hugespagesBytesSanitized, err := json.Marshal(util.SanitizeData(hugespages, "string", true))
+	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("hugePagesStruct: %v\n", hugePagesStruct)
+	if err := json.Unmarshal(hugespagesBytesSanitized, &hugePagesStruct.HugePagesSizes); err != nil {
+		return nil, err
+	}
 
 	return hugePagesStruct, nil
 }

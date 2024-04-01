@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-package operandrequest
+package commonservice
 
 import (
 	"context"
@@ -49,9 +49,12 @@ type Defaulter struct {
 func (r *Defaulter) Handle(ctx context.Context, req admission.Request) admission.Response {
 	klog.Infof("Webhook is invoked by Commonservice %s/%s", req.AdmissionRequest.Namespace, req.AdmissionRequest.Name)
 
+	// If operator is not in the operatorNamespace, it is dormant
 	if r.IsDormant {
 		return admission.Allowed("")
 	}
+
+	// Initialize the context for the tenant topology
 	serviceNs := util.GetServicesNamespace(r.Reader)
 	operatorNs, operatorNsErr := util.GetOperatorNamespace()
 	if operatorNsErr != nil {
@@ -64,6 +67,7 @@ func (r *Defaulter) Handle(ctx context.Context, req admission.Request) admission
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
+	// handle the request from CommonService
 	cs := &operatorv3.CommonService{}
 
 	err := r.decoder.Decode(req, cs)
@@ -111,7 +115,6 @@ func (r *Defaulter) Handle(ctx context.Context, req admission.Request) admission
 		}
 
 		// check CatalogName
-
 		catalogName := cs.Spec.CatalogName
 		deniedCatalog := r.CheckConfig(string(catalogName), catalogSourceName)
 		if deniedCatalog {

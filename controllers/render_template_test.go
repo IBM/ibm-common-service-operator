@@ -1,11 +1,28 @@
+//
+// Copyright 2022 IBM Corporation
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
 package controllers
 
 import (
 	"testing"
 
-	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 )
 
 var _ = Describe("Render Template", func() {
@@ -17,7 +34,7 @@ var _ = Describe("Render Template", func() {
 				"hugepages-2Mi": "1Gi",
 			}
 
-			hugePagesStruct, err := unmarshalHugePages(hugePages)
+			hugePagesStruct, err := UnmarshalHugePages(hugePages)
 			Expect(err).To(BeNil())
 			Expect(hugePagesStruct).To(Equal(&apiv3.HugePages{
 				HugePagesSizes: map[string]string{
@@ -35,9 +52,10 @@ var _ = Describe("Render Template", func() {
 				"hugepages-2Mi": "1Gi",
 			}
 
-			hugePagesStruct, err := unmarshalHugePages(hugePages)
+			hugePagesStruct, err := UnmarshalHugePages(hugePages)
 			Expect(err).To(BeNil())
 			Expect(hugePagesStruct).To(Equal(&apiv3.HugePages{
+				Enable: true,
 				HugePagesSizes: map[string]string{
 					"hugepages-2Gi": "",
 					"hugepages-2Mi": "1Gi",

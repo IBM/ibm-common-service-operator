@@ -840,27 +840,34 @@ func EncodeBase64(data []byte) string {
 }
 
 // SanitizeData keep the key-value pair in the map if the value fulfill the valueType and requirement
-func SanitizeData(data map[string]interface{}, valueType string, isEmpty bool) map[string]interface{} {
-	sanitizedData := make(map[string]interface{})
-	for key, value := range data {
-		switch valueType {
-		case "string":
-			if v, ok := value.(string); ok && (isEmpty || v != "") {
-				sanitizedData[key] = v
-			}
-		case "bool":
-			if v, ok := value.(bool); ok {
-				sanitizedData[key] = v
-			}
-		case "int":
-			if v, ok := value.(int); ok {
-				sanitizedData[key] = v
-			}
-		case "float64":
-			if v, ok := value.(float64); ok {
-				sanitizedData[key] = v
+func SanitizeData(data interface{}, valueType string, isEmpty bool) interface{} {
+	// check data type
+	switch data.(type) {
+	case map[string]interface{}:
+		sanitizedData := make(map[string]interface{})
+		for key, value := range data.(map[string]interface{}) {
+			switch valueType {
+			case "string":
+				if v, ok := value.(string); ok && (isEmpty || v != "") {
+					sanitizedData[key] = v
+				}
+			case "bool":
+				if v, ok := value.(bool); ok {
+					sanitizedData[key] = v
+				}
+			case "int":
+				if v, ok := value.(int); ok {
+					sanitizedData[key] = v
+				}
+			case "float64":
+				if v, ok := value.(float64); ok {
+					sanitizedData[key] = v
+				}
 			}
 		}
+		return sanitizedData
+	default:
+		klog.Errorf("data type is not map[string]interface{}")
+		return nil
 	}
-	return sanitizedData
 }
