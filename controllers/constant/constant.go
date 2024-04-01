@@ -100,6 +100,8 @@ const (
 	OpregAPIGroupVersion = "operator.ibm.com/v1alpha1"
 	// OpregKind is the kind of OperandRegistry
 	OpregKind = "OperandRegistry"
+	// DefaultHugePageAllocation is the default huge page allocation
+	DefaultHugePageAllocation = "100Mi"
 )
 
 // CsOg is OperatorGroup constent for the common service operator

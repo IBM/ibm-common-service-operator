@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-package operandrequest
+package commonservice
 
 import (
 	"context"
@@ -24,6 +24,8 @@ import (
 
 	// certmanagerv1alpha1 "github.com/ibm/ibm-cert-manager-operator/apis/certmanager/v1alpha1"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -31,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	operatorv3 "github.com/IBM/ibm-common-service-operator/api/v3"
+	controller "github.com/IBM/ibm-common-service-operator/controllers"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 )
@@ -49,9 +52,12 @@ type Defaulter struct {
 func (r *Defaulter) Handle(ctx context.Context, req admission.Request) admission.Response {
 	klog.Infof("Webhook is invoked by Commonservice %s/%s", req.AdmissionRequest.Namespace, req.AdmissionRequest.Name)
 
+	// If operator is not in the operatorNamespace, it is dormant
 	if r.IsDormant {
 		return admission.Allowed("")
 	}
+
+	// Initialize the context for the tenant topology
 	serviceNs := util.GetServicesNamespace(r.Reader)
 	operatorNs, operatorNsErr := util.GetOperatorNamespace()
 	if operatorNsErr != nil {
@@ -64,9 +70,17 @@ func (r *Defaulter) Handle(ctx context.Context, req admission.Request) admission
 		return admission.Errored(http.StatusBadRequest, err)
 	}
 
+	// handle the request from CommonService
 	cs := &operatorv3.CommonService{}
+	csUnstrcuted := &unstructured.Unstructured{}
 
 	err := r.decoder.Decode(req, cs)
+	if err != nil {
+		return admission.Errored(http.StatusBadRequest, err)
+	}
+
+	// Convert the request to unstructured
+	err = r.decoder.Decode(req, csUnstrcuted)
 	if err != nil {
 		return admission.Errored(http.StatusBadRequest, err)
 	}
@@ -111,7 +125,6 @@ func (r *Defaulter) Handle(ctx context.Context, req admission.Request) admission
 		}
 
 		// check CatalogName
-
 		catalogName := cs.Spec.CatalogName
 		deniedCatalog := r.CheckConfig(string(catalogName), catalogSourceName)
 		if deniedCatalog {
@@ -124,6 +137,12 @@ func (r *Defaulter) Handle(ctx context.Context, req admission.Request) admission
 		if deniedCatalogNs {
 			return admission.Denied(fmt.Sprintf("CatalogSource Namespace: %v is not allowed to be configured in namespace %v", catalogNamespace, req.AdmissionRequest.Namespace))
 		}
+	}
+
+	// check HugePageSetting
+	deniedHugePage, err := r.HugePageSettingDenied(csUnstrcuted)
+	if err != nil || deniedHugePage {
+		return admission.Denied(fmt.Sprintf("HugePageSetting is invalid: %v", err))
 	}
 
 	// admission.PatchResponse generates a Response containing patches.
@@ -147,6 +166,32 @@ func (r *Defaulter) CheckConfig(config, parameter string) bool {
 		return false
 	}
 	return config != parameter
+}
+
+func (r *Defaulter) HugePageSettingDenied(cs *unstructured.Unstructured) (bool, error) {
+	if hugespages := cs.Object["spec"].(map[string]interface{})["hugepages"]; hugespages != nil {
+		if enable := hugespages.(map[string]interface{})["enable"]; enable != nil && enable.(bool) {
+			hugePagesStruct, err := controller.UnmarshalHugePages(hugespages)
+			if err != nil {
+				return true, fmt.Errorf("failed to unmarshal hugepages: %v", err)
+			}
+
+			for size, allocation := range hugePagesStruct.HugePagesSizes {
+				// check if size is in the format of `hugepages-<size>`
+				sizeSplit := strings.Split(size, "-")
+				if len(sizeSplit) != 2 || sizeSplit[0] != "hugepages" {
+					return true, fmt.Errorf("invalid hugepages size on prefix: %s, please specify in the format of `hugepages-<size>`", size)
+				} else if _, err := resource.ParseQuantity(sizeSplit[1]); err != nil {
+					return true, fmt.Errorf("invalid hugepages size on Quantity: %s, please specify in the format of `hugepages-<size>`", size)
+				}
+				if _, err := resource.ParseQuantity(allocation); err != nil && allocation != "" {
+					return true, fmt.Errorf("invalid hugepages allocation: %s, please specify in the format of `hugepages-<size>: <allocation>`", allocation)
+				}
+			}
+		}
+	}
+
+	return false, nil
 }
 
 func (r *Defaulter) InjectDecoder(decoder *admission.Decoder) error {
