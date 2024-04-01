@@ -1055,16 +1055,24 @@ function cleanup_secretshare() {
 function cleanup_crossplane() {
     #check if crossplane operator is installed or not
     local is_exist=$($OC get subscription.operators.coreos.com -A --no-headers | (grep ibm-crossplane || echo "fail") | awk '{print $1}')
+    resource_types=("configuration.pkg.ibm.crossplane.io" "lock.pkg.ibm.crossplane.io" "ProviderConfig")
     if [[ $is_exist != "fail" ]]; then
-        # delete CR
-        info "cleanup crossplane CR"
-        ${OC} get configuration.pkg.ibm.crossplane.io -A --no-headers | awk '{print $1}' | xargs ${OC} delete --ignore-not-found configuration.pkg.ibm.crossplane.io
-        ${OC} get lock.pkg.ibm.crossplane.io -A --no-headers | awk '{print $1}' | xargs ${OC} delete --ignore-not-found lock.pkg.ibm.crossplane.io
-        ${OC} get ProviderConfig -A --no-headers | awk '{print $1}' | xargs ${OC} delete --ignore-not-found ProviderConfig
+        # Delete CR
+        msg "Cleanup crossplane CR"
 
-        sleep 30
+        for resource_type in "${resource_types[@]}"; do
+            # Retrieve resources and attempt deletion
+            resources=$(${OC} get $resource_type -A --no-headers | awk '{print $1}')
+            for resource in $resources; do
+                msg "Deleting $resource..."
+                if ! ${OC} delete $resource_type $resource --ignore-not-found --timeout=10s > /dev/null 2>&1; then
+                    warning "Deletion of $resource failed. Patching finalizer..."
+                    ${OC} patch $resource_type $resource --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+                fi
+            done
+        done
 
-        # delete Sub
+        # Delete Sub
         info "cleanup crossplane Subscription and ClusterServiceVersion"
         local namespace=$($OC get subscription.operators.coreos.com -A --no-headers | (grep ibm-crossplane-operator-app || echo "fail") | awk '{print $1}')
         if [[ $namespace != "fail" ]]; then
