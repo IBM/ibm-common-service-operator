@@ -17,7 +17,11 @@
 package v3
 
 import (
+	"sync"
+	"time"
+
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -216,7 +220,47 @@ type CommonServiceStatus struct {
 	// OverallStatus describes whether the Installation for the foundational services has succeeded or not
 	OverallStatus string       `json:"overallStatus,omitempty"`
 	ConfigStatus  ConfigStatus `json:"configStatus,omitempty"`
+	// Conditions represents the current state of CommonService
+	// +optional
+	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Conditions",xDescriptors="urn:alm:descriptor:io.kubernetes.conditions"
+	Conditions []CommonServiceCondition `json:"conditions,omitempty"`
 }
+
+// CommonServiceCondition defines the observed condition of CommonService
+type CommonServiceCondition struct {
+	// Type of condition.
+	// +optional
+	Type ConditionType `json:"type"`
+	// Status of the condition, one of True, False, Unknown.
+	// +optional
+	Status corev1.ConditionStatus `json:"status"`
+	// The last time this condition was updated.
+	// +optional
+	LastUpdateTime string `json:"lastUpdateTime,omitempty"`
+	// Last time the condition transitioned from one status to another.
+	// +optional
+	LastTransitionTime string `json:"lastTransitionTime,omitempty"`
+	// The reason for the condition's last transition.
+	// +optional
+	Reason string `json:"reason,omitempty"`
+	// A human readable message indicating details about the transition.
+	// +optional
+	Message string `json:"message,omitempty"`
+}
+
+// ConditionType is the condition of a service.
+type ConditionType string
+
+// ResourceType is the type of condition use.
+type ResourceType string
+
+const (
+	ConditionTypeBlocked ConditionType = "Blocked"
+	ConditionTypeReady   ConditionType = "Ready"
+	ConditionTypeWarning ConditionType = "Warning"
+	ConditionTypeError   ConditionType = "Error"
+	ConditionTypePending ConditionType = "Pending"
+)
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
@@ -240,7 +284,6 @@ type CommonService struct {
 }
 
 // +kubebuilder:object:root=true
-
 // CommonServiceList contains a list of CommonService
 type CommonServiceList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -291,6 +334,47 @@ func (r *CommonService) UpdateNonMasterConfigStatus(CSData *CSData) {
 	r.Status.ConfigStatus.Configurable = false
 
 	r.UpdateTopologyCR(CSData)
+}
+
+// NewCondition Returns a new condition with the given values for CommonService
+func newCondition(condType ConditionType, status corev1.ConditionStatus, reason, message string) *CommonServiceCondition {
+	now := time.Now().Format(time.RFC3339)
+	return &CommonServiceCondition{
+		Type:               condType,
+		Status:             status,
+		LastUpdateTime:     now,
+		LastTransitionTime: now,
+		Reason:             reason,
+		Message:            message,
+	}
+}
+
+// GetCondition returns the condition status by given condition type and message
+func getCondition(conds *[]CommonServiceCondition, condtype ConditionType, msg string) (int, *CommonServiceCondition) {
+	for i, condition := range *conds {
+		if condtype == condition.Type && msg == condition.Message {
+			return i, &condition
+		}
+	}
+	return -1, nil
+}
+
+// SetCondition append a new condition status
+func (r *CommonService) setCondition(condition CommonServiceCondition) {
+	pos, cp := getCondition(&r.Status.Conditions, condition.Type, condition.Message)
+	if cp != nil {
+		r.Status.Conditions[pos] = condition
+	} else {
+		r.Status.Conditions = append(r.Status.Conditions, condition)
+	}
+}
+
+// SetCreatingCondition creates a new condition status
+func (r *CommonService) SetCreatingCondition(name string, condstatus corev1.ConditionStatus, mu sync.Locker) {
+	mu.Lock()
+	defer mu.Unlock()
+	c := newCondition(ConditionTypePending, condstatus, "Creating", "Waiting for CommonService is ready.")
+	r.setCondition(*c)
 }
 
 func (r *CommonService) UpdateTopologyCR(CSData *CSData) {
