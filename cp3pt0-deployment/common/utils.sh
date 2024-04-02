@@ -1103,15 +1103,21 @@ function cleanup_deployment() {
 function delete_resources() {
     local resource_types=("${!1}")
     local namespace=${2:--A}
+    local namespace_arg="-A"
+
+    if [ $namespace != "-A" ]; then
+        namespace_arg="-n $namespace"
+    fi
 
     for resource_type in "${resource_types[@]}"; do
+        msg "Deleting $resource_type resources..."
         # Retrieve resources of the specified type
-        resources=$(${OC} get $resource_type -n ${namespace} --no-headers | awk '{print $1}')
+        resources=$(${OC} get $resource_type ${namespace_arg} --no-headers --ignore-not-found | awk '{print $1}')
         for resource in $resources; do
             msg "Deleting $resource..."
-            if ! ${OC} delete $resource_type $resource -n ${namespace} --ignore-not-found --timeout=10s > /dev/null 2>&1; then
+            if ! ${OC} delete $resource_type $resource ${namespace_arg} --ignore-not-found --timeout=10s > /dev/null 2>&1; then
                 warning "Deletion of $resource failed. Patching finalizer..."
-                ${OC} patch $resource_type $resource -n ${namespace} --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+                ${OC} patch $resource_type $resource ${namespace_arg} --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
             fi
         done 
     done
