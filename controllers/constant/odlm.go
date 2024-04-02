@@ -234,6 +234,7 @@ spec:
     namespace: "{{ .CPFSNs }}"
     packageName: cloud-native-postgresql
     scope: public
+    operatorConfig: cloud-native-postgresql-operator-config
 `
 )
 
@@ -257,6 +258,7 @@ spec:
     namespace: "{{ .CPFSNs }}"
     packageName: cloud-native-postgresql
     scope: public
+    operatorConfig: cloud-native-postgresql-operator-config
 `
 )
 
@@ -1268,6 +1270,7 @@ spec:
     packageName: cloud-native-postgresql
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    operatorConfig: cloud-native-postgresql-operator-config
   - channel: alpha
     name: ibm-user-data-services-operator
     namespace: "{{ .CPFSNs }}"
