@@ -771,7 +771,6 @@ spec:
           spec:
             keycloakCRName: cs-keycloak
             realm:
-              displayName: IBM Cloud Pak
               displayNameHtml: "<div class=\"kc-logo-text\"><span>IBM Cloud Pak</span></div>"
               enabled: true
               id: cloudpak
