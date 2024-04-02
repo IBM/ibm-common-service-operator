@@ -64,7 +64,7 @@ function main() {
     pre_req
     prepare_preview_mode
 
-    # # TODO check Cloud Pak compatibility
+    # TODO check Cloud Pak compatibility
 
     # Scale down CS, ODLM and delete OperandReigsrty
     # It helps to prevent re-installing licensing and cert-manager services

@@ -1053,24 +1053,13 @@ function cleanup_secretshare() {
 
 # TODO: clean up crossplane sub and CR in operator_ns and service_ns
 function cleanup_crossplane() {
-    #check if crossplane operator is installed or not
+    # check if crossplane operator is installed or not
     local is_exist=$($OC get subscription.operators.coreos.com -A --no-headers | (grep ibm-crossplane || echo "fail") | awk '{print $1}')
-    resource_types=("configuration.pkg.ibm.crossplane.io" "lock.pkg.ibm.crossplane.io" "ProviderConfig")
-    if [[ $is_exist != "fail" ]]; then
+    local resource_types=("configuration.pkg.ibm.crossplane.io" "lock.pkg.ibm.crossplane.io" "ProviderConfig")
+    if [[ $is_exist == "fail" ]]; then
         # Delete CR
         msg "Cleanup crossplane CR"
-
-        for resource_type in "${resource_types[@]}"; do
-            # Retrieve resources and attempt deletion
-            resources=$(${OC} get $resource_type -A --no-headers | awk '{print $1}')
-            for resource in $resources; do
-                msg "Deleting $resource..."
-                if ! ${OC} delete $resource_type $resource --ignore-not-found --timeout=10s > /dev/null 2>&1; then
-                    warning "Deletion of $resource failed. Patching finalizer..."
-                    ${OC} patch $resource_type $resource --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
-                fi
-            done
-        done
+        delete_resources resource_types[@] 
 
         # Delete Sub
         info "cleanup crossplane Subscription and ClusterServiceVersion"
@@ -1092,14 +1081,9 @@ function cleanup_OperandBindInfo() {
 
 function cleanup_NamespaceScope() {
     local namespace=$1
-    local resources=("odlm-scope-managedby-odlm" "nss-odlm-scope" "nss-managedby-odlm" "common-service")
-    for resource in "${resources[@]}"; do
-        msg "Delete $resource in namespace $namespace..."
-        if ! ${OC} delete namespacescope $resource -n ${namespace} --ignore-not-found --timeout=10s > /dev/null 2>&1; then
-            warning "Deletion of $resource failed. Patching finalizer..."
-            ${OC} patch -n ${namespace} namespacescope $resource --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
-        fi
-    done
+    resource_types=("namespacescope")
+
+    delete_resources resource_types[@] $namespace
 }
 
 function cleanup_OperandRequest() {
@@ -1115,6 +1099,24 @@ function cleanup_deployment() {
 
     wait_for_no_pod ${namespace} ${name}
 }
+
+function delete_resources() {
+    local resource_types=("${!1}")
+    local namespace=${2:--A}
+
+    for resource_type in "${resource_types[@]}"; do
+        # Retrieve resources of the specified type
+        resources=$(${OC} get $resource_type -n ${namespace} --no-headers | awk '{print $1}')
+        for resource in $resources; do
+            msg "Deleting $resource..."
+            if ! ${OC} delete $resource_type $resource -n ${namespace} --ignore-not-found --timeout=10s > /dev/null 2>&1; then
+                warning "Deletion of $resource failed. Patching finalizer..."
+                ${OC} patch $resource_type $resource -n ${namespace} --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+            fi
+        done 
+    done
+}
+    
 # ---------- cleanup functions end ----------#
 
 function get_control_namespace() {
