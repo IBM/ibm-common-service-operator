@@ -518,6 +518,17 @@ func (b *Bootstrap) ListOperandConfig(ctx context.Context, opts ...client.ListOp
 	return opconfigList
 }
 
+// ListOperatorConfig returns the OperatorConfig instance with "options"
+func (b *Bootstrap) ListOperatorConfig(ctx context.Context, opts ...client.ListOption) *odlm.OperatorConfigList {
+	operatorConfigList := &odlm.OperatorConfigList{}
+	if err := b.Client.List(ctx, operatorConfigList, opts...); err != nil {
+		klog.Errorf("failed to List OperandConfig: %v", err)
+		return nil
+	}
+
+	return operatorConfigList
+}
+
 // ListNssCRs returns the NameSpaceScopes instance list with "options"
 func (b *Bootstrap) ListNssCRs(ctx context.Context, namespace string) (*nssv1.NamespaceScopeList, error) {
 	nssCRsList := &nssv1.NamespaceScopeList{}
@@ -714,6 +725,33 @@ func (b *Bootstrap) InstallOrUpdateOpcon(forceUpdateODLMCRs bool) error {
 	if err := b.renderTemplate(concatenatedCon, b.CSData, forceUpdateODLMCRs); err != nil {
 		return err
 	}
+	return nil
+}
+
+// InstallOrUpdateOpcon will install or update OperandConfig when Opcon CRD is existent
+func (b *Bootstrap) InstallOrUpdateOperatorConfig(config string, forceUpdateODLMCRs bool) error {
+	// clean up OperatorConfigs not in servicesNamespace every time function is called
+	opts := []client.ListOption{
+		client.MatchingLabels(
+			map[string]string{constant.CsManagedLabel: "true"}),
+	}
+	operatorConfigList := b.ListOperatorConfig(ctx, opts...)
+	if operatorConfigList != nil {
+		for _, operatorConfig := range operatorConfigList.Items {
+			if operatorConfig.Namespace != b.CSData.ServicesNs {
+				if err := b.Client.Delete(ctx, &operatorConfig); err != nil {
+					klog.Errorf("Failed to delete idle OperandConfig %s/%s which is managed by CS operator, but not in ServicesNamespace %s", operatorConfig.GetNamespace(), operatorConfig.GetName(), b.CSData.ServicesNs)
+					return err
+				}
+				klog.Infof("Delete idle OperandConfig %s/%s which is managed by CS operator, but not in ServicesNamespace %s", operatorConfig.GetNamespace(), operatorConfig.GetName(), b.CSData.ServicesNs)
+			}
+		}
+	}
+
+	if err := b.renderTemplate(config, b.CSData, forceUpdateODLMCRs); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -1384,6 +1422,19 @@ func (b *Bootstrap) ConfigODLMOperandManagedByOperator(ctx context.Context) erro
 			} else if opconfig.Namespace != b.CSData.ServicesNs && opconfig.Status.Phase != odlm.ServiceInit {
 				klog.Warningf("Skipped deleting OperandConfig %s/%s, its status is %s", opconfig.GetNamespace(), opconfig.GetName(), opconfig.Status.Phase)
 				return fmt.Errorf("please configure the correct ServicesNamespace or uninstall the existing foundational services to configure the correct OperandConfig")
+			}
+		}
+	}
+
+	operatorConfigList := b.ListOperatorConfig(ctx, opts...)
+	if operatorConfigList != nil {
+		for _, operatorConfig := range operatorConfigList.Items {
+			if operatorConfig.Namespace != b.CSData.ServicesNs {
+				if err := b.Client.Delete(ctx, &operatorConfig); err != nil {
+					klog.Errorf("Failed to delete idle OperandConfig %s/%s which is managed by CS operator, but not in ServicesNamespace %s", operatorConfig.GetNamespace(), operatorConfig.GetName(), b.CSData.ServicesNs)
+					return err
+				}
+				klog.Infof("Delete idle OperandConfig %s/%s which is managed by CS operator, but not in ServicesNamespace %s", operatorConfig.GetNamespace(), operatorConfig.GetName(), b.CSData.ServicesNs)
 			}
 		}
 	}

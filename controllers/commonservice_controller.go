@@ -265,6 +265,20 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.OperatorNs, "common-service", instance.Namespace, instance.Name))
 	}
 
+	isEqual, err = r.updateOperatorConfig(ctx, instance.Spec.OperatorConfigs)
+	if err != nil {
+		if err := r.updatePhase(ctx, instance, CRFailed); err != nil {
+			klog.Error(err)
+		}
+		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
+		return ctrl.Result{}, err
+	}
+
+	// Create Event if there is no update in OperandConfig after applying current CR
+	if isEqual {
+		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, replica sizings in the OperatorConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.OperatorNs, "common-service", instance.Namespace, instance.Name))
+	}
+
 	if err := r.Bootstrap.PropagateDefaultCR(instance); err != nil {
 		klog.Error(err)
 		return ctrl.Result{}, err
@@ -348,14 +362,28 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(ctx context.Context, instan
 		return ctrl.Result{}, err
 	}
 
+	// Create Event if there is no update in OperandConfig after applying current CR
+	if isEqual {
+		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.OperatorNs, "common-service", instance.Namespace, instance.Name))
+	}
+
+	isEqual, err = r.updateOperatorConfig(ctx, instance.Spec.OperatorConfigs)
+	if err != nil {
+		if err := r.updatePhase(ctx, instance, CRFailed); err != nil {
+			klog.Error(err)
+		}
+		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
+		return ctrl.Result{}, err
+	}
+
 	if err := r.Bootstrap.UpdateResourceLabel(instance); err != nil {
 		klog.Error(err)
 		return ctrl.Result{}, err
 	}
 
-	// Create Event if there is no update in OperandConfig after applying current CR
+	// Create Event if there is no update in OperatorConfig after applying current CR
 	if isEqual {
-		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.OperatorNs, "common-service", instance.Namespace, instance.Name))
+		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update to, replica sizings in the OperatorConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.OperatorNs, "test-operator-config", instance.Namespace, instance.Name))
 	}
 
 	if err := r.updatePhase(ctx, instance, CRSucceeded); err != nil {

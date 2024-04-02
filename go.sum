@@ -61,8 +61,8 @@ github.com/IBM/ibm-namespace-scope-operator v1.11.0 h1:l8CPz+1XBvb77vWvNRU5AFFAA
 github.com/IBM/ibm-namespace-scope-operator v1.11.0/go.mod h1:wLkJV6mcFiZx/8ZpnGb46sbO8Q4SuYVSLSE5YrgY4v8=
 github.com/IBM/ibm-secretshare-operator v1.20.3 h1:4Mz7FJ3f9TwFJqTVu4SfBHhspqtXwaCPtLnxv7DWT14=
 github.com/IBM/ibm-secretshare-operator v1.20.3/go.mod h1:gAkGb8Hts8swz5Ptbvkq/S0YylHE4zOTmUvj68uTQDI=
-github.com/IBM/operand-deployment-lifecycle-manager v1.19.0 h1:96mWxWhoJxoDoL2TlJHIR/jzgxHSx9AJfmmS6bsuNbE=
-github.com/IBM/operand-deployment-lifecycle-manager v1.19.0/go.mod h1:N/CoO0EDow3UblekSQzY1HWz4js8R/HvrM3twmlTRT0=
+github.com/IBM/operand-deployment-lifecycle-manager v1.19.1-0.20240402031358-b026bcdb4492 h1:s4sgRcuNqWY3w7wyhjIIonUKf/26QwCoX0wxsbPIHLQ=
+github.com/IBM/operand-deployment-lifecycle-manager v1.19.1-0.20240402031358-b026bcdb4492/go.mod h1:N/CoO0EDow3UblekSQzY1HWz4js8R/HvrM3twmlTRT0=
 github.com/MakeNowJust/heredoc v0.0.0-20170808103936-bb23615498cd/go.mod h1:64YHyfSL2R96J44Nlwm39UHepQbyR5q10x7iYa1ks2E=
 github.com/Masterminds/goutils v1.1.0/go.mod h1:8cTjp+g8YejhMuvIA5y2vz3BpJxksy863GQaJW2MFNU=
 github.com/Masterminds/semver/v3 v3.0.3/go.mod h1:VPu/7SZ7ePZ3QOrcuXROw5FAcLl4a0cBrbBpGY/8hQs=

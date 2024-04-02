@@ -111,8 +111,21 @@ type CommonServiceSpec struct {
 	// HugePages describes the hugepages settings for foundational services
 	// +kubebuilder:pruning:PreserveUnknownFields
 	HugePages HugePages `json:"hugepages,omitempty"`
+	// OperatorConfigs is a list of configurations to be applied to operators via CSV updates
+	// +kubebuilder:pruning:PreserveUnknownFields
+	OperatorConfigs []OperatorConfig `json:"operatorConfigs,omitempty"`
 	// +optional
 	License LicenseList `json:"license"`
+}
+
+// OperatorConfig is configuration composed of key-value pairs to be injected into specified CSVs
+type OperatorConfig struct {
+	// Name is the name of the operator as requested in an OperandRequest
+	Name string `json:"name,omitempty"`
+	// Number of desired pods. This is a pointer to distinguish between explicit
+	// zero and not specified. Defaults to 1.
+	// +optional
+	Replicas *int32 `json:"replicas,omitempty" protobuf:"varint,1,opt,name=replicas"`
 }
 
 // LicenseList defines the license specification in CSV

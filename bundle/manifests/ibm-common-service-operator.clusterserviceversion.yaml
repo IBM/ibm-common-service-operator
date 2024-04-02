@@ -30,7 +30,7 @@ metadata:
     operatorChannel: v4.6
     operatorVersion: 4.6.0
     operators.openshift.io/infrastructure-features: '["disconnected"]'
-    operators.operatorframework.io/builder: operator-sdk-v1.31.0
+    operators.operatorframework.io/builder: operator-sdk-v1.29.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/IBM/ibm-common-service-operator
     support: IBM
@@ -464,6 +464,7 @@ spec:
                 - commonservices/status
                 - operandconfigs
                 - operandregistries
+                - operatorconfigs
               verbs:
                 - create
                 - delete

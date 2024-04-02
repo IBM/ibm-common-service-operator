@@ -132,6 +132,26 @@ spec:
                 type: object
               manualManagement:
                 type: boolean
+              operatorConfigs:
+                description: OperatorConfigs is a list of configurations to be applied
+                  to operators via CSV updates
+                items:
+                  description: OperatorConfig is configuration composed of key-value
+                    pairs to be injected into specified CSVs
+                  properties:
+                    name:
+                      description: Name is the name of the operator as requested in
+                        an OperandRequest
+                      type: string
+                    replicas:
+                      description: |-
+                        Number of desired pods. This is a pointer to distinguish between explicit
+                        zero and not specified. Defaults to 1.
+                      format: int32
+                      type: integer
+                  type: object
+                type: array
+                x-kubernetes-preserve-unknown-fields: true
               operatorNamespace:
                 description: |-
                   OperatorNamespace describes the namespace where operators will be

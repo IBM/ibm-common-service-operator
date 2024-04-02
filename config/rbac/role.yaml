@@ -121,6 +121,7 @@ rules:
   - commonservices/status
   - operandconfigs
   - operandregistries
+  - operatorconfigs
   verbs:
   - create
   - delete
