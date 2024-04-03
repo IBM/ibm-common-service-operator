@@ -78,7 +78,7 @@ function parse_arguments() {
             ;;
         --yq)
             shift
-            yq=$1
+            YQ=$1
             ;;
         --original-cs-ns)
             shift
@@ -127,8 +127,18 @@ function prereq() {
         error "Invalid value for DEBUG. Expected 0 or 1."
     fi
 
-    # check yq version
+    check_command "${OC}"
+    check_command "${YQ}"
+    # Check yq version
     check_yq
+
+    # Checking oc command logged in
+    user=$(${OC} whoami 2> /dev/null)
+    if [ $? -ne 0 ]; then
+        error "You must be logged into the OpenShift Cluster from the oc command line"
+    else
+        success "oc command logged in as ${user}"
+    fi
     
     if [[ -z "$FROM_NAMESPACE" ]] || [[ -z "$TO_NAMESPACE" ]]; then
         error "Both Original-CommonService-Namespace and Services-Namespace need to be set for script to execute. Please rerun script with both parameters set. Run with \"-h\" flag for more details"
