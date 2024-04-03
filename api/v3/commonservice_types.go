@@ -51,6 +51,7 @@ type ExtensionWithMarker struct {
 	runtime.RawExtension `json:",inline"`
 }
 
+// +kubebuilder:pruning:PreserveUnknownFields
 type ServiceConfig struct {
 	Name               string                         `json:"name"`
 	Spec               map[string]ExtensionWithMarker `json:"spec,omitempty"`
@@ -110,7 +111,7 @@ type CommonServiceSpec struct {
 	// +optional
 	// HugePages describes the hugepages settings for foundational services
 	// +kubebuilder:pruning:PreserveUnknownFields
-	HugePages HugePages `json:"hugepages,omitempty"`
+	HugePages *HugePages `json:"hugepages,omitempty"`
 	// OperatorConfigs is a list of configurations to be applied to operators via CSV updates
 	// +kubebuilder:pruning:PreserveUnknownFields
 	OperatorConfigs []OperatorConfig `json:"operatorConfigs,omitempty"`

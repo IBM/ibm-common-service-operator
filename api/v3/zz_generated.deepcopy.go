@@ -180,7 +180,11 @@ func (in *CommonServiceSpec) DeepCopyInto(out *CommonServiceSpec) {
 			(*out)[key] = val
 		}
 	}
-	in.HugePages.DeepCopyInto(&out.HugePages)
+	if in.HugePages != nil {
+		in, out := &in.HugePages, &out.HugePages
+		*out = new(HugePages)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.OperatorConfigs != nil {
 		in, out := &in.OperatorConfigs, &out.OperatorConfigs
 		*out = make([]OperatorConfig, len(*in))
