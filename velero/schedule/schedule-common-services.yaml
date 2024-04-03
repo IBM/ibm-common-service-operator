@@ -38,7 +38,7 @@ spec:
         - crd
         - lsr #non-data license service reporter resources
         - lsr-data #license service reporter data
-        - cs-db-data #pgdump
-        - cs-db #velero plugin
-        - keycloak-data #pgdump
-        - keycloak #velero plugin
+        - cs-db-data #pgdump approach to BR IM EDB data
+        - cs-db #velero plugin approach to BR IM EDB data
+        - keycloak-data #pgdump approach to BR keycloak data
+        - keycloak #velero plugin approach to BR keycloak data
