@@ -1117,7 +1117,7 @@ function delete_resources() {
             msg "Deleting $resource..."
             if ! ${OC} delete $resource_type $resource ${namespace_arg} --ignore-not-found --timeout=10s > /dev/null 2>&1; then
                 warning "Deletion of $resource failed. Patching finalizer..."
-                if [ $namesapce_arg == "-A" ]; then
+                if [ $namespace_arg == "-A" ]; then
                     ${OC} patch $resource_type $resource --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
                 else
                     ${OC} patch $resource_type $resource ${namespace_arg} --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
