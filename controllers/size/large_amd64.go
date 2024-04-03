@@ -78,13 +78,13 @@ const Large = `
         instances: 2
         resources:
           limits:
-            cpu: 1500m
-            memory: 3072Mi
-            ephemeral-storage: 1024Mi
+            cpu: 750m
+            memory: 1650Mi
+            ephemeral-storage: 700Mi
           requests:
-            ephemeral-storage: 500Mi
-            cpu: 384m
-            memory: 768Mi
+            ephemeral-storage: 200Mi
+            cpu: 225m
+            memory: 600Mi
 - name: ibm-im-mongodb-operator
   spec:
     mongoDB:
