@@ -990,8 +990,16 @@ spec:
         kind: Cluster
         name: common-service-db
         force: true
+        annotations:
+          k8s.enterprisedb.io/addons: ["velero"]
+          k8s.enterprisedb.io/snapshotAllowColdBackupOnPrimary: enabled
+        labels:
+          foundationservices.cloudpak.ibm.com: cs-db
         data:
           spec:
+            inheritedMetadata:
+              annotations:
+                backup.velero.io/backup-volumes: pgdata,pg-wal
             bootstrap:
               initdb:
                 database: cloudpak
