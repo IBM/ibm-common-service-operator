@@ -991,7 +991,7 @@ spec:
         name: common-service-db
         force: true
         annotations:
-          k8s.enterprisedb.io/addons: ["velero"]
+          k8s.enterprisedb.io/addons: '["velero"]'
           k8s.enterprisedb.io/snapshotAllowColdBackupOnPrimary: enabled
         labels:
           foundationservices.cloudpak.ibm.com: cs-db
