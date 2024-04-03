@@ -22,21 +22,23 @@ spec:
         - catalog
         - subscription
         - operand
-        - zen-data
+        - zen-data #zen 4 data
         - mongo-data
         - entitlementkey
         - commonservice
         - pull-secret
         - operatorgroup
-        - zen
+        - zen #non-data zen 4 resources
         - licensing
         - cert-manager
         - namespace
         - configmap
-        - zen5
-        - zen5-data
+        - zen5 #non-data zen 5 resources
+        - zen5-data #zen 5 data
         - crd
-        - lsr
-        - lsr-data
-        - cs-db-data
-        - keycloak-data
+        - lsr #non-data license service reporter resources
+        - lsr-data #license service reporter data
+        - cs-db-data #pgdump
+        - cs-db #velero plugin
+        - keycloak-data #pgdump
+        - keycloak #velero plugin
