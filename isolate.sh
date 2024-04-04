@@ -59,6 +59,14 @@ function main() {
     while [ "$#" -gt "0" ]
     do
         case "$1" in
+        "--oc")
+            shift
+            OC=$1
+            ;;
+        "--yq")
+            shift
+            YQ=$1
+            ;;
         "-h"|"--help")
             usage
             exit 0
@@ -153,6 +161,8 @@ See https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.0?topic=4x-is
 
 Options:
     -h, --help                    Display this help and exit
+    --oc string                   Optional. File path to oc CLI. Default uses oc in your PATH"
+    --yq string                   Optional. File path to yq CLI. Default uses yq in your PATH"
     --original-cs-ns              Required. Specify the namespace the original common services installation resides in
     --control-ns                  Required. Specify the control namespace value in the common-service-maps configmap
     --excluded-ns                 Optional. Specify namespaces to be excluded from the instance scope in original-cs-ns. Comma separated no spaces.
@@ -169,7 +179,18 @@ function prereq() {
 
     #verify one and only one cert manager is installed
     check_certmanager_count
+    check_command "${OC}"
+    check_command "${YQ}"
+    # Check yq version
     check_yq_version
+
+    # Checking oc command logged in
+    user=$(${OC} whoami 2> /dev/null)
+    if [ $? -ne 0 ]; then
+        error "You must be logged into the OpenShift Cluster from the oc command line"
+    else
+        success "oc command logged in as ${user}"
+    fi
 
     return_value="reset"
     # ensure cs-operator is not installed in all namespace mode
