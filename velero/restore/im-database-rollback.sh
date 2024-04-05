@@ -1397,7 +1397,7 @@ function deletemongocopy {
         ${OC} patch pv $VOL --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
     fi
 
-    success "MongoDB restored to new namespace $NAMESPACE"
+    success "MongoDB cleaned up in $NAMESPACE"
 
 }
 
@@ -1437,40 +1437,6 @@ function wait_for_pod_delete() {
     local error_message="Timeout after ${total_time_mins} minutes waiting for pod $pod "
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 
-}
-
-function delete_mongo_pods() {
-    local namespace=$1
-    local pods=$(${OC} get pods -n $namespace | grep icp-mongodb | awk '{print $1}' | tr "\n" " ")
-    for pod in $pods
-    do
-        debug1 "Deleting pod $pod"
-        ${OC} delete pod $pod -n $NAMESPACE --ignore-not-found
-        local condition="${OC} get pod -n $namespace --no-headers --ignore-not-found | grep ${pod} | egrep '2/2' || ${OC} get pod -n $namespace --no-headers --ignore-not-found | grep ${pod} | egrep '1/1' || true"
-        local retries=15
-        local sleep_time=15
-        local total_time_mins=$(( sleep_time * retries / 60))
-        local wait_message="Waiting for mongo pod $pod to restart "
-        local success_message="Pod $pod restarted with new mongo config"
-        local error_message="Timeout after ${total_time_mins} minutes waiting for pod $pod "
-        wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
-    done
-}
-
-function wait_for_job_complete() {
-    local job_name=$1
-    local namespace=$2
-    local condition="${OC} get pod -n $namespace --no-headers --ignore-not-found | grep ${job_name} | grep 'Completed' || true"
-    local retries=15
-    local sleep_time=15
-    local total_time_mins=$(( sleep_time * retries / 60))
-    local wait_message="Waiting for job pod $job_name to complete"
-    local success_message="Job $job_name completed in namespace $namespace"
-    local error_message="Timeout after ${total_time_mins} minutes waiting for pod $pod "
-    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
-    dumplogs $job_name
-    info "Deleting job $job_name"
-    ${OC} delete job $job_name -n $namespace
 }
 
 function cert_manager_readiness_test(){
