@@ -47,7 +47,7 @@ checkIfhostReachable() {
   custom_hostname=$(oc get configmap -n $map_to_common_service_namespace cs-onprem-tenant-config -o jsonpath='{.data.custom_hostname}')
   if [ -n "$custom_hostname" ]; then
       echo "Given Custom Hostname: $custom_hostname"
-      if ping -c 1 "$custom_hostname" >/dev/null 2>&1; then
+      if host "$custom_hostname" >/dev/null 2>&1; then
         echo "Host is reachable. Proceeding further..."
       else
         echo "$custom_hostname is not reachable. Exiting the script."
