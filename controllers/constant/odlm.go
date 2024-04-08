@@ -846,6 +846,9 @@ spec:
         annotations:
           k8s.enterprisedb.io/addons: '["velero"]'
           k8s.enterprisedb.io/snapshotAllowColdBackupOnPrimary: enabled
+          productID: 068a62892a1e4db39641342e592daa25
+          productMetric: FREE
+          productName: IBM Cloud Platform Common Services
         labels:
           foundationservices.cloudpak.ibm.com: keycloak
         kind: Cluster
@@ -989,6 +992,10 @@ spec:
       - apiVersion: postgresql.k8s.enterprisedb.io/v1
         kind: Cluster
         name: common-service-db
+        annotations:
+          productID: 068a62892a1e4db39641342e592daa25
+          productMetric: FREE
+          productName: IBM Cloud Platform Common Services
         force: true
         data:
           spec:
