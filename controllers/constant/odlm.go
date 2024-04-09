@@ -645,6 +645,16 @@ spec:
               enabled: false
             unsupported:
               podTemplate:
+                metadata:
+                  annotations:
+                    cpfsVersion:
+                      templatingValueFrom:
+                        objectRef:
+                          apiVersion: v1
+                          kind: ConfigMap
+                          name: cs-keycloak-theme
+                          path: .metadata.annotations.version
+                        required: true
                 spec:
                   containers:
                     - command:
