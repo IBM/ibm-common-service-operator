@@ -303,7 +303,7 @@ function wait_for_cscr_status(){
     local namespace=$1
     local name=$2
     local condition="${OC} -n ${namespace} get commonservice ${name} --no-headers --ignore-not-found -o jsonpath='{.status.phase}' | grep 'Succeeded'"
-    local retries=50
+    local retries=100
     local sleep_time=6
     local total_time_mins=$(( sleep_time * retries / 60))
     local wait_message="Waiting for CommonService CR ${name} in ${namespace} to be ready"
@@ -989,10 +989,10 @@ function cleanup_cp2() {
 function cleanup_webhook() {
     local control_ns=$1
     local nss_list=$2
+    local resource_types=("podpresets.operator.ibm.com")
     for ns in ${nss_list//,/ }
     do
-        info "Deleting podpresets in namespace $ns..."
-        ${OC} get podpresets.operator.ibm.com -n $ns --no-headers | awk '{print $1}' | xargs ${OC} delete -n $ns --ignore-not-found podpresets.operator.ibm.com
+        delete_resources resource_types[@] $ns
     done
     msg ""
 
@@ -1008,52 +1008,23 @@ function cleanup_webhook() {
 
 }
 
-# clean up issuers, certificates and secrets
-function cleanup_cm_resources() {
-    local issuer_name=$1
-    local cert_name=$2
-    local sercret_name=$3
-    local namespace=$4
-
-    return_value_issuer=$(${OC} get issuer.v1.cert-manager.io $issuer_name -n $namespace --ignore-not-found )
-    if [[ ! -z $return_value_issuer ]]; then
-        info "Deleting $issuer_name Issuer ..."
-        ${OC} delete issuer.v1.cert-manager.io $issuer_name -n $namespace --ignore-not-found
-        msg ""
-    fi
-
-    return_value_cert=$(${OC} get certificate.v1.cert-manager.io $cert_name -n $namespace --ignore-not-found )
-    if [[ ! -z $return_value_cert ]]; then
-        info "Deleting $cert_name Certificate ..."
-        ${OC} delete certificate.v1.cert-manager.io $cert_name -n $namespace --ignore-not-found
-        msg ""
-
-        info "Deleting $$secret_name Secret ..."
-        ${OC} delete secret $sercret_name -n $namespace --ignore-not-found
-        msg ""
-    fi
-
-}
-
-# TODO: clean up secretshare deployment and CR in service_ns
+# Clean up secretshare deployment and CR in service_ns
 function cleanup_secretshare() {
     local control_ns=$1
     local nss_list=$2
-
+    local resource_types=("secretshare")
     for ns in ${nss_list//,/ }
     do
-        info "Deleting SecretShare in namespace $ns..."
-        ${OC} get secretshare -n $ns --no-headers | awk '{print $1}' | xargs ${OC} delete -n $ns --ignore-not-found secretshare
+        delete_resources resource_types[@] $ns
     done
     msg ""
 
     cleanup_deployment "secretshare" "$control_ns"
-
 }
 
-# TODO: clean up crossplane sub and CR in operator_ns and service_ns
+# Clean up crossplane sub and CR in operator_ns and service_ns
 function cleanup_crossplane() {
-    # check if crossplane operator is installed or not
+    # Check if crossplane operator is installed or not
     local is_exist=$($OC get subscription.operators.coreos.com -A --no-headers | (grep ibm-crossplane || echo "fail") | awk '{print $1}')
     local resource_types=("configuration.pkg.ibm.crossplane.io" "lock.pkg.ibm.crossplane.io" "ProviderConfig")
     if [[ $is_exist == "fail" ]]; then
@@ -1115,9 +1086,9 @@ function delete_resources() {
         resources=$(${OC} get $resource_type ${namespace_arg} --no-headers --ignore-not-found | awk '{print $1}')
         for resource in $resources; do
             msg "Deleting $resource..."
-            if ! ${OC} delete $resource_type $resource ${namespace_arg} --ignore-not-found --timeout=10s > /dev/null 2>&1; then
+            if ! ${OC} delete $resource_type $resource ${namespace_arg} --ignore-not-found --timeout=60s > /dev/null 2>&1; then
                 warning "Deletion of $resource failed. Patching finalizer..."
-                if [ $namespace_arg == "-A" ]; then
+                if [ "$namespace_arg" == "-A" ]; then
                     ${OC} patch $resource_type $resource --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
                 else
                     ${OC} patch $resource_type $resource ${namespace_arg} --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
@@ -1126,7 +1097,33 @@ function delete_resources() {
         done 
     done
 }
-    
+
+# Clean up issuers, certificates and secrets
+function cleanup_cm_resources() {
+    local issuer_name=$1
+    local cert_name=$2
+    local sercret_name=$3
+    local namespace=$4
+
+    return_value_issuer=$(${OC} get issuer.v1.cert-manager.io $issuer_name -n $namespace --ignore-not-found )
+    if [[ ! -z $return_value_issuer ]]; then
+        info "Deleting $issuer_name Issuer ..."
+        ${OC} delete issuer.v1.cert-manager.io $issuer_name -n $namespace --ignore-not-found
+        msg ""
+    fi
+
+    return_value_cert=$(${OC} get certificate.v1.cert-manager.io $cert_name -n $namespace --ignore-not-found )
+    if [[ ! -z $return_value_cert ]]; then
+        info "Deleting $cert_name Certificate ..."
+        ${OC} delete certificate.v1.cert-manager.io $cert_name -n $namespace --ignore-not-found
+        msg ""
+
+        info "Deleting $$secret_name Secret ..."
+        ${OC} delete secret $sercret_name -n $namespace --ignore-not-found
+        msg ""
+    fi
+}
+  
 # ---------- cleanup functions end ----------#
 
 function get_control_namespace() {
