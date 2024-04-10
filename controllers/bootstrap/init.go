@@ -1242,9 +1242,23 @@ func (b *Bootstrap) CleanNamespaceScopeResources() error {
 	} else if isOpregAPI && err == nil {
 		// Get the common-service OperandRegistry
 		operandRegistry, err := b.GetOperandRegistry(ctx, constant.MasterCR, b.CSData.ServicesNs)
-		if err != nil && operandRegistry == nil {
+		if err != nil {
 			klog.Errorf("Failed to get common-service OperandRegistry: %v", err)
 			return err
+		} else if err == nil && operandRegistry == nil {
+			klog.Infof("The common-service OperandRegistry is not found in the %s namespace, skip cleaning the NamespaceScope resources", b.CSData.ServicesNs)
+			return nil
+		}
+
+		// Check if there is v4 OperandRegistry exists
+		if operandRegistry.Annotations != nil {
+			if v1IsLarger, convertErr := util.CompareVersion("4.0.0", operandRegistry.Annotations["version"]); convertErr != nil {
+				klog.Errorf("Failed to convert version for OperandRegistry: %v", convertErr)
+				return convertErr
+			} else if v1IsLarger {
+				klog.Infof("The OperandRegistry's version %v is smaller than 4.0.0, skip cleaning the NamespaceScope resources", operandRegistry.Annotations["version"])
+				return nil
+			}
 		}
 		// List all requested operators
 		if operandRegistry.Status.OperatorsStatus != nil {
