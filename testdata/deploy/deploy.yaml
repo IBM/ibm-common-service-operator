@@ -17,44 +17,45 @@ spec:
         description: The IBM Common Service Operator is used to deploy IBM Common Services
         operatorChannel: v4.6
         operatorVersion: 4.6.0
+        cloudPakThemesVersion: styles460.css
     spec:
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
-            - matchExpressions:
-              - key: kubernetes.io/arch
-                operator: In
-                values:
-                - amd64
-                - ppc64le
-                - s390x
+              - matchExpressions:
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values:
+                      - amd64
+                      - ppc64le
+                      - s390x
       containers:
-      - command:
-        - /manager
-        env:
-        - name: OPERATOR_NAME
-          value: ibm-common-service-operator
-        image: siji/operator:cs
-        imagePullPolicy: IfNotPresent
-        name: ibm-common-service-operator
-        resources:
-          limits:
-            cpu: 500m
-            memory: 512Mi
-          requests:
-            cpu: 100m
-            memory: 200Mi
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-            - ALL
-          privileged: false
-          readOnlyRootFilesystem: true
-          runAsNonRoot: true
-        terminationMessagePath: /dev/termination-log
-        terminationMessagePolicy: File
+        - command:
+            - /manager
+          env:
+            - name: OPERATOR_NAME
+              value: ibm-common-service-operator
+          image: siji/operator:cs
+          imagePullPolicy: IfNotPresent
+          name: ibm-common-service-operator
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 200Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
       dnsPolicy: ClusterFirst
       restartPolicy: Always
       schedulerName: default-scheduler

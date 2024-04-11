@@ -32,18 +32,19 @@ import (
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 type CSData struct {
-	Channel            string
-	Version            string
-	CPFSNs             string
-	ServicesNs         string
-	OperatorNs         string
-	CatalogSourceName  string
-	CatalogSourceNs    string
-	IsolatedModeEnable string
-	ApprovalMode       string
-	OnPremMultiEnable  string
-	WatchNamespaces    string
-	CloudPakThemes     string
+	Channel               string
+	Version               string
+	CPFSNs                string
+	ServicesNs            string
+	OperatorNs            string
+	CatalogSourceName     string
+	CatalogSourceNs       string
+	IsolatedModeEnable    string
+	ApprovalMode          string
+	OnPremMultiEnable     string
+	WatchNamespaces       string
+	CloudPakThemes        string
+	CloudPakThemesVersion string
 }
 
 // +kubebuilder:pruning:PreserveUnknownFields
