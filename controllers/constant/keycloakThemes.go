@@ -28,6 +28,7 @@ metadata:
     operator.ibm.com/managedByCsOperator: "true"
   annotations:
     version: {{ .Version }}
+    themesVersion: {{ .CloudPakThemesVersion }}
 binaryData:
   cloudpak-theme.jar: {{ .CloudPakThemes }}
 `

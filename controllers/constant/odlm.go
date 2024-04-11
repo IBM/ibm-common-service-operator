@@ -647,13 +647,13 @@ spec:
               podTemplate:
                 metadata:
                   annotations:
-                    cpfsVersion:
+                    cloudpakThemesVersion:
                       templatingValueFrom:
                         objectRef:
                           apiVersion: v1
                           kind: ConfigMap
                           name: cs-keycloak-theme
-                          path: .metadata.annotations.version
+                          path: .metadata.annotations.themesVersion
                         required: true
                 spec:
                   containers:

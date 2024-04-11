@@ -144,6 +144,11 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 	if r, ok := annotations["operatorVersion"]; ok {
 		bs.CSData.Version = r
 	}
+
+	if r, ok := annotations["cloudPakThemesVersion"]; ok {
+		bs.CSData.CloudPakThemesVersion = r
+	}
+
 	klog.Infof("Single Deployment Status: %v, MultiInstance Deployment status: %v, SaaS Depolyment Status: %v", !bs.MultiInstancesEnable, bs.MultiInstancesEnable, bs.SaasEnable)
 	return
 }
