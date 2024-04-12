@@ -16,8 +16,8 @@
 #
 
 # set -o errexit
-set -o pipefail
-set -o errtrace
+# set -o pipefail
+# set -o errtrace
 
 # ---------- Command arguments ----------
 
@@ -43,8 +43,6 @@ BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 LOG_FILE="preload_data_log_$(date +'%Y%m%d%H%M%S').log"
 
 # ---------- Main functions ----------
-
-. ${BASE_DIR}/cp3pt0-deployment/common/utils.sh
 
 trap 'error "Error occurred in function $FUNCNAME at line $LINENO"' ERR
 
@@ -95,10 +93,6 @@ function parse_arguments() {
             shift
             NAMESPACE=$1
             ;;
-        -v | --debug)
-            shift
-            DEBUG=$1
-            ;;
         -h | --help)
             print_usage
             exit 1
@@ -120,7 +114,6 @@ function print_usage() {
     echo "   --oc string                                    Optional. File path to oc CLI. Default uses oc in your PATH"
     echo "   --yq string                                    Optional. File path to yq CLI. Default uses yq in your PATH"
     echo "   -n   string                                    Required. Namespace to rollback mongo data."
-    echo "   -v, --debug integer                            Optional. Verbosity of logs. Default is 0. Set to 1 for debug logs"
     echo "   -h, --help                                     Print usage information"
     echo ""
 }
@@ -133,10 +126,6 @@ function print_usage() {
 # 2. IM version check, 
 # 3. Mongo-backup data check
 function prereq() {
-    # Check the value of DEBUG
-    if [[ "$DEBUG" != "1" && "$DEBUG" != "0" ]]; then
-        error "Invalid value for DEBUG. Expected 0 or 1."
-    fi
 
     # check yq version
     yq_version=$("${YQ}" --version | awk '{print $NF}' | sed 's/^v//')
@@ -1389,11 +1378,15 @@ function deletemongocopy {
     ${OC} delete secret icp-mongodb-keyfile --ignore-not-found
     ${OC} delete secret icp-mongodb-metrics --ignore-not-found
     ${OC} delete sa ibm-mongodb-operand --ignore-not-found
-    ${OC} delete service mongodb --ignore-not-found
     ${OC} delete certificate mongodb-root-ca-cert --ignore-not-found
     ${OC} delete issuer mongodb-root-ca-issuer --ignore-not-found
-    ${OC} delete cm namespace-scope --ignore-not-found
     
+    ${OC} delete service mongodb --ignore-not-found --timeout=10s
+    if [ $? -ne 0 ]; then
+        info "Failed to delete service mongodb, patching its finalizer to null..."
+        ${OC} patch service mongodb -n $NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+    fi
+
     #delete mongodump pvc and pv
     VOL=$(${OC} get pvc cs-mongodump -o=jsonpath='{.spec.volumeName}')
     if [[ -z "$VOL" ]]; then
