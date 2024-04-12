@@ -51,7 +51,7 @@ function main() {
 
     # pre requests
     prereq
-    deletemongocopy
+    
     # if mongo exist in the cluster skip following two steps
     mongoStatus=$(${OC} get po icp-mongodb-0 --no-headers --ignore-not-found -n $NAMESPACE | awk '{print $3}')
     if [[ -z "$mongoStatus" ]] || [[ "$mongoStatus" != "Running" ]]; then
@@ -225,7 +225,7 @@ function loadmongo() {
 
     info "Running Restore"
     # delete mongo-backup pod just in case it has error
-    MONGO_DATA_POD=$(${OC} get po -l velero.io/restore-name=restore-mongo-data --no-headers --ignore-not-found -n $NAMESPACE | awk '{print $1}')
+    MONGO_DATA_POD=$(${OC} get po -l foundationservices.cloudpak.ibm.com=mongo-data --no-headers --ignore-not-found -n $NAMESPACE | awk '{print $1}')
     echo $MONGO_DATA_POD
     wait_for_pod_delete $NAMESPACE $MONGO_DATA_POD
 
