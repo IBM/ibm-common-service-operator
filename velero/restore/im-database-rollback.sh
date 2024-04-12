@@ -50,21 +50,30 @@ trap 'error "Error occurred in function $FUNCNAME at line $LINENO"' ERR
 
 function main() {
     parse_arguments "$@"
-    save_log "cp3pt0-deployment/logs" "preload_data_log" "$DEBUG"
-    trap cleanup_log EXIT
 
     # pre requests
     prereq
-    # create dummy mongo
-    deploymongocopy
-    # load data into dummy mongo pod
-    loadmongo
+    # if mongo exist in the cluster skip following two steps
+    mongoStatus=$(${OC} get po icp-mongodb-0 --no-headers --ignore-not-found -n $NAMESPACE | awk '{print $3}')
+    if [[ -z "$runningMONGODATA" ]] || [[ "$runningMONGODATA" != "Running" ]]; then
+        # create dummy mongo
+        deploymongocopy
+        # load data into dummy mongo pod
+        loadmongo
+    else
+        msg "Skipping create dummy mongo, icp-mongodb pod exist in the cluste"
+    fi
     # drop current data in commonservice-db
     dropdata
     # trigger data migration
     trigerdatamigration
-    # cleanup dummy mongo
-    deletemongocopy
+    
+    if [[ -z "$runningMONGODATA" ]] || [[ "$runningMONGODATA" != "Running" ]]; then
+        # cleanup dummy mongo
+        deletemongocopy
+    fi
+
+    success "Successfully migrate data from mongo-backup to common-service-db"
     
 }
 
@@ -168,10 +177,10 @@ function prereq() {
     fi
 
     # check restore pod
-    MONGO_DATA_POD=$(${OC} get po -l velero.io/restore-name=restore-mongo-data --no-headers --ignore-not-found -n $NAMESPACE | awk '{print $1}')
+    MONGO_DATA_POD=$(${OC} get po -l foundationservices.cloudpak.ibm.com=mongo-data --no-headers --ignore-not-found -n $NAMESPACE | awk '{print $1}')
     runningMONGODATA=$(${OC} get po ${MONGO_DATA_POD} --no-headers --ignore-not-found -n $NAMESPACE | awk '{print $3}')
     if [[ -z "$runningMONGODATA" ]] || [[ "$runningMONGODATA" != "Running" ]]; then
-        error "Commonservcie-db is not running in Namespace $NAMESPACE"
+        error "mongo-backup pod is not running in Namespace $NAMESPACE"
         exit -1
     fi
 }
@@ -181,25 +190,32 @@ function prereq() {
 #
 # TODO: wait for data migration complete and check
 function trigerdatamigration() {
-    authentication=$(${OC} get authentication.operator.ibm.com example-authentication --no-headers -n $NAMESPACE || echo "fail")
-    if [[ "$authentication" -eq "fail" ]]; then
-        error "Cannot get Authentication.operator.ibm.com example-authentication "
-    fi
+    title "Migrate data from mongodb to edb"
+    msg "-----------------------------------------------------------------------"
 
-    ${OC} annotate --overwrite authentication.operator.ibm.com example-authentication authentication.operator.ibm.com/migration-complete='false'
+    ${OC} get authentications.operator.ibm.com example-authentication --no-headers -n $NAMESPACE --ignore-not-found
+    if [ $? -ne 0 ]; then
+        error "Cannot get authentications.operator.ibm.com example-authentication in $NAMESPACE"
+    fi
+    ${OC} annotate --overwrite authentications.operator.ibm.com example-authentication authentication.operator.ibm.com/migration-complete='false' -n $NAMESPACE 
     # ToDo wait for data migration complete
 
+    success "Data migration success"
 }
 
 #
 # Drop data in edb pod
 #
 function dropdata() {
+    title "Drop existing data in commonservice-db"
+    msg "-----------------------------------------------------------------------"
     csdb=$(${OC} get cluster.postgresql.k8s.enterprisedb.io common-service-db -o jsonpath="{.status.currentPrimary}" -n $NAMESPACE || echo "fail")
     if [[ "$csdb" -eq "fail" ]]; then
         error "Cannot get pod common-service-db-1 in $NAMESPACE "
     fi
     ${OC} -n $NAMESPACE exec -t $csdb -c postgres -- psql -U postgres -c "DROP DATABASE IF EXISTS im WITH (FORCE)" -c "DROP DATABASE IF EXISTS zen WITH (FORCE)" -c "DROP DATABASE IF EXISTS cloudpak WITH (FORCE)"  
+
+    success "Data in commonservcie-db dropped"
 }
 
 #
@@ -1401,32 +1417,10 @@ function deletemongocopy {
 
 }
 
-#
-# Dump logs for amtching pod
-#
-function dumplogs() {
-    pod=$(${OC} get pods | grep $1 | awk '{print $1}')
-    count=$(echo $pod | wc -w)
-    if [[ $count -eq 1 ]]; then
-        info "Saving $1 logs in _${1}.log"
-        ${OC} logs $pod > _${1}.log
-    elif [[ $count -eq 0 ]]; then
-        info "No pods found for $1"
-    else
-        info "Multiple pods found for $1"
-        for p in $pod; do
-        info "Saving $p logs in _${1}_${p}.log"
-        ${OC} logs $p > _${1}_${p}.log
-        done
-    fi
-} # dumplogs
-
-
-
 function wait_for_pod_delete() {
     local namespace=$1
     local pod=$2
-    debug1 "Deleting pod $pod"
+    info "Deleting pod $pod"
     ${OC} delete pod $pod -n $NAMESPACE --ignore-not-found
     local condition="${OC} get pod -n $namespace --no-headers --ignore-not-found | grep ${pod} | egrep '2/2' || ${OC} get pod -n $namespace --no-headers --ignore-not-found | grep ${pod} | egrep '1/1' || true"
     local retries=15
@@ -1441,7 +1435,7 @@ function wait_for_pod_delete() {
 
 function cert_manager_readiness_test(){
     info "Checking cert manager readiness."
-    debug1 "Creating test issuer in namespace $NAMESPACE."
+    info "Creating test issuer in namespace $NAMESPACE."
     cat << EOF | ${OC} apply -f -
 apiVersion: cert-manager.io/v1
 kind: Issuer
@@ -1455,7 +1449,7 @@ EOF
   if [[ $return_value_issuer == "false" ]]; then
     error "Failed to create test issuer. Verify cert manager is installed and ready on the cluster then re-run the preload script."
   else
-    debug1 "Creating test certificate in namespace $NAMESPACE."
+    info "Creating test certificate in namespace $NAMESPACE."
     cat << EOF | ${OC} apply -f -
 apiVersion: cert-manager.io/v1
 kind: Certificate
