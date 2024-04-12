@@ -51,9 +51,10 @@ function main() {
 
     # pre requests
     prereq
+    deletemongocopy
     # if mongo exist in the cluster skip following two steps
     mongoStatus=$(${OC} get po icp-mongodb-0 --no-headers --ignore-not-found -n $NAMESPACE | awk '{print $3}')
-    if [[ -z "$runningMONGODATA" ]] || [[ "$runningMONGODATA" != "Running" ]]; then
+    if [[ -z "$mongoStatus" ]] || [[ "$mongoStatus" != "Running" ]]; then
         # create dummy mongo
         deploymongocopy
         # load data into dummy mongo pod
@@ -66,7 +67,10 @@ function main() {
     # trigger data migration
     trigerdatamigration
     
-    if [[ -z "$runningMONGODATA" ]] || [[ "$runningMONGODATA" != "Running" ]]; then
+    # wait for migration complete
+    sleep 180
+
+    if [[ -z "$mongoStatus" ]] || [[ "$mongoStatus" != "Running" ]]; then
         # cleanup dummy mongo
         deletemongocopy
     fi
@@ -222,6 +226,7 @@ function loadmongo() {
     info "Running Restore"
     # delete mongo-backup pod just in case it has error
     MONGO_DATA_POD=$(${OC} get po -l velero.io/restore-name=restore-mongo-data --no-headers --ignore-not-found -n $NAMESPACE | awk '{print $1}')
+    echo $MONGO_DATA_POD
     wait_for_pod_delete $NAMESPACE $MONGO_DATA_POD
 
     # create mongo-restore job
@@ -1468,6 +1473,74 @@ EOF
     fi
   fi  
   success "Cert manager is ready, preload can proceed."
+}
+
+function wait_for_condition() {
+    local condition=$1
+    local retries=$2
+    local sleep_time=$3
+    local wait_message=$4
+    local success_message=$5
+    local error_message=$6
+
+    info "${wait_message}"
+    while true; do
+        result=$(eval "${condition}")
+
+        if [[ ( ${retries} -eq 0 ) && ( -z "${result}" ) ]]; then
+            error "${error_message}"
+        fi
+
+        sleep ${sleep_time}
+        result=$(eval "${condition}")
+
+        if [[ -z "${result}" ]]; then
+            info "RETRYING: ${wait_message} (${retries} left)"
+            retries=$(( retries - 1 ))
+        else
+            break
+        fi
+    done
+
+    if [[ ! -z "${success_message}" ]]; then
+        success "${success_message}\n"
+    fi
+}
+
+
+function waitforpodscompleted() {
+  index=0
+  retries=60
+  echo "Waiting for $1 pod(s) to start ..."
+  while true; do
+      if [ $index -eq $retries ]; then
+        error "Pods are not running or completed, Correct errors and re-run the script"
+        exit -1
+      fi
+      sleep 10
+      if [ -z $1 ]; then
+        pods=$(oc get pods --no-headers -n $2 2>&1)
+      else
+        pods=$(oc get pods --no-headers -n $2 | grep $1 2>&1)
+      fi
+      #echo watching $pods
+      echo "$pods" | egrep -q -v 'Completed|Succeeded|No resources found.' || break
+      [[ $(( $index % 10 )) -eq 0 ]] && echo "$pods" | egrep -v 'Completed|Succeeded'
+      index=$(( index + 1 ))
+      # If one matching pod Completed and other matching pods in Error,  remove Error pods
+      nothing=$(echo $pods | grep Completed)
+      if [ $? -eq 0 ]; then
+        nothing=$(echo $pods | grep Error)
+        if [ $? -eq 0 ]; then
+          echo "$pods" | grep Error | awk '{ print "oc delete po " $1 }' | bash -
+        fi
+      fi
+  done
+  if [ -z $1 ]; then
+    oc get pods --no-headers=true -n $2
+  else
+    oc get pods --no-headers=true -n $2 | grep $1
+  fi
 }
 
 function msg() {
