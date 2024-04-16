@@ -385,7 +385,7 @@ data:
                     warning "The list of extensions provided returned an empty ID list from the database. These extensions may not be present in this database."
                 else
                     info "List of extension IDs populated, continuing with deletion."
-                    id_list=${id_list//\//%F}
+                    id_list=${id_list//\//%2F}
                     info "id_list with / replaced: $id_list"
 
                     # Delete each extension using the ID
