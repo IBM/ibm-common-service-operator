@@ -3,7 +3,7 @@ kind: PersistentVolumeClaim
 metadata:
   name: zen5-backup-pvc
   labels:
-    foundationservices.cloudpak.ibm.com: zen5-data
+    foundationservices.cloudpak.ibm.com: data
 spec:
   storageClassName: ibmc-block-retain-gold
   accessModes:

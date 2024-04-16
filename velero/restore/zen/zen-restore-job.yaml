@@ -11,7 +11,7 @@ spec:
           - sh
           - -c
           - /zen4/zen4-br.sh <zenservice namespace> false
-          image: icr.io/cpopen/cpfs/cpfs-utils:4.3.0 #4.1.0 if using CS 4.1, 4.2.0 if using CS 4.2
+          image: icr.io/cpopen/cpfs/cpfs-utils:4.6.0 #4.1.0 if using CS 4.1, 4.2.0 etc based on CS version.
           imagePullPolicy: Always
           name: zen4-restore-job
           resources:

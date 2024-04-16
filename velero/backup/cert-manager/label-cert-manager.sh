@@ -12,8 +12,8 @@ do
     let i++
     echo $NAME
     echo $NAMESPACE
-    oc label issuer $NAME -n $NAMESPACE foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
     echo "---"
+    oc label issuer $NAME -n $NAMESPACE foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
 done
 
 CURRENT_ISSUERS=($(oc get issuers.cert-manager.io --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True))
@@ -27,8 +27,8 @@ do
     let i++
     echo $NAME
     echo $NAMESPACE
-    oc label issuer $NAME -n $NAMESPACE foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
     echo "---"
+    oc label issuer $NAME -n $NAMESPACE foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
 done
 
 # Get all certificates in all namespaces and add foundationservices.cloudpak.ibm.com=cert-manager
@@ -43,8 +43,8 @@ do
     let i++
     echo $NAME
     echo $NAMESPACE
-    oc label certificates $NAME -n $NAMESPACE foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
     echo "---"
+    oc label certificates $NAME -n $NAMESPACE foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
 done
 
 CURRENT_CERTIFICATES=($(oc get certificates.cert-manager.io --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True))
@@ -58,8 +58,8 @@ do
     let i++
     echo $NAME
     echo $NAMESPACE
-    oc label certificates $NAME -n $NAMESPACE foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
     echo "---"
+    oc label certificates $NAME -n $NAMESPACE foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
 done
 
 # Get all secrets with label operator.ibm.com/watched-by-cert-manager="" and add foundationservices.cloudpak.ibm.com=cert-manager
@@ -74,8 +74,8 @@ do
     let i++
     echo $NAME
     echo $NAMESPACE
-    oc label secret $NAME -n $NAMESPACE foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
     echo "---"
+    oc label secret $NAME -n $NAMESPACE foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
 done
 
 CURRENT_CRD_ISSUERS=($(oc get crd | grep issuer | cut -d ' ' -f1))
@@ -86,8 +86,8 @@ do
     NAME=${CURRENT_CRD_ISSUERS[$i]}
     let i++
     echo $NAME
-    oc label crd $NAME foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
     echo "---"
+    oc label crd $NAME foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
 done
 
 CURRENT_CRD_CERTIFICATES=($(oc get crd | grep certificates | cut -d ' ' -f1))
@@ -98,8 +98,8 @@ do
     NAME=${CURRENT_CRD_CERTIFICATES[$i]}
     let i++
     echo $NAME
-    oc label crd $NAME foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
     echo "---"
+    oc label crd $NAME foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
 done
 
 #ensure zenservice custom route secrets are labeled
@@ -113,8 +113,8 @@ if [[ $zen_namespace_list != "fail" ]]; then
             zen_secret_name=$(oc get zenservice $zenservice -n $zen_namespace -o=jsonpath='{.spec.zenCustomRoute.route_secret}')
             echo $zen_secret_name
             echo $zen_namespace
-            oc label secret $zen_secret_name -n $zen_namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
             echo "---"
+            oc label secret $zen_secret_name -n $zen_namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
         done
     done
 else
@@ -129,8 +129,8 @@ if [[ $cm_namespace_list != "fail" ]]; then
         iam_secret_name=$(oc get configmap cs-onprem-tenant-config -n $tenant_config_namespace -o=jsonpath='{.data.custom_host_certificate_secret}')
         echo $iam_secret_name
         echo $tenant_config_namespace
-        oc label secret $iam_secret_name -n $tenant_config_namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
         echo "---"
+        oc label secret $iam_secret_name -n $tenant_config_namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
     done
 else
     echo "[INFO] Configmap cs-onprem-tenant-config not found, skipping copying custom secrets..."
@@ -143,8 +143,8 @@ if [[ $auth_namespace_list != "none" ]]; then
     do
         echo "platform-auth-idp-credentials"
         echo $auth_namespace
-        oc label secret platform-auth-idp-credentials -n $auth_namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
         echo "---"
+        oc label secret platform-auth-idp-credentials -n $auth_namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
     done
 else
     echo "[INFO] Secret platform-auth-idp-credentials not present in namespace $auth_namespace. Skipping..."
@@ -157,8 +157,8 @@ if [[ $scim_secret_namespace_list != "none" ]]; then
     do
         echo "platform-auth-scim-credentials"
         echo $scim_namespace
-        oc label secret platform-auth-scim-credentials -n $scim_namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
         echo "---"
+        oc label secret platform-auth-scim-credentials -n $scim_namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
     done
 else
     echo "[INFO] Secret platform-auth-scim-credentials not present in namespace $scim_namespace. Skipping..."
@@ -171,8 +171,8 @@ if [[ $ldaps_secret_namespace_list != "none" ]]; then
     do
         echo "platform-auth-ldaps-ca-cert"
         echo $ldaps_namespace
-        oc label secret platform-auth-ldaps-ca-cert -n $ldaps_namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
         echo "---"
+        oc label secret platform-auth-ldaps-ca-cert -n $ldaps_namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
     done
 else
     echo "[INFO] Secret platform-auth-ldaps-ca-cert not present in namespace $ldaps_namespace. Skipping..."
@@ -185,8 +185,8 @@ if [[ $icp_serviceid_apikey_secret_namespace_list != "none" ]]; then
     do
         echo "icp-serviceid-apikey"
         echo $icp_serviceid_namespace
-        oc label secret icp-serviceid-apikey-secret -n $icp_serviceid_namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
         echo "---"
+        oc label secret icp-serviceid-apikey-secret -n $icp_serviceid_namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
     done
 else
     echo "[INFO] Secret icp-serviceid-apikey-secret not present in namespace $icp_serviceid_namespace. Skipping..."
@@ -199,8 +199,8 @@ if [[ $zen_serviceid_apikey_secret_namespace_list != "none" ]]; then
     do
         echo "zen-serviceid-apikey-secret"
         echo $zen_serviceid_namespace
-        oc label secret zen-serviceid-apikey-secret -n $zen_serviceid_namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
         echo "---"
+        oc label secret zen-serviceid-apikey-secret -n $zen_serviceid_namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
     done
 else
     echo "[INFO] Secret zen-serviceid-apikey-secret not present in namespace $zen_serviceid_namespace. Skipping..."

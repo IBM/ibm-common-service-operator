@@ -8,7 +8,7 @@ spec:
   template:
     ttl: 48h0m0s
     defaultVolumesToRestic: true
-    storageLocation: <storage location>
+    storageLocation: bcdr-data-protection-app-1
     includeClusterResources: true
     includedNamespaces:
     - '*'
@@ -38,3 +38,6 @@ spec:
         - crd
         - lsr
         - lsr-data
+        - cs-db-data
+        - keycloak-data
+        - singleton-subscription
