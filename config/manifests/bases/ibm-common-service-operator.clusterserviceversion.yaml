@@ -4,7 +4,7 @@ metadata:
   annotations:
     alm-examples: '[]'
     capabilities: Seamless Upgrades
-    cloudPakThemesVersion: styles460.css
+    cloudPakThemesVersion: styles461.css
     containerImage: icr.io/cpopen/common-service-operator:latest
     createdAt: "2020-10-19T21:38:33Z"
     description: The IBM Cloud Pak foundational services operator is used to deploy
