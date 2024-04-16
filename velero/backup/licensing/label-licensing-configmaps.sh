@@ -13,6 +13,7 @@ POSSIBLE_CONFIGMAPS=("ibm-licensing-config"
 "ibm-licensing-cloudpaks-metrics-groups"
 "ibm-licensing-services"
 )
+
 LICENSING_NAMESPACE=$1
 if [[ -z $LICENSING_NAMESPACE ]]; then
   LICENSING_NAMESPACE="ibm-common-services"
