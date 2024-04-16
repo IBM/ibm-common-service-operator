@@ -1304,7 +1304,7 @@ func (b *Bootstrap) CleanNamespaceScopeResources() error {
 	// Patch and remove the ownerReference in the namespace-scope configmap if it exist
 	if nssCm, err := util.GetCmOfNss(b.Reader, b.CSData.OperatorNs); err != nil {
 		if errors.IsNotFound(err) {
-			klog.Infof("The %s configmap is not found in the %s namespace, skip patching ownerReference", constant.NamespaceScopeConfigmapName, b.CSData.ServicesNs)
+			klog.Infof("The %s configmap is not found in the %s namespace, skip patching ownerReference", constant.NamespaceScopeConfigmapName, b.CSData.OperatorNs)
 		} else {
 			klog.Errorf("Failed to get %s configmap: %v", constant.NamespaceScopeConfigmapName, err)
 			return err
@@ -1348,9 +1348,29 @@ func (b *Bootstrap) CleanNamespaceScopeResources() error {
 			if err != nil {
 				return false, err
 			}
+			if len(nssCRsList.Items) > 0 {
+				allDeleted := true
+				for _, nssCR := range nssCRsList.Items {
+					if nssCR.GetDeletionTimestamp() == nil {
+						allDeleted = false
+						break
+					}
+				}
+				if !allDeleted {
+					// At least one NSS resource doesn't have deletion timestamp set
+					return false, nil
+				}
+				// Deletion timestamp set for all Nss resources
+				return true, errors.NewResourceExpired("All NSS CRs are ready to be deleted.")
+			}
+			// No NSS resources found
 			return len(nssCRsList.Items) == 0, nil
 		}); err != nil {
 			klog.Infof("Patch finalizers to delete the NamespaceScope CRs")
+			nssCRsList, err := b.ListNssCRs(ctx, b.CSData.ServicesNs)
+			if err != nil {
+				return err
+			}
 			for _, nssCR := range nssCRsList.Items {
 				if nssCR.GetDeletionTimestamp() != nil && len(nssCR.ObjectMeta.Finalizers) > 0 {
 					originalCopy := nssCR.DeepCopy()
