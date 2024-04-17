@@ -322,7 +322,7 @@ function install_cert_manager() {
             return 0
         fi
     else
-        error "There is no cert-manager-webhook pod running\n"
+        info "There is no cert-manager-webhook pod running\n"
     fi
     
     create_namespace "${CERT_MANAGER_NAMESPACE}"
@@ -354,7 +354,7 @@ function install_licensing() {
     if [ $? -eq 0 ]; then
         warning "There is an ibm-licensing-operator-app Subscription already, so will upgrade it\n"
     else
-        error "There is no ibm-licensing-operator-app Subscription installed\n"
+        info "There is no ibm-licensing-operator-app Subscription installed\n"
     fi
 
     local ns=$("$OC" get deployments -A | grep ibm-licensing-operator | cut -d ' ' -f1)
@@ -408,7 +408,7 @@ function install_license_service_reporter() {
     if [ $? -eq 0 ]; then
         warning "There is an ibm-license-service-reporter-operator Subscription already, so will upgrade it\n"
     else
-        error "There is no ibm-license-service-reporter-operator Subscription installed\n"
+        info "There is no ibm-license-service-reporter-operator Subscription installed\n"
     fi
 
 
