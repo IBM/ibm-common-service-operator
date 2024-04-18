@@ -1626,6 +1626,7 @@ spec:
         requests:
           - operands:
               - name: ibm-im-operator
+              - name: ibm-im-operator
             registry: common-service
   - name: ibm-zen-operator
     spec:
