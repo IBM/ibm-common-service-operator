@@ -1,8 +1,8 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: bedrock-egress-allow-k8s-services
-  namespace: "csNamespace"
+  name: egress-allow-to-apiserver
+  namespace: "opNamespace"
   labels:
     component: cpfs3
 spec:

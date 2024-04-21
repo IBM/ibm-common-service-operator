@@ -1,22 +1,12 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: bedrock-egress-allow-k8s-services
+  name: egress-allow-to-dns-default
   namespace: "opNamespace"
   labels:
     component: cpfs3
 spec:
   egress:
-  - ports:
-    - port: 443
-      protocol: TCP
-    - port: 6443
-      protocol: TCP
-    to:
-    - namespaceSelector: {}
-      podSelector:
-        matchLabels:
-          apiserver: "true"
   - ports:
     - port: 53
       protocol: UDP

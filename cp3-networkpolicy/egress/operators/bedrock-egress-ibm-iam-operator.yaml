@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: egress-ibm-iam-operator
+  namespace: "opNamespace"
+  labels:
+    component: cpfs3
+spec:
+  egress:
+  - to:
+    - namespaceSelector: {}
+      podSelector:
+        matchExpressions:
+          - key: k8s.enterprisedb.io/cluster
+            operator: Exists
+  podSelector:
+    matchLabels:
+      name: "ibm-iam-operator"
+  policyTypes:
+  - Egress
