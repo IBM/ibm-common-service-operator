@@ -1,19 +1,16 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: access-to-zen-minio
-  namespace: "csNamespace"
+  name: allow-iam-config-job
+  namespace: "zenNamespace"
   labels:
     component: cpfs3
 spec:
   podSelector:
     matchLabels:
-      component: "zen-minio"
+      component: "iam-config-job"
   policyTypes:
   - Ingress
   ingress:
   - from:
-    - namespaceSelector:
-        matchLabels:
-          kubernetes.io/metadata.name: "opNamespace"
     - podSelector: {}

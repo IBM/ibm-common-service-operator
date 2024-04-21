@@ -1,15 +1,15 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: access-to-ibm-nginx
-  namespace: "csNamespace"
+  name: egress-usermgmt
+  namespace: "zenNamespace"
   labels:
     component: cpfs3
 spec:
   podSelector:
     matchLabels:
-      component: "ibm-nginx"
+      component: "usermgmt"
   policyTypes:
-  - Ingress
-  ingress:
+  - Egress 
+  egress:
   - {}

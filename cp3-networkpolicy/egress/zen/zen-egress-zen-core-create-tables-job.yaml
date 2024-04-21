@@ -1,15 +1,15 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: egress-usermgmt
-  namespace: "csNamespace"
+  name: egress-zen-core-create-tables-job
+  namespace: "zenNamespace"
   labels:
     component: cpfs3
 spec:
   podSelector:
     matchLabels:
-      component: "usermgmt"
+      component: "zen-core-create-tables-job"
   policyTypes:
-  - Egress 
+  - Egress
   egress:
   - {}
