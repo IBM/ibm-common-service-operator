@@ -129,6 +129,48 @@ done
 echo "CHECK THE OPERATORHUB on the openshift console and see if the foundational services are available in the catalog. Hit Enter once you see them:"
 read ANS
 
+# Restore singleton subscription
+# This restores cert-manager and licensing  subscription
+echo "Restoring the subscriptions..."
+sed -i s/__BACKUP_NAME__/$BACKUP_NAME/g restore-singleton-subscriptions.yaml
+oc apply -f restore--singleton-subscriptions.yaml
+sleep 5
+sed -i s/$BACKUP_NAME/__BACKUP_NAME__/g restore-singleton-subscriptions.yaml
+
+echo "You can watch the subscriptions come up in the Openshift Console. Go to Operators -> Installed Operators make sure the project selected is $CERT_MGR_NAMESPACE."
+oc get pod -A | grep cert-manager-controller | grep Running
+while [ $? -ne 0 ]
+do
+  echo "Waiting for cert-manager-controller pod to be running..."
+  oc get pod -A | grep cert-manager
+  sleep 15
+  oc get pod -A | grep cert-manager-controller | grep Running
+done
+
+# Restore licensing and cert-manager data
+# There are a number of configmaps, CRDs, Issuers, and Certificates that get restored here
+# Certificates usually take the longest, so we watch for those.
+echo "Now restoring licensing and cert-manager data. Hit Enter:"
+read ANS
+sed -i s/__BACKUP_NAME__/$BACKUP_NAME/g restore-licensing.yaml
+oc apply -f restore-licensing.yaml
+sleep 5
+sed -i s/$BACKUP_NAME/__BACKUP_NAME__/g restore-licensing.yaml
+
+sed -i s/__BACKUP_NAME__/$BACKUP_NAME/g restore-cert-manager.yaml
+oc apply -f restore-cert-manager.yaml
+sleep 5
+sed -i s/$BACKUP_NAME/__BACKUP_NAME__/g restore-cert-manager.yaml
+## Wait on certificates to populate
+oc get certificates -n $CS_NAMESPACE | grep cs-ca-certificate
+while [ $? -ne 0 ]
+do
+  echo "Waiting on certificates to be populated..."
+  sleep 10
+  oc get certificates -n $CS_NAMESPACE | grep cs-ca-certificate
+done
+
+
 # Restore subscription
 # This just restores the common-services subscription
 # It's done restoring once ODLM is running
@@ -165,29 +207,6 @@ sleep 30
 sed -i s/$BACKUP_NAME/__BACKUP_NAME__/g restore-commonservice.yaml
 ##Check status of common-service, should be Phase: Succeeded
 oc get commonservice common-service -n $CS_NAMESPACE
-
-# Restore licensing and cert-manager data
-# There are a number of configmaps, CRDs, Issuers, and Certificates that get restored here
-# Certificates usually take the longest, so we watch for those.
-echo "Now restoring licensing and cert-manager data. Hit Enter:"
-read ANS
-sed -i s/__BACKUP_NAME__/$BACKUP_NAME/g restore-licensing.yaml
-oc apply -f restore-licensing.yaml
-sleep 5
-sed -i s/$BACKUP_NAME/__BACKUP_NAME__/g restore-licensing.yaml
-
-sed -i s/__BACKUP_NAME__/$BACKUP_NAME/g restore-cert-manager.yaml
-oc apply -f restore-cert-manager.yaml
-sleep 5
-sed -i s/$BACKUP_NAME/__BACKUP_NAME__/g restore-cert-manager.yaml
-## Wait on certificates to populate
-oc get certificates -n $CS_NAMESPACE | grep cs-ca-certificate
-while [ $? -ne 0 ]
-do
-  echo "Waiting on certificates to be populated..."
-  sleep 10
-  oc get certificates -n $CS_NAMESPACE | grep cs-ca-certificate
-done
 
 echo "Now restoring the operand request. Hit Enter:"
 read ANS

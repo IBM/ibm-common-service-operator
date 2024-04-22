@@ -18,6 +18,7 @@ spec:
       operator: In
       values:
       - catalog
+      - singleton-subscription
       - subscription
       - operand
       - data
