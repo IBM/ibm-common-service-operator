@@ -21,6 +21,7 @@ spec:
         values:
         - catalog
         - subscription
+        - singleton-subscription
         - operand
         - zen-data
         - mongo-data
