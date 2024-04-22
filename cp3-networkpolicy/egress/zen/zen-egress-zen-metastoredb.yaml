@@ -1,16 +1,15 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: access-to-zen-core
-  namespace: "csNamespace"
+  name: egress-zen-metastoredb
+  namespace: "zenNamespace"
   labels:
     component: cpfs3
 spec:
   podSelector:
     matchLabels:
-      component: "zen-core"
+      component: "zen-metastoredb"
   policyTypes:
-  - Ingress
-  ingress:
-  - from:
-    - podSelector: {}
+  - Egress
+  egress:
+  - {}
