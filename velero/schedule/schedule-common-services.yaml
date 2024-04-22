@@ -41,4 +41,5 @@ spec:
         - lsr-data
         - cs-db-data
         - keycloak-data
+        - keycloak
         - singleton-subscription
