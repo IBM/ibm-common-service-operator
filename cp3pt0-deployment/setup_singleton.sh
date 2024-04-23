@@ -37,6 +37,7 @@ DEBUG=0
 
 CHECK_CERT_MANAGER=0
 CUSTOMIZED_CM_NAMESPACE=0
+CUSTOMIZED_LSR_NAMESPACE=0
 CUSTOMIZED_LICENSING_NAMESPACE=0
 CERT_MANAGER_V1_OWNER="operator.ibm.com/v1"
 CERT_MANAGER_V1ALPHA1_OWNER="operator.ibm.com/v1alpha1"
@@ -142,6 +143,7 @@ function parse_arguments() {
         -lsrNs | --license-service-reporter-namespace)
             shift
             LSR_NAMESPACE=$1
+            CUSTOMIZED_LSR_NAMESPACE=1
             ;;
         --check-cert-manager)
             CHECK_CERT_MANAGER=1
@@ -247,6 +249,14 @@ function is_migrate_licensing() {
         fi
         LICENSING_NAMESPACE="$ns"
         return 0
+    fi
+
+    local lsr_ns=$("$OC" get deployments -A | grep ibm-license-service-reporter-operator | cut -d ' ' -f1)
+    if [ ! -z "$lsr_ns" ]; then
+        if [[ "$CUSTOMIZED_LSR_NAMESPACE" -eq 1 ]] && [[ "$lsr_ns" != "$LSR_NAMESPACE" ]]; then
+            error "An ibm-license-service-reporter-operator already installed in namespace: $lsr_ns, expected namespace is: $LSR_NAMESPACE"
+        fi
+        LSR_NAMESPACE="$lsr_ns"
     fi
 
     get_and_validate_arguments
@@ -410,7 +420,6 @@ function install_license_service_reporter() {
     else
         info "There is no ibm-license-service-reporter-operator Subscription installed\n"
     fi
-
 
     local ns=$("$OC" get deployments -A | grep ibm-license-service-reporter-operator | cut -d ' ' -f1)
     if [ ! -z "$ns" ]; then
