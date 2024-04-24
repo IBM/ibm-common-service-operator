@@ -1,16 +1,16 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: access-to-zen-core
-  namespace: "csNamespace"
+  name: access-to-zen-watchdog
+  namespace: "zenNamespace"
   labels:
     component: cpfs3
 spec:
   podSelector:
     matchLabels:
-      component: "zen-core"
+      component: "zen-watchdog"
   policyTypes:
   - Ingress
   ingress:
   - from:
-    - podSelector: {}
+    - podSelector: {} 
