@@ -850,6 +850,9 @@ const Medium = `
           requests:
             cpu: 500m
             memory: 1024Mi
+        postgresql:
+          parameters:
+            max_connections: 750
 - name: keycloak-operator
   resources:
   - apiVersion: k8s.keycloak.org/v2alpha1

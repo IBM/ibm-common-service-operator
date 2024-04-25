@@ -85,6 +85,9 @@ const Large = `
             ephemeral-storage: 500Mi
             cpu: 384m
             memory: 768Mi
+        postgresql:
+          parameters:
+            max_connections: 1100
 - name: ibm-im-mongodb-operator
   spec:
     mongoDB:
