@@ -1,4 +1,3 @@
-#TODO replace any instance of keycloak with relevant common service db change
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -11,7 +10,7 @@ data:
     #!/usr/bin/env bash
 
     # Licensed Materials - Property of IBM
-    # Copyright IBM Corporation 2023. All Rights Reserved
+    # Copyright IBM Corporation 2024. All Rights Reserved
     # US Government Users Restricted Rights -
     # Use, duplication or disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
     #
@@ -35,7 +34,6 @@ data:
             success "Backup completed successfully."
         elif [[ $MODE == "restore" ]]; then
             info "Mode is set to restore, beginning restore process."
-            #wait_for_cs-db
             restore
             success "Restore completed successfully."
         else
@@ -61,40 +59,9 @@ data:
         oc cp $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_im_backup.dump $BACKUP_DIR/database/cs-db_im_backup.dump
         oc cp $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_zen_backup.dump $BACKUP_DIR/database/cs-db_zen_backup.dump
 
-        #backup cs-keycloak-initial-admin secret
-        #info "Backup cs-keycloak-initial-admin secret"
-        #oc extract -n $CSDB_NAMESPACE secret/cs-keycloak-initial-admin --to=$BACKUP_DIR/secrets/ --confirm || warning "Failed to backup secret/cs-keycloak-initial-admin in namespace ${CSDB_NAMESPACE}"
-    }
-
-    function wait_for_cs-db {
-        job_name="cs-cloudpak-realm"
-        info "Waiting for job $job_name to complete in namespace $CSDB_NAMESPACE."
-        job_exists=$(oc get job $job_name -n $CSDB_NAMESPACE --no-headers | echo fail)
-        if [[ $job_exists != "fail" ]]; then
-            completed=$(oc get job $job_name -n $CSDB_NAMESPACE --no-headers | awk '{print $2}')
-            retry_count=20
-            while [[ $completed != "1/1" ]] && [[ $retry_count > 0 ]]
-            do
-                info "Wait for job $job_name to complete. Try again in 15s."
-                sleep 15
-                completed=$(oc get job $job_name -n $CSDB_NAMESPACE --no-headers | awk '{print $2}')
-                retry_count=$retry_count-1
-            done
-
-            if [[ $retry_count == 0 ]] && [[ $completed != "1/1" ]]; then
-                error "Timed out waiting for job $job_name."
-            else
-                info "Job $job_name completed, ready for restore."
-            fi
-        else
-            warning "Job $job_name not present, proceeding with restore."
-        fi
     }
     
     function restore {
-        #restore initial admin secret
-        #info "Restoring secret cs-keycloak-initial-admin..."
-        #oc patch secret -n $CSDB_NAMESPACE cs-keycloak-initial-admin --patch="{\"data\": {\"password\": \"$(base64 -w0 $BACKUP_DIR/secrets/password)\" }}"
 
         CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io common-service-db -o jsonpath="{.status.currentPrimary}" -n $CSDB_NAMESPACE` 
         oc exec $CNPG_PRIMARY_POD -n $CSDB_NAMESPACE -- mkdir -p /run/cs-db_backup
@@ -111,9 +78,10 @@ data:
         oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname zen --format=c --clean --exit-on-error -v /run/cs-db_backup/cs-db_zen_backup.dump
         oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
 
-        #restart keycloak pod
-        #info "Restarting Keycloak pods..."
-        #oc delete pods -l app=keycloak -n $CSDB_NAMESPACE
+        info "Rerunning OIDC registration job..."
+        oc -n $CSDB_NAMESPACE get job oidc-client-registration -o json |yq 'del(.spec.selector)' |yq 'del(.spec.template.metadata.labels)'| oc -n $CSDB_NAMESPACE replace --force -f -
+        oc -n $CSDB_NAMESPACE get pods | grep oidc-client-registration
+
     }
 
     function msg() {
