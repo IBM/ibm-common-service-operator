@@ -6,9 +6,9 @@ See https://www.keycloak.org/docs/latest/server_development/index.html#_themes
 
 **The style files are cached, so if you update the them, remember to update the style file name and the `styles` property in `theme.properties`.**
 For example, for CS 4.6:
-theme/cloudpak/login/resources/css/styles460.css
-theme/cloudpak/login/theme.properies styles=css/styles460.css
-
+theme/cloudpak/login/resources/css/styles461.css
+theme/cloudpak/login/theme.properies styles=css/styles461.css
+NOTE: this would likely apply to any of the files - images, fonts, etc.  If updated, they must be renamed.
 
 ## Testing
 
