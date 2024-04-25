@@ -169,6 +169,9 @@ body .login-pf-page {
 /* The following block of styling is to get the carbon checkbox */
 .checkbox label {
   padding-left: 27px;
+}
+/* This rule is specifically for the remember me checkbox - had odd alignment,don't know why */
+.form-group.login-pf-settings .checkbox label {
   padding-top: 2px;
 }
 label:has( > input[type=checkbox]:focus)::before {
@@ -209,7 +212,7 @@ label:has( > input[type=checkbox])::after {
   transform: scale(0) rotate(-45deg);
   transform-origin: bottom right;
 }
-#rememberMe {
+#rememberMe, #logout-sessions {
   position: absolute;
   overflow: hidden;
   width: 1px;
