@@ -345,7 +345,7 @@ data:
             info "Broker Secret obtained in namespace $ZEN_NAMESPACE"
         fi
         if [[ $BACKUP == "true" ]]; then
-            extension_check=$(oc get zenextension -n $ZEN_NAMESPACE -o name || echo "empty")
+            extension_check=$(oc get zenextension -n $ZEN_NAMESPACE -o name | grep -v "common-web-ui-zen-extension\|zen-watchdog-frontdoor-extension" || echo "empty")
             if [[ $extension_check != "empty" ]]; then
                 extensions=""
                 for ext in $extension_check
