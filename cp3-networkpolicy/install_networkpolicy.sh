@@ -134,11 +134,9 @@ function parse_arguments() {
             LICSVC_NAMESPACE=$1
             ;;
         -u | --uninstall)
-            shift
             UNINSTALL=true
             ;;
         -e | --egress)
-            shift
             EGRESS=true
             ;;
         -h | --help)
@@ -181,13 +179,6 @@ function check_prereqs() {
             info "Creating IBM Common Services namespace: ${CS_NAMESPACE}"
             oc create namespace "${CS_NAMESPACE}"
         fi
-        
-        # checking for ibm-common-service-operator in CS_NAMESPACE
-        if [[ -z "$(oc -n ${OPERATORS_NAMESPACE} get csv --ignore-not-found | grep 'ibm-common-service-operator')" ]]; then
-            info "IBM Common Services are not installed in namespace ${OPERATORS_NAMESPACE}"
-        else
-            success "IBM Common Services found in namespace ${OPERATORS_NAMESPACE}"
-        fi
     else
         error "IBM Common Services operand namespace not specified"
     fi
@@ -202,6 +193,13 @@ function check_prereqs() {
             info "Creating operators namespace: ${OPERATORS_NAMESPACE}"
             oc create namespace "${OPERATORS_NAMESPACE}"
         fi
+    fi
+
+    # checking for ibm-common-service-operator in CS_NAMESPACE
+    if [[ -z "$(oc -n ${OPERATORS_NAMESPACE} get csv --ignore-not-found | grep 'ibm-common-service-operator')" ]]; then
+        info "IBM Common Services are not installed in namespace ${OPERATORS_NAMESPACE}"
+    else
+        success "IBM Common Services found in namespace ${OPERATORS_NAMESPACE}"
     fi
 
     # if ZEN_NAMESPACE is not specified, use CS_NAMESPACE
