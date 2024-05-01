@@ -29,6 +29,9 @@ CERT_NAMESPACE=
 # license-service namespace
 LICSVC_NAMESPACE=
 
+# license-service-reporter namespace
+LICSVC_REPORTER_NAMESPACE=
+
 # is uninstall flag?
 UNINSTALL=
 
@@ -98,14 +101,15 @@ function print_usage() {
     echo "Install IBM Common Services NetworkPolicies"
     echo ""
     echo "Options:"
-    echo "   -n, --namespace string                 IBM Common Services operand namespace. No default value"
-    echo "   -o, --operators-namespace string       Operators namespace. Default is same namespace as IBM Common Services operand namespace"
-    echo "   -z, --zen-namespace string             Zen namespace. Default is same namespace as IBM Common Services operand namespace"
-    echo "   -c, --cert-manager-namespace string    Cert-manager namespace. No default value"
-    echo "   -l, --licensing-namespace string       License Service namespace. No default value"
-    echo "   -u, --uninstall                        Uninstall IBM Common Services Network Policies"
-    echo "   -e, --egress                           Deploy egress NetworkPolicies"
-    echo "   -h, --help                             Print usage information"
+    echo "   -n, --namespace string                               IBM Common Services operand namespace. No default value"
+    echo "   -o, --operators-namespace string                     Operators namespace. Default is same namespace as IBM Common Services operand namespace"
+    echo "   -z, --zen-namespace string                           Zen namespace. Default is same namespace as IBM Common Services operand namespace"
+    echo "   -c, --cert-manager-namespace string                  Cert-manager namespace. No default value"
+    echo "   -l, --licensing-namespace string                     License Service namespace. No default value"
+    echo "   -lsr, --licensing-svc-reporter-namespace string      License Service Reporter namespace. No default value"
+    echo "   -u, --uninstall                                      Uninstall IBM Common Services Network Policies"
+    echo "   -e, --egress                                         Deploy egress NetworkPolicies"
+    echo "   -h, --help                                           Print usage information"
     echo ""
 }
 
@@ -133,12 +137,14 @@ function parse_arguments() {
             shift
             LICSVC_NAMESPACE=$1
             ;;
-        -u | --uninstall)
+        -lsr | --licensing-svc-reporter-namespace)
             shift
+            LICSVC_REPORTER_NAMESPACE=$1
+            ;;
+        -u | --uninstall)
             UNINSTALL=true
             ;;
         -e | --egress)
-            shift
             EGRESS=true
             ;;
         -h | --help)
@@ -181,13 +187,6 @@ function check_prereqs() {
             info "Creating IBM Common Services namespace: ${CS_NAMESPACE}"
             oc create namespace "${CS_NAMESPACE}"
         fi
-        
-        # checking for ibm-common-service-operator in CS_NAMESPACE
-        if [[ -z "$(oc -n ${OPERATORS_NAMESPACE} get csv --ignore-not-found | grep 'ibm-common-service-operator')" ]]; then
-            info "IBM Common Services are not installed in namespace ${OPERATORS_NAMESPACE}"
-        else
-            success "IBM Common Services found in namespace ${OPERATORS_NAMESPACE}"
-        fi
     else
         error "IBM Common Services operand namespace not specified"
     fi
@@ -202,6 +201,13 @@ function check_prereqs() {
             info "Creating operators namespace: ${OPERATORS_NAMESPACE}"
             oc create namespace "${OPERATORS_NAMESPACE}"
         fi
+    fi
+
+    # checking for ibm-common-service-operator in CS_NAMESPACE
+    if [[ -z "$(oc -n ${OPERATORS_NAMESPACE} get csv --ignore-not-found | grep 'ibm-common-service-operator')" ]]; then
+        info "IBM Common Services are not installed in namespace ${OPERATORS_NAMESPACE}"
+    else
+        success "IBM Common Services found in namespace ${OPERATORS_NAMESPACE}"
     fi
 
     # if ZEN_NAMESPACE is not specified, use CS_NAMESPACE
@@ -227,6 +233,7 @@ function install_networkpolicy() {
     info "Using Zen namespace: ${ZEN_NAMESPACE}"
     info "Using cert-manager namespace: ${CERT_NAMESPACE}"
     info "Using license-service namespace: ${LICSVC_NAMESPACE}"
+    info "Using license-service-reporter namespace: ${LICSVC_REPORTER_NAMESPACE}"
 
     if [[ ${EGRESS} == "true" ]]; then
         BASE_DIR="${BASE_DIR}/egress"
@@ -264,6 +271,14 @@ function install_networkpolicy() {
         done
     fi
 
+    # Installing license-service-reporter policies
+    if [[ ! -z "${LICSVC_REPORTER_NAMESPACE}" ]]; then
+        for policyfile in `ls -1 ${BASE_DIR}/license-service-reporter/*.yaml`; do
+            info "Installing `basename ${policyfile}` ..."
+            cat ${policyfile} | sed -e "s/lsrNamespace/${LICSVC_REPORTER_NAMESPACE}/g" | oc apply -f -
+        done
+    fi
+
     # Installing zen policies
     if [[ ! -z "${ZEN_NAMESPACE}" ]]; then
         for policyfile in `ls -1 ${BASE_DIR}/zen/*.yaml`; do
@@ -292,6 +307,10 @@ function delete_networkpolicy() {
 
     if [[ ! -z "${LICSVC_NAMESPACE}" ]]; then
         oc delete networkpolicies -n ${LICSVC_NAMESPACE} --selector=component=cpfs3
+    fi
+
+    if [[ ! -z "${LICSVC_REPORTER_NAMESPACE}" ]]; then
+        oc delete networkpolicies -n ${LICSVC_REPORTER_NAMESPACE} --selector=component=cpfs3
     fi
 
     if [[ ! -z "${ZEN_NAMESPACE}" ]]; then
