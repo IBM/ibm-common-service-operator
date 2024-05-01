@@ -91,6 +91,9 @@ const ConfigurationRules = `
             ephemeral-storage: LARGEST_VALUE
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE    
+        postgresql:
+          parameters:
+            max_connections: LARGEST_VALUE     
 - name: ibm-im-mongodb-operator
   spec:
     mongoDB:

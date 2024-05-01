@@ -85,6 +85,9 @@ const Medium = `
             ephemeral-storage: 128Mi
             cpu: 150m
             memory: 384Mi
+        postgresql:
+          parameters:
+            max_connections: 750
 - name: ibm-im-mongodb-operator-v4.0
   spec:
     mongoDB:
