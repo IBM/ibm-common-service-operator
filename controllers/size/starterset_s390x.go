@@ -87,6 +87,9 @@ const StarterSet = `
             ephemeral-storage: 128Mi
             cpu: 75m
             memory: 256Mi
+        postgresql:
+          parameters:
+            max_connections: 400
 - name: ibm-im-mongodb-operator
   spec:
     mongoDB:

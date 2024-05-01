@@ -1192,8 +1192,6 @@ spec:
               resizeInUseVolumes: true
               size: 10Gi
             postgresql:
-              parameters:
-                max_connections: "600"  
               pg_hba:
                 - hostssl cloudpak cpadmin all cert
                 - hostssl im im_user all cert
