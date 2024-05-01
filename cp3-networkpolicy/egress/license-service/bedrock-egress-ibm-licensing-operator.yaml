@@ -1,15 +1,15 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: access-to-ibm-licensing-service-reporter
+  name: egress-ibm-licensing-operator
   namespace: "licNamespace"
   labels:
     component: cpfs3
 spec:
   podSelector:
     matchLabels:
-      app: ibm-license-service-reporter-instance
-  ingress:
-    - {}
+      name: "ibm-licensing-operator"
   policyTypes:
-    - Ingress
+  - Egress
+  egress:
+  - {}
