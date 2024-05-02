@@ -128,7 +128,7 @@ function deploy_resources(){
   #Deploy IM Mongo resources
   if [[ $MONGO == "true" ]]; then
     info "Creating IM Mongo Backup/Restore resources in namespace $TARGET_NAMESPACE."
-    sed -i -E "s/<mongo namespace>/$TARGET_NAMESPACE/" mongodb-backup-deployment.yaml
+    sed -i -E "s~<mongo namespace>~$TARGET_NAMESPACE~g" mongodb-backup-deployment.yaml
     sed -i -E "s/<mongo namespace>/$TARGET_NAMESPACE/" mongodb-backup-pvc.yaml
     sed -i -E "s/<storage class>/$STORAGE_CLASS/" mongodb-backup-pvc.yaml
     oc apply -f mongodb-backup-deployment.yaml -f mongodb-backup-pvc.yaml -n $TARGET_NAMESPACE || error "Unable to deploy resources for IM Mongo."
