@@ -87,7 +87,7 @@ const Large = `
             memory: 768Mi
         postgresql:
           parameters:
-            max_connections: 1100
+            max_connections: "1100"
 - name: ibm-im-mongodb-operator
   spec:
     mongoDB:
