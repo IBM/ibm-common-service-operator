@@ -1392,7 +1392,7 @@ spec:
   operators:
   - name: ibm-im-operator
     namespace: "{{ .CPFSNs }}"
-    channel: v4.5
+    channel: v4.6
     packageName: ibm-iam-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -1410,13 +1410,13 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
   - name: ibm-platformui-operator
     namespace: "{{ .CPFSNs }}"
-    channel: v4.4
+    channel: v6.0
     packageName: ibm-zen-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
   - name: ibm-idp-config-ui-operator
     namespace: "{{ .CPFSNs }}"
-    channel: v4.4
+    channel: v4.5
     packageName: ibm-commonui-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
