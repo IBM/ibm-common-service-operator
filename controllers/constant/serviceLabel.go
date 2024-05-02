@@ -73,6 +73,11 @@ const ServiceLabelTemplate = `
     authentication:
       labels:
         placeholder1: placeholder2
+- name: ibm-im-operator-v4.6
+  spec:
+    authentication:
+      labels:
+        placeholder1: placeholder2
 - name: ibm-idp-config-ui-operator-v4.0
   spec:
     commonWebUI: 
@@ -94,6 +99,11 @@ const ServiceLabelTemplate = `
       labels:
         placeholder1: placeholder2
 - name: ibm-idp-config-ui-operator-v4.4
+  spec:
+    commonWebUI: 
+      labels:
+        placeholder1: placeholder2
+- name: ibm-idp-config-ui-operator-v4.5
   spec:
     commonWebUI: 
       labels:
