@@ -843,7 +843,6 @@ spec:
                     templatingValueFrom:
                       default:
                         required: true
-                        defaultValue: cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:05f30f2117ff6e0e853487f17785024f6bb226f3631425eaf1498b9d3b753345
                         configMapKeyRef:
                           name: cloud-native-postgresql-image-list
                           key: edb-postgres-license-provider-image
@@ -875,7 +874,6 @@ spec:
                     templatingValueFrom:
                       default:
                         required: true
-                        defaultValue: cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:05f30f2117ff6e0e853487f17785024f6bb226f3631425eaf1498b9d3b753345
                         configMapKeyRef:
                           name: cloud-native-postgresql-image-list
                           key: edb-postgres-license-provider-image
