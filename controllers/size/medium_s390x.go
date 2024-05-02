@@ -87,7 +87,7 @@ const Medium = `
             memory: 384Mi
         postgresql:
           parameters:
-            max_connections: 750
+            max_connections: "750"
 - name: ibm-im-mongodb-operator
   spec:
     mongoDB:
