@@ -87,7 +87,7 @@ const Small = `
             memory: 256Mi
         postgresql:
           parameters:
-            max_connections: 600
+            max_connections: "600"
 - name: ibm-im-mongodb-operator
   spec:
     mongoDB:

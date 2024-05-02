@@ -87,7 +87,7 @@ const StarterSet = `
             memory: 256Mi
         postgresql:
           parameters:
-            max_connections: 400
+            max_connections: "400"
 - name: ibm-im-mongodb-operator
   spec:
     mongoDB:
