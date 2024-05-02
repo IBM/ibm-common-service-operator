@@ -1004,10 +1004,19 @@ spec:
           productID: 068a62892a1e4db39641342e592daa25
           productMetric: FREE
           productName: IBM Cloud Platform Common Services
+          k8s.enterprisedb.io/addons: '["velero"]'
+          k8s.enterprisedb.io/snapshotAllowColdBackupOnPrimary: enabled
+        labels:
+          foundationservices.cloudpak.ibm.com: cs-db
         force: true
         data:
           spec:
-            bootstrap:
+            inheritedMetadata:
+              annotations:
+                backup.velero.io/backup-volumes: pgdata,pg-wal
+	      labels:
+                foundationservices.cloudpak.ibm.com: cs-db
+	    bootstrap:
               initdb:
                 database: cloudpak
                 owner: cpadmin
