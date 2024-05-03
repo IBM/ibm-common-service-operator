@@ -1700,19 +1700,6 @@ rules:
     resources:
       - routes
   - verbs:
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
-      - deletecollection
-    apiGroups:
-      - '*'
-    resources:
-      - '*'
-  - verbs:
       - get
     apiGroups:
       - ''
