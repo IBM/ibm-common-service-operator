@@ -1142,9 +1142,9 @@ spec:
             inheritedMetadata:
               annotations:
                 backup.velero.io/backup-volumes: pgdata,pg-wal
-	      labels:
+              labels:
                 foundationservices.cloudpak.ibm.com: cs-db
-	    bootstrap:
+            bootstrap:
               initdb:
                 database: cloudpak
                 owner: cpadmin
