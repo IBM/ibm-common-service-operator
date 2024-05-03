@@ -28,6 +28,7 @@ import (
 
 	utilyaml "github.com/ghodss/yaml"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+	"golang.org/x/mod/semver"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -238,6 +239,13 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 	klog.Info("Installing ODLM Operator")
 	if err := b.renderTemplate(constant.ODLMSubscription, b.CSData); err != nil {
 		return err
+	}
+
+	klog.Info("Waiting for ODLM Operator to be ready")
+	if isWaiting, err := b.waitOperatorCSV("ibm-odlm", b.CSData.CPFSNs); err != nil {
+		return err
+	} else if isWaiting {
+		forceUpdateODLMCRs = true
 	}
 
 	// wait ODLM OperandRegistry and OperandConfig CRD
@@ -1945,4 +1953,70 @@ func setEDBUserManaged(instance *apiv3.CommonService) {
 	if !isExist {
 		instance.Spec.OperatorConfigs = append(instance.Spec.OperatorConfigs, apiv3.OperatorConfig{Name: "internal-use-only-edb", UserManaged: true})
 	}
+}
+
+func (b *Bootstrap) waitOperatorCSV(packageManifest, operatorNs string) (bool, error) {
+	var isWaiting bool
+	// Wait for the operator CSV to be installed
+	klog.Infof("Waiting for the operator CSV with packageManifest %s in namespace %s to be installed", packageManifest, operatorNs)
+	if err := utilwait.PollImmediate(time.Second*5, time.Minute*5, func() (done bool, err error) {
+		installed, err := b.checkOperatorCSV(packageManifest, operatorNs)
+		if err != nil {
+			return false, err
+		} else if !installed {
+			klog.Infof("The operator CSV with packageManifest %s in namespace %s is not installed yet", packageManifest, operatorNs)
+			isWaiting = true
+		}
+		return installed, nil
+	}); err != nil {
+		return isWaiting, fmt.Errorf("failed to wait for the operator CSV to be installed: %v", err)
+	}
+	return isWaiting, nil
+}
+
+func (b *Bootstrap) checkOperatorCSV(packageManifest, operatorNs string) (bool, error) {
+	// List the subscription by packageManifest and operatorNs
+	// The subscription contain label "operators.coreos.com/<packageManifest>.<operatorNs>: ''"
+	subList := &olmv1alpha1.SubscriptionList{}
+	if err := b.Client.List(context.TODO(), subList, &client.ListOptions{
+		LabelSelector: labels.SelectorFromSet(labels.Set{
+			"operators.coreos.com/" + packageManifest + "." + operatorNs: "",
+		}),
+		Namespace: operatorNs,
+	}); err != nil {
+		klog.Errorf("Failed to list Subscription by packageManifest %s and operatorNs %s: %v", packageManifest, operatorNs, err)
+		return false, err
+	}
+
+	// Check if multiple subscriptions exist
+	if len(subList.Items) > 1 {
+		return false, fmt.Errorf("multiple subscriptions found by packageManifest %s and operatorNs %s", packageManifest, operatorNs)
+	} else if len(subList.Items) == 0 {
+		return false, fmt.Errorf("no subscription found by packageManifest %s and operatorNs %s", packageManifest, operatorNs)
+	}
+
+	// Get the channel in the subscription .spec.channel, and check if it is semver
+	channel := subList.Items[0].Spec.Channel
+	if !semver.IsValid(channel) {
+		klog.Warningf("channel %s is not a semver for operator with packageManifest %s and operatorNs %s", channel, packageManifest, operatorNs)
+		return false, nil
+	}
+
+	// Get the CSV from subscription .status.installedCSV
+	installedCSV := subList.Items[0].Status.InstalledCSV
+	var installedVersion string
+	if installedCSV != "" {
+		// installedVersion is the version after the first dot in installedCSV
+		// For example, version is v4.3.1 for operand-deployment-lifecycle-manager.v4.3.1
+		installedVersion = installedCSV[strings.IndexByte(installedCSV, '.')+1:]
+	}
+
+	// 0 if channel == installedVersion - v4.3 == v4.3.0
+	// -1 if channel < installedVersion - v4.3 < v4.3.1
+	// +1 if channel > installedVersion - v4.3 > v4.2.0
+	if semver.Compare(channel, installedVersion) > 0 {
+		return false, nil
+	}
+
+	return true, nil
 }
