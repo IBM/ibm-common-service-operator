@@ -32,7 +32,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	certmanagerv1 "github.com/ibm/ibm-cert-manager-operator/apis/cert-manager/v1"
-	res "github.com/ibm/ibm-cert-manager-operator/controllers/resources"
 
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 )
@@ -97,7 +96,7 @@ func (r *CertificateRefreshReconciler) Reconcile(ctx context.Context, req ctrl.R
 		// if we found this certificate in the same namespace
 		if foundCert {
 			// check this certificate has refresh label or not
-			if cert.Labels[res.RefreshCALabel] == "true" {
+			if cert.Labels[constant.RefreshCALabel] == "true" {
 				foundCA = true
 			}
 		}
