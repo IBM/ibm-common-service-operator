@@ -33,6 +33,8 @@ import (
 
 	certmanagerv1 "github.com/ibm/ibm-cert-manager-operator/apis/cert-manager/v1"
 	res "github.com/ibm/ibm-cert-manager-operator/controllers/resources"
+
+	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 )
 
 var logd = log.Log.WithName("controller_certificaterefresh")
@@ -78,7 +80,7 @@ func (r *CertificateRefreshReconciler) Reconcile(ctx context.Context, req ctrl.R
 	foundCA := false
 	// check this secret has refresh label or not
 	// if this secret has refresh label
-	if secret.GetLabels()[res.RefreshCALabel] == "true" {
+	if secret.GetLabels()[constant.RefreshCALabel] == "true" {
 		foundCA = true
 	} else {
 		// Get the certificate by this secret in the same namespace

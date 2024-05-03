@@ -44,7 +44,7 @@ import (
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
-	odlm "github.com/IBM/operand-deployment-lifecycle-manager/api/v1alpha1"
+	odlm "github.com/IBM/operand-deployment-lifecycle-manager/v4/api/v1alpha1"
 )
 
 // CommonServiceReconciler reconciles a CommonService object
