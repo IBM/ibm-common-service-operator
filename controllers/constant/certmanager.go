@@ -16,6 +16,16 @@
 
 package constant
 
+// SecretWatchLabel is a string of secrets that watched by cert manager operator labels
+const SecretWatchLabel string = "operator.ibm.com/watched-by-cert-manager"
+
+// Labels and Annotations added by this operator
+const (
+	OperatorGeneratedAnno = "ibm-cert-manager-operator-generated"
+	ProperV1Label         = "ibm-cert-manager-operator/conditionally-generated-v1"
+	RefreshCALabel        = "ibm-cert-manager-operator/refresh-ca-chain"
+)
+
 var (
 	CertManagerAPIGroupVersionV1Alpha1 = "certmanager.k8s.io/v1alpha1"
 	CertManagerAPIGroupVersionV1       = "cert-manager.io/v1"

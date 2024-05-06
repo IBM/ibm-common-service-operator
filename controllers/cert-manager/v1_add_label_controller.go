@@ -32,7 +32,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	certmanagerv1 "github.com/ibm/ibm-cert-manager-operator/apis/cert-manager/v1"
-	res "github.com/ibm/ibm-cert-manager-operator/controllers/resources"
+
+	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 )
 
 // V1AddLabelReconciler reconciles a Certificate object
@@ -83,8 +84,8 @@ func (r *V1AddLabelReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	if oldLabelsMap == nil {
 		oldLabelsMap = make(map[string]string)
 	}
-	if _, ok := oldLabelsMap[res.SecretWatchLabel]; !ok {
-		oldLabelsMap[res.SecretWatchLabel] = ""
+	if _, ok := oldLabelsMap[constant.SecretWatchLabel]; !ok {
+		oldLabelsMap[constant.SecretWatchLabel] = ""
 		secretInstance.SetLabels(oldLabelsMap)
 	}
 

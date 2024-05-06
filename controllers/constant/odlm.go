@@ -23,7 +23,7 @@ import (
 
 	utilyaml "github.com/ghodss/yaml"
 
-	odlm "github.com/IBM/operand-deployment-lifecycle-manager/api/v1alpha1"
+	odlm "github.com/IBM/operand-deployment-lifecycle-manager/v4/api/v1alpha1"
 )
 
 var (
