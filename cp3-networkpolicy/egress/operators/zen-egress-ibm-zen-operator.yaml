@@ -16,6 +16,16 @@ spec:
       podSelector:
         matchLabels:
           component: "zen-core-api"
+  - ports:
+    - port: 443
+      protocol: TCP
+    - port: 6443
+      protocol: TCP
+    to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          apiserver: "true"
   podSelector:
     matchLabels:
       name: "ibm-zen-operator"
