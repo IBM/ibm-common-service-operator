@@ -1,18 +1,12 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: egress-ibm-iam-operator
+  name: egress-ibm-commonui-operator
   namespace: "opNamespace"
   labels:
     component: cpfs3
 spec:
   egress:
-  - to:
-    - namespaceSelector: {}
-      podSelector:
-        matchExpressions:
-          - key: k8s.enterprisedb.io/cluster
-            operator: Exists
   - ports:
     - port: 443
       protocol: TCP
@@ -25,6 +19,6 @@ spec:
           apiserver: "true"
   podSelector:
     matchLabels:
-      name: "ibm-iam-operator"
+      name: "ibm-commonui-operator"
   policyTypes:
   - Egress
