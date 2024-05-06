@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: cs-db-br-configmap
-  namespace: cs
+  namespace: <cs-db namespace>
   labels:
     foundationservices.cloudpak.ibm.com: cs-db-data
 data:
