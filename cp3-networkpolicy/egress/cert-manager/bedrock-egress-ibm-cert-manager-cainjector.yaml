@@ -7,7 +7,16 @@ metadata:
     component: cpfs3
 spec:
   egress:
-  - {}
+    - ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 6443
+      to:
+        - podSelector:
+            matchLabels:
+              apiserver: 'true'
+          namespaceSelector: {}
   podSelector:
     matchLabels:
       app: "ibm-cert-manager-cainjector"
