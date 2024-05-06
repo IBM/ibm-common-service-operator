@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: cs-db-br-configmap
-  namespace: <cs-db namespace>
+  namespace: cs
   labels:
     foundationservices.cloudpak.ibm.com: cs-db-data
 data:
@@ -79,9 +79,39 @@ data:
         oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
 
         info "Rerunning OIDC registration job..."
-        oc -n $CSDB_NAMESPACE get job oidc-client-registration -o json |yq 'del(.spec.selector)' |yq 'del(.spec.template.metadata.labels)'| oc -n $CSDB_NAMESPACE replace --force -f -
-        oc -n $CSDB_NAMESPACE get pods | grep oidc-client-registration
+        oc -n $CSDB_NAMESPACE get job oidc-client-registration -o yaml > /tmp/oidc-client-registration.yaml
+        oc -n $CSDB_NAMESPACE delete job oidc-client-registration
+        yq -i 'del(.metadata.creationTimestamp) | del(.metadata.managedFields) | del(.metadata.resourceVersion) | del(.metadata.uid) | del(.spec.selector) | del(.spec.template.metadata.labels) | del(.status)' /tmp/oidc-client-registration.yaml || error "Failed to remove metadata fields from temp oidc client registration yaml for namespace ${CSDB_NAMESPACE}."
+        info "Wait for previous job to delete..."
+        sleep 30
+        oc apply -f /tmp/oidc-client-registration.yaml
+        rm -f /tmp/oidc-client-registration.yaml
+        wait_for_oidc
+    }
 
+    function wait_for_oidc {
+        job_name="oidc-client-registration"
+        info "Waiting for job $job_name to complete in namespace $CSDB_NAMESPACE."
+        job_exists=$(oc get job $job_name -n $CSDB_NAMESPACE --no-headers || echo fail)
+        if [[ $job_exists != "fail" ]]; then
+            completed=$(oc get job $job_name -n $CSDB_NAMESPACE --no-headers | awk '{print $2}')
+            retry_count=20
+            while [[ $completed != "1/1" ]] && [[ $retry_count > 0 ]]
+            do
+                info "Wait for job $job_name to complete. Try again in 15s."
+                sleep 15
+                completed=$(oc get job $job_name -n $CSDB_NAMESPACE --no-headers | awk '{print $2}')
+                retry_count=$retry_count-1
+            done
+
+            if [[ $retry_count == 0 ]] && [[ $completed != "1/1" ]]; then
+                error "Timed out waiting for job $job_name."
+            else
+                info "Job $job_name completed."
+            fi
+        else
+            error "Job $job_name not present."
+        fi
     }
 
     function msg() {
