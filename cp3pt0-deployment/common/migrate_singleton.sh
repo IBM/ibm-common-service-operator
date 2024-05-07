@@ -320,7 +320,7 @@ function backup_ibmlicensing() {
         ' | sed -e 's/^/    /g'`
     fi
     debug1 "instance: $instance"
-cat << _EOF | oc apply -f -
+cat << _EOF | ${OC} apply -f -
 apiVersion: v1
 kind: ConfigMap
 metadata:

@@ -522,7 +522,7 @@ function pre_req() {
     check_yq_version
 
     # Checking oc command logged in
-    user=$(oc whoami 2> /dev/null)
+    user=$(${OC} whoami 2> /dev/null)
     if [ $? -ne 0 ]; then
         error "You must be logged into the OpenShift Cluster from the oc command line"
     else
