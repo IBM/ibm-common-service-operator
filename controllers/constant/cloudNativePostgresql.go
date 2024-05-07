@@ -32,5 +32,5 @@ data:
   ibm-postgresql-14-operand-image: icr.io/cpopen/edb/postgresql:14.11@sha256:5f825e253f330006144895af8a8c8cd0cc91a95937652fb094b3244302aaa469
   ibm-postgresql-13-operand-image: icr.io/cpopen/edb/postgresql:13.14@sha256:60328994ab265ca367b67259a1faacc349cf57f7bcccdb2c1494244a5663940d
   ibm-postgresql-12-operand-image: icr.io/cpopen/edb/postgresql:12.18@sha256:287c28ca4584e92bc1fae545c813c6e9a6723f978f0d3f8c2f29e40a0b15853f
-  edb-postgres-license-provider-image: cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:d4c28bcdac9a41133b329f1aaf00ff1f6c223b21041024757c2a81ea4f4a1343
+  edb-postgres-license-provider-image: cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:c1670e7dd93c1e65a6659ece644e44aa5c2150809ac1089e2fd6be37dceae4ce
 `
