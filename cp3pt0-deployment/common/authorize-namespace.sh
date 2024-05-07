@@ -25,6 +25,7 @@ function help() {
     echo "SYNTAX:"
     echo "authorize-namespace.sh [namespace | default current namespace] [-to namespace | default ibm-common-services] [-delete]"
     echo "WHERE:"
+    echo "  --oc string                    Optional. File path to oc CLI. Default uses oc in your PATH"
     echo "  namespace:                     It is the name of the namespace you wish to authorize.  This namespace MUST exist."
     echo "                                 By default, the current namespace is assumed"
     echo "  -to namespace:                 It is the name of the namespace of the NamespaceScope operator."
@@ -40,6 +41,7 @@ function help() {
 # MAIN LOGIC
 #
 
+OC="oc"
 TARGETNS=""
 TONS="ibm-common-services"
 DELETE=0
@@ -47,6 +49,15 @@ MINIMAL_RBAC_ENABLED=0
 
 while (( $# )); do
   case "$1" in
+    --oc)
+      if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+        OC=$2
+        shift 2
+      else
+        echo "Error: Argument for $1 is missing" >&2
+        exit 1
+      fi
+      ;;
     -to|--to)
       if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
         TONS=$2
@@ -87,7 +98,7 @@ done
 #
 
 if [ -z $TARGETNS ]; then
-    TARGETNS=$(oc project -q)
+    TARGETNS=$(${OC} project -q)
     if [ $? -ne 0 ]; then
       echo "Error: You do not seem to be logged into Openshift" >&2
       help
@@ -104,14 +115,14 @@ fi
 
 TARGETNS=${TARGETNS//[[:blank:]]/}
 
-oc get ns $TARGETNS
+${OC} get ns $TARGETNS
 if [ $? -ne 0 ]; then
     echo "Invalid  namespace " $TARGETNS >&2
     help
     exit 1
 fi
 
-oc get ns $TONS
+${OC} get ns $TONS
 if [ $? -ne 0 ]; then
     echo "Invalid  namespace " $TARGETNS >&2
     help
@@ -136,8 +147,8 @@ fi
 # Delete permissions and update the list if needed
 #
 if [ $DELETE -ne 0 ]; then
-  oc delete role nss-managed-role-from-$TONS -n $TARGETNS --ignore-not-found
-  oc delete rolebinding nss-managed-role-from-$TONS -n $TARGETNS --ignore-not-found
+  ${OC} delete role nss-managed-role-from-$TONS -n $TARGETNS --ignore-not-found
+  ${OC} delete rolebinding nss-managed-role-from-$TONS -n $TARGETNS --ignore-not-found
   exit 0
 fi
 
@@ -146,7 +157,7 @@ fi
 # Define a role for service accounts
 #
 if [ $MINIMAL_RBAC_ENABLED -eq 0 ]; then   
-  cat <<EOF | oc apply -n $TARGETNS -f -
+  cat <<EOF | ${OC} apply -n $TARGETNS -f -
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -172,13 +183,13 @@ else
       exit 0
   fi
   echo "Creating nss minimal rbac role from $MINIMAL_RBAC:"
-  sed -e "s/^.*name: .*/  name: nss-managed-role-from-$TONS/g" -e "s/ns_to_replace/$TARGETNS/g" "$MINIMAL_RBAC" | oc apply -f -
+  sed -e "s/^.*name: .*/  name: nss-managed-role-from-$TONS/g" -e "s/ns_to_replace/$TARGETNS/g" "$MINIMAL_RBAC" | ${OC} apply -f -
 fi
 
 #
 # Bind the service account in the TO namespace to the Role in the target namespace
 #
-cat <<EOF | oc apply -n $TARGETNS -f -
+cat <<EOF | ${OC} apply -n $TARGETNS -f -
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:

@@ -1428,7 +1428,7 @@ function scale_down() {
 function delete_webhook_configuration(){
     local operator_ns=$1
     # Find the webhook that matches the labels 
-    local webhook_name=$(oc get validatingwebhookconfiguration -n $operator_ns -l olm.owner.kind=ClusterServiceVersion,olm.owner.namespace=$operator_ns -o=yaml | yq e '.items[] | select(.metadata.labels."olm.owner" | test("ibm-common-service-operator.v[0-9.]+")) | .metadata.name' -)
+    local webhook_name=$(${OC} get validatingwebhookconfiguration -n $operator_ns -l olm.owner.kind=ClusterServiceVersion,olm.owner.namespace=$operator_ns -o=yaml | ${YQ} e '.items[] | select(.metadata.labels."olm.owner" | test("ibm-common-service-operator.v[0-9.]+")) | .metadata.name' -)
 
     # Check if a matching webhook was found, and delete it if so
     if [ -n "$webhook_name" ]; then
@@ -1613,6 +1613,6 @@ function is_supports_delegation() {
 function prepare_preview_mode() {
     mkdir -p ${PREVIEW_DIR}
     if [[ $PREVIEW_MODE -eq 1 ]]; then
-        OC_CMD="oc --dry-run=client" # a redirect to the file is needed too
+        OC_CMD="${OC} --dry-run=client" # a redirect to the file is needed too
     fi
 }
