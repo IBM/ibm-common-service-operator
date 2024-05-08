@@ -37,12 +37,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/IBM/controller-filtered-cache/filteredcache"
-	nssv1 "github.com/IBM/ibm-namespace-scope-operator/api/v1"
+	nssv1 "github.com/IBM/ibm-namespace-scope-operator/v4/api/v1"
 	ssv1 "github.com/IBM/ibm-secretshare-operator/api/v1"
-	odlm "github.com/IBM/operand-deployment-lifecycle-manager/api/v1alpha1"
+	odlm "github.com/IBM/operand-deployment-lifecycle-manager/v4/api/v1alpha1"
 
 	certmanagerv1 "github.com/ibm/ibm-cert-manager-operator/apis/cert-manager/v1"
-	cmconstants "github.com/ibm/ibm-cert-manager-operator/controllers/resources"
 
 	operatorv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	"github.com/IBM/ibm-common-service-operator/controllers"
@@ -100,7 +99,7 @@ func main() {
 			LabelSelector: constant.CsManagedLabel,
 		},
 		corev1.SchemeGroupVersion.WithKind("Secret"): {
-			LabelSelector: cmconstants.SecretWatchLabel,
+			LabelSelector: constant.SecretWatchLabel,
 		},
 	}
 	clusterGVKList := []schema.GroupVersionKind{

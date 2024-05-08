@@ -6,10 +6,8 @@ toolchain go1.21.3
 
 require (
 	github.com/IBM/controller-filtered-cache v0.3.5
-	github.com/IBM/ibm-namespace-scope-operator v1.17.3
 	github.com/IBM/ibm-namespace-scope-operator/v4 v4.2.4-0.20240501132320-6675f97bc34f
 	github.com/IBM/ibm-secretshare-operator v1.20.3
-	github.com/IBM/operand-deployment-lifecycle-manager v1.23.5
 	github.com/IBM/operand-deployment-lifecycle-manager/v4 v4.3.1-0.20240503182421-b3ed4f6f1805
 	github.com/ghodss/yaml v1.0.0
 	github.com/ibm/ibm-cert-manager-operator v0.0.0-20230705134954-f3b9b344298a
@@ -92,7 +90,6 @@ require (
 	k8s.io/apiextensions-apiserver v0.24.2 // indirect
 	k8s.io/component-base v0.24.2 // indirect
 	k8s.io/klog/v2 v2.60.1 // indirect
-	k8s.io/kube-aggregator v0.18.9 // indirect
 	k8s.io/kube-openapi v0.0.0-20220627174259-011e075b9cb8 // indirect
 	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9 // indirect
 	sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2 // indirect
