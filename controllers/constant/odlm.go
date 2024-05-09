@@ -1092,6 +1092,8 @@ spec:
               - common-service-db-ro.{{ .ServicesNs }}
               - common-service-db-ro.{{ .ServicesNs }}.svc
               - common-service-db-rw
+              - common-service-db-rw.{{ .ServicesNs }}
+              - common-service-db-rw.{{ .ServicesNs }}.svc
             duration: 8760h0m0s
             issuerRef:
               kind: Issuer
