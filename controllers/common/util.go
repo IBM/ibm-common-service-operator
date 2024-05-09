@@ -49,7 +49,7 @@ import (
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
-	nssv1 "github.com/IBM/ibm-namespace-scope-operator/api/v1"
+	nssv1 "github.com/IBM/ibm-namespace-scope-operator/v4/api/v1"
 )
 
 type CsMaps struct {
