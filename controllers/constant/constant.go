@@ -100,6 +100,8 @@ const (
 	OpregAPIGroupVersion = "operator.ibm.com/v1alpha1"
 	// OpregKind is the kind of OperandRegistry
 	OpregKind = "OperandRegistry"
+	// OpconKind is the kind of OperandConfig
+	OpconKind = "OperandConfig"
 	// DefaultHugePageAllocation is the default huge page allocation
 	DefaultHugePageAllocation = "100Mi"
 )

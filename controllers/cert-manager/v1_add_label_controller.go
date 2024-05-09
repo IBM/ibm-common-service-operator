@@ -111,7 +111,7 @@ func (r *V1AddLabelReconciler) updateSecret(secret *corev1.Secret) error {
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *V1AddLabelReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	klog.Infof("Set up")
+	klog.V(2).Infof("Set up")
 
 	// Create a new controller
 	c, err := controller.New("addlabel-controller", mgr, controller.Options{Reconciler: r})

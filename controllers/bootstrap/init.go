@@ -29,6 +29,7 @@ import (
 	utilyaml "github.com/ghodss/yaml"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -204,16 +205,20 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 	}
 
 	// Check if ODLM OperandRegistry and OperandConfig are created
-	dc := discovery.NewDiscoveryClientForConfigOrDie(b.Config)
 	klog.Info("Checking if OperandRegistry and OperandConfig CRD already exist")
-	existOpreg, _ := b.ResourceExists(dc, "operator.ibm.com/v1alpha1", "OperandRegistry")
-	existOpcon, _ := b.ResourceExists(dc, "operator.ibm.com/v1alpha1", "OperandConfig")
+	existOpreg, _ := b.CheckCRD(constant.OpregAPIGroupVersion, constant.OpregKind)
+	existOpcon, _ := b.CheckCRD(constant.OpregAPIGroupVersion, constant.OpconKind)
 
 	// Install/update Opreg and Opcon resources before installing ODLM if CRDs exist
 	if existOpreg && existOpcon {
 
 		klog.Info("Checking OperandRegistry and OperandConfig deployment status")
 		if err := b.ConfigODLMOperandManagedByOperator(ctx); err != nil {
+			return err
+		}
+		// Set "Pending" condition when creating OperandRegistry and OperandConfig
+		instance.SetPendingCondition(constant.MasterCR, apiv3.ConditionTypePending, corev1.ConditionTrue, apiv3.ConditionReasonInit, apiv3.ConditionMessageInit)
+		if err := b.Client.Status().Update(ctx, instance); err != nil {
 			return err
 		}
 
@@ -234,23 +239,56 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 	}
 
 	// wait ODLM OperandRegistry and OperandConfig CRD
-	if err := b.waitResourceReady("operator.ibm.com/v1alpha1", "OperandRegistry"); err != nil {
+	if err := b.waitResourceReady(constant.OpregAPIGroupVersion, constant.OpregKind); err != nil {
 		return err
 	}
-	if err := b.waitResourceReady("operator.ibm.com/v1alpha1", "OperandConfig"); err != nil {
+	if err := b.waitResourceReady(constant.OpregAPIGroupVersion, constant.OpconKind); err != nil {
+		return err
+	}
+	// Reinstall/update OperandRegistry and OperandConfig if not installed/updated in the previous step
+	if !existOpreg || !existOpcon {
+
+		// Set "Pending" condition when creating OperandRegistry and OperandConfig
+		instance.SetPendingCondition(constant.MasterCR, apiv3.ConditionTypePending, corev1.ConditionTrue, apiv3.ConditionReasonInit, apiv3.ConditionMessageInit)
+		if err := b.Client.Status().Update(ctx, instance); err != nil {
+			return err
+		}
+
+		klog.Info("Installing/Updating OperandRegistry")
+		if err := b.InstallOrUpdateOpreg(forceUpdateODLMCRs, installPlanApproval); err != nil {
+			return err
+		}
+
+		klog.Info("Installing/Updating OperandConfig")
+		if err := b.InstallOrUpdateOpcon(forceUpdateODLMCRs); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// CheckWarningCondition
+func (b *Bootstrap) CheckWarningCondition(instance *apiv3.CommonService) error {
+	csStorageClass := &storagev1.StorageClassList{}
+	err := b.Reader.List(context.TODO(), csStorageClass)
+	if err != nil {
 		return err
 	}
 
-	klog.Info("Installing/Updating OperandRegistry")
-	if err := b.InstallOrUpdateOpreg(forceUpdateODLMCRs, installPlanApproval); err != nil {
-		return err
+	defaultCount := 0
+	if len(csStorageClass.Items) > 0 {
+		for _, sc := range csStorageClass.Items {
+			if sc.Annotations != nil && sc.Annotations["storageclass.kubernetes.io/is-default-class"] == "true" {
+				klog.V(2).Infof("Default StorageClass found: %s\n", sc.Name)
+				defaultCount++
+			}
+		}
 	}
 
-	klog.Info("Installing/Updating OperandConfig")
-	if err := b.InstallOrUpdateOpcon(forceUpdateODLMCRs); err != nil {
-		return err
+	// check if there is no storageClass declared under spec section and the default count is not 1
+	if instance.Spec.StorageClass == "" && defaultCount != 1 {
+		instance.SetWarningCondition(constant.MasterCR, apiv3.ConditionTypeWarning, corev1.ConditionTrue, apiv3.ConditionReasonWarning, apiv3.ConditionMessageMissSC)
 	}
-
 	return nil
 }
 
@@ -314,8 +352,6 @@ func (b *Bootstrap) CreateCsCR() error {
 			return err
 		}
 	}
-
-	// Restart && Upgrade from 3.5+: Found existing CR
 	return nil
 }
 
@@ -332,7 +368,7 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 
 		objInCluster, err := b.GetObject(obj)
 		if errors.IsNotFound(err) {
-			klog.Infof("Creating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
+			klog.V(2).Infof("Creating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
 			if err := b.CreateObject(obj); err != nil {
 				errMsg = err
 			}
@@ -387,7 +423,6 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 			}
 		}
 	}
-
 	return errMsg
 }
 
