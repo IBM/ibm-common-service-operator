@@ -2,7 +2,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: cpfs-util-backup-pvc
-  namespace: cs
+  namespace: cs-op
   labels:
     foundationservices.cloudpak.ibm.com: cpfs-util-backup
 spec:
