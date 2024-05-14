@@ -941,7 +941,7 @@ spec:
             inheritedMetadata:
               annotations:
                 backup.velero.io/backup-volumes: pgdata,pg-wal
-	      labels:
+              labels:
                 foundationservices.cloudpak.ibm.com: keycloak
             description:
               templatingValueFrom:
