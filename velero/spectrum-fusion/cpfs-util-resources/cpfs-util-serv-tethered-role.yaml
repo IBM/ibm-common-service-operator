@@ -29,6 +29,8 @@ rules:
       - cert-manager.io
       - operatorgroups.operators.coreos.com
       - rbac.authorization.k8s.io
+      - "*"
     resources:
       - roles
       - rolebindings
+      - "*"
