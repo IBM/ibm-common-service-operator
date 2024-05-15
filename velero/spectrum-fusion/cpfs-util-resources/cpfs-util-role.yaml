@@ -14,6 +14,7 @@ rules:
       - update
       - list
       - patch
+      - deletecollection
     apiGroups:
       - ''
       - batch
