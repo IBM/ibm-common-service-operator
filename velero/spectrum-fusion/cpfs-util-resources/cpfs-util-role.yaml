@@ -20,6 +20,8 @@ rules:
       - extensions
       - apps
       - policy
+      - packages.operators.coreos.com
+      - operator.ibm.com
     resources:
       - pods
       - pods/log
@@ -33,6 +35,9 @@ rules:
       - pods/status
       - jobs
       - secrets
+      - commonservice
+      - packagemanifest
+      - configmaps
   - verbs:
       - get
       - list
