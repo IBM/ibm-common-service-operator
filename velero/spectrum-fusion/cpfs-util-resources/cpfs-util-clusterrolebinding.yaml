@@ -1,0 +1,16 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cpfs-util-cluster-rolebinding
+  namespace: cs-op
+  labels:
+    foundationservices.cloudpak.ibm.com: cpfs-util-backup
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cpfs-util-cluster-role
+  namespace: cs-op
+subjects:
+- kind: ServiceAccount
+  name: cpfs-util-sa
+  namespace: cs-op

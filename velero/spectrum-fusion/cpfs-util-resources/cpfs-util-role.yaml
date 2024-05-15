@@ -20,10 +20,9 @@ rules:
       - extensions
       - apps
       - policy
-      - packages.operators.coreos.com
       - operator.ibm.com
       - operators.coreos.com
-      - catalogsources.operators.coreos.com
+      - cert-manager.io
     resources:
       - pods
       - pods/log
@@ -42,6 +41,9 @@ rules:
       - configmaps
       - subscriptions
       - catalogsources
+      - certificates
+      - issuers
+      - namespacescopes
   - verbs:
       - get
       - list
