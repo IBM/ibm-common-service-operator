@@ -19,7 +19,7 @@ spec:
           - sh
           - -c
           - sleep infinity
-          image: docker-na-public.artifactory.swg-devops.com/hyc-cloud-private-scratch-docker-local/ibmcom/cpfs-utils-amd64:4.5.1 #4.1.0 if using CS 4.1, 4.2.0 if using CS 4.2
+          image: docker-na-public.artifactory.swg-devops.com/hyc-cloud-private-scratch-docker-local/ibmcom/cpfs-utils-amd64:4.6.0 #4.1.0 if using CS 4.1, 4.2.0 if using CS 4.2
           imagePullPolicy: IfNotPresent
           name: cpfs-util
           resources:
