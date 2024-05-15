@@ -7,7 +7,7 @@ metadata:
     foundationservices.cloudpak.ibm.com: cpfs-util-backup
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: Role
+  kind: ClusterRole
   name: cpfs-util-cluster-role
   namespace: cs-op
 subjects:
