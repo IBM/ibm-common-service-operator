@@ -27,6 +27,7 @@ rules:
       - namespacescopes.operators.coreos.com
       - certificates.cert-manager.io
       - issuers.cert-manager.io
+      - operatorgroups.operators.coreos.com
     resources:
       - pods
       - pods/log
@@ -48,6 +49,7 @@ rules:
       - certificates
       - issuers
       - namespacescopes
+      - operatorgroups
   - verbs:
       - get
       - list
