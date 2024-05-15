@@ -27,6 +27,7 @@ rules:
       - namespacescopes.operators.coreos.com
       - cert-manager.io
       - operatorgroups.operators.coreos.com
+      - rbac.authorization.k8s.io
     resources:
       - pods
       - pods/log
@@ -50,6 +51,8 @@ rules:
       - namespacescopes
       - operatorgroups
       - clusterserviceversions
+      - roles
+      - rolebindings
   - verbs:
       - get
       - list
