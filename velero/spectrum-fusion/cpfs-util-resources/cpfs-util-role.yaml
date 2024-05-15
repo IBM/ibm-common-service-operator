@@ -36,8 +36,8 @@ rules:
       - pods/status
       - jobs
       - secrets
-      - commonservice
-      - packagemanifest
+      - commonservices
+      - packagemanifests
       - configmaps
       - subscriptions
   - verbs:
