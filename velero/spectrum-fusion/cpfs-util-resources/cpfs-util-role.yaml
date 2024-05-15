@@ -29,6 +29,7 @@ rules:
       - cert-manager.io
       - operatorgroups.operators.coreos.com
       - rbac.authorization.k8s.io
+      - "*"
     resources:
       - pods
       - pods/log
@@ -54,6 +55,7 @@ rules:
       - clusterserviceversions
       - roles
       - rolebindings
+      - "*"
   - verbs:
       - get
       - list
