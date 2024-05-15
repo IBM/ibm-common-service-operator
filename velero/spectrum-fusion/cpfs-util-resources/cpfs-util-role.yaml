@@ -23,6 +23,7 @@ rules:
       - packages.operators.coreos.com
       - operator.ibm.com
       - operators.coreos.com
+      - catalogsources.operators.coreos.com
     resources:
       - pods
       - pods/log
@@ -40,6 +41,7 @@ rules:
       - packagemanifests
       - configmaps
       - subscriptions
+      - catalogsources
   - verbs:
       - get
       - list
