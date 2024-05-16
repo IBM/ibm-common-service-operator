@@ -348,7 +348,7 @@ func (r *PodRefreshReconciler) updateDaemonSetAnnotations(daemonsetsToUpdate []a
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *PodRefreshReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	klog.Infof("Set up")
+	klog.V(2).Infof("Set up")
 
 	// Create a new controller
 	c, err := controller.New("podrefresh-controller", mgr, controller.Options{Reconciler: r})
