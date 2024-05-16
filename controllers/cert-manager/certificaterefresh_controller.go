@@ -229,7 +229,7 @@ func (r *CertificateRefreshReconciler) findLeafSecrets(v1Certs []certmanagerv1.C
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *CertificateRefreshReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	klog.Infof("Set up")
+	klog.V(2).Infof("Set up")
 
 	// Create a new controller
 	c, err := controller.New("certificaterefresh-controller", mgr, controller.Options{Reconciler: r})
