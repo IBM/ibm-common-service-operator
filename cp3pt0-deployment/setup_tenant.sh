@@ -465,13 +465,9 @@ EOF
             done
             existing_ns="${tmp_ns_list}"
         fi
-        echo "${existing_ns} ${TETHERED_NS//,/ } ${SERVICES_NS}"
-        new_ns_list=$(echo ${existing_ns} ${TETHERED_NS//,/ } ${SERVICES_NS} | tr ' ' '\n' | sort -u)
-        echo "${new_ns_list}"
+        new_ns_list=$(echo ${existing_ns} ${TETHERED_NS//,/ } ${SERVICES_NS} | tr ' ' '\n' | sort -u | tr '\n' ' ' | sed 's/ $//')
     else
-        echo "${existing_ns} ${TETHERED_NS//,/ } ${SERVICES_NS}"
-        new_ns_list=$(echo ${TETHERED_NS//,/ } ${SERVICES_NS} | tr ' ' '\n' | sort -u)
-        echo "${new_ns_list}"
+        new_ns_list=$(echo ${TETHERED_NS//,/ } ${SERVICES_NS} | tr ' ' '\n' | sort -u | tr '\n' ' ' | sed 's/ $//')
     fi
     debug1 "List of namespaces for common-service NSS ${new_ns_list}"
 

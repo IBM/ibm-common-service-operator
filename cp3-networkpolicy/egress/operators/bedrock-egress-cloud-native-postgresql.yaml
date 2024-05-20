@@ -1,17 +1,21 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: egress-ibm-licensing-operator
-  namespace: "licNamespace"
+  name: egress-cloud-native-postgresql
+  namespace: "opNamespace"
   labels:
     component: cpfs3
 spec:
   podSelector:
     matchLabels:
-      name: "ibm-licensing-operator"
-  policyTypes:
-  - Egress
+      app.kubernetes.io/name: cloud-native-postgresql
   egress:
+    - to:
+        - podSelector:
+            matchExpressions:
+              - key: k8s.enterprisedb.io/cluster
+                operator: Exists
+          namespaceSelector: {}
     - ports:
         - protocol: TCP
           port: 443
@@ -22,3 +26,5 @@ spec:
             matchLabels:
               apiserver: 'true'
           namespaceSelector: {}
+  policyTypes:
+    - Egress
