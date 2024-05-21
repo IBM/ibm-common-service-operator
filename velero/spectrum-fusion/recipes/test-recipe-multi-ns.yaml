@@ -25,6 +25,7 @@ spec:
         - issuers.cert-manager.io
         - clusterissuers.cert-manager.io
         - certmanagerconfigs.operator.ibm.com
+      labelSelector: foundationservices.cloudpak.ibm.com=cert-manager
       name: cert-manager-workload-resources
       type: resource
     - backupRef: cert-manager-resources
@@ -146,6 +147,7 @@ spec:
         - zenservices.zen.cpd.ibm.com
       name: zen-instance
       type: resource
+      labelSelector: foundationservices.cloudpak.ibm.com=zen
     - backupRef: zen
       includeClusterResources: true
       includedResourceTypes:
@@ -212,13 +214,13 @@ spec:
         - condition: '{$.status.phase} == {"Running"}'
           name: podReady
           onError: fail
-          timeout: 600
+          timeout: 1200
       labelSelector: app.kubernetes.io/name=operand-deployment-lifecycle-manager
       name: odlm-check
-      namespace: cs
+      namespace: cs-op
       onError: fail
       selectResource: pod
-      timeout: 600
+      timeout: 1200
       type: check
     - chks:
         - condition: '{$.status.phase} == {"Running"}'
@@ -237,12 +239,48 @@ spec:
           name: podReady
           onError: fail
           timeout: 600
+      labelSelector: app.kubernetes.io/name=cert-manager
+      name: cert-manager-operator-check
+      namespace: ibm-cert-manager
+      onError: fail
+      selectResource: pod
+      timeout: 600
+      type: check
+    - chks:
+        - condition: '{$.status.phase} == {"Running"}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      labelSelector: app.kubernetes.io/name=ibm-cert-manager-webhook
+      name: cert-manager-webhook-check
+      namespace: ibm-cert-manager
+      onError: fail
+      selectResource: pod
+      timeout: 600
+      type: check
+    - chks:
+        - condition: '{$.status.phase} == {"Running"}'
+          name: podReady
+          onError: fail
+          timeout: 1200
       labelSelector: 'k8s.enterprisedb.io/cluster=zen-metastore-edb,role=primary'
       name: zen-metastore-edb-check
       namespace: cs-serv
       onError: fail
       selectResource: pod
-      timeout: 600
+      timeout: 1200
+      type: check
+    - chks:
+        - condition: '{$.status.zenStatus} == {"Completed"}'
+          name: zenserviceReady
+          onError: fail
+          timeout: 1800
+      labelSelector: foundationservices.cloudpak.ibm.com=zen
+      name: zen-check
+      namespace: cs-serv
+      onError: fail
+      selectResource: zenservices.zen.cpd.ibm.com
+      timeout: 1800
       type: check
     - labelSelector: foundationservices.cloudpak.ibm.com=test-data
       name: hook
@@ -271,9 +309,72 @@ spec:
       onError: fail
       ops:
         - command: |
-            ["/bin/bash", "-c","/ibm-common-service-operator/cp3pt0-deployment/setup_tenant.sh", "--operator-namespace", "cs-op", "--services-namespace", "cs-serv", "--license-accept"]
+            ["/bin/bash", "-c", "/ibm-common-service-operator/cp3pt0-deployment/setup_tenant.sh --operator-namespace cs-op --services-namespace cs-serv --license-accept -s opencloud-operators-cd"]
           container: cpfs-util
           name: setup-tenant-command
+          timeout: 600
+      selectResource: pod
+      type: exec
+    - chks:
+        - condition: '{$.status.phase} == {"Running"}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      labelSelector: 'foundationservices.cloudpak.ibm.com=cs-db-data'
+      name: cs-db-deployment
+      namespace: cs-serv
+      onError: fail
+      selectResource: pod
+      timeout: 600
+      type: check
+    - labelSelector: foundationservices.cloudpak.ibm.com=cs-db-data
+      name: cs-db-data
+      namespace: cs-serv
+      onError: fail
+      ops:
+        - command: |
+            ["/bin/bash", "-c", "/cs-db/br_cs-db.sh backup cs-serv"]
+          container: cs-db-br
+          name: cs-db-backup-pre
+          timeout: 600
+        - command: |
+            ["/bin/bash", "-c", "rm -rf /cs-db/cs-db-backup/database"]
+          container: cs-db-br
+          name: cs-db-backup-post
+          timeout: 600
+        - command: |
+            ["/bin/bash", "-c", "/cs-db/br_cs-db.sh restore cs-serv"]
+          container: cs-db-br
+          name: restore
+          timeout: 600
+      selectResource: pod
+      type: exec
+    - chks:
+        - condition: '{$.status.phase} == {"Running"}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      labelSelector: 'foundationservices.cloudpak.ibm.com=zen5-data'
+      name: zen5-deployment
+      namespace: cs-serv
+      onError: fail
+      selectResource: pod
+      timeout: 600
+      type: check
+    - labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
+      name: zen5-data
+      namespace: cs-serv
+      onError: fail
+      ops:
+        - command: |
+            ["/bin/bash", "-c", "rm -rf /zen5/zen-backup/database && rm -rf /zen5/zen-backup/objstorage && rm -rf /zen5/zen-backup/secrets && rm -rf /zen5/zen-backup/workspace; /zen5/backup_zen5.sh cs-serv"]
+          container: zen5-backup-job
+          name: backup
+          timeout: 600
+        - command: |
+            ["/bin/bash", "-c", "/zen5/restore_zen5.sh cs-serv test-zen"]
+          container: zen5-backup-job
+          name: restore
           timeout: 600
       selectResource: pod
       type: exec
@@ -281,8 +382,11 @@ spec:
     - failOn: any-error
       name: backup
       sequence:
+        - hook: cs-db-data/cs-db-backup-pre
         - group: cs-db-volume
         - group: cs-db-br-resources
+        - hook: cs-db-data/cs-db-backup-post
+        - hook: zen5-data/backup
         - group: zen-volume
         - group: cpfs-util-volume
         - group: zen
@@ -313,25 +417,32 @@ spec:
         - group: common-services-configmaps
         - group: commonservice-crd
         - group: cert-manager-crd
+        - group: singleton-subscriptions
         - group: zen-crd
         - group: nss-crd
         - group: commonservice-cr
         - group: nss-cr
-        - group: singleton-subscriptions
+        - hook: cert-manager-operator-check/podReady
+        - hook: cert-manager-webhook-check/podReady
         - group: cert-manager-workload-resources
-        - group: cpfs-util-volume
+        - group: common-services-subscriptions
         - group: setup-tenant-resources
         - hook: setup-tenant-check/podReady
         - hook: setup-tenant/setup-tenant-command
-        - group: common-services-subscriptions
         - hook: odlm-check/podReady
         - group: odlm-resources
+        - group: zen-instance
         - hook: common-service-db-check/podReady
         - group: cs-db-pre-deploy
         - group: cs-db-volume
         - group: cs-db-deployment
-        - group: zen-instance
+        - hook: cs-db-deployment/podReady
+        - hook: cs-db-data/restore
         - hook: zen-metastore-edb-check/podReady
         - group: zen-pre-deploy
         - group: zen-volume
         - group: zen-deployment
+        - hook: zen-check/zenserviceReady
+        - hook: zen5-deployment/podReady
+        - hook: zen5-data/restore
+        - hook: zen-check/zenserviceReady
