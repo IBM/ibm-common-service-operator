@@ -1142,8 +1142,6 @@ spec:
         data:
           spec:
             inheritedMetadata:
-              annotations:
-                backup.velero.io/backup-volumes: pgdata,pg-wal
               labels:
                 foundationservices.cloudpak.ibm.com: cs-db
             bootstrap:
