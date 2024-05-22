@@ -29,10 +29,12 @@ data:
 
     function main {
         if [[ $MODE == "backup" ]]; then
+            save_log "logs" "backup_log"
             info "Mode set to backup, beginning backup process."
             backup
             success "Backup completed successfully."
         elif [[ $MODE == "restore" ]]; then
+            save_log "logs" "restore_log"
             info "Mode is set to restore, beginning restore process."
             restore
             success "Restore completed successfully."
@@ -112,6 +114,28 @@ data:
         else
             error "Job $job_name not present."
         fi
+    }
+
+    function save_log(){
+        local LOG_DIR="$BACKUP_DIR/$1"
+        LOG_FILE="$LOG_DIR/$2_$(date +'%Y%m%d%H%M%S').log"
+
+        if [[ ! -d $LOG_DIR ]]; then
+            mkdir -p "$LOG_DIR"
+        fi
+
+        # Create a named pipe
+        PIPE=$(mktemp -u)
+        mkfifo "$PIPE"
+
+        # Tee the output to both the log file and the terminal
+        tee "$LOG_FILE" < "$PIPE" &
+
+        # Redirect stdout and stderr to the named pipe
+        exec > "$PIPE" 2>&1
+
+        # Remove the named pipe
+        rm "$PIPE"
     }
 
     function msg() {

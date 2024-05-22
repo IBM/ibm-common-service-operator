@@ -38,6 +38,8 @@ spec:
             name: cpfs-util-mount
           - name: scripts
             mountPath: "/cs-br"
+          - name: logs
+            mountPath: /cs-br/logs
         dnsPolicy: ClusterFirst
         schedulerName: default-scheduler
         securityContext:
@@ -53,3 +55,5 @@ spec:
           configMap:
             name: cpfs-util-br-configmap
             defaultMode: 0777
+        - emptyDir: {}
+          name: logs

@@ -50,6 +50,8 @@ spec:
             mountPath: "/zen5"
           - name: ext
             mountPath: /zen5/extensions
+          - name: logs
+            mountPath: /zen5/zen-backup/logs
         dnsPolicy: ClusterFirst
         schedulerName: default-scheduler
         securityContext:
@@ -67,3 +69,5 @@ spec:
             defaultMode: 0777
         - emptyDir: {}
           name: ext
+        - emptyDir: {}
+          name: logs

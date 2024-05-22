@@ -247,15 +247,15 @@ spec:
       timeout: 600
       type: check
     - chks:
-        - condition: '{$.status.phase} == {"Running"}'
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
           name: podReady
           onError: fail
           timeout: 600
-      labelSelector: app.kubernetes.io/name=ibm-cert-manager-webhook
       name: cert-manager-webhook-check
+      nameSelector: cert-manager-webhook
       namespace: ibm-cert-manager
       onError: fail
-      selectResource: pod
+      selectResource: deployment
       timeout: 600
       type: check
     - chks:
@@ -275,11 +275,11 @@ spec:
           name: zenserviceReady
           onError: fail
           timeout: 1800
-      labelSelector: foundationservices.cloudpak.ibm.com=zen
       name: zen-check
+      nameSelector: test-zen
       namespace: cs-serv
       onError: fail
-      selectResource: zenservices.zen.cpd.ibm.com
+      selectResource: zen.cpd.ibm.com/v1/zenservice
       timeout: 1800
       type: check
     - labelSelector: foundationservices.cloudpak.ibm.com=test-data
@@ -309,7 +309,7 @@ spec:
       onError: fail
       ops:
         - command: |
-            ["/bin/bash", "-c", "/ibm-common-service-operator/cp3pt0-deployment/setup_tenant.sh --operator-namespace cs-op --services-namespace cs-serv --license-accept -s opencloud-operators-cd"]
+            ["/bin/bash", "-c", "/ibm-common-service-operator/cp3pt0-deployment/setup_tenant.sh --operator-namespace cs-op --services-namespace cs-serv --license-accept -s opencloud-operators-cd -v"]
           container: cpfs-util
           name: setup-tenant-command
           timeout: 600
@@ -442,7 +442,6 @@ spec:
         - group: zen-pre-deploy
         - group: zen-volume
         - group: zen-deployment
-        - hook: zen-check/zenserviceReady
         - hook: zen5-deployment/podReady
         - hook: zen5-data/restore
         - hook: zen-check/zenserviceReady

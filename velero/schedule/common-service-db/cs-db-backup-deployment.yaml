@@ -47,6 +47,8 @@ spec:
             name: cs-db-backup-mount
           - name: scripts
             mountPath: "/cs-db"
+          - mountPath: /cs-db/cs-db-backup/logs
+            name: logs
         dnsPolicy: ClusterFirst
         schedulerName: default-scheduler
         securityContext:
@@ -62,3 +64,5 @@ spec:
           configMap:
             name: cs-db-br-configmap
             defaultMode: 0777
+        - emptyDir: {}
+          name: logs
