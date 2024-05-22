@@ -30,11 +30,13 @@ data:
     function main {
         if [[ $MODE == "backup" ]]; then
             save_log "logs" "backup_log"
+            trap cleanup_log EXIT
             info "Mode set to backup, beginning backup process."
             backup
             success "Backup completed successfully."
         elif [[ $MODE == "restore" ]]; then
             save_log "logs" "restore_log"
+            trap cleanup_log EXIT
             info "Mode is set to restore, beginning restore process."
             restore
             success "Restore completed successfully."
@@ -136,6 +138,14 @@ data:
 
         # Remove the named pipe
         rm "$PIPE"
+    }
+
+    function cleanup_log() {
+        # Check if the log file already exists
+        if [[ -e $LOG_FILE ]]; then
+            # Remove ANSI escape sequences from log file
+            sed -E 's/\x1B\[[0-9;]+[A-Za-z]//g' "$LOG_FILE" > "$LOG_FILE.tmp" && mv "$LOG_FILE.tmp" "$LOG_FILE"
+        fi
     }
 
     function msg() {
