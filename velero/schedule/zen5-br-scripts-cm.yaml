@@ -329,8 +329,8 @@ data:
             retry_count=60
             while [[ $completed != "Completed" ]] && [[ $retry_count > 0 ]]
             do
-                info "Wait for zenservice $ZENSERVICE_NAME to complete. Try again in 30s."
-                sleep 30
+                info "Wait for zenservice $ZENSERVICE_NAME to complete. Try again in 60s."
+                sleep 60
                 completed=$(oc get zenservice --no-headers $ZENSERVICE_NAME -n $ZEN_NAMESPACE | awk '{print $2}')
                 retry_count=$retry_count-1
             done
