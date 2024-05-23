@@ -156,7 +156,7 @@ function prereq() {
         error "Namespace $TO_NAMESPACE does not exist (or oc command line is not logged in)"
         exit 1
     fi
-    mongo_node=$(${OC} get pods -n $FROM_NAMESPACE -o wide | grep icp-mongodb-0 | awk '{print $7}')
+    mongo_node=$(${OC} get pods icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{.spec.nodeName}')
     architecture=$(${OC} describe node $mongo_node | grep "Architecture:" | awk '{print $2}')
     if [[ $architecture == "s390x" ]] || [[ $architecture == "ppc64le" ]]; then
       z_or_power_ENV="true"
