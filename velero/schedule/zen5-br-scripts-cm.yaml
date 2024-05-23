@@ -326,11 +326,11 @@ data:
         zenservice_exists=$(oc get zenservice $ZENSERVICE_NAME -n $ZEN_NAMESPACE --no-headers || echo fail)
         if [[ $job_exists != "fail" ]]; then
             completed=$(oc get zenservice --no-headers $ZENSERVICE_NAME -n $ZEN_NAMESPACE | awk '{print $2}')
-            retry_count=20
+            retry_count=60
             while [[ $completed != "Completed" ]] && [[ $retry_count > 0 ]]
             do
-                info "Wait for zenservice $ZENSERVICE_NAME to complete. Try again in 15s."
-                sleep 15
+                info "Wait for zenservice $ZENSERVICE_NAME to complete. Try again in 30s."
+                sleep 30
                 completed=$(oc get zenservice --no-headers $ZENSERVICE_NAME -n $ZEN_NAMESPACE | awk '{print $2}')
                 retry_count=$retry_count-1
             done
