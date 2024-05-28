@@ -715,8 +715,7 @@ EOF
 
     while [ $retries -gt 0 ]; do
         # Wait for the operator pod to be ready by 60s
-        cs_pod=$(${OC} get pods -n ${OPERATOR_NS} -o name  | grep "ibm-common-service-operator" | head -n 1)
-        ${OC} -n ${OPERATOR_NS} wait --for=condition=Ready $cs_pod --timeout=60s 2> /dev/null
+        ${OC} -n ${OPERATOR_NS} wait --for=condition=Ready pod -l name=ibm-common-service-operator --timeout=60s 2> /dev/null
 
         if [[ $? -eq 0 ]]; then
             cat "${PREVIEW_DIR}/commonservice.yaml" | ${OC_CMD} apply -f -
