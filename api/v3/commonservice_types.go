@@ -17,7 +17,6 @@
 package v3
 
 import (
-	"sync"
 	"time"
 
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
@@ -270,11 +269,29 @@ type ConditionType string
 type ResourceType string
 
 const (
-	ConditionTypeBlocked ConditionType = "Blocked"
-	ConditionTypeReady   ConditionType = "Ready"
-	ConditionTypeWarning ConditionType = "Warning"
-	ConditionTypeError   ConditionType = "Error"
-	ConditionTypePending ConditionType = "Pending"
+	ConditionTypeBlocked     ConditionType = "Blocked"
+	ConditionTypeReady       ConditionType = "Ready"
+	ConditionTypeWarning     ConditionType = "Warning"
+	ConditionTypeError       ConditionType = "Error"
+	ConditionTypePending     ConditionType = "Pending"
+	ConditionTypeReconciling ConditionType = "Reconciling"
+)
+
+const (
+	ConditionReasonReconcile = "StartReconciling"
+	ConditionReasonInit      = "UpdatingResources"
+	ConditionReasonConfig    = "Configuring"
+	ConditionReasonWarning   = "WarningOccurred"
+	ConditionReasonError     = "ReconcileError"
+	ConditionReasonReady     = "ReconcileSucceeded"
+)
+
+const (
+	ConditionMessageReconcile = "reconciling CommonService CR."
+	ConditionMessageInit      = "initializing/updating: waiting for OperandRegistry and OperandConfig to become ready."
+	ConditionMessageConfig    = "configuring CommonService CR."
+	ConditionMessageMissSC    = "warning: StorageClass is not configured in CommonService CR, if KeyCloak or IBM IM service will be deployed, please configure StorageClass in the CS CR. Refer to the documentation for more information: https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.6?topic=options-configuring-foundational-services#storage-class"
+	ConditionMessageReady     = "CommonService CR is ready."
 )
 
 // +kubebuilder:object:root=true
@@ -351,6 +368,42 @@ func (r *CommonService) UpdateNonMasterConfigStatus(CSData *CSData) {
 	r.UpdateTopologyCR(CSData)
 }
 
+// SetPendingCondition sets a condition to claim Pending.
+func (r *CommonService) SetPendingCondition(name string, ct ConditionType, cs corev1.ConditionStatus, reason, message string) {
+	c := newCondition(ct, cs, reason, message)
+	r.setCondition(*c)
+}
+
+// SetReadyCondition creates a Condition to claim Ready.
+func (r *CommonService) SetReadyCondition(name string, ct ConditionType, cs corev1.ConditionStatus) {
+	r.UpdateConditionList(corev1.ConditionFalse)
+	c := newCondition(ConditionTypeReady, cs, ConditionReasonReady, ConditionMessageReady)
+	r.setCondition(*c)
+}
+
+// SetWarningCondition creates a Condition to claim Warning.
+func (r *CommonService) SetWarningCondition(name string, ct ConditionType, cs corev1.ConditionStatus, reason, message string) {
+	c := newCondition(ct, cs, reason, message)
+	r.setCondition(*c)
+}
+
+// SetErrorCondition creates a Condition to claim Error.
+func (r *CommonService) SetErrorCondition(name string, ct ConditionType, cs corev1.ConditionStatus, reason, message string) {
+	r.UpdateConditionList(corev1.ConditionFalse)
+	c := newCondition(ct, cs, reason, message)
+	r.setCondition(*c)
+}
+
+// UpdateConditionList updates the condition list of the CommonService CR
+func (r *CommonService) UpdateConditionList(ct corev1.ConditionStatus) {
+	// check all the conditions
+	for i := range r.Status.Conditions {
+		if r.Status.Conditions[i].Type == ConditionTypePending || r.Status.Conditions[i].Type == ConditionTypeReconciling {
+			r.Status.Conditions[i].Status = ct
+		}
+	}
+}
+
 // NewCondition Returns a new condition with the given values for CommonService
 func newCondition(condType ConditionType, status corev1.ConditionStatus, reason, message string) *CommonServiceCondition {
 	now := time.Now().Format(time.RFC3339)
@@ -376,20 +429,12 @@ func getCondition(conds *[]CommonServiceCondition, condtype ConditionType, msg s
 
 // SetCondition append a new condition status
 func (r *CommonService) setCondition(condition CommonServiceCondition) {
-	pos, cp := getCondition(&r.Status.Conditions, condition.Type, condition.Message)
+	position, cp := getCondition(&r.Status.Conditions, condition.Type, condition.Message)
 	if cp != nil {
-		r.Status.Conditions[pos] = condition
+		r.Status.Conditions[position] = condition
 	} else {
 		r.Status.Conditions = append(r.Status.Conditions, condition)
 	}
-}
-
-// SetCreatingCondition creates a new condition status
-func (r *CommonService) SetCreatingCondition(name string, condstatus corev1.ConditionStatus, mu sync.Locker) {
-	mu.Lock()
-	defer mu.Unlock()
-	c := newCondition(ConditionTypePending, condstatus, "Creating", "Waiting for CommonService is ready.")
-	r.setCondition(*c)
 }
 
 func (r *CommonService) UpdateTopologyCR(CSData *CSData) {
