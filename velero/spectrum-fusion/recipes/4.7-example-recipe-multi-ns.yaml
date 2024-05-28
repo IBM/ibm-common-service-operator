@@ -145,9 +145,9 @@ spec:
       includeClusterResources: true
       includedResourceTypes:
         - zenservices.zen.cpd.ibm.com
+      labelSelector: foundationservices.cloudpak.ibm.com=zen
       name: zen-instance
       type: resource
-      labelSelector: foundationservices.cloudpak.ibm.com=zen
     - backupRef: zen
       includeClusterResources: true
       includedResourceTypes:
@@ -205,7 +205,7 @@ spec:
           timeout: 600
       labelSelector: 'k8s.enterprisedb.io/cluster=common-service-db,role=primary'
       name: common-service-db-check
-      namespace: cs-serv
+      namespace: <service namespace>
       onError: fail
       selectResource: pod
       timeout: 600
@@ -217,7 +217,7 @@ spec:
           timeout: 1200
       labelSelector: app.kubernetes.io/name=operand-deployment-lifecycle-manager
       name: odlm-check
-      namespace: cs-op
+      namespace: <operator namespace>
       onError: fail
       selectResource: pod
       timeout: 1200
@@ -229,7 +229,7 @@ spec:
           timeout: 600
       labelSelector: foundationservices.cloudpak.ibm.com=cpfs-util-backup
       name: setup-tenant-check
-      namespace: cs-op
+      namespace: <operator namespace>
       onError: fail
       selectResource: pod
       timeout: 600
@@ -265,7 +265,7 @@ spec:
           timeout: 1200
       labelSelector: 'k8s.enterprisedb.io/cluster=zen-metastore-edb,role=primary'
       name: zen-metastore-edb-check
-      namespace: cs-serv
+      namespace: <service namespace>
       onError: fail
       selectResource: pod
       timeout: 1200
@@ -277,23 +277,23 @@ spec:
           timeout: 1800
       name: zen-check
       nameSelector: test-zen
-      namespace: cs-serv
+      namespace: <service namespace>
       onError: fail
       selectResource: zen.cpd.ibm.com/v1/zenservice
       timeout: 1800
       type: check
     - labelSelector: foundationservices.cloudpak.ibm.com=test-data
       name: hook
-      namespace: cs-serv
+      namespace: <service namespace>
       onError: fail
       ops:
         - command: |
-            ["/bin/bash", "-c","/test/backup_mongo.sh", "cs-serv"]
+            ["/bin/bash", "-c","/test/backup_mongo.sh", "<service namespace>"]
           container: test-backup-job
           name: backup-mongo
           timeout: 600
         - command: |
-            ["/bin/bash", "-c","/test/restore_mongo.sh", "cs-serv"]
+            ["/bin/bash", "-c","/test/restore_mongo.sh", "<service namespace>"]
           container: test-backup-job
           name: restore-mongo
           timeout: 600
@@ -305,11 +305,11 @@ spec:
       type: exec
     - labelSelector: foundationservices.cloudpak.ibm.com=cpfs-util-backup
       name: setup-tenant
-      namespace: cs-op
+      namespace: <operator namespace>
       onError: fail
       ops:
         - command: |
-            ["/bin/bash", "-c", "/ibm-common-service-operator/cp3pt0-deployment/setup_tenant.sh --operator-namespace cs-op --services-namespace cs-serv --license-accept -s opencloud-operators-cd -v"]
+            ["/bin/bash", "-c", "/scripts/cp3pt0-deployment/setup_tenant.sh --operator-namespace <operator namespace> --services-namespace <services namespace> --tethered-namespaces <comma delimited (no spaces) list of Cloud Pak workload namespaces that use this foundational services instance> --license-accept -c v<foundational services version number in use i.e. 4.0, 4.1, 4.2, etc> -p <.spec.size value from commonservice cr> -i <install mode, either Manual or Automatic>"]
           container: cpfs-util
           name: setup-tenant-command
           timeout: 600
@@ -320,20 +320,20 @@ spec:
           name: podReady
           onError: fail
           timeout: 600
-      labelSelector: 'foundationservices.cloudpak.ibm.com=cs-db-data'
+      labelSelector: foundationservices.cloudpak.ibm.com=cs-db-data
       name: cs-db-deployment
-      namespace: cs-serv
+      namespace: <service namespace>
       onError: fail
       selectResource: pod
       timeout: 600
       type: check
     - labelSelector: foundationservices.cloudpak.ibm.com=cs-db-data
       name: cs-db-data
-      namespace: cs-serv
+      namespace: <service namespace>
       onError: fail
       ops:
         - command: |
-            ["/bin/bash", "-c", "/cs-db/br_cs-db.sh backup cs-serv"]
+            ["/bin/bash", "-c", "/cs-db/br_cs-db.sh backup <service namespace>"]
           container: cs-db-br
           name: cs-db-backup-pre
           timeout: 600
@@ -343,10 +343,10 @@ spec:
           name: cs-db-backup-post
           timeout: 600
         - command: |
-            ["/bin/bash", "-c", "/cs-db/br_cs-db.sh restore cs-serv"]
+            ["/bin/bash", "-c", "/cs-db/br_cs-db.sh restore <service namespace>"]
           container: cs-db-br
           name: restore
-          timeout: 600
+          timeout: 2000
       selectResource: pod
       type: exec
     - chks:
@@ -354,28 +354,28 @@ spec:
           name: podReady
           onError: fail
           timeout: 600
-      labelSelector: 'foundationservices.cloudpak.ibm.com=zen5-data'
+      labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
       name: zen5-deployment
-      namespace: cs-serv
+      namespace: <service namespace>
       onError: fail
       selectResource: pod
       timeout: 600
       type: check
     - labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
       name: zen5-data
-      namespace: cs-serv
+      namespace: <service namespace>
       onError: fail
       ops:
         - command: |
-            ["/bin/bash", "-c", "rm -rf /zen5/zen-backup/database && rm -rf /zen5/zen-backup/objstorage && rm -rf /zen5/zen-backup/secrets && rm -rf /zen5/zen-backup/workspace; /zen5/backup_zen5.sh cs-serv"]
+            ["/bin/bash", "-c", "rm -rf /zen5/zen-backup/database && rm -rf /zen5/zen-backup/objstorage && rm -rf /zen5/zen-backup/secrets && rm -rf /zen5/zen-backup/workspace; /zen5/backup_zen5.sh <service namespace>"]
           container: zen5-backup-job
           name: backup
           timeout: 600
         - command: |
-            ["/bin/bash", "-c", "/zen5/restore_zen5.sh cs-serv test-zen"]
+            ["/bin/bash", "-c", "/zen5/restore_zen5.sh <service namespace> <zenservice name>"]
           container: zen5-backup-job
           name: restore
-          timeout: 600
+          timeout: 3600
       selectResource: pod
       type: exec
   workflows:
@@ -397,9 +397,7 @@ spec:
         - group: common-services-operatorgroups
         - group: common-services-configmaps
         - group: commonservice-crd
-        - group: nss-crd
         - group: commonservice-cr
-        - group: nss-cr
         - group: cs-operator-permissions
         - group: setup-tenant-resources
         - group: singleton-subscriptions
@@ -407,6 +405,7 @@ spec:
         - group: common-services-subscriptions
         - group: cert-manager-workload-resources
         - group: odlm-resources
+        - group: licensing-resources
     - failOn: any-error
       name: restore
       sequence:
@@ -419,13 +418,13 @@ spec:
         - group: cert-manager-crd
         - group: singleton-subscriptions
         - group: zen-crd
-        - group: nss-crd
         - group: commonservice-cr
-        - group: nss-cr
         - hook: cert-manager-operator-check/podReady
         - hook: cert-manager-webhook-check/podReady
         - group: cert-manager-workload-resources
+        - group: licensing-resources
         - group: common-services-subscriptions
+        - group: cpfs-util-volume
         - group: setup-tenant-resources
         - hook: setup-tenant-check/podReady
         - hook: setup-tenant/setup-tenant-command
@@ -444,4 +443,3 @@ spec:
         - group: zen-deployment
         - hook: zen5-deployment/podReady
         - hook: zen5-data/restore
-        - hook: zen-check/zenserviceReady
