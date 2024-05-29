@@ -3,6 +3,8 @@ apiVersion: apps/v1
 metadata:
   name: cs-db-backup
   namespace: <cs-db namespace>
+  labels:
+    foundationservices.cloudpak.ibm.com: cs-db-data
 spec:
   selector:
     matchLabels:

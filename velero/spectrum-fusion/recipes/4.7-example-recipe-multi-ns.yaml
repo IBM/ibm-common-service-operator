@@ -417,7 +417,6 @@ spec:
         - group: commonservice-crd
         - group: cert-manager-crd
         - group: singleton-subscriptions
-        - group: zen-crd
         - group: commonservice-cr
         - hook: cert-manager-operator-check/podReady
         - hook: cert-manager-webhook-check/podReady
@@ -430,8 +429,8 @@ spec:
         - hook: setup-tenant/setup-tenant-command
         - hook: odlm-check/podReady
         - group: odlm-resources
-        - group: zen-instance
         - hook: common-service-db-check/podReady
+        - group: zen-instance
         - group: cs-db-pre-deploy
         - group: cs-db-volume
         - group: cs-db-deployment
