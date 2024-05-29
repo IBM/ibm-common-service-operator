@@ -353,8 +353,10 @@ function dumpmongo() {
   if [[ "$currentns" -ne "$FROM_NAMESPACE" ]]; then
     error "Cannot switch to $FROM_NAMESPACE"
   fi
-
+  
+  fsgroup=$(${OC} get project $FROM_NAMESPACE -o=jsonpath='{.metadata.annotations.openshift\.io/sa\.scc\.uid-range}' | tr "\/" " " | awk '{print $1}')
   ibm_mongodb_image=$(${OC} get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
+
   if [[ $z_or_power_ENV == "false" ]]; then
     cat <<EOF >$TEMPFILE
 apiVersion: batch/v1
@@ -367,9 +369,20 @@ spec:
   backoffLimit: 20
   template:
     spec:
+      securityContext:
+        fsGroup: $fsgroup
       containers:
       - name: cs-mongodb-backup
         image: $ibm_mongodb_image
+        securityContext:
+          capabilities:
+            drop:
+              - ALL
+          privileged: false
+          runAsNonRoot: true
+          runAsUser: $fsgroup
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
         resources:
           limits:
             cpu: 500m
@@ -383,8 +396,6 @@ spec:
           name: tmp-mongodb
         - mountPath: "/dump"
           name: mongodump
-        - mountPath: "/dump/dump"
-          name: dump
         - mountPath: "/cred/mongo-certs"
           name: icp-mongodb-client-cert
         - mountPath: "/cred/cluster-ca"
@@ -405,8 +416,6 @@ spec:
         persistentVolumeClaim:
           claimName: cs-mongodump
       - name: tmp-mongodb
-        emptyDir: {}
-      - name: dump
         emptyDir: {}
       - name: icp-mongodb-client-cert
         secret:
@@ -472,10 +481,21 @@ spec:
   completions: 1
   backoffLimit: 20
   template:
+    securityContext:
+        fsGroup: $fsgroup
     spec:
       containers:
       - name: cs-mongodb-backup
         image: $ibm_mongodb_image
+        securityContext:
+          capabilities:
+            drop:
+              - ALL
+          privileged: false
+          runAsNonRoot: true
+          runAsUser: $fsgroup
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
         resources:
           limits:
             cpu: 500m
@@ -489,8 +509,6 @@ spec:
           name: tmp-mongodb
         - mountPath: "/dump"
           name: mongodump
-        - mountPath: "/dump/dump"
-          name: dump
         - mountPath: "/cred/mongo-certs"
           name: icp-mongodb-client-cert
         - mountPath: "/cred/cluster-ca"
@@ -511,8 +529,6 @@ spec:
         persistentVolumeClaim:
           claimName: cs-mongodump
       - name: tmp-mongodb
-        emptyDir: {}
-      - name: dump
         emptyDir: {}
       - name: icp-mongodb-client-cert
         secret:
@@ -660,8 +676,6 @@ spec:
         volumeMounts:
         - mountPath: "/dump"
           name: mongodump
-        - mountPath: "/dump/dump"
-          name: dump
         - mountPath: "/work-dir"
           name: tmp-mongodb
         - mountPath: "/cred/mongo-certs"
@@ -684,8 +698,6 @@ spec:
         persistentVolumeClaim:
           claimName: cs-mongodump
       - name: tmp-mongodb
-        emptyDir: {}
-      - name: dump
         emptyDir: {}
       - name: icp-mongodb-client-cert
         secret:
@@ -723,8 +735,6 @@ spec:
         volumeMounts:
         - mountPath: "/dump"
           name: mongodump
-        - mountPath: "/dump/dump"
-          name: dump
         - mountPath: "/work-dir"
           name: tmp-mongodb
         - mountPath: "/cred/mongo-certs"
@@ -747,8 +757,6 @@ spec:
         persistentVolumeClaim:
           claimName: cs-mongodump
       - name: tmp-mongodb
-        emptyDir: {}
-      - name: dump
         emptyDir: {}
       - name: icp-mongodb-client-cert
         secret:
