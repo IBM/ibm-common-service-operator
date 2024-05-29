@@ -383,6 +383,8 @@ spec:
           name: tmp-mongodb
         - mountPath: "/dump"
           name: mongodump
+        - mountPath: "/dump/dump"
+          name: dump
         - mountPath: "/cred/mongo-certs"
           name: icp-mongodb-client-cert
         - mountPath: "/cred/cluster-ca"
@@ -403,6 +405,8 @@ spec:
         persistentVolumeClaim:
           claimName: cs-mongodump
       - name: tmp-mongodb
+        emptyDir: {}
+      - name: dump
         emptyDir: {}
       - name: icp-mongodb-client-cert
         secret:
@@ -485,6 +489,8 @@ spec:
           name: tmp-mongodb
         - mountPath: "/dump"
           name: mongodump
+        - mountPath: "/dump/dump"
+          name: dump
         - mountPath: "/cred/mongo-certs"
           name: icp-mongodb-client-cert
         - mountPath: "/cred/cluster-ca"
@@ -505,6 +511,8 @@ spec:
         persistentVolumeClaim:
           claimName: cs-mongodump
       - name: tmp-mongodb
+        emptyDir: {}
+      - name: dump
         emptyDir: {}
       - name: icp-mongodb-client-cert
         secret:
@@ -652,6 +660,8 @@ spec:
         volumeMounts:
         - mountPath: "/dump"
           name: mongodump
+        - mountPath: "/dump/dump"
+          name: dump
         - mountPath: "/work-dir"
           name: tmp-mongodb
         - mountPath: "/cred/mongo-certs"
@@ -674,6 +684,8 @@ spec:
         persistentVolumeClaim:
           claimName: cs-mongodump
       - name: tmp-mongodb
+        emptyDir: {}
+      - name: dump
         emptyDir: {}
       - name: icp-mongodb-client-cert
         secret:
@@ -711,6 +723,8 @@ spec:
         volumeMounts:
         - mountPath: "/dump"
           name: mongodump
+        - mountPath: "/dump/dump"
+          name: dump
         - mountPath: "/work-dir"
           name: tmp-mongodb
         - mountPath: "/cred/mongo-certs"
@@ -733,6 +747,8 @@ spec:
         persistentVolumeClaim:
           claimName: cs-mongodump
       - name: tmp-mongodb
+        emptyDir: {}
+      - name: dump
         emptyDir: {}
       - name: icp-mongodb-client-cert
         secret:
