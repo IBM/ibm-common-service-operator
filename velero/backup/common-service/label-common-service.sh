@@ -53,6 +53,7 @@ function main() {
     label_configmap
     label_subscription
     label_cs
+    success "Successfully labeled all the resources"
 }
 
 function pre_req(){
@@ -69,7 +70,8 @@ function pre_req(){
         error "Must provide operator namespace"
     fi
     if [ "$SERVICES_NS" == "" ]; then
-        error "Must provide services namespace, using ibm-common-services for v3 operator"
+        warning "Services namespace is not provided, will use operator namespace as services namespace"
+        SERVICES_NS=$OPERATOR_NS
     fi
 }
 
@@ -93,6 +95,7 @@ function label_catalogsource() {
     fi
 
     label_ibm_catalogsources "$DEFAULT_SOURCE_NS"
+    echo ""
 }
 
 function label_ibm_catalogsources() {
@@ -140,13 +143,21 @@ function label_ns_and_related() {
         operand_requests=$(${OC} get operandrequest -n "$namespace" -o custom-columns=NAME:.metadata.name --no-headers)
         # Loop through each OperandRequest name
         while IFS= read -r operand_request; do
-            ${OC} label operandrequests $operand_request foundationservices.cloudpak.ibm.com=operand -n "namespace" --overwrite=true 2>/dev/null
+            ${OC} label operandrequests $operand_request foundationservices.cloudpak.ibm.com=operand -n "$namespace" --overwrite=true 2>/dev/null
         done <<< "$operand_requests"
+
+        # Label the Zen Service
+        zen_services=$(${OC} get zenservice -n "$namespace" -o custom-columns=NAME:.metadata.name --no-headers)
+        while IFS= read -r zen_service; do
+            ${OC} label zenservice $zen_service foundationservices.cloudpak.ibm.com=zen -n "$namespace" --overwrite=true 2>/dev/null
+        done <<< "$zen_services"
+        echo ""
+
     done <<< "$namespaces"
 
     ${OC} label secret ibm-entitlement-key foundationservices.cloudpak.ibm.com=entitlementkey -n $DEFAULT_SOURCE_NS --overwrite=true 2>/dev/null
     ${OC} label secret pull-secret -n openshift-config foundationservices.cloudpak.ibm.com=pull-secret --overwrite=true 2>/dev/null
-
+    echo ""
 }
 
 function label_configmap() {
@@ -155,6 +166,7 @@ function label_configmap() {
     ${OC} label configmap common-service-maps foundationservices.cloudpak.ibm.com=configmap -n kube-public --overwrite=true 2>/dev/null
     ${OC} label configmap cs-onprem-tenant-config foundationservices.cloudpak.ibm.com=configmap -n $SERVICES_NS --overwrite=true 2>/dev/null
     ${OC} label configmap platform-auth-idp foundationservices.cloudpak.ibm.com=configmap -n $SERVICES_NS --overwrite=true 2>/dev/null
+    echo ""
 }
 
 function label_subscription() {
@@ -166,9 +178,10 @@ function label_subscription() {
     local lsr_pm="ibm-license-service-reporter-operator"
     
     ${OC} label subscriptions.operators.coreos.com $cs_pm foundationservices.cloudpak.ibm.com=subscription -n $OPERATOR_NS --overwrite=true 2>/dev/null
-    ${OC} label subscriptions.operators.coreos.com $cm_pm foundationservices.cloudpak.ibm.com=subscription -n $CERT_MANAGER_NAMESPACE --overwrite=true 2>/dev/null
-    ${OC} label subscriptions.operators.coreos.com $lis_pm foundationservices.cloudpak.ibm.com=subscription -n $LICENSING_NAMESPACE --overwrite=true 2>/dev/null
-    ${OC} label subscriptions.operators.coreos.com $lsr_pm foundationservices.cloudpak.ibm.com=subscription -n $LSR_NAMESPACE --overwrite=true 2>/dev/null
+    ${OC} label subscriptions.operators.coreos.com $cm_pm foundationservices.cloudpak.ibm.com=singleton-subscription -n $CERT_MANAGER_NAMESPACE --overwrite=true 2>/dev/null
+    ${OC} label subscriptions.operators.coreos.com $lis_pm foundationservices.cloudpak.ibm.com=singleton-subscription -n $LICENSING_NAMESPACE --overwrite=true 2>/dev/null
+    ${OC} label subscriptions.operators.coreos.com $lsr_pm foundationservices.cloudpak.ibm.com=singleton-subscription -n $LSR_NAMESPACE --overwrite=true 2>/dev/null
+    echo ""
 }
 
 function label_cs(){
@@ -177,6 +190,7 @@ function label_cs(){
     ${OC} label commonservices common-service foundationservices.cloudpak.ibm.com=commonservice -n $OPERATOR_NS --overwrite=true 2>/dev/null
     ${OC} label customresourcedefinition commonservices.operator.ibm.com foundationservices.cloudpak.ibm.com=crd --overwrite=true 2>/dev/null
     ${OC} label operandconfig common-service foundationservices.cloudpak.ibm.com=operand -n $SERVICES_NS --overwrite=true 2>/dev/null
+    echo ""
 }
 
 main $*
