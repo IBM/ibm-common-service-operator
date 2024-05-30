@@ -18,6 +18,11 @@ spec:
       podSelector:
         matchLabels:
           k8s-app: "platform-identity-provider"
+  - to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          app: icp-mongodb
   - ports:
     - port: 443
       protocol: TCP
