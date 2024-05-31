@@ -222,8 +222,8 @@ elasticsearch_cert_ns_list=$(oc get certificate -A --no-headers | grep iaf-syste
 if [[ $elasticsearch_cert_ns_list != "none" ]]; then
     for ns in $elasticsearch_cert_ns_list
     do
-        label certificate iaf-system-elasticsearch-es-client-cert -n $ns foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
-        label secret iaf-system-elasticsearch-es-client-cert-kp -n $ns foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
+        oc label certificate iaf-system-elasticsearch-es-client-cert -n $ns foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
+        oc label secret iaf-system-elasticsearch-es-client-cert-kp -n $ns foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
     done
 fi
 
@@ -237,3 +237,5 @@ if [[ $metastore_secret_ns_list != "none" ]]; then
         oc label certificate ibm-zen-metastore-edb-certificate -n $ns foundationservices.cloudpak.ibm.com-
     done
 fi
+
+echo "[SUCCESS] Certificates and secrets successfully labeled."
