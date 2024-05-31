@@ -324,7 +324,7 @@ data:
     function wait_for_zenservice {
         info "Waiting for zenservice $ZENSERVICE_NAME to complete in namespace $ZEN_NAMESPACE."
         zenservice_exists=$(oc get zenservice $ZENSERVICE_NAME -n $ZEN_NAMESPACE --no-headers || echo fail)
-        if [[ $job_exists != "fail" ]]; then
+        if [[ $zenservice_exists != "fail" ]]; then
             completed=$(oc get zenservice --no-headers $ZENSERVICE_NAME -n $ZEN_NAMESPACE | awk '{print $2}')
             retry_count=60
             while [[ $completed != "Completed" ]] && [[ $retry_count > 0 ]]

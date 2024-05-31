@@ -118,6 +118,14 @@ spec:
       labelSelector: foundationservices.cloudpak.ibm.com=operand
       name: odlm-resources
       type: resource
+    - backupRef: odlm-resources
+      includedResourceTypes:
+        - operandrequests.operator.ibm.com
+        - operandconfigs.operator.ibm.com
+      labelSelector: foundationservices.cloudpak.ibm.com=operand
+      name: operand-resources
+      restoreOverwriteResources: true
+      type: resource
     - labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
       name: zen-volume
       type: volume
@@ -345,6 +353,7 @@ spec:
         - group: common-services-subscriptions
         - group: cert-manager-workload-resources
         - group: odlm-resources
+        - group: operand-resources
     - failOn: any-error
       name: restore
       sequence:
@@ -364,6 +373,7 @@ spec:
         - group: common-services-subscriptions
         - hook: odlm-check/podReady
         - group: odlm-resources
+        - group: operand-resources
         - hook: common-service-db-check/podReady
         - group: zen-instance
         - group: cs-db-pre-deploy

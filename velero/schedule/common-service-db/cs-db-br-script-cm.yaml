@@ -24,6 +24,7 @@ data:
 
     MODE=$1
     CSDB_NAMESPACE=$2
+    CLUSTER_CR=common-service-db
 
     BACKUP_DIR=/cs-db/cs-db-backup
 
@@ -67,6 +68,7 @@ data:
     
     function restore {
 
+        wait_for_cluster_cr
         CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io common-service-db -o jsonpath="{.status.currentPrimary}" -n $CSDB_NAMESPACE` 
         oc exec $CNPG_PRIMARY_POD -n $CSDB_NAMESPACE -- mkdir -p /run/cs-db_backup
         oc cp $BACKUP_DIR/database/cs-db_cloudpak_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_cloudpak_backup.dump
@@ -115,6 +117,30 @@ data:
             fi
         else
             error "Job $job_name not present."
+        fi
+    }
+
+    function wait_for_cluster_cr {
+        info "Waiting for EDB Cluster CR $CLUSTER_CR to complete in namespace $CSDB_NAMESPACE."
+        cluster_cr_exists=$(oc get clusters.postgresql.k8s.enterprisedb.io $CLUSTER_CR -n $CSDB_NAMESPACE --no-headers || echo fail)
+        if [[ $cluster_cr_exists != "fail" ]]; then
+            completed=$(oc get clusters.postgresql.k8s.enterprisedb.io $CLUSTER_CR -n $CSDB_NAMESPACE -o=jsonpath='{.status.phase}')
+            retry_count=40
+            while [[ $completed != "Cluster in healthy state" ]] && [[ $retry_count > 0 ]]
+            do
+                info "Wait for cluster $CLUSTER_CR to complete. Try again in 15s."
+                sleep 15
+                completed=$(oc get clusters.postgresql.k8s.enterprisedb.io $CLUSTER_CR -n $CSDB_NAMESPACE -o=jsonpath='{.status.phase}')
+                retry_count=$retry_count-1
+            done
+
+            if [[ $retry_count == 0 ]] && [[ $completed != "1/1" ]]; then
+                error "Timed out waiting for cluster $CLUSTER_CR."
+            else
+                info "EDB cluster $CLUSTER_CR ready."
+            fi
+        else
+            error "EDB cluster $CLUSTER_CR not present."
         fi
     }
 
