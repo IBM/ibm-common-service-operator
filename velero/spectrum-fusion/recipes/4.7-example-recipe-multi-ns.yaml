@@ -49,6 +49,15 @@ spec:
       labelSelector: foundationservices.cloudpak.ibm.com=pull-secret
       name: pull-secret
       type: resource
+    - backupRef: pull-secret
+      includedNamespaces:
+        - openshift-config
+      includedResourceTypes:
+        - secrets
+      labelSelector: foundationservices.cloudpak.ibm.com=pull-secret
+      name: ow-pull-secret
+      restoreOverwriteResources: true
+      type: resource
     - includedResourceTypes:
         - configmaps
       labelSelector: foundationservices.cloudpak.ibm.com=configmap
@@ -317,7 +326,7 @@ spec:
       onError: fail
       ops:
         - command: |
-            ["/bin/bash", "-c", "/scripts/cp3pt0-deployment/setup_tenant.sh --operator-namespace <operator namespace> --services-namespace <services namespace> --tethered-namespaces <comma delimited (no spaces) list of Cloud Pak workload namespaces that use this foundational services instance> --license-accept -c v<foundational services version number in use i.e. 4.0, 4.1, 4.2, etc> -p <.spec.size value from commonservice cr> -i <install mode, either Manual or Automatic>"]
+            ["/bin/bash", "-c", "/cs-br/setup_tenant.sh --operator-namespace <operator namespace> --services-namespace <services namespace> --tethered-namespaces <comma delimited (no spaces) list of Cloud Pak workload namespaces that use this foundational services instance> --license-accept -c v<foundational services version number in use i.e. 4.0, 4.1, 4.2, etc> -p <.spec.size value from commonservice cr> -i <install mode, either Manual or Automatic>"]
           container: cpfs-util
           name: setup-tenant-command
           timeout: 600
@@ -420,6 +429,7 @@ spec:
       sequence:
         - group: common-services-namespace
         - group: pull-secret
+        - group: ow-pull-secret
         - group: common-services-catalogs
         - group: common-services-operatorgroups
         - group: common-services-configmaps

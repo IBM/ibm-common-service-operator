@@ -2,115 +2,11 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: cpfs-util-br-configmap
-  namespace: cs-op
+  namespace: <operator namespace>
   labels:
     foundationservices.cloudpak.ibm.com: cpfs-util-backup
 data:
-  br_cs-db.sh: |
-    #!/usr/bin/env bash
-
-    # Licensed Materials - Property of IBM
-    # Copyright IBM Corporation 2024. All Rights Reserved
-    # US Government Users Restricted Rights -
-    # Use, duplication or disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
-    #
-    # This is an internal component, bundled with an official IBM product.
-    # Please refer to that particular license for additional information.
-
-    # ---------- Command arguments ----------
-
-    set -o errtrace
-    set -o errexit
-
-    MODE=$1
-    CSDB_NAMESPACE=$2
-
-    BACKUP_DIR=/cs-db/cs-db-backup
-
-    function main {
-        if [[ $MODE == "backup" ]]; then
-            info "Mode set to backup, beginning backup process."
-            backup
-            success "Backup completed successfully."
-        elif [[ $MODE == "restore" ]]; then
-            info "Mode is set to restore, beginning restore process."
-            restore
-            success "Restore completed successfully."
-        else
-            error "Mode selected is $MODE. Please use either \"backup\" or \"restore\"."
-        fi
-    }
-
-    function backup {
-        mkdir -p $BACKUP_DIR/database
-        #mkdir -p $BACKUP_DIR/secrets
-        CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io common-service-db -o jsonpath="{.status.currentPrimary}" -n $CSDB_NAMESPACE` && \
-        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- mkdir -p /run/cs-db_backup && \
-        info "Beginning backup of cloudpak database..."
-        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=cloudpak -f /run/cs-db_backup/cs-db_cloudpak_backup.dump --format=c
-        info "Beginning backup of im database..."
-        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=im -f /run/cs-db_backup/cs-db_im_backup.dump --format=c
-        info "Beginning backup of zen database..."
-        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=zen -f /run/cs-db_backup/cs-db_zen_backup.dump --format=c
-
-        #Move backup to backup location
-        info "Copy backup file."
-        oc cp $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_cloudpak_backup.dump $BACKUP_DIR/database/cs-db_cloudpak_backup.dump
-        oc cp $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_im_backup.dump $BACKUP_DIR/database/cs-db_im_backup.dump
-        oc cp $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_zen_backup.dump $BACKUP_DIR/database/cs-db_zen_backup.dump
-
-    }
-    
-    function restore {
-
-        CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io common-service-db -o jsonpath="{.status.currentPrimary}" -n $CSDB_NAMESPACE` 
-        oc exec $CNPG_PRIMARY_POD -n $CSDB_NAMESPACE -- mkdir -p /run/cs-db_backup
-        oc cp $BACKUP_DIR/database/cs-db_cloudpak_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_cloudpak_backup.dump
-        oc cp $BACKUP_DIR/database/cs-db_im_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_im_backup.dump
-        oc cp $BACKUP_DIR/database/cs-db_zen_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_zen_backup.dump
-        
-        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
-        info "Beginning restore of cloudpak database..."
-        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname cloudpak --format=c --clean --exit-on-error -v /run/cs-db_backup/cs-db_cloudpak_backup.dump
-        info "Beginning restore of im database..."
-        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname im --format=c --clean --exit-on-error -v /run/cs-db_backup/cs-db_im_backup.dump
-        info "Beginning restore of zen database..."
-        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname zen --format=c --clean --exit-on-error -v /run/cs-db_backup/cs-db_zen_backup.dump
-        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
-
-        info "Rerunning OIDC registration job..."
-        oc -n $CSDB_NAMESPACE get job oidc-client-registration -o json |yq 'del(.spec.selector)' |yq 'del(.spec.template.metadata.labels)'| oc -n $CSDB_NAMESPACE replace --force -f -
-        oc -n $CSDB_NAMESPACE get pods | grep oidc-client-registration
-
-    }
-
-    function msg() {
-        printf '%b\n' "$1"
-    }
-
-    function success() {
-        msg "\33[32m[✔] ${1}\33[0m"
-    }
-
-    function warning() {
-        msg "\33[33m[✗] ${1}\33[0m"
-    }
-
-    function error() {
-        msg "\33[31m[✘] ${1}\33[0m"
-        exit 1
-    }
-
-    function title() {
-        msg "\33[34m# ${1}\33[0m"
-    }
-
-    function info() {
-        msg "[INFO] ${1}"
-    }
-
-    main $*
-  br_lsr.sh: |
+  setup_tenant.sh: |
     #!/usr/bin/env bash
 
     # Licensed Materials - Property of IBM
@@ -121,910 +17,761 @@ data:
     # This is an internal component, bundled with an official IBM product.
     # Please refer to that particular license for additional information.
 
-    # ---------- Command arguments ----------
-
-    set -o errtrace
-    set -o errexit
-
-    LSR_NAMESPACE=$1
-    MODE=$2
-
-    BACKUP_DIR=/lsr/lsr-backup
-
-    function main {
-        if [[ $MODE == "backup" ]]; then
-            info "Mode set to backup, beginning backup process."
-            backup
-            success "Backup completed successfully."
-        else if [[ $MODE == "restore" ]]
-            info "Mode is set to restore, beginning restore process."
-            restore
-            success "Restore completed successfully."
-        else
-            error "Invalid mode entered. Please specify \"backup\" or \"restore\"."
-        fi
-    }
-
-    function backup {
-        mkdir -p $BACKUP_DIR/database
-        CNPG_PRIMARY_POD=`oc get pods -n $LSR_NAMESPACE | grep ibm-license-service-reporter-instance | awk '{print $1}'` && \
-        oc -n $LSR_NAMESPACE exec -t $CNPG_PRIMARY_POD -c database -- rm -rf /run/lsr_backup && \
-        oc -n $LSR_NAMESPACE exec -t $CNPG_PRIMARY_POD -c database -- mkdir -p /run/lsr_backup && \
-        oc -n $LSR_NAMESPACE exec -t $CNPG_PRIMARY_POD -c database -- pg_dump -v --username=postgres --dbname=postgres -f /run/lsr_backup/lsr_db_backup.dump --format=c
-
-        #Move backup to backup location
-        oc cp $LSR_NAMESPACE/$CNPG_PRIMARY_POD:/run/lsr_backup/lsr_db_backup.dump $BACKUP_DIR/database/lsr_db_backup.dump
-    }
-
-    function restore {
-        CNPG_PRIMARY_POD=`oc get pods -n $LSR_NAMESPACE | grep ibm-license-service-reporter-instance | awk '{print $1}'`
-        oc exec $CNPG_PRIMARY_POD -n $LSR_NAMESPACE -- mkdir -p /run/lsr_backup
-        oc cp $BACKUP_DIR/database/lsr_db_backup.dump $LSR_NAMESPACE/$CNPG_PRIMARY_POD:/run/lsr_backup/lsr_db_backup.dump
-        oc -n $LSR_NAMESPACE exec -t $CNPG_PRIMARY_POD -c database -- psql -U postgres -c "\list" -c "\dn" -c "\du"
-        oc -n $LSR_NAMESPACE exec -t $CNPG_PRIMARY_POD -c database -- pg_restore -U postgres --dbname postgres --format=c --clean -v /run/lsr_backup/lsr_db_backup.dump
-        oc -n $LSR_NAMESPACE exec -t $CNPG_PRIMARY_POD -c database -- psql -U postgres -c "\list" -c "\dn" -c "\du"
-    }
-
-    function msg() {
-        printf '%b\n' "$1"
-    }
-
-    function success() {
-        msg "\33[32m[✔] ${1}\33[0m"
-    }
-
-    function warning() {
-        msg "\33[33m[✗] ${1}\33[0m"
-    }
-
-    function error() {
-        msg "\33[31m[✘] ${1}\33[0m"
-        exit 1
-    }
-
-    function title() {
-        msg "\33[34m# ${1}\33[0m"
-    }
-
-    function info() {
-        msg "[INFO] ${1}"
-    }
-
-    main $*
-  br_keycloak.sh: |
-    #!/usr/bin/env bash
-
-    # Licensed Materials - Property of IBM
-    # Copyright IBM Corporation 2023. All Rights Reserved
-    # US Government Users Restricted Rights -
-    # Use, duplication or disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
-    #
-    # This is an internal component, bundled with an official IBM product.
-    # Please refer to that particular license for additional information.
+    set -o nounset
 
     # ---------- Command arguments ----------
 
-    set -o errtrace
-    set -o errexit
+    OC=oc
+    YQ=yq
+    ENABLE_LICENSING=0
+    MINIMAL_RBAC_ENABLED=0
+    MINIMAL_RBAC=""
+    CHANNEL="v4.6"
+    MAINTAINED_CHANNEL="v4.2"
+    SOURCE="opencloud-operators"
+    SOURCE_NS="openshift-marketplace"
+    OPERATOR_NS=""
+    SERVICES_NS=""
+    TETHERED_NS=""
+    EXCLUDED_NS=""
+    SIZE_PROFILE=""
+    INSTALL_MODE="Automatic"
+    PREVIEW_MODE=0
+    ENABLE_PRIVATE_CATALOG=0
+    OC_CMD="oc"
+    DEBUG=0
+    LICENSE_ACCEPT=0
+    RETRY_CONFIG_CSCR=0
+    IS_UPGRADE=0
+    IS_NOT_COMPLEX_TOPOLOGY=0
 
-    MODE=$1
-    KEYCLOAK_NAMESPACE=$2
+    # ---------- Command variables ----------
 
-    BACKUP_DIR=/keycloak/keycloak-backup
+    # script base directory
+    BASE_DIR="/scripts"
 
-    function main {
-        if [[ $MODE == "backup" ]]; then
-            info "Mode set to backup, beginning backup process."
-            backup
-            success "Backup completed successfully."
-        elif [[ $MODE == "restore" ]]; then
-            info "Mode is set to restore, beginning restore process."
-            wait_for_keycloak
-            restore
-            success "Restore completed successfully."
-        else
-            error "Mode selected is $MODE. Please use either \"backup\" or \"restore\"."
-        fi
-    }
+    #log file
+    LOG_FILE="setup_tenant_log_$(date +'%Y%m%d%H%M%S').log"
 
-    function backup {
-        mkdir -p $BACKUP_DIR/database
-        mkdir -p $BACKUP_DIR/secrets
-        CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io keycloak-edb-cluster -o jsonpath="{.status.currentPrimary}" -n $KEYCLOAK_NAMESPACE` && \
-        oc -n $KEYCLOAK_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- mkdir -p /run/keycloak_backup && \
-        oc -n $KEYCLOAK_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=keycloak -f /run/keycloak_backup/keycloak_db_backup.dump --format=c
+    # counter to keep track of installation steps
+    STEP=0
 
-        #Move backup to backup location
-        info "Copy backup file."
-        oc cp $KEYCLOAK_NAMESPACE/$CNPG_PRIMARY_POD:/run/keycloak_backup/keycloak_db_backup.dump $BACKUP_DIR/database/keycloak_db_backup.dump
+    # preview mode directory
+    PREVIEW_DIR="/tmp/setup-tenant-$(date +'%Y%m%d%H%M%S')-preview"
 
-        #backup cs-keycloak-initial-admin secret
-        info "Backup cs-keycloak-initial-admin secret"
-        oc extract -n $KEYCLOAK_NAMESPACE secret/cs-keycloak-initial-admin --to=$BACKUP_DIR/secrets/ --confirm || warning "Failed to backup secret/cs-keycloak-initial-admin in namespace ${KEYCLOAK_NAMESPACE}"
-    }
+    # ---------- Main functions ----------
 
-    function wait_for_keycloak {
-        job_name="cs-cloudpak-realm"
-        info "Waiting for job $job_name to complete in namespace $KEYCLOAK_NAMESPACE."
-        job_exists=$(oc get job $job_name -n $KEYCLOAK_NAMESPACE --no-headers | echo fail)
-        if [[ $job_exists != "fail" ]]; then
-            completed=$(oc get job $job_name -n $KEYCLOAK_NAMESPACE --no-headers | awk '{print $2}')
-            retry_count=20
-            while [[ $completed != "1/1" ]] && [[ $retry_count > 0 ]]
-            do
-                info "Wait for job $job_name to complete. Try again in 15s."
-                sleep 15
-                completed=$(oc get job $job_name -n $KEYCLOAK_NAMESPACE --no-headers | awk '{print $2}')
-                retry_count=$retry_count-1
-            done
-
-            if [[ $retry_count == 0 ]] && [[ $completed != "1/1" ]]; then
-                error "Timed out waiting for job $job_name."
-            else
-                info "Job $job_name completed, ready for restore."
-            fi
-        else
-            warning "Job $job_name not present, proceeding with restore."
-        fi
-    }
-    
-    function restore {
-        #restore initial admin secret
-        info "Restoring secret cs-keycloak-initial-admin..."
-        oc patch secret -n $KEYCLOAK_NAMESPACE cs-keycloak-initial-admin --patch="{\"data\": {\"password\": \"$(base64 -w0 $BACKUP_DIR/secrets/password)\" }}"
-
-        CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io keycloak-edb-cluster -o jsonpath="{.status.currentPrimary}" -n $KEYCLOAK_NAMESPACE` 
-        oc exec $CNPG_PRIMARY_POD -n $KEYCLOAK_NAMESPACE -- mkdir -p /run/keycloak_backup
-        oc cp $BACKUP_DIR/database/keycloak_db_backup.dump $KEYCLOAK_NAMESPACE/$CNPG_PRIMARY_POD:/run/keycloak_backup/keycloak_db_backup.dump
-        oc -n $KEYCLOAK_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
-        oc -n $KEYCLOAK_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname keycloak --format=c --clean --exit-on-error -v /run/keycloak_backup/keycloak_db_backup.dump
-        oc -n $KEYCLOAK_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
-
-        #restart keycloak pod
-        info "Restarting Keycloak pods..."
-        oc delete pods -l app=keycloak -n $KEYCLOAK_NAMESPACE
-    }
-
-    function msg() {
-        printf '%b\n' "$1"
-    }
-
-    function success() {
-        msg "\33[32m[✔] ${1}\33[0m"
-    }
-
-    function warning() {
-        msg "\33[33m[✗] ${1}\33[0m"
-    }
-
-    function error() {
-        msg "\33[31m[✘] ${1}\33[0m"
-        exit 1
-    }
-
-    function title() {
-        msg "\33[34m# ${1}\33[0m"
-    }
-
-    function info() {
-        msg "[INFO] ${1}"
-    }
-
-    main $*
-  zen4-br.sh: |
-    #!/usr/bin/env bash
-    #
-    # Copyright 2023 IBM Corporation
-    #
-    # Licensed under the Apache License, Version 2.0 (the "License");
-    # you may not use this file except in compliance with the License.
-    # You may obtain a copy of the License at
-    #
-    # http://www.apache.org/licenses/LICENSE-2.0
-    #
-    # Unless required by applicable law or agreed to in writing, software
-    # distributed under the License is distributed on an "AS IS" BASIS,
-    # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    # See the License for the specific language governing permissions and
-    # limitations under the License.
-    #
-    set -o errexit
-
-    ZEN_NAMESPACE=$1
-    BACKUP=$2
-
-    BACKUP_ROOT_DIR="/user-home/zen-metastoredb-backup"
+    . ${BASE_DIR}/cp3pt0-deployment/common/utils.sh
 
     function main() {
-        if [[ $BACKUP == "true" ]]; then
-            backup
-        else
-            restore
-        fi
-
-    #run prereqs and common code
-    #differentiate between backup and restore
-    #run either backup or restore
-    #cleanup
+        parse_arguments "$@"
+        save_log "logs" "setup_tenant_log" "$DEBUG"
+        trap cleanup_log EXIT
+        pre_req
+        prepare_preview_mode
+        setup_topology
+        check_singleton_service
+        upgrade_mitigation
+        setup_nss
+        install_cs_operator
     }
 
-    function backup() {
-        title "Backing up zen in namespace $ZEN_NAMESPACE"
-        #Backup Steps
-            # 1. run backup script
-            # 2. move backup files to velero specific deployment
-            # 3. Backup secret/zen-secrets-aes-key (do we need to include metastore secret as well?)
-            # 4. Backup JWT configuration
-        # Scale down zen-metastoredb statefulset to 0
-        # Backup all zen-metastoredb volumes (all of them)
-        info "Clean up prior run"
-        rm -rf $BACKUP_ROOT_DIR/jwt
-        rm -rf $BACKUP_ROOT_DIR/branding
-        rm -rf $BACKUP_ROOT_DIR/oidc
-        rm -rf $BACKUP_ROOT_DIR/saml
-        rm -rf $BACKUP_ROOT_DIR/tmp/
-        rm -f $BACKUP_ROOT_DIR/zen_backup.sql
-        rm -f $BACKUP_ROOT_DIR/zen-secrets-aes-key.bkup.yaml
-        
-        # 1. run backup script
-        info "Running metastoredb backup script in namespace $ZEN_NAMESPACE."
-        oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -c zen-metastoredb ./../tmp/backup/backup_script.sh regular zen-operator
-        
-        # 2. move backup files to velero specific deployment
-        oc cp $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/zen-metastoredb-backup/zen_backup.sql $BACKUP_ROOT_DIR/zen_backup.sql
-        oc cp $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/zen-metastoredb-backup/spark_backup.sql $BACKUP_ROOT_DIR/tmp/spark_backup.sql 
-        
-        # 3. Backup secret/zen-secrets-aes-key
-        # Backup secret/metastore-secret, secret/zen-secrets-aes-key
-        oc -n $ZEN_NAMESPACE extract secret/zen-secrets-aes-key --to=.$BACKUP_ROOT_DIR/ --confirm
-        info "Secret aes-key backed up."
-        
-        # 4. Backup JWT configuration
-        # Backup JWT configuration /user-home/_global_/config/jwt
-        oc cp $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/_global_/config/jwt .$BACKUP_ROOT_DIR/jwt
-        oc cp $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/_global_/config/jwt $BACKUP_ROOT_DIR/jwt
-        oc cp $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/_global_/config/branding $BACKUP_ROOT_DIR/branding
-        oc cp $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/_global_/config/oidc $BACKUP_ROOT_DIR/oidc
-        oc cp $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/_global_/config/saml $BACKUP_ROOT_DIR/saml
-        info "JWT config backed up."
+    function parse_arguments() {
+        echo "All arguments passed into the script: $@"
 
-        #need steps for extensions and custom route
-            #cross check against zen 5 script to see if any other customizations are necessary
-        #store list of extensions from source cluster to be restored later
-        info "Backing up extensions in namespace $ZEN_NAMESPACE."
-        ./zen4/customize-zen-extensions.sh $ZEN_NAMESPACE true
-
-        success "Backup completed in namespace $ZEN_NAMESPACE."
-    }
-
-    function restore() {
-        title "Restoring zen in namespace $ZEN_NAMESPACE"
-        #restore steps
-            # 1. Copy JWT and key files to target cluster (we already do that)
-            # 2. Backup current configuration on target cluster
-            # 3. Record the number of replicas for zen components
-            # 4. Scale down zen components
-            # 5. Reset DB
-            # 6. Restore secret/zen-secrets-aes-key
-            # 7. Restore JWT configuration
-            # 8. Restore metadata
-            # 9. Scale up zen components and wait for ready
-            # 10. Restart zen-watcher after zen-watcher is up
-        
-        # 2. Backup current configuration on target cluster
-        info "Backing up current config."
-        oc -n $ZEN_NAMESPACE get secret/zen-secrets-aes-key -o yaml > $BACKUP_ROOT_DIR/zen-secrets-aes-key.bkup.yaml
-        oc cp $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/_global_/config/jwt $BACKUP_ROOT_DIR/jwt-backup
-
-        #copy over previous backup files to metastoredb pod
-        if ! oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 bash -c zen-metastoredb -- test -d /user-home/zen-metastoredb-backup; then
-            oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 bash -c zen-metastoredb -- mkdir /user-home/zen-metastoredb-backup
-        fi
-        if [[ -f $BACKUP_ROOT_DIR/tmp/spark_backup.sql ]]; then
-            oc cp $BACKUP_ROOT_DIR/tmp/spark_backup.sql $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/zen-metastoredb-backup/spark_backup.sql 
-        else
-            info "spark_backup.sql file not found in backup, skipping."
-        fi
-        if [[ -f $BACKUP_ROOT_DIR/zen_backup.sql ]]; then
-            oc cp $BACKUP_ROOT_DIR/zen_backup.sql $ZEN_NAMESPACE/zen-metastoredb-0:/user-home/zen-metastoredb-backup/zen_backup.sql
-        else
-            error "zen_backup.sql file not found in backup. Please run the backup before proceeding. Exiting."
-        fi
-        
-        # Restore zen-metastoredb volumes
-        # 3. Getting the replica count before scaling down the required pods
-        IBM_NGINX_RC=$(oc get deploy ibm-nginx -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}' --ignore-not-found)
-        ZEN_CORE_RC=$(oc get deploy zen-core -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}' --ignore-not-found )
-        USERMGMT_RC=$(oc get deploy usermgmt -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}' --ignore-not-found)
-        ZEN_CORE_API_RC=$(oc get deploy zen-core-api -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}' --ignore-not-found)
-        ZEN_WATCHER_RC=$(oc get deploy zen-watcher -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}' --ignore-not-found)
-
-        oc get deploy ibm-nginx zen-core usermgmt zen-watcher zen-core-api -n ${ZEN_NAMESPACE} --ignore-not-found
-        
-        # 4. scale down deployments
-        oc scale deploy ibm-nginx zen-core usermgmt zen-watcher zen-core-api --replicas=0 -n ${ZEN_NAMESPACE}
-        # zen-watchdog is applicable only for CloudPak for Data 
-        zen_watchdog_present=$(oc get deploy -n ${ZEN_NAMESPACE} | grep zen-watchdog || echo "fail")
-        if [[ $zen_watchdog_present != "fail" ]]; then
-            info "Zen watchdog present, scaling down."
-            oc scale deploy zen-watchdog --replicas=0 -n ${ZEN_NAMESPACE}
-        fi
-        
-        sleep 15
-
-        #waiting for deployments to be cleaned up after scaling down
-        deployments_clear=$(oc get deploy -n $ZEN_NAMESPACE | grep "ibm-nginx\|zen-core\|usermgmt\|zen-watcher\|zen-core-api\|zen-watchdog" | grep -v "ibm-nginx-tester" | awk '{print $4}' | grep -v 0 || echo clear)
-        while [[ $deployments_clear != "clear" ]];
-        do
-            sleep 10
-            if [[ $deployments_clear != "clear" ]]; then
-                info "Waiting on deployments ibm-nginx zen-core usermgmt zen-watcher zen-core-api to clean up..."
-            else
-                info "Deployments ibm-nginx zen-core usermgmt zen-watcher zen-core-api successfully scaled down. Moving on..."
-            fi
-            deployments_clear=$(oc get deploy -n $ZEN_NAMESPACE | grep "ibm-nginx\|zen-core\|usermgmt\|zen-watcher\|zen-core-api\|zen-watchdog" | grep -v "ibm-nginx-tester" | awk '{print $4}' | grep -v 0 || echo clear)
+        # process options
+        while [[ "$@" != "" ]]; do
+            case "$1" in
+            --oc)
+                shift
+                OC=$1
+                ;;
+            --yq)
+                shift
+                YQ=$1
+                ;;
+            --enable-licensing)
+                ENABLE_LICENSING=1
+                ;;
+            --with-minimal-rbac)
+                shift
+                MINIMAL_RBAC_ENABLED=1
+                MINIMAL_RBAC=$1
+                ;;
+            --operator-namespace)
+                shift
+                OPERATOR_NS=$1
+                ;;
+            --services-namespace)
+                shift
+                SERVICES_NS=$1
+                ;;
+            --tethered-namespaces)
+                shift
+                TETHERED_NS=$1
+                ;;
+            --excluded-namespaces)
+                shift
+                EXCLUDED_NS=$1
+                ;;
+            --license-accept)
+                LICENSE_ACCEPT=1
+                ;;
+            --enable-private-catalog)
+                ENABLE_PRIVATE_CATALOG=1
+                ;;
+            -c | --channel)
+                shift
+                CHANNEL=$1
+                ;;
+            -s | --source)
+                shift
+                SOURCE=$1
+                ;;
+            -i | --install-mode)
+                shift
+                INSTALL_MODE=$1
+                ;;
+            -n | --source-namespace)
+                shift
+                SOURCE_NS=$1
+                ;;
+            -p | --size-profile)
+                shift
+                SIZE_PROFILE=$1
+                ;;
+            --preview)
+                PREVIEW_MODE=1
+                ;;
+            -v | --debug)
+                shift
+                DEBUG=$1
+                ;;
+            -h | --help)
+                print_usage
+                exit 1
+                ;;
+            *)
+                echo "wildcard"
+                ;;
+            esac
+            shift
         done
+        echo ""
+    }
 
-        # 5. Reset DB (WARNING - THIS WILL DELETE DATABASE and ITS DATA.)
-        cockroach_output=$(oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -- /bin/bash -c "./cockroach version")
-        cockroach_version=$(echo $cockroach_output | grep "Build Tag" | awk '{print $3}')
-        higher=""
-        if [ $(version "${cockroach_version//v}") -ge $(version "22.1.5") ]; then
-            # For version 22.1.5 and higher
-            info "Cockroach DB version >= 22.1.5. Version: $cockroach_version"
-            oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 bash  -c zen-metastoredb -- cp -r /certs/..data/ /tmp/certs
-            oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -c zen-metastoredb -- bash -c "cd ../tmp/ && chmod 0600 ./certs/*"
-            higher="true"
+    function print_usage() {
+        script_name=`basename ${0}`
+        echo "Usage: ${script_name} --license-accept --operator-namespace <bedrock-namespace> [OPTIONS]..."
+        echo ""
+        echo "Set up an advanced topology tenant for Cloud Pak 3.0 Foundational services."
+        echo "The --license-accept and --operator-namespace must be provided."
+        echo "See https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.0?topic=online-installing-foundational-services-by-using-script for more information."
+        echo ""
+        echo "Options:"
+        echo "   --oc string                    Optional. File path to oc CLI. Default uses oc in your PATH"
+        echo "   --yq string                    Optional. File path to yq CLI. Default uses yq in your PATH"
+        echo "   --enable-licensing             Optional. Set this flag to install ibm-licensing-operator"
+        echo "   --operator-namespace string    Required. Namespace to install Foundational services operator"
+        echo "   --services-namespace           Optional. Namespace to install operands of Foundational services, i.e. 'dataplane'. Default is the same as operator-namespace"
+        echo "   --tethered-namespaces string   Optional. Add namespaces to this tenant, comma-delimited, e.g. 'ns1,ns2'"
+        echo "   --excluded-namespaces string   Optional. Remove namespaces from this tenant, comma-delimited, e.g. 'ns1,ns2'"
+        echo "   --license-accept               Required. Set this flag to accept the license agreement"
+        echo "   --enable-private-catalog       Optional. Set this flag to use namespace scoped CatalogSource. Default is in openshift-marketplace namespace"
+        echo "   --with-minimal-rbac string     Optional. Provide "skip" or file path to the minimal RBAC permissions required by the namespace scope operator for all to be deployed services"
+        echo "   -c, --channel string           Optional. Channel for Subscription(s). Default is v4.6"
+        echo "   -i, --install-mode string      Optional. InstallPlan Approval Mode. Default is Automatic. Set to Manual for manual approval mode"
+        echo "   -s, --source string            Optional. CatalogSource name. This assumes your CatalogSource is already created. Default is opencloud-operators"
+        echo "   -n, --namespace string         Optional. Namespace of CatalogSource. Default is openshift-marketplace"
+        echo "   --preview                      Optional. Enable preview mode (dry run)"
+        echo "   -v, --debug integer            Optional. Verbosity of logs. Default is 0. Set to 1 for debug logs"
+        echo "   -h, --help                     Print usage information"
+        echo "   -p, --size-profile             Optional. The default profile is starterset. Change the profile to starter, small, medium, or large, if required"
+        echo ""
+    }
+
+    function pre_req() {
+        title "Start to validate the parameters passed into script... "
+        # Check the value of DEBUG
+        if [[ "$DEBUG" != "1" && "$DEBUG" != "0" ]]; then
+            error "Invalid value for DEBUG. Expected 0 or 1."
+        fi
+
+        if [ $PREVIEW_MODE -eq 1 ]; then
+            info "Running in preview mode. No actual changes will be made."
+        fi
+
+        check_command "${OC}"
+        check_command "${YQ}"
+        check_yq_version
+
+        # Checking oc command logged in
+        user=$($OC whoami 2> /dev/null)
+        if [ $? -ne 0 ]; then
+            error "You must be logged into the OpenShift Cluster from the oc command line"
         else
-            # For version below 22.1.5
-            info "Cockroach DB version < 22.1.5. Version: $cockroach_version"
-            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb -- cp -r /certs/ /tmp/
-            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb -- bash -c "cd /tmp/ && chmod -R  0700 certs/"
-            higher="false"
+            success "oc command logged in as ${user}"
         fi
 
-        oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb cd  /cockroach
-        oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb -- /bin/bash -c "./cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute='drop database if exists zen cascade;'"
-        oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb -- /bin/bash -c "./cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute='drop database if exists spark cascade;'"
-
-        if [[ $higher == "false" ]]; then
-            # For version below 22.1.5
-            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb -- /bin/bash -c "./cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute='create database if not exists zen; create user if not exists zen_user; grant all on database zen to zen_user;'"
-            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb -- /bin/bash -c "./cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute='create database if not exists spark; create user if not exists spark_user; grant all on database spark to spark_user;'"
-        else
-            # For version 22.1.5 and higher
-            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb -- /bin/bash -c "./cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute='create database if not exists zen; create user if not exists zen_user; use zen; grant all on database zen to zen_user WITH GRANT OPTION; grant all PRIVILEGES on ALL TABLES in SCHEMA public to zen_user WITH GRANT OPTION;'"
-            oc exec -t zen-metastoredb-0 bash -n $ZEN_NAMESPACE -c zen-metastoredb -- /bin/bash -c "./cockroach sql --certs-dir=/tmp/certs/ --host=zen-metastoredb-0.zen-metastoredb --execute='create database if not exists spark; create user if not exists spark_user; use spark; grant all on database spark to spark_user WITH GRANT OPTION; grant all PRIVILEGES on ALL TABLES in SCHEMA public to spark_user WITH GRANT OPTION;'"
+        if [ $LICENSE_ACCEPT -ne 1 ]; then
+            error "License not accepted. Rerun script with --license-accept flag set. See https://ibm.biz/integration-licenses for more details"
         fi
 
-        # Restore secret/metastore-secret, secret/zen-secrets-aes-key
-        # 6. Restore secret/zen-secrets-aes-key
-        AES_KEY_B64=$(base64 < "${BACKUP_ROOT_DIR}/aes_key" | tr -d '\n')
-        oc patch secret \
-        zen-secrets-aes-key \
-        -p "{\"data\":{\"aes_key\":\"${AES_KEY_B64}\"}}"
-
-        # Restore /user-home/_global_/config/jwt
-        # 7. Restore JWT configuration
-        oc -n $ZEN_NAMESPACE cp $BACKUP_ROOT_DIR/jwt zen-metastoredb-0:/user-home/_global_/config/
-        oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -- ls -altrR /user-home/_global_/config/jwt
-        oc -n $ZEN_NAMESPACE cp $BACKUP_ROOT_DIR/branding zen-metastoredb-0:/user-home/_global_/config/
-        oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -- ls -altrR /user-home/_global_/config/branding
-        oc -n $ZEN_NAMESPACE cp $BACKUP_ROOT_DIR/oidc zen-metastoredb-0:/user-home/_global_/config/
-        oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -- ls -altrR /user-home/_global_/config/oidc
-        oc -n $ZEN_NAMESPACE cp $BACKUP_ROOT_DIR/saml zen-metastoredb-0:/user-home/_global_/config/
-        oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -- ls -altrR /user-home/_global_/config/saml 
-        
-        # 8. Restore metadata 
-        info "Running metastoredb restore script in namespace $ZEN_NAMESPACE."
-        oc -n $ZEN_NAMESPACE exec -t zen-metastoredb-0 -c zen-metastoredb ./../tmp/backup/restore_script.sh regular zen-operator
-        
-        # 9. Scale up zen components and wait for ready
-        #Update zen extensions
-        if [[ $ZEN_CORE_RC == "0" ]]; then
-            info "zen-core deployment not scaled up before rerunning, setting replica value to 2"
-            ZEN_CORE_RC=2
-        fi
-        if [[ $USERMGMT_RC == "0" ]]; then
-            info "usermgmt deployment not scaled up before rerunning, setting replica value to 2"
-            USERMGMT_RC=2
-        fi
-        oc scale deploy zen-core-api --replicas=$ZEN_CORE_API_RC -n $ZEN_NAMESPACE
-        oc scale deploy usermgmt --replicas=$USERMGMT_RC -n $ZEN_NAMESPACE
-        sleep 15
-        oc wait pod --for=condition=Ready -l app.kubernetes.io/component=zen-core-api --timeout=180s -n ${ZEN_NAMESPACE}
-        oc wait pod --for=condition=Ready -l app.kubernetes.io/component=usermgmt --timeout=180s -n ${ZEN_NAMESPACE}
-        
-        info "Restoring extensions in namespace $ZEN_NAMESPACE."
-        ./zen4/customize-zen-extensions.sh $ZEN_NAMESPACE false
-        
-        # Scale up the remaining deployments
-        info "Scale up deployments."
-        if [[ $IBM_NGINX_RC == "0" ]]; then
-            info "ibm-nginx deployment not scaled up before rerunning, setting replica value to 2"
-            IBM_NGINX_RC=2
-        fi
-        if [[ $ZEN_CORE_API_RC == "0" ]]; then
-            info "zen-core-api deployment not scaled up before rerunning, setting replica value to 2"
-            ZEN_CORE_API_RC=2
-        fi
-        if [[ $ZEN_WATCHER_RC == "0" ]]; then
-            info "zen-watcher deployment not scaled up before rerunning, setting replica value to 1"
-            ZEN_WATCHER_RC=1
-        fi
-        
-        oc scale deploy zen-watcher --replicas=$ZEN_WATCHER_RC -n $ZEN_NAMESPACE
-        oc scale deploy zen-core --replicas=$ZEN_CORE_RC -n $ZEN_NAMESPACE
-        oc scale deploy ibm-nginx --replicas=$IBM_NGINX_RC -n $ZEN_NAMESPACE
-        if [[ $zen_watchdog_present != "fail" ]]; then
-            oc scale deploy zen-watchdog --replicas=1 -n $ZEN_NAMESPACE # (Only for CloudPak for Data)
+        # Check INSTALL_MODE
+        if [[ "$INSTALL_MODE" != "Automatic" && "$INSTALL_MODE" != "Manual" ]]; then
+            error "Invalid INSTALL_MODE: $INSTALL_MODE, allowed values are 'Automatic' or 'Manual'"
         fi
 
-        # Wait for deployments
-        info "Wait for deployments to come ready again."
-        oc wait pod --for=condition=Ready -l app.kubernetes.io/component=ibm-nginx --timeout=180s -n ${ZEN_NAMESPACE}
-        oc wait pod --for=condition=Ready -l app.kubernetes.io/component=zen-core --timeout=180s -n ${ZEN_NAMESPACE}
-        oc wait pod --for=condition=Ready -l app.kubernetes.io/component=zen-watcher --timeout=180s -n ${ZEN_NAMESPACE}
-        
-        if [[ $zen_watchdog_present != "fail" ]]; then # Only for CloudPak for Data
-            oc wait pod --for=condition=Ready -l app.kubernetes.io/component=zen-watchdog --timeout=180s -n ${ZEN_NAMESPACE}
-        fi
-
-        # 10. Restart zen-watcher after zen-watcher is up
-        info "Restart zen-watcher."
-        oc delete pods -l component=zen-watcher -n ${ZEN_NAMESPACE} --ignore-not-found
-
-        success "Restore completed in namespace $ZEN_NAMESPACE."
-    }
-
-    function version { echo "$@" | awk -F. '{ printf("%d%03d%03d%03d\n", $1,$2,$3,$4); }'; }
-
-    function msg() {
-        printf '%b\n' "$1"
-    }
-
-    function success() {
-        msg "\33[32m[✔] ${1}\33[0m"
-    }
-
-    function warning() {
-        msg "\33[33m[✗] ${1}\33[0m"
-    }
-
-    function error() {
-        msg "\33[31m[✘] ${1}\33[0m"
-        exit 1
-    }
-
-    function title() {
-        msg "\33[34m# ${1}\33[0m"
-    }
-
-    function info() {
-        msg "[INFO] ${1}"
-    }
-
-    main $*
-  backup_zen5.sh: |
-    #!/usr/bin/env bash
-
-    # Licensed Materials - Property of IBM
-    # Copyright IBM Corporation 2023. All Rights Reserved
-    # US Government Users Restricted Rights -
-    # Use, duplication or disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
-    #
-    # This is an internal component, bundled with an official IBM product.
-    # Please refer to that particular license for additional information.
-
-    # ---------- Command arguments ----------
-    #should probably defualt this to zen with an optional parameter
-    
-    set -o errtrace
-    set -o errexit
-
-    ZEN_NAMESPACE=$1
-    BACKUP_DIR=/zen5/zen-backup
-
-    #Backup steps
-
-    #Setup backup location
-    function main {
-        title "Beginning zen 5 backup process in namespace $ZEN_NAMESPACE."
-        info "Creating necessary directories"
-        mkdir -p $BACKUP_DIR/workspace
-        mkdir -p $BACKUP_DIR/secrets
-        mkdir -p $BACKUP_DIR/secrets/jwks 
-        mkdir -p $BACKUP_DIR/secrets/jwt 
-        mkdir -p $BACKUP_DIR/secrets/jwt-private
-        mkdir -p $BACKUP_DIR/secrets/ibmid-jwk
-        mkdir -p $BACKUP_DIR/secrets/aes-key 
-        mkdir -p $BACKUP_DIR/secrets/admin-user
-        mkdir -p $BACKUP_DIR/database
-        mkdir -p $BACKUP_DIR/objstorage
-
-        #Set zen namespace
-        #will be covered by command line argument/prereq function
-
-        #Backup zen metastoredb
-        #check if this flag is true, otherwise do not proceed
-        return_value=$(oc get cm ibm-zen-metastore-edb-cm -o jsonpath='{.data.IS_EMBEDDED_DATABASE}{"\n"}' || echo "fail")
-        if [[ $return_value != "fail" ]]; then #obviously needs to be corrected
-            info "Value IS_EMBEDDED_DATABASE marked true in configmap ibm-zen-metastore-edb-cm, backing up zen-metastore-edb"
-            CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io zen-metastore-edb -o jsonpath="{.status.currentPrimary}" -n $ZEN_NAMESPACE` && \
-            oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- mkdir -p /run/zen_backup && \
-            oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=zen -f /run/zen_backup/zen_db_backup.dump
-            
-            #Move backup to backup location
-            oc cp $ZEN_NAMESPACE/$CNPG_PRIMARY_POD:/run/zen_backup/zen_db_backup.dump $BACKUP_DIR/database/zen_db_backup.dump
-        fi
-        #Backup zen object storage
-        #check if this is true
-        return_value=""
-        return_value=$(oc -n $ZEN_NAMESPACE get cm ibm-zen-objectstore-cm -o jsonpath='{.data.IS_EMBEDDED_OBJECTSTORE}{"\n"}' || echo "fail")
-        if [[ $return_value != "fail" ]]; then
-            info "IS_EMBEDDED_OBJECTSTORE value true in configmap ibm-zen-objectstore-cm, backing up zen objectstore"
-            #Read object storage connection and credentials
-            OBJECTSTORE_ENDPOINT=$(oc -n $ZEN_NAMESPACE get cm ibm-zen-objectstore-cm -o jsonpath="{.data.OBJECTSTORE_ENDPOINT}")
-            oc -n $ZEN_NAMESPACE extract secret/ibm-zen-objectstore-secret --to=$BACKUP_DIR/workspace --confirm
-
-            #Backup object storage data
-            oc -n $ZEN_NAMESPACE exec -t zen-minio-0 -- bash -c "rm -rf /tmp/backup && mkdir -p /tmp/backup && export HOME=/tmp && /workdir/bin/mc alias set zenobjstore ${OBJECTSTORE_ENDPOINT} $(<${BACKUP_DIR}/workspace/accesskey) $(<${BACKUP_DIR}/workspace/secretkey) --config-dir=/tmp/.mc --insecure && /workdir/bin/mc cp --recursive zenobjstore/ /tmp/backup/ --insecure" 
-
-            #Move backup to backup location
-            oc cp $ZEN_NAMESPACE/zen-minio-0:/tmp/backup $BACKUP_DIR/objstorage && oc exec -t zen-minio-0 -- bash -c "rm -rf /tmp/backup"
-        fi
-
-        #store list of extensions from source cluster to be restored later
-        ./zen5/customize-zen-extensions.sh $ZEN_NAMESPACE true
-
-        #Backup JWT configuration
-        info "Backing up JWT secrets"
-        oc extract -n ${ZEN_NAMESPACE} secret/ibm-zen-secret-jwks --to=$BACKUP_DIR/secrets/jwks || warning "Failed to backup secret/ibm-zen-secret-jwks in namespace ${ZEN_NAMESPACE}"
-        oc extract -n ${ZEN_NAMESPACE} secret/ibm-zen-secret-jwt --to=$BACKUP_DIR/secrets || warning "Failed to backup secret/ibm-zen-secret-jwt in namespace ${ZEN_NAMESPACE}"
-        oc extract -n ${ZEN_NAMESPACE} secret/ibm-zen-secret-jwt-private --to=$BACKUP_DIR/secrets || warning "Failed to backup secret/ibm-zen-secret-jwt-private in namespace ${ZEN_NAMESPACE}"
-        oc extract -n ${ZEN_NAMESPACE} secret/zen-secrets-aes-key  --to=$BACKUP_DIR/secrets || warning "Failed to backup secret/zen-secrets-aes-key in namespace ${ZEN_NAMESPACE}"
-        oc extract -n ${ZEN_NAMESPACE} secret/admin-user-details --to=$BACKUP_DIR/secrets || warning "Failed to backup secret/admin-user-details in namespace ${ZEN_NAMESPACE}"
-
-        success "Backup completed."
-    }
-
-
-    function msg() {
-        printf '%b\n' "$1"
-    }
-
-    function success() {
-        msg "\33[32m[✔] ${1}\33[0m"
-    }
-
-    function warning() {
-        msg "\33[33m[✗] ${1}\33[0m"
-    }
-
-    function error() {
-        msg "\33[31m[✘] ${1}\33[0m"
-        exit 1
-    }
-
-    function title() {
-        msg "\33[34m# ${1}\33[0m"
-    }
-
-    function info() {
-        msg "[INFO] ${1}"
-    }
-
-    main $*
-  restore_zen5.sh: |
-    #!/usr/bin/env bash
-
-    # Licensed Materials - Property of IBM
-    # Copyright IBM Corporation 2023. All Rights Reserved
-    # US Government Users Restricted Rights -
-    # Use, duplication or disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
-    #
-    # This is an internal component, bundled with an official IBM product.
-    # Please refer to that particular license for additional information.
-
-    set -o errtrace
-    set -o errexit
-    
-    #[2.2] Restore
-    #[2.2.1] Set Zen namespace
-    ZEN_NAMESPACE=$1 #should probably defualt this to zen with an optional parameter
-    ZENSERVICE_NAME=$2
-
-    BACKUP_DIR=/zen5/zen-backup
-
-    function main {
-        title "Beginning restore process for zenservice $ZENSERVICE_NAME in namespace $ZEN_NAMESPACE."
-        info "Enabling Zen operator maintenance mode and scale down deployments"
-        #[2.2.2] Enable Zen operator maintenance mode and scale down deployments
-        oc patch zenservice ${ZENSERVICE_NAME} --namespace ${ZEN_NAMESPACE} --type=merge --patch '{"spec": {"ignoreForMaintenance": true}}'
-        
-        #suspend backup cronjob
-        oc patch cj zen-metastore-backup-cron-job --namespace ${ZEN_NAMESPACE} --type=merge --patch '{"spec": {"suspend": true}}'
-        
-        #Getting the replica count before scaling down the required pods
-        IBM_NGINX_RC=$(oc get deploy ibm-nginx -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}' --ignore-not-found)
-        ZEN_CORE_RC=$(oc get deploy zen-core -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}' --ignore-not-found )
-        USERMGMT_RC=$(oc get deploy usermgmt -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}' --ignore-not-found)
-        ZEN_CORE_API_RC=$(oc get deploy zen-core-api -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}' --ignore-not-found)
-        ZEN_WATCHER_RC=$(oc get deploy zen-watcher -n ${ZEN_NAMESPACE} -o=jsonpath='{.spec.replicas}' --ignore-not-found)
-
-        oc get deploy ibm-nginx zen-core usermgmt zen-watcher zen-core-api -n ${ZEN_NAMESPACE} --ignore-not-found
-        
-        oc scale deploy ibm-nginx zen-core usermgmt zen-watcher zen-core-api --replicas=0 -n ${ZEN_NAMESPACE}
-        # zen-watchdog is applicable only for CloudPak for Data 
-        zen_watchdog_present=$(oc get deploy -n ${ZEN_NAMESPACE} | grep zen-watchdog || echo "fail")
-        if [[ $zen_watchdog_present != "fail" ]]; then
-            info "Zen watchdog present, scaling down."
-            oc scale deploy zen-watchdog --replicas=0 -n ${ZEN_NAMESPACE}
-        fi
-        
-        sleep 15
-        #waiting for deployments to be cleaned up after scaling down
-        deployments_clear=$(oc get deploy -n $ZEN_NAMESPACE | grep "ibm-nginx\|zen-core\|usermgmt\|zen-watcher\|zen-core-api\|zen-watchdog" | grep -v "ibm-nginx-tester" | awk '{print $4}' | grep -v 0 || echo clear)
-        while [[ $deployments_clear != "clear" ]];
-        do
-            sleep 10
-            if [[ $deployments_clear != "clear" ]]; then
-                info "Waiting on deployments ibm-nginx zen-core usermgmt zen-watcher zen-core-api to clean up..."
+        # Check if channel is semantic vx.y
+        if [[ $CHANNEL =~ ^v[0-9]+\.[0-9]+$ ]]; then
+            # Check if channel is equal or greater than v4.0
+            if [[ $CHANNEL == v[4-9].* || $CHANNEL == v[4-9] ]]; then
+                success "Channel $CHANNEL is valid"
             else
-                info "Deployments ibm-nginx zen-core usermgmt zen-watcher zen-core-api successfully scaled down. Moving on..."
+                error "Channel $CHANNEL is less than v4.0"
             fi
-            deployments_clear=$(oc get deploy -n $ZEN_NAMESPACE | grep "ibm-nginx\|zen-core\|usermgmt\|zen-watcher\|zen-core-api\|zen-watchdog" | grep -v "ibm-nginx-tester" | awk '{print $4}' | grep -v 0 || echo clear)
-        done
-        
-        info "Reset patform metadata and configuration data"
-        #[2.2.3] Reset platform metadata and configuration data
-        #[2.2.3.1] Reset database
-        info "Prepping database..."
-        CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io zen-metastore-edb -o jsonpath="{.status.currentPrimary}" -n $ZEN_NAMESPACE` && oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "DROP DATABASE IF EXISTS zen;"  -c "DROP USER IF EXISTS zen_user;" -c "CREATE DATABASE zen;" -c "CREATE USER zen_user;" -c "GRANT CONNECT ON DATABASE zen TO public;" -c "ALTER DATABASE zen OWNER TO zen_user;" -c "GRANT ALL PRIVILEGES ON DATABASE zen to zen_user;"
-    
-        #[2.2.3.2] reset object storage
-        #[2.2.3.2.1] read object storage connection and credentials
-        info "Prepping objectstore..."
-        IBM_ZEN_BUCKET_NAME=$(oc get cm ibm-zen-objectstore-cm -o=jsonpath='{.data.BUCKET_ZEN_CONFIGURATION}' -n $ZEN_NAMESPACE)
-        OBJECTSTORE_ENDPOINT=$(oc get cm ibm-zen-objectstore-cm -o jsonpath="{.data.OBJECTSTORE_ENDPOINT}" -n $ZEN_NAMESPACE)
-        oc -n $ZEN_NAMESPACE extract secret/ibm-zen-objectstore-secret --to=$BACKUP_DIR/workspace --confirm
-
-        #[2.2.3.2.2] Remove and recreate Zen bucket
-        info "Remove and recreate Zen bucket."
-        oc -n $ZEN_NAMESPACE exec -t zen-minio-0 -- bash -c "rm -rf /tmp/backup && mkdir -p /tmp/backup && export HOME=/tmp && /workdir/bin/mc alias set zenobjstore ${OBJECTSTORE_ENDPOINT} $(<${BACKUP_DIR}/workspace/accesskey) $(<${BACKUP_DIR}/workspace/secretkey) --config-dir=/tmp/.mc --insecure && /workdir/bin/mc ls zenobjstore/${IBM_ZEN_BUCKET_NAME} --insecure && /workdir/bin/mc rb zenobjstore/${IBM_ZEN_BUCKET_NAME} --force --dangerous --insecure && /workdir/bin/mc mb zenobjstore/${IBM_ZEN_BUCKET_NAME} --insecure"
-
-        #[2.2.4] Restore data
-        info "Restore platform metadata."
-        #[2.2.4.1] Restore platform metadata (metastore database)
-        CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io zen-metastore-edb -o jsonpath="{.status.currentPrimary}"`
-        oc exec $CNPG_PRIMARY_POD -n $ZEN_NAMESPACE -- mkdir -p /run/zen_backup
-        oc cp $BACKUP_DIR/database/zen_db_backup.dump $ZEN_NAMESPACE/$CNPG_PRIMARY_POD:/run/zen_backup/zen_db_backup.dump
-        oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
-        oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -d zen -f /run/zen_backup/zen_db_backup.dump
-        oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
-
-        #[2.2.4.2] Restore platform configuration data (object storage)
-        info "Restore platform configuration data (object storage)."
-        IBM_ZEN_BUCKET_NAME=$(oc get cm ibm-zen-objectstore-cm -o=jsonpath='{.data.BUCKET_ZEN_CONFIGURATION}')
-        oc cp $BACKUP_DIR/objstorage $ZEN_NAMESPACE/zen-minio-0:/tmp/backup 
-        oc -n $ZEN_NAMESPACE exec -t zen-minio-0 -- bash -c "export HOME=/tmp && /workdir/bin/mc alias set zenobjstore ${OBJECTSTORE_ENDPOINT} $(<${BACKUP_DIR}/workspace/accesskey) $(<${BACKUP_DIR}/workspace/secretkey) --config-dir=/tmp/.mc --insecure && /workdir/bin/mc cp --recursive /tmp/backup/objstorage/${IBM_ZEN_BUCKET_NAME}/ zenobjstore/${IBM_ZEN_BUCKET_NAME}/ --insecure"
-
-        #[2.2.4.3] Restore JWT configuration and keys
-        info "Restore JWT configuration and keys."
-        oc patch secret -n $ZEN_NAMESPACE ibm-zen-secret-jwks --patch="{\"data\": { \"jwks.json\": \"$(base64 -w0 $BACKUP_DIR/secrets/jwks/jwks.json)\" }}"
-        oc patch secret -n $ZEN_NAMESPACE ibm-zen-secret-jwks --patch="{\"data\": { \"key_id\": \"$(base64 -w0 $BACKUP_DIR/secrets/jwks/key_id)\" }}"
-        oc patch secret -n $ZEN_NAMESPACE ibm-zen-secret-jwt --patch="{\"data\": { \"public.pem\": \"$(base64 -w0 $BACKUP_DIR/secrets/public.pem)\" }}"
-        oc patch secret -n $ZEN_NAMESPACE ibm-zen-secret-jwt --patch="{\"data\": { \"jwt.cert\": \"$(base64 -w0 $BACKUP_DIR/secrets/jwt.cert)\" }}"
-        oc patch secret -n $ZEN_NAMESPACE ibm-zen-secret-jwt-private --patch="{\"data\": { \"private.pem\": \"$(base64 -w0 $BACKUP_DIR/secrets/private.pem)\" }}"
-        oc patch secret -n $ZEN_NAMESPACE zen-secrets-aes-key --patch="{\"data\": { \"aes_key\": \"$(base64 -w0 $BACKUP_DIR/secrets/aes_key)\" }}"
-        oc patch secret -n $ZEN_NAMESPACE admin-user-details --patch="{\"data\": { \"initial_admin_password\": \"$(base64 -w0 $BACKUP_DIR/secrets/initial_admin_password)\" }}"
-
-        #Update zen extensions
-        if [[ $ZEN_CORE_RC == "0" ]]; then
-            info "zen-core deployment not scaled up before rerunning, setting replica value to 2"
-            ZEN_CORE_RC=2
-        fi
-        if [[ $USERMGMT_RC == "0" ]]; then
-            info "usermgmt deployment not scaled up before rerunning, setting replica value to 2"
-            USERMGMT_RC=2
-        fi
-        oc scale deploy zen-core-api --replicas=$ZEN_CORE_API_RC -n $ZEN_NAMESPACE
-        oc scale deploy usermgmt --replicas=$USERMGMT_RC -n $ZEN_NAMESPACE
-        sleep 15
-        oc wait pod --for=condition=Ready -l app.kubernetes.io/component=zen-core-api --timeout=180s -n ${ZEN_NAMESPACE}
-        oc wait pod --for=condition=Ready -l app.kubernetes.io/component=usermgmt --timeout=180s -n ${ZEN_NAMESPACE}
-        
-        ./zen5/customize-zen-extensions.sh $ZEN_NAMESPACE false
-        
-        #[2.2.5] Scale up deployments and Disable Zen operator maintenance mode
-        #[2.2.5.1] Scale up the deployments
-        info "Scale up deployments."
-        if [[ $IBM_NGINX_RC == "0" ]]; then
-            info "ibm-nginx deployment not scaled up before rerunning, setting replica value to 2"
-            IBM_NGINX_RC=2
-        fi
-        
-        if [[ $ZEN_CORE_API_RC == "0" ]]; then
-            info "zen-core-api deployment not scaled up before rerunning, setting replica value to 2"
-            ZEN_CORE_API_RC=2
-        fi
-        if [[ $ZEN_WATCHER_RC == "0" ]]; then
-            info "zen-watcher deployment not scaled up before rerunning, setting replica value to 1"
-            ZEN_WATCHER_RC=1
-        fi
-        
-        oc scale deploy zen-watcher --replicas=$ZEN_WATCHER_RC -n $ZEN_NAMESPACE
-        oc scale deploy zen-core --replicas=$ZEN_CORE_RC -n $ZEN_NAMESPACE
-        oc scale deploy ibm-nginx --replicas=$IBM_NGINX_RC -n $ZEN_NAMESPACE
-        if [[ $zen_watchdog_present != "fail" ]]; then
-            oc scale deploy zen-watchdog --replicas=1 -n $ZEN_NAMESPACE # (Only for CloudPak for Data)
-        fi
-
-        #[2.2.5.2] Wait for deployments
-        info "Wait for deployments to come ready again."
-        oc wait pod --for=condition=Ready -l app.kubernetes.io/component=ibm-nginx --timeout=180s -n ${ZEN_NAMESPACE}
-        oc wait pod --for=condition=Ready -l app.kubernetes.io/component=zen-core --timeout=180s -n ${ZEN_NAMESPACE}
-        oc wait pod --for=condition=Ready -l app.kubernetes.io/component=zen-watcher --timeout=180s -n ${ZEN_NAMESPACE}
-        
-        if [[ $zen_watchdog_present != "fail" ]]; then # Only for CloudPak for Data
-            oc wait pod --for=condition=Ready -l app.kubernetes.io/component=zen-watchdog --timeout=180s -n ${ZEN_NAMESPACE}
-        fi
-
-        #[2.2.5.3] Restart zen-watcher
-        info "Restart zen-watcher."
-        oc delete pods -l component=zen-watcher -n ${ZEN_NAMESPACE} --ignore-not-found
-
-        #[2.2.5.4] Enable backup cronjob
-        info "Enable backup cronjob."
-        oc patch cj zen-metastore-backup-cron-job --namespace ${ZEN_NAMESPACE} --type=merge --patch '{"spec": {"suspend": false}}'
-
-        #[2.2.5.5] remove zenservice from maintenance mode
-        info "Remove zenservice from maintenance mode."
-        oc patch zenservice ${ZENSERVICE_NAME} --namespace ${ZEN_NAMESPACE} --type=merge --patch '{"spec": {"ignoreForMaintenance": false}}'
-
-        success "Restore complete for zenservice $ZENSERVICE_NAME in namespace $ZEN_NAMESPACE."
-    }
-
-    function msg() {
-        printf '%b\n' "$1"
-    }
-
-    function success() {
-        msg "\33[32m[✔] ${1}\33[0m"
-    }
-
-    function warning() {
-        msg "\33[33m[✗] ${1}\33[0m"
-    }
-
-    function error() {
-        msg "\33[31m[✘] ${1}\33[0m"
-        exit 1
-    }
-
-    function title() {
-        msg "\33[34m# ${1}\33[0m"
-    }
-
-    function info() {
-        msg "[INFO] ${1}"
-    }
-
-    main $*
-  customize-zen-extensions.sh: |
-    #!/usr/bin/env bash
-    #
-    # Copyright 2023 IBM Corporation
-    #
-    # Licensed under the Apache License, Version 2.0 (the "License");
-    # you may not use this file except in compliance with the License.
-    # You may obtain a copy of the License at
-    #
-    # http://www.apache.org/licenses/LICENSE-2.0
-    #
-    # Unless required by applicable law or agreed to in writing, software
-    # distributed under the License is distributed on an "AS IS" BASIS,
-    # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    # See the License for the specific language governing permissions and
-    # limitations under the License.
-    #
-    set -o errexit
-
-    ZEN_NAMESPACE=$1
-    BACKUP=$2
-
-    function main(){
-
-        title "Begin zen extension cleanup process."
-        # Get broker secret value from secret zen-service-broker-secret
-        broker_secret=$(oc get secret zen-service-broker-secret -o yaml -n $ZEN_NAMESPACE | yq .data.token | base64 -d || echo "fail") 
-        if [[ $broker_secret == "fail" ]]; then
-            error "Failed to grab broker secret zen-service-broker-secret in namespace $ZEN_NAMESPACE, exiting."
+        elif [[ $CHANNEL == "null" ]]; then
+            warning "Channel is not set, default channel from operator bundle will be used"
         else
-            info "Broker Secret obtained in namespace $ZEN_NAMESPACE"
+            error "Channel $CHANNEL is not semantic vx.y"
         fi
-        if [[ $BACKUP == "true" ]]; then
-            extension_check=$(oc get zenextension -n $ZEN_NAMESPACE -o name | grep -v "common-web-ui-zen-extension\|zen-watchdog-frontdoor-extension" || echo "empty")
-            if [[ $extension_check != "empty" ]]; then
-                extensions=""
-                for ext in $extension_check
+
+        # Check original configurations in main CommonService CR
+        default_arguments
+        # Determine deployment topology
+        determine_topology
+
+        # Check profile size
+        case "$SIZE_PROFILE" in
+        "starterset"|"starter"|"small"|"medium"|"large")
+            success "Profile size is valid."
+            ;;
+        "")
+            SIZE_PROFILE="starterset"
+            success "Profile size is not specified. Use default value: $SIZE_PROFILE"
+            ;;
+        *)
+            error " '$SIZE_PROFILE' is not a valid value for profile. Allowed values are 'starterset', 'starter', 'small', 'medium', and 'large'."
+            ;;
+        esac
+
+        if [ "$OPERATOR_NS" == "" ]; then
+            error "Must provide operator namespace, please specify argument --operator-namespace"
+        fi
+
+        if [[ "$SERVICES_NS" == "" && "$TETHERED_NS" == "" && "$EXCLUDED_NS" == "" && $IS_UPGRADE -eq 0 ]]; then
+            error "Must provide additional namespaces, either --services-namespace, --tethered-namespaces, or --excluded-namespaces"
+        fi
+
+        if [[ "$SERVICES_NS" == "$OPERATOR_NS" && "$TETHERED_NS" == "" && "$EXCLUDED_NS" == "" && $IS_UPGRADE -eq 0 ]]; then
+            error "Must provide additional namespaces for --tethered-namespaces or --excluded-namespaces when services-namespace is the same as operator-namespace"
+        fi
+
+        if [[ "$TETHERED_NS" == "$OPERATOR_NS" || "$TETHERED_NS" == "$SERVICES_NS" ]]; then
+            error "Must provide additional namespaces for --tethered-namespaces, different from operator-namespace and services-namespace"
+        fi
+
+        # When Common Service channel info is less then maintained channel, update maintained channel for backward compatibility e.g., v4.1 and v4.0
+        # Otherwise, maintained channel is pinned at v4.2
+        local channel_numeric="${CHANNEL#v}"
+        local maintained_channel_numeric="${MAINTAINED_CHANNEL#v}"
+        if awk -v num="$channel_numeric" "BEGIN { exit !(num < $maintained_channel_numeric) }"; then
+            MAINTAINED_CHANNEL="$CHANNEL"
+        fi
+
+        # Check if the file path to the minimal RBAC permissions exists
+        if [[ $MINIMAL_RBAC_ENABLED -eq 1 ]]; then
+            if [[ ! -f "$MINIMAL_RBAC" ]] && [[ "$MINIMAL_RBAC" != "skip" ]] ; then
+                error "File $MINIMAL_RBAC does not exist"
+            fi
+        fi
+
+        # Check public CatalogSource and CatalogSource Namespace
+        validate_cs_catalogsource
+        echo ""
+    }
+
+    function default_arguments() {
+        # check if CommonService CRD exists in cluster
+        local is_CS_CRD_exist=$((${OC} get commonservice -n ${OPERATOR_NS} --ignore-not-found > /dev/null && echo exists) || echo fail)
+        if [[ "$is_CS_CRD_exist" == "exists" ]]; then
+            local result=$("${OC}" get commonservice common-service -n ${OPERATOR_NS} -o yaml --ignore-not-found)
+            if [[ ! -z "$result" ]]; then
+
+                tmp_services_ns=$("${YQ}" eval '.spec.servicesNamespace' - <<< "$result")
+                tmp_size_profile=$("${YQ}" eval '.spec.size' - <<< "$result")
+
+                if [[ "$SERVICES_NS" == "" ]] && [[ "$tmp_services_ns" != "" ]] && [[ "$tmp_services_ns" != "null" ]]; then
+                    SERVICES_NS=$("${YQ}" eval '.spec.servicesNamespace' - <<< "$result")
+                fi
+                if [[ "$SIZE_PROFILE" == "" ]] && [[ "$tmp_size_profile" != "" ]] && [[ "$tmp_size_profile" != "null" ]]; then
+                    SIZE_PROFILE=$("${YQ}" eval '.spec.size' - <<< "$result")
+                fi
+                # if main CommonService CR exists, then defaulting from it, and it is a upgrade scenario, simple topology will be accepted
+                IS_UPGRADE=1
+            else
+                info "CommonService CRD exists but main CommonService CR does not exist, skipping defaulting from original CommonService CR\n"
+            fi
+
+            # if CommonService CRD exists and subscription of common-service-operator exists, simple topology will be accepted
+            local cs_sub=$(fetch_sub_from_package ibm-common-service-operator ${OPERATOR_NS})
+            if [[ "$cs_sub" != "" ]]; then
+                info "ibm-common-service-operator subscription exists, it is upgrade scenario\n"
+                IS_UPGRADE=1
+            fi
+        else
+            info "CommonService CRD does not exist, skipping defaulting from original CommonService CR\n"
+        fi
+
+        # Assign default values when not specified
+        if [[ "$SERVICES_NS" == "" ]]; then
+            SERVICES_NS=$OPERATOR_NS
+        fi
+    }
+
+    # It is a simple topology if and only if:
+    # operator namespace is the same as services namespace or services namespace is empty
+    # there is no tethered namespaces, then it is a simple topology
+    # there is no excluded namespaces, then it is a simple topology
+
+    # It is a complex topology as long as:
+    # number of nss in ConfigMap is greater than 1
+    function determine_topology() {
+        local is_all_ns=0
+        local nss_cm=$(${OC} get configmap namespace-scope -n ${OPERATOR_NS} -o yaml --ignore-not-found)
+        if [[ ! -z "$nss_cm" ]]; then
+            local nss=$("${YQ}" eval '.data.namespaces' - <<< "$nss_cm")
+            if [[ "$nss" == "" ]]; then
+                is_all_ns=1
+            fi
+            # check number of elements in nss string which is comma separated
+            local nss_count=$(echo $nss | tr "," "\n" | wc -l)
+            # if nss_count is greater than 1, then it is a complex topology
+            if [[ $nss_count -gt 1 ]]; then
+                IS_NOT_COMPLEX_TOPOLOGY=0
+                return
+            fi
+        fi
+
+        # if nss is empty, nss_count is not greater than 1 and services namespace is different operator namespace, then it is a all namespaces topology
+        if [[ $is_all_ns -eq 1 ]] && [[ "$SERVICES_NS" != "$OPERATOR_NS" ]]; then
+            IS_NOT_COMPLEX_TOPOLOGY=1
+            warning "It is all namespaces topology\n"
+            # TETHERED_NS or EXCLUDED_NS is not allowed in all namespaces topology
+            if [[ "$TETHERED_NS" != "" ]]; then
+                error "--tethered-namespaces is not allowed in all namespaces topology\n"
+            fi
+            if [[ "$EXCLUDED_NS" != "" ]]; then
+                error "--excluded-namespaces is not allowed in all namespaces topology\n"
+            fi
+            return
+        fi
+
+        # if nss_count is not greater than 1 and services namespace is the same as operator namespace, then it is a simple topology
+        if [[ "$SERVICES_NS" == "$OPERATOR_NS" || "$SERVICES_NS" == "" ]] && [[ "$TETHERED_NS" == "" ]] && [[ "$EXCLUDED_NS" == "" ]]; then
+            IS_NOT_COMPLEX_TOPOLOGY=1
+            warning "It is simple namespace topology\n"
+            return
+        fi
+    }
+
+    # Validate ibm-common-service-operator CatalogSource and CatalogSourceNamespace
+    function validate_cs_catalogsource() {
+        if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
+            SOURCE_NS=$OPERATOR_NS
+        fi
+
+        validate_operator_catalogsource "ibm-common-service-operator" $OPERATOR_NS $SOURCE $SOURCE_NS $CHANNEL SOURCE SOURCE_NS
+    }
+
+    function create_ns_list() {
+        for ns in $OPERATOR_NS $SERVICES_NS ${TETHERED_NS//,/ }; do
+            create_namespace $ns
+            if [ $? -ne 0 ]; then
+                error "Namespace $ns cannot be created, please ensure user $user has proper permission to create namepace\n"
+            fi
+        done
+    }
+
+    function setup_topology() {
+        create_ns_list
+        target=$(cat <<EOF
+
+    targetNamespaces:
+        - $OPERATOR_NS
+    EOF
+    )
+        create_operator_group "common-service" "$OPERATOR_NS" "$target"
+        if [ $? -ne 0 ]; then
+            error "Operatorgroup cannot be created in namespace $OPERATOR_NS, please ensure user $user has proper permission to create Operatorgroup\n"
+        fi
+    }
+
+    function check_singleton_service() {
+        check_cert_manager "cert-manager" "$OPERATOR_NS"
+        if [ $ENABLE_LICENSING -eq 1 ]; then
+            check_licensing
+            if [ $? -ne 0 ]; then
+                error "ibm-licensing is not found or having more than one\n"
+            fi
+        fi
+    }
+
+    function install_nss() {
+        title "Checking whether Namespace Scope operator exist..."
+
+        is_sub_exist "ibm-namespace-scope-operator" "$OPERATOR_NS"
+        if [ $? -eq 0 ]; then
+            warning "There is an ibm-namespace-scope-operator subscription already deployed\n"
+            if [ $PREVIEW_MODE -eq 0 ]; then
+                update_operator "ibm-namespace-scope-operator" "$OPERATOR_NS" $MAINTAINED_CHANNEL $SOURCE $SOURCE_NS $INSTALL_MODE
+                wait_for_operator_upgrade $OPERATOR_NS "ibm-namespace-scope-operator" $MAINTAINED_CHANNEL $INSTALL_MODE
+            fi
+        else
+            create_subscription "ibm-namespace-scope-operator" "$OPERATOR_NS" "$MAINTAINED_CHANNEL" "ibm-namespace-scope-operator" "${SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
+        fi
+
+        if [ $PREVIEW_MODE -eq 0 ]; then
+            wait_for_csv "$OPERATOR_NS" "ibm-namespace-scope-operator"
+            wait_for_operator "$OPERATOR_NS" "ibm-namespace-scope-operator"
+        fi
+
+        # namespaceMembers should at least have Bedrock operators' namespace
+        local ns=$(cat <<EOF
+
+        - $OPERATOR_NS
+    EOF
+        )
+
+        title "Adding the tethered optional namespaces and removing excluded namespaces for a tenant to namespaceMembers..."
+        # add the tethered optional namespaces for a tenant to namespaceMembers
+        # ${TETHERED_NS} is comma delimited, so need to replace commas with space
+        if [ $PREVIEW_MODE -eq 0 ]; then
+            nss_exists=$(${OC} get nss common-service -n $OPERATOR_NS --ignore-not-found)
+        fi
+
+        if [[ ! -z "$nss_exists" ]]; then
+            debug1 "NamspaceScope common-service exists in namespace $OPERATOR_NS."
+            existing_ns=$(${OC} get nss common-service -n $OPERATOR_NS -o=jsonpath='{.spec.namespaceMembers}' | tr -d \" | tr -d [ | tr -d ])
+            existing_ns="${existing_ns//,/ }"
+
+            # remove the excluded namespaces from the list
+            if [[ $EXCLUDED_NS != "" ]]; then
+                info "Removing excluded namespaces from common-service NamespaceScope"
+                remove_ns="${EXCLUDED_NS//,/ }"
+                tmp_ns_list=""
+                for namespace in $existing_ns
                 do
-                    ext_name=$(oc get $ext -n $ZEN_NAMESPACE -o jsonpath={.spec.extensions} | grep extension_name | awk '{print $2}' | tr '\"\n' ' ' | tr "," " ")
-                    if [[ $extensions == "" ]]; then
-                        extensions="$ext_name,"
-                    else
-                        extensions="$extensions,$ext_name"
+                    # check if namespace is in the list of excluded namespaces
+                    contains_ns=$([[ ${remove_ns[@]} =~ $namespace ]] || echo "false")
+                    if [[ $contains_ns == "false" ]]; then
+                        if [[ $tmp_ns_list == "" ]]; then
+                            tmp_ns_list="${namespace}"
+                        else
+                            tmp_ns_list="${tmp_ns_list} ${namespace}"
+                        fi
                     fi
                 done
-                
-                extensions=$(echo $extensions | tr "," " ")
-                echo $extensions
-                
-                cat <<< $extensions > /zen5/extensions/extensions.txt
-                success "Extensions captured for backup:"
-                cat /zen5/extensions/extensions.txt
-            else
-                info "No extensions found in namespace $ZEN_NAMESPACE other than defaults, exiting."
+                existing_ns="${tmp_ns_list}"
             fi
+            new_ns_list=$(echo ${existing_ns} ${TETHERED_NS//,/ } ${SERVICES_NS} | tr ' ' '\n' | sort -u | tr '\n' ' ' | sed 's/ $//')
+        else
+            new_ns_list=$(echo ${TETHERED_NS//,/ } ${SERVICES_NS} | tr ' ' '\n' | sort -u | tr '\n' ' ' | sed 's/ $//')
         fi
-        
-        if [[ $BACKUP == "false" ]]; then
-            if [[ -f /zen5/extensions/extensions.txt ]]; then
-                extensions=$(cat /zen5/extensions/extensions.txt)
-                echo $extensions
-                extensions=$(echo $extensions | tr " " ",")
-                info "Extensions to cleanup in namespace $ZEN_NAMESPACE: $extensions"
-                # curl -H 'secret: <broker-secret>' -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=bawtest-bas-extension,ibm-bts-zen-frontdoor,icp4adeploy-ban-zen-extension,icp4adeploy-cp4ba-zen-extension,icp4adeploy-graphql-zen-extension,icp4adeploy-cmis-zen-extension,icp4adeploy-cpe-zen-extension,icp4adeploy-rr-bawtest-zen-ext
-                #curl_output=$(curl -H "secret: ${broker_secret}" -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=${extensions})
+        debug1 "List of namespaces for common-service NSS ${new_ns_list}"
 
-                # Extract ID of each extension
-                id_list=$(curl -H "secret: ${broker_secret}" -ks https://zen-core-api-svc:4444/v1/extensions?extension_name=${extensions} | yq eval '.data[] | select(.source == "*") | .source' | tr '\n' ' ') #space separated list of ids
-                info "id_list: $id_list bookend"
-                if [[ -z $id_list ]] || [[ $id_list == "" ]]; then
-                    warning "The list of extensions provided returned an empty ID list from the database. These extensions may not be present in this database."
+        # add the new namespaces from list of common-service NSS to namespaceMembers
+        for n in ${new_ns_list}; do
+            if [[ $n == $OPERATOR_NS ]]; then
+                continue
+            fi
+            local ns=$ns$(cat <<EOF
+
+        - $n
+    EOF
+        )
+        done
+
+        debug1 "Format of namespaceMembers to be added: $ns\n"
+
+        configure_nss_kind "$ns"
+        if [ $? -ne 0 ]; then
+            error "Failed to create NSS CR in ${OPERATOR_NS}"
+        fi
+        accept_license "namespacescope" "$OPERATOR_NS" "common-service"
+    }
+
+    function authorize_nss() {
+
+        if [ $MINIMAL_RBAC_ENABLED -eq 0 ]; then
+            cat <<EOF > ${PREVIEW_DIR}/role.yaml
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      name: nss-managed-role-from-$OPERATOR_NS
+      namespace: ns_to_replace
+    rules:
+    - apiGroups:
+      - "*"
+      resources:
+      - "*"
+      verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+      - deletecollection
+    EOF
+        else
+            if [[ "$MINIMAL_RBAC" == "skip" ]]; then
+                warning "Skipping creating minimal RBAC for NSS\n"
+                return
+            fi
+            debug1 "Creating nss minimal rbac role from $MINIMAL_RBAC:\n"
+            cat ${MINIMAL_RBAC} | sed "s/^.*name: .*/  name: nss-managed-role-from-$OPERATOR_NS/g" > ${PREVIEW_DIR}/role.yaml
+        fi
+
+        cat <<EOF > ${PREVIEW_DIR}/rolebinding.yaml
+    kind: RoleBinding
+    apiVersion: rbac.authorization.k8s.io/v1
+    metadata:
+      name: nss-managed-role-from-$OPERATOR_NS
+      namespace: ns_to_replace
+    subjects:
+    - kind: ServiceAccount
+      name: ibm-namespace-scope-operator
+      namespace: $OPERATOR_NS
+    roleRef:
+      kind: Role
+      name: nss-managed-role-from-$OPERATOR_NS
+      apiGroup: rbac.authorization.k8s.io
+    EOF
+
+        title "Checking and authorizing NSS to all namespaces in tenant..."
+        for ns in $OPERATOR_NS $SERVICES_NS ${TETHERED_NS//,/ }; do
+            if [[ $($OC get RoleBinding nss-managed-role-from-$OPERATOR_NS -n $ns 2>/dev/null) != "" ]] && [[ $($OC get Role nss-managed-role-from-$OPERATOR_NS -n $ns 2>/dev/null) != "" ]];then
+                info "Role and RoleBinding nss-managed-role-from-$OPERATOR_NS is already existed in $ns, skip creating\n"
+            else
+                debug1 "Creating following Role:\n"
+                local role=$(cat ${PREVIEW_DIR}/role.yaml | sed "s/ns_to_replace/$ns/g")
+                debug1 "$role"
+                echo ""
+                echo "$role" | ${OC_CMD} apply -f -
+                if [[ $? -ne 0 ]]; then
+                    error "Failed to create Role for NSS in namespace $ns, please check if user has proper permission to create role\n"
+                fi
+
+                if [ $PREVIEW_MODE -eq 0 ]; then
+                    wait_for_role $ns nss-managed-role-from-$OPERATOR_NS
                 else
-                    info "List of extension IDs populated, continuing with deletion."
-                    id_list=${id_list//\//%2F}
-                    info "id_list with / replaced: $id_list"
+                    info "Preview mode is on, skip waiting for role\n"
+                fi
 
-                    # Delete each extension using the ID
-                    # curl -H 'secret: <broker-secret>' -ks -X DELETE https://zen-core-api-svc:4444/v1/internal/extensions/{source_id}
-                    for id in $id_list; do
-                        info "Deleting extension with ID $id."
-                        curl -H "secret: ${broker_secret}" -ks -X DELETE https://zen-core-api-svc:4444/v1/internal/extensions/{$id}
+                debug1 "Creating following RoleBinding:\n"
+                local rb=$(cat ${PREVIEW_DIR}/rolebinding.yaml | sed "s/ns_to_replace/$ns/g")
+                debug1 "$rb"
+                echo ""
+                echo "$rb" | ${OC_CMD} apply -f -
+                if [[ $? -ne 0 ]]; then
+                    error "Failed to create RoleBinding for NSS in namespace $ns, please check if user has proper permission to create rolebinding\n"
+                fi
+
+                if [ $PREVIEW_MODE -eq 0 ]; then
+                    wait_for_role_binding $ns nss-managed-role-from-$OPERATOR_NS
+                else
+                    info "Preview mode is on, skip waiting for role binding\n"
+                fi
+            fi
+        done
+    }
+
+    function setup_nss() {
+        if [[ "$IS_NOT_COMPLEX_TOPOLOGY" -eq 1 ]]; then
+            warning "NamespaceScope Configuration is not needed for simple or all namespaces topology, skip NamespaceScope setup\n"
+            return
+        fi
+        install_nss
+        authorize_nss
+    }
+
+    function install_cs_operator() {
+        title "Installing IBM Foundational services operator into operator namespace ${OPERATOR_NS}..."
+
+        title "Checking if CommonService CRD exists in the cluster..."
+        local is_CS_CRD_exist=$(($OC get commonservice -n "$OPERATOR_NS" --ignore-not-found > /dev/null && echo exists) || echo fail)
+
+        if [ "$is_CS_CRD_exist" == "exists" ]; then
+            info "CommonService CRD exist\n"
+            configure_cs_kind
+        else
+            info "CommonService CRD does not exist, installing ibm-common-service-operator first\n"
+        fi
+
+        title "Checking whether IBM Common Service operator exist..."
+        is_sub_exist "ibm-common-service-operator" "$OPERATOR_NS"
+        if [ $? -eq 0 ]; then
+            info "There is an ibm-common-service-operator Subscription already\n"
+            if [ $PREVIEW_MODE -eq 0 ]; then
+                local pm="ibm-common-service-operator"
+                local ns_list=$(${OC} get configmap namespace-scope -n ${OPERATOR_NS} -o jsonpath='{.data.namespaces}' --ignore-not-found)
+                if [[ -z "$ns_list" ]]; then
+                    warning "Not found ConfigMap namespace-scope in namespace ${OPERATOR_NS}, only upgrading operators in namespace $OPERATOR_NS"
+                    update_operator $pm $OPERATOR_NS $CHANNEL $SOURCE $SOURCE_NS $INSTALL_MODE
+                    wait_for_operator_upgrade $OPERATOR_NS $pm $CHANNEL $INSTALL_MODE
+                else
+                    for ns in ${ns_list//,/ }; do
+                        local sub_name=$(${OC} get subscription.operators.coreos.com -n ${ns} -l operators.coreos.com/${pm}.${ns}='' --no-headers | awk '{print $1}')
+                        if [ ! -z "$sub_name" ]; then
+                            op_source=$SOURCE
+                            op_source_ns=$SOURCE_NS
+                            if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
+                                op_source_ns=$ns
+                            fi
+                            validate_operator_catalogsource $pm $ns $op_source $op_source_ns $CHANNEL op_source op_source_ns
+                            update_operator $pm $ns $CHANNEL $op_source $op_source_ns $INSTALL_MODE
+                            wait_for_operator_upgrade $ns $pm $CHANNEL $INSTALL_MODE
+                        fi
                     done
+                fi
+            fi
+        else
+            create_subscription "ibm-common-service-operator" "$OPERATOR_NS" "$CHANNEL" "ibm-common-service-operator" "${SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
+        fi
 
-                    success "Zen extension cleanup complete."
+        if [ $PREVIEW_MODE -eq 0 ]; then
+            wait_for_csv "$OPERATOR_NS" "ibm-common-service-operator"
+            if [[ $IS_NOT_COMPLEX_TOPOLOGY -eq 0 ]]; then
+                wait_for_nss_patch "$OPERATOR_NS" "ibm-common-service-operator"
+            fi
+            wait_for_operator "$OPERATOR_NS" "ibm-common-service-operator"
+            accept_license "commonservice" "$OPERATOR_NS" "common-service"
+        else
+            info "Preview mode is on, skip waiting for operator and webhook being ready\n"
+        fi
+
+        if [ "$is_CS_CRD_exist" == "fail" ] || [ $RETRY_CONFIG_CSCR -eq 1 ]; then
+            RETRY_CONFIG_CSCR=1
+            configure_cs_kind
+        fi
+
+        # Checking master CommonService CR status
+        if [ $PREVIEW_MODE -eq 0 ]; then
+            wait_for_csv "$OPERATOR_NS" "ibm-odlm"
+            wait_for_operator "$OPERATOR_NS" "operand-deployment-lifecycle-manager"
+            wait_for_cscr_status "$OPERATOR_NS" "common-service"
+        fi
+    }
+
+    function configure_nss_kind() {
+        local members=$1
+
+        title "Configuring NamespaceScope CR in $OPERATOR_NS..."
+        if [[ $($OC get NamespaceScope common-service -n $OPERATOR_NS 2>/dev/null) != "" ]];then
+            info "NamespaceScope CR is already deployed in $OPERATOR_NS\n"
+        else
+            info "Creating the NamespaceScope object:\n"
+        fi
+
+        cat <<EOF > ${PREVIEW_DIR}/namespacescope.yaml
+    apiVersion: operator.ibm.com/v1
+    kind: NamespaceScope
+    metadata:
+      name: common-service
+      namespace: $OPERATOR_NS
+    spec:
+      csvInjector:
+        enable: true
+      namespaceMembers: $members
+      restartLabels:
+        intent: projected
+    EOF
+
+        cat ${PREVIEW_DIR}/namespacescope.yaml
+        echo ""
+        cat "${PREVIEW_DIR}/namespacescope.yaml" | ${OC_CMD} apply -f -
+    }
+
+    function configure_cs_kind() {
+        local retries=10
+        local delay=30
+
+        title "Configuring CommonService CR in $OPERATOR_NS..."
+        result=$("${OC}" get commonservice common-service -n ${OPERATOR_NS} -o yaml --ignore-not-found)
+        if [[ ! -z "${result}" ]]; then
+            info "Configuring CommonService CR common-service in $OPERATOR_NS\n"
+            ${OC} get commonservice common-service -n "${OPERATOR_NS}" -o yaml | ${YQ} eval '.spec += {"operatorNamespace": "'${OPERATOR_NS}'", "servicesNamespace": "'${SERVICES_NS}'", "size": "'${SIZE_PROFILE}'"}' > ${PREVIEW_DIR}/commonservice.yaml
+            ${YQ} -i eval 'select(.kind == "CommonService") | del(.metadata.resourceVersion) | del(.metadata.uid) | del(.metadata.creationTimestamp) | del(.metadata.generation)' ${PREVIEW_DIR}/commonservice.yaml
+        else
+            info "Creating the CommonService object:\n"
+            cat <<EOF > ${PREVIEW_DIR}/commonservice.yaml
+    apiVersion: operator.ibm.com/v3
+    kind: CommonService
+    metadata:
+      name: common-service
+      namespace: $OPERATOR_NS
+    spec:
+      operatorNamespace: $OPERATOR_NS
+      servicesNamespace: $SERVICES_NS
+      size: $SIZE_PROFILE
+    EOF
+        fi
+
+        cat ${PREVIEW_DIR}/commonservice.yaml
+        echo ""
+
+        while [ $retries -gt 0 ]; do
+
+            cat "${PREVIEW_DIR}/commonservice.yaml" | ${OC_CMD} apply -f -
+
+            # Check if the patch was successful
+            if [[ $? -eq 0 ]]; then
+                operator_ns_in_cr=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | "${YQ}" '.spec.operatorNamespace')
+                services_ns_in_cr=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | "${YQ}" '.spec.servicesNamespace')
+                if [[ "$operator_ns_in_cr" == "$OPERATOR_NS" ]] && [[ "$services_ns_in_cr" == "$SERVICES_NS" ]]; then
+                    success "Successfully patched CommonService CR in ${OPERATOR_NS}"
+                    break
+                else
+                    warning "Expected OperatorNamespace is ${OPERATOR_NS}, but existing value is ${operator_ns_in_cr} in CommonService CR, retry it in ${delay} seconds..."
+                    warning "Expected ServicesNamespace is ${SERVICES_NS}, but existing value is ${services_ns_in_cr} in CommonService CR, retry it in ${delay} seconds..."
+                    retries=$((retries-1))
                 fi
             else
-                info "File /zen5/extensions/extensions.txt not found, skipping zenextension cleanup."
+                warning "Failed to patch CommonService CR in ${OPERATOR_NS}, retry it in ${delay} seconds..."
+                sleep ${delay}
+                retries=$((retries-1))
             fi
+        done
+
+        if [ $retries -eq 0 ] && [ $RETRY_CONFIG_CSCR -eq 1 ]; then
+            error "Fail to patch CommonService CR in ${OPERATOR_NS}\n"
+        fi
+
+        if [ $retries -eq 0 ] && [ $RETRY_CONFIG_CSCR -eq 0 ]; then
+            warning "Fail to patch CommonService CR in ${OPERATOR_NS}, try to install cs-operator first"
+            RETRY_CONFIG_CSCR=1
         fi
     }
 
-    function msg() {
-        printf '%b\n' "$1"
-    }
-
-    function success() {
-        msg "\33[32m[✔] ${1}\33[0m"
-    }
-
-    function warning() {
-        msg "\33[33m[✗] ${1}\33[0m"
-    }
-
-    function error() {
-        msg "\33[31m[✘] ${1}\33[0m"
-        exit 1
-    }
-
-    function title() {
-        msg "\33[34m# ${1}\33[0m"
-    }
-
-    function info() {
-        msg "[INFO] ${1}"
+    # Delete release 4.0.x CSV to unblock the upgrade from v4.0.0 -> v4.0.1 -> v4.1.0
+    function upgrade_mitigation() {
+        # When it is upgrade scenario, and it is complex toppology, then do the mitigation
+        if [[ $IS_UPGRADE -eq 1 && $IS_NOT_COMPLEX_TOPOLOGY -eq 0 ]]; then
+            local sub_name=$(${OC} get subscription.operators.coreos.com -n ${OPERATOR_NS} -l operators.coreos.com/ibm-common-service-operator.${OPERATOR_NS}='' --no-headers | awk '{print $1}')
+            local csv_name=$(${OC} get subscription.operators.coreos.com ${sub_name} -n ${OPERATOR_NS} --ignore-not-found -o jsonpath={.status.installedCSV})
+            if [[ ! -z ${csv_name} ]]; then
+                local csv_deleted=$(${OC} get csv -n ${OPERATOR_NS} --ignore-not-found -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | grep ibm-common-service-operator | grep -v ${csv_name})
+                for csv in ${csv_deleted}; do
+                    # only delete csv named ibm-common-service-operator.v4.0.1 or ibm-common-service-operator.v4.0.0 for upgrade mitigation
+                    if [[ ${csv} == *"ibm-common-service-operator.v4.0.1"* ]] || [[ ${csv} == *"ibm-common-service-operator.v4.0.0"* ]]; then
+                        warning "Delete CSV ${csv} in ${OPERATOR_NS} for upgrade mitigation\n"
+                        ${OC} delete csv ${csv} -n ${OPERATOR_NS}
+                    fi
+                done
+            fi
+        fi
     }
 
     main $*

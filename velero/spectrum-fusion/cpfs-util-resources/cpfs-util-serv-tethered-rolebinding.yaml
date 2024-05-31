@@ -13,4 +13,4 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: cpfs-util-sa
-  namespace: <operator namespace
+  namespace: <operator namespace>

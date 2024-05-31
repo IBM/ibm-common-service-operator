@@ -2,7 +2,9 @@ kind: Deployment
 apiVersion: apps/v1
 metadata:
   name: cpfs-util
-  namespace: cs-op
+  namespace: <operator namespace>
+  labels:
+    foundationservices.cloudpak.ibm.com: cpfs-util-backup
 spec:
   selector:
     matchLabels:
@@ -10,7 +12,7 @@ spec:
   template:
     metadata:
       name: cpfs-util
-      namespace: cs-op
+      namespace: <operator namespace>
       labels:
         foundationservices.cloudpak.ibm.com: cpfs-util-backup
     spec:
