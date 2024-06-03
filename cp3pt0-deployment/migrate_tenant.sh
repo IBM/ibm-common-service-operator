@@ -175,7 +175,9 @@ function main() {
 }
 
 function parse_arguments() {
-    echo "All arguments passed into the script: $@"
+    script_name=`basename ${0}`
+    echo "All arguments passed into the ${script_name}: $@"
+    echo ""
 
     # process options
     while [[ "$@" != "" ]]; do
