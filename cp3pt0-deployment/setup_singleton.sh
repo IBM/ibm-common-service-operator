@@ -297,8 +297,6 @@ function cert_manager_deployment_check(){
 
 function install_cert_manager() {
 
-    validate_operator_catalogsource ibm-cert-manager-operator $CERT_MANAGER_NAMESPACE $CERT_MANAGER_SOURCE $CM_SOURCE_NS $CHANNEL CERT_MANAGER_SOURCE CM_SOURCE_NS 
-
     title "Installing cert-manager\n"
     is_sub_exist "cert-manager" # this will catch the packagenames of all cert-manager-operators
     if [ $? -eq 0 ]; then
@@ -335,6 +333,9 @@ function install_cert_manager() {
         info "There is no cert-manager-webhook pod running\n"
     fi
     
+    # Validate the CatalogSource of IBM Cert Manager before proceeding with the installation or upgrade
+    validate_operator_catalogsource ibm-cert-manager-operator $CERT_MANAGER_NAMESPACE $CERT_MANAGER_SOURCE $CM_SOURCE_NS $CHANNEL CERT_MANAGER_SOURCE CM_SOURCE_NS 
+
     create_namespace "${CERT_MANAGER_NAMESPACE}"
     create_operator_group "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" "{}"
     is_sub_exist "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" # this will catch the packagenames of all cert-manager-operators
