@@ -85,7 +85,7 @@ function main() {
         arguments+=" --enable-private-catalog"
     fi
     
-    ${BASE_DIR}/setup_singleton.sh "--operator-namespace" "$SERVICES_NS" "-c" "$MAINTAINED_CHANNEL" "--cert-manager-source" "$CERT_MANAGER_SOURCE" "--licensing-source" "$LICENSING_SOURCE" "--license-accept" $arguments
+    ${BASE_DIR}/setup_singleton.sh "--operator-namespace" "$SERVICES_NS" "-c" "$MAINTAINED_CHANNEL" "--cert-manager-source" "$CERT_MANAGER_SOURCE" "--licensing-source" "$LICENSING_SOURCE" "--license-accept" $arguments "--yq" "$YQ" "--oc" "$OC"
 
     if [ $? -ne 0 ]; then
         error "Failed to migrate singleton services"
