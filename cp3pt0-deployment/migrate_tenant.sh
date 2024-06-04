@@ -85,7 +85,7 @@ function main() {
         arguments+=" --enable-private-catalog"
     fi
     
-    ${BASE_DIR}/setup_singleton.sh "--operator-namespace" "$SERVICES_NS" "-c" "$MAINTAINED_CHANNEL" "--cert-manager-source" "$CERT_MANAGER_SOURCE" "--licensing-source" "$LICENSING_SOURCE" "--license-accept" $arguments
+    ${BASE_DIR}/setup_singleton.sh "--operator-namespace" "$SERVICES_NS" "-c" "$MAINTAINED_CHANNEL" "--cert-manager-source" "$CERT_MANAGER_SOURCE" "--licensing-source" "$LICENSING_SOURCE" "--license-accept" $arguments "--yq" "$YQ" "--oc" "$OC"
 
     if [ $? -ne 0 ]; then
         error "Failed to migrate singleton services"
@@ -175,7 +175,9 @@ function main() {
 }
 
 function parse_arguments() {
-    echo "All arguments passed into the script: $@"
+    script_name=`basename ${0}`
+    echo "All arguments passed into the ${script_name}: $@"
+    echo ""
 
     # process options
     while [[ "$@" != "" ]]; do
