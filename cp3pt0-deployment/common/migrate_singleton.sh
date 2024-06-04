@@ -49,7 +49,7 @@ function main() {
 
     if [ ! -z "$CONTROL_NS" ]; then
         # Delegation of CP2 Cert Manager
-        ${BASE_DIR}/delegate_cp2_cert_manager.sh --control-namespace $CONTROL_NS "--skip-user-vertify"
+        ${BASE_DIR}/delegate_cp2_cert_manager.sh "--control-namespace" "$CONTROL_NS" "--yq" "$YQ" "--oc" "$OC"
     fi
 
     delete_operator "ibm-cert-manager-operator" "$OPERATOR_NS"
@@ -59,7 +59,7 @@ function main() {
         is_exists=$("$OC" get deployments ibm-licensing-operator -n "$OPERATOR_NS" --ignore-not-found)
         if [ ! -z "$is_exists" ]; then
             # Migrate Licensing Services Data
-            ${BASE_DIR}/migrate_cp2_licensing.sh --control-namespace "$OPERATOR_NS" --target-namespace "$LICENSING_NS" "--skip-user-vertify"
+            ${BASE_DIR}/migrate_cp2_licensing.sh "--control-namespace" "$OPERATOR_NS" "--target-namespace" "$LICENSING_NS" "--yq" "$YQ" "--oc" "$OC"
             local is_deleted=$(("${OC}" delete -n "${CONTROL_NS}" --ignore-not-found OperandBindInfo ibm-licensing-bindinfo --timeout=10s > /dev/null && echo "success" ) || echo "fail")
             if [[ $is_deleted == "fail" ]]; then
                 warning "Failed to delete OperandBindInfo, patching its finalizer to null..."
@@ -320,7 +320,7 @@ function backup_ibmlicensing() {
         ' | sed -e 's/^/    /g'`
     fi
     debug1 "instance: $instance"
-cat << _EOF | oc apply -f -
+cat << _EOF | ${OC} apply -f -
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -339,6 +339,10 @@ _EOF
 }
 
 function parse_arguments() {
+    script_name=`basename ${0}`
+    echo "All arguments passed into the ${script_name}: $@"
+    echo ""
+
     # process options
     while [[ "$@" != "" ]]; do
         case "$1" in
@@ -409,6 +413,10 @@ function print_usage() {
 }
 
 function pre_req() {
+    check_command "${OC}"
+    check_command "${YQ}"
+    check_yq_version
+
     if [ "$CONTROL_NS" == "" ]; then
         CONTROL_NS=$OPERATOR_NS
     fi    

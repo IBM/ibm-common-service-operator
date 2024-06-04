@@ -73,12 +73,12 @@ function main() {
     if [ $MIGRATE_SINGLETON -eq 1 ]; then
         if [ $ENABLE_LICENSING -eq 1 ]; then
             if [ $ENABLE_LICENSE_SERVICE_REPORTER -eq 1 ]; then
-                ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" "--control-namespace" "$CONTROL_NS" "--enable-licensing" "--licensing-namespace" "$LICENSING_NAMESPACE" "--enable-license-service-reporter" "--lsr-namespace" "$LSR_NAMESPACE" "-v" "$DEBUG"
+                ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" "--control-namespace" "$CONTROL_NS" "--enable-licensing" "--licensing-namespace" "$LICENSING_NAMESPACE" "--enable-license-service-reporter" "--lsr-namespace" "$LSR_NAMESPACE" "-v" "$DEBUG" "--yq" "$YQ" "--oc" "$OC"
             else
-                ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" "--control-namespace" "$CONTROL_NS" "--enable-licensing" "--licensing-namespace" "$LICENSING_NAMESPACE" "-v" "$DEBUG"
+                ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" "--control-namespace" "$CONTROL_NS" "--enable-licensing" "--licensing-namespace" "$LICENSING_NAMESPACE" "-v" "$DEBUG" "--yq" "$YQ" "--oc" "$OC"
             fi
         else
-            ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" --control-namespace "$CONTROL_NS"
+            ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" "--control-namespace" "$CONTROL_NS" "-v" "$DEBUG" "--yq" "$YQ" "--oc" "$OC"
         fi
     fi
 
@@ -89,7 +89,9 @@ function main() {
 }
 
 function parse_arguments() {
-    echo "All arguments passed into the script: $@"
+    script_name=`basename ${0}`
+    echo "All arguments passed into the ${script_name}: $@"
+    echo ""
 
     # process options
     while [[ "$@" != "" ]]; do
@@ -297,8 +299,6 @@ function cert_manager_deployment_check(){
 
 function install_cert_manager() {
 
-    validate_operator_catalogsource ibm-cert-manager-operator $CERT_MANAGER_NAMESPACE $CERT_MANAGER_SOURCE $CM_SOURCE_NS $CHANNEL CERT_MANAGER_SOURCE CM_SOURCE_NS 
-
     title "Installing cert-manager\n"
     is_sub_exist "cert-manager" # this will catch the packagenames of all cert-manager-operators
     if [ $? -eq 0 ]; then
@@ -335,6 +335,9 @@ function install_cert_manager() {
         info "There is no cert-manager-webhook pod running\n"
     fi
     
+    # Validate the CatalogSource of IBM Cert Manager before proceeding with the installation or upgrade
+    validate_operator_catalogsource ibm-cert-manager-operator $CERT_MANAGER_NAMESPACE $CERT_MANAGER_SOURCE $CM_SOURCE_NS $CHANNEL CERT_MANAGER_SOURCE CM_SOURCE_NS 
+
     create_namespace "${CERT_MANAGER_NAMESPACE}"
     create_operator_group "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" "{}"
     is_sub_exist "ibm-cert-manager-operator" "${CERT_MANAGER_NAMESPACE}" # this will catch the packagenames of all cert-manager-operators
@@ -522,7 +525,7 @@ function pre_req() {
     check_yq_version
 
     # Checking oc command logged in
-    user=$(oc whoami 2> /dev/null)
+    user=$(${OC} whoami 2> /dev/null)
     if [ $? -ne 0 ]; then
         error "You must be logged into the OpenShift Cluster from the oc command line"
     else

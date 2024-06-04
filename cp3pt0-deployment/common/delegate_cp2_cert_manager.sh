@@ -36,6 +36,10 @@ function main() {
 }
 
 function parse_arguments() {
+    script_name=`basename ${0}`
+    echo "All arguments passed into the ${script_name}: $@"
+    echo ""
+
     # process options
     while [[ "$@" != "" ]]; do
         case "$1" in
@@ -54,9 +58,6 @@ function parse_arguments() {
         -v | --debug)
             shift
             DEBUG=$1
-            ;;
-        --skip-user-vertify)
-            SKIP_USER_VERIFY=1
             ;;
         -h | --help)
             print_usage
@@ -82,22 +83,21 @@ function print_usage() {
     echo "   --yq string                    File path to yq CLI. Default uses yq in your PATH"
     echo "   --control-namespace string     Required. Namespace to de-activate Cloud Pak 2.0 Cert Manager services."
     echo "   -v, --debug integer            Verbosity of logs. Default is 0. Set to 1 for debug logs."
-    echo "   --skip-user-vertify string     Skip checking user logged into oc command"
     echo "   -h, --help                     Print usage information"
     echo ""
 }
 
 function pre_req() {
-    if [[ $SKIP_USER_VERIFY -eq 0 ]]; then
-        check_command "${OC}"
+    check_command "${OC}"
+    check_command "${YQ}"
+    check_yq_version
 
-        # checking oc command logged in
-        user=$(${OC} whoami 2> /dev/null)
-        if [ $? -ne 0 ]; then
-            error "You must be logged into the OpenShift Cluster from the oc command line"
-        else
-            success "oc command logged in as ${user}"
-        fi
+    # checking oc command logged in
+    user=$(${OC} whoami 2> /dev/null)
+    if [ $? -ne 0 ]; then
+        error "You must be logged into the OpenShift Cluster from the oc command line"
+    else
+        success "oc command logged in as ${user}"
     fi
 
     if [ "$CONTROL_NS" == "" ]; then

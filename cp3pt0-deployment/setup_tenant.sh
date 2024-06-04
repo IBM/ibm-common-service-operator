@@ -68,7 +68,9 @@ function main() {
 }
 
 function parse_arguments() {
-    echo "All arguments passed into the script: $@"
+    script_name=`basename ${0}`
+    echo "All arguments passed into the ${script_name}: $@"
+    echo ""
 
     # process options
     while [[ "$@" != "" ]]; do
@@ -465,9 +467,9 @@ EOF
             done
             existing_ns="${tmp_ns_list}"
         fi
-        new_ns_list=$(echo ${existing_ns} ${TETHERED_NS//,/ } ${SERVICES_NS} | xargs -n1 | sort -u | xargs)
+        new_ns_list=$(echo ${existing_ns} ${TETHERED_NS//,/ } ${SERVICES_NS} | tr ' ' '\n' | sort -u | tr '\n' ' ' | sed 's/ $//')
     else
-        new_ns_list=$(echo ${TETHERED_NS//,/ } ${SERVICES_NS} | xargs -n1 | sort -u | xargs)
+        new_ns_list=$(echo ${TETHERED_NS//,/ } ${SERVICES_NS} | tr ' ' '\n' | sort -u | tr '\n' ' ' | sed 's/ $//')
     fi
     debug1 "List of namespaces for common-service NSS ${new_ns_list}"
 
@@ -714,23 +716,31 @@ EOF
     echo ""
 
     while [ $retries -gt 0 ]; do
+        # Wait for the operator pod to be ready by 60s
+        ${OC} -n ${OPERATOR_NS} wait --for=condition=Ready pod -l name=ibm-common-service-operator --timeout=60s 2> /dev/null
 
-        cat "${PREVIEW_DIR}/commonservice.yaml" | ${OC_CMD} apply -f -
-
-        # Check if the patch was successful
         if [[ $? -eq 0 ]]; then
-            operator_ns_in_cr=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | "${YQ}" '.spec.operatorNamespace')
-            services_ns_in_cr=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | "${YQ}" '.spec.servicesNamespace')
-            if [[ "$operator_ns_in_cr" == "$OPERATOR_NS" ]] && [[ "$services_ns_in_cr" == "$SERVICES_NS" ]]; then
-                success "Successfully patched CommonService CR in ${OPERATOR_NS}"
-                break
+            cat "${PREVIEW_DIR}/commonservice.yaml" | ${OC_CMD} apply -f -
+
+            # Check if the patch was successful
+            if [[ $? -eq 0 ]]; then
+                operator_ns_in_cr=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | "${YQ}" '.spec.operatorNamespace')
+                services_ns_in_cr=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | "${YQ}" '.spec.servicesNamespace')
+                if [[ "$operator_ns_in_cr" == "$OPERATOR_NS" ]] && [[ "$services_ns_in_cr" == "$SERVICES_NS" ]]; then
+                    success "Successfully patched CommonService CR in ${OPERATOR_NS}"
+                    break
+                else
+                    warning "Expected OperatorNamespace is ${OPERATOR_NS}, but existing value is ${operator_ns_in_cr} in CommonService CR, retry it in ${delay} seconds..."
+                    warning "Expected ServicesNamespace is ${SERVICES_NS}, but existing value is ${services_ns_in_cr} in CommonService CR, retry it in ${delay} seconds..."
+                    retries=$((retries-1))
+                fi
             else
-                warning "Expected OperatorNamespace is ${OPERATOR_NS}, but existing value is ${operator_ns_in_cr} in CommonService CR, retry it in ${delay} seconds..."
-                warning "Expected ServicesNamespace is ${SERVICES_NS}, but existing value is ${services_ns_in_cr} in CommonService CR, retry it in ${delay} seconds..."
+                warning "Failed to patch CommonService CR in ${OPERATOR_NS}, retry it in ${delay} seconds..."
+                sleep ${delay}
                 retries=$((retries-1))
             fi
         else
-            warning "Failed to patch CommonService CR in ${OPERATOR_NS}, retry it in ${delay} seconds..."
+            warning "ibm-common-service-operator pod is not ready, retry it in ${delay} seconds..."
             sleep ${delay}
             retries=$((retries-1))
         fi

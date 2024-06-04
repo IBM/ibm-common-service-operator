@@ -13,6 +13,26 @@ spec:
         matchExpressions:
           - key: k8s.enterprisedb.io/cluster
             operator: Exists
+  - to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          k8s-app: "platform-identity-provider"
+  - to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          app: icp-mongodb
+  - ports:
+    - port: 443
+      protocol: TCP
+    - port: 6443
+      protocol: TCP
+    to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          apiserver: "true"
   podSelector:
     matchLabels:
       name: "ibm-iam-operator"
