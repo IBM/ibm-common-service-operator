@@ -233,12 +233,12 @@ function deploy_resources(){
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-rolebinding.yaml
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-sa.yaml
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-br-configmap.yaml
-    sed -i -E "s/<operator namespace>/$TARGET_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-serv-tethered-role.yaml
-    sed -i -E "s/<operator namespace>/$TARGET_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-serv-tethered-rolebinding.yaml
+    sed -i -E "s/<services or tethered namespace>/$TARGET_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-serv-tethered-role.yaml
+    sed -i -E "s/<services or tethered namespace>/$TARGET_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-serv-tethered-rolebinding.yaml
     if [[ $TETHERED_NS != "" ]]; then
       for ns in ${TETHERED_NS//,/ }; do
-        sed -i -E "s/<operator namespace>/$ns/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-tethered-role.yaml
-        sed -i -E "s/<operator namespace>/$ns/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-tethered-rolebinding.yaml
+        sed -i -E "s/<services or tethered namespace>/$ns/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-serv-tethered-role.yaml
+        sed -i -E "s/<services or tethered namespace>/$ns/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-serv-tethered-rolebinding.yaml
       done
     fi
     oc apply -f ../spectrum-fusion/cpfs-util-resources -n $OPERATOR_NAMESPACE || error "Unable to deploy resources for CPFS Util."
