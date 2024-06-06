@@ -354,7 +354,6 @@ function dumpmongo() {
     error "Cannot switch to $FROM_NAMESPACE"
   fi
   
-  fsgroup=$(${OC} get project $FROM_NAMESPACE -o=jsonpath='{.metadata.annotations.openshift\.io/sa\.scc\.uid-range}' | tr "\/" " " | awk '{print $1}')
   ibm_mongodb_image=$(${OC} get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
 
   if [[ $z_or_power_ENV == "false" ]]; then
@@ -369,8 +368,6 @@ spec:
   backoffLimit: 20
   template:
     spec:
-      securityContext:
-        fsGroup: $fsgroup
       containers:
       - name: cs-mongodb-backup
         image: $ibm_mongodb_image
@@ -380,7 +377,6 @@ spec:
               - ALL
           privileged: false
           runAsNonRoot: true
-          runAsUser: $fsgroup
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: false
         resources:
@@ -424,6 +420,7 @@ spec:
         secret:
           secretName: mongodb-root-ca-cert
       restartPolicy: OnFailure
+      serviceAccountName: ibm-mongodb-operand
 EOF
   else #s390x environments do not recognize --ssl options
     info "Z or Power cluster detected"
@@ -481,21 +478,10 @@ spec:
   completions: 1
   backoffLimit: 20
   template:
-    securityContext:
-        fsGroup: $fsgroup
     spec:
       containers:
       - name: cs-mongodb-backup
         image: $ibm_mongodb_image
-        securityContext:
-          capabilities:
-            drop:
-              - ALL
-          privileged: false
-          runAsNonRoot: true
-          runAsUser: $fsgroup
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: false
         resources:
           limits:
             cpu: 500m
@@ -537,6 +523,7 @@ spec:
         secret:
           secretName: mongodb-root-ca-cert
       restartPolicy: OnFailure
+      serviceAccountName: ibm-mongodb-operand
 EOF
   fi
 
@@ -706,6 +693,7 @@ spec:
         secret:
           secretName: mongodb-root-ca-cert
       restartPolicy: Never
+      serviceAccountName: ibm-mongodb-operand
 EOF
   else
     debug1 "Applying z/power restore job"
@@ -765,6 +753,7 @@ spec:
         secret:
           secretName: mongodb-root-ca-cert
       restartPolicy: Never
+      serviceAccountName: ibm-mongodb-operand
 EOF
   fi
 
