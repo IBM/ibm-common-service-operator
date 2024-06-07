@@ -34,6 +34,11 @@ var (
 )
 
 const (
+	ExcludedCatalog         = "certified-operators,community-operators,redhat-marketplace,ibm-cp-automation-foundation-catalog,operatorhubio-catalog"
+	StatusMonitoredServices = "ibm-idp-config-ui-operator,ibm-mongodb-operator,ibm-im-operator"
+)
+
+const (
 	MongoDBOpReg = `
 apiVersion: operator.ibm.com/v1alpha1
 kind: OperandRegistry
@@ -44,7 +49,8 @@ metadata:
     operator.ibm.com/managedByCsOperator: "true"
   annotations:
     version: {{ .Version }}
-    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,ibm-cp-automation-foundation-catalog,operatorhubio-catalog
+    excluded-catalogsource: {{ .ExcludedCatalog }}
+    status-monitored-services: {{ .StatusMonitoredServices }}
 spec:
   operators:
   - name: ibm-im-mongodb-operator-v4.0
@@ -74,7 +80,8 @@ metadata:
     operator.ibm.com/managedByCsOperator: "true"
   annotations:
     version: {{ .Version }}
-    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,ibm-cp-automation-foundation-catalog,operatorhubio-catalog
+    excluded-catalogsource: {{ .ExcludedCatalog }}
+    status-monitored-services: {{ .StatusMonitoredServices }}
 spec:
   operators:
   - name: ibm-im-operator-v4.0
@@ -131,7 +138,8 @@ metadata:
     operator.ibm.com/managedByCsOperator: "true"
   annotations:
     version: {{ .Version }}
-    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,ibm-cp-automation-foundation-catalog,operatorhubio-catalog
+    excluded-catalogsource: {{ .ExcludedCatalog }}
+    status-monitored-services: {{ .StatusMonitoredServices }}
 spec:
   operators:
   - name: ibm-idp-config-ui-operator-v4.0
@@ -182,7 +190,8 @@ metadata:
     operator.ibm.com/managedByCsOperator: "true"
   annotations:
     version: {{ .Version }}
-    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,ibm-cp-automation-foundation-catalog,operatorhubio-catalog
+    excluded-catalogsource: {{ .ExcludedCatalog }}
+    status-monitored-services: {{ .StatusMonitoredServices }}
 spec:
   operators:
   - name: ibm-platformui-operator-v4.0
@@ -235,7 +244,8 @@ metadata:
     operator.ibm.com/managedByCsOperator: "true"
   annotations:
     version: {{ .Version }}
-    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,ibm-cp-automation-foundation-catalog,operatorhubio-catalog
+    excluded-catalogsource: {{ .ExcludedCatalog }}
+    status-monitored-services: {{ .StatusMonitoredServices }}
 spec:
   operators:
   - channel: stable-v22
@@ -265,7 +275,8 @@ metadata:
     operator.ibm.com/managedByCsOperator: "true"
   annotations:
     version: {{ .Version }}
-    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,ibm-cp-automation-foundation-catalog,operatorhubio-catalog
+    excluded-catalogsource: {{ .ExcludedCatalog }}
+    status-monitored-services: {{ .StatusMonitoredServices }}
 spec:
   operators:
   - channel: stable
@@ -1314,7 +1325,8 @@ metadata:
     operator.ibm.com/managedByCsOperator: "true"
   annotations:
     version: "{{ .Version }}"
-    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,ibm-cp-automation-foundation-catalog,operatorhubio-catalog
+    excluded-catalogsource: {{ .ExcludedCatalog }}
+    status-monitored-services: {{ .StatusMonitoredServices }}
 spec:
   operators:
   - name: ibm-licensing-operator
@@ -1419,7 +1431,8 @@ metadata:
     operator.ibm.com/managedByCsOperator: "true"
   annotations:
     version: {{ .Version }}
-    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,ibm-cp-automation-foundation-catalog,operatorhubio-catalog
+    excluded-catalogsource: {{ .ExcludedCatalog }}
+    status-monitored-services: {{ .StatusMonitoredServices }}
 spec:
   operators:
   - name: ibm-im-operator
@@ -1509,7 +1522,8 @@ metadata:
     operator.ibm.com/managedByCsOperator: "true"
   annotations:
     version: {{ .Version }}
-    excluded-catalogsource: certified-operators,community-operators,redhat-marketplace,ibm-cp-automation-foundation-catalog,operatorhubio-catalog
+    excluded-catalogsource: {{ .ExcludedCatalog }}
+    status-monitored-services: {{ .StatusMonitoredServices }}
 spec:
   operators:
   - name: ibm-licensing-operator
