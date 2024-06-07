@@ -248,7 +248,7 @@ function deploy_resources(){
         sed -i -E "s/<services or tethered namespace>/$ns/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-serv-tethered-rolebinding.yaml
       done
     fi
-    oc apply -f ../spectrum-fusion/cpfs-util-resources -n $OPERATOR_NAMESPACE || error "Unable to deploy resources for CPFS Util."
+    oc apply -f ../spectrum-fusion/cpfs-util-resources || error "Unable to deploy resources for CPFS Util."
     success "CPFS Util resources deployed in namespace $OPERATOR_NAMESPACE."
   fi
 
