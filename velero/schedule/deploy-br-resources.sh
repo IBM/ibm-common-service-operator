@@ -230,9 +230,9 @@ function deploy_resources(){
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-role.yaml
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-rolebinding.yaml
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-sa.yaml
-    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-br-configmap.yaml
     
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/setup-tenant-job.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-configmap.yaml
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-pvc.yaml
     sed -i -E "s/<storage class>/$STORAGE_CLASS/" ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-pvc.yaml
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-role.yaml
