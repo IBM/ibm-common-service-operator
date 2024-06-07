@@ -111,14 +111,16 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		return
 	}
 	csData := apiv3.CSData{
-		CPFSNs:            cpfsNs,
-		ServicesNs:        servicesNs,
-		OperatorNs:        operatorNs,
-		CatalogSourceName: catalogSourceName,
-		CatalogSourceNs:   catalogSourceNs,
-		ApprovalMode:      approvalMode,
-		WatchNamespaces:   util.GetWatchNamespace(),
-		OnPremMultiEnable: strconv.FormatBool(util.CheckMultiInstances(mgr.GetAPIReader())),
+		CPFSNs:                  cpfsNs,
+		ServicesNs:              servicesNs,
+		OperatorNs:              operatorNs,
+		CatalogSourceName:       catalogSourceName,
+		CatalogSourceNs:         catalogSourceNs,
+		ApprovalMode:            approvalMode,
+		WatchNamespaces:         util.GetWatchNamespace(),
+		OnPremMultiEnable:       strconv.FormatBool(util.CheckMultiInstances(mgr.GetAPIReader())),
+		ExcludedCatalog:         constant.ExcludedCatalog,
+		StatusMonitoredServices: constant.StatusMonitoredServices,
 	}
 
 	bs = &Bootstrap{
