@@ -14,4 +14,4 @@ rules:
       - ''
       - batch
     resources:
-      jobs
+      - jobs
