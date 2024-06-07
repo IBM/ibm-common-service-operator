@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: cpfs-util-br-configmap
+  name: setup-tenant-job-configmap
   namespace: <operator namespace>
   labels:
     foundationservices.cloudpak.ibm.com: cpfs-util-backup

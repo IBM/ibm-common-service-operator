@@ -226,16 +226,22 @@ function deploy_resources(){
   #Deploy cpfs-util resources
   if [[ $UTIL == "true" ]]; then
     info "Creating CPFS Util Backup/Restore resources in namespace $OPERATOR_NAMESPACE."
-    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-job.yaml
-    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-pvc.yaml
-    sed -i -E "s/<storage class>/$STORAGE_CLASS/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-pvc.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-deployment.yaml
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-role.yaml
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-rolebinding.yaml
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-sa.yaml
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-br-configmap.yaml
-    sed -i -E "s/<services or tethered namespace>/$TARGET_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-serv-tethered-role.yaml
-    sed -i -E "s/<services or tethered namespace>/$TARGET_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-serv-tethered-rolebinding.yaml
-    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-serv-tethered-rolebinding.yaml
+    
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/setup-tenant-job.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-pvc.yaml
+    sed -i -E "s/<storage class>/$STORAGE_CLASS/" ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-pvc.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-role.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-rolebinding.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-sa.yaml
+    sed -i -E "s/<services or tethered namespace>/$TARGET_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-serv-tethered-role.yaml
+    sed -i -E "s/<services or tethered namespace>/$TARGET_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml
+
     if [[ $TETHERED_NS != "" ]]; then
       for ns in ${TETHERED_NS//,/ }; do
         sed -i -E "s/<services or tethered namespace>/$ns/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-serv-tethered-role.yaml

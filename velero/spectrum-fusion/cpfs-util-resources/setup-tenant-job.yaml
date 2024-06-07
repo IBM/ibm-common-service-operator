@@ -13,6 +13,7 @@ spec:
       labels:
         foundationservices.cloudpak.ibm.com: cpfs-util-backup
     spec:
+      suspend: true
       restartPolicy: OnFailure
       containers:
       #- command: ["/bin/bash", "-c", "/cs-br/setup_tenant.sh --operator-namespace <operator namespace> --services-namespace <services namespace> --tethered-namespaces <comma delimited (no spaces) list of Cloud Pak workload namespaces that use this foundational services instance> --license-accept -c v<foundational services version number in use i.e. 4.0, 4.1, 4.2, etc> -p <.spec.size value from commonservice cr> -i <install mode, either Manual or Automatic>"]
@@ -48,10 +49,10 @@ spec:
       volumes:
       - name: cpfs-util-mount
         persistentVolumeClaim:
-          claimName: cpfs-util-backup-pvc
+          claimName: setup-tenant-job-pvc
       - name: scripts
         configMap:
-          name: cpfs-util-br-configmap
+          name: setup-tenant-job-configmap
           defaultMode: 0777
       - emptyDir: {}
         name: logs

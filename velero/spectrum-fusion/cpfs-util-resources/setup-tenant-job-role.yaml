@@ -1,8 +1,8 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: cpfs-util-role
-  namespace: <services or tethered namespace>
+  name: setup-tenant-job-role
+  namespace: <operator namespace>
   labels:
     foundationservices.cloudpak.ibm.com: cpfs-util-backup
 rules:
@@ -31,6 +31,35 @@ rules:
       - rbac.authorization.k8s.io
       - "*"
     resources:
+      - pods
+      - pods/log
+      - deployments
+      - deployments/scale
+      - statefulsets
+      - statefulsets/scale
+      - pods/exec
+      - pods/portforward
+      - endpoints
+      - pods/status
+      - jobs
+      - secrets
+      - commonservices
+      - packagemanifests
+      - configmaps
+      - subscriptions
+      - catalogsources
+      - certificates
+      - issuers
+      - namespacescopes
+      - operatorgroups
+      - clusterserviceversions
       - roles
       - rolebindings
       - "*"
+  - verbs:
+      - get
+      - list
+    apiGroups:
+      - postgresql.k8s.enterprisedb.io
+    resources:
+      - clusters
