@@ -344,18 +344,6 @@ spec:
       selectResource: pod
       timeout: 600
       type: check
-    - labelSelector: foundationservices.cloudpak.ibm.com=cpfs-util-backup
-      name: setup-tenant-job
-      namespace: cs-op
-      onError: fail
-      ops:
-        - command: |
-            ["/bin/bash", "-c", "oc patch job setup-tenant-job -n cs-op --type=\"json\" -p '[{\"op\": \"remove\", \"path\":\"/spec/suspend\"}]'"]
-          container: cpfs-util
-          name: trigger-setup-tenant-job
-          timeout: 600
-      selectResource: pod
-      type: exec
     - chks:
         - condition: '{$.status.phase} == {"Running"}'
           name: podReady
