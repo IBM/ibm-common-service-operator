@@ -105,6 +105,15 @@ spec:
       labelSelector: foundationservices.cloudpak.ibm.com=cpfs-util-backup
       name: setup-tenant-resources
       type: resource
+    - includeClusterResources: true
+      includedResourceTypes:
+        - jobs
+      labelSelector: foundationservices.cloudpak.ibm.com=setup-tenant-job
+      name: setup-tenant-job-yaml
+      restoreStatus:
+        excludedResources:
+          - jobs
+      type: resource
     - labelSelector: foundationservices.cloudpak.ibm.com=cpfs-util-backup
       name: cpfs-util-volume
       type: volume
@@ -335,6 +344,18 @@ spec:
       selectResource: pod
       timeout: 600
       type: check
+    - labelSelector: foundationservices.cloudpak.ibm.com=cpfs-util-backup
+      name: setup-tenant-job
+      namespace: cs-op
+      onError: fail
+      ops:
+        - command: |
+            ["/bin/bash", "-c", "oc patch job setup-tenant-job -n cs-op --type=\"json\" -p '[{\"op\": \"remove\", \"path\":\"/spec/suspend\"}]'"]
+          container: cpfs-util
+          name: trigger-setup-tenant-job
+          timeout: 600
+      selectResource: pod
+      type: exec
     - chks:
         - condition: '{$.status.phase} == {"Running"}'
           name: podReady
@@ -420,12 +441,13 @@ spec:
         - group: commonservice-cr
         - group: cs-operator-permissions
         - group: setup-tenant-resources
+        - group: setup-tenant-job-yaml
         - group: singleton-subscriptions
         - group: cert-manager-resources
         - group: common-services-subscriptions
         - group: cert-manager-workload-resources
-        - group: odlm-resources
         - group: operand-resources
+        - group: odlm-resources
         - group: licensing-resources
     - failOn: any-error
       name: restore
@@ -447,8 +469,8 @@ spec:
         - group: common-services-subscriptions
         - group: cpfs-util-volume
         - group: setup-tenant-resources
+        - group: setup-tenant-job-yaml
         - hook: setup-tenant-check/podReady
-        # - hook: setup-tenant/setup-tenant-command
         - hook: setup-tenant-job/trigger-setup-tenant-job
         - hook: setup-tenant-job-check/jobComplete
         - hook: odlm-check/podReady
