@@ -326,7 +326,7 @@ spec:
       onError: fail
       ops:
         - command: |
-            ["/bin/bash", "-c", "oc patch job setup-tenant-job -n <operator namespace> --type="json" -p '[{"op": "remove", "path":"/spec/suspend"}]'"]
+            ["/bin/bash", "-c", "oc patch job setup-tenant-job -n <operator namespace> --type=\"json\" -p '[{\"op\": \"remove\", \"path\":\"/spec/suspend\"}]'"]
           container: cpfs-util
           name: trigger-setup-tenant-job
           timeout: 600
@@ -356,6 +356,42 @@ spec:
       selectResource: pod
       timeout: 600
       type: check
+    - chks:
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      name: platform-identity-provider
+      nameSelector: platform-identity-provider
+      namespace: <service namespace>
+      onError: fail
+      selectResource: deployment
+      timeout: 600
+      type: check
+    - chks:
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      name: platform-auth-service
+      nameSelector: platform-auth-service
+      namespace: <service namespace>
+      onError: fail
+      selectResource: deployment
+      timeout: 600
+      type: check
+    - chks:
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      name: platform-identity-management
+      nameSelector: platform-identity-management
+      namespace: <service namespace>
+      onError: fail
+      selectResource: deployment
+      timeout: 600
+      type: check
     - labelSelector: foundationservices.cloudpak.ibm.com=cs-db-data
       name: cs-db-data
       namespace: <service namespace>
@@ -372,7 +408,7 @@ spec:
           name: cs-db-backup-post
           timeout: 600
         - command: |
-            ["/bin/bash", "-c", "/cs-db/br_cs-db.sh restore <service namespace>"]
+            ["/bin/bash", "-c", "sleep 120 && /cs-db/br_cs-db.sh restore <service namespace>"]
           container: cs-db-br
           name: restore
           timeout: 2000
@@ -412,11 +448,8 @@ spec:
       name: backup
       sequence:
         - hook: cs-db-data/cs-db-backup-pre
-        - group: cs-db-volume
         - group: cs-db-br-resources
-        - hook: cs-db-data/cs-db-backup-post
         - hook: zen5-data/backup
-        - group: zen-volume
         - group: cpfs-util-volume
         - group: zen
         - group: zen-br-resources
@@ -437,6 +470,9 @@ spec:
         - group: operand-resources
         - group: odlm-resources
         - group: licensing-resources
+        - group: cs-db-volume
+        - hook: cs-db-data/cs-db-backup-post
+        - group: zen-volume
     - failOn: any-error
       name: restore
       sequence:
@@ -470,6 +506,9 @@ spec:
         - group: cs-db-volume
         - group: cs-db-deployment
         - hook: cs-db-deployment/podReady
+        - hook: platform-identity-management/podReady
+        - hook: platform-auth-service/podReady
+        - hook: platform-identity-provider/podReady
         - hook: cs-db-data/restore
         - hook: zen-metastore-edb-check/podReady
         - group: zen-pre-deploy
