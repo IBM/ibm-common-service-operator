@@ -111,8 +111,6 @@ function print_usage() {
   echo "Usage: ${script_name} --<service> --operator-ns --services-ns [OPTIONS]..."
   echo ""
   echo "Deploy the necessary resources for Backup of Keycloak."
-  #TODO change below to point to correct docs
-  #echo "See step 4 here https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.0?topic=4x-isolated-migration for more information."
   echo ""
   echo "Options:"
   echo "   --operator-ns string                           Optional. Operator namespace for a given CPFS installation. Only required if --util specified"
