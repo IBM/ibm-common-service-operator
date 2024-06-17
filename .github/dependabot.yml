@@ -15,3 +15,8 @@ updates:
     schedule:
       interval: daily
     target-branch: "release-323"
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: daily
+    target-branch: "release-sc2"
