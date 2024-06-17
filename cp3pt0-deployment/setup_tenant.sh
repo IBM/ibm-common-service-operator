@@ -716,34 +716,40 @@ EOF
     echo ""
 
     while [ $retries -gt 0 ]; do
-        # Wait for the operator pod to be ready by 60s
-        ${OC} -n ${OPERATOR_NS} wait --for=condition=Ready pod -l name=ibm-common-service-operator --timeout=60s 2> /dev/null
-
-        if [[ $? -eq 0 ]]; then
-            cat "${PREVIEW_DIR}/commonservice.yaml" | ${OC_CMD} apply -f -
-
-            # Check if the patch was successful
+        # Wait for the operator pod to be ready by 60s if ibm-common-service-operator subscription exists
+        is_sub_exist "ibm-common-service-operator" "$OPERATOR_NS"
+        if [ $? -eq 0 ]; then
+            ${OC} -n ${OPERATOR_NS} wait --for=condition=Ready pod -l name=ibm-common-service-operator --timeout=60s 2> /dev/null
             if [[ $? -eq 0 ]]; then
-                operator_ns_in_cr=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | "${YQ}" '.spec.operatorNamespace')
-                services_ns_in_cr=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | "${YQ}" '.spec.servicesNamespace')
-                if [[ "$operator_ns_in_cr" == "$OPERATOR_NS" ]] && [[ "$services_ns_in_cr" == "$SERVICES_NS" ]]; then
-                    success "Successfully patched CommonService CR in ${OPERATOR_NS}"
-                    break
-                else
-                    warning "Expected OperatorNamespace is ${OPERATOR_NS}, but existing value is ${operator_ns_in_cr} in CommonService CR, retry it in ${delay} seconds..."
-                    warning "Expected ServicesNamespace is ${SERVICES_NS}, but existing value is ${services_ns_in_cr} in CommonService CR, retry it in ${delay} seconds..."
-                    retries=$((retries-1))
-                fi
+                debug1 "ibm-common-service-operator pod is ready\n"
             else
-                warning "Failed to patch CommonService CR in ${OPERATOR_NS}, retry it in ${delay} seconds..."
+                warning "ibm-common-service-operator pod is not ready, retry it in ${delay} seconds...\n"
                 sleep ${delay}
+                retries=$((retries-1))
+                continue
+            fi
+        fi
+
+        cat "${PREVIEW_DIR}/commonservice.yaml" | ${OC_CMD} apply -f -
+
+        # Check if the patch was successful
+        if [[ $? -eq 0 ]]; then
+            operator_ns_in_cr=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | "${YQ}" '.spec.operatorNamespace')
+            services_ns_in_cr=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o yaml | "${YQ}" '.spec.servicesNamespace')
+            if [[ "$operator_ns_in_cr" == "$OPERATOR_NS" ]] && [[ "$services_ns_in_cr" == "$SERVICES_NS" ]]; then
+                success "Successfully patched CommonService CR in ${OPERATOR_NS}"
+                break
+            else
+                warning "Expected OperatorNamespace is ${OPERATOR_NS}, but existing value is ${operator_ns_in_cr} in CommonService CR, retry it in ${delay} seconds..."
+                warning "Expected ServicesNamespace is ${SERVICES_NS}, but existing value is ${services_ns_in_cr} in CommonService CR, retry it in ${delay} seconds..."
                 retries=$((retries-1))
             fi
         else
-            warning "ibm-common-service-operator pod is not ready, retry it in ${delay} seconds..."
+            warning "Failed to patch CommonService CR in ${OPERATOR_NS}, retry it in ${delay} seconds..."
             sleep ${delay}
             retries=$((retries-1))
         fi
+
     done
 
     if [ $retries -eq 0 ] && [ $RETRY_CONFIG_CSCR -eq 1 ]; then
