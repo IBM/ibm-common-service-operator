@@ -125,6 +125,8 @@ kind: CommonService
 metadata:
   annotations:
     version: "-1"
+  labels:
+    foundationservices.cloudpak.ibm.com: commonservice
   name: common-service
   namespace: "{{ .OperatorNs }}"
 spec:
