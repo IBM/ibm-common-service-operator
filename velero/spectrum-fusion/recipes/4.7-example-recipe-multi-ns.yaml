@@ -105,6 +105,15 @@ spec:
       labelSelector: foundationservices.cloudpak.ibm.com=cpfs-util-backup
       name: setup-tenant-resources
       type: resource
+    - includeClusterResources: true
+      includedResourceTypes:
+        - jobs
+      labelSelector: foundationservices.cloudpak.ibm.com=setup-tenant-job
+      name: setup-tenant-job-yaml
+      restoreStatus:
+        excludedResources:
+          - jobs
+      type: resource
     - labelSelector: foundationservices.cloudpak.ibm.com=cpfs-util-backup
       name: cpfs-util-volume
       type: volume
@@ -299,39 +308,42 @@ spec:
       selectResource: zen.cpd.ibm.com/v1/zenservice
       timeout: 1800
       type: check
-    - labelSelector: foundationservices.cloudpak.ibm.com=test-data
-      name: hook
-      namespace: <service namespace>
-      onError: fail
-      ops:
-        - command: |
-            ["/bin/bash", "-c","/test/backup_mongo.sh", "<service namespace>"]
-          container: test-backup-job
-          name: backup-mongo
-          timeout: 600
-        - command: |
-            ["/bin/bash", "-c","/test/restore_mongo.sh", "<service namespace>"]
-          container: test-backup-job
-          name: restore-mongo
-          timeout: 600
-        - command: '["/usr/bin/sleep", "120"]'
-          container: test-backup-job
-          name: mongo-delay
-          timeout: 140
-      selectResource: pod
-      type: exec
     - labelSelector: foundationservices.cloudpak.ibm.com=cpfs-util-backup
       name: setup-tenant
       namespace: <operator namespace>
       onError: fail
       ops:
         - command: |
-            ["/bin/bash", "-c", "/cs-br/setup_tenant.sh --operator-namespace <operator namespace> --services-namespace <services namespace> --tethered-namespaces <comma delimited (no spaces) list of Cloud Pak workload namespaces that use this foundational services instance> --license-accept -c v<foundational services version number in use i.e. 4.0, 4.1, 4.2, etc> -p <.spec.size value from commonservice cr> -i <install mode, either Manual or Automatic>"]
+            ["/bin/bash", "-c", "/cs-br/setup_tenant.sh --operator-namespace <operator namespace> --services-namespace <service namespace> --tethered-namespaces <comma delimited (no spaces) list of Cloud Pak workload namespaces that use this foundational services instance> --license-accept -c v<foundational services version number in use i.e. 4.0, 4.1, 4.2, etc> -p <.spec.size value from commonservice cr> -i <install mode, either Manual or Automatic> -s <catalog source name> -n <catalog source namespace> -v"]
           container: cpfs-util
           name: setup-tenant-command
           timeout: 600
       selectResource: pod
       type: exec
+    - labelSelector: foundationservices.cloudpak.ibm.com=cpfs-util-backup
+      name: setup-tenant-job
+      namespace: <operator namespace>
+      onError: fail
+      ops:
+        - command: |
+            ["/bin/bash", "-c", "oc patch job setup-tenant-job -n <operator namespace> --type=\"json\" -p '[{\"op\": \"remove\", \"path\":\"/spec/suspend\"}]'"]
+          container: cpfs-util
+          name: trigger-setup-tenant-job
+          timeout: 600
+      selectResource: pod
+      type: exec
+    - chks:
+        - condition: '{$.status.phase} == {"Succeeded"}'
+          name: jobComplete
+          onError: fail
+          timeout: 600
+      labelSelector: foundationservices.cloudpak.ibm.com=setup-tenant-job
+      name: setup-tenant-job-check
+      namespace: cs-op
+      onError: fail
+      selectResource: pod
+      timeout: 600
+      type: check
     - chks:
         - condition: '{$.status.phase} == {"Running"}'
           name: podReady
@@ -342,6 +354,42 @@ spec:
       namespace: <service namespace>
       onError: fail
       selectResource: pod
+      timeout: 600
+      type: check
+    - chks:
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      name: platform-identity-provider
+      nameSelector: platform-identity-provider
+      namespace: <service namespace>
+      onError: fail
+      selectResource: deployment
+      timeout: 600
+      type: check
+    - chks:
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      name: platform-auth-service
+      nameSelector: platform-auth-service
+      namespace: <service namespace>
+      onError: fail
+      selectResource: deployment
+      timeout: 600
+      type: check
+    - chks:
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      name: platform-identity-management
+      nameSelector: platform-identity-management
+      namespace: <service namespace>
+      onError: fail
+      selectResource: deployment
       timeout: 600
       type: check
     - labelSelector: foundationservices.cloudpak.ibm.com=cs-db-data
@@ -360,7 +408,7 @@ spec:
           name: cs-db-backup-post
           timeout: 600
         - command: |
-            ["/bin/bash", "-c", "/cs-db/br_cs-db.sh restore <service namespace>"]
+            ["/bin/bash", "-c", "sleep 120 && /cs-db/br_cs-db.sh restore <service namespace>"]
           container: cs-db-br
           name: restore
           timeout: 2000
@@ -400,11 +448,8 @@ spec:
       name: backup
       sequence:
         - hook: cs-db-data/cs-db-backup-pre
-        - group: cs-db-volume
         - group: cs-db-br-resources
-        - hook: cs-db-data/cs-db-backup-post
         - hook: zen5-data/backup
-        - group: zen-volume
         - group: cpfs-util-volume
         - group: zen
         - group: zen-br-resources
@@ -417,13 +462,17 @@ spec:
         - group: commonservice-cr
         - group: cs-operator-permissions
         - group: setup-tenant-resources
+        - group: setup-tenant-job-yaml
         - group: singleton-subscriptions
         - group: cert-manager-resources
         - group: common-services-subscriptions
         - group: cert-manager-workload-resources
-        - group: odlm-resources
         - group: operand-resources
+        - group: odlm-resources
         - group: licensing-resources
+        - group: cs-db-volume
+        - hook: cs-db-data/cs-db-backup-post
+        - group: zen-volume
     - failOn: any-error
       name: restore
       sequence:
@@ -444,8 +493,10 @@ spec:
         - group: common-services-subscriptions
         - group: cpfs-util-volume
         - group: setup-tenant-resources
+        - group: setup-tenant-job-yaml
         - hook: setup-tenant-check/podReady
-        - hook: setup-tenant/setup-tenant-command
+        - hook: setup-tenant-job/trigger-setup-tenant-job
+        - hook: setup-tenant-job-check/jobComplete
         - hook: odlm-check/podReady
         - group: odlm-resources
         - group: operand-resources
@@ -455,6 +506,9 @@ spec:
         - group: cs-db-volume
         - group: cs-db-deployment
         - hook: cs-db-deployment/podReady
+        - hook: platform-identity-management/podReady
+        - hook: platform-auth-service/podReady
+        - hook: platform-identity-provider/podReady
         - hook: cs-db-data/restore
         - hook: zen-metastore-edb-check/podReady
         - group: zen-pre-deploy

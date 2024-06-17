@@ -35,13 +35,6 @@ spec:
               memory: 512Mi
           terminationMessagePath: /dev/termination-log
           terminationMessagePolicy: File
-          volumeMounts:
-          - mountPath: /cs-br/cpfs-util-backups
-            name: cpfs-util-mount
-          - name: scripts
-            mountPath: "/cs-br"
-          - name: logs
-            mountPath: /scripts/logs
         dnsPolicy: ClusterFirst
         schedulerName: default-scheduler
         securityContext:
@@ -49,13 +42,3 @@ spec:
         serviceAccount: cpfs-util-sa
         serviceAccountName: cpfs-util-sa
         terminationGracePeriodSeconds: 30
-        volumes:
-        - name: cpfs-util-mount
-          persistentVolumeClaim:
-            claimName: cpfs-util-backup-pvc
-        - name: scripts
-          configMap:
-            name: cpfs-util-br-configmap
-            defaultMode: 0777
-        - emptyDir: {}
-          name: logs
