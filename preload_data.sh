@@ -371,14 +371,6 @@ spec:
       containers:
       - name: cs-mongodb-backup
         image: $ibm_mongodb_image
-        securityContext:
-          capabilities:
-            drop:
-              - ALL
-          privileged: false
-          runAsNonRoot: true
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: false
         resources:
           limits:
             cpu: 500m
