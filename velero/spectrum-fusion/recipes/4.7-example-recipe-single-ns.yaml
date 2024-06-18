@@ -68,6 +68,13 @@ spec:
         - deployments
       name: lsr-deployment
       type: resource
+  - includeClusterResources: true
+      includedResourceTypes:
+        - secrets
+        - ibmlicenseservicereporters.operator.ibm.com
+      labelSelector: foundationservices.cloudpak.ibm.com=lsr
+      name: license-service-reporter-instances
+      type: resource
     - labelSelector: foundationservices.cloudpak.ibm.com=lsr-data
       name: lsr-volume
       type: volume
@@ -425,6 +432,7 @@ spec:
         - hook: cs-db-data/cs-db-backup-post
         - hook: lsr-data/backup
         - group: lsr-volume
+        - group: license-service-reporter-instances
         - group: license-service-reporter-resources
         - hook: zen5-data/backup
         - group: zen-volume
@@ -468,6 +476,7 @@ spec:
         - group: licensing-resources
         - group: license-service-reporter-subscriptions
         - hook: license-service-reporter-check/podReady
+        - group: license-service-reporter-instances
         - group: lsr-pre-deploy
         - group: lsr-volume
         - group: lsr-deployment
