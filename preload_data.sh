@@ -353,7 +353,7 @@ function dumpmongo() {
   if [[ "$currentns" -ne "$FROM_NAMESPACE" ]]; then
     error "Cannot switch to $FROM_NAMESPACE"
   fi
-  
+
   ibm_mongodb_image=$(${OC} get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
 
   if [[ $z_or_power_ENV == "false" ]]; then
