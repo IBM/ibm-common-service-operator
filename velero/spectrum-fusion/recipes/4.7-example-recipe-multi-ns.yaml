@@ -163,7 +163,6 @@ spec:
     - includeClusterResources: true
       includedResourceTypes:
         - zenservices.zen.cpd.ibm.com
-        - customresourcedefinitions.apiextensions.k8s.io
       labelSelector: foundationservices.cloudpak.ibm.com=zen
       name: zen
       type: resource
@@ -173,12 +172,6 @@ spec:
         - zenservices.zen.cpd.ibm.com
       labelSelector: foundationservices.cloudpak.ibm.com=zen
       name: zen-instance
-      type: resource
-    - backupRef: zen
-      includeClusterResources: true
-      includedResourceTypes:
-        - customresourcedefinitions.apiextensions.k8s.io
-      name: zen-crd
       type: resource
     - backupRef: zen-br-resources
       includeClusterResources: true
