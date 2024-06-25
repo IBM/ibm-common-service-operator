@@ -29,6 +29,7 @@ CM_SOURCE_NS="openshift-marketplace"
 LIS_SOURCE_NS="openshift-marketplace"
 LSR_SOURCE_NS="openshift-marketplace"
 
+# Additional CatalogSources
 ADDITIONAL_SOURCES=""
 
 # default values no change
@@ -41,12 +42,9 @@ BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 
 # ---------- Main functions ----------
 
-. ${BASE_DIR}/../../../cp3pt0-deployment/common/utils.sh
-
 source ${BASE_DIR}/env.properties
 
 function main() {
-
     pre_req
     label_catalogsource
     label_ns_and_related 
@@ -191,6 +189,33 @@ function label_cs(){
     ${OC} label customresourcedefinition commonservices.operator.ibm.com foundationservices.cloudpak.ibm.com=crd --overwrite=true 2>/dev/null
     ${OC} label operandconfig common-service foundationservices.cloudpak.ibm.com=operand -n $SERVICES_NS --overwrite=true 2>/dev/null
     echo ""
+}
+
+# ---------- Info functions ----------#
+
+function msg() {
+    printf '%b\n' "$1"
+}
+
+function success() {
+    msg "\33[32m[✔] ${1}\33[0m"
+}
+
+function error() {
+    msg "\33[31m[✘] ${1}\33[0m"
+    exit 1
+}
+
+function title() {
+    msg "\33[34m# ${1}\33[0m"
+}
+
+function info() {
+    msg "[INFO] ${1}"
+}
+
+function warning() {
+    msg "\33[33m[✗] ${1}\33[0m"
 }
 
 main $*

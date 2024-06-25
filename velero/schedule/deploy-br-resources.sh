@@ -20,6 +20,7 @@ ZEN4="false"
 IM="false"
 KEYCLOAK="false"
 MONGO="false"
+UTIL="false"
 SELECTED="false"
 
 function main() {
@@ -35,9 +36,17 @@ function parse_arguments() {
   # process options
   while [[ "$@" != "" ]]; do
     case "$1" in
-    --target-ns)
+    --services-ns)
       shift
       TARGET_NAMESPACE=$1
+      ;;
+    --operator-ns)
+      shift
+      OPERATOR_NAMESPACE=$1
+      ;;
+    --tethered-ns)
+      shift
+      TETHERED_NS=$1
       ;;
     --zen)
       ZEN="true"
@@ -59,6 +68,10 @@ function parse_arguments() {
       MONGO="true"
       SELECTED="true"
       ;;
+    --util)
+      UTIL="true"
+      SELECTED="true"
+      ;;
     --storage-class)
       shift
       STORAGE_CLASS=$1
@@ -71,7 +84,7 @@ function parse_arguments() {
       exit 1
       ;;
     *) 
-      warning "$1 not a supported parameter for keycloak-deploy.sh"
+      warning "$1 not a supported parameter for deploy-br-resoruces.sh"
       ;;
     esac
     shift
@@ -79,24 +92,32 @@ function parse_arguments() {
   if [[ $SELECTED == "false" ]]; then
     error "No component selected. Please use a combination of --im, --mongo, --keycloak, --zen, or --zen4 to select components to deploy resources for."
   fi
-  if [[ $TARGET_NAMESPACE == "" ]]; then
-    error "No namespace selected. Please re-run script with --target-ns parameter defined."
+  if [[ $TARGET_NAMESPACE == "" ]] && [[ $OPERATOR_NAMESPACE == "" ]]; then
+    error "No namespace selected. Please re-run script with --services-ns and/or --operator-ns parameter defined."
+  fi
+  if [[ $UTIL == "true" ]] && [[ $OPERATOR_NAMESPACE == "" ]]; then
+    error "CPFS Util selected but no operator namespace provided. Please re-run script with --operator-ns parameter defined."
   fi
   if [[ $ZEN == "true" && $ZEN4 == "true" ]]; then
     error "Cannot select --zen and --zen4 on the same run of the script. Please verify zen version in the namespace $TARGET_NAMESPACE and select the appropriate option."
   fi
+  if [[ $OPERATOR_NAMESPACE != "" ]] && [[ $TARGET_NAMESPACE == "" ]]; then
+    warning "No services namespace specified, using operator namespace $OPERATOR_NAMESPACE instead. If using SOD topology, please re-run with both --operator-ns and --services-ns defined."
+    TARGET_NAMESPACE=$OPERATOR_NAMESPACE
+  fi
 }
 
 function print_usage() {
-  echo "Usage: ${script_name} --keycloak-ns <Namespace where keycloak is installed> [OPTIONS]..."
+  echo "Usage: ${script_name} --<service> --operator-ns --services-ns [OPTIONS]..."
   echo ""
   echo "Deploy the necessary resources for Backup of Keycloak."
-  #TODO change below to point to correct docs
-  #echo "See step 4 here https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.0?topic=4x-isolated-migration for more information."
   echo ""
   echo "Options:"
-  echo "   --target-ns string                             Required. Namespace where IM EDB, IM Mongo, Zen, or Keycloak are installed. If installed in different namespaces, script will need to be run separately."
+  echo "   --operator-ns string                           Optional. Operator namespace for a given CPFS installation. Only required if --util specified"
+  echo "   --services-ns string                           Required. Namespace where IM EDB, IM Mongo, Zen, or Keycloak operands are installed. If installed in different namespaces, script will need to be run separately. Optional if it is the same as --operator-ns."
+  echo "   --tethered-ns string                           Optional. Comma-delimited list of namespaces attached to a given CPFS install. Should include any namespace from a given tenant in the common-service-maps cm that are not the --operator-ns or the --services-ns. Only required when --util specified."
   echo "   --im, --mongo, --keycloak, --zen, --zen4       Required. Choose which component(s) to deploy backup/restore resources for to the target namespace. At least one is required. Multiple can be specified but only one of --zen or --zen4 can be chosen."
+  echo "   --util                                         Optional. Deploy the CPFS Util job for use in SOD topologies. If this option is selected, --operator-ns and --services-ns are both required."
   echo "   --storage-class string                         Optional. Storage class to use for backup/restore resources. Default value is cluster's default storage class."
   echo "   -c, --cleanup                                  Optional. Automated cleanup of backup/restore resources. Will run cleanup instead of deployment logic."
   echo "   -h, --help                                     Print usage information"
@@ -197,7 +218,38 @@ function deploy_resources(){
     fi
     success "Resources to backup Zen 4 deployed in namespace $TARGET_NAMESPACE."
   fi
+  
   success "Backup/Restore resources created in namespace $TARGET_NAMESPACE."
+
+  #Deploy cpfs-util resources
+  if [[ $UTIL == "true" ]]; then
+    info "Creating CPFS Util Backup/Restore resources in namespace $OPERATOR_NAMESPACE."
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-deployment.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-role.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-rolebinding.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-sa.yaml
+    
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/setup-tenant-job.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-configmap.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-pvc.yaml
+    sed -i -E "s/<storage class>/$STORAGE_CLASS/" ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-pvc.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-role.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-rolebinding.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-sa.yaml
+    sed -i -E "s/<services or tethered namespace>/$TARGET_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-serv-tethered-role.yaml
+    sed -i -E "s/<services or tethered namespace>/$TARGET_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml
+
+    if [[ $TETHERED_NS != "" ]]; then
+      for ns in ${TETHERED_NS//,/ }; do
+        sed -i -E "s/<services or tethered namespace>/$ns/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-serv-tethered-role.yaml
+        sed -i -E "s/<services or tethered namespace>/$ns/" ../spectrum-fusion/cpfs-util-resources/cpfs-util-serv-tethered-rolebinding.yaml
+      done
+    fi
+    oc apply -f ../spectrum-fusion/cpfs-util-resources || error "Unable to deploy resources for CPFS Util."
+    success "CPFS Util resources deployed in namespace $OPERATOR_NAMESPACE."
+  fi
+
 }
 
 function cleanup() {
@@ -211,6 +263,7 @@ function cleanup() {
       oc delete pod $pod -n $TARGET_NAMESPACE --ignore-not-found || warning "IM backup pod not found, moving on."
     fi
     oc delete pvc cs-db-backup-pvc -n $TARGET_NAMESPACE --ignore-not-found
+    oc delete cm cs-db-br-configmap -n $TARGET_NAMESPACE --ignore-not-found
     success "IM BR resources cleaned up."
   fi
 
@@ -222,7 +275,7 @@ function cleanup() {
     if [[ $pod != "" ]]; then
       oc delete pod $pod -n $TARGET_NAMESPACE --ignore-not-found || warning "IM backup pod not found, moving on."
     fi
-    oc delete pvc cs-db-backup-pvc -n $TARGET_NAMESPACE --ignore-not-found
+    oc delete pvc cs-mongodump -n $TARGET_NAMESPACE --ignore-not-found
     success "IM BR resources cleaned up."
   fi
 
@@ -235,6 +288,7 @@ function cleanup() {
       oc delete pod $pod -n $TARGET_NAMESPACE --ignore-not-found || warning "Keycloak backup pod not found, moving on."
     fi
     oc delete pvc keycloak-backup-pvc -n $TARGET_NAMESPACE --ignore-not-found
+    oc delete cm keycloak-br-configmap -n $TARGET_NAMESPACE --ignore-not-found
     success "IM Mongo BR resources cleaned up."
   fi
 
@@ -247,6 +301,7 @@ function cleanup() {
       oc delete pod $pod -n $TARGET_NAMESPACE --ignore-not-found || warning "Zen backup pod not found, moving on."
     fi
     oc delete pvc zen5-backup-pvc -n $TARGET_NAMESPACE --ignore-not-found
+    oc delete cm zen5-br-configmap -n $TARGET_NAMESPACE --ignore-not-found
     success "Zen BR resources cleaned up."
   fi
 
@@ -259,6 +314,7 @@ function cleanup() {
       oc delete pod $pod -n $TARGET_NAMESPACE --ignore-not-found || warning "Zen 4 backup pod not found, moving on."
     fi
     oc delete pvc zen4-backup-pvc -n $TARGET_NAMESPACE --ignore-not-found
+    oc delete cm zen4-br-configmap -n $TARGET_NAMESPACE --ignore-not-found
     success "Zen 4 BR resources cleaned up."
   fi
   
