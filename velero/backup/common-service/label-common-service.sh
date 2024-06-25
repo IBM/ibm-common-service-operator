@@ -192,9 +192,14 @@ function label_lsr() {
     
     title "Start to label the License Service Reporter... "
     ${OC} label customresourcedefinition ibmlicenseservicereporters.operator.ibm.com foundationservices.cloudpak.ibm.com=lsr --overwrite=true 2>/dev/null
-    ${OC} label ibmlicenseservicereporters.operator.ibm.com ibm-lsr-instance foundationservices.cloudpak.ibm.com=lsr -n $LSR_NAMESPACE --overwrite=true 2>/dev/null
-    
-    info "Srart to label the necessary secrets"
+
+    info "Start to label the LSR instances"
+    lsr_instances=$(${OC} get ibmlicenseservicereporters.operator.ibm.com -n $LSR_NAMESPACE -o jsonpath='{.items[*].metadata.name}')
+    while IFS= read -r lsr_instance; do
+        ${OC} label ibmlicenseservicereporters.operator.ibm.com $lsr_instance foundationservices.cloudpak.ibm.com=lsr -n $LSR_NAMESPACE --overwrite=true 2>/dev/null
+    done <<< "$lsr_instances"
+
+    info "Start to label the necessary secrets"
     secrets=$(${OC} get secrets -n $LSR_NAMESPACE | grep ibm-license-service-reporter-token | cut -d ' ' -f1)
     for secret in ${secrets[@]}; do
         ${OC} label secret $secret foundationservices.cloudpak.ibm.com=lsr -n $LSR_NAMESPACE --overwrite=true 2>/dev/null
