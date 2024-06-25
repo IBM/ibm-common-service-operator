@@ -50,6 +50,7 @@ function main() {
     label_ns_and_related 
     label_configmap
     label_subscription
+    label_lsr
     label_cs
     success "Successfully labeled all the resources"
 }
@@ -66,7 +67,12 @@ function pre_req(){
     fi
     if [ "$OPERATOR_NS" == "" ]; then
         error "Must provide operator namespace"
+    else
+        if ! $OC get namespace $OPERATOR_NS &>/dev/null; then
+            error "Operator namespace $OPERATOR_NS does not exist, please provide a valid namespace"
+        fi
     fi
+
     if [ "$SERVICES_NS" == "" ]; then
         warning "Services namespace is not provided, will use operator namespace as services namespace"
         SERVICES_NS=$OPERATOR_NS
@@ -178,15 +184,46 @@ function label_subscription() {
     ${OC} label subscriptions.operators.coreos.com $cs_pm foundationservices.cloudpak.ibm.com=subscription -n $OPERATOR_NS --overwrite=true 2>/dev/null
     ${OC} label subscriptions.operators.coreos.com $cm_pm foundationservices.cloudpak.ibm.com=singleton-subscription -n $CERT_MANAGER_NAMESPACE --overwrite=true 2>/dev/null
     ${OC} label subscriptions.operators.coreos.com $lis_pm foundationservices.cloudpak.ibm.com=singleton-subscription -n $LICENSING_NAMESPACE --overwrite=true 2>/dev/null
-    ${OC} label subscriptions.operators.coreos.com $lsr_pm foundationservices.cloudpak.ibm.com=singleton-subscription -n $LSR_NAMESPACE --overwrite=true 2>/dev/null
+    ${OC} label subscriptions.operators.coreos.com $lsr_pm foundationservices.cloudpak.ibm.com=lsr -n $LSR_NAMESPACE --overwrite=true 2>/dev/null
+    echo ""
+}
+
+function label_lsr() {
+    
+    title "Start to label the License Service Reporter... "
+    ${OC} label customresourcedefinition ibmlicenseservicereporters.operator.ibm.com foundationservices.cloudpak.ibm.com=lsr --overwrite=true 2>/dev/null
+
+    info "Start to label the LSR instances"
+    lsr_instances=$(${OC} get ibmlicenseservicereporters.operator.ibm.com -n $LSR_NAMESPACE -o jsonpath='{.items[*].metadata.name}')
+    while IFS= read -r lsr_instance; do
+        ${OC} label ibmlicenseservicereporters.operator.ibm.com $lsr_instance foundationservices.cloudpak.ibm.com=lsr -n $LSR_NAMESPACE --overwrite=true 2>/dev/null
+        
+        # Label the secrets with OIDC configured
+        client_secret_name=$(${OC} get ibmlicenseservicereporters.operator.ibm.com $lsr_instance -n $LSR_NAMESPACE -o yaml | awk -F '--client-secret-name=' '{print $2}' | tr -d '"' | tr -d '\n')
+        ${OC} label secret $client_secret_name foundationservices.cloudpak.ibm.com=lsr -n $LSR_NAMESPACE --overwrite=true 2>/dev/null
+
+        provider_ca_secret_name=$(${OC} get ibmlicenseservicereporters.operator.ibm.com $lsr_instance -n $LSR_NAMESPACE -o yaml | awk -F '--provider-ca-secret-name=' '{print $2}' | tr -d '"' | tr -d '\n')
+        ${OC} label secret $provider_ca_secret_name foundationservices.cloudpak.ibm.com=lsr -n $LSR_NAMESPACE --overwrite=true 2>/dev/null
+    done <<< "$lsr_instances"
+
+    info "Start to label the necessary secrets"
+    secrets=$(${OC} get secrets -n $LSR_NAMESPACE | grep ibm-license-service-reporter-token | cut -d ' ' -f1)
+    for secret in ${secrets[@]}; do
+        ${OC} label secret $secret foundationservices.cloudpak.ibm.com=lsr -n $LSR_NAMESPACE --overwrite=true 2>/dev/null
+    done    
+    secrets=$(${OC} get secrets -n $LSR_NAMESPACE | grep ibm-license-service-reporter-credential | cut -d ' ' -f1)
+    for secret in ${secrets[@]}; do
+        ${OC} label secret $secret foundationservices.cloudpak.ibm.com=lsr -n $LSR_NAMESPACE --overwrite=true 2>/dev/null
+    done
+
     echo ""
 }
 
 function label_cs(){
     
     title "Start to label the CommonService CR... "
-    ${OC} label commonservices common-service foundationservices.cloudpak.ibm.com=commonservice -n $OPERATOR_NS --overwrite=true 2>/dev/null
     ${OC} label customresourcedefinition commonservices.operator.ibm.com foundationservices.cloudpak.ibm.com=crd --overwrite=true 2>/dev/null
+    ${OC} label commonservices common-service foundationservices.cloudpak.ibm.com=commonservice -n $OPERATOR_NS --overwrite=true 2>/dev/null
     ${OC} label operandconfig common-service foundationservices.cloudpak.ibm.com=operand -n $SERVICES_NS --overwrite=true 2>/dev/null
     echo ""
 }
