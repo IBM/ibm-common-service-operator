@@ -298,6 +298,7 @@ const (
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:metadata:labels="foundationservices.cloudpak.ibm.com=crd"
 // +operator-sdk:gen-csv:customresourcedefinitions.displayName="CommonService"
 
 // CommonService is the Schema for the commonservices API. This API is used to
