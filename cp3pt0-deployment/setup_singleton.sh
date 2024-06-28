@@ -570,6 +570,7 @@ function pre_req() {
 
     # Using private catalog
     if [[ $ENABLE_PRIVATE_CATALOG -eq 1 ]]; then
+        warning "Flag --enable-private-catalog is enabled, please make sure the CatalogSource is deployed in the same namespace as operator"
         CM_SOURCE_NS="${CERT_MANAGER_NAMESPACE}"
         LIS_SOURCE_NS="${LICENSING_NAMESPACE}"
         LSR_SOURCE_NS="${LSR_NAMESPACE}"

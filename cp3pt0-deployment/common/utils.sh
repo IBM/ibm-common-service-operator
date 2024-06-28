@@ -638,8 +638,7 @@ function validate_operator_catalogsource(){
     if [[ $return_value -eq 0 ]]; then
         success "CatalogSource $source from $source_ns CatalogSourceNamespace is available for $pm in $operator_ns namespace"
     elif [[ $return_value -eq 1 ]]; then
-        warning "CatalogSource $source from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace"
-        error "Multiple CatalogSource are available for $pm in $operator_ns namespace, please specify the correct CatalogSource name and namespace"
+        error "The expected CatalogSource $source from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace. Also there are multiple CatalogSources for $pm available in the cluster, please create the expected CatalogSource, or specify the correct CatalogSource name and namespace and re-run the script again."
     elif [[ $return_value -eq 2 ]]; then
         warning "CatalogSource $source from $source_ns CatalogSourceNamespace is not available for $pm in $operator_ns namespace"
         
