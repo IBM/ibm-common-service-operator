@@ -877,7 +877,7 @@ EOF
 function update_cscr() {
     local operator_ns=$1
     local service_ns=$2
-    local nss_list=$3
+    local nss_list=${3:-""}
 
     for namespace in ${nss_list//,/ }
     do
@@ -988,7 +988,7 @@ function cleanup_cp2() {
 # clean up webhook deployment and webhookconfiguration
 function cleanup_webhook() {
     local control_ns=$1
-    local nss_list=$2
+    local nss_list=${3:-""}
     local resource_types=("podpresets.operator.ibm.com")
     for ns in ${nss_list//,/ }
     do
@@ -1011,7 +1011,7 @@ function cleanup_webhook() {
 # Clean up secretshare deployment and CR in service_ns
 function cleanup_secretshare() {
     local control_ns=$1
-    local nss_list=$2
+    local nss_list=${3:-""}
     local resource_types=("secretshare")
     for ns in ${nss_list//,/ }
     do
