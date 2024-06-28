@@ -275,7 +275,7 @@ function wait_for_csv() {
     local namespace=$1
     local package_name=$2
     local condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${package_name}.${namespace}='' -n ${namespace} -o yaml -o jsonpath='{.items[*].status.installedCSV}'"
-    local retries=60
+    local retries=180
     local sleep_time=10
     local total_time_mins=$(( sleep_time * retries / 60))
     local wait_message="Waiting for operator ${package_name} CSV in namespace ${namespace} to be bound to Subscription"
@@ -483,8 +483,8 @@ function wait_for_operator_upgrade() {
     local install_mode=$4
     local condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${package_name}.${namespace}='' -n ${namespace} -o yaml -o jsonpath='{.items[*].status.installedCSV}' | grep -w $channel"
 
-    local retries=20
-    local sleep_time=30
+    local retries=120
+    local sleep_time=20
     local total_time_mins=$(( sleep_time * retries / 60))
     local wait_message="Waiting for operator ${package_name} to be upgraded"
     local success_message="Operator ${package_name} is upgraded to latest version in channel ${channel}"
