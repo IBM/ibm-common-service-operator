@@ -1203,6 +1203,15 @@ spec:
             inheritedMetadata:
               labels:
                 foundationservices.cloudpak.ibm.com: cs-db
+            description:
+              templatingValueFrom:
+                objectRef:
+                  apiVersion: v1
+                  kind: Secret
+                  name: postgresql-operator-controller-manager-config
+                  path: .metadata.annotations.ibm-license-key-applied
+                  namespace: {{ .OperatorNs }}
+                required: true
             bootstrap:
               initdb:
                 database: cloudpak
