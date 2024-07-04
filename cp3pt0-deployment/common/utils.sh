@@ -117,6 +117,7 @@ function wait_for_condition() {
     local wait_message=$4
     local success_message=$5
     local error_message=$6
+    local debug_condition=${7:-}
 
     info "${wait_message}"
     while true; do
@@ -130,6 +131,10 @@ function wait_for_condition() {
         result=$(eval "${condition}")
 
         if [[ -z "${result}" ]]; then
+            if [[ ! -z "${debug_condition}" ]]; then
+                debug "${debug_condition} -> \n$(eval "${debug_condition}")\n"
+            fi
+
             info "RETRYING: ${wait_message} (${retries} left)"
             retries=$(( retries - 1 ))
         else
@@ -275,6 +280,8 @@ function wait_for_csv() {
     local namespace=$1
     local package_name=$2
     local condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${package_name}.${namespace}='' -n ${namespace} -o yaml -o jsonpath='{.items[*].status.installedCSV}'"
+    local debug_condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${package_name}.${namespace}='' -n ${namespace} -o jsonpath='{.items[*].status.conditions}'"
+    
     local retries=180
     local sleep_time=10
     local total_time_mins=$(( sleep_time * retries / 60))
@@ -282,7 +289,7 @@ function wait_for_csv() {
     local success_message="Operator ${package_name} CSV in namespace ${namespace} is bound to Subscription"
     local error_message="Timeout after ${total_time_mins} minutes waiting for ${package_name} CSV in namespace ${namespace} to be bound to Subscription"
 
-    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}" "${debug_condition}"
 }
 
 function wait_for_service_account() {
@@ -482,6 +489,7 @@ function wait_for_operator_upgrade() {
     local channel=$3
     local install_mode=$4
     local condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${package_name}.${namespace}='' -n ${namespace} -o yaml -o jsonpath='{.items[*].status.installedCSV}' | grep -w $channel"
+    local debug_condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${package_name}.${namespace}='' -n ${namespace} -o jsonpath='{.items[*].status.conditions}'"
 
     local retries=120
     local sleep_time=20
@@ -503,7 +511,7 @@ function wait_for_operator_upgrade() {
         error_message="Timeout after ${total_time_mins} minutes waiting for operator ${package_name} to be upgraded \nInstallPlan is not manually approved yet"
     fi
 
-    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}" "${debug_condition}"
 }
 
 function wait_for_cs_webhook() {
