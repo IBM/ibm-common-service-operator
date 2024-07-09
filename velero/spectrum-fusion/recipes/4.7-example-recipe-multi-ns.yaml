@@ -516,3 +516,16 @@ spec:
         - group: zen-deployment
         - hook: zen5-deployment/podReady
         - hook: zen5-data/restore
+    - failOn: any-error
+      name: restore-cs-db
+      sequence:
+        - hook: common-service-db-check/podReady
+        - group: cs-db-pre-deploy
+        - group: cs-db-volume
+        - group: cs-db-deployment
+        - hook: cs-db-deployment/podReady
+        - hook: platform-identity-management/podReady
+        - hook: platform-auth-service/podReady
+        - hook: platform-identity-provider/podReady
+        - hook: cs-db-data/restore
+    

@@ -1,0 +1,52 @@
+apiVersion: data-protection.isf.ibm.com/v1alpha1
+kind: Restore
+metadata:
+  name: test-add-workflow-to-existing-recipe
+  namespace: ibm-spectrum-fusion-ns
+  finalizers:
+    - restore
+  labels:
+    dp.isf.ibm.com/application-name: cs-application
+    dp.isf.ibm.com/backuppolicy-name: cs-backup-policy
+    dp.isf.ibm.com/backupstoragelocation-name: luztest
+    dp.isf.ibm.com/provider-name: isf-backup-restore
+spec:
+  backup: cs-application-cs-backup-policy-apps.luztest2.cp.fyre.ibm.com-202406261727
+  overwrite: true
+  workflow: restore-cs-db
+  objectsToRestore:
+    RESOURCES:
+      - ALL
+    v1/persistentvolumeclaim:
+      - cs-serv/cs-db-backup-pvc
+  targetCluster: apps.luztestrestore.cp.fyre.ibm.com
+
+
+apiVersion: data-protection.isf.ibm.com/v1alpha1
+kind: Restore
+metadata:
+  name: july3-update-recipe-to-remove-clusterscope-test2
+  namespace: ibm-spectrum-fusion-ns
+  finalizers:
+    - restore
+  labels:
+    dp.isf.ibm.com/backupstoragelocation-name: luztest
+    dp.isf.ibm.com/provider-name: isf-backup-restore
+spec:
+  backup: cs-application-cs-backup-policy-apps.luztest2.cp.fyre.ibm.com-202407021431
+  recipe:
+    name: cs-db-sync-recipe
+    namespace: ibm-spectrum-fusion-ns
+    apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+    kind: Recipe
+  objectsToRestore:
+    RESOURCES:
+      - deployments
+      - serviceaccount
+      - role
+      - rolebinding
+      - configmaps
+    v1/persistentvolumeclaim:
+      - cs-serv/cs-db-backup-pvc
+  targetCluster: apps.luztestrestore.cp.fyre.ibm.com
+  skipExistingPVC: false
