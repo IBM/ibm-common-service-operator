@@ -205,7 +205,7 @@ function deploy_resources(){
     if [[ $ZENSERVICE != "" ]]; then
       exists=$(oc get zenservice $ZENSERVICE -n $TARGET_NAMESPACE --no-headers --ignore-not-found)
       if [[ $exists == "" ]]; then
-        error "Zenservice $ZENSERVICE not found in namespace $TARGET_NAMESPACE. Make sure the zenservice is deployed to the target namespace $TARGET_NAMESPACE or change the namespace used."
+        warning "Zenservice $ZENSERVICE not found in namespace $TARGET_NAMESPACE. Make sure the zenservice is deployed to the target namespace $TARGET_NAMESPACE or change the namespace used."
       else
         info "Creating Zen Backup/Restore resources in namespace $TARGET_NAMESPACE."
         
@@ -226,10 +226,12 @@ function deploy_resources(){
         sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" tmp/zen/zen5-rolebinding.yaml
         sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" tmp/zen/zen5-sa.yaml
         sed -i -E "s/<zenservice namespace>/$TARGET_NAMESPACE/" tmp/zen/zen5-br-scripts-cm.yaml
-        oc apply -f tmp/zen -n $TARGET_NAMESPACE || error "Unable to deploy resources for Zen 5."      
+        oc apply -f tmp/zen -n $TARGET_NAMESPACE || error "Unable to deploy resources for Zen 5."   
+        success "Resources to backup Zen deployed in namespace $TARGET_NAMESPACE."
       fi
+    else
+      warning "No zenservice found in namespace $TARGET_NAMESPACE. Skipping."
     fi
-    success "Resources to backup Zen deployed in namespace $TARGET_NAMESPACE."
   fi
 
   #deploy zen 4 resources
