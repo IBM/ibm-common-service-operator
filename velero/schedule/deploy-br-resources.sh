@@ -306,8 +306,8 @@ function deploy_resources(){
 
     if [[ $TETHERED_NS != "" ]]; then
       for ns in ${TETHERED_NS//,/ }; do
-        sed -i -E "s/<services or tethered namespace>/$ns/" tmp/cpfs-util-resources/cpfs-util-serv-tethered-role.yaml
-        sed -i -E "s/<services or tethered namespace>/$ns/" tmp/cpfs-util-resources/cpfs-util-serv-tethered-rolebinding.yaml
+        sed -i -E "s/<services or tethered namespace>/$ns/" tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-role.yaml
+        sed -i -E "s/<services or tethered namespace>/$ns/" tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml
       done
     fi
     oc apply -f tmp/cpfs-util-resources || error "Unable to deploy resources for CPFS Util."
