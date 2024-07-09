@@ -305,7 +305,6 @@ function deploy_resources(){
     sed -i -E "s/<services or tethered namespace>/$TARGET_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job.yaml
-    oc patch job setup-tenant-job -n $OPERATOR_NAMESPACE --type='json' -p='[{"op": "replace", "path": "/spec/suspend", "value": "true"}]'
 
     if [[ $TETHERED_NS != "" ]]; then
       for ns in ${TETHERED_NS//,/ }; do
@@ -316,6 +315,7 @@ function deploy_resources(){
       done
     fi
     oc apply -f tmp/cpfs-util-resources || error "Unable to deploy resources for CPFS Util."
+    oc patch job setup-tenant-job -n $OPERATOR_NAMESPACE --type='json' -p='[{"op": "replace", "path": "/spec/suspend", "value": "true"}]'
     success "CPFS Util resources deployed in namespace $OPERATOR_NAMESPACE."
   fi
 
