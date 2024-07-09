@@ -315,7 +315,7 @@ function deploy_resources(){
       done
     fi
     oc apply -f tmp/cpfs-util-resources || error "Unable to deploy resources for CPFS Util."
-    oc patch job setup-tenant-job -n $OPERATOR_NAMESPACE --type='json' -p='[{"op": "replace", "path": "/spec/suspend", "value": "true"}]'
+    oc patch job setup-tenant-job -n $OPERATOR_NAMESPACE -p '{"spec": { "suspend" : true }}'
     success "CPFS Util resources deployed in namespace $OPERATOR_NAMESPACE."
   fi
 
