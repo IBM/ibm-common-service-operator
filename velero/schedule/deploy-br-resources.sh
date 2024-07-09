@@ -295,7 +295,6 @@ function deploy_resources(){
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/cpfs-util-rolebinding.yaml
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/cpfs-util-sa.yaml
     
-    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job.yaml
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job-configmap.yaml
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job-pvc.yaml
     sed -i -E "s/<storage class>/$STORAGE_CLASS/" tmp/cpfs-util-resources/setup-tenant-job-pvc.yaml
@@ -305,6 +304,8 @@ function deploy_resources(){
     sed -i -E "s/<services or tethered namespace>/$TARGET_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-role.yaml
     sed -i -E "s/<services or tethered namespace>/$TARGET_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job.yaml
+    oc patch job setup-tenant-job -n $OPERATOR_NAMESPACE --type='json' -p='[{"op": "replace", "path": "/spec/suspend", "value": "true"}]'
 
     if [[ $TETHERED_NS != "" ]]; then
       for ns in ${TETHERED_NS//,/ }; do
@@ -383,6 +384,20 @@ function cleanup() {
     oc delete cm zen4-br-configmap -n $TARGET_NAMESPACE --ignore-not-found
     success "Zen 4 BR resources cleaned up."
   fi
+
+  #clean up util resources
+  if [[ $UTIL == "true" ]]; then
+    info "Clean up Utility BR resources..."
+    oc delete deploy cpfs-util -n $OPERATOR_NAMESPACE && oc delete role cpfs-util-role -n $OPERATOR_NAMESPACE && oc delete rolebinding cpfs-util-rolebinding -n $OPERATOR_NAMESPACE && oc delete sa cpfs-util-sa -n $OPERATOR_NAMESPACE
+    oc delete clusterrole cpfs-util-cluster-role && oc delete clusterrolebinding cpfs-util-cluster-rolebinding
+    oc delete cm setup-tenant-job-configmap -n $OPERATOR_NAMESPACE && oc delete role setup-tenant-job-role -n $OPERATOR_NAMESPACE && oc delete rolebdining setup-tenant-job-rolebinding -n $OPERATOR_NAMESPACE && oc delete sa setup-tenant-job-sa -n $OPERATOR_NAMESPACE && oc delete job setup-tenant-job -n $OPERATOR_NAMESPACE && oc delete pvc setup-tenant-job-pvc -n $OPERATOR_NAMESPACE
+    if [[ $TETHERED_NS != "" ]]; then
+      for ns in ${TETHERED_NS//,/ }; do
+        oc delete role setup-tenant-job-role -n $ns && oc delete rolebinding setup-tenant-job-rolebinding -n $ns
+      done
+    fi
+  fi
+
   
   success "BR resources succesfully removed from namespace $TARGET_NAMESPACE."
 }
