@@ -309,8 +309,10 @@ function deploy_resources(){
 
     if [[ $TETHERED_NS != "" ]]; then
       for ns in ${TETHERED_NS//,/ }; do
-        sed -i -E "s/<services or tethered namespace>/$ns/" tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-role.yaml
-        sed -i -E "s/<services or tethered namespace>/$ns/" tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml
+        cp ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-serv-tethered-role.yaml tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-role-$ns.yaml
+        cp ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding-$ns.yaml
+        sed -i -E "s/<services or tethered namespace>/$ns/" tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-role-$ns.yaml
+        sed -i -E "s/<services or tethered namespace>/$ns/" tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding-$ns.yaml
       done
     fi
     oc apply -f tmp/cpfs-util-resources || error "Unable to deploy resources for CPFS Util."
@@ -390,7 +392,7 @@ function cleanup() {
     info "Clean up Utility BR resources..."
     oc delete deploy cpfs-util -n $OPERATOR_NAMESPACE && oc delete role cpfs-util-role -n $OPERATOR_NAMESPACE && oc delete rolebinding cpfs-util-rolebinding -n $OPERATOR_NAMESPACE && oc delete sa cpfs-util-sa -n $OPERATOR_NAMESPACE
     oc delete clusterrole cpfs-util-cluster-role && oc delete clusterrolebinding cpfs-util-cluster-rolebinding
-    oc delete cm setup-tenant-job-configmap -n $OPERATOR_NAMESPACE && oc delete role setup-tenant-job-role -n $OPERATOR_NAMESPACE && oc delete rolebdining setup-tenant-job-rolebinding -n $OPERATOR_NAMESPACE && oc delete sa setup-tenant-job-sa -n $OPERATOR_NAMESPACE && oc delete job setup-tenant-job -n $OPERATOR_NAMESPACE && oc delete pvc setup-tenant-job-pvc -n $OPERATOR_NAMESPACE
+    oc delete cm setup-tenant-job-configmap -n $OPERATOR_NAMESPACE && oc delete role setup-tenant-job-role -n $OPERATOR_NAMESPACE && oc delete rolebinding setup-tenant-job-rolebinding -n $OPERATOR_NAMESPACE && oc delete sa setup-tenant-job-sa -n $OPERATOR_NAMESPACE && oc delete job setup-tenant-job -n $OPERATOR_NAMESPACE && oc delete pvc setup-tenant-job-pvc -n $OPERATOR_NAMESPACE
     if [[ $TETHERED_NS != "" ]]; then
       for ns in ${TETHERED_NS//,/ }; do
         oc delete role setup-tenant-job-role -n $ns && oc delete rolebinding setup-tenant-job-rolebinding -n $ns
