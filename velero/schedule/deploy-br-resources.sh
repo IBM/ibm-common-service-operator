@@ -287,8 +287,6 @@ function deploy_resources(){
     cp ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-sa.yaml tmp/cpfs-util-resources/setup-tenant-job-sa.yaml
     cp ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-serv-tethered-role.yaml tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-role.yaml
     cp ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml
-    cp ../spectrum-fusion/cpfs-util-resources/cpfs-util-serv-tethered-role.yaml tmp/cpfs-util-resources/cpfs-util-serv-tethered-role.yaml
-    cp ../spectrum-fusion/cpfs-util-resources/cpfs-util-serv-tethered-rolebinding.yaml tmp/cpfs-util-resources/cpfs-util-serv-tethered-rolebinding.yaml
 
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/cpfs-util-deployment.yaml
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/cpfs-util-role.yaml
