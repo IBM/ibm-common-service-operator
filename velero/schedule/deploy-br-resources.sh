@@ -274,7 +274,7 @@ function deploy_resources(){
     
     rm -rf tmp/cpfs-util-resources
     mkdir tmp/cpfs-util-resources
-    cp ../spectrum-fusion/cpfs-util-resources/cpfs-util-deployment.yaml tmp/cpfs-utils-resources/cpfs-util-deployment.yaml
+    cp ../spectrum-fusion/cpfs-util-resources/cpfs-util-deployment.yaml tmp/cpfs-util-resources/cpfs-util-deployment.yaml
     cp ../spectrum-fusion/cpfs-util-resources/cpfs-util-role.yaml tmp/cpfs-util-resources/cpfs-util-role.yaml
     cp ../spectrum-fusion/cpfs-util-resources/cpfs-util-rolebinding.yaml tmp/cpfs-util-resources/cpfs-util-rolebinding.yaml
     cp ../spectrum-fusion/cpfs-util-resources/cpfs-util-sa.yaml tmp/cpfs-util-resources/cpfs-util-sa.yaml
