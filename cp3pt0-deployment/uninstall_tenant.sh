@@ -376,7 +376,7 @@ function cleanup_cs_control() {
             # cleanup namespaceScope in Control namespace
             cleanup_NamespaceScope $CONTROL_NS
             # cleanup webhook
-            cleanup_webhook $CONTROL_NS "ALL"
+            cleanup_webhook $CONTROL_NS ""
             # cleanup secretshare
             cleanup_secretshare $CONTROL_NS ""
             # cleanup crossplane    
