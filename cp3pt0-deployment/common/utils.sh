@@ -997,7 +997,7 @@ function cleanup_webhook() {
     local control_ns=$1
     local nss_list=${2:-""}
     local resource_types=("podpresets.operator.ibm.com")
-    if [[ "${nss_list}" == "" ]]; then
+    if [[ "${nss_list}" == "ALL" ]]; then
         delete_resources resource_types[@]
     else
         for ns in ${nss_list//,/ }
@@ -1024,7 +1024,7 @@ function cleanup_secretshare() {
     local control_ns=$1
     local nss_list=${2:-""}
     local resource_types=("secretshare")
-    if [[ "${nss_list}" == "" ]]; then
+    if [[ "${nss_list}" == "ALL" ]]; then
         delete_resources resource_types[@]
     else
         for ns in ${nss_list//,/ }

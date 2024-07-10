@@ -33,7 +33,7 @@ function main() {
     cleanup_NamespaceScope $CONTROL_NS
 
     # cleanup webhookc
-    cleanup_webhook $CONTROL_NS ""
+    cleanup_webhook $CONTROL_NS "ALL"
     
     # cleanup secretshare
     cleanup_secretshare $CONTROL_NS ""
