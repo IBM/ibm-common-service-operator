@@ -349,7 +349,7 @@ function deploy_resources(){
     sed -i -E "s/<storage class>/$STORAGE_CLASS/" tmp/license_service_reporter/lsr-backup-pvc.yaml
     sed -i -E "s/<lsr instance namespace>/$LSR_NAMESPACE/" tmp/license_service_reporter/lsr-role.yaml
     sed -i -E "s/<lsr instance namespace>/$LSR_NAMESPACE/" tmp/license_service_reporter/lsr-rolebinding.yaml
-    sed -i -E "s/<lsr instance  namespace>/$LSR_NAMESPACE/" tmp/license_service_reporter/lsr-sa.yaml
+    sed -i -E "s/<lsr instance namespace>/$LSR_NAMESPACE/" tmp/license_service_reporter/lsr-sa.yaml
     sed -i -E "s/<lsr namespace>/$LSR_NAMESPACE/" tmp/license_service_reporter/lsr-br-scripts-cm.yaml
     oc apply -f tmp/license_service_reporter -n $LSR_NAMESPACE || error "Unable to deploy resources for License Service Reporter."
     success "Resources to backup License Service Reporter deployed in namespace $LSR_NAMESPACE."
