@@ -21,6 +21,7 @@ IM="false"
 KEYCLOAK="false"
 MONGO="false"
 UTIL="false"
+LSR="false"
 SELECTED="false"
 
 function main() {
@@ -48,6 +49,10 @@ function parse_arguments() {
       shift
       TETHERED_NS=$1
       ;;
+    --lsr-ns)
+      shift
+      LSR_NAMESPACE=$1
+      ;;
     --zen)
       ZEN="true"
       SELECTED="true"
@@ -66,6 +71,10 @@ function parse_arguments() {
       ;;
     --mongo)
       MONGO="true"
+      SELECTED="true"
+      ;;
+    --lsr)
+      LSR="true"
       SELECTED="true"
       ;;
     --util)
@@ -98,6 +107,9 @@ function parse_arguments() {
   if [[ $UTIL == "true" ]] && [[ $OPERATOR_NAMESPACE == "" ]]; then
     error "CPFS Util selected but no operator namespace provided. Please re-run script with --operator-ns parameter defined."
   fi
+  if [[ $LSR == "true" ]] && [[ $LSR_NAMESPACE == "" ]]; then
+    error "License Service Reporter selected but no namespace provided. Please re-run script with --lsr-ns parameter defined."
+  fi
   if [[ $ZEN == "true" && $ZEN4 == "true" ]]; then
     error "Cannot select --zen and --zen4 on the same run of the script. Please verify zen version in the namespace $TARGET_NAMESPACE and select the appropriate option."
   fi
@@ -108,19 +120,20 @@ function parse_arguments() {
 }
 
 function print_usage() {
-  echo "Usage: ${script_name} --<service> --operator-ns --services-ns [OPTIONS]..."
+  echo "Usage: ${script_name} --<service> --operator-ns <operator ns> --services-ns <services ns> [OPTIONS]..."
   echo ""
   echo "Deploy the necessary resources for Backup of Keycloak."
   echo ""
   echo "Options:"
-  echo "   --operator-ns string                           Optional. Operator namespace for a given CPFS installation. Only required if --util specified"
-  echo "   --services-ns string                           Required. Namespace where IM EDB, IM Mongo, Zen, or Keycloak operands are installed. If installed in different namespaces, script will need to be run separately. Optional if it is the same as --operator-ns."
-  echo "   --tethered-ns string                           Optional. Comma-delimited list of namespaces attached to a given CPFS install. Should include any namespace from a given tenant in the common-service-maps cm that are not the --operator-ns or the --services-ns. Only required when --util specified."
-  echo "   --im, --mongo, --keycloak, --zen, --zen4       Required. Choose which component(s) to deploy backup/restore resources for to the target namespace. At least one is required. Multiple can be specified but only one of --zen or --zen4 can be chosen."
-  echo "   --util                                         Optional. Deploy the CPFS Util job for use in SOD topologies. If this option is selected, --operator-ns and --services-ns are both required."
-  echo "   --storage-class string                         Optional. Storage class to use for backup/restore resources. Default value is cluster's default storage class."
-  echo "   -c, --cleanup                                  Optional. Automated cleanup of backup/restore resources. Will run cleanup instead of deployment logic."
-  echo "   -h, --help                                     Print usage information"
+  echo " --operator-ns string                             Optional. Operator namespace for a given CPFS installation. Only required if --util specified"
+  echo " --services-ns string                             Required. Namespace where IM EDB, IM Mongo, Zen, or Keycloak operands are installed. If installed in different namespaces, script will need to be run separately. Optional if it is the same as --operator-ns."
+  echo " --tethered-ns string                             Optional. Comma-delimited list of namespaces attached to a given CPFS install. Should include any namespace from a given tenant in the common-service-maps cm that are not the --operator-ns or the --services-ns. Only required when --util specified."
+  echo " --lsr-ns string                                  Optional. Namespace for the License Service Reporter install. Required if --lsr specified."
+  echo " --im, --mongo, --keycloak, --zen, --zen4, --lsr  Required. Choose which component(s) to deploy backup/restore resources for to the target namespace. At least one is required. Multiple can be specified but only one of --zen or --zen4 can be chosen."
+  echo " --util                                           Optional. Deploy the CPFS Util job for use in SOD topologies. If this option is selected, --operator-ns and --services-ns are both required."
+  echo " --storage-class string                           Optional. Storage class to use for backup/restore resources. Default value is cluster's default storage class."
+  echo " -c, --cleanup                                    Optional. Automated cleanup of backup/restore resources. Will run cleanup instead of deployment logic."
+  echo " -h, --help                                       Print usage information"
   echo ""
 }
 
@@ -250,6 +263,29 @@ function deploy_resources(){
     success "CPFS Util resources deployed in namespace $OPERATOR_NAMESPACE."
   fi
 
+  #Deploy LSR resources
+  if [[ $LSR == "true" ]]; then
+    info "Creating License Service Reporter Backup/Restore resources in namespace $LSR_NAMESPACE."
+    rm -rf tmp/license_service_reporter/
+    mkdir tmp/license_service_reporter
+    cp license_service_reporter/lsr-backup-deployment.yaml tmp/license_service_reporter/lsr-backup-deployment.yaml
+    cp license_service_reporter/lsr-backup-pvc.yaml tmp/license_service_reporter/lsr-backup-pvc.yaml
+    cp license_service_reporter/lsr-role.yaml tmp/license_service_reporter/lsr-role.yaml
+    cp license_service_reporter/lsr-rolebinding.yaml tmp/license_service_reporter/lsr-rolebinding.yaml
+    cp license_service_reporter/lsr-sa.yaml tmp/license_service_reporter/lsr-sa.yaml
+    cp license_service_reporter/lsr-br-scripts-cm.yaml tmp/license_service_reporter/lsr-br-scripts-cm.yaml
+    
+    sed -i -E "s/<lsr namespace>/$LSR_NAMESPACE/" tmp/license_service_reporter/lsr-backup-deployment.yaml
+    sed -i -E "s/<lsr namespace>/$LSR_NAMESPACE/" tmp/license_service_reporter/lsr-backup-pvc.yaml
+    sed -i -E "s/<storage class>/$STORAGE_CLASS/" tmp/license_service_reporter/lsr-backup-pvc.yaml
+    sed -i -E "s/<lsr namespace>/$LSR_NAMESPACE/" tmp/license_service_reporter/lsr-role.yaml
+    sed -i -E "s/<lsr namespace>/$LSR_NAMESPACE/" tmp/license_service_reporter/lsr-rolebinding.yaml
+    sed -i -E "s/<lsr namespace>/$LSR_NAMESPACE/" tmp/license_service_reporter/lsr-sa.yaml
+    sed -i -E "s/<lsr namespace>/$LSR_NAMESPACE/" tmp/license_service_reporter/lsr-br-scripts-cm.yaml
+    oc apply -f tmp/license_service_reporter -n $LSR_NAMESPACE || error "Unable to deploy resources for License Service Reporter."
+    success "Resources to backup License Service Reporter deployed in namespace $LSR_NAMESPACE."
+  fi
+
 }
 
 function cleanup() {
@@ -316,6 +352,18 @@ function cleanup() {
     oc delete pvc zen4-backup-pvc -n $TARGET_NAMESPACE --ignore-not-found
     oc delete cm zen4-br-configmap -n $TARGET_NAMESPACE --ignore-not-found
     success "Zen 4 BR resources cleaned up."
+  fi
+
+  #clean up LSR resources
+  if [[ $LSR == "true" ]]; then
+    info "Clean up License Service Reporter resources..."
+    oc delete deploy lsr-backup -n $LSR_NAMESPACE && oc delete role lsr-backup-role -n $LSR_NAMESPACE && oc delete rolebinding lsr-backup-rolebinding -n $LSR_NAMESPACE && oc delete sa lsr-backup-sa -n $LSR_NAMESPACE && oc delete cm lsr-br-configmap -n $LSR_NAMESPACE 
+    pod=$(oc get pod -n $LSR_NAMESPACE --no-headers --ignore-not-found | grep lsr-backup | awk '{print $1}' | tr "\n" " ")
+    if [[ $pod != "" ]]; then
+      oc delete pod $pod -n $LSR_NAMESPACE --ignore-not-found || warning "LSR backup pod not found, moving on."
+    fi
+    oc delete pvc lsr-backup-pvc -n $LSR_NAMESPACE
+    success "LSR BR resources cleaned up."
   fi
   
   success "BR resources succesfully removed from namespace $TARGET_NAMESPACE."
