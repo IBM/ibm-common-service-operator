@@ -544,9 +544,21 @@ roleRef:
 EOF
 
     title "Checking and authorizing NSS to all namespaces in tenant..."
-    for ns in $OPERATOR_NS $SERVICES_NS ${TETHERED_NS//,/ }; do
+    existing_ns=$(${OC} get nss common-service -n $OPERATOR_NS -o=jsonpath='{.spec.namespaceMembers}' | tr -d \" | tr -d [ | tr -d ])
+    for ns in ${existing_ns//,/ }; do
         if [[ $($OC get RoleBinding nss-managed-role-from-$OPERATOR_NS -n $ns 2>/dev/null) != "" ]] && [[ $($OC get Role nss-managed-role-from-$OPERATOR_NS -n $ns 2>/dev/null) != "" ]];then
-            info "Role and RoleBinding nss-managed-role-from-$OPERATOR_NS is already existed in $ns, skip creating\n"
+            if [ $MINIMAL_RBAC_ENABLED -eq 1 ]; then
+                debug1 "Overwriting existing Role nss-managed-role-from-$OPERATOR_NS in $ns\n"
+                local role=$(cat ${PREVIEW_DIR}/role.yaml | sed "s/ns_to_replace/$ns/g")
+                debug1 "$role"
+                echo ""
+                echo "$role" | ${OC_CMD} apply -f -
+                if [[ $? -ne 0 ]]; then
+                    error "Failed to update Role for NSS in namespace $ns, please check if user has proper permission\n"
+                fi
+            else
+                info "Role and RoleBinding nss-managed-role-from-$OPERATOR_NS is already existed in $ns, skip creating\n"
+            fi
         else
             debug1 "Creating following Role:\n"
             local role=$(cat ${PREVIEW_DIR}/role.yaml | sed "s/ns_to_replace/$ns/g")
