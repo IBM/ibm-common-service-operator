@@ -16,13 +16,8 @@ rules:
       - namespaces
   #cs db
   - verbs:
-      - create
       - get
       - delete
-      - watch
-      - update
-      - list
-      - patch
     apiGroups:
       - ''
       - batch
@@ -56,13 +51,8 @@ rules:
       - clusters
   #zen 5 permissions
   - verbs:
-      - create
       - get
       - delete
-      - watch
-      - update
-      - list
-      - patch
     apiGroups:
       - ''
       - batch

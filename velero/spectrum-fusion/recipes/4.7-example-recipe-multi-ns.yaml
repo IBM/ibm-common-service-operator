@@ -296,18 +296,6 @@ spec:
       selectResource: pod
       timeout: 1200
       type: check
-    - chks:
-        - condition: '{$.status.zenStatus} == {"Completed"}'
-          name: zenserviceReady
-          onError: fail
-          timeout: 1800
-      name: zen-check
-      nameSelector: test-zen
-      namespace: <service namespace>
-      onError: fail
-      selectResource: zen.cpd.ibm.com/v1/zenservice
-      timeout: 1800
-      type: check
     - labelSelector: foundationservices.cloudpak.ibm.com=cpfs-util-backup
       name: setup-tenant
       namespace: <operator namespace>
