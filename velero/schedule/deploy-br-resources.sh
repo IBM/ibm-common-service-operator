@@ -325,6 +325,7 @@ function deploy_resources(){
         cp ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding-$ns.yaml
         sed -i -E "s/<services or tethered namespace>/$ns/" tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-role-$ns.yaml
         sed -i -E "s/<services or tethered namespace>/$ns/" tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding-$ns.yaml
+        sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding-$ns.yaml
       done
     fi
     oc apply -f tmp/cpfs-util-resources || error "Unable to deploy resources for CPFS Util."

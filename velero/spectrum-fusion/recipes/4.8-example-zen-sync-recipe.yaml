@@ -106,7 +106,7 @@ spec:
           container: cpfs-util
           name: cleanup-zen-br-resources
           timeout: 600
-      selectResource: pod
+      selectResource: deployment
       type: exec
   workflows:
     - failOn: any-error

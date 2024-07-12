@@ -1,17 +1,19 @@
 apiVersion: data-protection.isf.ibm.com/v1alpha1
 kind: Restore
 metadata:
-  name: july3-update-recipe-to-remove-clusterscope-test2
+  name: zen-runtime-sync
   namespace: ibm-spectrum-fusion-ns
   finalizers:
     - restore
   labels:
-    dp.isf.ibm.com/backupstoragelocation-name: luztest
+    dp.isf.ibm.com/application-name: <application name>
+    dp.isf.ibm.com/backuppolicy-name: <backup policy name>
+    dp.isf.ibm.com/backupstoragelocation-name: <backup storage location>
     dp.isf.ibm.com/provider-name: isf-backup-restore
 spec:
-  backup: cs-application-cs-backup-policy-apps.luztest2.cp.fyre.ibm.com-202407021431
+  backup: <backup name>
   recipe:
-    name: cs-db-sync-recipe
+    name: zen-sync-recipe
     namespace: ibm-spectrum-fusion-ns
     apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
     kind: Recipe
@@ -23,6 +25,6 @@ spec:
       - rolebinding
       - configmaps
     v1/persistentvolumeclaim:
-      - cs-serv/cs-db-backup-pvc
-  targetCluster: apps.luztestrestore.cp.fyre.ibm.com
+      - <services namespace>/zen-backup-pvc
+  targetCluster: <target cluster>
   skipExistingPVC: false
