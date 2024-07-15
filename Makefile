@@ -150,7 +150,28 @@ else
 OPERATOR_SDK=$(shell which operator-sdk)
 endif
 
-check: lint-all ## Check all files lint error
+# Ensure that Go version and environment are correct
+check-go:
+	@echo "Checking Go version"
+	@go version
+	@echo "Checking GOSUMDB"
+	@echo "GOSUMDB: $(GOSUMDB)"
+
+# Test network connectivity to GOSUMDB
+test-network:
+	@echo "Testing network connectivity to GOSUMDB"
+	@ping -c 4 sum.golang.org
+
+# Clean module cache and go.sum, then tidy dependencies
+clean-mod:
+	@echo "Cleaning module cache"
+	@go clean -modcache
+	@echo "Removing go.sum"
+	@rm -f go.sum
+	@echo "Running go mod tidy"
+	@go mod tidy
+
+check: lint-all check-go test-network 
 	./common/scripts/lint-csv.sh
 
 code-dev: ## Run the default dev commands which are the go tidy, fmt, vet then execute the $ make code-gen
