@@ -315,7 +315,7 @@ function deploy_resources(){
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/cpfs-util-deployment.yaml
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/cpfs-util-role.yaml
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/cpfs-util-rolebinding.yaml
-    sed -i -E "s/services namespace>/$TARGET_NAMESPACE/" tmp/cpfs-util-resources/cpfs-util-services-role.yaml
+    sed -i -E "s/<services namespace>/$TARGET_NAMESPACE/" tmp/cpfs-util-resources/cpfs-util-services-role.yaml
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/cpfs-util-services-rolebinding.yaml
     sed -i -E "s/<services namespace>/$TARGET_NAMESPACE/" tmp/cpfs-util-resources/cpfs-util-services-rolebinding.yaml
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/cpfs-util-sa.yaml
