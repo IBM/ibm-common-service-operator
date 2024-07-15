@@ -453,12 +453,17 @@ function cleanup() {
     info "Clean up Utility BR resources..."
     oc delete deploy cpfs-util -n $OPERATOR_NAMESPACE --ignore-not-found && oc delete role cpfs-util-role -n $OPERATOR_NAMESPACE --ignore-not-found && oc delete rolebinding cpfs-util-rolebinding -n $OPERATOR_NAMESPACE --ignore-not-found && oc delete sa cpfs-util-sa -n $OPERATOR_NAMESPACE --ignore-not-found
     oc delete role cpfs-util-services-role --ignore-not-found -n $TARGET_NAMESPACE && oc delete rolebinding cpfs-util-services-rolebinding --ignore-not-found -n $TARGET_NAMESPACE
-    oc delete cm setup-tenant-job-configmap -n $OPERATOR_NAMESPACE --ignore-not-found && oc delete role setup-tenant-job-role -n $OPERATOR_NAMESPACE --ignore-not-found && oc delete rolebinding setup-tenant-job-rolebinding -n $OPERATOR_NAMESPACE --ignore-not-found && oc delete sa setup-tenant-job-sa -n $OPERATOR_NAMESPACE --ignore-not-found && oc delete job setup-tenant-job -n $OPERATOR_NAMESPACE --ignore-not-found && oc delete pvc setup-tenant-job-pvc -n $OPERATOR_NAMESPACE --ignore-not-found
+    oc delete cm setup-tenant-job-configmap -n $OPERATOR_NAMESPACE --ignore-not-found && oc delete role setup-tenant-job-role -n $OPERATOR_NAMESPACE --ignore-not-found && oc delete rolebinding setup-tenant-job-rolebinding -n $OPERATOR_NAMESPACE --ignore-not-found && oc delete sa setup-tenant-job-sa -n $OPERATOR_NAMESPACE --ignore-not-found && oc delete job setup-tenant-job -n $OPERATOR_NAMESPACE --ignore-not-found
     if [[ $TETHERED_NS != "" ]]; then
       for ns in ${TETHERED_NS//,/ }; do
         oc delete role setup-tenant-job-role -n $ns --ignore-not-found && oc delete rolebinding setup-tenant-job-rolebinding -n $ns --ignore-not-found
       done
     fi
+    pod=$(oc get pod -n $OPERATOR_NAMESPACE --no-headers --ignore-not-found | grep setup-tenant | awk '{print $1}' | tr "\n" " ")
+    if [[ $pod != "" ]]; then
+      oc delete pod $pod -n $OPERATOR_NAMESPACE --ignore-not-found || warning "Setup tenant pod not found, moving on."
+    fi
+    oc delete pvc setup-tenant-job-pvc -n $OPERATOR_NAMESPACE
     success "Utility BR resources cleaned up."
   fi
   
