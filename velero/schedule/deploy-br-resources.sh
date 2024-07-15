@@ -26,7 +26,7 @@ SELECTED="false"
 
 function main() {
   parse_arguments "$@"
-  if [ -d "tmp" ]; then
+  if [ ! -d "tmp" ]; then
     mkdir tmp
   fi
   if [[ $CLEANUP == "true" ]]; then
