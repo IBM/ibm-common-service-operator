@@ -299,6 +299,9 @@ function deploy_resources(){
     cp ../spectrum-fusion/cpfs-util-resources/cpfs-util-role.yaml tmp/cpfs-util-resources/cpfs-util-role.yaml
     cp ../spectrum-fusion/cpfs-util-resources/cpfs-util-rolebinding.yaml tmp/cpfs-util-resources/cpfs-util-rolebinding.yaml
     cp ../spectrum-fusion/cpfs-util-resources/cpfs-util-sa.yaml tmp/cpfs-util-resources/cpfs-util-sa.yaml
+    cp ../spectrum-fusion/cpfs-util-resources/cpfs-util-services-role.yaml tmp/cpfs-util-resources/cpfs-util-services-role.yaml
+    cp ../spectrum-fusion/cpfs-util-resources/cpfs-util-services-rolebinding.yaml tmp/cpfs-util-resources/cpfs-util-services-rolebinding.yaml
+    
 
     cp ../spectrum-fusion/cpfs-util-resources/setup-tenant-job.yaml tmp/cpfs-util-resources/setup-tenant-job.yaml
     cp ../spectrum-fusion/cpfs-util-resources/setup-tenant-job-configmap.yaml tmp/cpfs-util-resources/setup-tenant-job-configmap.yaml
@@ -312,6 +315,9 @@ function deploy_resources(){
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/cpfs-util-deployment.yaml
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/cpfs-util-role.yaml
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/cpfs-util-rolebinding.yaml
+    sed -i -E "s/services namespace>/$TARGET_NAMESPACE/" tmp/cpfs-util-resources/cpfs-util-services-role.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/cpfs-util-services-rolebinding.yaml
+    sed -i -E "s/<services namespace>/$TARGET_NAMESPACE/" tmp/cpfs-util-resources/cpfs-util-services-rolebinding.yaml
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/cpfs-util-sa.yaml
     
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job-configmap.yaml
@@ -446,7 +452,7 @@ function cleanup() {
   if [[ $UTIL == "true" ]]; then
     info "Clean up Utility BR resources..."
     oc delete deploy cpfs-util -n $OPERATOR_NAMESPACE --ignore-not-found && oc delete role cpfs-util-role -n $OPERATOR_NAMESPACE --ignore-not-found && oc delete rolebinding cpfs-util-rolebinding -n $OPERATOR_NAMESPACE --ignore-not-found && oc delete sa cpfs-util-sa -n $OPERATOR_NAMESPACE --ignore-not-found
-    oc delete clusterrole cpfs-util-cluster-role --ignore-not-found && oc delete clusterrolebinding cpfs-util-cluster-rolebinding --ignore-not-found
+    oc delete role cpfs-util-services-role --ignore-not-found -n $TARGET_NAMESPACE && oc delete rolebinding cpfs-util-services-rolebinding --ignore-not-found -n $TARGET_NAMESPACE
     oc delete cm setup-tenant-job-configmap -n $OPERATOR_NAMESPACE --ignore-not-found && oc delete role setup-tenant-job-role -n $OPERATOR_NAMESPACE --ignore-not-found && oc delete rolebinding setup-tenant-job-rolebinding -n $OPERATOR_NAMESPACE --ignore-not-found && oc delete sa setup-tenant-job-sa -n $OPERATOR_NAMESPACE --ignore-not-found && oc delete job setup-tenant-job -n $OPERATOR_NAMESPACE --ignore-not-found && oc delete pvc setup-tenant-job-pvc -n $OPERATOR_NAMESPACE --ignore-not-found
     if [[ $TETHERED_NS != "" ]]; then
       for ns in ${TETHERED_NS//,/ }; do
