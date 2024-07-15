@@ -27,11 +27,15 @@ SELECTED="false"
 function main() {
   parse_arguments "$@"
   if [[ $CLEANUP == "true" ]]; then
+    save_log "logs" "cleanup_log"
+    trap cleanup_log EXIT
     cleanup
   else
     if [[ -d "tmp" ]]; then
       mkdir tmp
     fi
+    save_log "logs" "deploy_log"
+    trap cleanup_log EXIT
     deploy_resources
   fi
 }
@@ -454,6 +458,36 @@ function cleanup() {
   
   success "BR resources succesfully removed from namespace $TARGET_NAMESPACE."
 }
+
+function save_log(){
+        local LOG_DIR="$BACKUP_DIR/$1"
+        LOG_FILE="$LOG_DIR/$2_$(date +'%Y%m%d%H%M%S').log"
+
+        if [[ ! -d $LOG_DIR ]]; then
+            mkdir -p "$LOG_DIR"
+        fi
+
+        # Create a named pipe
+        PIPE=$(mktemp -u)
+        mkfifo "$PIPE"
+
+        # Tee the output to both the log file and the terminal
+        tee "$LOG_FILE" < "$PIPE" &
+
+        # Redirect stdout and stderr to the named pipe
+        exec > "$PIPE" 2>&1
+
+        # Remove the named pipe
+        rm "$PIPE"
+    }
+
+    function cleanup_log() {
+        # Check if the log file already exists
+        if [[ -e $LOG_FILE ]]; then
+            # Remove ANSI escape sequences from log file
+            sed -E 's/\x1B\[[0-9;]+[A-Za-z]//g' "$LOG_FILE" > "$LOG_FILE.tmp" && mv "$LOG_FILE.tmp" "$LOG_FILE"
+        fi
+    }
 
 function msg() {
   printf '%b\n' "$1"
