@@ -29,7 +29,9 @@ function main() {
   if [[ $CLEANUP == "true" ]]; then
     cleanup
   else
-    mkdir tmp
+    if [[ -d "tmp" ]]; then
+      mkdir tmp
+    fi
     deploy_resources
   fi
 }
