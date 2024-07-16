@@ -13,6 +13,18 @@ rules:
       - update
       - watch
     apiGroups:
+      - apps
+    resources:
+      - deployments/status
+  - verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+    apiGroups:
       - ''
     resources:
       - configmaps
@@ -769,6 +781,10 @@ rules:
       - get
       - patch
       - update
+      - create
+      - delete
+      - list
+      - watch
     apiGroups:
       - core.ibmevents.ibm.com
     resources:
