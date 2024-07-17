@@ -11,7 +11,7 @@
 # ---------- Command arguments ----------
 
 set -o errtrace
-set -o errexit
+#set -o errexit
 
 CLEANUP="false"
 STORAGE_CLASS="default"
@@ -380,7 +380,11 @@ function cleanup() {
     if [[ $pod != "" ]]; then
       oc delete pod $pod -n $TARGET_NAMESPACE --ignore-not-found || warning "IM backup pod not found, moving on."
     fi
-    oc delete pvc cs-db-backup-pvc -n $TARGET_NAMESPACE --ignore-not-found
+    oc delete pvc cs-db-backup-pvc -n $TARGET_NAMESPACE --ignore-not-found --timeout=10s
+    if [ $? -ne 0 ]; then
+        info "Failed to delete pvc cs-db-backup-pvc in $TARGET_NAMESPACE, patching its finalizer to null..."
+        oc patch pvc cs-db-backup-pvc -n $TARGET_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+    fi
     oc delete cm cs-db-br-configmap -n $TARGET_NAMESPACE --ignore-not-found
     success "IM BR resources cleaned up."
   fi
@@ -393,7 +397,11 @@ function cleanup() {
     if [[ $pod != "" ]]; then
       oc delete pod $pod -n $TARGET_NAMESPACE --ignore-not-found || warning "IM backup pod not found, moving on."
     fi
-    oc delete pvc cs-mongodump -n $TARGET_NAMESPACE --ignore-not-found
+    oc delete pvc cs-mongodump -n $TARGET_NAMESPACE --ignore-not-found --timeout=10s
+    if [ $? -ne 0 ]; then
+        info "Failed to delete pvc cs-mongodump in $TARGET_NAMESPACE, patching its finalizer to null..."
+        oc patch pvc cs-mongodump -n $TARGET_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+    fi    
     success "IM BR resources cleaned up."
   fi
 
@@ -405,7 +413,11 @@ function cleanup() {
     if [[ $pod != "" ]]; then
       oc delete pod $pod -n $TARGET_NAMESPACE --ignore-not-found || warning "Keycloak backup pod not found, moving on."
     fi
-    oc delete pvc keycloak-backup-pvc -n $TARGET_NAMESPACE --ignore-not-found
+    oc delete pvc keycloak-backup-pvc -n $TARGET_NAMESPACE --ignore-not-found --timeout=10s
+    if [ $? -ne 0 ]; then
+        info "Failed to delete pvc keycloak-backup-pvc in $TARGET_NAMESPACE, patching its finalizer to null..."
+        oc patch pvc keycloak-backup-pvc -n $TARGET_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+    fi 
     oc delete cm keycloak-br-configmap -n $TARGET_NAMESPACE --ignore-not-found
     success "IM Mongo BR resources cleaned up."
   fi
@@ -418,7 +430,11 @@ function cleanup() {
     if [[ $pod != "" ]]; then
       oc delete pod $pod -n $TARGET_NAMESPACE --ignore-not-found || warning "Zen backup pod not found, moving on."
     fi
-    oc delete pvc zen5-backup-pvc -n $TARGET_NAMESPACE --ignore-not-found
+    oc delete pvc zen5-backup-pvc -n $TARGET_NAMESPACE --ignore-not-found --timeout=10s
+    if [ $? -ne 0 ]; then
+        info "Failed to delete pvc zen5-backup-pvc in $TARGET_NAMESPACE, patching its finalizer to null..."
+        oc patch pvc zen5-backup-pvc -n $TARGET_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+    fi 
     oc delete cm zen5-br-configmap -n $TARGET_NAMESPACE --ignore-not-found
     success "Zen BR resources cleaned up."
   fi
@@ -431,7 +447,11 @@ function cleanup() {
     if [[ $pod != "" ]]; then
       oc delete pod $pod -n $TARGET_NAMESPACE --ignore-not-found || warning "Zen 4 backup pod not found, moving on."
     fi
-    oc delete pvc zen4-backup-pvc -n $TARGET_NAMESPACE --ignore-not-found
+    oc delete pvc zen4-backup-pvc -n $TARGET_NAMESPACE --ignore-not-found --timeout=10s
+    if [ $? -ne 0 ]; then
+        info "Failed to delete pvc zen4-backup-pvc in $TARGET_NAMESPACE, patching its finalizer to null..."
+        oc patch pvc zen4-backup-pvc -n $TARGET_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+    fi 
     oc delete cm zen4-br-configmap -n $TARGET_NAMESPACE --ignore-not-found
     success "Zen 4 BR resources cleaned up."
   fi
@@ -444,7 +464,11 @@ function cleanup() {
     if [[ $pod != "" ]]; then
       oc delete pod $pod -n $LSR_NAMESPACE --ignore-not-found || warning "LSR backup pod not found, moving on."
     fi
-    oc delete pvc lsr-backup-pvc -n $LSR_NAMESPACE
+    oc delete pvc lsr-backup-pvc -n $LSR_NAMESPACE --ignore-not-found --timeout=10s
+    if [ $? -ne 0 ]; then
+        info "Failed to delete pvc lsr-backup-pvc in $LSR_NAMESPACE, patching its finalizer to null..."
+        oc patch pvc lsr-backup-pvc -n $LSR_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+    fi 
     success "LSR BR resources cleaned up."
   fi
 
@@ -463,7 +487,11 @@ function cleanup() {
     if [[ $pod != "" ]]; then
       oc delete pod $pod -n $OPERATOR_NAMESPACE --ignore-not-found || warning "Setup tenant pod not found, moving on."
     fi
-    oc delete pvc setup-tenant-job-pvc -n $OPERATOR_NAMESPACE
+    oc delete pvc setup-tenant-job-pvc -n $OPERATOR_NAMESPACE --ignore-not-found --timeout=10s
+    if [ $? -ne 0 ]; then
+        info "Failed to delete pvc setup-tenant-job-pvc in $OPERATOR_NAMESPACE, patching its finalizer to null..."
+        oc patch pvc setup-tenant-job-pvc -n $OPERATOR_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+    fi 
     success "Utility BR resources cleaned up."
   fi
   
