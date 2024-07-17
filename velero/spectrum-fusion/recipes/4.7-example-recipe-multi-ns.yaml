@@ -227,6 +227,7 @@ spec:
       name: zen-crd
       type: resource
     - backupRef: zen-br-resources
+      labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
       includeClusterResources: true
       includedResourceTypes:
         - serviceaccount
@@ -237,6 +238,7 @@ spec:
       type: resource
     - backupRef: zen-br-resources
       includeClusterResources: true
+      labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
       includedResourceTypes:
         - deployments
       name: zen-deployment
@@ -256,6 +258,7 @@ spec:
       type: resource
     - backupRef: cs-db-br-resources
       includeClusterResources: true
+      labelSelector: foundationservices.cloudpak.ibm.com=cs-db-data
       includedResourceTypes:
         - serviceaccount
         - role

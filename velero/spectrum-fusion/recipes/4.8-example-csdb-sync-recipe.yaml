@@ -42,7 +42,7 @@ spec:
           timeout: 600
       labelSelector: 'k8s.enterprisedb.io/cluster=common-service-db,role=primary'
       name: common-service-db-check
-      namespace: <services namespace>
+      namespace: <service namespace>
       onError: fail
       selectResource: pod
       timeout: 600
@@ -54,7 +54,7 @@ spec:
           timeout: 600
       labelSelector: foundationservices.cloudpak.ibm.com=cs-db-data
       name: cs-db-deployment
-      namespace: <services namespace>
+      namespace: <service namespace>
       onError: fail
       selectResource: pod
       timeout: 600
@@ -66,7 +66,7 @@ spec:
           timeout: 600
       name: platform-identity-provider
       nameSelector: platform-identity-provider
-      namespace: <services namespace>
+      namespace: <service namespace>
       onError: fail
       selectResource: deployment
       timeout: 600
@@ -78,7 +78,7 @@ spec:
           timeout: 600
       name: platform-auth-service
       nameSelector: platform-auth-service
-      namespace: <services namespace>
+      namespace: <service namespace>
       onError: fail
       selectResource: deployment
       timeout: 600
@@ -90,18 +90,18 @@ spec:
           timeout: 600
       name: platform-identity-management
       nameSelector: platform-identity-management
-      namespace: <services namespace>
+      namespace: <service namespace>
       onError: fail
       selectResource: deployment
       timeout: 600
       type: check
     - labelSelector: foundationservices.cloudpak.ibm.com=cs-db-data
       name: cs-db-data
-      namespace: <services namespace>
+      namespace: <service namespace>
       onError: fail
       ops:
         - command: |
-            ["/bin/bash", "-c", "/cs-db/br_cs-db.sh backup <services namespace>"]
+            ["/bin/bash", "-c", "/cs-db/br_cs-db.sh backup <service namespace>"]
           container: cs-db-br
           name: cs-db-backup-pre
           timeout: 600
@@ -111,7 +111,7 @@ spec:
           name: cs-db-backup-post
           timeout: 600
         - command: |
-            ["/bin/bash", "-c", "sleep 120 && /cs-db/br_cs-db.sh restore <services namespace>"]
+            ["/bin/bash", "-c", "sleep 120 && /cs-db/br_cs-db.sh restore <service namespace>"]
           container: cs-db-br
           name: restore
           timeout: 2000
@@ -123,7 +123,7 @@ spec:
       onError: fail
       ops:
         - command: |
-            ["/bin/bash", "-c", "/scripts/velero/schedule/deploy-br-resources.sh -c --im --services-ns <services namespace>"]
+            ["/bin/bash", "-c", "/scripts/velero/schedule/deploy-br-resources.sh -c --im --services-ns <service namespace>"]
           container: cpfs-util
           name: cleanup-cs-db-br-resources
           timeout: 600

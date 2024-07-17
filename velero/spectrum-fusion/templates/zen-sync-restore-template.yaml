@@ -25,6 +25,6 @@ spec:
       - rolebinding
       - configmaps
     v1/persistentvolumeclaim:
-      - <services namespace>/zen-backup-pvc
+      - <services namespace>/zen5-backup-pvc
   targetCluster: <target cluster>
   skipExistingPVC: false
