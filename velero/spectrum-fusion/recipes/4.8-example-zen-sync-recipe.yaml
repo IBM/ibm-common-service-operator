@@ -68,7 +68,7 @@ spec:
       timeout: 1200
       type: check
     - chks:
-        - condition: '{$.status.phase} == {"Running"}'
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
           name: podReady
           onError: fail
           timeout: 600
@@ -76,7 +76,7 @@ spec:
       name: zen5-deployment
       namespace: <service namespace>
       onError: fail
-      selectResource: pod
+      selectResource: deployment
       timeout: 600
       type: check
     - labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
@@ -94,19 +94,19 @@ spec:
           container: zen5-backup-job
           name: restore
           timeout: 3600
-      selectResource: pod
+      selectResource: deployment
       type: exec
     - labelSelector: foundationservices.cloudpak.ibm.com=cpfs-util-backup
       name: cpfs-util
-      namespace: cs-op
+      namespace: <operator namespace>
       onError: fail
       ops:
         - command: |
-            ["/bin/bash", "-c", "./scripts/velero/schedule/deploy-br-resources.sh -c --zen --target-ns cs-serv"]
+            ["/bin/bash", "-c", "/scripts/velero/schedule/deploy-br-resources.sh -c --zen --services-ns <service namespace>"]
           container: cpfs-util
           name: cleanup-zen-br-resources
           timeout: 600
-      selectResource: deployment
+      selectResource: pod
       type: exec
   workflows:
     - failOn: any-error

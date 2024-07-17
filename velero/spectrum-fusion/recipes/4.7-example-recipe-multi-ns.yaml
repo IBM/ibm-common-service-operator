@@ -265,6 +265,7 @@ spec:
       type: resource
     - backupRef: cs-db-br-resources
       includeClusterResources: true
+      labelSelector: foundationservices.cloudpak.ibm.com=cs-db-data
       includedResourceTypes:
         - deployments
       name: cs-db-deployment

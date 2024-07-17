@@ -18,6 +18,7 @@ rules:
   - verbs:
       - get
       - delete
+      - list
     apiGroups:
       - ''
       - batch
@@ -53,6 +54,7 @@ rules:
   - verbs:
       - get
       - delete
+      - list
     apiGroups:
       - ''
       - batch
@@ -68,6 +70,16 @@ rules:
       - cronjobs
       - pods/exec
       - cronjob
+      - persistentvolumeclaims
+  - verbs:
+      - get
+      - list
+      - delete
+      - patch
+    apiGroups:
+      - ""
+    resources:
+      - persistentvolumeclaims
   - verbs:
       - get
       - list
