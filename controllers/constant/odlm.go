@@ -1457,10 +1457,10 @@ metadata:
     status-monitored-services: {{ .StatusMonitoredServices }}
 spec:
   operators:
-  - name: ibm-account-iam-operator
+  - name: ibm-user-management-operator
     namespace: "{{ .CPFSNs }}"
     channel: alpha
-    packageName: ibm-account-iam-operator
+    packageName: ibm-user-management-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
   - name: ibm-im-operator
