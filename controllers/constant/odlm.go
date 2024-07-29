@@ -134,7 +134,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
   - name: ibm-im-operator-v4.8
     namespace: "{{ .CPFSNs }}"
-    channel: v4.7
+    channel: v4.8
     packageName: ibm-iam-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
