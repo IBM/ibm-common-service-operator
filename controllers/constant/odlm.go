@@ -1476,6 +1476,12 @@ spec:
     packageName: ibm-user-management-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+  - name: ibm-websphere-liberty
+    namespace: "{{ .CPFSNs }}"
+    channel: v1.3
+    packageName: ibm-websphere-liberty
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
   - name: ibm-im-operator
     namespace: "{{ .CPFSNs }}"
     channel: v4.8
