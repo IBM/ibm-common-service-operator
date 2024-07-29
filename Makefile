@@ -80,8 +80,8 @@ OPERATOR_IMAGE_NAME ?= common-service-operator
 # Current Operator bundle image name
 BUNDLE_IMAGE_NAME ?= common-service-operator-bundle
 
-CHANNELS := v4.8
-DEFAULT_CHANNEL := v4.8
+CHANNELS := v4.9
+DEFAULT_CHANNEL := v4.9
 
 # Options for 'bundle-build'
 ifneq ($(origin CHANNELS), undefined)
@@ -237,7 +237,7 @@ bundle-manifests: clis
 
 generate-all: yq kustomize operator-sdk generate manifests cloudpak-theme-version ## Generate bundle manifests, metadata and package manifests
 	$(OPERATOR_SDK) generate kustomize manifests -q
-	- make bundle-manifests CHANNELS=v4.8 DEFAULT_CHANNEL=v4.8
+	- make bundle-manifests CHANNELS=v4.9 DEFAULT_CHANNEL=v4.9
 
 ##@ Test
 
