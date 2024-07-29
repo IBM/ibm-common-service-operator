@@ -132,6 +132,12 @@ spec:
     packageName: ibm-iam-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+  - name: ibm-im-operator-v4.8
+    namespace: "{{ .CPFSNs }}"
+    channel: v4.7
+    packageName: ibm-iam-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
 `
 
 	IdpConfigUIOpReg = `
@@ -414,6 +420,13 @@ spec:
       operandBindInfo: 
         operand: ibm-im-operator
   - name: ibm-im-operator-v4.7
+    spec:
+      authentication:
+        config:
+          onPremMultipleDeploy: {{ .OnPremMultiEnable }}
+      operandBindInfo: 
+        operand: ibm-im-operator
+  - name: ibm-im-operator-v4.8
     spec:
       authentication:
         config:
@@ -1465,7 +1478,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
   - name: ibm-im-operator
     namespace: "{{ .CPFSNs }}"
-    channel: v4.7
+    channel: v4.8
     packageName: ibm-iam-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
