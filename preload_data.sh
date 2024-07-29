@@ -572,6 +572,21 @@ function swapmongopvc() {
   else
     debug1 "Preload run on ROKS, not setting storageclass name"
     stgclass=""
+    deprecated_region='{.items[0].metadata.labels.failure-domain\.beta\.kubernetes\.io\/region}'
+    deprecated_zone='{.items[0].metadata.labels.failure-domain\.beta\.kubernetes\.io\/zone}'
+
+    deprecated_region_label='failure-domain.beta.kubernetes.io/region'
+    not_deprecated_region_label='topology.kubernetes.io/region'
+    deprecated_zone_label='failure-domain.beta.kubernetes.io/zone'
+    not_deprecated_zone_label='topology.kubernetes.io/zone'
+
+    region=$("${OC}" get pv $VOL -o=jsonpath=$deprecated_region)
+    zone=$("${OC}" get pv $VOL -o=jsonpath=$deprecated_zone)
+
+    if [[ $region != "" ]]; then
+        debug1 "Replacing depracated PV labels"
+        "${OC}" label pv $VOL $not_deprecated_region_label=$region $deprecated_region_label- $not_deprecated_zone_label=$zone $deprecated_zone_label- --overwrite 
+    fi
   fi
 
   cat <<EOF >$TEMPFILE
