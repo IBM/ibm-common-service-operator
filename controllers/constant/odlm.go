@@ -1531,6 +1531,18 @@ spec:
     packageName: ibm-bts-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+  - channel: v3.34
+    name: ibm-bts-operator-v3.34
+    namespace: "{{ .CPFSNs }}"
+    packageName: ibm-bts-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+  - channel: v3.35
+    name: ibm-bts-operator-v3.35
+    namespace: "{{ .CPFSNs }}"
+    packageName: ibm-bts-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
   - channel: v1.3
     name: ibm-automation-flink
     namespace: "{{ .CPFSNs }}"
