@@ -187,7 +187,7 @@ function backup() {
     msg "-----------------------------------------------------------------------"
     export CS_NAMESPACE=$ORIGINAL_NAMESPACE
     chmod +x mongo-backup.sh
-    ./mongo-backup.sh true
+    ./mongo-backup.sh $ORIGINAL_NAMESPACE true
 
     local jobPod=$(${OC} get pods -n $ORIGINAL_NAMESPACE | grep mongodb-backup | awk '{ print $1 }')
     local fileName="backup_from_${ORIGINAL_NAMESPACE}_for_${TARGET_NAMESPACE}.log"
@@ -331,7 +331,7 @@ function restore () {
     export CS_NAMESPACE=$TARGET_NAMESPACE
 
     chmod +x mongo-restore.sh
-    ./mongo-restore.sh
+    ./mongo-restore.sh $TARGET_NAMESPACE
 
     local jobPod=$(${OC} get pods -n $TARGET_NAMESPACE | grep mongodb-restore | awk '{ print $1 }')
     local fileName="restore_to_${TARGET_NAMESPACE}_from_${ORIGINAL_NAMESPACE}.log"
