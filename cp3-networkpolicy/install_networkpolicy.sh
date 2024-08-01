@@ -300,16 +300,19 @@ function install_networkpolicy() {
 
     # Installing flink policies
     if [[ ! -z "${FLINK_NAMESPACE}" ]]; then
-        for policyfile in `ls -1 ${BASE_DIR}/flink/*.yaml`; do
+        for policyfile in `ls -1 ${BASE_DIR}/iaf/*.yaml`; do
             info "Installing `basename ${policyfile}` ..."
             cat ${policyfile} | sed -e "s/flinkNamespace/${FLINK_NAMESPACE}/g" | oc apply -f -
         done
+        if [[ -z "${OPENSEARCH_NAMESPACE}" ]]; then
+            OPENSEARCH_NAMESPACE=$FLINK_NAMESPACE
+        fi 
     fi
 
 
     # Installing opensearch policies
     if [[ ! -z "${OPENSEARCH_NAMESPACE}" ]]; then
-        for policyfile in `ls -1 ${BASE_DIR}/opensearch/*.yaml`; do
+        for policyfile in `ls -1 ${BASE_DIR}/iaf/*.yaml`; do
             info "Installing `basename ${policyfile}` ..."
             cat ${policyfile} | sed -e "s/opensearchNamespace/${OPENSEARCH_NAMESPACE}/g" | oc apply -f -
         done
@@ -351,6 +354,9 @@ function delete_networkpolicy() {
 
     if [[ ! -z "${FLINK_NAMESPACE}" ]]; then
         oc delete networkpolicies -n ${FLINK_NAMESPACE} --selector=component=cpfs3
+        if [[ -z "${OPENSEARCH_NAMESPACE}" ]]; then
+            OPENSEARCH_NAMESPACE=$FLINK_NAMESPACE
+        fi 
     fi
 
     if [[ ! -z "${OPENSEARCH_NAMESPACE}" ]]; then
