@@ -152,8 +152,6 @@ func main() {
 			klog.Errorf("Cleanup Webhook Resources failed: %v", err)
 			os.Exit(1)
 		}
-		// Create or Update CPP configuration
-		go goroutines.CreateUpdateConfig(bs)
 		// Update CS CR Status
 		go goroutines.UpdateCsCrStatus(bs)
 		// Create CS CR
