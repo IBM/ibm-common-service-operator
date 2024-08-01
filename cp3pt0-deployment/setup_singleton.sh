@@ -250,6 +250,9 @@ function is_migrate_licensing() {
             error "An ibm-licensing-operator already installed in namespace: $ns, please do not set parameter '-licensingNs $LICENSING_NAMESPACE"
         fi
         LICENSING_NAMESPACE="$ns"
+        if [[ $ENABLE_PRIVATE_CATALOG -eq 1 ]]; then
+            LIS_SOURCE_NS="$ns" 
+        fi
         return 0
     fi
 
@@ -259,6 +262,9 @@ function is_migrate_licensing() {
             error "An ibm-license-service-reporter-operator already installed in namespace: $lsr_ns, expected namespace is: $LSR_NAMESPACE"
         fi
         LSR_NAMESPACE="$lsr_ns"
+        if [[ $ENABLE_PRIVATE_CATALOG -eq 1 ]]; then
+            LSR_SOURCE_NS="$lsr_ns" 
+        fi
     fi
 
     get_and_validate_arguments
