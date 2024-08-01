@@ -41,6 +41,7 @@ import (
 	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 	util "github.com/IBM/ibm-common-service-operator/controllers/common"
+	"github.com/IBM/ibm-common-service-operator/controllers/configurationcollector"
 	"github.com/IBM/ibm-common-service-operator/controllers/constant"
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/v4/api/v1alpha1"
 )
@@ -267,27 +268,33 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 		instance.Status.Phase = CRFailed
 	}
 
-	if statusErr := r.Client.Status().Update(ctx, instance); statusErr != nil {
+	if statusErr = r.Client.Status().Update(ctx, instance); statusErr != nil {
 		klog.Errorf("Fail to update %s/%s: %v", instance.Namespace, instance.Name, err)
 		return ctrl.Result{}, statusErr
 	}
 
-	isEqual, statusErr := r.updateOperandConfig(ctx, newConfigs, serviceControllerMapping)
-	if statusErr != nil {
+	var isEqual bool
+	if isEqual, statusErr = r.updateOperandConfig(ctx, newConfigs, serviceControllerMapping); statusErr != nil {
 		if statusErr := r.updatePhase(ctx, instance, CRFailed); statusErr != nil {
 			klog.Error(statusErr)
 		}
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
 		return ctrl.Result{}, statusErr
-	}
-
-	// Create Event if there is no update in OperandConfig after applying current CR
-	if isEqual {
+	} else if isEqual {
 		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.OperatorNs, "common-service", instance.Namespace, instance.Name))
 	}
 
-	isEqual, statusErr = r.updateOperatorConfig(ctx, instance.Spec.OperatorConfigs)
-	if statusErr != nil {
+	if isEqual, statusErr = r.updateOperatorConfig(ctx, instance.Spec.OperatorConfigs); statusErr != nil {
+		if statusErr := r.updatePhase(ctx, instance, CRFailed); statusErr != nil {
+			klog.Error(statusErr)
+		}
+		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
+		return ctrl.Result{}, statusErr
+	} else if isEqual {
+		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, replica sizings in the OperatorConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.OperatorNs, "common-service", instance.Namespace, instance.Name))
+	}
+
+	if statusErr = configurationcollector.CreateUpdateConfig(r.Bootstrap); statusErr != nil {
 		if statusErr := r.updatePhase(ctx, instance, CRFailed); statusErr != nil {
 			klog.Error(statusErr)
 		}
@@ -295,17 +302,12 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 		return ctrl.Result{}, statusErr
 	}
 
-	// Create Event if there is no update in OperandConfig after applying current CR
-	if isEqual {
-		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, replica sizings in the OperatorConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.OperatorNs, "common-service", instance.Namespace, instance.Name))
-	}
-
-	if statusErr := r.Bootstrap.PropagateDefaultCR(instance); statusErr != nil {
+	if statusErr = r.Bootstrap.PropagateDefaultCR(instance); statusErr != nil {
 		klog.Error(statusErr)
 		return ctrl.Result{}, statusErr
 	}
 
-	if statusErr := r.Bootstrap.UpdateResourceLabel(instance); statusErr != nil {
+	if statusErr = r.Bootstrap.UpdateResourceLabel(instance); statusErr != nil {
 		klog.Error(statusErr)
 		return ctrl.Result{}, statusErr
 	}

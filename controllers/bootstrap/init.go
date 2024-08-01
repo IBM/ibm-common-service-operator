@@ -1654,37 +1654,43 @@ func (b *Bootstrap) PropagateCPPConfig(instance *corev1.ConfigMap) error {
 
 	// Do not copy ibm-cpp-config in AllNamespace Mode
 	if len(watchNamespaceList) > 1 {
-		for _, watchNamespace := range watchNamespaceList {
-			if watchNamespace == instance.Namespace {
+		for _, ns := range watchNamespaceList {
+			if ns == instance.Namespace {
 				continue
 			}
 			copiedCPPConfigMap := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      constant.IBMCPPCONFIG,
-					Namespace: watchNamespace,
+					Namespace: ns,
+					Labels:    instance.GetLabels(),
 				},
 				Data: instance.Data,
 			}
 
 			if err := b.Client.Create(ctx, copiedCPPConfigMap); err != nil {
 				if errors.IsAlreadyExists(err) {
-					cmKey := types.NamespacedName{Name: constant.IBMCPPCONFIG, Namespace: watchNamespace}
+					cmKey := types.NamespacedName{Name: constant.IBMCPPCONFIG, Namespace: ns}
 					existingCM := &corev1.ConfigMap{}
-					if err := b.Client.Get(ctx, cmKey, existingCM); err != nil {
-						return fmt.Errorf("failed to get %s ConfigMap in namespace %s: %v", constant.IBMCPPCONFIG, watchNamespace, err)
+					if err := b.Reader.Get(ctx, cmKey, existingCM); err != nil {
+						return fmt.Errorf("failed to get %s ConfigMap in namespace %s: %v", constant.IBMCPPCONFIG, ns, err)
 					}
-					if !reflect.DeepEqual(copiedCPPConfigMap.Data, existingCM.Data) {
+					for k, v := range existingCM.Data {
+						if _, ok := copiedCPPConfigMap.Data[k]; !ok {
+							copiedCPPConfigMap.Data[k] = v
+						}
+					}
+					if !reflect.DeepEqual(copiedCPPConfigMap.Data, existingCM.Data) || !reflect.DeepEqual(copiedCPPConfigMap.Labels, existingCM.Labels) {
 						copiedCPPConfigMap.SetResourceVersion(existingCM.GetResourceVersion())
 						if err := b.Client.Update(ctx, copiedCPPConfigMap); err != nil {
-							return fmt.Errorf("failed to update %s ConfigMap in namespace %s: %v", constant.IBMCPPCONFIG, watchNamespace, err)
+							return fmt.Errorf("failed to update %s ConfigMap in namespace %s: %v", constant.IBMCPPCONFIG, ns, err)
 						}
-						klog.Infof("Global CPP config %s/%s is updated", watchNamespace, constant.IBMCPPCONFIG)
+						klog.Infof("Global CPP config %s/%s is updated", ns, constant.IBMCPPCONFIG)
 					}
 				} else {
-					return fmt.Errorf("failed to create cloned %s ConfigMap in namespace %s: %v", constant.IBMCPPCONFIG, watchNamespace, err)
+					return fmt.Errorf("failed to create cloned %s ConfigMap in namespace %s: %v", constant.IBMCPPCONFIG, ns, err)
 				}
 			} else {
-				klog.Infof("Global CPP config %s/%s is propagated to namespace %s", b.CSData.ServicesNs, constant.IBMCPPCONFIG, watchNamespace)
+				klog.Infof("Global CPP config %s/%s is propagated to namespace %s", b.CSData.ServicesNs, constant.IBMCPPCONFIG, ns)
 			}
 		}
 	}
