@@ -27,7 +27,7 @@ import (
 	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
 )
 
-// CreateUpdateConfig deploys config builder for global cpp configmap
+// WaitToCreateCsCR waits for the creation of the CommonService CR in the operator namespace.
 func WaitToCreateCsCR(bs *bootstrap.Bootstrap) {
 	for {
 		klog.Infof("Start to Create CommonService CR in the namespace %s", bs.CSData.OperatorNs)
