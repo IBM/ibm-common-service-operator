@@ -572,8 +572,8 @@ function swapmongopvc() {
   else
     debug1 "Preload run on ROKS, not setting storageclass name"
     stgclass=""
-    deprecated_region='{.items[0].metadata.labels.failure-domain\.beta\.kubernetes\.io\/region}'
-    deprecated_zone='{.items[0].metadata.labels.failure-domain\.beta\.kubernetes\.io\/zone}'
+    deprecated_region='{.metadata.labels.failure-domain\.beta\.kubernetes\.io\/region}'
+    deprecated_zone='{.metadata.labels.failure-domain\.beta\.kubernetes\.io\/zone}'
 
     deprecated_region_label='failure-domain.beta.kubernetes.io/region'
     not_deprecated_region_label='topology.kubernetes.io/region'
