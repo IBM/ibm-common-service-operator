@@ -1519,6 +1519,13 @@ spec:
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     operatorConfig: cloud-native-postgresql-operator-config
+  - channel: stable-v1.22
+    name: cloud-native-postgresql-v1.22
+    namespace: "{{ .CPFSNs }}"
+    packageName: cloud-native-postgresql
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    operatorConfig: cloud-native-postgresql-operator-config
   - channel: alpha
     name: ibm-user-data-services-operator
     namespace: "{{ .CPFSNs }}"
