@@ -276,7 +276,11 @@ function is_migrate_licensing() {
     if [[ "$CUSTOMIZED_LICENSING_NAMESPACE" -eq 1 ]] && [[ "$CONTROL_NS" != "$LICENSING_NAMESPACE" ]]; then
         error "Licensing Migration could only be done in $CONTROL_NS, please do not set parameter '-licensingNs $LICENSING_NAMESPACE'"
     fi
+
     LICENSING_NAMESPACE="$CONTROL_NS"
+    if [[ $ENABLE_PRIVATE_CATALOG -eq 1 ]]; then
+        LIS_SOURCE_NS="$ns" 
+    fi
 }
 
 function cert_manager_deployment_check(){
@@ -333,6 +337,10 @@ function install_cert_manager() {
                 error "An ibm-cert-manager-operator already installed in namespace: $webhook_ns, please do not set parameter '-cmNs $CERT_MANAGER_NAMESPACE"
             fi
             CERT_MANAGER_NAMESPACE="$webhook_ns"
+            if [[ $ENABLE_PRIVATE_CATALOG -eq 1 ]]; then
+                CM_SOURCE_NS="$webhook_ns" 
+            fi
+        fi
         else
             warning "Cluster has a RedHat cert-manager or Helm cert-manager, skipping"
             return 0
