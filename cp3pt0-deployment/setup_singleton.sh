@@ -340,7 +340,6 @@ function install_cert_manager() {
             if [[ $ENABLE_PRIVATE_CATALOG -eq 1 ]]; then
                 CM_SOURCE_NS="$webhook_ns" 
             fi
-        fi
         else
             warning "Cluster has a RedHat cert-manager or Helm cert-manager, skipping"
             return 0
