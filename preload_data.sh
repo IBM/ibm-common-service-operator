@@ -2063,9 +2063,9 @@ function success() {
 
 function error() {
     msg "\33[31m[✘] ${1}\33[0m"
-    info "The script can be re-run using one of the following commands:"
-    echo "./preload_data.sh $ARGUMENTS --cleanup && ./preload_data.sh $ARGUMENTS"
-    echo "./preload_data.sh $ARGUMENTS --rerun"
+    echo "The script can be re-run using one of the following commands:"
+    echo "For simple cleanup to prepare another run: ./preload_data.sh --cleanup $ARGUMENTS"
+    echo "For an immediate re-run of preload_data: ./preload_data.sh --rerun $ARGUMENTS"
     echo "Run ./preload_data.sh --help to see usage."
     exit 1
 }
