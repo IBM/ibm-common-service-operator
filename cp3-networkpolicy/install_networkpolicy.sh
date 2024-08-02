@@ -238,6 +238,16 @@ function check_prereqs() {
         fi
     fi
 
+    # if FLINK_NAMESPACE specified but not exist, create it
+    if [[ ! -z "${FLINK_NAMESPACE}" ]]; then
+        # check existence of FLINK_NAMESPACE
+        flink_namespace_exists=$(oc get project "${FLINK_NAMESPACE}" 2> /dev/null)
+        if [ $? -ne 0 ]; then
+            info "Creating IBM Common Services namespace: ${FLINK_NAMESPACE}"
+            oc create namespace "${FLINK_NAMESPACE}"
+        fi
+    fi
+
     # if opensearch is not specified, use FLINK_NAMESPACE
     if [[ -z "${OPENSEARCH_NAMESPACE}" && ! -z "${FLINK_NAMESPACE}" ]]; then
         OPENSEARCH_NAMESPACE=${FLINK_NAMESPACE}
