@@ -1482,6 +1482,12 @@ spec:
     packageName: ibm-websphere-liberty
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+  - name: ibm-redis-cp-operator
+    namespace: "{{ .CPFSNs }}"
+    channel: v1.2
+    packageName: ibm-redis-cp
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
   - name: ibm-im-operator
     namespace: "{{ .CPFSNs }}"
     channel: v4.8
