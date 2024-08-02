@@ -29,6 +29,7 @@ NUM=$#
 TEMPFILE="_TMP.yaml"
 DEBUG=0
 z_or_power_ENV="false"
+RERUN="false"
 
 # ---------- Command variables ----------
 
@@ -49,6 +50,9 @@ function main() {
     save_log "cp3pt0-deployment/logs" "preload_data_log" "$DEBUG"
     trap cleanup_log EXIT
     prereq
+    if [[ $RERUN == "true" ]]; then
+      deletemongocopy
+    fi
     # run backup preload
     backup_preload_mongo
     # copy im credentials
@@ -88,6 +92,9 @@ function parse_arguments() {
             shift
             TO_NAMESPACE=$1
             ;;
+        --rerun)
+            RERUN="true"
+            ;;
         -v | --debug)
             shift
             DEBUG=$1
@@ -116,9 +123,11 @@ function print_usage() {
     echo "   --yq string                                    Optional. File path to yq CLI. Default uses yq in your PATH"
     echo "   --original-cs-ns string                        Required. Namespace to migrate Cloud Pak 2 Foundational services data from."
     echo "   --services-ns string                           Required. Namespace to migrate Cloud Pak 2 Foundational services data too"
+    echo "   --rerun                                        Optional. If specified, will cleanup the previous attempt's mongo copy installed in specified services namespace before executing script."
     echo "   -v, --debug integer                            Optional. Verbosity of logs. Default is 0. Set to 1 for debug logs"
     echo "   -h, --help                                     Print usage information"
     echo ""
+    echo "NOTE: using --rerun will delete any mongo instance installed in the namespace specified with --services-ns parameter. Verify the parameters entered are correct."
 }
 
 function prereq() {
