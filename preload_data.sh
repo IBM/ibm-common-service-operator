@@ -237,13 +237,13 @@ function pre_req_bpm() {
 
   info "Copying mongodb from namespace $FROM_NAMESPACE to namespace $TO_NAMESPACE"
  
-  runningmongo=$(${OC} get po icp-mongodb-0 --no-headers --ignore-not-found -n $FROM_NAMESPACE | awk '{print $3}')
+  runningmongo=$(${OC} get po icp-mongodb-0 --no-headers --ignore-not-found -n $FROM_NAMESPACE -o=jsonpath='{.status.phase}')
   if [[ -z "$runningmongo" ]] || [[ "$runningmongo" != "Running" ]]; then
     error "Mongodb is not running in Namespace $FROM_NAMESPACE"
     exit -1
   fi
 
-  runningmongo=$(${OC} get po icp-mongodb-0 --no-headers --ignore-not-found -n $TO_NAMESPACE | awk '{print $3}')
+  runningmongo=$(${OC} get po icp-mongodb-0 --no-headers --ignore-not-found -n $TO_NAMESPACE -o=jsonpath='{.status.phase}')
   if [[ ! -z "$runningmongo" ]]; then
     error "Mongodb is deployed in namespace $TO_NAMESPACE - this script depends on mongo being uninitialzed in the target namespace"
     exit -1
@@ -1855,7 +1855,7 @@ EOF
     info "Waiting for MongoDB copy to initialize"
     sleep 10
     ${OC} get po icp-mongodb-0 --no-headers
-    status=$(${OC} get po icp-mongodb-0 --no-headers | awk '{print $3}')
+    status=$(${OC} get po icp-mongodb-0 --no-headers -o=jsonpath='{.status.phase}')
   done
 
   success "Temporary Mongo copy deployed to namespace $TO_NAMESPACE"
