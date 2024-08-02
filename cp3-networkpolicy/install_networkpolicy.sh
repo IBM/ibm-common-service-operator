@@ -238,6 +238,18 @@ function check_prereqs() {
         fi
     fi
 
+    # if opensearch is not specified, use FLINK_NAMESPACE
+    if [[ -z "${OPENSEARCH_NAMESPACE}" && ! -z "${FLINK_NAMESPACE}" ]]; then
+        OPENSEARCH_NAMESPACE=${FLINK_NAMESPACE}
+
+        # check existence of OPENSEARCH_NAMESPACE
+        opensearch_namespace_exists=$(oc get project "${OPENSEARCH_NAMESPACE}" 2> /dev/null)
+        if [ $? -ne 0 ]; then
+            info "Creating Opensearch namespace: ${OPENSEARCH_NAMESPACE}"
+            oc create namespace "${OPENSEARCH_NAMESPACE}"
+        fi
+    fi
+
 }
 
 function install_networkpolicy() {
@@ -300,21 +312,18 @@ function install_networkpolicy() {
 
     # Installing flink policies
     if [[ ! -z "${FLINK_NAMESPACE}" ]]; then
-        for policyfile in `ls -1 ${BASE_DIR}/iaf/*.yaml`; do
+        for policyfile in `ls -1 ${BASE_DIR}/flink/*.yaml`; do
             info "Installing `basename ${policyfile}` ..."
-            cat ${policyfile} | sed -e "s/flinkNamespace/${FLINK_NAMESPACE}/g" | oc apply -f -
+            cat ${policyfile} | sed -e "s/flinkNamespace/${FLINK_NAMESPACE}/g" | sed -e "s/opNamespace/${OPERATORS_NAMESPACE}/g" | oc apply -f -
         done
-        if [[ -z "${OPENSEARCH_NAMESPACE}" ]]; then
-            OPENSEARCH_NAMESPACE=$FLINK_NAMESPACE
-        fi 
     fi
 
 
     # Installing opensearch policies
     if [[ ! -z "${OPENSEARCH_NAMESPACE}" ]]; then
-        for policyfile in `ls -1 ${BASE_DIR}/iaf/*.yaml`; do
+        for policyfile in `ls -1 ${BASE_DIR}/opensearch/*.yaml`; do
             info "Installing `basename ${policyfile}` ..."
-            cat ${policyfile} | sed -e "s/opensearchNamespace/${OPENSEARCH_NAMESPACE}/g" | oc apply -f -
+            cat ${policyfile} | sed -e "s/opensearchNamespace/${OPENSEARCH_NAMESPACE}/g" | sed -e "s/opNamespace/${OPERATORS_NAMESPACE}/g" | oc apply -f -
         done
     fi
 
@@ -354,9 +363,6 @@ function delete_networkpolicy() {
 
     if [[ ! -z "${FLINK_NAMESPACE}" ]]; then
         oc delete networkpolicies -n ${FLINK_NAMESPACE} --selector=component=cpfs3
-        if [[ -z "${OPENSEARCH_NAMESPACE}" ]]; then
-            OPENSEARCH_NAMESPACE=$FLINK_NAMESPACE
-        fi 
     fi
 
     if [[ ! -z "${OPENSEARCH_NAMESPACE}" ]]; then
