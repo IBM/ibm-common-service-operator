@@ -1920,7 +1920,7 @@ function deletemongocopy {
     fi
   fi
 
-  success "MongoDB restored to new namespace $TO_NAMESPACE"
+  success "MongoDB removed from services namespace $TO_NAMESPACE"
 
 } # deletemongocopy
 
