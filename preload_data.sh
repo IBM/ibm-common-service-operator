@@ -1905,7 +1905,7 @@ function deletemongocopy {
   #delete mongodump pvc and pv
   VOL=$(${OC} get pvc cs-mongodump -o=jsonpath='{.spec.volumeName}' --ignore-not-found)
   if [[ -z "$VOL" ]]; then
-    error "Volume for pvc cs-mongodump not found in $TO_NAMESPACE"
+    warning "Volume for pvc cs-mongodump not found in $TO_NAMESPACE"
   fi
 
   ${OC} patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Delete" }}' --ignore-not-found
