@@ -435,6 +435,50 @@ spec:
         operand: ibm-im-operator
 `
 
+	UserMgmtOpCon = `
+apiVersion: operator.ibm.com/v1alpha1
+kind: OperandConfig
+metadata:
+  name: common-service
+  namespace: "{{ .ServicesNs }}"
+  labels:
+    operator.ibm.com/managedByCsOperator: "true"
+  annotations:
+    version: {{ .Version }}
+spec:
+  services:
+  - name: ibm-user-management-operator
+    resources:
+      - apiVersion: operator.ibm.com/v1alpha1
+        labels:
+          app.kubernetes.io/created-by: ibm-user-management-operator
+          app.kubernetes.io/instance: accountiam-sample
+          app.kubernetes.io/managed-by: kustomize
+          app.kubernetes.io/name: accountiam
+          app.kubernetes.io/part-of: ibm-user-management-operator
+        kind: AccountIAM
+        name: accountiam-sample
+      - apiVersion: operator.ibm.com/v1alpha1
+        data:
+          spec:
+            bindings:
+              public-account-iam-config-dev:
+                configmap: account-iam-env-configmap-dev
+              public-bootstrap-creds:
+                secret: user-mgmt-bootstrap
+              public-ibmcloudca-secret:
+                secret: ibmcloud-cluster-ca-secret
+              public-mcsp-integration-details:
+                secret: mcsp-im-integration-details
+            description: Binding information that should be accessible to User Management adopters
+            operand: ibm-user-management-operator
+            registry: common-service
+            registryNamespace: {{ .ServicesNs }}
+        force: true
+        kind: OperandBindInfo
+        name: ibm-user-mgmt-bindinfo
+`
+
 	IdpConfigUIOpCon = `
 apiVersion: operator.ibm.com/v1alpha1
 kind: OperandConfig
@@ -1062,43 +1106,6 @@ spec:
         kind: Cluster
         name: keycloak-edb-cluster
 `
-)
-
-const (
-	UserMgmtOpCon = `
-apiVersion: operator.ibm.com/v1alpha1
-kind: OperandConfig
-metadata:
-  name: common-service
-  namespace: "{{ .ServicesNs }}"
-  labels:
-    operator.ibm.com/managedByCsOperator: "true"
-  annotations:
-    version: {{ .Version }}
-spec:
-  services:
-  - name: ibm-user-management-operator
-    resources:
-      - apiVersion: operator.ibm.com/v1alpha1
-        data:
-          spec:
-            bindings:
-              public-account-iam-config-dev:
-                configmap: account-iam-env-configmap-dev
-              public-bootstrap-creds:
-                secret: user-mgmt-bootstrap
-              public-ibmcloudca-secret:
-                secret: ibmcloud-cluster-ca-secret
-              public-mcsp-integration-details:
-                secret: mcsp-im-integration-details
-            description: Binding information that should be accessible to User Management adopters
-            operand: ibm-user-management-operator
-            registry: common-service
-            registryNamespace: {{ .ServicesNs }}
-        force: true
-        kind: OperandBindInfo
-        name: ibm-user-mgmt-bindinfo
-  `
 )
 
 const (

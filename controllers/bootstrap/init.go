@@ -750,11 +750,11 @@ func (b *Bootstrap) InstallOrUpdateOpcon(forceUpdateODLMCRs bool) error {
 	configs := []string{
 		constant.MongoDBOpCon,
 		constant.IMOpCon,
+		constant.UserMgmtOpCon,
 		constant.IdpConfigUIOpCon,
 		constant.PlatformUIOpCon,
 		constant.KeyCloakOpCon,
 		constant.CommonServicePGOpCon,
-		constant.UserMgmtOpCon,
 	}
 
 	baseCon = constant.CSV4OpCon
