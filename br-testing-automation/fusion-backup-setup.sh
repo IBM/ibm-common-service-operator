@@ -111,6 +111,7 @@ function install_sf_br(){
     info "Cloning SF cmd-line-install repo..."
     git clone https://$GITHUB_USER:$GITHUB_TOKEN@github.ibm.com/ProjectAbell/cmd-line-install.git
     
+    #TODO verify catalog source pod is actually running
     catalog_image=$(${OC} get catalogsource -o jsonpath='{.spec.image}' $CATALOG_SOURCE -n $CAT_SRC_NS)
 
     cd cmd-line-install/install/
