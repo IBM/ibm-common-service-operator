@@ -754,6 +754,7 @@ func (b *Bootstrap) InstallOrUpdateOpcon(forceUpdateODLMCRs bool) error {
 		constant.PlatformUIOpCon,
 		constant.KeyCloakOpCon,
 		constant.CommonServicePGOpCon,
+		constant.UserMgmtOpCon,
 	}
 
 	baseCon = constant.CSV4OpCon
