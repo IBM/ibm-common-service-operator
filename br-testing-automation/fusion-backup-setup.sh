@@ -138,28 +138,28 @@ function create_sf_resources(){
 
     mkdir templates
     info "Copying template files..."
-    cp ../velero/spectrum-fusion/application.yaml /templates/application.yaml
-    cp ../velero/spectrum-fusion/backup_storage_location_secret.yaml /templates/backup_storage_location_secret.yaml
-    cp ../velero/spectrum-fusion/backup_storage_location.yaml /templates/backup_storage_location.yaml
-    cp ../velero/spectrum-fusion/policy_assignment.yaml /templates/policy_assignment.yaml
-    cp ../velero/spectrum-fusion/policy.yaml /templates/policy.yaml
-    cp ../velero/spectrum-fusion/recipes/4.7-example-recipe-multi-ns.yaml /templates/multi-ns-recipe.yaml
+    cp ../velero/spectrum-fusion/application.yaml ./templates/application.yaml
+    cp ../velero/spectrum-fusion/backup_storage_location_secret.yaml ./templates/backup_storage_location_secret.yaml
+    cp ../velero/spectrum-fusion/backup_storage_location.yaml ./templates/backup_storage_location.yaml
+    cp ../velero/spectrum-fusion/policy_assignment.yaml ./templates/policy_assignment.yaml
+    cp ../velero/spectrum-fusion/policy.yaml ./templates/policy.yaml
+    cp ../velero/spectrum-fusion/recipes/4.7-example-recipe-multi-ns.yaml ./templates/multi-ns-recipe.yaml
     
     info "Editing backup storage location resources..."
     #backup storage secret
-    sed -i -E "s/<location name>/$BACKUP_STORAGE_LOCATION_NAME/" /templates/backup_storage_location_secret.yaml
-    sed -i -E "s/<spectrum fusion ns>/$SF_NAMESPACE/" /templates/backup_storage_location_secret.yaml
+    sed -i -E "s/<location name>/$BACKUP_STORAGE_LOCATION_NAME/" ./templates/backup_storage_location_secret.yaml
+    sed -i -E "s/<spectrum fusion ns>/$SF_NAMESPACE/" ./templates/backup_storage_location_secret.yaml
     encoded_access_key=$(echo $STORAGE_SECRET_ACCESS_KEY | base64)
-    sed -i -E "s/<base 64 encoded secret-access-key>/$encoded_access_key/" /templates/backup_storage_location_secret.yaml
+    sed -i -E "s/<base 64 encoded secret-access-key>/$encoded_access_key/" ./templates/backup_storage_location_secret.yaml
     encoded_access_key_id=$(echo $STORAGE_SECRET_ACCESS_KEY_ID | base64)
-    sed -i -E "s/<base 64 encoded access key id>/$encoded_access_key_id/" /templates/backup_storage_location_secret.yaml
+    sed -i -E "s/<base 64 encoded access key id>/$encoded_access_key_id/" ./templates/backup_storage_location_secret.yaml
     
     #backup storage location
-    sed -i -E "s/<location name>/$BACKUP_STORAGE_LOCATION_NAME/" /templates/backup_storage_location.yaml
-    sed -i -E "s/<spectrum fusion ns>/$SF_NAMESPACE/" /templates/backup_storage_location.yaml
-    sed -i -E "s/<bucket name>/$STORAGE_BUCKET_NAME/" /templates/backup_storage_location.yaml
-    sed -i -E "s/<s3 url>/$S3_URL/" /templates/backup_storage_location.yaml
-    ${OC} apply -f /templates/backup_storage_location_secret.yaml -f /templates/backup_storage_location.yaml || error "Unable to create backup storage location resources to namespace $SF_NAMESPACE."
+    sed -i -E "s/<location name>/$BACKUP_STORAGE_LOCATION_NAME/" ./templates/backup_storage_location.yaml
+    sed -i -E "s/<spectrum fusion ns>/$SF_NAMESPACE/" ./templates/backup_storage_location.yaml
+    sed -i -E "s/<bucket name>/$STORAGE_BUCKET_NAME/" ./templates/backup_storage_location.yaml
+    sed -i -E "s/<s3 url>/$S3_URL/" ./templates/backup_storage_location.yaml
+    ${OC} apply -f ./templates/backup_storage_location_secret.yaml -f ./templates/backup_storage_location.yaml || error "Unable to create backup storage location resources to namespace $SF_NAMESPACE."
     
     change_ns="false"
     if [[ $SF_NAMESPACE != "ibm-spectrum-fusion-ns" ]]; then
@@ -168,51 +168,51 @@ function create_sf_resources(){
     
     #application
     info "Editing application resource..."
-    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" /templates/application.yaml
-    sed -i -E "s/<service namespace>/$SERVICES_NAMESPACE/" /templates/application.yaml
-    sed -i -E "s/<tenant namespace 1>/$TETHERED_NAMESPACE1/" /templates/application.yaml
-    sed -i -E "s/<tenant namespace 2>/$TETHERED_NAMESPACE2/" /templates/application.yaml
-    sed -i -E "s/<cert manager namespace>/$CERT_MANAGER_NAMESPACE/" /templates/application.yaml
-    sed -i -E "s/<licensing namespace>/$LICENSING_NAMESPACE/" /templates/application.yaml
-    sed -i -E "s/<lsr namespace>/$LSR_NAMESPACE/" /templates/application.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ./templates/application.yaml
+    sed -i -E "s/<service namespace>/$SERVICES_NAMESPACE/" ./templates/application.yaml
+    sed -i -E "s/<tenant namespace 1>/$TETHERED_NAMESPACE1/" ./templates/application.yaml
+    sed -i -E "s/<tenant namespace 2>/$TETHERED_NAMESPACE2/" ./templates/application.yaml
+    sed -i -E "s/<cert manager namespace>/$CERT_MANAGER_NAMESPACE/" ./templates/application.yaml
+    sed -i -E "s/<licensing namespace>/$LICENSING_NAMESPACE/" ./templates/application.yaml
+    sed -i -E "s/<lsr namespace>/$LSR_NAMESPACE/" ./templates/application.yaml
     if [[ $change_ns == "true" ]]; then
-        ${YQ} -i '.metadata.namesace = "'${SF_NAMESPACE}'"' /templates/application.yaml || error "Could not update namespace value in application.yaml."
+        ${YQ} -i '.metadata.namesace = "'${SF_NAMESPACE}'"' ./templates/application.yaml || error "Could not update namespace value in application.yaml."
     fi
-    ${OC} apply -f /templates/application.yaml || error "Unable to create application in namespace $SF_NAMESPACE."
+    ${OC} apply -f ./templates/application.yaml || error "Unable to create application in namespace $SF_NAMESPACE."
 
     #backup policy
     info "Editing backup policy resource..."
-    sed -i -E "s/<storage_location>/$BACKUP_STORAGE_LOCATION_NAME/" /templates/policy.yaml
-    ${OC} apply -f /templates/policy.yaml -n $SF_NAMESPACE || error "Unable to create policy in namespace $SF_NAMESPACE."
+    sed -i -E "s/<storage_location>/$BACKUP_STORAGE_LOCATION_NAME/" ./templates/policy.yaml
+    ${OC} apply -f ./templates/policy.yaml -n $SF_NAMESPACE || error "Unable to create policy in namespace $SF_NAMESPACE."
 
     #recipe
     info "Editing recipe resource..."
-    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" /templates/multi-ns-recipe.yaml
-    sed -i -E "s/<service namespace>/$SERVICES_NAMESPACE/" /templates/multi-ns-recipe.yaml
-    sed -i -E "s/<cert manager namespace>/$CERT_MANAGER_NAMESPACE/" /templates/multi-ns-recipe.yaml
-    sed -i -E "s/<licensing namespace>/$LICENSING_NAMESPACE/" /templates/multi-ns-recipe.yaml
-    sed -i -E "s/<lsr namespace>/$LSR_NAMESPACE/" /templates/multi-ns-recipe.yaml
-    sed -i -E "s/<zenservice name>/$ZENSERVICE_NAME/" /templates/multi-ns-recipe.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ./templates/multi-ns-recipe.yaml
+    sed -i -E "s/<service namespace>/$SERVICES_NAMESPACE/" ./templates/multi-ns-recipe.yaml
+    sed -i -E "s/<cert manager namespace>/$CERT_MANAGER_NAMESPACE/" ./templates/multi-ns-recipe.yaml
+    sed -i -E "s/<licensing namespace>/$LICENSING_NAMESPACE/" ./templates/multi-ns-recipe.yaml
+    sed -i -E "s/<lsr namespace>/$LSR_NAMESPACE/" ./templates/multi-ns-recipe.yaml
+    sed -i -E "s/<zenservice name>/$ZENSERVICE_NAME/" ./templates/multi-ns-recipe.yaml
     tethered_namespaces="$TETHERED_NAMESPACE1,$TETHERED_NAMESPACE2"
-    sed -i -E "s/<comma delimited (no spaces) list of Cloud Pak workload namespaces that use this foundational services instance>/$tethered_namespaces/" /templates/multi-ns-recipe.yaml
-    sed -i -E "s/<foundational services version number in use i.e. 4.0, 4.1, 4.2, etc>/$CPFS_VERSION/" /templates/multi-ns-recipe.yaml
+    sed -i -E "s/<comma delimited (no spaces) list of Cloud Pak workload namespaces that use this foundational services instance>/$tethered_namespaces/" ./templates/multi-ns-recipe.yaml
+    sed -i -E "s/<foundational services version number in use i.e. 4.0, 4.1, 4.2, etc>/$CPFS_VERSION/" ./templates/multi-ns-recipe.yaml
     size=$(${OC} get commonservice common-service -n $OPERATOR_NAMESPACE -o jsonpath='{.spec.size}')
-    sed -i -E "s/<.spec.size value from commonservice cr>/$size/" /templates/multi-ns-recipe.yaml
-    sed -i -E "s/<install mode, either Manual or Automatic>/Automatic/" /templates/multi-ns-recipe.yaml
-    sed -i -E "s/<catalog source name>/$CATALOG_SOURCE/" /templates/multi-ns-recipe.yaml
-    sed -i -E "s/<catalog source namespace>/$CAT_SRC_NS/" /templates/multi-ns-recipe.yaml
+    sed -i -E "s/<.spec.size value from commonservice cr>/$size/" ./templates/multi-ns-recipe.yaml
+    sed -i -E "s/<install mode, either Manual or Automatic>/Automatic/" ./templates/multi-ns-recipe.yaml
+    sed -i -E "s/<catalog source name>/$CATALOG_SOURCE/" ./templates/multi-ns-recipe.yaml
+    sed -i -E "s/<catalog source namespace>/$CAT_SRC_NS/" ./templates/multi-ns-recipe.yaml
 
     if [[ $change_ns == "true" ]]; then
-        ${YQ} -i '.metadata.namesace = "'${SF_NAMESPACE}'"' /templates/multi-ns-recipe.yaml || error "Could not update namespace value in multi-ns-recipe.yaml."
+        ${YQ} -i '.metadata.namesace = "'${SF_NAMESPACE}'"' ./templates/multi-ns-recipe.yaml || error "Could not update namespace value in multi-ns-recipe.yaml."
     fi
-    ${OC} apply -f /templates/multi-ns-recipe.yaml || error "Unable to create recipe in namespace $SF_NAMESPACE."
+    ${OC} apply -f ./templates/multi-ns-recipe.yaml || error "Unable to create recipe in namespace $SF_NAMESPACE."
 
     #policyassignment
     info "Editing policy assignment resource..."
     if [[ $change_ns == "true" ]]; then
-        ${YQ} -i '.metadata.namesace = "'${SF_NAMESPACE}'"' /templates/policy_assignment.yaml || error "Could not update namespace value in policy_assignment.yaml."
+        ${YQ} -i '.metadata.namesace = "'${SF_NAMESPACE}'"' ./templates/policy_assignment.yaml || error "Could not update namespace value in policy_assignment.yaml."
     fi
-    ${OC} apply -f /templates/policy_assignment.yaml || error "Unable to create policy assignment in namespace $SF_NAMESPACE."
+    ${OC} apply -f ./templates/policy_assignment.yaml || error "Unable to create policy assignment in namespace $SF_NAMESPACE."
 
     success "Spectrum Fusion BR resources created in namespace $SF_NAMESPACE."
 
