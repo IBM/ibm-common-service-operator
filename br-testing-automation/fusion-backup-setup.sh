@@ -133,7 +133,7 @@ function create_sf_resources(){
     title "Creating Spectrum Fusion BR resources in namespace $SF_NAMESPACE."
 
     if [ -d "templates" ]; then
-        rm -f templates
+        rm -rf templates
     fi
 
     mkdir templates
