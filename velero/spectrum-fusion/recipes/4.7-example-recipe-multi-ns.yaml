@@ -20,17 +20,6 @@ spec:
     - backupRef: cert-manager-resources
       includeClusterResources: true
       includedResourceTypes:
-        - secrets
-        - certificates.cert-manager.io
-        - issuers.cert-manager.io
-        # - clusterissuers.cert-manager.io
-        # - certmanagerconfigs.operator.ibm.com
-      labelSelector: foundationservices.cloudpak.ibm.com=cert-manager
-      name: cert-manager-workload-resources
-      type: resource
-    - backupRef: cert-manager-resources
-      includeClusterResources: true
-      includedResourceTypes:
         - customresourcedefinitions.apiextensions.k8s.io
       name: cert-manager-crd
       type: resource
@@ -544,7 +533,6 @@ spec:
         - group: cert-manager-resources
         - group: license-service-reporter-subscriptions
         - group: common-services-subscriptions
-        - group: cert-manager-workload-resources
         - group: operand-resources
         - group: odlm-resources
         - group: licensing-resources
@@ -567,7 +555,7 @@ spec:
         - group: commonservice-cr
         - hook: cert-manager-operator-check/podReady
         - hook: cert-manager-webhook-check/podReady
-        - group: cert-manager-workload-resources
+        - group: cert-manager-resources
         - group: licensing-resources
         - group: license-service-reporter-subscriptions
         - hook: license-service-reporter-check/podReady
