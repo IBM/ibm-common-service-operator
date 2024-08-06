@@ -96,8 +96,9 @@ function validate_sc(){
     if [[ $vcs_exists == "" ]]; then
         driver=$(${OC} get sc $STORAGE_CLASS -o jsonpath='{.provisioner}')
         clusterID=$(${OC} get sc $STORAGE_CLASS -o jsonpath='{.parameters.clusterID}')
-        snapshotter_secret_name=$(${OC} get sc $STORAGE_CLASS -o jsonpath='{.parameters.csi.storage.k8s.io/provisioner-secret-name}')
-        snapshotter_secret_namespace=$(${OC} get sc $STORAGE_CLASS -o jsonpath='{.parameters.csi.storage.k8s.io/provisioner-secret-namespace}')
+        snapshotter_secret_name=$(${OC} get sc $STORAGE_CLASS -o yaml | ${YQ} '.parameters."csi.storage.k8s.io/provisioner-secret-name"')
+        snapshotter_secret_namespace=$(${OC} get sc $STORAGE_CLASS -o yaml | ${YQ} '.parameters."csi.storage.k8s.io/provisioner-secret-namespace"')
+
         cat << EOF | ${OC} apply -f -
 apiVersion: snapshot.storage.k8s.io/v1
 deletionPolicy: Delete
