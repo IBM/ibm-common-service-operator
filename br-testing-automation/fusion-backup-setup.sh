@@ -33,8 +33,8 @@ set -o errtrace
 # # YQ=
 # SF_NAMESPACE="ibm-spectrum-fusion-ns"
 # BR_SERVICE_NAMESPACE="ibm-backup-restore"
-# # OPERATOR_NAMESPACE=
-# # SERVICES_NAMESPACE=
+# # OPERATOR_NS=
+# # SERVICES_NS=
 # # GITHUB_USER=
 # # GITHUB_TOKEN=
 # # DOCKER_USER=
@@ -47,12 +47,14 @@ source ${BASE_DIR}/env.properties
 
 function main(){
     # parse_arguments
-    # prereq
+    prereq
+    echo $BASE_DIR
     validate_sc
     install_sf_br
     create_sf_resources
-    # deploy_cs_br_resources
-    # label_cs_resources
+    deploy_cs_br_resources
+    label_cs_resources
+    success "Backup cluster prepped for BR."
 }
 
 function prereq() {
@@ -123,7 +125,7 @@ function install_sf_br(){
 
     info "executing install-isf-br.sh script with catalog image $catalog_image in namespace $SF_NAMESPACE."
     ./install-isf-br.sh $catalog_image -n $SF_NAMESPACE || error "SF install script failed."
-    cd ../..
+    cd $BASE_DIR
 
     success "Spectrum Fusion and Backup and Restore Service installed."
 
@@ -158,6 +160,8 @@ function create_sf_resources(){
     sed -i -E "s/<location name>/$BACKUP_STORAGE_LOCATION_NAME/" ./templates/backup_storage_location.yaml
     sed -i -E "s/<spectrum fusion ns>/$SF_NAMESPACE/" ./templates/backup_storage_location.yaml
     sed -i -E "s/<bucket name>/$STORAGE_BUCKET_NAME/" ./templates/backup_storage_location.yaml
+    #s3 url is breaking the sed command somehow, must be something in how the url is entered, maybe need to escape characters in the env.properties file
+    #escaping the : and // after https worked
     sed -i -E "s/<s3 url>/$S3_URL/" ./templates/backup_storage_location.yaml
     ${OC} apply -f ./templates/backup_storage_location_secret.yaml -f ./templates/backup_storage_location.yaml || error "Unable to create backup storage location resources to namespace $SF_NAMESPACE."
     
@@ -168,8 +172,8 @@ function create_sf_resources(){
     
     #application
     info "Editing application resource..."
-    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ./templates/application.yaml
-    sed -i -E "s/<service namespace>/$SERVICES_NAMESPACE/" ./templates/application.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NS/" ./templates/application.yaml
+    sed -i -E "s/<service namespace>/$SERVICES_NS/" ./templates/application.yaml
     sed -i -E "s/<tenant namespace 1>/$TETHERED_NAMESPACE1/" ./templates/application.yaml
     sed -i -E "s/<tenant namespace 2>/$TETHERED_NAMESPACE2/" ./templates/application.yaml
     sed -i -E "s/<cert manager namespace>/$CERT_MANAGER_NAMESPACE/" ./templates/application.yaml
@@ -187,8 +191,8 @@ function create_sf_resources(){
 
     #recipe
     info "Editing recipe resource..."
-    sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" ./templates/multi-ns-recipe.yaml
-    sed -i -E "s/<service namespace>/$SERVICES_NAMESPACE/" ./templates/multi-ns-recipe.yaml
+    sed -i -E "s/<operator namespace>/$OPERATOR_NS/" ./templates/multi-ns-recipe.yaml
+    sed -i -E "s/<service namespace>/$SERVICES_NS/" ./templates/multi-ns-recipe.yaml
     sed -i -E "s/<cert manager namespace>/$CERT_MANAGER_NAMESPACE/" ./templates/multi-ns-recipe.yaml
     sed -i -E "s/<licensing namespace>/$LICENSING_NAMESPACE/" ./templates/multi-ns-recipe.yaml
     sed -i -E "s/<lsr namespace>/$LSR_NAMESPACE/" ./templates/multi-ns-recipe.yaml
@@ -196,7 +200,7 @@ function create_sf_resources(){
     tethered_namespaces="$TETHERED_NAMESPACE1,$TETHERED_NAMESPACE2"
     sed -i -E "s/<comma delimited (no spaces) list of Cloud Pak workload namespaces that use this foundational services instance>/$tethered_namespaces/" ./templates/multi-ns-recipe.yaml
     sed -i -E "s/<foundational services version number in use i.e. 4.0, 4.1, 4.2, etc>/$CPFS_VERSION/" ./templates/multi-ns-recipe.yaml
-    size=$(${OC} get commonservice common-service -n $OPERATOR_NAMESPACE -o jsonpath='{.spec.size}')
+    size=$(${OC} get commonservice common-service -n $OPERATOR_NS -o jsonpath='{.spec.size}')
     sed -i -E "s/<.spec.size value from commonservice cr>/$size/" ./templates/multi-ns-recipe.yaml
     sed -i -E "s/<install mode, either Manual or Automatic>/Automatic/" ./templates/multi-ns-recipe.yaml
     sed -i -E "s/<catalog source name>/$CATALOG_SOURCE/" ./templates/multi-ns-recipe.yaml
@@ -216,6 +220,32 @@ function create_sf_resources(){
 
     success "Spectrum Fusion BR resources created in namespace $SF_NAMESPACE."
 
+}
+
+function deploy_cs_br_resources() {
+    title "Deploying necessary BR resources for persistent CPFS components."
+    cd ../velero/schedule
+    tethered_namespaces="$TETHERED_NAMESPACE1,$TETHERED_NAMESPACE2"
+    ./deploy_cs_br_resources --services-ns $SERVICES_NS --operator-ns $OPERATOR_NS --lsr-ns $LSR_NAMESPACE --im --zen --tethered-ns $tethered_namespaces --util --storage-class $STORAGE_CLASS || error "Script deploy-br-resources.sh failed to deploy BR resources."
+    cd $BASE_DIR
+    success "BR resources for persistent CPFS components deployed."
+}
+
+function label_cs_resources() {
+    title "Labeling CS resources."
+
+    info "Labeling cert manager resources..."
+    ./../velero/backup/cert-manager/label-cert-manager.sh || error "Unable to complete labeling of cert manager resources."
+
+    info "Labeling licensing resources..."
+    ./../velero/backup/licensing/label-licensing-configmaps.sh $LICENSING_NAMESPACE || error "Unable to complete labeling of licensing resources."
+
+    mv ../velero/backup/common-service/env.properties ../velero/backup/common-service/og-env.properties
+    cp env.properties ../velero/backup/common-service/env.properties
+    info "Labeling remaining CPFS resources..."
+    ./../velero/backup/common-service/label-common-service.sh || error "Unable to complete labeling of CPFS resources."
+
+    success "CPFS resources labeled."
 }
 
 function check_yq() {
