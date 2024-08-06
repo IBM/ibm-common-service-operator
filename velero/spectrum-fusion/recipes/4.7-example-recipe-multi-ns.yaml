@@ -11,8 +11,8 @@ spec:
         - secrets
         - certificates.cert-manager.io
         - issuers.cert-manager.io
-        - clusterissuers.cert-manager.io
-        - certmanagerconfigs.operator.ibm.com
+        # - clusterissuers.cert-manager.io
+        # - certmanagerconfigs.operator.ibm.com
         - customresourcedefinitions.apiextensions.k8s.io
       labelSelector: foundationservices.cloudpak.ibm.com=cert-manager
       name: cert-manager-resources
@@ -23,8 +23,8 @@ spec:
         - secrets
         - certificates.cert-manager.io
         - issuers.cert-manager.io
-        - clusterissuers.cert-manager.io
-        - certmanagerconfigs.operator.ibm.com
+        # - clusterissuers.cert-manager.io
+        # - certmanagerconfigs.operator.ibm.com
       labelSelector: foundationservices.cloudpak.ibm.com=cert-manager
       name: cert-manager-workload-resources
       type: resource
@@ -219,20 +219,7 @@ spec:
         - zenservices.zen.cpd.ibm.com
         - customresourcedefinitions.apiextensions.k8s.io
       labelSelector: foundationservices.cloudpak.ibm.com=zen
-      name: zen
-      type: resource
-    - backupRef: zen
-      includeClusterResources: true
-      includedResourceTypes:
-        - zenservices.zen.cpd.ibm.com
-      labelSelector: foundationservices.cloudpak.ibm.com=zen
-      name: zen-instance
-      type: resource
-    - backupRef: zen
-      includeClusterResources: true
-      includedResourceTypes:
-        - customresourcedefinitions.apiextensions.k8s.io
-      name: zen-crd
+      name: zenservice
       type: resource
     - backupRef: zen-br-resources
       labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
@@ -538,11 +525,10 @@ spec:
         - group: cs-db-br-resources
         - hook: lsr-data/backup
         - group: lsr-volume
-        - group: license-service-reporter-instances
-        - group: license-service-reporter-resources
+        - group: license-service-reporter-parent
         - hook: zen5-data/backup
         - group: cpfs-util-volume
-        - group: zen
+        - group: zenservice
         - group: zen-br-resources
         - group: common-services-namespace
         - group: pull-secret
@@ -602,7 +588,7 @@ spec:
         - group: odlm-resources
         - group: operand-resources
         - hook: common-service-db-check/podReady
-        - group: zen-instance
+        - group: zenservice
         - group: cs-db-pre-deploy
         - group: cs-db-volume
         - group: cs-db-deployment
