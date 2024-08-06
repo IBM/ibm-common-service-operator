@@ -121,11 +121,11 @@ function install_sf_br(){
     #TODO verify catalog source pod is actually running
     catalog_image=$(${OC} get catalogsource -o jsonpath='{.spec.image}' $CATALOG_SOURCE -n $CAT_SRC_NS)
 
-    cd cmd-line-install/install/
+    # cd cmd-line-install/install/
 
     info "executing install-isf-br.sh script with catalog image $catalog_image in namespace $SF_NAMESPACE."
-    ./install-isf-br.sh $catalog_image -n $SF_NAMESPACE || error "SF install script failed."
-    cd $BASE_DIR
+    ./cmd-line-install/install/install-isf-br.sh $catalog_image -n $SF_NAMESPACE || error "SF install script failed."
+    # cd $BASE_DIR
 
     success "Spectrum Fusion and Backup and Restore Service installed."
 
@@ -224,10 +224,10 @@ function create_sf_resources(){
 
 function deploy_cs_br_resources() {
     title "Deploying necessary BR resources for persistent CPFS components."
-    cd ../velero/schedule
+    # cd ../velero/schedule
     tethered_namespaces="$TETHERED_NAMESPACE1,$TETHERED_NAMESPACE2"
-    ./deploy_cs_br_resources --services-ns $SERVICES_NS --operator-ns $OPERATOR_NS --lsr-ns $LSR_NAMESPACE --im --zen --tethered-ns $tethered_namespaces --util --storage-class $STORAGE_CLASS || error "Script deploy-br-resources.sh failed to deploy BR resources."
-    cd $BASE_DIR
+    ./../velero/schedule/deploy_cs_br_resources --services-ns $SERVICES_NS --operator-ns $OPERATOR_NS --lsr-ns $LSR_NAMESPACE --im --zen --tethered-ns $tethered_namespaces --util --storage-class $STORAGE_CLASS || error "Script deploy-br-resources.sh failed to deploy BR resources."
+    # cd $BASE_DIR
     success "BR resources for persistent CPFS components deployed."
 }
 
