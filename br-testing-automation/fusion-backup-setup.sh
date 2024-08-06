@@ -226,7 +226,7 @@ function deploy_cs_br_resources() {
     title "Deploying necessary BR resources for persistent CPFS components."
     # cd ../velero/schedule
     tethered_namespaces="$TETHERED_NAMESPACE1,$TETHERED_NAMESPACE2"
-    ./../velero/schedule/deploy_cs_br_resources --services-ns $SERVICES_NS --operator-ns $OPERATOR_NS --lsr-ns $LSR_NAMESPACE --im --zen --tethered-ns $tethered_namespaces --util --storage-class $STORAGE_CLASS || error "Script deploy-br-resources.sh failed to deploy BR resources."
+    ./../velero/schedule/deploy-br-resources.sh --services-ns $SERVICES_NS --operator-ns $OPERATOR_NS --lsr-ns $LSR_NAMESPACE --im --zen --tethered-ns $tethered_namespaces --util --storage-class $STORAGE_CLASS || error "Script deploy-br-resources.sh failed to deploy BR resources."
     # cd $BASE_DIR
     success "BR resources for persistent CPFS components deployed."
 }
