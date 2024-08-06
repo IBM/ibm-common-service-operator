@@ -544,7 +544,6 @@ spec:
         - group: license-service-reporter-crd
         - group: commonservice-crd
         - group: commonservice-cr
-        - group: cs-operator-permissions
         - group: setup-tenant-resources
         - group: setup-tenant-job-yaml
         - group: singleton-subscriptions
