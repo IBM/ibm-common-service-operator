@@ -57,11 +57,11 @@ function main(){
         create_sf_resources
         deploy_cs_br_resources
         label_cs_resources
+        success "Hub cluster prepped for BR."
     elif [[ $RESTORE_SETUP == "true" ]]; then
         install_sf_br "spoke"
+        success "Spoke cluster prepped for BR."
     fi
-
-    success "Backup cluster prepped for BR."
 }
 
 function prereq() {
@@ -141,6 +141,10 @@ function install_sf_br(){
         info "Connecting to hub cluster $HUB_SERVER"
         #oc login to the hub cluster
         ${OC} login --token=$HUB_OC_TOKEN --server=$HUB_SERVER
+        apiurl=$(oc whoami --show-server)
+        cluster=$(echo $apiurl | cut -d":" -f2 | tr -d /)
+        file=spokes_$cluster.yaml
+        work_dir=$HOME/spokes/$cluster
         info "Creating spoke yaml..."
         ./cmd-line-install/install/create-spokes-yaml.sh $BR_SERVICE_NAMESPACE $STORAGE_CLASS
         info "Re-connecting to spoke cluster $SPOKE_SERVER"
@@ -148,6 +152,7 @@ function install_sf_br(){
         ${OC} login --token=$SPOKE_OC_TOKEN --server=$SPOKE_SERVER
         info "Applying spoke yaml..."
         #apply generated yaml file
+        ${OC} apply -f $work_dir/$file || error "failed to apply spoke yaml."
 
         success "Spectrum Fusion and Backup and Restore Spoke Service installed."
     fi
