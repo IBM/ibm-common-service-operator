@@ -40,6 +40,8 @@ set -o errtrace
 # # DOCKER_USER=
 # # DOCKER_PASS=
 # STORAGE_CLASS="rook-cephfs"
+BACKUP_SETUP="false"
+RESTORE_SETUP="true"
 
 
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
@@ -50,10 +52,15 @@ function main(){
     prereq
     echo $BASE_DIR
     validate_sc
-    install_sf_br
-    create_sf_resources
-    deploy_cs_br_resources
-    label_cs_resources
+    if [[ $BACKUP_SETUP == "true" ]]; then
+        install_sf_br "hub"
+        create_sf_resources
+        deploy_cs_br_resources
+        label_cs_resources
+    elif [[ $RESTORE_SETUP == "true" ]]; then
+        install_sf_br "spoke"
+    fi
+
     success "Backup cluster prepped for BR."
 }
 
@@ -116,19 +123,34 @@ EOF
 
 function install_sf_br(){
     title "Installing Spectrum Fusion and its Backup and Restore service from catalog $CATALOG_SOURCE."
+    role=$1
     info "Cloning SF cmd-line-install repo..."
     git clone https://$GITHUB_USER:$GITHUB_TOKEN@github.ibm.com/ProjectAbell/cmd-line-install.git
     
     #TODO verify catalog source pod is actually running
     catalog_image=$(${OC} get catalogsource -o jsonpath='{.spec.image}' $CATALOG_SOURCE -n $CAT_SRC_NS)
 
-    # cd cmd-line-install/install/
-
     info "executing install-isf-br.sh script with catalog image $catalog_image in namespace $SF_NAMESPACE."
-    ./cmd-line-install/install/install-isf-br.sh $catalog_image -n $SF_NAMESPACE || error "SF install script failed."
-    # cd $BASE_DIR
+    if [[ $role == "hub" ]]; then
+        info "Installing Spectrum Fusion BR Hub..."
+        ./cmd-line-install/install/install-isf-br.sh $catalog_image -n $SF_NAMESPACE || error "SF install script failed to install on hub cluster."
+        success "Spectrum Fusion and Backup and Restore Hub Service installed."
+    elif [[ $role == "spoke" ]]; then
+        info "Installing Spectrum Fusion BR spoke..."
+        ./cmd-line-install/install/install-isf-br.sh -s $catalog_image -n $SF_NAMESPACE || error "SF install script failed to install on spoke cluster."
+        info "Connecting to hub cluster $HUB_SERVER"
+        #oc login to the hub cluster
+        ${OC} login --token=$HUB_OC_TOKEN --server=$HUB_SERVER
+        info "Creating spoke yaml..."
+        ./cmd-line-install/install/create-spokes-yaml.sh $BR_SERVICE_NAMESPACE $STORAGE_CLASS
+        info "Re-connecting to spoke cluster $SPOKE_SERVER"
+        #oc login to spoke cluster
+        ${OC} login --token=$SPOKE_OC_TOKEN --server=$SPOKE_SERVER
+        info "Applying spoke yaml..."
+        #apply generated yaml file
 
-    success "Spectrum Fusion and Backup and Restore Service installed."
+        success "Spectrum Fusion and Backup and Restore Spoke Service installed."
+    fi
 
 }
 
