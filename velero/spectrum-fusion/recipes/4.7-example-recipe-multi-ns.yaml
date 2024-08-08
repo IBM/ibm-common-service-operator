@@ -515,6 +515,7 @@ spec:
         - hook: lsr-data/backup
         - group: lsr-volume
         - group: license-service-reporter-parent
+        - group: license-service-reporter-resources
         - hook: zen5-data/backup
         - group: cpfs-util-volume
         - group: zenservice
