@@ -331,9 +331,37 @@ function deploy_resources(){
     sed -i -E "s/<services or tethered namespace>/$TARGET_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-role.yaml
     sed -i -E "s/<services or tethered namespace>/$TARGET_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml
+    
+    #setup tenant job
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job.yaml
+    sed -i -E "s/<services namespace>/$TARGET_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job.yaml
+    size=$(${OC} get commonservice common-service -n $OPERATOR_NAMESPACE -o jsonpath='{.spec.size}')
+    sed -i -E "s/<.spec.size value from commonservice cr>/$size/" tmp/cpfs-util-resources/setup-tenant-job.yaml
+    sed -i -E "s/<install mode, either Manual or Automatic>/Automatic/" tmp/cpfs-util-resources/setup-tenant-job.yaml
+    if [[ ! -z $CPFS_VERSION ]]; then
+      sed -i -E "s/<foundational services version number in use i.e. 4.0, 4.1, 4.2, etc>/$CPFS_VERSION/" tmp/cpfs-util-resources/setup-tenant-job.yaml
+    else
+      sub_name=$(oc get subscription -n $OPERATOR_NAMESPACE | grep common-service-operator | awk '{print $1}')
+      channel=$(oc get subscription $sub_name -n $OPERATOR_NAMESPACE -o jsonpath='{.spec.channel}')
+      sed -i -E "s/<foundational services version number in use i.e. 4.0, 4.1, 4.2, etc>/$channel/" tmp/cpfs-util-resources/setup-tenant-job.yaml
+    fi
+    if [[ ! -z $CATALOG_SOURCE ]];; then
+      sed -i -E "s/<catalog source name>/$CATALOG_SOURCE/" tmp/cpfs-util-resources/setup-tenant-job.yaml
+    else
+      sub_name=$(oc get subscription -n $OPERATOR_NAMESPACE | grep common-service-operator | awk '{print $1}')
+      source=$(oc get subscription $sub_name -n $OPERATOR_NAMESPACE -o jsonpath='{.spec.source}')
+      sed -i -E "s/<catalog source name>/$source/" tmp/cpfs-util-resources/setup-tenant-job.yaml
+    fi
+    if [[ ! -z $CAT_SRC_NS ]]; then  
+      sed -i -E "s/<catalog source namespace>/$CAT_SRC_NS/" tmp/cpfs-util-resources/setup-tenant-job.yaml
+    else
+      sub_name=$(oc get subscription -n $OPERATOR_NAMESPACE | grep common-service-operator | awk '{print $1}')
+      source_ns=$(oc get subscription $sub_name -n $OPERATOR_NAMESPACE -o jsonpath='{.spec.sourceNamespace}')
+      sed -i -E "s/<catalog source namespace>/$source_ns/" tmp/cpfs-util-resources/setup-tenant-job.yaml
+    fi
 
     if [[ $TETHERED_NS != "" ]]; then
+      sed -i -E "s/<comma delimited (no spaces) list of Cloud Pak workload namespaces that use this foundational services instance>/$TETHERED_NS/" tmp/cpfs-util-resources/setup-tenant-job.yaml
       for ns in ${TETHERED_NS//,/ }; do
         cp ${BASE_DIR}/../spectrum-fusion/cpfs-util-resources/setup-tenant-job-serv-tethered-role.yaml tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-role-$ns.yaml
         cp ${BASE_DIR}/../spectrum-fusion/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding-$ns.yaml
@@ -341,6 +369,9 @@ function deploy_resources(){
         sed -i -E "s/<services or tethered namespace>/$ns/" tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding-$ns.yaml
         sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding-$ns.yaml
       done
+    else
+      dummy_ns="$OPERATOR_NAMESPACE,$TARGET_NAMESPACE"
+      sed -i -E "s/<comma delimited (no spaces) list of Cloud Pak workload namespaces that use this foundational services instance>/$dummy_ns/" tmp/cpfs-util-resources/setup-tenant-job.yaml
     fi
     oc apply -f tmp/cpfs-util-resources || error "Unable to deploy resources for CPFS Util."
     oc patch job setup-tenant-job -n $OPERATOR_NAMESPACE -p '{"spec": { "suspend" : true }}'
