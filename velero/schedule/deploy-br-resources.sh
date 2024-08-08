@@ -335,7 +335,7 @@ function deploy_resources(){
     #setup tenant job
     sed -i -E "s/<operator namespace>/$OPERATOR_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job.yaml
     sed -i -E "s/<services namespace>/$TARGET_NAMESPACE/" tmp/cpfs-util-resources/setup-tenant-job.yaml
-    size=$(${OC} get commonservice common-service -n $OPERATOR_NAMESPACE -o jsonpath='{.spec.size}')
+    size=$(oc get commonservice common-service -n $OPERATOR_NAMESPACE -o jsonpath='{.spec.size}')
     sed -i -E "s/<.spec.size value from commonservice cr>/$size/" tmp/cpfs-util-resources/setup-tenant-job.yaml
     sed -i -E "s/<install mode, either Manual or Automatic>/Automatic/" tmp/cpfs-util-resources/setup-tenant-job.yaml
     if [[ ! -z $CPFS_VERSION ]]; then
