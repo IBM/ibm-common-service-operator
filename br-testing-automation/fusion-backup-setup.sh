@@ -149,7 +149,7 @@ function install_sf_br(){
         info "Connecting to spoke cluster $SPOKE_SERVER"
         #oc login to spoke cluster
         ${OC} login --token=$SPOKE_OC_TOKEN --server=$SPOKE_SERVER --insecure-skip-tls-verify=false
-        ./cmd-line-install/install/install-isf-br.sh -s $catalog_image -n $SF_NAMESPACE || error "SF install script failed to install on spoke cluster."
+        ./cmd-line-install/install/install-isf-br.sh -s $catalog_image -n $SF_NAMESPACE || ${OC} login --token=$HUB_OC_TOKEN --server=$HUB_SERVER --insecure-skip-tls-verify=false && error "SF install script failed to install on spoke cluster. Logging back into hub cluster $HUB_CLUSTER."
         
         info "Connecting to hub cluster $HUB_SERVER"
         #oc login to the hub cluster
@@ -166,7 +166,7 @@ function install_sf_br(){
         ${OC} login --token=$SPOKE_OC_TOKEN --server=$SPOKE_SERVER --insecure-skip-tls-verify=false
         info "Applying spoke yaml..."
         #apply generated yaml file
-        ${OC} apply -f $work_dir/$file || error "failed to apply spoke yaml."
+        ${OC} apply -f $work_dir/$file || ${OC} login --token=$HUB_OC_TOKEN --server=$HUB_SERVER --insecure-skip-tls-verify=false && error "Failed to apply spoke yaml on spoke cluster $SPOKE_SERVER. Logging back into hub cluster $HUB_CLUSTER."
         info "Waiting for BR Agent service to install on spoke cluster $SPOKE_SERVER..."
         while [[ $(${OC} get fusionserviceinstance ibm-backup-restore-agent-service-instance -n $SF_NAMESPACE -o jsonpath='{.status.installStatus.status}') != "Completed" ]]; do
             sleep 30
