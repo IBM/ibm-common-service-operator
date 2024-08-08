@@ -345,7 +345,7 @@ function deploy_resources(){
       channel=$(oc get subscription $sub_name -n $OPERATOR_NAMESPACE -o jsonpath='{.spec.channel}')
       sed -i -E "s/<foundational services version number in use i.e. 4.0, 4.1, 4.2, etc>/$channel/" tmp/cpfs-util-resources/setup-tenant-job.yaml
     fi
-    if [[ ! -z $CATALOG_SOURCE ]];; then
+    if [[ ! -z $CATALOG_SOURCE ]]; then
       sed -i -E "s/<catalog source name>/$CATALOG_SOURCE/" tmp/cpfs-util-resources/setup-tenant-job.yaml
     else
       sub_name=$(oc get subscription -n $OPERATOR_NAMESPACE | grep common-service-operator | awk '{print $1}')
