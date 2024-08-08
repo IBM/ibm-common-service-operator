@@ -134,10 +134,23 @@ function install_sf_br(){
     if [[ $role == "hub" ]]; then
         info "Installing Spectrum Fusion BR Hub..."
         ./cmd-line-install/install/install-isf-br.sh $catalog_image -n $SF_NAMESPACE || error "SF install script failed to install on hub cluster."
+        apiurl=$(oc whoami --show-server)
+        cluster=$(echo $apiurl | cut -d":" -f2 | tr -d /)
+        info "Waiting for BR Hub service to install on hub cluster $cluster..."
+        while [[ $(${OC} get fusionserviceinstance ibm-backup-restore-service-instance -n $SF_NAMESPACE -o jsonpath='{.status.installStatus.status}') != "Completed" ]]; do
+            sleep 30
+            progress=$(${OC} get fusionserviceinstance ibm-backup-restore-service-instance -n $SF_NAMESPACE -o jsonpath='{.status.installStatus}')
+            info "Install progress: $progress"
+        done
         success "Spectrum Fusion and Backup and Restore Hub Service installed."
     elif [[ $role == "spoke" ]]; then
         info "Installing Spectrum Fusion BR spoke..."
+        
+        info "Connecting to spoke cluster $SPOKE_SERVER"
+        #oc login to spoke cluster
+        ${OC} login --token=$SPOKE_OC_TOKEN --server=$SPOKE_SERVER
         ./cmd-line-install/install/install-isf-br.sh -s $catalog_image -n $SF_NAMESPACE || error "SF install script failed to install on spoke cluster."
+        
         info "Connecting to hub cluster $HUB_SERVER"
         #oc login to the hub cluster
         ${OC} login --token=$HUB_OC_TOKEN --server=$HUB_SERVER
@@ -147,13 +160,23 @@ function install_sf_br(){
         work_dir=$HOME/spokes/$cluster
         info "Creating spoke yaml..."
         ./cmd-line-install/install/create-spokes-yaml.sh $BR_SERVICE_NAMESPACE $STORAGE_CLASS
+        
         info "Re-connecting to spoke cluster $SPOKE_SERVER"
         #oc login to spoke cluster
         ${OC} login --token=$SPOKE_OC_TOKEN --server=$SPOKE_SERVER
+        info "Waiting for BR Agent service to install on spoke cluster $SPOKE_SERVER..."
+        while [[ $(${OC} get fusionserviceinstance ibm-backup-restore-agent-service-instance -n $SF_NAMESPACE -o jsonpath='{.status.installStatus.status}') != "Completed" ]]; do
+            sleep 30
+            progress=$(${OC} get fusionserviceinstance ibm-backup-restore-agent-service-instance -n $SF_NAMESPACE -o jsonpath='{.status.installStatus}')
+            info "Install progress: $progress"
+        done
         info "Applying spoke yaml..."
         #apply generated yaml file
         ${OC} apply -f $work_dir/$file || error "failed to apply spoke yaml."
-
+        
+        info "Re-connecting to hub cluster $HUB_SERVER"
+        #oc login to the hub cluster
+        ${OC} login --token=$HUB_OC_TOKEN --server=$HUB_SERVER
         success "Spectrum Fusion and Backup and Restore Spoke Service installed."
     fi
 
