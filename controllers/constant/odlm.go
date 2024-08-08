@@ -1516,7 +1516,7 @@ spec:
   operators:
   - name: ibm-user-management-operator
     namespace: "{{ .CPFSNs }}"
-    channel: v0.1
+    channel: v1.0
     packageName: ibm-user-management-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
