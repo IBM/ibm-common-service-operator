@@ -179,9 +179,9 @@ function create_sf_resources(){
     #backup storage secret
     sed -i -E "s/<location name>/$BACKUP_STORAGE_LOCATION_NAME/" ./templates/backup_storage_location_secret.yaml
     sed -i -E "s/<spectrum fusion ns>/$SF_NAMESPACE/" ./templates/backup_storage_location_secret.yaml
-    encoded_access_key=$(echo $STORAGE_SECRET_ACCESS_KEY | base64)
+    encoded_access_key=$(echo $STORAGE_SECRET_ACCESS_KEY | base64 -w 0)
     sed -i -E "s/<base 64 encoded secret access key>/$encoded_access_key/" ./templates/backup_storage_location_secret.yaml
-    encoded_access_key_id=$(echo $STORAGE_SECRET_ACCESS_KEY_ID | base64)
+    encoded_access_key_id=$(echo $STORAGE_SECRET_ACCESS_KEY_ID | base64 -w 0)
     sed -i -E "s/<base 64 encoded access key id>/$encoded_access_key_id/" ./templates/backup_storage_location_secret.yaml
     
     #backup storage location
