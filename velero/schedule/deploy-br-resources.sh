@@ -360,7 +360,7 @@ function deploy_resources(){
       sed -i -E "s/<catalog source namespace>/$source_ns/" tmp/cpfs-util-resources/setup-tenant-job.yaml
     fi
 
-    if [[ $TETHERED_NS != "" ]]; then
+    if [[ ! -z $TETHERED_NS ]]; then
       sed -i -E "s/<comma delimited (no spaces) list of Cloud Pak workload namespaces that use this foundational services instance>/$TETHERED_NS/" tmp/cpfs-util-resources/setup-tenant-job.yaml
       for ns in ${TETHERED_NS//,/ }; do
         cp ${BASE_DIR}/../spectrum-fusion/cpfs-util-resources/setup-tenant-job-serv-tethered-role.yaml tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-role-$ns.yaml
