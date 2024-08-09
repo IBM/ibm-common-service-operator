@@ -342,7 +342,7 @@ function deploy_resources(){
       sed -i -E "s/<foundational services version number in use i.e. 4.0, 4.1, 4.2, etc>/$CPFS_VERSION/" tmp/cpfs-util-resources/setup-tenant-job.yaml
     else
       sub_name=$(oc get subscription -n $OPERATOR_NAMESPACE | grep common-service-operator | awk '{print $1}')
-      channel=$(oc get subscription $sub_name -n $OPERATOR_NAMESPACE -o jsonpath='{.spec.channel}')
+      channel=$(oc get subscription $sub_name -n $OPERATOR_NAMESPACE -o jsonpath='{.spec.channel}' | tr -d "v")
       sed -i -E "s/<foundational services version number in use i.e. 4.0, 4.1, 4.2, etc>/$channel/" tmp/cpfs-util-resources/setup-tenant-job.yaml
     fi
     if [[ ! -z $CATALOG_SOURCE ]]; then
@@ -361,7 +361,7 @@ function deploy_resources(){
     fi
 
     if [[ ! -z $TETHERED_NS ]]; then
-      sed -i -E "s/<comma delimited (no spaces) list of Cloud Pak workload namespaces that use this foundational services instance>/$TETHERED_NS/" tmp/cpfs-util-resources/setup-tenant-job.yaml
+      sed -i -E "s/<comma delimited \(no spaces\) list of Cloud Pak workload namespaces that use this foundational services instance>/$TETHERED_NS/" tmp/cpfs-util-resources/setup-tenant-job.yaml
       for ns in ${TETHERED_NS//,/ }; do
         cp ${BASE_DIR}/../spectrum-fusion/cpfs-util-resources/setup-tenant-job-serv-tethered-role.yaml tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-role-$ns.yaml
         cp ${BASE_DIR}/../spectrum-fusion/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding.yaml tmp/cpfs-util-resources/setup-tenant-job-serv-tethered-rolebinding-$ns.yaml
