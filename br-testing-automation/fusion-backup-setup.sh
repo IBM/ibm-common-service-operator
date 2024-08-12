@@ -131,7 +131,7 @@ function prereq() {
             error "Missing value for one or more of CATALOG_SOURCE, CAT_SRC_NS, SF_NAMESPACE, GITHUB_USER, GITHUB_TOKEN, or STORAGE_CLASS. Please update env.properties file with correct parameters and rerun."
         fi
         if [[ $BACKUP_SETUP == "true" ]]; then
-            if [[ -z $OPERATOR_NAMESPACE ]] || [[ -z $SERVICES_NS ]] || [[ -z $BACKUP_STORAGE_LOCATION_NAME ]] || [[ -z $STORAGE_BUCKET_NAME ]] || [[ -z $S3_URL ]] || [[ -z $STORAGE_SECRET_ACCESS_KEY ]] || [[ -z $STORAGE_SECRET_ACCESS_KEY_ID ]] || [[ -z $CERT_MANAGER_NAMESPACE ]] || [[ -z $LICENSING_NAMESPACE ]] [[ -z $LSR_NAMESPACE ]] || [[ -z $CPFS_VERSION ]] || [[ -z $ZENSERVICE_NAME ]]; then
+            if [[ -z $OPERATOR_NAMESPACE ]] || [[ -z $SERVICES_NS ]] || [[ -z $BACKUP_STORAGE_LOCATION_NAME ]] || [[ -z $STORAGE_BUCKET_NAME ]] || [[ -z $S3_URL ]] || [[ -z $STORAGE_SECRET_ACCESS_KEY ]] || [[ -z $STORAGE_SECRET_ACCESS_KEY_ID ]] || [[ -z $CERT_MANAGER_NAMESPACE ]] || [[ -z $LICENSING_NAMESPACE ]] || [[ -z $LSR_NAMESPACE ]] || [[ -z $CPFS_VERSION ]] || [[ -z $ZENSERVICE_NAME ]]; then
                 error "Missing value for one or more of OPERATOR_NAMESPACE, SERVICES_NS, BACKUP_STORAGE_LOCATION_NAME, STORAGE_BUCKET_NAME, S3_URL, STORAGE_SECRET_ACCESS_KEY, STORAGE_SECRET_ACCESS_KEY_ID, CERT_MANAGER_NAMESPACE, LICENSING_NAMESPACE, LSR_NAMESPACE, CPFS_VERSION, ZENSERVICE_NAME. Please update env.properties file with correct parameters and rerun."
             fi
         elif [[ $RESTORE_SETUP == "true" ]]; then
