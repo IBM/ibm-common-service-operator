@@ -27,7 +27,7 @@ BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 source ${BASE_DIR}/env.properties
 
 function main(){
-    parse_arguments
+    parse_arguments "$@"
     prereq
     echo $BASE_DIR
     validate_sc
