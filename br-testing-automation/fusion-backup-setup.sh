@@ -145,11 +145,12 @@ function install_sf_br(){
         success "Spectrum Fusion and Backup and Restore Hub Service installed."
     elif [[ $role == "spoke" ]]; then
         info "Installing Spectrum Fusion BR spoke..."
+        info "$HUB_SERVER $SPOKE_SERVER"
         
         info "Connecting to spoke cluster $SPOKE_SERVER"
         #oc login to spoke cluster
-        ${OC} login --token=$SPOKE_OC_TOKEN --server=$SPOKE_SERVER --insecure-skip-tls-verify=false
-        ./cmd-line-install/install/install-isf-br.sh -s $catalog_image -n $SF_NAMESPACE || ${OC} login --token=$HUB_OC_TOKEN --server=$HUB_SERVER --insecure-skip-tls-verify=false && error "SF install script failed to install on spoke cluster. Logging back into hub cluster $HUB_CLUSTER."
+        ${OC} login --token=$SPOKE_OC_TOKEN --server=$SPOKE_SERVER --insecure-skip-tls-verify=true
+        ./cmd-line-install/install/install-isf-br.sh -s $catalog_image -n $SF_NAMESPACE || ${OC} login --token=$HUB_OC_TOKEN --server=$HUB_SERVER --insecure-skip-tls-verify=true && error "SF install script failed to install on spoke cluster. Logging back into hub cluster $HUB_SERVER."
         
         info "Connecting to hub cluster $HUB_SERVER"
         #oc login to the hub cluster
