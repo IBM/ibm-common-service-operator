@@ -180,7 +180,7 @@ function install_sf_br(){
             sleep 30
             progress=$(${OC} get fusionserviceinstance ibm-backup-restore-agent-service-instance -n $SF_NAMESPACE -o jsonpath='{.status.installStatus}')
             info "Install progress: $progress"
-            retries=$($retries - 1)
+            retries=$((retries-1))
         done
         if [[ $(${OC} get fusionserviceinstance ibm-backup-restore-agent-service-instance -n $SF_NAMESPACE -o jsonpath='{.status.installStatus.status}') != "Completed" ]] && [[ $retries == 0 ]]; then
             warning "Editing dataprotectionagent CR to restart idp-agent-operator reconcile..."
@@ -192,7 +192,7 @@ function install_sf_br(){
             sleep 30
             progress=$(${OC} get fusionserviceinstance ibm-backup-restore-agent-service-instance -n $SF_NAMESPACE -o jsonpath='{.status.installStatus}')
             info "Install progress: $progress"
-            retries=$($retries - 1)
+            retries=$((retries-1))
         done
         if [[ $(${OC} get fusionserviceinstance ibm-backup-restore-agent-service-instance -n $SF_NAMESPACE -o jsonpath='{.status.installStatus.status}') != "Completed" ]] && [[ $retries == 0 ]]; then
             ${OC} login --token=$HUB_OC_TOKEN --server=$HUB_SERVER --insecure-skip-tls-verify=true
