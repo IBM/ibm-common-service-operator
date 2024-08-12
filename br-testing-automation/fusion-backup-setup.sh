@@ -168,10 +168,24 @@ function install_sf_br(){
         #apply generated yaml file
         ${OC} apply -f $work_dir/$file || ${OC} login --token=$HUB_OC_TOKEN --server=$HUB_SERVER --insecure-skip-tls-verify=false && error "Failed to apply spoke yaml on spoke cluster $SPOKE_SERVER. Logging back into hub cluster $HUB_CLUSTER."
         info "Waiting for BR Agent service to install on spoke cluster $SPOKE_SERVER..."
-        while [[ $(${OC} get fusionserviceinstance ibm-backup-restore-agent-service-instance -n $SF_NAMESPACE -o jsonpath='{.status.installStatus.status}') != "Completed" ]]; do
+        retries=15
+        while [[ $(${OC} get fusionserviceinstance ibm-backup-restore-agent-service-instance -n $SF_NAMESPACE -o jsonpath='{.status.installStatus.status}') != "Completed" ]] && [[ $retries > 0 ]]; do
             sleep 30
             progress=$(${OC} get fusionserviceinstance ibm-backup-restore-agent-service-instance -n $SF_NAMESPACE -o jsonpath='{.status.installStatus}')
             info "Install progress: $progress"
+            retries=$retries - 1
+        done
+        if [[ $(${OC} get fusionserviceinstance ibm-backup-restore-agent-service-instance -n $SF_NAMESPACE -o jsonpath='{.status.installStatus.status}') != "Completed" ]] && [[ $retries == 0 ]];
+            warning "Editing dataprotectionagent CR to restart idp-agent-operator reconcile..."
+            dpagent=$(${OC} get dataprotectionagent -n $BR_SERVICE_NAMESPACE --no-headers | awk '{print $1}')
+            ${OC} patch $dpagent -n $BR_SERVICE_NAMESPACE --type='merge' -p '{"spec":{"transactionManager":{"logLevel":"DEBUG"}}}' || error "Unable to edit dataprotectionagent CR $dpagent in namespace $BR_SERVICES_NAMESPACE."
+        fi
+        retries=15
+        while [[ $(${OC} get fusionserviceinstance ibm-backup-restore-agent-service-instance -n $SF_NAMESPACE -o jsonpath='{.status.installStatus.status}') != "Completed" ]] && [[ $retries > 0 ]]; do
+            sleep 30
+            progress=$(${OC} get fusionserviceinstance ibm-backup-restore-agent-service-instance -n $SF_NAMESPACE -o jsonpath='{.status.installStatus}')
+            info "Install progress: $progress"
+            retries=$retries - 1
         done
         
         info "Re-connecting to hub cluster $HUB_SERVER"
@@ -249,7 +263,7 @@ function create_sf_resources(){
     sed -i -E "s/<lsr namespace>/$LSR_NAMESPACE/" ./templates/multi-ns-recipe.yaml
     sed -i -E "s/<zenservice name>/$ZENSERVICE_NAME/" ./templates/multi-ns-recipe.yaml
     tethered_namespaces="$TETHERED_NAMESPACE1,$TETHERED_NAMESPACE2"
-    sed -i -E "s/<comma delimited (no spaces) list of Cloud Pak workload namespaces that use this foundational services instance>/$tethered_namespaces/" ./templates/multi-ns-recipe.yaml
+    sed -i -E "s/<comma delimited \(no spaces\) list of Cloud Pak workload namespaces that use this foundational services instance>/$tethered_namespaces/" ./templates/multi-ns-recipe.yaml
     sed -i -E "s/<foundational services version number in use i.e. 4.0, 4.1, 4.2, etc>/$CPFS_VERSION/" ./templates/multi-ns-recipe.yaml
     size=$(${OC} get commonservice common-service -n $OPERATOR_NS -o jsonpath='{.spec.size}')
     sed -i -E "s/<.spec.size value from commonservice cr>/$size/" ./templates/multi-ns-recipe.yaml
