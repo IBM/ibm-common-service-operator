@@ -145,16 +145,18 @@ function install_sf_br(){
         success "Spectrum Fusion and Backup and Restore Hub Service installed."
     elif [[ $role == "spoke" ]]; then
         info "Installing Spectrum Fusion BR spoke..."
-        info "$HUB_SERVER $SPOKE_SERVER"
-        
+        error="false"
         info "Connecting to spoke cluster $SPOKE_SERVER"
         #oc login to spoke cluster
         ${OC} login --token=$SPOKE_OC_TOKEN --server=$SPOKE_SERVER --insecure-skip-tls-verify=true
-        ./cmd-line-install/install/install-isf-br.sh -s $catalog_image -n $SF_NAMESPACE || ${OC} login --token=$HUB_OC_TOKEN --server=$HUB_SERVER --insecure-skip-tls-verify=true && error "SF install script failed to install on spoke cluster. Logging back into hub cluster $HUB_SERVER."
-        
+        ./cmd-line-install/install/install-isf-br.sh -s $catalog_image -n $SF_NAMESPACE || error="true"
+        if [[ $error == "true" ]]; then
+            ${OC} login --token=$HUB_OC_TOKEN --server=$HUB_SERVER --insecure-skip-tls-verify=true
+            error "SF install script failed to install on spoke cluster. Logging back into hub cluster $HUB_SERVER."
+        fi
         info "Connecting to hub cluster $HUB_SERVER"
         #oc login to the hub cluster
-        ${OC} login --token=$HUB_OC_TOKEN --server=$HUB_SERVER --insecure-skip-tls-verify=false
+        ${OC} login --token=$HUB_OC_TOKEN --server=$HUB_SERVER --insecure-skip-tls-verify=true
         apiurl=$(oc whoami --show-server)
         cluster=$(echo $apiurl | cut -d":" -f2 | tr -d /)
         file=spokes_$cluster.yaml
@@ -164,10 +166,14 @@ function install_sf_br(){
         
         info "Re-connecting to spoke cluster $SPOKE_SERVER"
         #oc login to spoke cluster
-        ${OC} login --token=$SPOKE_OC_TOKEN --server=$SPOKE_SERVER --insecure-skip-tls-verify=false
+        ${OC} login --token=$SPOKE_OC_TOKEN --server=$SPOKE_SERVER --insecure-skip-tls-verify=true
         info "Applying spoke yaml..."
         #apply generated yaml file
-        ${OC} apply -f $work_dir/$file || ${OC} login --token=$HUB_OC_TOKEN --server=$HUB_SERVER --insecure-skip-tls-verify=false && error "Failed to apply spoke yaml on spoke cluster $SPOKE_SERVER. Logging back into hub cluster $HUB_CLUSTER."
+        ${OC} apply -f $work_dir/$file || error="true"
+        if [[ $error == "true" ]]; then
+            ${OC} login --token=$HUB_OC_TOKEN --server=$HUB_SERVER --insecure-skip-tls-verify=true
+            error "Failed to apply spoke yaml on spoke cluster $SPOKE_SERVER. Logging back into hub cluster $HUB_SERVER."
+        fi
         info "Waiting for BR Agent service to install on spoke cluster $SPOKE_SERVER..."
         retries=15
         while [[ $(${OC} get fusionserviceinstance ibm-backup-restore-agent-service-instance -n $SF_NAMESPACE -o jsonpath='{.status.installStatus.status}') != "Completed" ]] && [[ $retries > 0 ]]; do
@@ -188,10 +194,14 @@ function install_sf_br(){
             info "Install progress: $progress"
             retries=$retries - 1
         done
+        if [[ $(${OC} get fusionserviceinstance ibm-backup-restore-agent-service-instance -n $SF_NAMESPACE -o jsonpath='{.status.installStatus.status}') != "Completed" ]] && [[ $retries == 0 ]]; then
+            ${OC} login --token=$HUB_OC_TOKEN --server=$HUB_SERVER --insecure-skip-tls-verify=true
+            error "Timed out waiting for agent service install to come ready on spoke cluster $SPOKE_SERVER. Reconnecting to hub cluster $HUB_SERVER."
+        fi
         
         info "Re-connecting to hub cluster $HUB_SERVER"
         #oc login to the hub cluster
-        ${OC} login --token=$HUB_OC_TOKEN --server=$HUB_SERVER
+        ${OC} login --token=$HUB_OC_TOKEN --server=$HUB_SERVER --insecure-skip-tls-verify=true
         success "Spectrum Fusion and Backup and Restore Spoke Service installed."
     fi
 
