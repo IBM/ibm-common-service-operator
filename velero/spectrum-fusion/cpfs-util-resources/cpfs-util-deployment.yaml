@@ -21,7 +21,7 @@ spec:
           - sh
           - -c
           - sleep infinity
-          image: icr.io/cpopen/cpfs/cpfs-utils:4.6.2
+          image: icr.io/cpopen/cpfs/cpfs-utils:4.6.0
           imagePullPolicy: IfNotPresent
           name: cpfs-util
           resources:
