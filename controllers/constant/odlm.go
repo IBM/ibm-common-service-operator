@@ -1251,6 +1251,12 @@ spec:
               additionalPodAntiAffinity:
                 preferredDuringSchedulingIgnoredDuringExecution:
                   - podAffinityTerm:
+                      labelSelector:
+                        matchExpressions:
+                          - key: k8s.enterprisedb.io/cluster
+                            operator: In
+                            values:
+                              - common-service-db
                       topologyKey: kubernetes.io/hostname
                     weight: 50
               podAntiAffinityType: preferred
