@@ -1179,7 +1179,36 @@ spec:
                   - CREATE DATABASE zen OWNER zen_user
                   - GRANT ALL PRIVILEGES ON DATABASE zen TO zen_user
             affinity:
+              nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                    - matchExpressions:
+                        - key: kubernetes.io/arch
+                          operator: In
+                          values:
+                            - amd64
+                            - ppc64le
+                            - s390x
+              additionalPodAntiAffinity:
+                preferredDuringSchedulingIgnoredDuringExecution:
+                  - podAffinityTerm:
+                      labelSelector:
+                        matchExpressions:
+                          - key: k8s.enterprisedb.io/cluster
+                            operator: In
+                            values:
+                              - common-service-db
+                      topologyKey: kubernetes.io/hostname
+                    weight: 50
+              podAntiAffinityType: preferred
               topologyKey: topology.kubernetes.io/zone
+            topologySpreadConstraints:
+            - maxSkew: 1
+              topologyKey: topology.kubernetes.io/zone
+              whenUnsatisfiable: ScheduleAnyway
+            - maxSkew: 1
+              topologyKey: topology.kubernetes.io/region
+              whenUnsatisfiable: ScheduleAnyway
             imageName:
               templatingValueFrom:
                 default:
