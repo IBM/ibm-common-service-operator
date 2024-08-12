@@ -15,59 +15,99 @@
 # limitations under the License.
 #
 
-#script outline
-#validate storage class in use on cluster (no pool if rook ceph, otherwise ODF)
-    #create volumesnapshotclass if rook ceph
-#download install script form SF repo
-#run script to install SF and BR service
-#create necesary SF resources
-#deploy BR resources
-#label existing CS resources
-
 set -o pipefail
 set -o errtrace
 
-# CATALOG_SOURCE="ibm-operator-catalog-latest"
-# CAT_SRC_NS="openshift-marketplace"
-# # OC=
-# # YQ=
-# SF_NAMESPACE="ibm-spectrum-fusion-ns"
-# BR_SERVICE_NAMESPACE="ibm-backup-restore"
-# # OPERATOR_NS=
-# # SERVICES_NS=
-# # GITHUB_USER=
-# # GITHUB_TOKEN=
-# # DOCKER_USER=
-# # DOCKER_PASS=
-# STORAGE_CLASS="rook-cephfs"
 BACKUP_SETUP="false"
-RESTORE_SETUP="true"
+RESTORE_SETUP="false"
 
 
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
+. ../cp3pt0-deployment/common/utils.sh
 source ${BASE_DIR}/env.properties
 
 function main(){
-    # parse_arguments
+    parse_arguments
     prereq
     echo $BASE_DIR
     validate_sc
     if [[ $BACKUP_SETUP == "true" ]]; then
+        save_log "logs" "hub_setup_log"
+        trap cleanup_log EXIT
         install_sf_br "hub"
         create_sf_resources
         deploy_cs_br_resources
         label_cs_resources
         success "Hub cluster prepped for BR."
     elif [[ $RESTORE_SETUP == "true" ]]; then
+        save_log "logs" "spoke_setup_log"
+        trap cleanup_log EXIT
         install_sf_br "spoke"
         success "Spoke cluster prepped for BR."
     fi
 }
 
+function print_usage(){
+    script_name=`basename ${0}`
+    echo "Usage: ${script_name} [OPTIONS]"
+    echo ""
+    echo "Set up either a hub cluster or a spoke cluster to use Spectrum Fusion Backup and Restore."
+    echo "One of --hub-setup or --spoke-setup is required."
+    echo "This script assumes the following:"
+    echo "    * An existing CPFS instance on the hub cluster with IM, Zen, Licensing, Cert Manager, and License Service Reporter present"
+    echo "    * Filled in required variables in the accompanying env.properties file"
+    echo ""
+    echo "Options:"
+    echo "   --oc string                    Optional. File path to oc CLI. Default uses oc in your PATH. Can also be set in env.properties."
+    echo "   --yq string                    Optional. File path to yq CLI. Default uses yq in your PATH. Can also be set in env.properties."
+    echo "   --hub-setup                    Optional. Set up Spectrum Fusion Backup and Restore Hub cluster, create necessary SF resources, and label CPFS resources on cluster."
+    echo "   --spoke-setup                  Optional. Set up Spectrum Fusion Backup and Restore Spoke cluster. Must have an existing Hub cluster to connect to."
+    echo "   -h, --help                     Print usage information"
+    echo ""
+}
+
+function parse_arguments() {
+    script_name=`basename ${0}`
+    echo "All arguments passed into the ${script_name}: $@"
+    echo ""
+
+    # process options
+    while [[ "$@" != "" ]]; do
+        case "$1" in
+        --oc)
+            shift
+            OC=$1
+            ;;
+        --yq)
+            shift
+            YQ=$1
+            ;;
+        --setup-hub)
+            shift
+            BACKUP_SETUP="true"
+            ;;
+        --setup-spoke)
+            shift
+            RESTORE_SETUP="true"
+            ;;
+        -h | --help)
+            print_usage
+            exit 1
+            ;;
+        *)
+            echo "Entered option $1 not supported. Run ./${script_name} -h for script usage info."
+            ;;
+        esac
+        shift
+    done
+    echo ""
+}
+
 function prereq() {
-    #check oc
-    #check yq
-    #check skopeo
+    #check that oc yq and skopeo are available
+    check_command "${OC}"
+    check_command "${YQ}"
+    check_command "skopeo"
     # Check yq version
     check_yq
 
@@ -79,7 +119,28 @@ function prereq() {
         success "oc command logged in as ${user}"
     fi
 
-    #check docker access
+    #check docker access (so far not necessary)
+
+    #check variables are present
+    if [[ $BACKUP_SETUP == "true" ]] && [[ $RESTORE_SETUP == "true" ]]; then
+        error "Both Hub and Spoke setup options selected. Please rerun selecting one or the other (Hub has to come first)."
+    elif [[ $BACKUP_SETUP == "false" ]] && [[ $RESTORE_SETUP == "false" ]]; then
+        error "Neither Hub nor Spoke setup options selected. Please rerun selecting one or the other (Hub has to come first)."
+    elif [[ $BACKUP_SETUP == "true" ]] || [[ $RESTORE_SETUP == "true" ]]; then
+        if [[ -z $CATALOG_SOURCE ]] || [[ -z $CAT_SRC_NS ]] || [[ -z $SF_NAMESPACE ]] || [[ -z $GITHUB_USER ]] || [[ -z $GITHUB_TOKEN ]] || [[ -z $STORAGE_CLASS ]]; then
+            error "Missing value for one or more of CATALOG_SOURCE, CAT_SRC_NS, SF_NAMESPACE, GITHUB_USER, GITHUB_TOKEN, or STORAGE_CLASS. Please update env.properties file with correct parameters and rerun."
+        fi
+        if [[ $BACKUP_SETUP == "true" ]]; then
+            if [[ -z $OPERATOR_NAMESPACE ]] || [[ -z $SERVICES_NS ]] || [[ -z $BACKUP_STORAGE_LOCATION_NAME ]] || [[ -z $STORAGE_BUCKET_NAME ]] || [[ -z $S3_URL ]] || [[ -z $STORAGE_SECRET_ACCESS_KEY ]] || [[ -z $STORAGE_SECRET_ACCESS_KEY_ID ]] || [[ -z $CERT_MANAGER_NAMESPACE ]] || [[ -z $LICENSING_NAMESPACE ]] [[ -z $LSR_NAMESPACE ]] || [[ -z $CPFS_VERSION ]] || [[ -z $ZENSERVICE_NAME ]]; then
+                error "Missing value for one or more of OPERATOR_NAMESPACE, SERVICES_NS, BACKUP_STORAGE_LOCATION_NAME, STORAGE_BUCKET_NAME, S3_URL, STORAGE_SECRET_ACCESS_KEY, STORAGE_SECRET_ACCESS_KEY_ID, CERT_MANAGER_NAMESPACE, LICENSING_NAMESPACE, LSR_NAMESPACE, CPFS_VERSION, ZENSERVICE_NAME. Please update env.properties file with correct parameters and rerun."
+            fi
+        elif [[ $RESTORE_SETUP == "true" ]]; then
+            if [[ -z $HUB_OC_TOKEN ]] || [[ -z $HUB_SERVER ]] || [[ -z $SPOKE_OC_TOKEN ]] || [[ -z $SPOKE_SERVER ]]; then
+                error "Missing value for one or more of HUB_OC_TOKEN, HUB_SERVER, SPOKE_OC_TOKEN, SPOKE_SERVER. Please update env.properties file with correct parameters and rerun."
+            fi
+        fi
+    fi
+
 }
 
 function validate_sc(){
