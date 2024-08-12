@@ -175,7 +175,7 @@ function install_sf_br(){
             info "Install progress: $progress"
             retries=$retries - 1
         done
-        if [[ $(${OC} get fusionserviceinstance ibm-backup-restore-agent-service-instance -n $SF_NAMESPACE -o jsonpath='{.status.installStatus.status}') != "Completed" ]] && [[ $retries == 0 ]];
+        if [[ $(${OC} get fusionserviceinstance ibm-backup-restore-agent-service-instance -n $SF_NAMESPACE -o jsonpath='{.status.installStatus.status}') != "Completed" ]] && [[ $retries == 0 ]]; then
             warning "Editing dataprotectionagent CR to restart idp-agent-operator reconcile..."
             dpagent=$(${OC} get dataprotectionagent -n $BR_SERVICE_NAMESPACE --no-headers | awk '{print $1}')
             ${OC} patch $dpagent -n $BR_SERVICE_NAMESPACE --type='merge' -p '{"spec":{"transactionManager":{"logLevel":"DEBUG"}}}' || error "Unable to edit dataprotectionagent CR $dpagent in namespace $BR_SERVICES_NAMESPACE."
