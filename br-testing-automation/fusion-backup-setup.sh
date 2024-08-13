@@ -82,11 +82,11 @@ function parse_arguments() {
             shift
             YQ=$1
             ;;
-        --setup-hub)
+        --hub-setup)
             shift
             BACKUP_SETUP="true"
             ;;
-        --setup-spoke)
+        --spoke-setup)
             shift
             RESTORE_SETUP="true"
             ;;
