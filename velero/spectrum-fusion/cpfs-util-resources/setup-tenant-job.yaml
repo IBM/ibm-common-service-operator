@@ -24,7 +24,7 @@ spec:
           limits:
             cpu: 500m
             ephemeral-storage: 512Mi
-            memory: 1024Mi
+            memory: 1536Mi
           requests:
             cpu: 200m
             ephemeral-storage: 128Mi
