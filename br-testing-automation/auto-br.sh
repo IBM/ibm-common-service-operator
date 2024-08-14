@@ -28,7 +28,7 @@ APPLICATION="cs-application"
 BACKUP_POLICY="cs-backup-policy"
 BACKUP_STORAGE_LOCATION_NAME="luztest"
 ROUTE=""
-#SF_NAMESPACE=""
+SF_NAMESPACE="ibm-spectrum-fusion-ns"
 #hub oc token
 #hub server
 #spoke oc token
@@ -104,7 +104,6 @@ function parse_arguments() {
             YQ=$1
             ;;
         --backup)
-            shift
             BACKUP="true"
             ;;
         --backup-name)
@@ -112,7 +111,6 @@ function parse_arguments() {
             BACKUP_NAME=$1
             ;;
         --restore)
-            shift
             RESTORE="true"
             ;;
         --restore-name)
