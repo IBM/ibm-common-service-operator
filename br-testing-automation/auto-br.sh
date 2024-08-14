@@ -233,6 +233,7 @@ function wait_for_br(){
         if [[ $checkFail != "" ]]; then
             error "$type failed with error: $status. \n For more info, see job in the UI (https://$ROUTE/backupAndRestore/jobs/${type}s/$resource_name) or use \"oc get $type $resource_name -n $SF_NAMESPACE -o yaml | yq \'.status\'\"."
         fi
+        sleep $time
         retries=$((retries-1))
     done
 
