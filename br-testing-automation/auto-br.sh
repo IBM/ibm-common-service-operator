@@ -214,7 +214,7 @@ function create_br() {
             ${YQ} -i '.metadata.namesace = "'${SF_NAMESPACE}'"' ./templates/sf-restore.yaml || error "Could not update namespace value to $SF_NAMESPACE in restore yaml."
         fi
 
-        ${OC} apply -f ./templates/sf-retore.yaml || error "Failed to apply restore yaml."
+        ${OC} apply -f ./templates/sf-restore.yaml || error "Failed to apply restore yaml."
         success "Restore $RESTORE_NAME successfully applied on hub server $HUB_SERVER to restore target cluster $TARGET_CLUSTER"
     fi
 }
