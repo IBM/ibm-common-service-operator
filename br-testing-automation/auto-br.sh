@@ -64,7 +64,7 @@ function main(){
     fi
     if [[ $RESTORE == "true" ]]; then
         create_br "restore" $TARGET_CLUSTER_TYPE
-        wait_for_br "restore" $RESTORE_NAME 90
+        wait_for_br "restore" $RESTORE_NAME 120
         success "Restore $RESTORE_NAME to cluster $TARGET_CLUSTER completed. See results in Fusion UI here: https://$ROUTE/backupAndRestore/jobs/restores/$RESTORE_NAME"
     fi
 
