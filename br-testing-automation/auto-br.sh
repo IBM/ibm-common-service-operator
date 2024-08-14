@@ -191,7 +191,7 @@ function create_br() {
         fi
 
         ${OC} apply -f ./templates/sf-backup.yaml || error "Failed to apply backup yaml."
-        success "Backup successfully applied on hub server $HUB_SERVER to backup target cluster $TARGET_CLUSTER"
+        success "Backup $BACKUP_NAME successfully applied on hub server $HUB_SERVER to backup target cluster $TARGET_CLUSTER"
         
     fi
     
@@ -213,6 +213,9 @@ function create_br() {
         if [[ $SF_NAMESPACE != "ibm-spectrum-fusion-ns" ]]; then
             ${YQ} -i '.metadata.namesace = "'${SF_NAMESPACE}'"' ./templates/sf-restore.yaml || error "Could not update namespace value to $SF_NAMESPACE in restore yaml."
         fi
+
+        ${OC} apply -f ./templates/sf-retore.yaml || error "Failed to apply restore yaml."
+        success "Restore $RESTORE_NAME successfully applied on hub server $HUB_SERVER to restore target cluster $TARGET_CLUSTER"
     fi
 }
 
