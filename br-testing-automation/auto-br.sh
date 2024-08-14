@@ -225,7 +225,7 @@ function wait_for_br(){
     echo "$status && ${status} && ${OC} get $type $resource_name -n $SF_NAMESPACE -o jsonpath='{.status.phase}'"
     info "$type $resource_name can be further tracked in the UI here: https://$ROUTE/backupAndRestore/jobs/${type}s/$resource_name"
     while [[ $status != "Completed" ]] && [[ $retries > 0 ]]; do
-        status=$(eval $status)
+        status=$(${OC} get $type $resource_name -n $SF_NAMESPACE -o yaml | ${YQ} '.status.phase')
         info "Waiting on $type $resource_name to complete. Current status: $status"
         if [[ $((retries%10)) == 0 ]]; then
             info "Current sequence status:"
