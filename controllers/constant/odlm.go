@@ -291,7 +291,7 @@ metadata:
     status-monitored-services: {{ .StatusMonitoredServices }}
 spec:
   operators:
-  - channel: stable
+  - channel: stable-v1.22
     installPlanApproval: {{ .ApprovalMode }}
     name: common-service-postgresql
     namespace: "{{ .CPFSNs }}"
