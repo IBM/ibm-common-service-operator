@@ -9,14 +9,4 @@ updates:
     directory: "/"
     schedule:
       interval: daily
-    target-branch: "release-ltsr"
-  - package-ecosystem: docker
-    directory: "/"
-    schedule:
-      interval: daily
-    target-branch: "release-323"
-  - package-ecosystem: docker
-    directory: "/"
-    schedule:
-      interval: daily
     target-branch: "release-sc2"
