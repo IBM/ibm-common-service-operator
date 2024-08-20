@@ -19,7 +19,7 @@ package controllers
 import (
 	"k8s.io/klog"
 
-	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
+	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
 )
 
 const (

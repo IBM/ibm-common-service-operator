@@ -33,7 +33,7 @@ import (
 
 	certmanagerv1 "github.com/ibm/ibm-cert-manager-operator/apis/cert-manager/v1"
 
-	"github.com/IBM/ibm-common-service-operator/controllers/constant"
+	"github.com/IBM/ibm-common-service-operator/v4/controllers/constant"
 )
 
 var logd = log.Log.WithName("controller_certificaterefresh")
