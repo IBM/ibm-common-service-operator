@@ -52,6 +52,7 @@ function main() {
     label_subscription
     label_lsr
     label_cs
+    label_mcsp
     success "Successfully labeled all the resources"
 }
 
@@ -225,6 +226,13 @@ function label_cs(){
     ${OC} label customresourcedefinition commonservices.operator.ibm.com foundationservices.cloudpak.ibm.com=crd --overwrite=true 2>/dev/null
     ${OC} label commonservices common-service foundationservices.cloudpak.ibm.com=commonservice -n $OPERATOR_NS --overwrite=true 2>/dev/null
     ${OC} label operandconfig common-service foundationservices.cloudpak.ibm.com=operand -n $SERVICES_NS --overwrite=true 2>/dev/null
+    echo ""
+}
+
+function label_mcsp(){
+
+    title "Start to label mcsp resources"
+    ${OC} label secret user-mgmt-bootstrap foundationservices.cloudpak.ibm.com=user-mgmt -n $SERVICES_NS --overwrite=true 2>/dev/null
     echo ""
 }
 
