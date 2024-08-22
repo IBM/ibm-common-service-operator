@@ -1266,10 +1266,8 @@ function update_operator() {
     # something (either Open Shift or OLM), so need to use patch
     # "~1" is the escape sequence for "/" character
     if [ ! -z "$remove_opreq_label" ]; then
-        label_exist=$(${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o=jsonpath='{.metadata.labels}' | grep operator.ibm.com~1opreq-control || echo false)
-        if [[ $label_exist == "false" ]]; then
-            info "no need to remove opreq label, this is v4 upgrade scenario"
-        else
+        label_exist=$(${OC} get subscription.operators.coreos.com ${sub_name} -n ${ns} -o=jsonpath='{.metadata.labels}' | grep operator.ibm.com/opreq-control || echo false)
+        if [[ $label_exist != "false" ]]; then
             ${OC} patch subscription.operators.coreos.com ${sub_name} -n ${ns} --type='json' -p='[{"op": "remove", "path": "/metadata/labels/operator.ibm.com~1opreq-control"}]' || warning "Could not patch Subscription ${sub_name} in ${ns} to remove label"
         fi
     fi
