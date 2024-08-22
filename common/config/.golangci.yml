@@ -185,6 +185,15 @@ linters-settings:
       # - unlabelStmt
       # - unnamedResult
       # - wrapperFunc
+  
+  revive:
+    rules:
+      - name: dot-imports
+        arguments:
+          - allowedPackages:
+              - "github.com/onsi/ginkgo"
+              - "github.com/onsi/ginkgo/v2"
+              - "github.com/onsi/gomega"
 
 issues:
   # List of regexps of issue texts to exclude, empty list by default.
