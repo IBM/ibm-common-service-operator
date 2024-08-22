@@ -1301,10 +1301,10 @@ function update_operator() {
         ${YQ} -i eval 'select(.kind == "Subscription") | .spec += {"installPlanApproval": "'${install_mode}'"}' /tmp/sub.yaml
 
         # Apply the patch
-        local result=$(${OC} apply -f /tmp/sub.yaml || echo "fail")
+        ${OC} apply -f /tmp/sub.yaml 2>/dev/null
 
         # Check if the patch was successful
-        if [[ "${result}" != "fail" ]]; then
+        if [[ $? -eq 0 ]]; then
             success "Successfully patched subscription ${package_name} in ${ns}"
             rm /tmp/sub.yaml
             return 0
