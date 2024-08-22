@@ -616,7 +616,7 @@ function install_cs_operator() {
     fi
 
     title "Checking whether IBM Common Service operator exist..."
-    ### Fresh install or upgrade CS operator in operator namespace
+    # Fresh install or upgrade CS operator in operator namespace
     is_sub_exist "ibm-common-service-operator" "$OPERATOR_NS"
     if [ $? -eq 0 ]; then
         if [ $PREVIEW_MODE -eq 0 ]; then
@@ -628,7 +628,7 @@ function install_cs_operator() {
         create_subscription "ibm-common-service-operator" "$OPERATOR_NS" "$CHANNEL" "ibm-common-service-operator" "${SOURCE}" "${SOURCE_NS}" "${INSTALL_MODE}"
     fi
 
-    ### Handle the upgrade for CS operator namespace in other namespaces in the tenant
+    # Handle the upgrade for CS operator namespace in other namespaces in the tenant
     local pm="ibm-common-service-operator"
     local ns_list=$(${OC} get configmap namespace-scope -n ${OPERATOR_NS} -o jsonpath='{.data.namespaces}' --ignore-not-found)
     if [[ -z "$ns_list" ]]; then
@@ -643,11 +643,12 @@ function install_cs_operator() {
                     if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
                         op_source_ns=$ns
                     fi
-
+                    # config commonservice operator_namespace and service_namespace
+                    configure_cs_kind $ns
+                    # upgrade operator
                     validate_operator_catalogsource $pm $ns $op_source $op_source_ns $CHANNEL op_source op_source_ns
                     update_operator $pm $ns $CHANNEL $op_source $op_source_ns $INSTALL_MODE
                     wait_for_operator_upgrade $ns $pm $CHANNEL $INSTALL_MODE
-                    configure_cs_kind $ns
                 fi
             fi
         done
