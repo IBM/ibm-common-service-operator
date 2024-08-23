@@ -1,6 +1,6 @@
 module github.com/IBM/ibm-common-service-operator
 
-go 1.22
+go 1.23
 
 require (
 	github.com/IBM/controller-filtered-cache v0.3.5
@@ -93,7 +93,6 @@ require (
 	k8s.io/apiextensions-apiserver v0.24.2 // indirect
 	k8s.io/component-base v0.24.2 // indirect
 	k8s.io/klog/v2 v2.60.1 // indirect
-	k8s.io/kube-aggregator v0.18.9 // indirect
 	k8s.io/kube-openapi v0.0.0-20220627174259-011e075b9cb8 // indirect
 	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
@@ -102,4 +101,3 @@ require (
 
 // fix vulnerability: CVE-2021-3121 in github.com/gogo/protobuf < v1.3.2
 replace github.com/gogo/protobuf => github.com/gogo/protobuf v1.3.2
-
