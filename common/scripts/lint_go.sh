@@ -16,4 +16,4 @@
 #
 
 go mod tidy
-GOGC=25 golangci-lint run -c ./common/config/.golangci.yml --timeout=30s
+GOGC=25 golangci-lint run -c ./common/config/.golangci.yml --timeout=180s
