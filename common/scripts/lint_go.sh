@@ -15,5 +15,5 @@
 # limitations under the License.
 #
 
-go get ./...
+go mod tidy
 GOGC=25 golangci-lint run -c ./common/config/.golangci.yml --timeout=30s
