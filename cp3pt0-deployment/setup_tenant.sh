@@ -616,6 +616,7 @@ function install_cs_operator() {
     fi
 
     title "Checking whether IBM Common Service operator exist..."
+    local pm="ibm-common-service-operator"
     # Fresh install or upgrade CS operator in operator namespace
     is_sub_exist "ibm-common-service-operator" "$OPERATOR_NS"
     if [ $? -eq 0 ]; then
@@ -629,7 +630,6 @@ function install_cs_operator() {
     fi
 
     # Handle the upgrade for CS operator namespace in other namespaces in the tenant
-    local pm="ibm-common-service-operator"
     local ns_list=$(${OC} get configmap namespace-scope -n ${OPERATOR_NS} -o jsonpath='{.data.namespaces}' --ignore-not-found)
     if [[ -z "$ns_list" ]]; then
         warning "Not found ConfigMap namespace-scope in namespace ${OPERATOR_NS}"
