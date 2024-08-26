@@ -24,7 +24,7 @@ import (
 
 	"k8s.io/klog"
 
-	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
+	"github.com/IBM/ibm-common-service-operator/v4/controllers/bootstrap"
 )
 
 // WaitToCreateCsCR waits for the creation of the CommonService CR in the operator namespace.

@@ -22,7 +22,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
+	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
 )
 
 var _ = Describe("Render Template", func() {

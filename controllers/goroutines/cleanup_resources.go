@@ -21,9 +21,9 @@ import (
 
 	"k8s.io/klog"
 
-	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
-	util "github.com/IBM/ibm-common-service-operator/controllers/common"
-	"github.com/IBM/ibm-common-service-operator/controllers/constant"
+	"github.com/IBM/ibm-common-service-operator/v4/controllers/bootstrap"
+	util "github.com/IBM/ibm-common-service-operator/v4/controllers/common"
+	"github.com/IBM/ibm-common-service-operator/v4/controllers/constant"
 )
 
 // Cleanup_Keycloak_Cert will delete Keycloak Certificate when OperandConfig is updated to new version

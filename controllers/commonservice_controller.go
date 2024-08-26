@@ -38,11 +38,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
-	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
-	util "github.com/IBM/ibm-common-service-operator/controllers/common"
-	"github.com/IBM/ibm-common-service-operator/controllers/configurationcollector"
-	"github.com/IBM/ibm-common-service-operator/controllers/constant"
+	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
+	"github.com/IBM/ibm-common-service-operator/v4/controllers/bootstrap"
+	util "github.com/IBM/ibm-common-service-operator/v4/controllers/common"
+	"github.com/IBM/ibm-common-service-operator/v4/controllers/configurationcollector"
+	"github.com/IBM/ibm-common-service-operator/v4/controllers/constant"
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/v4/api/v1alpha1"
 )
 

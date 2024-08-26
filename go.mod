@@ -1,4 +1,4 @@
-module github.com/IBM/ibm-common-service-operator
+module github.com/IBM/ibm-common-service-operator/v4
 
 go 1.23
 

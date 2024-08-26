@@ -26,8 +26,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 
-	v3 "github.com/IBM/ibm-common-service-operator/api/v3"
-	"github.com/IBM/ibm-common-service-operator/controllers/constant"
+	v3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
+	"github.com/IBM/ibm-common-service-operator/v4/controllers/constant"
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/v4/api/v1alpha1"
 )
 
