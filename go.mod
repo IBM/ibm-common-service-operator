@@ -1,8 +1,8 @@
 module github.com/IBM/ibm-common-service-operator
 
-go 1.21
+go 1.23
 
-toolchain go1.21.3
+toolchain go1.23.0
 
 require (
 	github.com/IBM/controller-filtered-cache v0.3.5
