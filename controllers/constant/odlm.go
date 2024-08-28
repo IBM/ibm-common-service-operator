@@ -266,7 +266,9 @@ spec:
     namespace: "{{ .ServicesNs }}"
     packageName: rhbk-operator
     scope: public
-  - channel: stable-v22
+  - channel: stable-v24
+    fallbackChannels:
+      - stable-v22
     installPlanApproval: {{ .ApprovalMode }}
     name: keycloak-operator
     namespace: "{{ .ServicesNs }}"
