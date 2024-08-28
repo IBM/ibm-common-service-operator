@@ -591,6 +591,7 @@ function swapmongopvc() {
     if [[ -z $stgclass ]]; then
       error "Cannnot get storage class name from PVC mongodbdir-icp-mongodb-0 in $FROM_NAMESPACE"
     fi
+    
     cat <<EOF >$TEMPFILE
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -610,21 +611,6 @@ EOF
 
   else
     debug1 "Preload run on ROKS, not setting storageclass name"
-    cat <<EOF >$TEMPFILE
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: cs-mongodump
-  namespace: $TO_NAMESPACE
-spec:
-  accessModes:
-  - ReadWriteOnce
-  resources:
-    requests:
-      storage: 20Gi
-  volumeMode: Filesystem
-  volumeName: $VOL
-EOF
     deprecated_region='{.metadata.labels.failure-domain\.beta\.kubernetes\.io\/region}'
     deprecated_zone='{.metadata.labels.failure-domain\.beta\.kubernetes\.io\/zone}'
 
@@ -640,6 +626,22 @@ EOF
         debug1 "Replacing depracated PV labels"
         "${OC}" label pv $VOL $not_deprecated_region_label=$region $deprecated_region_label- $not_deprecated_zone_label=$zone $deprecated_zone_label- --overwrite 
     fi
+
+    cat <<EOF >$TEMPFILE
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cs-mongodump
+  namespace: $TO_NAMESPACE
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  volumeMode: Filesystem
+  volumeName: $VOL
+EOF
   fi
 
 
