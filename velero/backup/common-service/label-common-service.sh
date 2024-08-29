@@ -233,20 +233,20 @@ function label_cs(){
 function label_nss(){
     title "Label Namespacescope resources"
     local nss_pm="ibm-namespace-scope-operator"
-    ${OC} label subscriptions.operators.coreos.com $nss_pm foundationservices.cloudpak.ibm.com=nss -n $OPERATOR_NS --overwrite=true --ignore-not-found 2>/dev/null
-    ${OC} label namespacescopes.operator.ibm.com common-service foundationservices.cloudpak.ibm.com=nss -n $OPERATOR_NS --overwrite=true --ignore-not-found 2>/dev/null
-    ${OC} label customresourcedefinition namespacescopes.operator.ibm.com foundationservices.cloudpak.ibm.com=nss --overwrite=true --ignore-not-found 2>/dev/null
-    ${OC} label serviceaccount ibm-namespace-scope-operator foundationservices.cloudpak.ibm.com=nss -n $OPERATOR_NS --overwrite=true --ignore-not-found 2>/dev/null
-    ${OC} label role nss-managed-role-from-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss -n $OPERATOR_NS --overwrite=true --ignore-not-found 2>/dev/null
-    ${OC} label role nss-managed-role-from-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss -n $SERVICES_NS --overwrite=true --ignore-not-found 2>/dev/null
-    ${OC} label rolebinding nss-managed-role-from-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss -n $OPERATOR_NS --overwrite=true --ignore-not-found 2>/dev/null
-    ${OC} label rolebinding nss-managed-role-from-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss -n $SERVICES_NS --overwrite=true --ignore-not-found 2>/dev/null
-    ${OC} label configmap namespace-scope foundationservices.cloudpak.ibm.com=nss -n $SERVICES_NS --overwrite=true --ignore-not-found 2>/dev/null
+    ${OC} label subscriptions.operators.coreos.com $nss_pm foundationservices.cloudpak.ibm.com=nss -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label namespacescopes.operator.ibm.com common-service foundationservices.cloudpak.ibm.com=nss -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label customresourcedefinition namespacescopes.operator.ibm.com foundationservices.cloudpak.ibm.com=nss --overwrite=true 2>/dev/null
+    ${OC} label serviceaccount ibm-namespace-scope-operator foundationservices.cloudpak.ibm.com=nss -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label role nss-managed-role-from-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label role nss-managed-role-from-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss -n $SERVICES_NS --overwrite=true 2>/dev/null
+    ${OC} label rolebinding nss-managed-role-from-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label rolebinding nss-managed-role-from-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss -n $SERVICES_NS --overwrite=true 2>/dev/null
+    ${OC} label configmap namespace-scope foundationservices.cloudpak.ibm.com=nss -n $SERVICES_NS --overwrite=true 2>/dev/null
     if [[ $TETHERED_NS != "" ]]; then
         for namespace in ${TETHERED_NS//,/ }
         do
-            ${OC} label role nss-managed-role-from-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss -n $namespace --overwrite=true --ignore-not-found 2>/dev/null
-            ${OC} label rolebinding nss-managed-role-from-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss -n $namespace --overwrite=true --ignore-not-found 2>/dev/null
+            ${OC} label role nss-managed-role-from-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss -n $namespace --overwrite=true 2>/dev/null
+            ${OC} label rolebinding nss-managed-role-from-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss -n $namespace --overwrite=true 2>/dev/null
         done
     fi
     echo ""
