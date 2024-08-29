@@ -111,17 +111,13 @@ spec:
       name: common-services-catalogs
       type: resource
       backupRef: backup-parent-group
-    - includedNamespaces:
-        - openshift-config
-      includedResourceTypes:
+    - includedResourceTypes:
         - secrets
       labelSelector: foundationservices.cloudpak.ibm.com=pull-secret
       name: pull-secret
       type: resource
       backupRef: backup-parent-group
     - backupRef: backup-parent-group
-      includedNamespaces:
-        - openshift-config
       includedResourceTypes:
         - secrets
       labelSelector: foundationservices.cloudpak.ibm.com=pull-secret
