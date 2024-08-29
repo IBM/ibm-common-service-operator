@@ -1128,7 +1128,7 @@ spec:
           spec:
             requests:
               - operands:
-                  - name: cloud-native-postgresql
+                  - name: cloud-native-postgresql-v1.22
                 registry: common-service
                 registryNamespace: {{ .ServicesNs }}
         force: true
