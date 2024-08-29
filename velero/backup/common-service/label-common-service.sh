@@ -240,7 +240,7 @@ function label_nss(){
     ${OC} label role nss-managed-role-from-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss -n $OPERATOR_NS --overwrite=true --ignore-not-found 2>/dev/null
     ${OC} label role nss-managed-role-from-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss -n $SERVICES_NS --overwrite=true --ignore-not-found 2>/dev/null
     ${OC} label rolebinding nss-managed-role-from-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss -n $OPERATOR_NS --overwrite=true --ignore-not-found 2>/dev/null
-    ${OC} label rolebinding nss-managed-role-from-$OPERATOR_S foundationservices.cloudpak.ibm.com=nss -n $SERVICES_NS --overwrite=true --ignore-not-found 2>/dev/null
+    ${OC} label rolebinding nss-managed-role-from-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss -n $SERVICES_NS --overwrite=true --ignore-not-found 2>/dev/null
     ${OC} label configmap namespace-scope foundationservices.cloudpak.ibm.com=nss -n $SERVICES_NS --overwrite=true --ignore-not-found 2>/dev/null
     if [[ $TETHERED_NS != "" ]]; then
         for namespace in ${TETHERED_NS//,/ }
