@@ -18,7 +18,9 @@ spec:
         - deployments
         - serviceaccount
         - role
+        - clusterrole
         - rolebinding
+        - clusterrolebinding
         - configmaps
         - catalogsources.operators.coreos.com
         - operatorgroups.operators.coreos.com
@@ -29,8 +31,8 @@ spec:
         - operandrequests.operator.ibm.com
         - zenservices.zen.cpd.ibm.com
         - namespaces
-      labelSelector: foundationservices.cloudpak.ibm.com=cert-manager,foundationservices.cloudpak.ibm.com=lsr,foundationservices.cloudpak.ibm.com=lsr-data,foundationservices.cloudpak.ibm.com=licensing,foundationservices.cloudpak.ibm.com=catalog,foundationservices.cloudpak.ibm.com=pull-secret,foundationservices.cloudpak.ibm.com=configmap,foundationservices.cloudpak.ibm.com=namespace,foundationservices.cloudpak.ibm.com=operatorgroup,foundationservices.cloudpak.ibm.com=subscription,foundationservices.cloudpak.ibm.com=singleton-subscription,foundationservices.cloudpak.ibm.com=crd,foundationservices.cloudpak.ibm.com=cpfs-util-backup,foundationservices.cloudpak.ibm.com=setup-tenant-job,foundationservices.cloudpak.ibm.com=commonservice,foundationservices.cloudpak.ibm.com=nss,foundationservices.cloudpak.ibm.com=operand,foundationservices.cloudpak.ibm.com=zen5-data,foundationservices.cloudpak.ibm.com=zen,foundationservices.cloudpak.ibm.com=cs-db-data
-    - labelSelector: foundationservices.cloudpak.ibm.com=lsr-data,foundationservices.cloudpak.ibm.com=cs-db-data,foundationservices.cloudpak.ibm.com=zen5-data
+      labelSelector: foundationservices.cloudpak.ibm.com
+    - labelSelector: foundationservices.cloudpak.ibm.com
       name: backup-parent-volume
       type: volume
     - includeClusterResources: true
