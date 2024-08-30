@@ -261,12 +261,6 @@ metadata:
 spec:
   operators:
   - channel: stable-v24
-    installPlanApproval: {{ .ApprovalMode }}
-    name: keycloak-operator-dev
-    namespace: "{{ .ServicesNs }}"
-    packageName: rhbk-operator
-    scope: public
-  - channel: stable-v24
     fallbackChannels:
       - stable-v22
     installPlanApproval: {{ .ApprovalMode }}
