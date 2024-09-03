@@ -230,9 +230,7 @@ metadata:
     status-monitored-services: {{ .StatusMonitoredServices }}
 spec:
   operators:
-  - channel: stable-v24
-    fallbackChannels:
-      - stable-v22
+  - channel: stable-v22
     installPlanApproval: {{ .ApprovalMode }}
     name: keycloak-operator
     namespace: "{{ .ServicesNs }}"
