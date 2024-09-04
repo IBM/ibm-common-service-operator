@@ -20,15 +20,7 @@ set -o errtrace
 
 BACKUP="false"
 RESTORE="false"
-TARGET_CLUSTER=""
-TARGET_CLUSTER_TYPE=""
-BACKUP_NAME=""
-RESTORE_NAME=""
-APPLICATION="cs-application"
-BACKUP_POLICY="cs-backup-policy"
-BACKUP_STORAGE_LOCATION_NAME="luztest"
 ROUTE=""
-SF_NAMESPACE="ibm-spectrum-fusion-ns"
 #hub oc token
 #hub server
 #spoke oc token
@@ -38,7 +30,7 @@ YQ="yq"
 
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 . ../cp3pt0-deployment/common/utils.sh
-#source ${BASE_DIR}/env.properties
+source ${BASE_DIR}/env.properties
 
 #parse arguments
 #prereq
@@ -83,6 +75,13 @@ function print_usage(){
     echo "Options:"
     echo "   --oc string                    Optional. File path to oc CLI. Default uses oc in your PATH. Can also be set in env.properties."
     echo "   --yq string                    Optional. File path to yq CLI. Default uses yq in your PATH. Can also be set in env.properties."
+    echo "   --backup                       Optional. Enable backup mode, it will trigger a backup job."
+    echo "   --backup-name                  Optional. Name of backup. It is necessary if --backup is enabled"
+    echo "   --restore                      Optional. Enable restore mode, it will trigger a restore job."
+    echo "   --restore-name                 Optional. Name of restore. It is necessary if --restore is enabled"
+    echo "   --sf-namespace                 Optional. Namespace of IBM Spectrum Fusion Operator. Default is ibm-spectrum-fusion-ns"
+    echo "   --target-cluster               Necessary. Name of target cluster"
+    echo "   --cluster-type                 Necessary. Type of target cluster either of 'spoke' or 'hub'"
     echo "   -h, --help                     Print usage information"
     echo ""
 }
@@ -104,6 +103,7 @@ function parse_arguments() {
             YQ=$1
             ;;
         --backup)
+            shift
             BACKUP="true"
             ;;
         --backup-name)
@@ -111,6 +111,7 @@ function parse_arguments() {
             BACKUP_NAME=$1
             ;;
         --restore)
+            shift
             RESTORE="true"
             ;;
         --restore-name)
@@ -160,6 +161,19 @@ function prereq() {
     #check docker access (so far not necessary)
 
     #check variables are present
+    if [[ $BACKUP == "true" ]]; then
+        if [[ $BACKUP_NAME == "" ]]; then
+            error "Backup name is necessary if --backup label is enabled"
+        fi
+    fi
+
+    if [[ $RESTORE == "true" ]]; then
+        if [[ $RESTORE_NAME == "" ]]; then
+            error  "Restore name is necessary if --restore label is enabled"
+        fi
+    fi
+
+
 }
 
 function create_br() {
