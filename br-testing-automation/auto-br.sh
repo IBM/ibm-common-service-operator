@@ -58,13 +58,13 @@ function main(){
     prereq
     ROUTE=$(${OC} get route -n $SF_NAMESPACE --no-headers | awk '{print $2}')
     if [[ $BACKUP == "true" ]]; then
-        create_br "backup" $TARGET_CLUSTER_TYPE
-        wait_for_br "backup" $BACKUP_NAME 30
+        create_br "backup.data-protection.isf.ibm.com" $TARGET_CLUSTER_TYPE
+        wait_for_br "backup.data-protection.isf.ibm.com" $BACKUP_NAME 30
         success "Backup $BACKUP_NAME of cluster $TARGET_CLUSTER completed. See results in Fusion UI here: https://$ROUTE/backupAndRestore/jobs/backups/$BACKUP_NAME"
     fi
     if [[ $RESTORE == "true" ]]; then
-        create_br "restore" $TARGET_CLUSTER_TYPE
-        wait_for_br "restore" $RESTORE_NAME 120
+        create_br "restore.data-protection.isf.ibm.com" $TARGET_CLUSTER_TYPE
+        wait_for_br "restore.data-protection.isf.ibm.com" $RESTORE_NAME 120
         success "Restore $RESTORE_NAME to cluster $TARGET_CLUSTER completed. See results in Fusion UI here: https://$ROUTE/backupAndRestore/jobs/restores/$RESTORE_NAME"
     fi
 
@@ -172,7 +172,7 @@ function create_br() {
     fi
 
     mkdir templates
-    if [[ $brtype == "backup" ]]; then
+    if [[ $brtype == "backup.data-protection.isf.ibm.com" ]]; then
         info "Copying template files..."
         cp ../velero/spectrum-fusion/templates/sf-backup.yaml ./templates/sf-backup.yaml
         
@@ -195,7 +195,7 @@ function create_br() {
         
     fi
     
-    if [[ $brtype == "restore" ]]; then
+    if [[ $brtype == "restore.data-protection.isf.ibm.com" ]]; then
         cp ../velero/spectrum-fusion/templates/sf-restore.yaml ./templates/sf-restore.yaml
 
         info "Editing restore yaml..."
@@ -221,13 +221,14 @@ function create_br() {
 
 function wait_for_br(){
     type=$1
+    type_name=$(echo $type | cut -d "." -f 1)
     resource_name=$2
     retries=$3
     time=30
     title "Waiting for $type $resource_name to complete..."
     status=$(${OC} get $type $resource_name -n $SF_NAMESPACE -o yaml | ${YQ} '.status.phase')
     echo "$status && ${status} && ${OC} get $type $resource_name -n $SF_NAMESPACE -o jsonpath='{.status.phase}'"
-    info "$type $resource_name can be further tracked in the UI here: https://$ROUTE/backupAndRestore/jobs/${type}s/$resource_name"
+    info "$type $resource_name can be further tracked in the UI here: https://$ROUTE/backupAndRestore/jobs/${type_name}s/$resource_name"
     while [[ $status != "Completed" ]] && [[ $retries > 0 ]]; do
         status=$(${OC} get $type $resource_name -n $SF_NAMESPACE -o yaml | ${YQ} '.status.phase')
         info "Waiting on $type $resource_name to complete. Current status: $status"
@@ -237,7 +238,7 @@ function wait_for_br(){
         fi
         checkFail=$(echo $status | grep "Failed")
         if [[ $checkFail != "" ]] || [[ $status == "Redundant" ]]; then
-            error "$type failed with error: $status. \nFor more info, see job in the UI (https://$ROUTE/backupAndRestore/jobs/${type}s/$resource_name) or use \"oc get $type $resource_name -n $SF_NAMESPACE -o yaml | yq '.status'\"."
+            error "$type failed with error: $status. \nFor more info, see job in the UI (https://$ROUTE/backupAndRestore/jobs/${type_name}s/$resource_name) or use \"oc get $type $resource_name -n $SF_NAMESPACE -o yaml | yq '.status'\"."
         fi
         sleep $time
         retries=$((retries-1))
@@ -245,9 +246,9 @@ function wait_for_br(){
 
     if [[ $status == "Completed" ]]; then
         success "$type $resource_name completed successfully for $TARGET_CLUSTER."
-        info "For more info, see job in the UI (https://$ROUTE/backupAndRestore/jobs/${type}s/$resource_name) or use \"oc get $type $resource_name -n $SF_NAMESPACE -o yaml | yq '.status'\"."
+        info "For more info, see job in the UI (https://$ROUTE/backupAndRestore/jobs/${type_name}s/$resource_name) or use \"oc get $type $resource_name -n $SF_NAMESPACE -o yaml | yq '.status'\"."
     elif [[ $status != "Completed" ]] && [[ $retries == 0 ]]; then
-        error "Timed out waiting for $type $resource_name for $TARGET_CLUSTER. \nFor more info, see job in the UI (https://$ROUTE/backupAndRestore/jobs/${type}s/$resource_name) or use \"oc get $type $resource_name -n $SF_NAMESPACE -o yaml | yq '.status'\"."
+        error "Timed out waiting for $type $resource_name for $TARGET_CLUSTER. \nFor more info, see job in the UI (https://$ROUTE/backupAndRestore/jobs/${type_name}s/$resource_name) or use \"oc get $type $resource_name -n $SF_NAMESPACE -o yaml | yq '.status'\"."
     fi
 }
 
