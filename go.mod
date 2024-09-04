@@ -8,7 +8,7 @@ require (
 	github.com/IBM/controller-filtered-cache v0.3.5
 	github.com/IBM/ibm-namespace-scope-operator/v4 v4.2.4-0.20240501132320-6675f97bc34f
 	github.com/IBM/ibm-secretshare-operator v1.20.3
-	github.com/IBM/operand-deployment-lifecycle-manager/v4 v4.3.1-0.20240503182421-b3ed4f6f1805
+	github.com/IBM/operand-deployment-lifecycle-manager/v4 v4.3.5-alpha
 	github.com/ghodss/yaml v1.0.0
 	github.com/ibm/ibm-cert-manager-operator v0.0.0-20230705134954-f3b9b344298a
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
