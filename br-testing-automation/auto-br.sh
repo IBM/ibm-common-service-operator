@@ -81,7 +81,7 @@ function print_usage(){
     echo "   --restore-name                 Optional. Name of restore. It is necessary if --restore is enabled"
     echo "   --sf-namespace                 Optional. Namespace of IBM Spectrum Fusion Operator. Default is ibm-spectrum-fusion-ns"
     echo "   --target-cluster               Necessary. Name of target cluster"
-    echo "   --cluster-type                 Necessary. Type of target cluster either of 'spoke' or 'hub'"
+    echo "   --cluster-type                 Necessary. Type of target cluster, either 'spoke' or 'hub'"
     echo "   -h, --help                     Print usage information"
     echo ""
 }
@@ -161,18 +161,28 @@ function prereq() {
     #check docker access (so far not necessary)
 
     #check variables are present
+    # check backup name
     if [[ $BACKUP == "true" ]]; then
         if [[ $BACKUP_NAME == "" ]]; then
             error "Backup name is necessary if --backup label is enabled"
         fi
     fi
-
+    # check restore name
     if [[ $RESTORE == "true" ]]; then
         if [[ $RESTORE_NAME == "" ]]; then
             error  "Restore name is necessary if --restore label is enabled"
         fi
     fi
-
+    # check if br service is installed in target namespace
+    if [[ $TARGET_CLUSTER_TYPE == "hub" ]]; then
+        if [[ $(${OC} get fusionserviceinstance ibm-backup-restore-service-instance -n $SF_NAMESPACE -o jsonpath='{.status.installStatus.status}') != "Completed" ]]; then
+            error "IBM Backup Restore Service is not install in this cluster"
+        fi
+    elif [[ $TARGET_CLUSTER_TYPE == "spoke" ]]; then
+        if [[ $(${OC} get fusionserviceinstance ibm-backup-restore-agent-service-instance -n $SF_NAMESPACE -o jsonpath='{.status.installStatus.status}') != "Completed" ]]; then
+            error "IBM Backup Restore Agent Service is not install in this cluster"
+        fi
+    fi
 
 }
 
