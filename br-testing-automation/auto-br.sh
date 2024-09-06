@@ -21,29 +21,12 @@ set -o errtrace
 BACKUP="false"
 RESTORE="false"
 ROUTE=""
-#hub oc token
-#hub server
-#spoke oc token
-#spoke server
 OC="oc"
 YQ="yq"
 
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 . ../cp3pt0-deployment/common/utils.sh
 source ${BASE_DIR}/env.properties
-
-#parse arguments
-#prereq
-
-#trigger backup
-#wait for backup to complete
-#verify backup (?)
-
-#check restore cluster
-#verify data not present/cleanup (?)
-#trigger restore
-#wait for restore to complete (will take a while)
-#verify restore (?)
 
 function main(){
     parse_arguments "$@"
