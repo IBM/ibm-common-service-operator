@@ -269,6 +269,8 @@ spec:
     packageName: rhbk-operator
     scope: public
   - channel: stable
+    fallbackChannels:
+      - stable-v1.22
     installPlanApproval: {{ .ApprovalMode }}
     name: edb-keycloak
     namespace: "{{ .CPFSNs }}"
@@ -294,6 +296,8 @@ metadata:
 spec:
   operators:
   - channel: stable-v1.22
+    fallbackChannels:
+      - stable
     installPlanApproval: {{ .ApprovalMode }}
     name: common-service-postgresql
     namespace: "{{ .CPFSNs }}"
@@ -1601,6 +1605,8 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     operatorConfig: cloud-native-postgresql-operator-config
   - channel: stable-v1.22
+    fallbackChannels:
+      - stable
     name: cloud-native-postgresql-v1.22
     namespace: "{{ .CPFSNs }}"
     packageName: cloud-native-postgresql
