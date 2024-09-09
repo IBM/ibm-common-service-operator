@@ -129,6 +129,10 @@ type OperatorConfig struct {
 	// zero and not specified. Defaults to 1.
 	// +optional
 	Replicas *int32 `json:"replicas,omitempty" protobuf:"varint,1,opt,name=replicas"`
+	// UserManaged is a flag that indicates whether the operator is managed by
+	// user or not. If set the value will propagate down to UserManaged field
+	// in the OperandRegistry
+	UserManaged bool `json:"userManaged,omitempty"`
 }
 
 // LicenseList defines the license specification in CSV

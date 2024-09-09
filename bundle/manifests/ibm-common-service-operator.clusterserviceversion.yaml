@@ -23,7 +23,7 @@ metadata:
     capabilities: Seamless Upgrades
     cloudPakThemesVersion: styles470.css
     containerImage: icr.io/cpopen/common-service-operator:latest
-    createdAt: "2024-04-11T02:45:28Z"
+    createdAt: "2024-09-09T21:00:30Z"
     description: The IBM Cloud Pak foundational services operator is used to deploy IBM foundational services.
     nss.operator.ibm.com/managed-operators: ibm-common-service-operator
     nss.operator.ibm.com/managed-webhooks: ""
@@ -395,8 +395,6 @@ spec:
                         ephemeral-storage: 256Mi
                         memory: 200Mi
                     securityContext:
-                      seccompProfile:
-                        type: RuntimeDefault
                       allowPrivilegeEscalation: false
                       capabilities:
                         drop:
@@ -404,6 +402,8 @@ spec:
                       privileged: false
                       readOnlyRootFilesystem: true
                       runAsNonRoot: true
+                      seccompProfile:
+                        type: RuntimeDefault
                     volumeMounts:
                       - mountPath: /tmp/k8s-webhook-server/serving-certs
                         name: cert
