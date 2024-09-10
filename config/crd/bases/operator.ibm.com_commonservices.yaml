@@ -147,6 +147,12 @@ spec:
                         zero and not specified. Defaults to 1.
                       format: int32
                       type: integer
+                    userManaged:
+                      description: |-
+                        UserManaged is a flag that indicates whether the operator is managed by
+                        user or not. If set the value will propagate down to UserManaged field
+                        in the OperandRegistry
+                      type: boolean
                   type: object
                 type: array
                 x-kubernetes-preserve-unknown-fields: true

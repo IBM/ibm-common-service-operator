@@ -50,6 +50,7 @@ import (
 	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
 	"github.com/IBM/ibm-common-service-operator/v4/controllers/constant"
 	nssv1 "github.com/IBM/ibm-namespace-scope-operator/v4/api/v1"
+	odlm "github.com/IBM/operand-deployment-lifecycle-manager/v4/api/v1alpha1"
 )
 
 type CsMaps struct {
@@ -870,4 +871,30 @@ func SanitizeData(data interface{}, valueType string, isEmpty bool) interface{} 
 		klog.Errorf("data type is not map[string]interface{}")
 		return nil
 	}
+}
+
+func UpdateOpRegUserManaged(opreg *odlm.OperandRegistry, operatorName string, value bool) error {
+	packageName := GetPackageNameByServiceName(opreg, operatorName)
+	if packageName == "" {
+		return fmt.Errorf("failed to find package name while updating OperandRegistry with user managed field")
+	}
+	for i := range opreg.Spec.Operators {
+		i := i
+		if opreg.Spec.Operators[i].PackageName != packageName {
+			continue
+		}
+
+		opreg.Spec.Operators[i].UserManaged = value
+	}
+	return nil
+}
+
+func GetPackageNameByServiceName(opreg *odlm.OperandRegistry, operatorName string) string {
+	for _, v := range opreg.Spec.Operators {
+		v := v
+		if v.Name == operatorName {
+			return v.PackageName
+		}
+	}
+	return ""
 }
