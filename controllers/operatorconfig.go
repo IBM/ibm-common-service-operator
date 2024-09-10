@@ -27,6 +27,7 @@ import (
 	"k8s.io/klog"
 
 	v3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
+	util "github.com/IBM/ibm-common-service-operator/v4/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/v4/controllers/constant"
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/v4/api/v1alpha1"
 )
@@ -35,6 +36,9 @@ func (r *CommonServiceReconciler) updateOperatorConfig(ctx context.Context, conf
 	klog.Info("Applying OperatorConfig")
 
 	if configList == nil {
+		if err := r.clearAllUserManaged(ctx); err != nil {
+			return false, err
+		}
 		return true, nil
 	}
 
@@ -47,6 +51,9 @@ func (r *CommonServiceReconciler) updateOperatorConfig(ctx context.Context, conf
 		}
 		if packageName != "cloud-native-postgresql" {
 			return false, errors.New("failed to update OperatorConfig. This feature is only available for cloud-native-postgresql operator")
+		}
+		if err := r.updateUserManaged(ctx, config.Name, config.UserManaged); err != nil {
+			return false, err
 		}
 		if config.Replicas == nil {
 			return true, nil
@@ -87,4 +94,30 @@ func (r *CommonServiceReconciler) fetchPackageNameFromOpReg(ctx context.Context,
 		}
 	}
 	return "", nil
+}
+
+func (r *CommonServiceReconciler) updateUserManaged(ctx context.Context, operatorName string, value bool) error {
+	opreg := &odlm.OperandRegistry{}
+	if err := r.Reader.Get(ctx, types.NamespacedName{Namespace: util.GetServicesNamespace(r.Reader), Name: "common-service"}, opreg); err != nil {
+		return err
+	}
+	if err := util.UpdateOpRegUserManaged(opreg, operatorName, value); err != nil {
+		return err
+	}
+	if err := r.Client.Update(ctx, opreg); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *CommonServiceReconciler) clearAllUserManaged(ctx context.Context) error {
+	opreg := &odlm.OperandRegistry{}
+	if err := r.Reader.Get(ctx, types.NamespacedName{Namespace: util.GetServicesNamespace(r.Reader), Name: "common-service"}, opreg); err != nil {
+		return err
+	}
+	for i := range opreg.Spec.Operators {
+		i := i
+		opreg.Spec.Operators[i].UserManaged = false
+	}
+	return r.Client.Update(ctx, opreg)
 }
