@@ -49,21 +49,21 @@ function print_usage(){
     script_name=`basename ${0}`
     echo "Usage: ${script_name} [OPTIONS]"
     echo ""
-    echo "Set up either a hub cluster or a spoke cluster to use Spectrum Fusion Backup and Restore."
-    echo "One of --hub-setup or --spoke-setup is required."
+    echo "Automate running Fusion Backup or Restore."
+    echo "One of --backup or --restore and --target-cluster is required."
     echo "This script assumes the following:"
-    echo "    * An existing CPFS instance on the hub cluster with IM, Zen, Licensing, Cert Manager, and License Service Reporter present"
-    echo "    * Filled in required variables in the accompanying env.properties file"
+    echo "    * At least a Fusion Hub cluster setup with Fusion Backup and Restore Service and CPFS installed."
+    echo "    * If 'spoke' selected for --cluster-type, Fusion Backup and Restore Agent Service installed and matching Storageclass to Hub cluster."
     echo ""
     echo "Options:"
     echo "   --oc string                    Optional. File path to oc CLI. Default uses oc in your PATH. Can also be set in env.properties."
     echo "   --yq string                    Optional. File path to yq CLI. Default uses yq in your PATH. Can also be set in env.properties."
     echo "   --backup                       Optional. Enable backup mode, it will trigger a backup job."
-    echo "   --backup-name                  Optional. Name of backup. It is necessary if --backup is enabled"
+    echo "   --backup-name                  Necessary. Name of backup. A unique name is required when --backup is enabled. An existing name is required when --restore is enabled"
     echo "   --restore                      Optional. Enable restore mode, it will trigger a restore job."
     echo "   --restore-name                 Optional. Name of restore. It is necessary if --restore is enabled"
     echo "   --sf-namespace                 Optional. Namespace of IBM Spectrum Fusion Operator. Default is ibm-spectrum-fusion-ns"
-    echo "   --target-cluster               Necessary. Name of target cluster"
+    echo "   --target-cluster               Optional. Name of target cluster, required when --cluster-type is set to 'spoke'"
     echo "   --cluster-type                 Necessary. Type of target cluster, either 'spoke' or 'hub'"
     echo "   -h, --help                     Print usage information"
     echo ""
@@ -86,7 +86,6 @@ function parse_arguments() {
             YQ=$1
             ;;
         --backup)
-            shift
             BACKUP="true"
             ;;
         --backup-name)
@@ -94,7 +93,6 @@ function parse_arguments() {
             BACKUP_NAME=$1
             ;;
         --restore)
-            shift
             RESTORE="true"
             ;;
         --restore-name)
@@ -144,17 +142,20 @@ function prereq() {
     #check docker access (so far not necessary)
 
     #check variables are present
-    # check backup name
+    # check backup/restore name
     if [[ $BACKUP == "true" ]]; then
         if [[ $BACKUP_NAME == "" ]]; then
-            error "Backup name is necessary if --backup label is enabled"
+            error "Backup name is necessary if --backup parameter is enabled"
         fi
-    fi
-    # check restore name
-    if [[ $RESTORE == "true" ]]; then
+    elif [[ $RESTORE == "true" ]]; then
         if [[ $RESTORE_NAME == "" ]]; then
-            error  "Restore name is necessary if --restore label is enabled"
+            error  "Restore name is necessary if --restore parameter is enabled"
         fi
+        if [[ $BACKUP_NAME == "" ]]; then
+            error "An existing backup's name must be specified with --backup-name if --restore parameter is enabled."
+        fi
+    else
+        error "Neither --backup nor --restore options were specified"
     fi
     # check if br service is installed in target namespace
     if [[ $TARGET_CLUSTER_TYPE == "hub" ]]; then
@@ -162,8 +163,8 @@ function prereq() {
             error "IBM Backup Restore Service is not install in this cluster"
         fi
     elif [[ $TARGET_CLUSTER_TYPE == "spoke" ]]; then
-        if [[ $(${OC} get fusionserviceinstance ibm-backup-restore-agent-service-instance -n $SF_NAMESPACE -o jsonpath='{.status.installStatus.status}') != "Completed" ]]; then
-            error "IBM Backup Restore Agent Service is not install in this cluster"
+        if [[ $TARGET_CLUSTER == "" ]]; then
+            error "--target-cluster parameter necessary when running backup or restore on spoke cluster."
         fi
     fi
 
@@ -234,7 +235,7 @@ function wait_for_br(){
     time=30
     title "Waiting for $type $resource_name to complete..."
     status=$(${OC} get $type $resource_name -n $SF_NAMESPACE -o yaml | ${YQ} '.status.phase')
-    echo "$status && ${status} && ${OC} get $type $resource_name -n $SF_NAMESPACE -o jsonpath='{.status.phase}'"
+    
     info "$type $resource_name can be further tracked in the UI here: https://$ROUTE/backupAndRestore/jobs/${type_name}s/$resource_name"
     while [[ $status != "Completed" ]] && [[ $retries > 0 ]]; do
         status=$(${OC} get $type $resource_name -n $SF_NAMESPACE -o yaml | ${YQ} '.status.phase')
