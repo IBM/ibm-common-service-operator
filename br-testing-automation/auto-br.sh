@@ -20,6 +20,10 @@ set -o errtrace
 
 BACKUP="false"
 RESTORE="false"
+APPLICATION="cs-application" 
+BACKUP_POLICY="cs-backup-policy"
+SF_NAMESPACE="ibm-spectrum-fusion-ns"
+BACKUP_STORAGE_LOCATION_NAME="" #name of s3 storage
 ROUTE=""
 OC="oc"
 YQ="yq"
@@ -50,7 +54,7 @@ function print_usage(){
     echo "Usage: ${script_name} [OPTIONS]"
     echo ""
     echo "Automate running Fusion Backup or Restore."
-    echo "One of --backup or --restore and --target-cluster is required."
+    echo "One of --backup or --restore, --target-cluster, and --storage-location is required."
     echo "This script assumes the following:"
     echo "    * At least a Fusion Hub cluster setup with Fusion Backup and Restore Service and CPFS installed."
     echo "    * If 'spoke' selected for --cluster-type, Fusion Backup and Restore Agent Service installed and matching Storageclass to Hub cluster."
@@ -62,9 +66,12 @@ function print_usage(){
     echo "   --backup-name                  Necessary. Name of backup. A unique name is required when --backup is enabled. An existing name is required when --restore is enabled"
     echo "   --restore                      Optional. Enable restore mode, it will trigger a restore job."
     echo "   --restore-name                 Optional. Name of restore. It is necessary if --restore is enabled"
-    echo "   --sf-namespace                 Optional. Namespace of IBM Spectrum Fusion Operator. Default is ibm-spectrum-fusion-ns"
     echo "   --target-cluster               Optional. Name of target cluster, required when --cluster-type is set to 'spoke'"
     echo "   --cluster-type                 Necessary. Type of target cluster, either 'spoke' or 'hub'"
+    echo "   --sf-namespace                 Optional. Namespace of IBM Spectrum Fusion Operator. Default is 'ibm-spectrum-fusion-ns'"
+    echo "   --application                  Optional. Name of Fusion Application CR on hub cluster. Default is 'cs-application'"
+    echo "   --backup-policy                Optional. Name of Fusion Backup Policy CR on hub cluster. Default is 'cs-backup-policy'"
+    echo "   --storage-location             Necessary. Name of Fusion Backup Storage Location CR on hub cluster."
     echo "   -h, --help                     Print usage information"
     echo ""
 }
@@ -110,6 +117,18 @@ function parse_arguments() {
         --cluster-type)
             shift
             TARGET_CLUSTER_TYPE=$1
+            ;;
+        --application)
+            shift
+            APPLICATION=$1
+            ;;
+        --backup-policy)
+            shift
+            BACKUP_POLICY=$1
+            ;;
+        --storage-location)
+            shift
+            BACKUP_STORAGE_LOCATION_NAME=$1
             ;;
         -h | --help)
             print_usage
@@ -158,14 +177,26 @@ function prereq() {
         error "Neither --backup nor --restore options were specified"
     fi
     # check if br service is installed in target namespace
-    if [[ $TARGET_CLUSTER_TYPE == "hub" ]]; then
-        if [[ $(${OC} get fusionserviceinstance ibm-backup-restore-service-instance -n $SF_NAMESPACE -o jsonpath='{.status.installStatus.status}') != "Completed" ]]; then
-            error "IBM Backup Restore Service is not install in this cluster"
-        fi
-    elif [[ $TARGET_CLUSTER_TYPE == "spoke" ]]; then
+    if [[ $(${OC} get fusionserviceinstance ibm-backup-restore-service-instance -n $SF_NAMESPACE -o jsonpath='{.status.installStatus.status}') != "Completed" ]]; then
+        error "IBM Backup Restore Service is not installed on this cluster in namespace $SF_NAMESPACE. Make sure to run this script on the Fusion BR Hub cluster."
+    fi
+    if [[ $TARGET_CLUSTER_TYPE == "spoke" ]]; then
         if [[ $TARGET_CLUSTER == "" ]]; then
             error "--target-cluster parameter necessary when running backup or restore on spoke cluster."
         fi
+    fi
+    #check fusion related variables
+    #backup storage location name
+    if [[ $BACKUP_STORAGE_LOCATION_NAME == "" ]]; then
+        error "Backup Storage Location name not specified in env.properties."
+    fi
+    #application
+    if [[ $APPLICATION == "" ]]; then
+        error "Application not specified in env.properties."
+    fi
+    #backup policy
+    if [[ $BACKUP_POLICY == "" ]]; then
+        error "Backup Policy not specified in env.properties."
     fi
 
 }
