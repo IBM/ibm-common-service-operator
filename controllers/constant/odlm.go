@@ -1349,10 +1349,18 @@ spec:
               resizeInUseVolumes: true
               size: 10Gi
             postgresql:
+              parameters:
+                track_activities: "on"
+                track_counts: "on"
+                track_io_timing: "on"
+                pg_stat_statements.track: all
+                pg_stat_statements.max: "10000"
               pg_hba:
                 - hostssl cloudpak cpadmin all cert
                 - hostssl im im_user all cert
                 - hostssl zen zen_user all cert
+                - host zen instana_user all scram-sha-256
+                - host im instana_user all scram-sha-256
       - apiVersion: v1
         kind: ConfigMap
         force: true
