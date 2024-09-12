@@ -557,8 +557,8 @@ func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 						return false
 					}
 
-					// Check if the .status field has changed
-					return !reflect.DeepEqual(oldOperandRegistry.Status, newOperandRegistry.Status)
+					// Return true if the length of .status.operatorsStatus array has changed, indicating that a operator has been added or removed
+					return len(oldOperandRegistry.Status.OperatorsStatus) != len(newOperandRegistry.Status.OperatorsStatus)
 				},
 			},
 			))
