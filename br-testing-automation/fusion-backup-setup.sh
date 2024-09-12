@@ -83,11 +83,9 @@ function parse_arguments() {
             YQ=$1
             ;;
         --hub-setup)
-            shift
             BACKUP_SETUP="true"
             ;;
         --spoke-setup)
-            shift
             RESTORE_SETUP="true"
             ;;
         -h | --help)
