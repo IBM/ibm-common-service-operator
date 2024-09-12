@@ -97,7 +97,7 @@ spec:
       restoreOverwriteResources: true
       type: resource
     - includedResourceTypes:
-        - secret
+        - secrets
       labelSelector: foundationservices.cloudpak.ibm.com=user-mgmt
       name: user-mgmt-secret
       type: resource
