@@ -296,7 +296,7 @@ a[tabindex="5"] {
   border-color: transparent;
 }
 
-#kc-social-providers h4 {
+#kc-social-providers h4, #kc-social-providers h2 {
   font-size: 12px;
   line-height: 16px;
   letter-spacing: .32px;
