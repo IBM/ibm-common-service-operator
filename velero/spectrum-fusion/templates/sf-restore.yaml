@@ -16,8 +16,8 @@ spec:
     RESOURCES:
       - ALL
     v1/persistentvolumeclaim:
-      - cs-op/setup-tenant-job-pvc
-      - cs-serv/cs-db-backup-pvc
-      - cs-serv/zen5-backup-pvc
-      - ibm-lsr/lsr-backup-pvc
+      - <operator_ns>/setup-tenant-job-pvc
+      - <services_ns>/cs-db-backup-pvc
+      - <services_ns>/zen5-backup-pvc
+      - <lsr_ns>/lsr-backup-pvc
   targetCluster: <Cluster CR name only for restores to spoke cluster>
