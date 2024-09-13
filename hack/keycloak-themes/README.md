@@ -10,6 +10,10 @@ theme/cloudpak/login/resources/css/styles461.css
 theme/cloudpak/login/theme.properies styles=css/styles461.css
 NOTE: this would likely apply to any of the files - images, fonts, etc.  If updated, they must be renamed.
 
+### Style version for release 4.6.7
+theme/cloudpak/login/resources/css/styles467.css
+theme/cloudpak/login/theme.properies styles=css/styles467.css
+
 ## Testing
 
 Easiest way to play with it is to mount it into a local keycloak dev container.
