@@ -804,8 +804,8 @@ func EnsureLabelsForCsCR(cs *apiv3.CommonService, labels map[string]string) {
 	}
 }
 
-func CompareCsCR(csCR *apiv3.CommonService, existingCsCR *apiv3.CommonService) (needUpdate bool) {
-	return !equality.Semantic.DeepEqual(csCR.GetLabels(), existingCsCR.GetLabels()) || !equality.Semantic.DeepEqual(csCR.GetAnnotations(), existingCsCR.GetAnnotations()) || !equality.Semantic.DeepEqual(csCR.Spec, existingCsCR.Spec)
+func CompareObj(newObj *unstructured.Unstructured, existingObj *unstructured.Unstructured) (needUpdate bool) {
+	return !equality.Semantic.DeepEqual(newObj.GetLabels(), existingObj.GetLabels()) || !equality.Semantic.DeepEqual(newObj.GetAnnotations(), existingObj.GetAnnotations()) || !equality.Semantic.DeepEqual(newObj.Object["spec"], existingObj.Object["spec"])
 }
 
 // ReadFile reads file from local path
