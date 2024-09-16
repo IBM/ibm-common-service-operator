@@ -1588,43 +1588,47 @@ func (b *Bootstrap) ConfigCertManagerOperandManagedByOperator(ctx context.Contex
 func (b *Bootstrap) PropagateDefaultCR(instance *apiv3.CommonService) error {
 	// Copy Master CR into namespace in WATCH_NAMESPACE list
 	watchNamespaceList := strings.Split(b.CSData.WatchNamespaces, ",")
-	csLabel := make(map[string]string)
-	// Copy from the original labels to the target labels
-	for k, v := range instance.Labels {
-		csLabel[k] = v
-	}
-	csAnnotation := make(map[string]string)
-	// Copy from the original Annotations to the target Annotations
-	for k, v := range instance.Annotations {
-		csAnnotation[k] = v
-	}
-
 	// Exclude CommonService cloned in AllNamespace Mode
 	if len(watchNamespaceList) > 1 {
+		// Get the unstructured object of the main CommonService CR
+		mainCsInstance := &unstructured.Unstructured{}
+		mainCsInstance.SetGroupVersionKind(apiv3.GroupVersion.WithKind("CommonService"))
+		if err := b.Client.Get(ctx, types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}, mainCsInstance); err != nil {
+			return fmt.Errorf("failed to get CommonService CR %s in namespace %s: %v", instance.Name, instance.Namespace, err)
+		}
+		csLabel := make(map[string]string)
+		// Copy from the original labels to the target labels
+		for k, v := range mainCsInstance.GetLabels() {
+			csLabel[k] = v
+		}
+		csLabel[constant.CsClonedFromLabel] = b.CSData.OperatorNs
+
+		csAnnotation := make(map[string]string)
+		// Copy from the original Annotations to the target Annotations
+		for k, v := range mainCsInstance.GetAnnotations() {
+			csAnnotation[k] = v
+		}
 		for _, watchNamespace := range watchNamespaceList {
-			if watchNamespace == instance.Namespace {
+			if watchNamespace == mainCsInstance.GetNamespace() {
 				continue
 			}
-			copiedCsInstance := &apiv3.CommonService{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:        constant.MasterCR,
-					Namespace:   watchNamespace,
-					Labels:      csLabel,
-					Annotations: csAnnotation,
-				},
-				Spec: instance.Spec,
-			}
-			util.EnsureLabelsForCsCR(copiedCsInstance, map[string]string{
-				constant.CsClonedFromLabel: b.CSData.OperatorNs,
-			})
+			copiedCsInstance := &unstructured.Unstructured{}
+			copiedCsInstance.SetGroupVersionKind(apiv3.GroupVersion.WithKind("CommonService"))
+			copiedCsInstance.SetNamespace(watchNamespace)
+			copiedCsInstance.SetName(constant.MasterCR)
+			copiedCsInstance.SetLabels(csLabel)
+			copiedCsInstance.SetAnnotations(csAnnotation)
+			copiedCsInstance.Object["spec"] = mainCsInstance.Object["spec"]
+
 			if err := b.Client.Create(ctx, copiedCsInstance); err != nil {
 				if errors.IsAlreadyExists(err) {
 					csKey := types.NamespacedName{Name: constant.MasterCR, Namespace: watchNamespace}
-					existingCsInstance := &apiv3.CommonService{}
+					existingCsInstance := &unstructured.Unstructured{}
+					existingCsInstance.SetGroupVersionKind(apiv3.GroupVersion.WithKind("CommonService"))
 					if err := b.Client.Get(ctx, csKey, existingCsInstance); err != nil {
 						return fmt.Errorf("failed to get cloned CommonService CR in namespace %s: %v", watchNamespace, err)
 					}
-					if needUpdate := util.CompareCsCR(copiedCsInstance, existingCsInstance); needUpdate {
+					if needUpdate := util.CompareObj(copiedCsInstance, existingCsInstance); needUpdate {
 						copiedCsInstance.SetResourceVersion(existingCsInstance.GetResourceVersion())
 						if err := b.Client.Update(ctx, copiedCsInstance); err != nil {
 							return fmt.Errorf("failed to update cloned CommonService CR in namespace %s: %v", watchNamespace, err)
@@ -1771,12 +1775,11 @@ func (b *Bootstrap) UpdateResourceLabel(instance *apiv3.CommonService) error {
 	}
 
 	if len(labelsMap) == 0 {
-		klog.Infof("No labels found in the spec of CommonService CR")
 		return nil
 	}
 
 	// Update labels in the CommonService CRs
-	klog.Infof("Update labels in the CommonService CRs")
+	klog.Infof("Update labels for resources managed by CommonService CR %s/%s", instance.GetNamespace(), instance.GetName())
 	for _, cs := range csObjectList.Items {
 		util.EnsureLabelsForCsCR(&cs, labelsMap)
 		if err := b.Client.Update(context.TODO(), &cs); err != nil {
