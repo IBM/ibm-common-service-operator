@@ -34,7 +34,6 @@ func (r *CommonServiceReconciler) reconcilePauseRequest(instance *apiv3.CommonSe
 
 	// if the given CommnService CR has not been existing
 	if instance == nil {
-		klog.Warningf("CommonService CR %s/%s is not existing", instance.Name, instance.Namespace)
 		return false
 	}
 
