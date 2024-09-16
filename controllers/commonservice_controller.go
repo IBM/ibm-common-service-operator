@@ -284,6 +284,14 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.OperatorNs, "common-service", instance.Namespace, instance.Name))
 	}
 
+	if err := r.Bootstrap.UpdateEDBUserManaged(); err != nil {
+		if statusErr := r.updatePhase(ctx, instance, CRFailed); statusErr != nil {
+			klog.Error(statusErr)
+		}
+		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
+		return ctrl.Result{}, statusErr
+	}
+
 	if isEqual, statusErr = r.updateOperatorConfig(ctx, instance.Spec.OperatorConfigs); statusErr != nil {
 		if statusErr := r.updatePhase(ctx, instance, CRFailed); statusErr != nil {
 			klog.Error(statusErr)
