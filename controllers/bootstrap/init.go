@@ -1885,3 +1885,64 @@ func (b *Bootstrap) UpdateResourceWithLabel(resources *unstructured.Unstructured
 	}
 	return nil
 }
+
+func (b *Bootstrap) UpdateEDBUserManaged() error {
+	operatorNamespace, err := util.GetOperatorNamespace()
+	if err != nil {
+		return err
+	}
+	defaultCsCR := &apiv3.CommonService{}
+	csName := "common-service"
+	if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: csName, Namespace: operatorNamespace}, defaultCsCR); err != nil {
+		return err
+	}
+	servicesNamespace := string(defaultCsCR.Spec.ServicesNamespace)
+
+	config := &corev1.ConfigMap{}
+	if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: constant.IBMCPPCONFIG, Namespace: servicesNamespace}, config); err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	userManaged := config.Data["EDB_USER_MANAGED_OPERATOR_ENABLED"]
+	if userManaged != "true" {
+		unsetEDBUserManaged(defaultCsCR)
+	} else {
+		setEDBUserManaged(defaultCsCR)
+	}
+
+	if err := b.Client.Update(context.TODO(), defaultCsCR); err != nil {
+		return err
+	}
+	return nil
+}
+
+func unsetEDBUserManaged(instance *apiv3.CommonService) {
+	if instance.Spec.OperatorConfigs == nil {
+		return
+	}
+	for i := range instance.Spec.OperatorConfigs {
+		i := i
+		if instance.Spec.OperatorConfigs[i].Name == "internal-use-only-edb" {
+			instance.Spec.OperatorConfigs[i].UserManaged = false
+		}
+	}
+}
+
+func setEDBUserManaged(instance *apiv3.CommonService) {
+	if instance.Spec.OperatorConfigs == nil {
+		instance.Spec.OperatorConfigs = []apiv3.OperatorConfig{}
+	}
+	isExist := false
+	for i := range instance.Spec.OperatorConfigs {
+		i := i
+		if instance.Spec.OperatorConfigs[i].Name == "internal-use-only-edb" {
+			instance.Spec.OperatorConfigs[i].UserManaged = true
+			isExist = true
+		}
+	}
+	if !isExist {
+		instance.Spec.OperatorConfigs = append(instance.Spec.OperatorConfigs, apiv3.OperatorConfig{Name: "internal-use-only-edb", UserManaged: true})
+	}
+}

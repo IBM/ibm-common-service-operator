@@ -1604,6 +1604,13 @@ spec:
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     operatorConfig: cloud-native-postgresql-operator-config
+  - channel: stable
+    name: internal-use-only-edb
+    namespace: "{{ .CPFSNs }}"
+    packageName: cloud-native-postgresql
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    installMode: no-op
   - channel: stable-v1.22
     fallbackChannels:
       - stable
