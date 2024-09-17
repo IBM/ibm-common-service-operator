@@ -165,6 +165,11 @@ function main() {
             ${BASE_DIR}/common/authorize-namespace.sh $ns -to $OPERATOR_NS
         done
 
+        # In the case that CPFS 4.x accidentally delete the NamespaceScope CR
+        # due to misunderstanding simple topology or All namespaces topology(namespace-scope ConfigMap is not updated in time)
+        # Re-Create/Update NamespaceScope CR common-service after NSS operator upgrade.
+        update_nss_kind "$OPERATOR_NS" "$NS_LIST"
+
         accept_license "namespacescope" "$OPERATOR_NS" "common-service"
     fi
     # Check master CommonService CR status
