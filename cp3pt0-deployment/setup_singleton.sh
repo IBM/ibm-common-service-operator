@@ -240,7 +240,7 @@ function is_migrate_licensing() {
     local licensing_service_count=$("$OC" get deployments -A | grep ibm-licensing-service-instance | wc -l)
     # If multiple Licensing service deployment is found, it should error out
     if [ "$licensing_service_count" -ge 2 ]; then
-        error "More than one ibm-licensing-service-instance found"
+        error "More than one ibm-licensing-service-instance found in namespace: $ns. There should be only one ibm-licensing-service-instance each cluster."
     fi
 
     local version=$("$OC" get ibmlicensings.operator.ibm.com instance -o jsonpath='{.spec.version}' --ignore-not-found)
