@@ -22,7 +22,7 @@ body .login-pf-page {
   background: #161616 !important;
 }
 
-.login-pf-page a {
+.login-pf-page a, #reset-login {
   color: #78A9FF;
 }
 
@@ -120,8 +120,8 @@ body .login-pf-page {
   outline-offset: -2px;
 }
 
-/* login button and submit button */
-#kc-login, .pf-c-button.pf-m-primary.pf-m-block.btn-lg {
+/* login button, submit button, buttons on other panels */
+#kc-login, .pf-c-button.pf-m-primary.pf-m-block.btn-lg, .pf-c-button.pf-m-primary.btn-lg, .pf-c-button.btn-default.btn-lg {
   border: 1px solid transparent;
   background-color: #0f62fe;
   color: #fff;
@@ -134,11 +134,21 @@ body .login-pf-page {
   outline: none;
 }
 
-#kc-login:hover, .pf-c-button.pf-m-primary.pf-m-block.btn-lg:hover {
+/* cancel button */
+.pf-c-button.btn-default.btn-lg {
+  background-image: none;
+}
+.pf-c-button.btn-default.btn-lg::after {
+  min-height: 3rem;
+}
+
+#kc-login:hover, .pf-c-button.pf-m-primary.pf-m-block.btn-lg:hover, .pf-c-button.pf-m-primary.btn-lg:hover,
+.pf-c-button.btn-default.btn-lg:hover {
   background-color: #0353e9
 }
 
-#kc-login:focus, .pf-c-button.pf-m-primary.pf-m-block.btn-lg:hover {
+#kc-login:focus, .pf-c-button.pf-m-primary.pf-m-block.btn-lg:focus, .pf-c-button.pf-m-primary.btn-lg:focus,
+.pf-c-button.btn-default.btn-lg:focus {
   border-color: #fff;
   box-shadow: inset 0 0 0 1px #fff,inset 0 0 0 2px #161616;
 }
@@ -349,6 +359,18 @@ a:visited,:active {
   background: #262626;
   color: #f4f4f4;
   border-left: 3px solid #da1e28;
+  border-top: none;
+  font-size: 14px;
+  font-weight: 200;
+  line-height: 18px;
+  letter-spacing: .16px;
+  margin: 0 .25rem 0 0;
+}
+
+.alert-info.pf-c-alert.pf-m-inline.pf-m-info {
+  background: #262626;
+  color: #f4f4f4;
+  border-left: 3px solid #4589ff;
   border-top: none;
   font-size: 14px;
   font-weight: 200;
