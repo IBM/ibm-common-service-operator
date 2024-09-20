@@ -134,17 +134,30 @@ body .login-pf-page {
   outline: none;
 }
 
+/* for update password screen */
+#kc-form-buttons {
+  display: flex;
+  flex-direction: row-reverse;
+}
+.pf-c-button.pf-m-primary.btn-lg {
+  width: 100%;
+}
 /* cancel button */
 .pf-c-button.btn-default.btn-lg {
   background-image: none;
+  background-color: #393939;
+  width: 100%;
+  margin-right: 1px;
 }
 .pf-c-button.btn-default.btn-lg::after {
   min-height: 3rem;
 }
 
-#kc-login:hover, .pf-c-button.pf-m-primary.pf-m-block.btn-lg:hover, .pf-c-button.pf-m-primary.btn-lg:hover,
+#kc-login:hover, .pf-c-button.pf-m-primary.pf-m-block.btn-lg:hover, .pf-c-button.pf-m-primary.btn-lg:hover {
+  background-color: #0353e9;
+}
 .pf-c-button.btn-default.btn-lg:hover {
-  background-color: #0353e9
+  background-color: #474747;
 }
 
 #kc-login:focus, .pf-c-button.pf-m-primary.pf-m-block.btn-lg:focus, .pf-c-button.pf-m-primary.btn-lg:focus,
@@ -367,6 +380,7 @@ a:visited,:active {
   margin: 0 .25rem 0 0;
 }
 
+/* infor alert */
 .alert-info.pf-c-alert.pf-m-inline.pf-m-info {
   background: #262626;
   color: #f4f4f4;
@@ -381,4 +395,13 @@ a:visited,:active {
 
 #kc-form-options .checkbox {
   margin-bottom: 20px;
+}
+
+#kc-attempted-username {
+  line-height: 40px;
+  letter-spacing: 0;
+  color: #f4f4f4;
+  font-size: 32px;
+  text-align: left;
+  margin: 0px;
 }
