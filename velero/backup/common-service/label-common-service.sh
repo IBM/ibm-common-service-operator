@@ -55,6 +55,7 @@ function main() {
     if [[ $SERVICES_NS != "" ]]; then
         label_nss
     fi
+    label_mcsp
     success "Successfully labeled all the resources"
 }
 
@@ -249,6 +250,13 @@ function label_nss(){
             ${OC} label rolebinding nss-managed-role-from-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss -n $namespace --overwrite=true 2>/dev/null
         done
     fi
+    echo ""
+}
+
+function label_mcsp(){
+
+    title "Start to label mcsp resources"
+    ${OC} label secret user-mgmt-bootstrap foundationservices.cloudpak.ibm.com=user-mgmt -n $SERVICES_NS --overwrite=true 2>/dev/null
     echo ""
 }
 
