@@ -375,7 +375,7 @@ function label_cs_resources() {
     mv ../velero/backup/common-service/env.properties ../velero/backup/common-service/og-env.properties
     cp env.properties ../velero/backup/common-service/env.properties
     export TETHERED_NS="$TETHERED_NAMESPACE1,$TETHERED_NAMESPACE2"
-    nfo "Labeling remaining CPFS resources..."
+    info "Labeling remaining CPFS resources..."
     ./../velero/backup/common-service/label-common-service.sh || error "Unable to complete labeling of CPFS resources."
 
     success "CPFS resources labeled."
