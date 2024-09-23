@@ -539,7 +539,7 @@ spec:
                   "attributes": [
                     {
                       "name": "username",
-                      "displayName": "${variable}{username}",
+                      "displayName": "${username}",
                       "validations": {
                         "length": {
                           "min": 3,
@@ -562,7 +562,7 @@ spec:
                     },
                     {
                       "name": "email",
-                      "displayName": "${variable}{email}",
+                      "displayName": "${email}",
                       "validations": {
                         "email": {},
                         "length": {
@@ -584,7 +584,7 @@ spec:
                     },
                     {
                       "name": "firstName",
-                      "displayName": "${variable}{firstName}",
+                      "displayName": "${firstName}",
                       "validations": {
                         "length": {
                           "max": 255
@@ -605,7 +605,7 @@ spec:
                     },
                     {
                       "name": "lastName",
-                      "displayName": "${variable}{lastName}",
+                      "displayName": "${lastName}",
                       "validations": {
                         "length": {
                           "max": 255
