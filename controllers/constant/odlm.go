@@ -532,111 +532,111 @@ spec:
               done
               echo "Truststore file built, starting Keycloak ..."
               "/opt/keycloak/bin/kc.sh" "$@" --spi-truststore-file-file=${TRUSTSTORE_DIR}/keycloak-truststore.jks --spi-truststore-file-password=changeit --spi-truststore-file-hostname-verification-policy=WILDCARD --spi-user-profile-declarative-user-profile-config-file=${USERPROFILE_DIR}/cs-keycloak-user-profile.json
-        - apiVersion: v1
+      - apiVersion: v1
+        data:
           data:
-            data:
-              cs-keycloak-user-profile.json: |
-                {
-                  "attributes": [
-                    {
-                      "name": "username",
-                      "displayName": "${username}",
-                      "validations": {
-                        "length": {
-                          "min": 3,
-                          "max": 255
-                        },
-                        "username-prohibited-characters": {},
-                        "up-username-not-idn-homograph": {}
+            cs-keycloak-user-profile.json: |
+              {
+                "attributes": [
+                  {
+                    "name": "username",
+                    "displayName": "${username}",
+                    "validations": {
+                      "length": {
+                        "min": 3,
+                        "max": 255
                       },
-                      "permissions": {
-                        "view": [
-                          "admin",
-                          "user"
-                        ],
-                        "edit": [
-                          "admin",
-                          "user"
-                        ]
-                      },
-                      "multivalued": false
+                      "username-prohibited-characters": {},
+                      "up-username-not-idn-homograph": {}
                     },
-                    {
-                      "name": "email",
-                      "displayName": "${email}",
-                      "validations": {
-                        "email": {},
-                        "length": {
-                          "max": 255
-                        }
-                      },
-                      "annotations": {},
-                      "permissions": {
-                        "view": [
-                          "admin",
-                          "user"
-                        ],
-                        "edit": [
-                          "admin",
-                          "user"
-                        ]
-                      },
-                      "multivalued": false
+                    "permissions": {
+                      "view": [
+                        "admin",
+                        "user"
+                      ],
+                      "edit": [
+                        "admin",
+                        "user"
+                      ]
                     },
-                    {
-                      "name": "firstName",
-                      "displayName": "${firstName}",
-                      "validations": {
-                        "length": {
-                          "max": 255
-                        },
-                        "person-name-prohibited-characters": {}
-                      },
-                      "permissions": {
-                        "view": [
-                          "admin",
-                          "user"
-                        ],
-                        "edit": [
-                          "admin",
-                          "user"
-                        ]
-                      },
-                      "multivalued": false
+                    "multivalued": false
+                  },
+                  {
+                    "name": "email",
+                    "displayName": "${email}",
+                    "validations": {
+                      "email": {},
+                      "length": {
+                        "max": 255
+                      }
                     },
-                    {
-                      "name": "lastName",
-                      "displayName": "${lastName}",
-                      "validations": {
-                        "length": {
-                          "max": 255
-                        },
-                        "person-name-prohibited-characters": {}
+                    "annotations": {},
+                    "permissions": {
+                      "view": [
+                        "admin",
+                        "user"
+                      ],
+                      "edit": [
+                        "admin",
+                        "user"
+                      ]
+                    },
+                    "multivalued": false
+                  },
+                  {
+                    "name": "firstName",
+                    "displayName": "${firstName}",
+                    "validations": {
+                      "length": {
+                        "max": 255
                       },
-                      "permissions": {
-                        "view": [
-                          "admin",
-                          "user"
-                        ],
-                        "edit": [
-                          "admin",
-                          "user"
-                        ]
+                      "person-name-prohibited-characters": {}
+                    },
+                    "permissions": {
+                      "view": [
+                        "admin",
+                        "user"
+                      ],
+                      "edit": [
+                        "admin",
+                        "user"
+                      ]
+                    },
+                    "multivalued": false
+                  },
+                  {
+                    "name": "lastName",
+                    "displayName": "${lastName}",
+                    "validations": {
+                      "length": {
+                        "max": 255
                       },
-                      "multivalued": false
-                    }
-                  ],
-                  "groups": [
-                    {
-                      "name": "user-metadata",
-                      "displayHeader": "User metadata",
-                      "displayDescription": "Attributes, which refer to user metadata"
-                    }
-                  ]
-                }
-          force: true
-          kind: ConfigMap
-          name: cs-keycloak-user-profile
+                      "person-name-prohibited-characters": {}
+                    },
+                    "permissions": {
+                      "view": [
+                        "admin",
+                        "user"
+                      ],
+                      "edit": [
+                        "admin",
+                        "user"
+                      ]
+                    },
+                    "multivalued": false
+                  }
+                ],
+                "groups": [
+                  {
+                    "name": "user-metadata",
+                    "displayHeader": "User metadata",
+                    "displayDescription": "Attributes, which refer to user metadata"
+                  }
+                ]
+              }
+        force: true
+        kind: ConfigMap
+        name: cs-keycloak-user-profile
       - apiVersion: v1
         annotations:
           service.beta.openshift.io/serving-cert-secret-name: cpfs-opcon-cs-keycloak-tls-secret
