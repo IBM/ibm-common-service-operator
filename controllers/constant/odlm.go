@@ -506,6 +506,7 @@ spec:
             cs-keycloak-entrypoint.sh: |
               #!/usr/bin/env bash
               CA_DIR=/mnt/trust-ca
+              USERPROFILE_DIR=/mnt/user-profile
               TRUSTSTORE_DIR=/mnt/truststore
               echo "Building the truststore file ..."
               cp /etc/pki/java/cacerts ${TRUSTSTORE_DIR}/keycloak-truststore.jks
