@@ -506,6 +506,7 @@ spec:
             cs-keycloak-entrypoint.sh: |
               #!/usr/bin/env bash
               CA_DIR=/mnt/trust-ca
+              USERPROFILE_DIR=/mnt/user-profile
               TRUSTSTORE_DIR=/mnt/truststore
               echo "Building the truststore file ..."
               cp /etc/pki/java/cacerts ${TRUSTSTORE_DIR}/keycloak-truststore.jks
@@ -530,7 +531,112 @@ spec:
                 keytool -importcert -file ${CA_DIR}/${cert} -keystore ${TRUSTSTORE_DIR}/keycloak-truststore.jks -storepass changeit -alias ${cert} -noprompt
               done
               echo "Truststore file built, starting Keycloak ..."
-              "/opt/keycloak/bin/kc.sh" "$@" --spi-truststore-file-file=${TRUSTSTORE_DIR}/keycloak-truststore.jks --spi-truststore-file-password=changeit --spi-truststore-file-hostname-verification-policy=WILDCARD
+              "/opt/keycloak/bin/kc.sh" "$@" --spi-truststore-file-file=${TRUSTSTORE_DIR}/keycloak-truststore.jks --spi-truststore-file-password=changeit --spi-truststore-file-hostname-verification-policy=WILDCARD --spi-user-profile-declarative-user-profile-config-file=${USERPROFILE_DIR}/cs-keycloak-user-profile.json
+        - apiVersion: v1
+          data:
+            data:
+              cs-keycloak-user-profile.json: |
+                {
+                  "attributes": [
+                    {
+                      "name": "username",
+                      "displayName": "${username}",
+                      "validations": {
+                        "length": {
+                          "min": 3,
+                          "max": 255
+                        },
+                        "username-prohibited-characters": {},
+                        "up-username-not-idn-homograph": {}
+                      },
+                      "permissions": {
+                        "view": [
+                          "admin",
+                          "user"
+                        ],
+                        "edit": [
+                          "admin",
+                          "user"
+                        ]
+                      },
+                      "multivalued": false
+                    },
+                    {
+                      "name": "email",
+                      "displayName": "${email}",
+                      "validations": {
+                        "email": {},
+                        "length": {
+                          "max": 255
+                        }
+                      },
+                      "annotations": {},
+                      "permissions": {
+                        "view": [
+                          "admin",
+                          "user"
+                        ],
+                        "edit": [
+                          "admin",
+                          "user"
+                        ]
+                      },
+                      "multivalued": false
+                    },
+                    {
+                      "name": "firstName",
+                      "displayName": "${firstName}",
+                      "validations": {
+                        "length": {
+                          "max": 255
+                        },
+                        "person-name-prohibited-characters": {}
+                      },
+                      "permissions": {
+                        "view": [
+                          "admin",
+                          "user"
+                        ],
+                        "edit": [
+                          "admin",
+                          "user"
+                        ]
+                      },
+                      "multivalued": false
+                    },
+                    {
+                      "name": "lastName",
+                      "displayName": "${lastName}",
+                      "validations": {
+                        "length": {
+                          "max": 255
+                        },
+                        "person-name-prohibited-characters": {}
+                      },
+                      "permissions": {
+                        "view": [
+                          "admin",
+                          "user"
+                        ],
+                        "edit": [
+                          "admin",
+                          "user"
+                        ]
+                      },
+                      "multivalued": false
+                    }
+                  ],
+                  "groups": [
+                    {
+                      "name": "user-metadata",
+                      "displayHeader": "User metadata",
+                      "displayDescription": "Attributes, which refer to user metadata"
+                    }
+                  ]
+                }
+          force: true
+          kind: ConfigMap
+          name: cs-keycloak-user-profile
       - apiVersion: v1
         annotations:
           service.beta.openshift.io/serving-cert-secret-name: cpfs-opcon-cs-keycloak-tls-secret
@@ -678,6 +784,8 @@ spec:
                           name: startup-volume
                         - mountPath: /mnt/trust-ca
                           name: trust-ca-volume
+                        - mountPath: /mnt/user-profile
+                          name: user-profile-volume
                         - mountPath: /opt/keycloak/providers
                           name: cs-keycloak-theme
                   volumes:
@@ -691,6 +799,9 @@ spec:
                       configMap:
                         name: cs-keycloak-ca-certs
                         optional: true
+                    - name: user-profile-volume
+                      configMap: 
+                        name: cs-keycloak-user-profile
                     - name: cs-keycloak-theme
                       configMap:
                         items:
