@@ -317,7 +317,7 @@ spec:
           timeout: 600
       labelSelector: foundationservices.cloudpak.ibm.com=setup-tenant-job
       name: setup-tenant-job-check
-      namespace: cs-op
+      namespace: <operator namespace>
       onError: fail
       selectResource: pod
       timeout: 600
