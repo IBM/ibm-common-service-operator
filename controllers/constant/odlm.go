@@ -913,10 +913,10 @@ spec:
                           name: startup-volume
                         - mountPath: /mnt/trust-ca
                           name: trust-ca-volume
-                        - mountPath: /mnt/user-profile
-                          name: user-profile-volume
                         - mountPath: /opt/keycloak/providers
                           name: cs-keycloak-theme
+                        - mountPath: /mnt/user-profile
+                          name: user-profile-volume
                   volumes:
                     - name: truststore-volume
                       emptyDir:
@@ -928,15 +928,15 @@ spec:
                       configMap:
                         name: cs-keycloak-ca-certs
                         optional: true
-                    - name: user-profile-volume
-                      configMap: 
-                        name: cs-keycloak-user-profile
                     - name: cs-keycloak-theme
                       configMap:
                         items:
                           - key: cloudpak-theme.jar
                             path: cloudpak-theme.jar
                         name: cs-keycloak-theme
+                    - name: user-profile-volume
+                      configMap: 
+                        name: cs-keycloak-user-profile
                   affinity:
                     nodeAffinity:
                       requiredDuringSchedulingIgnoredDuringExecution:
