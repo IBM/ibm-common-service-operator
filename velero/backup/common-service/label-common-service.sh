@@ -24,6 +24,9 @@ LSR_NAMESPACE="ibm-lsr"
 
 # Catalog sources and namespace
 ENABLE_PRIVATE_CATALOG=0
+ENABLE_CERT_MANAGER=0
+ENABLE_LICENSING=0
+ENABLE_LSR=0
 CS_SOURCE_NS="openshift-marketplace"
 CM_SOURCE_NS="openshift-marketplace"
 LIS_SOURCE_NS="openshift-marketplace"
@@ -50,13 +53,96 @@ function main() {
     label_ns_and_related 
     label_configmap
     label_subscription
-    label_lsr
+    if [[ $ENABLE_LSR -eq 1 ]]; then
+        label_lsr
+    fi
     label_cs
     if [[ $SERVICES_NS != "" ]]; then
         label_nss
     fi
     label_mcsp
     success "Successfully labeled all the resources"
+}
+
+function print_usage(){ #TODO update usage definition
+    script_name=`basename ${0}`
+    echo "Usage: ${script_name} [OPTIONS]"
+    echo ""
+    echo "Set up either a hub cluster or a spoke cluster to use Spectrum Fusion Backup and Restore."
+    echo "One of --hub-setup or --spoke-setup is required."
+    echo "This script assumes the following:"
+    echo "    * An existing CPFS instance on the hub cluster with IM, Zen, Licensing, Cert Manager, and License Service Reporter present"
+    echo "    * Filled in required variables in the accompanying env.properties file"
+    echo ""
+    echo "Options:"
+    echo "   --oc string                    Optional. File path to oc CLI. Default uses oc in your PATH. Can also be set in env.properties."
+    echo "   --hub-setup                    Optional. Set up Spectrum Fusion Backup and Restore Hub cluster, create necessary SF resources, and label CPFS resources on cluster."
+    echo "   --spoke-setup                  Optional. Set up Spectrum Fusion Backup and Restore Spoke cluster. Must have an existing Hub cluster to connect to."
+    echo "   -h, --help                     Print usage information"
+    echo ""
+}
+
+function parse_arguments() {
+    script_name=`basename ${0}`
+    echo "All arguments passed into the ${script_name}: $@"
+    echo ""
+
+    # process options
+    while [[ "$@" != "" ]]; do
+        case "$1" in
+        --oc)
+            shift
+            OC=$1
+            ;;
+        --operator-ns)
+            shift
+            OPERATOR_NS=$1
+            ;;
+        --services-ns)
+            shift
+            SERVICES_NS=$1
+            ;;
+        --tethered-ns)
+            shift
+            TETHERED_NS=$1
+            ;;
+        --control-ns)
+            shift
+            CONTROL_NS=$1
+            ;;
+        --cert-manager-ns)
+            shift
+            CERT_MANAGER_NAMESPACE=$1
+            ENABLE_CERT_MANAGER=1
+            ;;
+        --licensing-ns)
+            shift
+            LICENSING_NAMESPACE=$1
+            ENABLE_LICENSING=1
+            ;;
+        --lsr-ns)
+            shift
+            LSR_NAMESPACE=$1
+            ENABLE_LSR=1
+            ;;
+        --enable-private-catalog)
+            ENABLE_PRIVATE_CATALOG=1
+            ;;
+        --additional-catalog-sources)
+            shift
+            ADDITIONAL_SOURCES=$1
+            ;;
+        -h | --help)
+            print_usage
+            exit 1
+            ;;
+        *)
+            echo "Entered option $1 not supported. Run ./${script_name} -h for script usage info."
+            ;;
+        esac
+        shift
+    done
+    echo ""
 }
 
 function pre_req(){
@@ -90,10 +176,12 @@ function label_catalogsource() {
     # Label the Private CatalogSources in provided namespaces
     if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
         CS_SOURCE_NS=$OPERATOR_NS
+        #TODO update namespaces to conditionally not include cert manager, licensing, lsr namespaces
         CM_SOURCE_NS=$CERT_MANAGER_NAMESPACE
         LIS_SOURCE_NS=$LICENSING_NAMESPACE
         LSR_SOURCE_NS=$LSR_NAMESPACE
 
+        #TODO update namespaces to conditionally not include cert manager, licensing, lsr namespaces
         private_namespaces="$OPERATOR_NS,$CERT_MANAGER_NAMESPACE,$LICENSING_NAMESPACE,$LSR_NAMESPACE"
         private_namespaces=$(echo "$private_namespaces" | tr ',' '\n')
 
@@ -133,6 +221,7 @@ function label_ns_and_related() {
     title "Start to label the namespaces, operatorgroups and secrets... "
     namespaces=$(${OC} get configmap namespace-scope -n $OPERATOR_NS -oyaml | awk '/^data:/ {flag=1; next} /^  namespaces:/ {print $2; next} flag && /^  [^ ]+: / {flag=0}')
     # add cert-manager namespace and licensing namespace and lsr namespace into the list with comma separated
+    #TODO update namespaces to conditionally not include cert manager, licensing, lsr namespaces
     namespaces+=",$CONTROL_NS,$CERT_MANAGER_NAMESPACE,$LICENSING_NAMESPACE,$LSR_NAMESPACE"
     namespaces=$(echo "$namespaces" | tr ',' '\n')
 
@@ -186,6 +275,7 @@ function label_subscription() {
     local lsr_pm="ibm-license-service-reporter-operator"
     
     ${OC} label subscriptions.operators.coreos.com $cs_pm foundationservices.cloudpak.ibm.com=subscription -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    #TODO update to conditionally label cert manager, licensing, lsr subscriptions
     ${OC} label subscriptions.operators.coreos.com $cm_pm foundationservices.cloudpak.ibm.com=singleton-subscription -n $CERT_MANAGER_NAMESPACE --overwrite=true 2>/dev/null
     ${OC} label subscriptions.operators.coreos.com $lis_pm foundationservices.cloudpak.ibm.com=singleton-subscription -n $LICENSING_NAMESPACE --overwrite=true 2>/dev/null
     ${OC} label subscriptions.operators.coreos.com $lsr_pm foundationservices.cloudpak.ibm.com=lsr -n $LSR_NAMESPACE --overwrite=true 2>/dev/null
