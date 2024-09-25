@@ -35,8 +35,8 @@ do
     oc label issuer $NAME -n $NAMESPACE foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
 done
 
-# Get all certificates in all namespaces and add foundationservices.cloudpak.ibm.com=cert-manager
-CURRENT_CERTIFICATES=($(oc get certificates --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True))
+# Label all cs-ca-certificates
+CURRENT_CERTIFICATES=($(oc get certificates --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate))
 i=0
 len=${#CURRENT_CERTIFICATES[@]}
 while [ $i -lt $len ];
@@ -49,9 +49,11 @@ do
     echo $NAMESPACE
     echo "---"
     oc label certificates $NAME -n $NAMESPACE foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
+    oc label secret cs-ca-certificate-secret -n $NAMESPACE foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
 done
 
-CURRENT_CERTIFICATES=($(oc get certificates.cert-manager.io --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True))
+#cover the different api for certificates
+CURRENT_CERTIFICATES=($(oc get certificates.cert-manager.io --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate))
 i=0
 len=${#CURRENT_CERTIFICATES[@]}
 while [ $i -lt $len ];
@@ -64,22 +66,7 @@ do
     echo $NAMESPACE
     echo "---"
     oc label certificates $NAME -n $NAMESPACE foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
-done
-
-# Get all secrets with label operator.ibm.com/watched-by-cert-manager="" and add foundationservices.cloudpak.ibm.com=cert-manager
-CURRENT_SECRETS=($(oc get secrets -l operator.ibm.com/watched-by-cert-manager="" --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True))
-i=0
-len=${#CURRENT_SECRETS[@]}
-while [ $i -lt $len ];
-do
-    NAME=${CURRENT_SECRETS[$i]}
-    let i++
-    NAMESPACE=${CURRENT_SECRETS[$i]}
-    let i++
-    echo $NAME
-    echo $NAMESPACE
-    echo "---"
-    oc label secret $NAME -n $NAMESPACE foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
+    oc label secret cs-ca-certificate-secret -n $NAMESPACE foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
 done
 
 CURRENT_CRD_ISSUERS=($(oc get crd | grep issuer | cut -d ' ' -f1))
@@ -119,6 +106,7 @@ if [[ $zen_namespace_list != "fail" ]]; then
             echo $zen_namespace
             echo "---"
             oc label secret $zen_secret_name -n $zen_namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
+            oc label secret zen-ca-cert-secret -n $zen_namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
         done
     done
 else
