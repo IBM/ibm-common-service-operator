@@ -48,6 +48,7 @@ BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 source ${BASE_DIR}/env.properties
 
 function main() {
+    parse_arguments "$@"
     pre_req
     label_catalogsource
     label_ns_and_related 
