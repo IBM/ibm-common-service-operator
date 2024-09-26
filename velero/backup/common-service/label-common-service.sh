@@ -68,16 +68,23 @@ function print_usage(){ #TODO update usage definition
     script_name=`basename ${0}`
     echo "Usage: ${script_name} [OPTIONS]"
     echo ""
-    echo "Set up either a hub cluster or a spoke cluster to use Spectrum Fusion Backup and Restore."
-    echo "One of --hub-setup or --spoke-setup is required."
+    echo "Label Bedrock resources to prepare for Backup."
+    echo "Operator namespace is always required. If using a separation of duties topology, make sure to include services and tethered namespaces."
     echo "This script assumes the following:"
-    echo "    * An existing CPFS instance on the hub cluster with IM, Zen, Licensing, Cert Manager, and License Service Reporter present"
+    echo "    * An existing CPFS instance installed in the namespaces entered as parameters."
     echo "    * Filled in required variables in the accompanying env.properties file"
     echo ""
     echo "Options:"
     echo "   --oc string                    Optional. File path to oc CLI. Default uses oc in your PATH. Can also be set in env.properties."
-    echo "   --hub-setup                    Optional. Set up Spectrum Fusion Backup and Restore Hub cluster, create necessary SF resources, and label CPFS resources on cluster."
-    echo "   --spoke-setup                  Optional. Set up Spectrum Fusion Backup and Restore Spoke cluster. Must have an existing Hub cluster to connect to."
+    echo "   --operator-ns                  Required. Namespace where Bedrock operators are deployed."
+    echo "   --services-ns                  Optional. Namespace where Bedrock operands are deployed. Only optional if not using Separation of Duties topology."
+    echo "   --tethered-ns                  Optional. Comma-delimitted list of tethered namespaces using Bedrock services located in operator and services namespaces."
+    echo "   --control-ns                   Optional. Only necessary if tenant included is Bedrock LTSR (v3.19.x or 3.23.x)."
+    echo "   --cert-manager-ns              Optional. Specifying will enable labeling of the cert manager operator. Permissions may need to be updated to include the namespace."
+    echo "   --licensing-ns                 Optional. Specifying will enable labeling of the licensing operator and its resources. Permissions may need to be updated to include the namespace."
+    echo "   --lsr-ns                       Optional. Specifying will enable labeling of the license service reporter operator and its resources. Permissions may need to be updated to include the namespace."
+    echo "   --enable-private-catalog       Optional. Specifying will look for catalog sources in the operator namespace. If enabled, will look for cert manager, licensing, and lsr catalogs in their respective namespaces."
+    echo "   --additional-catalog-sources   Optional. Comma-delimted list of non-default catalog sources to be labeled."
     echo "   -h, --help                     Print usage information"
     echo ""
 }
@@ -176,13 +183,20 @@ function label_catalogsource() {
     # Label the Private CatalogSources in provided namespaces
     if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
         CS_SOURCE_NS=$OPERATOR_NS
-        #TODO update namespaces to conditionally not include cert manager, licensing, lsr namespaces
         CM_SOURCE_NS=$CERT_MANAGER_NAMESPACE
         LIS_SOURCE_NS=$LICENSING_NAMESPACE
         LSR_SOURCE_NS=$LSR_NAMESPACE
 
-        #TODO update namespaces to conditionally not include cert manager, licensing, lsr namespaces
-        private_namespaces="$OPERATOR_NS,$CERT_MANAGER_NAMESPACE,$LICENSING_NAMESPACE,$LSR_NAMESPACE"
+        private_namespaces="$OPERATOR_NS"
+        if [[ $ENABLE_CERT_MANAGER -eq 1 ]]; then
+            private_namespaces+=",$CERT_MANAGER_NAMESPACE"
+        fi
+        if [[ $ENABLE_LICENSING -eq 1 ]]; then
+            private_namespaces+=",$LICENSING_NAMESPACE"
+        fi
+        if [[ $ENABLE_LSR -eq 1 ]]; then
+            private_namespaces+=",$LSR_NAMESPACE"
+        fi
         private_namespaces=$(echo "$private_namespaces" | tr ',' '\n')
 
         while IFS= read -r namespace; do
@@ -221,8 +235,19 @@ function label_ns_and_related() {
     title "Start to label the namespaces, operatorgroups and secrets... "
     namespaces=$(${OC} get configmap namespace-scope -n $OPERATOR_NS -oyaml | awk '/^data:/ {flag=1; next} /^  namespaces:/ {print $2; next} flag && /^  [^ ]+: / {flag=0}')
     # add cert-manager namespace and licensing namespace and lsr namespace into the list with comma separated
-    #TODO update namespaces to conditionally not include cert manager, licensing, lsr namespaces
-    namespaces+=",$CONTROL_NS,$CERT_MANAGER_NAMESPACE,$LICENSING_NAMESPACE,$LSR_NAMESPACE"
+    if [[ $CONTROL_NS != "" ]]; then
+        namespaces+=",$CONTROL_NS"
+    fi
+    if [[ $ENABLE_CERT_MANAGER -eq 1 ]]; then
+        namespaces+=",$CERT_MANAGER_NAMESPACE"
+    fi
+    if [[ $ENABLE_LICENSING -eq 1 ]]; then
+        namespaces+=",$LICENSING_NAMESPACE"
+    fi
+    if [[ $ENABLE_LSR -eq 1 ]]; then
+        namespaces+=",$LSR_NAMESPACE"
+    fi
+
     namespaces=$(echo "$namespaces" | tr ',' '\n')
 
     while IFS= read -r namespace; do
@@ -275,10 +300,15 @@ function label_subscription() {
     local lsr_pm="ibm-license-service-reporter-operator"
     
     ${OC} label subscriptions.operators.coreos.com $cs_pm foundationservices.cloudpak.ibm.com=subscription -n $OPERATOR_NS --overwrite=true 2>/dev/null
-    #TODO update to conditionally label cert manager, licensing, lsr subscriptions
-    ${OC} label subscriptions.operators.coreos.com $cm_pm foundationservices.cloudpak.ibm.com=singleton-subscription -n $CERT_MANAGER_NAMESPACE --overwrite=true 2>/dev/null
-    ${OC} label subscriptions.operators.coreos.com $lis_pm foundationservices.cloudpak.ibm.com=singleton-subscription -n $LICENSING_NAMESPACE --overwrite=true 2>/dev/null
-    ${OC} label subscriptions.operators.coreos.com $lsr_pm foundationservices.cloudpak.ibm.com=lsr -n $LSR_NAMESPACE --overwrite=true 2>/dev/null
+    if [[ $ENABLE_CERT_MANAGER -eq 1 ]]; then
+        ${OC} label subscriptions.operators.coreos.com $cm_pm foundationservices.cloudpak.ibm.com=singleton-subscription -n $CERT_MANAGER_NAMESPACE --overwrite=true 2>/dev/null
+    fi
+    if [[ $ENABLE_LICENSING -eq 1 ]]; then
+        ${OC} label subscriptions.operators.coreos.com $lis_pm foundationservices.cloudpak.ibm.com=singleton-subscription -n $LICENSING_NAMESPACE --overwrite=true 2>/dev/null
+    fi
+    if [[ $ENABLE_LSR -eq 1 ]]; then
+        ${OC} label subscriptions.operators.coreos.com $lsr_pm foundationservices.cloudpak.ibm.com=lsr -n $LSR_NAMESPACE --overwrite=true 2>/dev/null
+    fi
     echo ""
 }
 
