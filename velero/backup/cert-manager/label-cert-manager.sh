@@ -105,7 +105,8 @@ function label_resource(){
         # NAMESPACE=${current_list[$i]}
         # let i++
         echo $NAME
-        echo $NAMESPACE
+        echo $namespace
+        echo $resource
         oc label $resource $NAME -n $namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
         echo "---"
     done
@@ -134,19 +135,19 @@ function label_all_resources(){
             info "Labeling resources in namespace $namespace"
             CURRENT_ISSUERS=($(oc get Issuers -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True))
             if [[ $CURRENT_ISSUERS != "" ]]; then
-                label_resource Issuers $CURRENT_ISSUERS
+                label_resource Issuers $CURRENT_ISSUERS $namespace
             fi
             CURRENT_ISSUERS=($(oc get issuers.cert-manager.io -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True))
             if [[ $CURRENT_ISSUERS != "" ]]; then
-                label_resource issuers.cert-manager.io $CURRENT_ISSUERS
+                label_resource issuers.cert-manager.io $CURRENT_ISSUERS $namespace
             fi
             CURRENT_CERTIFICATES=($(oc get certificates -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate))
             if [[ $CURRENT_CERTIFICATES != "" ]]; then
-                label_resource certificates $CURRENT_CERTIFICATES
+                label_resource certificates $CURRENT_CERTIFICATES $namespace
             fi
             CURRENT_CERTIFICATES=($(oc get certificates.cert-manager.io -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate))
             if [[ $CURRENT_CERTIFICATES != "" ]]; then
-                label_resource certificates.cert-manager.io $CURRENT_CERTIFICATES
+                label_resource certificates.cert-manager.io $CURRENT_CERTIFICATES $namespace
             fi
             CURRENT_SECRET=($(oc get secret -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate))
             if [[ $CURRENT_SECRET != "" ]]; then
