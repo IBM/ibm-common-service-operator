@@ -96,7 +96,6 @@ function label_resource_allns(){
     do
         NAME=${name_list[$i]}
         NAMESPACE=${ns_list[$i]}
-        let i++
         info "Labeling $resource $NAME in namespace $NAMESPACE..."
         oc label $resource $NAME -n $NAMESPACE foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
         echo "---"
