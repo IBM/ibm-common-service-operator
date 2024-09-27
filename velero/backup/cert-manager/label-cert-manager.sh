@@ -35,7 +35,7 @@ function print_usage(){
 
 function parse_arguments(){
     script_name=`basename ${0}`
-    echo "All arguments passed into the ${script_name}: $@"
+    info "All arguments passed into the ${script_name}: $@"
     echo ""
 
     # process options
@@ -50,7 +50,7 @@ function parse_arguments(){
             exit 1
             ;;
         *)
-            echo "Entered option $1 not supported. Run ./${script_name} -h for script usage info."
+            error "Entered option $1 not supported. Run ./${script_name} -h for script usage info."
             ;;
         esac
         shift
@@ -158,7 +158,7 @@ function label_all_resources(){
                     info "No custom zen secret in namespace $namespace, skipping..."
                 fi
             else
-                echo "[INFO] No zenservices found in namespace $namespace, skipping labeling zen custom route secrets..."
+                info "No zenservices found in namespace $namespace, skipping labeling zen custom route secrets..."
             fi
 
             zen_ca_secret_present=$(oc get secret zen-ca-cert-secret -n $namespace --ignore-not-found | awk '{if (NR!=1) {print $1}}')
@@ -172,7 +172,7 @@ function label_all_resources(){
                 iam_secret_name=$(oc get configmap cs-onprem-tenant-config -n $namespace -o=jsonpath='{.data.custom_host_certificate_secret}')
                 label_specified_secret $namespace $iam_secret_name
             else
-                echo "[INFO] Configmap cs-onprem-tenant-config not found in namespace $namespace, skipping copying custom secrets..."
+                info "Configmap cs-onprem-tenant-config not found in namespace $namespace, skipping copying custom secrets..."
             fi
 
             #grab default admin credentials
@@ -180,7 +180,7 @@ function label_all_resources(){
             if [[ $auth_namespace_list != "" ]]; then
                 label_specified_secret $namespace platform-auth-idp-credentials
             else
-                echo "[INFO] Secret platform-auth-idp-credentials not present in namespace $namespace. Skipping..."
+                info "Secret platform-auth-idp-credentials not present in namespace $namespace. Skipping..."
             fi
 
             #grab default scim credentials
@@ -188,7 +188,7 @@ function label_all_resources(){
             if [[ $scim_secret_namespace_list != "" ]]; then
                 label_specified_secret $namespace platform-auth-scim-credentials
             else
-                echo "[INFO] Secret platform-auth-scim-credentials not present in namespace $namespace. Skipping..."
+                info "Secret platform-auth-scim-credentials not present in namespace $namespace. Skipping..."
             fi
 
             #grab LDAP TLS certificate
@@ -196,7 +196,7 @@ function label_all_resources(){
             if [[ $ldaps_secret_namespace_list != "" ]]; then
                 label_specified_secret $namespace platform-auth-ldaps-ca-cert
             else
-                echo "[INFO] Secret platform-auth-ldaps-ca-cert not present in namespace $namespace. Skipping..."
+                info "Secret platform-auth-ldaps-ca-cert not present in namespace $namespace. Skipping..."
             fi
 
             #grab icp service id apikey (if it exists)
@@ -204,7 +204,7 @@ function label_all_resources(){
             if [[ $icp_serviceid_apikey_secret_namespace_list != "" ]]; then
                 label_specified_secret $namespace icp-serviceid-apikey-secret
             else
-                echo "[INFO] Secret icp-serviceid-apikey-secret not present in namespace $namespace. Skipping..."
+                info "Secret icp-serviceid-apikey-secret not present in namespace $namespace. Skipping..."
             fi
 
             #grab zen service id apikey (if it exists)
@@ -212,7 +212,7 @@ function label_all_resources(){
             if [[ $zen_serviceid_apikey_secret_namespace_list != "" ]]; then
                 label_specified_secret $namespace zen-serviceid-apikey-secret
             else
-                echo "[INFO] Secret zen-serviceid-apikey-secret not present in namespace $namespace. Skipping..."
+                info "Secret zen-serviceid-apikey-secret not present in namespace $namespace. Skipping..."
             fi
 
             #add labels to iaf-system-automation-aui-zen-cert elasticsearch cert/secret
@@ -233,7 +233,7 @@ function label_all_resources(){
             #remove label from metastore-edb certificate and secret
             metastore_secret_ns_list=$(oc get secret -n $namespace --no-headers | grep  ibm-zen-metastore-edb-secret | awk '{print $1}' | tr "\n" " ")
             if [[ $metastore_secret_ns_list != "" ]]; then
-                echo "[INFO] removing label from zen-metastore-edb-secret and certificate."
+                info "removing label from zen-metastore-edb-secret and certificate."
                 for ns in $metastore_secret_ns_list
                 do
                     oc label secret ibm-zen-metastore-edb-secret -n $namespace foundationservices.cloudpak.ibm.com-
@@ -273,7 +273,7 @@ function label_all_resources(){
                 done
             done
         else
-            echo "[INFO] No zenservices found on cluster, skipping labeling zen custom route secrets..."
+            info "No zenservices found on cluster, skipping labeling zen custom route secrets..."
         fi
 
         #ensure iam custom route secrets are labeled
@@ -285,7 +285,7 @@ function label_all_resources(){
                 label_specified_secret $tenant_config_namespace $iam_secret_name
             done
         else
-            echo "[INFO] Configmap cs-onprem-tenant-config not found, skipping copying custom secrets..."
+            info "Configmap cs-onprem-tenant-config not found, skipping copying custom secrets..."
         fi
 
         #grab default admin credentials
@@ -296,7 +296,7 @@ function label_all_resources(){
                 label_specified_secret $auth_namespace platform-auth-idp-credentials
             done
         else
-            echo "[INFO] Secret platform-auth-idp-credentials not present in namespace $auth_namespace. Skipping..."
+            info "Secret platform-auth-idp-credentials not present in namespace $auth_namespace. Skipping..."
         fi
 
         #grab default scim credentials
@@ -307,7 +307,7 @@ function label_all_resources(){
                 label_specified_secret $scim_namespace platform-auth-scim-credentials
             done
         else
-            echo "[INFO] Secret platform-auth-scim-credentials not present in namespace $scim_namespace. Skipping..."
+            info "Secret platform-auth-scim-credentials not present in namespace $scim_namespace. Skipping..."
         fi
 
         #grab LDAP TLS certificate
@@ -318,7 +318,7 @@ function label_all_resources(){
                 label_specified_secret $ldaps_namespace platform-auth-ldaps-ca-cert
             done
         else
-            echo "[INFO] Secret platform-auth-ldaps-ca-cert not present in namespace $ldaps_namespace. Skipping..."
+            info "Secret platform-auth-ldaps-ca-cert not present in namespace $ldaps_namespace. Skipping..."
         fi
 
         #grab icp service id apikey (if it exists)
@@ -329,7 +329,7 @@ function label_all_resources(){
                 label_specified_secret $icp_serviceid_namespace icp-serviceid-apikey
             done
         else
-            echo "[INFO] Secret icp-serviceid-apikey-secret not present in namespace $icp_serviceid_namespace. Skipping..."
+            info "Secret icp-serviceid-apikey-secret not present in namespace $icp_serviceid_namespace. Skipping..."
         fi
 
         #grab zen service id apikey (if it exists)
@@ -340,7 +340,7 @@ function label_all_resources(){
                 label_specified_secret $zen_serviceid_namespace zen-serviceid-apikey-secret
             done
         else
-            echo "[INFO] Secret zen-serviceid-apikey-secret not present in namespace $zen_serviceid_namespace. Skipping..."
+            info "Secret zen-serviceid-apikey-secret not present in namespace $zen_serviceid_namespace. Skipping..."
         fi
 
         #add labels to iaf-system-automation-aui-zen-cert elasticsearch cert/secret
@@ -367,7 +367,7 @@ function label_all_resources(){
         #remove label from metastore-edb certificate and secret
         metastore_secret_ns_list=$(oc get secret -A --no-headers | grep  ibm-zen-metastore-edb-secret | awk '{print $1}' | tr "\n" " " || echo "none")
         if [[ $metastore_secret_ns_list != "none" ]]; then
-            echo "[INFO] removing label from zen-metastore-edb-secret and certificate."
+            info "removing label from zen-metastore-edb-secret and certificate."
             for ns in $metastore_secret_ns_list
             do
                 oc label secret ibm-zen-metastore-edb-secret -n $ns foundationservices.cloudpak.ibm.com-
@@ -376,7 +376,7 @@ function label_all_resources(){
         fi
     fi
 
-    echo "[SUCCESS] Certificates and secrets successfully labeled."
+    success "Certificates and secrets successfully labeled."
 }
 
 # ---------- Info functions ----------#
