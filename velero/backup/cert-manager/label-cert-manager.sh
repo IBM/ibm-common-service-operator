@@ -234,6 +234,7 @@ function label_all_resources(){
         done
     else
         CURRENT_ISSUERS=($(oc get Issuers --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | awk '{print $1}' | tr "\n" " "))
+        info "current issuers outside: $CURRENT_ISSUERS"
         label_resource_allns Issuers $CURRENT_ISSUERS
 
         CURRENT_ISSUERS=($(oc get issuers.cert-manager.io --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | tr "\n" " "))
