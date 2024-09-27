@@ -152,7 +152,11 @@ function label_all_resources(){
             zen_in_namespace=$(oc get zenservice -n $namespace --ignore-not-found | awk '{if (NR!=1) {print $1}}')
             if [[ $zen_in_namespace != "" ]]; then 
                 zen_secret_name=$(oc get zenservice $zen_in_namespace -n $namespace -o=jsonpath='{.spec.zenCustomRoute.route_secret}')
-                label_specified_secret $namespace $zen_secret_name
+                if [[ $zen_secret_name != "" ]]; then
+                    label_specified_secret $namespace $zen_secret_name
+                else
+                    info "No custom zen secret in namespace $namespace, skipping..."
+                fi
             else
                 echo "[INFO] No zenservices found in namespace $namespace, skipping labeling zen custom route secrets..."
             fi
