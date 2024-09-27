@@ -86,9 +86,11 @@ function print_usage(){ #TODO update usage definition
     echo "   --licensing-ns                 Optional. Specifying will enable labeling of the licensing operator and its resources. Permissions may need to be updated to include the namespace."
     echo "   --lsr-ns                       Optional. Specifying will enable labeling of the license service reporter operator and its resources. Permissions may need to be updated to include the namespace."
     echo "   --enable-private-catalog       Optional. Specifying will look for catalog sources in the operator namespace. If enabled, will look for cert manager, licensing, and lsr catalogs in their respective namespaces."
+    echo "   --enable-default-catalog-ns    Optional. Specifying will label all IBM published catalog sources in openshift-marketplace namespace."
     echo "   --additional-catalog-sources   Optional. Comma-delimted list of non-default catalog sources to be labeled."
     echo "   -h, --help                     Print usage information"
     echo ""
+    
 }
 
 function parse_arguments() {
