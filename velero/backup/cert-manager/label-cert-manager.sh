@@ -84,16 +84,18 @@ function label_resource(){
 function label_resource_allns(){
     resource=$1
     names=$2
-    names=${names//,/ }
+    IFS=',' read -ra name_list <<< "$names"
+    # names=${names//,/ }
     namespaces=$3
-    namespaces=${namespaces//,/ }
+    IFS=',' read -ra ns_list <<< "$namespaces"
+    # namespaces=${namespaces//,/ }
     i=0
-    len=${#names[@]}
-    info "ALLNS CL: $names NS:$namespaces len: $len"
-    while [ $i -lt $len ];
+    len=${#name_list[@]}
+    info "ALLNS CL: $name_list NS:$ns_list len: $len"
+    for i in "${name_list[@]}";
     do
-        NAME=${names[$i]}
-        NAMESPACE=${namespaces[$i]}
+        NAME=${name_list[$i]}
+        NAMESPACE=${ns_list[$i]}
         let i++
         info "Labeling $resource $NAME in namespace $NAMESPACE..."
         oc label $resource $NAME -n $NAMESPACE foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
