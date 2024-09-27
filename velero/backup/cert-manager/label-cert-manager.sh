@@ -85,6 +85,7 @@ function label_resource_allns(){
     current_list=$2
     i=0
     len=${#current_list[@]}
+    info "ALLNS CL: $current_list"
     while [ $i -lt $len ];
     do
         NAME=${current_list[$i]}
