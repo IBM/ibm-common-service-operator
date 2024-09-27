@@ -118,23 +118,23 @@ function label_all_resources(){
         for namespace in $NAMESPACES
         do
             info "Labeling resources in namespace $namespace"
-            CURRENT_ISSUERS=($(oc get Issuers -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True))
+            CURRENT_ISSUERS=($(oc get Issuers -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | tr "\n" " "))
             if [[ $CURRENT_ISSUERS != "" ]]; then
                 label_resource Issuers $CURRENT_ISSUERS $namespace
             fi
-            CURRENT_ISSUERS=($(oc get issuers.cert-manager.io -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True))
+            CURRENT_ISSUERS=($(oc get issuers.cert-manager.io -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | tr "\n" " "))
             if [[ $CURRENT_ISSUERS != "" ]]; then
                 label_resource issuers.cert-manager.io $CURRENT_ISSUERS $namespace
             fi
-            CURRENT_CERTIFICATES=($(oc get certificates -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate))
+            CURRENT_CERTIFICATES=($(oc get certificates -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate | tr "\n" " "))
             if [[ $CURRENT_CERTIFICATES != "" ]]; then
                 label_resource certificates $CURRENT_CERTIFICATES $namespace
             fi
-            CURRENT_CERTIFICATES=($(oc get certificates.cert-manager.io -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate))
+            CURRENT_CERTIFICATES=($(oc get certificates.cert-manager.io -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate | tr "\n" " "))
             if [[ $CURRENT_CERTIFICATES != "" ]]; then
                 label_resource certificates.cert-manager.io $CURRENT_CERTIFICATES $namespace
             fi
-            CURRENT_SECRET=($(oc get secret -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate))
+            CURRENT_SECRET=($(oc get secret -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate | tr "\n" " "))
             if [[ $CURRENT_SECRET != "" ]]; then
                 label_specified_secret $namespace cs-ca-certificate-secret
             fi
@@ -233,21 +233,21 @@ function label_all_resources(){
             fi
         done
     else
-        CURRENT_ISSUERS=($(oc get Issuers --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True))
+        CURRENT_ISSUERS=($(oc get Issuers --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | tr "\n" " "))
         label_resource_allns Issuers $CURRENT_ISSUERS
 
-        CURRENT_ISSUERS=($(oc get issuers.cert-manager.io --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True))
+        CURRENT_ISSUERS=($(oc get issuers.cert-manager.io --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | tr "\n" " "))
         label_resource_allns Issuers $CURRENT_ISSUERS
 
         # Label all cs-ca-certificates
-        CURRENT_CERTIFICATES=($(oc get certificates --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate))
+        CURRENT_CERTIFICATES=($(oc get certificates --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate | tr "\n" " "))
         label_resource_allns certificates $CURRENT_CERTIFICATES
 
         #cover the different api for certificates
-        CURRENT_CERTIFICATES=($(oc get certificates.cert-manager.io --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate))
+        CURRENT_CERTIFICATES=($(oc get certificates.cert-manager.io --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate | tr "\n" " "))
         label_resource_allns certificates $CURRENT_CERTIFICATES
 
-        CURRENT_SECRET=($(oc get secret --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate-secret))
+        CURRENT_SECRET=($(oc get secret --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate-secret | tr "\n" " "))
         label_resource_allns secret $CURRENT_SECRET
 
         #ensure zenservice custom route secrets are labeled
