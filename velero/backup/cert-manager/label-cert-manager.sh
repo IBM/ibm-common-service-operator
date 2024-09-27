@@ -1,6 +1,6 @@
 ##!/usr/bin/env bash
 # Licensed Materials - Property of IBM
-# Copyright IBM Corporation 2023. All Rights Reserved
+# Copyright IBM Corporation 2024. All Rights Reserved
 # US Government Users Restricted Rights -
 # Use, duplication or disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
 #
@@ -8,7 +8,6 @@
 # Please refer to that particular license for additional information.
 
 set -o errtrace
-set -o nounset
 
 NAMESPACES=""
 
