@@ -286,7 +286,9 @@ function label_ns_and_related() {
 
     done <<< "$namespaces"
 
+    #TODO need to ensure we label this script in the operator namespace as well
     ${OC} label secret ibm-entitlement-key foundationservices.cloudpak.ibm.com=entitlementkey -n $DEFAULT_SOURCE_NS --overwrite=true 2>/dev/null
+    #TODO need to toggle labeling this due to permission issues
     ${OC} label secret pull-secret -n openshift-config foundationservices.cloudpak.ibm.com=pull-secret --overwrite=true 2>/dev/null
     echo ""
 }
