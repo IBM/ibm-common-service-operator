@@ -1,8 +1,15 @@
 ##!/usr/bin/env bash
+# Licensed Materials - Property of IBM
+# Copyright IBM Corporation 2023. All Rights Reserved
+# US Government Users Restricted Rights -
+# Use, duplication or disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+# This is an internal component, bundled with an official IBM product.
+# Please refer to that particular license for additional information.
 
-OPERATOR_NAMESPACE=""
-SERVICES_NAMESPACE=""
-TETHERED_NAMESPACES=""
+set -o errtrace
+set -o nounset
+
 NAMESPACES=""
 
 function main(){
@@ -56,39 +63,6 @@ function parse_arguments(){
         shift
     done
     echo ""
-    # --operator-namespace)
-        #     shift
-        #     OPERATOR_NAMESPACE=$1
-        #     ;;
-        # --services-namespace)
-        #     shift
-        #     SERVICES_NAMESPACE=$1
-        #     ;;
-        # --tethered-namespaces)
-        #     shift
-        #     TETHERED_NAMESPACES=$1
-        #     ;;
-    # if [[ $OPERATOR_NAMESPACE != "" ]]; then
-    #     if [[ $NAMESPACES == "" ]]; then
-    #         NAMESPACES=$OPERATOR_NAMESPACE
-    #     else
-    #         NAMESPACES+=",$OPERATOR_NAMESPACE"
-    #     fi
-    # fi
-    # if [[ $SERVICES_NAMESPACE != "" ]]; then
-    #     if [[ $NAMESPACES == "" ]]; then
-    #         NAMESPACES=$SERVICES_NAMESPACE
-    #     else
-    #         NAMESPACES+=",$SERVICES_NAMESPACE"
-    #     fi
-    # fi
-    # if [[ $TETHERED_NAMESPACES != "" ]]; then
-    #     if [[ $NAMESPACES == "" ]]; then
-    #         NAMESPACES=$TETHERED_NAMESPACES
-    #     else
-    #         NAMESPACES+=",$TETHERED_NAMESPACES"
-    #     fi
-    # fi
 }
 
 function label_resource(){
@@ -376,7 +350,7 @@ function label_all_resources(){
         fi
     fi
 
-    success "Certificates and secrets successfully labeled."
+    success "Certificates and secrets successfully labeled in namespaces $NAMESPACES."
 }
 
 # ---------- Info functions ----------#
