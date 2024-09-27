@@ -97,16 +97,11 @@ function label_resource(){
     namespace=$3
     i=0
     len=${#current_list[@]}
-    info "CURRENTLIST: $current_list"
     while [ $i -lt $len ];
     do
         NAME=${current_list[$i]}
         let i++
-        # NAMESPACE=${current_list[$i]}
-        # let i++
-        echo $NAME
-        echo $namespace
-        echo $resource
+        info "Labeling $resource $NAME in namespace $namespace..."
         oc label $resource $NAME -n $namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
         echo "---"
     done
@@ -115,8 +110,7 @@ function label_resource(){
 function label_specified_secret(){
     namespace=$1
     secret_name=$2
-    echo $secret_name
-    echo $namespace
+    info "Labeling secret $secret_name in namespace $namespace..."
     oc label secret $secret_name -n $namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
     echo "---"
 }
