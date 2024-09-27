@@ -83,16 +83,17 @@ function label_resource(){
 
 function label_resource_allns(){
     resource=$1
-    current_list=$2
-    current_list=${current_list//,/ }
+    names=$2
+    names=${names//,/ }
+    namespaces=$3
+    namespaces=${namespaces//,/ }
     i=0
-    len=${#current_list[@]}
-    info "ALLNS CL: $current_list len: $len"
+    len=${#names[@]}
+    info "ALLNS CL: $names NS:$namespaces len: $len"
     while [ $i -lt $len ];
     do
-        NAME=${current_list[$i]}
-        let i++
-        NAMESPACE=${current_list[$i]}
+        NAME=${names[$i]}
+        NAMESPACE=${namespaces[$i]}
         let i++
         info "Labeling $resource $NAME in namespace $NAMESPACE..."
         oc label $resource $NAME -n $NAMESPACE foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
@@ -238,10 +239,7 @@ function label_all_resources(){
         issuer_names=$(oc get Issuers --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | awk '{print $1}' | tr "\n" ",")
         issuer_ns=$(oc get Issuers --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | awk '{print $2}' | tr "\n" ",")
         info "test name: $issuer_names  ${issuer_names} test ns: $issuer_ns ${issuer_ns}"
-        CURRENT_ISSUERS=($(oc get Issuers --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | tr "\n" ","))
-        CURRENT_ISSUERS=$(echo "$CURRENT_ISSUERS" | tr " " ",")
-        info "current issuers outside: $CURRENT_ISSUERS"
-        label_resource_allns Issuers $CURRENT_ISSUERS
+        label_resource_allns Issuers $issuer_names $issuer_ns
 
         CURRENT_ISSUERS=($(oc get issuers.cert-manager.io --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | tr "\n" ","))
         label_resource_allns Issuers $CURRENT_ISSUERS
