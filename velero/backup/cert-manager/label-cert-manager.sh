@@ -132,15 +132,25 @@ function label_all_resources(){
         do
             info "Labeling resources in namespace $namespace"
             CURRENT_ISSUERS=($(oc get Issuers -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True))
-            label_resource Issuers $CURRENT_ISSUERS
+            if [[ $CURRENT_ISSUERS != "" ]]; then
+                label_resource Issuers $CURRENT_ISSUERS
+            fi
             CURRENT_ISSUERS=($(oc get issuers.cert-manager.io -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True))
-            label_resource issuers.cert-manager.io $CURRENT_ISSUERS
+            if [[ $CURRENT_ISSUERS != "" ]]; then
+                label_resource issuers.cert-manager.io $CURRENT_ISSUERS
+            fi
             CURRENT_CERTIFICATES=($(oc get certificates -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate))
-            label_resource certificates $CURRENT_CERTIFICATES
+            if [[ $CURRENT_CERTIFICATES != "" ]]; then
+                label_resource certificates $CURRENT_CERTIFICATES
+            fi
             CURRENT_CERTIFICATES=($(oc get certificates.cert-manager.io -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate))
-            label_resource certificates.cert-manager.io $CURRENT_CERTIFICATES
+            if [[ $CURRENT_CERTIFICATES != "" ]]; then
+                label_resource certificates.cert-manager.io $CURRENT_CERTIFICATES
+            fi
             CURRENT_SECRET=($(oc get secret -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate))
-            label_specified_secret $namespace cs-ca-certificate-secret
+            if [[ $CURRENT_SECRET != "" ]]; then
+                label_specified_secret $namespace cs-ca-certificate-secret
+            fi
             
             #zen custom secret and ca-cert-secret
             zen_in_namespace=$(oc get zenservice -n $namespace --ignore-not-found | awk '{if (NR!=1) {print $1}}')
