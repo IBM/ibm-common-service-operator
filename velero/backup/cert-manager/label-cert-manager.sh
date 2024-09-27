@@ -11,7 +11,7 @@ function main(){
     else
         success "oc command logged in as ${user}"
     fi
-    label_resources
+    label_all_resources
 }
 
 function print_usage(){
@@ -324,6 +324,33 @@ function label_all_resources(){
     fi
 
     echo "[SUCCESS] Certificates and secrets successfully labeled."
+}
+
+# ---------- Info functions ----------#
+
+function msg() {
+    printf '%b\n' "$1"
+}
+
+function success() {
+    msg "\33[32m[✔] ${1}\33[0m"
+}
+
+function error() {
+    msg "\33[31m[✘] ${1}\33[0m"
+    exit 1
+}
+
+function title() {
+    msg "\33[34m# ${1}\33[0m"
+}
+
+function info() {
+    msg "[INFO] ${1}"
+}
+
+function warning() {
+    msg "\33[33m[✗] ${1}\33[0m"
 }
 
 main $*
