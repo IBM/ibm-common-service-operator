@@ -325,3 +325,5 @@ function label_all_resources(){
 
     echo "[SUCCESS] Certificates and secrets successfully labeled."
 }
+
+main $*
