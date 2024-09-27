@@ -41,17 +41,9 @@ function parse_arguments(){
     # process options
     while [[ "$@" != "" ]]; do
         case "$1" in
-        --operator-namespace)
+        --namespaces)
             shift
-            OPERATOR_NAMESPACE=$1
-            ;;
-        --services-namespace)
-            shift
-            SERVICES_NAMESPACE=$1
-            ;;
-        --tethered-namespaces)
-            shift
-            TETHERED_NAMESPACES=$1
+            NAMESPACES=$1
             ;;
         -h | --help)
             print_usage
@@ -64,27 +56,39 @@ function parse_arguments(){
         shift
     done
     echo ""
-    if [[ $OPERATOR_NAMESPACE != "" ]]; then
-        if [[ $NAMESPACES == "" ]]; then
-            NAMESPACES=$OPERATOR_NAMESPACE
-        else
-            NAMESPACES+=",$OPERATOR_NAMESPACE"
-        fi
-    fi
-    if [[ $SERVICES_NAMESPACE != "" ]]; then
-        if [[ $NAMESPACES == "" ]]; then
-            NAMESPACES=$SERVICES_NAMESPACE
-        else
-            NAMESPACES+=",$SERVICES_NAMESPACE"
-        fi
-    fi
-    if [[ $TETHERED_NAMESPACES != "" ]]; then
-        if [[ $NAMESPACES == "" ]]; then
-            NAMESPACES=$TETHERED_NAMESPACES
-        else
-            NAMESPACES+=",$TETHERED_NAMESPACES"
-        fi
-    fi
+    # --operator-namespace)
+        #     shift
+        #     OPERATOR_NAMESPACE=$1
+        #     ;;
+        # --services-namespace)
+        #     shift
+        #     SERVICES_NAMESPACE=$1
+        #     ;;
+        # --tethered-namespaces)
+        #     shift
+        #     TETHERED_NAMESPACES=$1
+        #     ;;
+    # if [[ $OPERATOR_NAMESPACE != "" ]]; then
+    #     if [[ $NAMESPACES == "" ]]; then
+    #         NAMESPACES=$OPERATOR_NAMESPACE
+    #     else
+    #         NAMESPACES+=",$OPERATOR_NAMESPACE"
+    #     fi
+    # fi
+    # if [[ $SERVICES_NAMESPACE != "" ]]; then
+    #     if [[ $NAMESPACES == "" ]]; then
+    #         NAMESPACES=$SERVICES_NAMESPACE
+    #     else
+    #         NAMESPACES+=",$SERVICES_NAMESPACE"
+    #     fi
+    # fi
+    # if [[ $TETHERED_NAMESPACES != "" ]]; then
+    #     if [[ $NAMESPACES == "" ]]; then
+    #         NAMESPACES=$TETHERED_NAMESPACES
+    #     else
+    #         NAMESPACES+=",$TETHERED_NAMESPACES"
+    #     fi
+    # fi
 }
 
 function label_resource(){
