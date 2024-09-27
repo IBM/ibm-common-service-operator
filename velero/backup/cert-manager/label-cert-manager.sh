@@ -80,6 +80,23 @@ function label_resource(){
     done
 }
 
+function label_resource_allns(){
+    resource=$1
+    current_list=$2
+    i=0
+    len=${#current_list[@]}
+    while [ $i -lt $len ];
+    do
+        NAME=${current_list[$i]}
+        let i++
+        NAMESPACE=${current_list[$i]}
+        let i++
+        info "Labeling $resource $NAME in namespace $NAMESPACE..."
+        oc label $resource $NAME -n $NAMESPACE foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
+        echo "---"
+    done
+}
+
 function label_specified_secret(){
     namespace=$1
     secret_name=$2
@@ -216,21 +233,21 @@ function label_all_resources(){
         done
     else
         CURRENT_ISSUERS=($(oc get Issuers --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True))
-        label_resource Issuers $CURRENT_ISSUERS
+        label_resource_allns Issuers $CURRENT_ISSUERS
 
         CURRENT_ISSUERS=($(oc get issuers.cert-manager.io --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True))
-        label_resource Issuers $CURRENT_ISSUERS
+        label_resource_allns Issuers $CURRENT_ISSUERS
 
         # Label all cs-ca-certificates
         CURRENT_CERTIFICATES=($(oc get certificates --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate))
-        label_resource certificates $CURRENT_CERTIFICATES
+        label_resource_allns certificates $CURRENT_CERTIFICATES
 
         #cover the different api for certificates
         CURRENT_CERTIFICATES=($(oc get certificates.cert-manager.io --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate))
-        label_resource certificates $CURRENT_CERTIFICATES
+        label_resource_allns certificates $CURRENT_CERTIFICATES
 
         CURRENT_SECRET=($(oc get secret --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate-secret))
-        label_resource secret $CURRENT_SECRET
+        label_resource_allns secret $CURRENT_SECRET
 
         #ensure zenservice custom route secrets are labeled
         zen_namespace_list=$(oc get zenservice -A | awk '{if (NR!=1) {print $1}}' || echo "fail")
