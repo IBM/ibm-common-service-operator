@@ -257,8 +257,8 @@ function label_all_resources(){
         label_resource_allns secret $cs_ca_name $cs_ca_ns
 
         #ensure zenservice custom route secrets are labeled
-        zen_namespace_list=$(oc get zenservice -A | awk '{if (NR!=1) {print $1}}' || echo "fail")
-        if [[ $zen_namespace_list != "fail" ]]; then 
+        zen_namespace_list=$(oc get zenservice -A | awk '{if (NR!=1) {print $1}}')
+        if [[ $zen_namespace_list != "" ]]; then 
             for zen_namespace in $zen_namespace_list
             do
                 zenservice_list=$(oc get zenservice -n $zen_namespace | awk '{if (NR!=1) {print $1}}')
@@ -274,8 +274,8 @@ function label_all_resources(){
         fi
 
         #ensure iam custom route secrets are labeled
-        cm_namespace_list=$(oc get configmap -A | grep cs-onprem-tenant-config | awk '{if (NR!=1) {print $1}}' || echo "fail")
-        if [[ $cm_namespace_list != "fail" ]]; then
+        cm_namespace_list=$(oc get configmap -A | grep cs-onprem-tenant-config | awk '{if (NR!=1) {print $1}}')
+        if [[ $cm_namespace_list != "" ]]; then
             for tenant_config_namespace in $cm_namespace_list
             do
                 iam_secret_name=$(oc get configmap cs-onprem-tenant-config -n $tenant_config_namespace -o=jsonpath='{.data.custom_host_certificate_secret}')
@@ -286,8 +286,8 @@ function label_all_resources(){
         fi
 
         #grab default admin credentials
-        auth_namespace_list=$(oc get secret -A | grep platform-auth-idp-credentials | grep -v "bindinfo" |  awk '{print $1}' | tr "\n" " " || echo "none")
-        if [[ $auth_namespace_list != "none" ]]; then
+        auth_namespace_list=$(oc get secret -A | grep platform-auth-idp-credentials | grep -v "bindinfo" |  awk '{print $1}' | tr "\n" " ")
+        if [[ $auth_namespace_list != "" ]]; then
             for auth_namespace in $auth_namespace_list
             do
                 label_specified_secret $auth_namespace platform-auth-idp-credentials
@@ -297,8 +297,8 @@ function label_all_resources(){
         fi
 
         #grab default scim credentials
-        scim_secret_namespace_list=$(oc get secret -A | grep platform-auth-scim-credentials | grep -v "bindinfo" |  awk '{print $1}' | tr "\n" " " || echo "none")
-        if [[ $scim_secret_namespace_list != "none" ]]; then
+        scim_secret_namespace_list=$(oc get secret -A | grep platform-auth-scim-credentials | grep -v "bindinfo" |  awk '{print $1}' | tr "\n" " ")
+        if [[ $scim_secret_namespace_list != "" ]]; then
             for scim_namespace in $scim_secret_namespace_list
             do
                 label_specified_secret $scim_namespace platform-auth-scim-credentials
@@ -308,8 +308,8 @@ function label_all_resources(){
         fi
 
         #grab LDAP TLS certificate
-        ldaps_secret_namespace_list=$(oc get secret -A | grep platform-auth-ldaps-ca-cert | grep -v "bindinfo" |  awk '{print $1}' | tr "\n" " " || echo "none")
-        if [[ $ldaps_secret_namespace_list != "none" ]]; then
+        ldaps_secret_namespace_list=$(oc get secret -A | grep platform-auth-ldaps-ca-cert | grep -v "bindinfo" |  awk '{print $1}' | tr "\n" " ")
+        if [[ $ldaps_secret_namespace_list != "" ]]; then
             for ldaps_namespace in $ldaps_secret_namespace_list
             do
                 label_specified_secret $ldaps_namespace platform-auth-ldaps-ca-cert
@@ -319,8 +319,8 @@ function label_all_resources(){
         fi
 
         #grab icp service id apikey (if it exists)
-        icp_serviceid_apikey_secret_namespace_list=$(oc get secret -A | grep icp-serviceid-apikey-secret | grep -v "bindinfo" |  awk '{print $1}' | tr "\n" " " || echo "none")
-        if [[ $icp_serviceid_apikey_secret_namespace_list != "none" ]]; then
+        icp_serviceid_apikey_secret_namespace_list=$(oc get secret -A | grep icp-serviceid-apikey-secret | grep -v "bindinfo" |  awk '{print $1}' | tr "\n" " ")
+        if [[ $icp_serviceid_apikey_secret_namespace_list != "" ]]; then
             for icp_serviceid_namespace in $icp_serviceid_apikey_secret_namespace_list
             do
                 label_specified_secret $icp_serviceid_namespace icp-serviceid-apikey
@@ -330,8 +330,8 @@ function label_all_resources(){
         fi
 
         #grab zen service id apikey (if it exists)
-        zen_serviceid_apikey_secret_namespace_list=$(oc get secret -A | grep zen-serviceid-apikey-secret| grep -v "bindinfo" |  awk '{print $1}' | tr "\n" " " || echo "none")
-        if [[ $zen_serviceid_apikey_secret_namespace_list != "none" ]]; then
+        zen_serviceid_apikey_secret_namespace_list=$(oc get secret -A | grep zen-serviceid-apikey-secret| grep -v "bindinfo" |  awk '{print $1}' | tr "\n" " ")
+        if [[ $zen_serviceid_apikey_secret_namespace_list != "" ]]; then
             for zen_serviceid_namespace in $zen_serviceid_apikey_secret_namespace_list
             do
                 label_specified_secret $zen_serviceid_namespace zen-serviceid-apikey-secret
@@ -341,8 +341,8 @@ function label_all_resources(){
         fi
 
         #add labels to iaf-system-automation-aui-zen-cert elasticsearch cert/secret
-        auto_zen_cert_ns_list=$(oc get certificate -A --no-headers | grep iaf-system-automationui-aui-zen-cert | awk '{print $1}' | tr "\n" " " || echo "none")
-        if [[ $auto_zen_cert_ns_list != "none" ]]; then
+        auto_zen_cert_ns_list=$(oc get certificate -A --no-headers | grep iaf-system-automationui-aui-zen-cert | awk '{print $1}' | tr "\n" " ")
+        if [[ $auto_zen_cert_ns_list != "" ]]; then
             for ns in $auto_zen_cert_ns_list
             do
                 secret_name=$(oc get certificate -n $ns iaf-system-automationui-aui-zen-cert -o jsonpath='{.spec.secretName}')
@@ -352,8 +352,8 @@ function label_all_resources(){
         fi
 
         #add labels to elasticsearch cert/secret
-        elasticsearch_cert_ns_list=$(oc get certificate -A --no-headers | grep iaf-system-elasticsearch-es-client-cert | awk '{print $1}' | tr "\n" " " || echo "none")
-        if [[ $elasticsearch_cert_ns_list != "none" ]]; then
+        elasticsearch_cert_ns_list=$(oc get certificate -A --no-headers | grep iaf-system-elasticsearch-es-client-cert | awk '{print $1}' | tr "\n" " ")
+        if [[ $elasticsearch_cert_ns_list != "" ]]; then
             for ns in $elasticsearch_cert_ns_list
             do
                 oc label certificate iaf-system-elasticsearch-es-client-cert -n $ns foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
@@ -362,8 +362,8 @@ function label_all_resources(){
         fi
 
         #remove label from metastore-edb certificate and secret
-        metastore_secret_ns_list=$(oc get secret -A --no-headers | grep  ibm-zen-metastore-edb-secret | awk '{print $1}' | tr "\n" " " || echo "none")
-        if [[ $metastore_secret_ns_list != "none" ]]; then
+        metastore_secret_ns_list=$(oc get secret -A --no-headers | grep  ibm-zen-metastore-edb-secret | awk '{print $1}' | tr "\n" " ")
+        if [[ $metastore_secret_ns_list != "" ]]; then
             info "removing label from zen-metastore-edb-secret and certificate."
             for ns in $metastore_secret_ns_list
             do
