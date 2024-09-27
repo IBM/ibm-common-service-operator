@@ -256,6 +256,10 @@ function label_all_resources(){
         cs_ca_ns=($(oc get secret --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate-secret | awk '{print $2}' | tr "\n" ","))
         label_resource_allns secret $cs_ca_name $cs_ca_ns
 
+        zen_cs_ca_name=($(oc get secret --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep zen-ca-cert-secret | awk '{print $1}' | tr "\n" ","))
+        zen_cs_ca_ns=($(oc get secret --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep zen-ca-cert-secret | awk '{print $2}' | tr "\n" ","))
+        label_resource_allns secret $zen_cs_ca_name $zen_cs_ca_ns
+
         #ensure zenservice custom route secrets are labeled
         zen_namespace_list=$(oc get zenservice -A | awk '{if (NR!=1) {print $1}}')
         if [[ $zen_namespace_list != "" ]]; then 
@@ -265,8 +269,11 @@ function label_all_resources(){
                 for zenservice in $zenservice_list
                 do
                     zen_secret_name=$(oc get zenservice $zenservice -n $zen_namespace -o=jsonpath='{.spec.zenCustomRoute.route_secret}')
-                    label_specified_secret $zen_namespace $zen_secret_name
-                    label_specified_secret $zen_namespace zen-ca-cert-secret
+                    if [[ $zen_secret_name != "" ]]; then
+                        label_specified_secret $namespace $zen_secret_name
+                    else
+                        info "No custom zen secret in namespace $namespace, skipping..."
+                    fi
                 done
             done
         else
