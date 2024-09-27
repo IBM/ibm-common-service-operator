@@ -270,9 +270,9 @@ function label_all_resources(){
                 do
                     zen_secret_name=$(oc get zenservice $zenservice -n $zen_namespace -o=jsonpath='{.spec.zenCustomRoute.route_secret}')
                     if [[ $zen_secret_name != "" ]]; then
-                        label_specified_secret $namespace $zen_secret_name
+                        label_specified_secret $zen_namespace $zen_secret_name
                     else
-                        info "No custom zen secret in namespace $namespace, skipping..."
+                        info "No custom zen secret in namespace $zen_namespace, skipping..."
                     fi
                 done
             done
