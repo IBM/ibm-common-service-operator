@@ -235,8 +235,8 @@ function label_all_resources(){
             fi
         done
     else
-        CURRENT_ISSUERS=($(echo $(oc get Issuers --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | tr "\n" ",") | tr " " ","))
-        CURRENT_ISSUERS=$(echo $CURRENT_ISSUERS | tr " " ",")
+        CURRENT_ISSUERS=($(oc get Issuers --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | tr "\n" ","))
+        CURRENT_ISSUERS=$(echo "$CURRENT_ISSUERS" | tr " " ",")
         info "current issuers outside: $CURRENT_ISSUERS"
         label_resource_allns Issuers $CURRENT_ISSUERS
 
