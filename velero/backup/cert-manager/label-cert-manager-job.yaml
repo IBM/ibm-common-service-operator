@@ -38,8 +38,8 @@ spec:
       schedulerName: default-scheduler
       securityContext:
         runAsNonRoot: true
-      serviceAccount: label-cert-manager-job-sa
-      serviceAccountName: label-cert-manager-job-sa
+      serviceAccount: label-cert-manager-job
+      serviceAccountName: label-cert-manager-job
       terminationGracePeriodSeconds: 30
       volumes:
       - emptyDir: {}

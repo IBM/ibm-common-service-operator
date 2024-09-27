@@ -38,8 +38,8 @@ spec:
       schedulerName: default-scheduler
       securityContext:
         runAsNonRoot: true
-      serviceAccount: label-cpfs-job-sa
-      serviceAccountName: label-cpfs-job-sa
+      serviceAccount: label-bedrock-job
+      serviceAccountName: label-bedrock-job
       terminationGracePeriodSeconds: 30
       volumes:
       - emptyDir: {}
