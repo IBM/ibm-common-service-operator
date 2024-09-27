@@ -126,8 +126,10 @@ function label_all_resources(){
     # Get all issuers in all namespaces and add foundationservices.cloudpak.ibm.com=cert-manager
     if [[ $NAMESPACES != "" ]]; then
         NAMESPACES=$(echo "$NAMESPACES" | tr ',' ' ')
+        info "NAMESPACES: $NAMESPACES"
         for namespace in $NAMESPACES
         do
+            info "Labeling resources in namespace $namespace"
             CURRENT_ISSUERS=($(oc get Issuers -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True))
             label_resource Issuers $CURRENT_ISSUERS
             CURRENT_ISSUERS=($(oc get issuers.cert-manager.io -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True))
