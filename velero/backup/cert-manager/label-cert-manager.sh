@@ -94,6 +94,7 @@ function parse_arguments(){
 function label_resource(){
     resource=$1
     current_list=$2
+    namespace=$3
     i=0
     len=${#current_list[@]}
     info "CURRENTLIST: $current_list"
@@ -101,11 +102,11 @@ function label_resource(){
     do
         NAME=${current_list[$i]}
         let i++
-        NAMESPACE=${current_list[$i]}
-        let i++
+        # NAMESPACE=${current_list[$i]}
+        # let i++
         echo $NAME
         echo $NAMESPACE
-        oc label $resource $NAME -n $NAMESPACE foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
+        oc label $resource $NAME -n $namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
         echo "---"
     done
 }
