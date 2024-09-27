@@ -96,6 +96,7 @@ function label_resource(){
     current_list=$2
     i=0
     len=${#current_list[@]}
+    info "CURRENTLIST: $current_list"
     while [ $i -lt $len ];
     do
         NAME=${current_list[$i]}
@@ -177,7 +178,7 @@ function label_all_resources(){
             if [[ $scim_secret_namespace_list != "" ]]; then
                 label_specified_secret $namespace platform-auth-scim-credentials
             else
-                echo "[INFO] Secret platform-auth-scim-credentials not present in namespace $scim_namespace. Skipping..."
+                echo "[INFO] Secret platform-auth-scim-credentials not present in namespace $namespace. Skipping..."
             fi
 
             #grab LDAP TLS certificate
@@ -185,7 +186,7 @@ function label_all_resources(){
             if [[ $ldaps_secret_namespace_list != "" ]]; then
                 label_specified_secret $namespace platform-auth-ldaps-ca-cert
             else
-                echo "[INFO] Secret platform-auth-ldaps-ca-cert not present in namespace $ldaps_namespace. Skipping..."
+                echo "[INFO] Secret platform-auth-ldaps-ca-cert not present in namespace $namespace. Skipping..."
             fi
 
             #grab icp service id apikey (if it exists)
@@ -193,7 +194,7 @@ function label_all_resources(){
             if [[ $icp_serviceid_apikey_secret_namespace_list != "" ]]; then
                 label_specified_secret $namespace icp-serviceid-apikey-secret
             else
-                echo "[INFO] Secret icp-serviceid-apikey-secret not present in namespace $icp_serviceid_namespace. Skipping..."
+                echo "[INFO] Secret icp-serviceid-apikey-secret not present in namespace $namespace. Skipping..."
             fi
 
             #grab zen service id apikey (if it exists)
@@ -201,7 +202,7 @@ function label_all_resources(){
             if [[ $zen_serviceid_apikey_secret_namespace_list != "" ]]; then
                 label_specified_secret $namespace zen-serviceid-apikey-secret
             else
-                echo "[INFO] Secret zen-serviceid-apikey-secret not present in namespace $zen_serviceid_namespace. Skipping..."
+                echo "[INFO] Secret zen-serviceid-apikey-secret not present in namespace $namespace. Skipping..."
             fi
 
             #add labels to iaf-system-automation-aui-zen-cert elasticsearch cert/secret
