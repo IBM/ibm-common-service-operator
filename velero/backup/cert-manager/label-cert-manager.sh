@@ -67,14 +67,13 @@ function parse_arguments(){
 function label_resource(){
     resource=$1
     current_list=$2
-    current_list=${current_list//,/ }
+    IFS=',' read -ra name_list <<< "$current_list"
     namespace=$3
     i=0
-    len=${#current_list[@]}
-    while [ $i -lt $len ];
+    len=${#name_list[@]}
+    for ((i=0;i<$len;i++));
     do
-        NAME=${current_list[$i]}
-        let i++
+        NAME=${name_list[$i]}
         info "Labeling $resource $NAME in namespace $namespace..."
         oc label $resource $NAME -n $namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
         echo "---"
@@ -85,13 +84,10 @@ function label_resource_allns(){
     resource=$1
     names=$2
     IFS=',' read -ra name_list <<< "$names"
-    # names=${names//,/ }
     namespaces=$3
     IFS=',' read -ra ns_list <<< "$namespaces"
-    # namespaces=${namespaces//,/ }
     i=0
     len=${#name_list[@]}
-    info "ALLNS CL: ${name_list[@]} NS:$ns_list len: $len"
     for ((i=0;i<$len;i++));
     do
         NAME=${name_list[$i]}
@@ -122,23 +118,23 @@ function label_all_resources(){
         for namespace in $NAMESPACES
         do
             info "Labeling resources in namespace $namespace"
-            CURRENT_ISSUERS=($(oc get Issuers -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | tr "\n" ","))
+            CURRENT_ISSUERS=($(oc get Issuers -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | awk '{print $1}'  | tr "\n" ","))
             if [[ $CURRENT_ISSUERS != "" ]]; then
                 label_resource Issuers $CURRENT_ISSUERS $namespace
             fi
-            CURRENT_ISSUERS=($(oc get issuers.cert-manager.io -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | tr "\n" ","))
+            CURRENT_ISSUERS=($(oc get issuers.cert-manager.io -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | awk '{print $1}'  | tr "\n" ","))
             if [[ $CURRENT_ISSUERS != "" ]]; then
                 label_resource issuers.cert-manager.io $CURRENT_ISSUERS $namespace
             fi
-            CURRENT_CERTIFICATES=($(oc get certificates -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate | tr "\n" ","))
+            CURRENT_CERTIFICATES=($(oc get certificates -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | awk '{print $1}'  | grep cs-ca-certificate | tr "\n" ","))
             if [[ $CURRENT_CERTIFICATES != "" ]]; then
                 label_resource certificates $CURRENT_CERTIFICATES $namespace
             fi
-            CURRENT_CERTIFICATES=($(oc get certificates.cert-manager.io -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate | tr "\n" ","))
+            CURRENT_CERTIFICATES=($(oc get certificates.cert-manager.io -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | awk '{print $1}' | grep cs-ca-certificate | tr "\n" ","))
             if [[ $CURRENT_CERTIFICATES != "" ]]; then
                 label_resource certificates.cert-manager.io $CURRENT_CERTIFICATES $namespace
             fi
-            CURRENT_SECRET=($(oc get secret -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate | tr "\n" ","))
+            CURRENT_SECRET=($(oc get secret -n $namespace -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate | awk '{print $1}' | tr "\n" ","))
             if [[ $CURRENT_SECRET != "" ]]; then
                 label_specified_secret $namespace cs-ca-certificate-secret
             fi
@@ -239,22 +235,26 @@ function label_all_resources(){
     else
         issuer_names=$(oc get Issuers --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | awk '{print $1}' | tr "\n" ",")
         issuer_ns=$(oc get Issuers --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | awk '{print $2}' | tr "\n" ",")
-        info "test name: $issuer_names  ${issuer_names} test ns: $issuer_ns ${issuer_ns}"
         label_resource_allns Issuers $issuer_names $issuer_ns
 
-        CURRENT_ISSUERS=($(oc get issuers.cert-manager.io --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | tr "\n" ","))
-        label_resource_allns Issuers $CURRENT_ISSUERS
+        issuer_names=$(oc get issuers.cert-manager.io  --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | awk '{print $1}' | tr "\n" ",")
+        issuer_ns=$(oc get issuers.cert-manager.io  --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | awk '{print $2}' | tr "\n" ",")
+        label_resource_allns issuers.cert-manager.io $issuer_names $issuer_ns
 
         # Label all cs-ca-certificates
-        CURRENT_CERTIFICATES=($(oc get certificates --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate | tr "\n" ","))
-        label_resource_allns certificates $CURRENT_CERTIFICATES
+        cert_names=($(oc get certificates --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate | awk '{print $1}' | tr "\n" ","))
+        cert_ns=($(oc get certificates --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate | awk '{print $2}' | tr "\n" ","))
+        label_resource_allns certificates $cert_names $cert_ns
 
         #cover the different api for certificates
         CURRENT_CERTIFICATES=($(oc get certificates.cert-manager.io --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate | tr "\n" ","))
-        label_resource_allns certificates $CURRENT_CERTIFICATES
+        cert_names=($(oc get certificates.cert-manager.io --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate | awk '{print $1}' | tr "\n" ","))
+        cert_ns=($(oc get certificates.cert-manager.io --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate | awk '{print $2}' | tr "\n" ","))
+        label_resource_allns certificates.cert-manager.io $cert_names $cert_ns
 
-        CURRENT_SECRET=($(oc get secret --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate-secret | tr "\n" ","))
-        label_resource_allns secret $CURRENT_SECRET
+        cs_ca_name=($(oc get secret --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate-secret | awk '{print $1}' | tr "\n" ","))
+        cs_ca_ns=($(oc get secret --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate-secret | awk '{print $2}' | tr "\n" ","))
+        label_resource_allns secret $cs_ca_name $cs_ca_ns
 
         #ensure zenservice custom route secrets are labeled
         zen_namespace_list=$(oc get zenservice -A | awk '{if (NR!=1) {print $1}}' || echo "fail")
