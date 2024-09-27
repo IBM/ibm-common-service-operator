@@ -91,7 +91,7 @@ function label_resource_allns(){
     # namespaces=${namespaces//,/ }
     i=0
     len=${#name_list[@]}
-    info "ALLNS CL: $name_list NS:$ns_list len: $len"
+    info "ALLNS CL: ${name_list[@]} NS:$ns_list len: $len"
     for i in "${name_list[@]}";
     do
         NAME=${name_list[$i]}
