@@ -92,7 +92,7 @@ function label_resource_allns(){
     i=0
     len=${#name_list[@]}
     info "ALLNS CL: ${name_list[@]} NS:$ns_list len: $len"
-    for i in "${name_list[@]}";
+    for ((i=0;i<$len;i++));
     do
         NAME=${name_list[$i]}
         NAMESPACE=${ns_list[$i]}
