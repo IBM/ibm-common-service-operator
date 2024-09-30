@@ -1,18 +1,22 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: label-cert-manager-job
+  name: label-bedrock-job
   namespace: cs-op
+  labels:
+    foundationservices.cloudpak.ibm.com: label-cpfs-job
 spec:
   template:
     metadata:
-      name: label-cert-manager-job
+      name: label-bedrock-job
       namespace: cs-op
+      labels:
+        foundationservices.cloudpak.ibm.com: label-cpfs-job
     spec:
       suspend: true
       restartPolicy: OnFailure
       containers:
-      - command: ["/bin/bash", "-c", "/cs-br/label-cert-manager.sh --namespaces cs-op,cs-serv,cs-ten1,cs-ten2"]
+      - command: ["/bin/bash", "-c", "/cs-br/label-common-service.sh --operator-ns cs-op --services-ns cs-serv --tethered-ns cs-ten1,cs-ten2 --cert-manager-ns ibm-cert-manager --licensing-ns ibm-licensing --lsr-ns ibm-lsr --enable-default-catalog-ns --additional-catalog-sources ibm-operator-catalog-latest,opencloud-operators-cd"]
         image: icr.io/cpopen/cpfs/cpfs-utils:4.6.4
         imagePullPolicy: IfNotPresent
         name: cpfs-util
@@ -36,13 +40,13 @@ spec:
       schedulerName: default-scheduler
       securityContext:
         runAsNonRoot: true
-      serviceAccount: label-cert-manager-job
-      serviceAccountName: label-cert-manager-job
+      serviceAccount: label-bedrock-job
+      serviceAccountName: label-bedrock-job
       terminationGracePeriodSeconds: 30
       volumes:
       - name: scripts
         configMap:
-          name: label-cert-manager-job
+          name: label-bedrock-job
           defaultMode: 0777
       - emptyDir: {}
         name: logs
