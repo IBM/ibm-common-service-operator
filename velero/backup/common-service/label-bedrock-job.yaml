@@ -3,15 +3,11 @@ kind: Job
 metadata:
   name: label-bedrock-job
   namespace: cs-op
-  labels:
-    foundationservices.cloudpak.ibm.com: label-cpfs-job
 spec:
   template:
     metadata:
       name: label-bedrock-job
       namespace: cs-op
-      labels:
-        foundationservices.cloudpak.ibm.com: label-cpfs-job
     spec:
       suspend: true
       restartPolicy: OnFailure

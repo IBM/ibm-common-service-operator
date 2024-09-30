@@ -2,7 +2,6 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: label-bedrock-job
-  namespace: <>
 rules:
   - verbs:
       - get
@@ -14,16 +13,19 @@ rules:
       - extensions
       - apps
       - policy
+      - zen.cpd.ibm.com
+      - operators.coreos.com
+      - operator.ibm.com 
     resources:
-      - zenservices.zen.cpd.ibm.com
+      - zenservices
       - configmaps
-      - catalogsources.operators.coreos.com
-      - operatorgroups.operators.coreos.com
-      - operandrequests.operator.ibm.com 
-      - subscriptions.operators.coreos.com
+      - catalogsources
+      - operatorgroups
+      - operandrequests
+      - subscriptions
       - secrets
-      - commonservices.operator.ibm.com
-      - namespacescopes.operator.ibm.com
+      - commonservices
+      - namespacescopes
       - role
       - rolebinding
       - serviceaccount

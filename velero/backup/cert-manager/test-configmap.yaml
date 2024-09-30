@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: label-cert-manager-job
-  namespace: <>
+  namespace: <operator namespace>
 data:
   label-cert-manager.sh: |
     ##!/usr/bin/env bash
