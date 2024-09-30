@@ -1,5 +1,9 @@
 ##!/usr/bin/env bash
 
+#CRDS
+oc label crd certificates.cert-manager.io foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
+oc label crd issuers.cert-manager.io foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
+
 # Get all issuers in all namespaces and add foundationservices.cloudpak.ibm.com=cert-manager
 CURRENT_ISSUERS=($(oc get Issuers --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True))
 i=0
@@ -31,8 +35,8 @@ do
     oc label issuer $NAME -n $NAMESPACE foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
 done
 
-# Get all certificates in all namespaces and add foundationservices.cloudpak.ibm.com=cert-manager
-CURRENT_CERTIFICATES=($(oc get certificates --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True))
+# Label all cs-ca-certificates
+CURRENT_CERTIFICATES=($(oc get certificates --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate))
 i=0
 len=${#CURRENT_CERTIFICATES[@]}
 while [ $i -lt $len ];
@@ -45,9 +49,11 @@ do
     echo $NAMESPACE
     echo "---"
     oc label certificates $NAME -n $NAMESPACE foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
+    oc label secret cs-ca-certificate-secret -n $NAMESPACE foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
 done
 
-CURRENT_CERTIFICATES=($(oc get certificates.cert-manager.io --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True))
+#cover the different api for certificates
+CURRENT_CERTIFICATES=($(oc get certificates.cert-manager.io --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | grep cs-ca-certificate))
 i=0
 len=${#CURRENT_CERTIFICATES[@]}
 while [ $i -lt $len ];
@@ -60,22 +66,7 @@ do
     echo $NAMESPACE
     echo "---"
     oc label certificates $NAME -n $NAMESPACE foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
-done
-
-# Get all secrets with label operator.ibm.com/watched-by-cert-manager="" and add foundationservices.cloudpak.ibm.com=cert-manager
-CURRENT_SECRETS=($(oc get secrets -l operator.ibm.com/watched-by-cert-manager="" --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True))
-i=0
-len=${#CURRENT_SECRETS[@]}
-while [ $i -lt $len ];
-do
-    NAME=${CURRENT_SECRETS[$i]}
-    let i++
-    NAMESPACE=${CURRENT_SECRETS[$i]}
-    let i++
-    echo $NAME
-    echo $NAMESPACE
-    echo "---"
-    oc label secret $NAME -n $NAMESPACE foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
+    oc label secret cs-ca-certificate-secret -n $NAMESPACE foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
 done
 
 CURRENT_CRD_ISSUERS=($(oc get crd | grep issuer | cut -d ' ' -f1))
@@ -115,6 +106,7 @@ if [[ $zen_namespace_list != "fail" ]]; then
             echo $zen_namespace
             echo "---"
             oc label secret $zen_secret_name -n $zen_namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
+            oc label secret zen-ca-cert-secret -n $zen_namespace foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
         done
     done
 else
@@ -205,3 +197,37 @@ if [[ $zen_serviceid_apikey_secret_namespace_list != "none" ]]; then
 else
     echo "[INFO] Secret zen-serviceid-apikey-secret not present in namespace $zen_serviceid_namespace. Skipping..."
 fi
+
+#add labels to iaf-system-automation-aui-zen-cert elasticsearch cert/secret
+auto_zen_cert_ns_list=$(oc get certificate -A --no-headers | grep iaf-system-automationui-aui-zen-cert | awk '{print $1}' | tr "\n" " " || echo "none")
+if [[ $auto_zen_cert_ns_list != "none" ]]; then
+    for ns in $auto_zen_cert_ns_list
+    do
+        secret_name=$(oc get certificate -n $ns iaf-system-automationui-aui-zen-cert -o jsonpath='{.spec.secretName}')
+        oc label secret $secret_name -n $ns foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
+        oc label certificate iaf-system-automationui-aui-zen-cert -n $ns foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
+    done
+fi
+
+#add labels to elasticsearch cert/secret
+elasticsearch_cert_ns_list=$(oc get certificate -A --no-headers | grep iaf-system-elasticsearch-es-client-cert | awk '{print $1}' | tr "\n" " " || echo "none")
+if [[ $elasticsearch_cert_ns_list != "none" ]]; then
+    for ns in $elasticsearch_cert_ns_list
+    do
+        oc label certificate iaf-system-elasticsearch-es-client-cert -n $ns foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
+        oc label secret iaf-system-elasticsearch-es-client-cert-kp -n $ns foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
+    done
+fi
+
+#remove label from metastore-edb certificate and secret
+metastore_secret_ns_list=$(oc get secret -A --no-headers | grep  ibm-zen-metastore-edb-secret | awk '{print $1}' | tr "\n" " " || echo "none")
+if [[ $metastore_secret_ns_list != "none" ]]; then
+    echo "[INFO] removing label from zen-metastore-edb-secret and certificate."
+    for ns in $metastore_secret_ns_list
+    do
+        oc label secret ibm-zen-metastore-edb-secret -n $ns foundationservices.cloudpak.ibm.com-
+        oc label certificate ibm-zen-metastore-edb-certificate -n $ns foundationservices.cloudpak.ibm.com-
+    done
+fi
+
+echo "[SUCCESS] Certificates and secrets successfully labeled."
