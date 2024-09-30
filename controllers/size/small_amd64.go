@@ -861,6 +861,15 @@ const Small = `
     data:
       spec:
         instances: 2
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+            ephemeral-storage: 512Mi
+          requests:
+            cpu: 1000m
+            memory: 1Gi 
+            ephemeral-storage: 256Mi
         unsupported:
           podTemplate:
             spec:
