@@ -78,9 +78,9 @@ const Large = `
         instances: 2
         resources:
           limits:
-            cpu: 750m
-            memory: 1650Mi
-            ephemeral-storage: 700Mi
+            cpu: 1125m
+            memory: 2475Mi
+            ephemeral-storage: 1050Mi
           requests:
             ephemeral-storage: 200Mi
             cpu: 225m
