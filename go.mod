@@ -8,7 +8,7 @@ require (
 	github.com/IBM/controller-filtered-cache v0.3.5
 	github.com/IBM/ibm-namespace-scope-operator/v4 v4.2.4-0.20240501132320-6675f97bc34f
 	github.com/IBM/ibm-secretshare-operator v1.20.3
-	github.com/IBM/operand-deployment-lifecycle-manager/v4 v4.3.5-alpha
+	github.com/IBM/operand-deployment-lifecycle-manager/v4 v4.3.6-alpha
 	github.com/ghodss/yaml v1.0.0
 	github.com/ibm/ibm-cert-manager-operator v0.0.0-20230705134954-f3b9b344298a
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
@@ -87,7 +87,7 @@ require (
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiextensions-apiserver v0.24.2 // indirect
+	k8s.io/apiextensions-apiserver v0.24.2
 	k8s.io/component-base v0.24.2 // indirect
 	k8s.io/klog/v2 v2.60.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20220627174259-011e075b9cb8 // indirect

@@ -951,6 +951,25 @@ spec:
         force: true
         kind: Keycloak
         name: cs-keycloak
+        optionalFields:
+          - path: .spec.unsupported.podTemplate.spec.containers[0].resources
+            operation: remove
+            matchExpressions:
+              - objectRef:
+                  name: keycloaks.k8s.keycloak.org
+                  apiVersion: apiextensions.k8s.io/v1
+                  kind: CustomResourceDefinition
+                key: .spec.versions[0].schema.openAPIV3Schema.properties.spec.properties.resources
+                operator: Exists
+          - path: .spec.resources
+            operation: remove
+            matchExpressions:
+              - objectRef:
+                  name: keycloaks.k8s.keycloak.org
+                  apiVersion: apiextensions.k8s.io/v1
+                  kind: CustomResourceDefinition
+                key: .spec.versions[0].schema.openAPIV3Schema.properties.spec.properties.resources
+                operator: DoesNotExist
       - apiVersion: v1
         kind: ConfigMap
         force: true
