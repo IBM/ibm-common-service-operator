@@ -2,17 +2,17 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: label-bedrock-job
-  namespace: cs-op
+  namespace: <operator namespace>
 spec:
   template:
     metadata:
       name: label-bedrock-job
-      namespace: cs-op
+      namespace: <operator namespace>
     spec:
       suspend: true
       restartPolicy: OnFailure
       containers:
-      - command: ["/bin/bash", "-c", "/cs-br/label-common-service.sh --operator-ns cs-op --services-ns cs-serv --tethered-ns cs-ten1,cs-ten2 --cert-manager-ns ibm-cert-manager --licensing-ns ibm-licensing --lsr-ns ibm-lsr --enable-default-catalog-ns --additional-catalog-sources ibm-operator-catalog-latest,opencloud-operators-cd"]
+      - command: ["/bin/bash", "-c", "/cs-br/label-common-service.sh --operator-ns <operator namespace> --services-ns <service namespace> --tethered-ns <comma delimited tethered namespaces> --enable-private-catalog --additional-catalog-sources <comma delimited list of catalog source names>"]
         image: icr.io/cpopen/cpfs/cpfs-utils:4.6.4
         imagePullPolicy: IfNotPresent
         name: cpfs-util

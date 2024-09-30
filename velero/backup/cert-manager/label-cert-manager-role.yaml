@@ -2,7 +2,6 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: label-cert-manager-job
-  namespace: <>
 rules:
   - verbs:
       - get
@@ -14,11 +13,13 @@ rules:
       - extensions
       - apps
       - policy
+      - cert-manager.io
+      - zen.cpd.ibm.com
     resources:
-      - certificates.cert-manager.io
-      - issuers.cert-manager.io
+      - certificates
+      - issuers
       - secrets
       - certificates
       - issuers
-      - zenservices.zen.cpd.ibm.com
+      - zenservices
       - configmaps

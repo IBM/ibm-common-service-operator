@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: label-bedrock-job
-  namespace: <>
+  namespace: <operator namespace>
 data:
   label-common-service.sh: |
     #!/usr/bin/env bash

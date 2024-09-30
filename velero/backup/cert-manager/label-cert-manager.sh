@@ -107,9 +107,6 @@ function label_specified_secret(){
 }
 
 function label_all_resources(){
-    #CRDS
-    oc label crd certificates.cert-manager.io foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
-    oc label crd issuers.cert-manager.io foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
 
     # Get all issuers in all namespaces and add foundationservices.cloudpak.ibm.com=cert-manager
     if [[ $NAMESPACES != "" ]]; then
@@ -233,6 +230,10 @@ function label_all_resources(){
             fi
         done
     else
+        #CRDS
+        oc label crd certificates.cert-manager.io foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
+        oc label crd issuers.cert-manager.io foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true
+
         issuer_names=$(oc get Issuers --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | awk '{print $1}' | tr "\n" ",")
         issuer_ns=$(oc get Issuers --all-namespaces -o custom-columns=NAME:.metadata.name,NAMESPACE:metadata.namespace --no-headers=True | awk '{print $2}' | tr "\n" ",")
         label_resource_allns Issuers $issuer_names $issuer_ns

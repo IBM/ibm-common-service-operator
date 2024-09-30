@@ -2,17 +2,17 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: label-cert-manager-job
-  namespace: cs-op
+  namespace: <operator namespace>
 spec:
   template:
     metadata:
       name: label-cert-manager-job
-      namespace: cs-op
+      namespace: <operator namespace>
     spec:
       suspend: true
       restartPolicy: OnFailure
       containers:
-      - command: ["/bin/bash", "-c", "/cs-br/label-cert-manager.sh --namespaces cs-op,cs-serv,cs-ten1,cs-ten2"]
+      - command: ["/bin/bash", "-c", "/cs-br/label-cert-manager.sh --namespaces <comma delimited list of namespaces>"]
         image: icr.io/cpopen/cpfs/cpfs-utils:4.6.4
         imagePullPolicy: IfNotPresent
         name: cpfs-util
