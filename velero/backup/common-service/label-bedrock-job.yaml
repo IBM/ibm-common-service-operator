@@ -28,8 +28,6 @@ spec:
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         volumeMounts:
-        - name: scripts
-          mountPath: "/cs-br"
         - name: logs
           mountPath: /scripts/logs
       dnsPolicy: ClusterFirst
@@ -40,9 +38,5 @@ spec:
       serviceAccountName: label-bedrock-job
       terminationGracePeriodSeconds: 30
       volumes:
-      - name: scripts
-        configMap:
-          name: label-bedrock-job
-          defaultMode: 0777
       - emptyDir: {}
         name: logs
