@@ -17,6 +17,7 @@ rules:
       - operators.coreos.com
       - operator.ibm.com 
     resources:
+      - namespaces
       - zenservices
       - configmaps
       - catalogsources
