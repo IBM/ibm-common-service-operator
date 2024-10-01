@@ -12,7 +12,7 @@ spec:
       suspend: true
       restartPolicy: OnFailure
       containers:
-      - command: ["/bin/bash", "-c", "/cs-br/label-cert-manager.sh --namespaces <comma delimited list of namespaces>"]
+      - command: ["/bin/bash", "-c", "/scripts/velero/backup/cert-manager/label-cert-manager.sh --namespaces <comma delimited list of namespaces>"]
         image: icr.io/cpopen/cpfs/cpfs-utils:4.6.4
         imagePullPolicy: IfNotPresent
         name: cpfs-util
