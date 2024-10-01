@@ -12,7 +12,7 @@ spec:
       suspend: true
       restartPolicy: OnFailure
       containers:
-      - command: ["/bin/bash", "-c", "/cs-br/label-common-service.sh --operator-ns <operator namespace> --services-ns <service namespace> --tethered-ns <comma delimited tethered namespaces> --enable-private-catalog --additional-catalog-sources <comma delimited list of catalog source names>"]
+      - command: ["/bin/bash", "-c", "/scripts/velero/backup/common-service/label-common-service.sh --operator-ns <operator namespace> --services-ns <service namespace> --tethered-ns <comma delimited tethered namespaces> --enable-private-catalog --additional-catalog-sources <comma delimited list of catalog source names>"]
         image: icr.io/cpopen/cpfs/cpfs-utils:4.6.4
         imagePullPolicy: IfNotPresent
         name: cpfs-util
