@@ -196,6 +196,12 @@ spec:
     packageName: ibm-commonui-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+  - name: ibm-idp-config-ui-operator-v4.6
+    namespace: "{{ .CPFSNs }}"
+    channel: v4.6
+    packageName: ibm-commonui-operator-app
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
 `
 
 	PlatformUIOpReg = `
@@ -542,6 +548,11 @@ spec:
       switcheritem: {}
       navconfiguration: {}
   - name: ibm-idp-config-ui-operator-v4.5
+    spec:
+      commonWebUI: {}
+      switcheritem: {}
+      navconfiguration: {}
+  - name: ibm-idp-config-ui-operator-v4.6
     spec:
       commonWebUI: {}
       switcheritem: {}
