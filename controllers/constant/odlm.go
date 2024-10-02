@@ -1734,7 +1734,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
   - name: ibm-idp-config-ui-operator
     namespace: "{{ .CPFSNs }}"
-    channel: v4.5
+    channel: v4.6
     packageName: ibm-commonui-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
