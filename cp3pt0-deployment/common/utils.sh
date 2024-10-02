@@ -279,8 +279,10 @@ function wait_for_certificate() {
 function wait_for_csv() {
     local namespace=$1
     local package_name=$2
-    local condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${package_name}.${namespace}='' -n ${namespace} -o yaml -o jsonpath='{.items[*].status.installedCSV}'"
-    local debug_condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${package_name}.${namespace}='' -n ${namespace} -o jsonpath='{.items[*].status.conditions}'"
+    local label="${package_name}.${namespace}"
+    local length_limited_label=$(echo ${label:0:63})
+    local condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${length_limited_label}='' -n ${namespace} -o yaml -o jsonpath='{.items[*].status.installedCSV}'"
+    local debug_condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${length_limited_label}='' -n ${namespace} -o jsonpath='{.items[*].status.conditions}'"
     
     local retries=180
     local sleep_time=10
@@ -488,8 +490,10 @@ function wait_for_operator_upgrade() {
     local package_name=$2
     local channel=$3
     local install_mode=$4
-    local condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${package_name}.${namespace}='' -n ${namespace} -o yaml -o jsonpath='{.items[*].status.installedCSV}' | grep -w $channel"
-    local debug_condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${package_name}.${namespace}='' -n ${namespace} -o jsonpath='{.items[*].status.conditions}'"
+    local label="${package_name}.${namespace}"
+    local length_limited_label=$(echo ${label:0:63})
+    local condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${length_limited_label}='' -n ${namespace} -o yaml -o jsonpath='{.items[*].status.installedCSV}' | grep -w $channel"
+    local debug_condition="${OC} get subscription.operators.coreos.com -l operators.coreos.com/${length_limited_label}='' -n ${namespace} -o jsonpath='{.items[*].status.conditions}'"
 
     local retries=120
     local sleep_time=20
