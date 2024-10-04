@@ -119,6 +119,8 @@ type CommonServiceSpec struct {
 	OperatorConfigs []OperatorConfig `json:"operatorConfigs,omitempty"`
 	// +optional
 	License LicenseList `json:"license"`
+	// +optional
+	EnableInstanaMetricCollection bool `json:"enableInstanaMetricCollection,omitempty"`
 }
 
 // OperatorConfig is configuration composed of key-value pairs to be injected into specified CSVs
