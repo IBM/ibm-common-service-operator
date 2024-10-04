@@ -17,7 +17,7 @@ YQ=yq
 ENABLE_LICENSING=0
 MINIMAL_RBAC_ENABLED=0
 MINIMAL_RBAC=""
-CHANNEL="v4.6"
+CHANNEL="v4.10"
 MAINTAINED_CHANNEL="v4.2"
 SOURCE="opencloud-operators"
 SOURCE_NS="openshift-marketplace"
@@ -266,9 +266,10 @@ function pre_req() {
 
     # When Common Service channel info is less then maintained channel, update maintained channel for backward compatibility e.g., v4.1 and v4.0
     # Otherwise, maintained channel is pinned at v4.2
-    local channel_numeric="${CHANNEL#v}"
-    local maintained_channel_numeric="${MAINTAINED_CHANNEL#v}"
-    if awk -v num="$channel_numeric" "BEGIN { exit !(num < $maintained_channel_numeric) }"; then
+    IFS='.' read -r channel_major channel_minor <<< "${CHANNEL#v}"
+    IFS='.' read -r maintained_major maintained_minor <<< "${MAINTAINED_CHANNEL#v}"
+
+    if (( channel_major < maintained_major )) || { (( channel_major == maintained_major )) && (( channel_minor < maintained_minor )); }; then
         MAINTAINED_CHANNEL="$CHANNEL"
     fi
 
