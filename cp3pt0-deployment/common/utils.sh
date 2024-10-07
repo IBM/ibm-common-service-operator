@@ -483,6 +483,25 @@ function wait_for_deployment() {
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
+function wait_for_licensing_instance_deployment() {
+    # Retry and wait for the licensing instance to be available
+    retries=10
+    while [[ $retries -gt 0 ]]; do
+        echo "Wait for licensing instance deployment to be ready..."
+        sleep 30
+        ns=$("$OC" get deployments -A | grep ibm-licensing-service-instance | cut -d ' ' -f1)
+
+        if [ -z "$ns" ]; then
+            info "RETRYING: Waiting for Deployment ibm-licensing-service-instance to be ready (${retries} left)"
+        else
+          break
+        fi
+
+        ((retries--))
+    done
+
+}
+
 function wait_for_operator_upgrade() {
     local namespace=$1
     local package_name=$2
