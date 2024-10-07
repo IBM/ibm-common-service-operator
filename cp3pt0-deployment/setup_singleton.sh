@@ -231,6 +231,7 @@ function is_migrate_licensing() {
     fi
 
     title "Check migrating LTSR ibm-licensing-operator"
+    wait_for_licensing_instance_deployment
     local ns=$("$OC" get deployments -A | grep ibm-licensing-service-instance | cut -d ' ' -f1)
     if [ -z "$ns" ]; then
         info "No LTSR ibm-licensing-operator to migrate, skipping"
