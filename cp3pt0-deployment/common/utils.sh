@@ -487,7 +487,7 @@ function wait_for_licensing_instance_deployment() {
     # Retry and wait for the licensing instance to be available
     retries=10
     while [[ $retries -gt 0 ]]; do
-        echo "Wait for licensing deployment to be ready..."
+        echo "Wait for licensing instance deployment to be ready..."
         sleep 30
         ns=$("$OC" get deployments -A | grep ibm-licensing-service-instance | cut -d ' ' -f1)
 
