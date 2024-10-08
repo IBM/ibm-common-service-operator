@@ -16,7 +16,8 @@ rules:
       - policy
       - zen.cpd.ibm.com
       - operators.coreos.com
-      - operator.ibm.com 
+      - operator.ibm.com
+      - rbac.authorization.k8s.io 
     resources:
       - namespaces
       - zenservices
@@ -28,8 +29,8 @@ rules:
       - secrets
       - commonservices
       - namespacescopes
-      - role
-      - rolebinding
+      - roles
+      - rolebindings
       - serviceaccount
       #not necessary for cpd
       #- ibmlicenseservicereporters.operator.ibm.com
