@@ -13,6 +13,8 @@ spec:
         port: 443
       - protocol: TCP
         port: 2112
+      - protocol: TCP
+        port: 9200
       from:
         - podSelector: {}
   policyTypes:
