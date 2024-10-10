@@ -17,11 +17,13 @@
 package controllers
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
+	"text/template"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
@@ -50,6 +52,28 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured) (
 			return nil, nil, err
 		}
 		newConfigs = append(newConfigs, storageConfig...)
+	}
+
+	// Update EnableInstanaMetricCollection in OperandConfig
+	if cs.Object["spec"].(map[string]interface{})["enableInstanaMetricCollection"] != nil {
+		klog.Info("Applying enableInstanaMetricCollection configuration")
+
+		t := template.Must(template.New("template InstanaEnable").Parse(constant.InstanaEnableTemplate))
+		var tmplWriter bytes.Buffer
+		instanaEnable := struct {
+			InstanaEnable bool
+		}{
+			InstanaEnable: cs.Object["spec"].(map[string]interface{})["enableInstanaMetricCollection"].(bool),
+		}
+		if err := t.Execute(&tmplWriter, instanaEnable); err != nil {
+			return nil, nil, err
+		}
+		s := tmplWriter.String()
+		instanaConfig, err := convertStringToSlice(s)
+		if err != nil {
+			return nil, nil, err
+		}
+		newConfigs = append(newConfigs, instanaConfig...)
 	}
 
 	// Update routeHost

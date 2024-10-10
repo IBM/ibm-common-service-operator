@@ -68,6 +68,8 @@ spec:
                   DefalutAdminUser is the name of the default admin user for foundational
                   services IM, default is cpadmin
                 type: string
+              enableInstanaMetricCollection:
+                type: boolean
               features:
                 description: Features defines the configurations of Cloud Pak Services
                 properties:
