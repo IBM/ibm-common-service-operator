@@ -1184,6 +1184,15 @@ const ConfigurationRules = `
     data:
       spec:
         instances: LARGEST_VALUE
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
         unsupported:
           podTemplate:
             spec:
@@ -1192,7 +1201,9 @@ const ConfigurationRules = `
                     limits:
                       cpu: LARGEST_VALUE
                       memory: LARGEST_VALUE
+                      ephemeral-storage: LARGEST_VALUE
                     requests:
                       cpu: LARGEST_VALUE
                       memory: LARGEST_VALUE
+                      ephemeral-storage: LARGEST_VALUE
 `
