@@ -57,6 +57,7 @@ EOF
   #
   # Start the backup
   #
+  ibm_mongodb_image=$(${OC} get pod icp-mongodb-0 -n $CS_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
   info "Starting backup"
   cat <<EOF | oc apply -f -
 apiVersion: batch/v1
@@ -72,7 +73,7 @@ spec:
     spec:
       containers:
       - name: cs-mongodb-backup
-        image: icr.io/cpopen/cpfs/ibm-mongodb@sha256:d62f7145428f62466622160005eafcfee39cbf866df88aaeaee4d99173d1882f
+        image: $ibm_mongodb_image
         resources:
           limits:
             cpu: 500m
