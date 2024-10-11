@@ -57,7 +57,7 @@ EOF
   #
   # Start the backup
   #
-  ibm_mongodb_image=$(${OC} get pod icp-mongodb-0 -n $CS_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
+  ibm_mongodb_image=$(oc get pod icp-mongodb-0 -n $CS_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
   info "Starting backup"
   cat <<EOF | oc apply -f -
 apiVersion: batch/v1
