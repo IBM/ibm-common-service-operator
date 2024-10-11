@@ -187,7 +187,7 @@ function backup() {
     msg "-----------------------------------------------------------------------"
     export CS_NAMESPACE=$ORIGINAL_NAMESPACE
     chmod +x mongo-backup.sh
-    ./mongo-backup.sh $ORIGINAL_NAMESPACE true
+    ./mongo-backup.sh $ORIGINAL_NAMESPACE
 
     local jobPod=$(${OC} get pods -n $ORIGINAL_NAMESPACE | grep mongodb-backup | awk '{ print $1 }')
     local fileName="backup_from_${ORIGINAL_NAMESPACE}_for_${TARGET_NAMESPACE}.log"
