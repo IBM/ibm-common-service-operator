@@ -35,8 +35,8 @@ function backup_mongodb(){
   #STGCLASS=$(oc get pvc --no-headers=true mongodbdir-icp-mongodb-0 -n $CS_NAMESPACE | awk '{ print $6 }')
   STGCLASS=ibmc-block-retain-gold
   # Used by multi-namespace
-  if [[ $CONVERT != "" ]]; then
-    STGCLASS=$CONVERT
+  if [[ $CONVERT == "true" ]]; then
+    STGCLASS=$(oc get pvc --no-headers=true mongodbdir-icp-mongodb-0 -n $CS_NAMESPACE -o jsonpath='{.spec.storageClassName}')
   fi
   #
   # Backup MongoDB
