@@ -232,7 +232,7 @@ function is_migrate_licensing() {
 
     title "Check migrating LTSR ibm-licensing-operator"
     # wait for ibm-licensing-operator instance 
-    local licensing_operator_exist=$("$OC" get clusterserviceversion.operators.coreos.com -A | (grep ibm-licensing-operator || echo "fail"))
+    local licensing_operator_exist=$("$OC" get deployment -A | (grep ibm-licensing-operator || echo "fail"))  
     if [[ $licensing_operator_exist != "fail" ]]; then
         wait_for_licensing_instance_deployment
     else
