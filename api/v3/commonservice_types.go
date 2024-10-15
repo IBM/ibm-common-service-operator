@@ -55,8 +55,9 @@ type ExtensionWithMarker struct {
 
 // +kubebuilder:pruning:PreserveUnknownFields
 type ServiceConfig struct {
-	Name               string                         `json:"name"`
-	Spec               map[string]ExtensionWithMarker `json:"spec,omitempty"`
+	Name string `json:"name"`
+	// +optional
+	Spec               map[string]ExtensionWithMarker `json:"spec"`
 	ManagementStrategy string                         `json:"managementStrategy,omitempty"`
 	Resources          []ExtensionWithMarker          `json:"resources,omitempty"`
 }
