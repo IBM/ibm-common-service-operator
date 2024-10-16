@@ -1417,8 +1417,6 @@ spec:
         name: common-service-db          
         force: true
         annotations:
-          k8s.enterprisedb.io/addons: '["velero"]'
-          k8s.enterprisedb.io/snapshotAllowColdBackupOnPrimary: enabled
           productID: 068a62892a1e4db39641342e592daa25
           productMetric: FREE
           productName: IBM Cloud Platform Common Services
