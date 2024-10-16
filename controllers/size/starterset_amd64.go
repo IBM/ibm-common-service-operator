@@ -897,7 +897,7 @@ const StarterSet = `
     name: keycloak-edb-cluster
     data:
       spec:
-        instances: 1
+        instances: 2
         resources:
           limits:
             cpu: 200m
