@@ -871,3 +871,10 @@ func SanitizeData(data interface{}, valueType string, isEmpty bool) interface{} 
 		return nil
 	}
 }
+
+func GetFirstNCharacter(str string, n int) string {
+	if n >= len(str) {
+		return str
+	}
+	return str[:n]
+}
