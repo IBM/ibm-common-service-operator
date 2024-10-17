@@ -1978,9 +1978,10 @@ func (b *Bootstrap) checkOperatorCSV(packageManifest, operatorNs string) (bool, 
 	// List the subscription by packageManifest and operatorNs
 	// The subscription contain label "operators.coreos.com/<packageManifest>.<operatorNs>: ''"
 	subList := &olmv1alpha1.SubscriptionList{}
+	labelKey := util.GetFirstNCharacter(packageManifest+"."+operatorNs, 63)
 	if err := b.Client.List(context.TODO(), subList, &client.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set{
-			"operators.coreos.com/" + packageManifest + "." + operatorNs: "",
+			"operators.coreos.com/" + labelKey: "",
 		}),
 		Namespace: operatorNs,
 	}); err != nil {
