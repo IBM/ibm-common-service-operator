@@ -739,6 +739,8 @@ spec:
       - apiVersion: k8s.keycloak.org/v2alpha1
         data:
           spec:
+            proxy:
+              headers: xforwarded
             features:
               enabled:
                 - token-exchange
