@@ -29,6 +29,7 @@ import (
 	utilyaml "github.com/ghodss/yaml"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"golang.org/x/mod/semver"
+	v1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -198,8 +199,10 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		return err
 	}
 
-	deleteResrouces := []string{constant.WebhookServiceName, constant.Secretshare}
-	if err := b.DeleteV3Resources(deleteResrouces); err != nil {
+	mutatingWebhooks := []string{constant.CSWebhookConfig, constant.OperanReqConfig}
+	validatingWebhooks := []string{constant.CSMappingConfig}
+	deleteDeployments := []string{constant.WebhookServiceName, constant.Secretshare}
+	if err := b.DeleteV3Resources(mutatingWebhooks, validatingWebhooks, deleteDeployments); err != nil {
 		klog.Errorf("Failed to delete v3 resources: %v", err)
 		return err
 	}
@@ -849,26 +852,64 @@ func (b *Bootstrap) CreateKeycloakThemesConfigMap() error {
 	return nil
 }
 
-func (b *Bootstrap) DeleteV3Resources(resources []string) error {
+func (b *Bootstrap) DeleteV3Resources(mutatingWebhooks, validatingWebhooks, deleteDeployments []string) error {
 
-	for _, resource := range resources {
-		deployKey := types.NamespacedName{Name: resource, Namespace: constant.MasterNamespace}
-
-		deployment := &appsv1.Deployment{}
-		if err := b.Reader.Get(context.TODO(), deployKey, deployment); err != nil {
+	// Delete the List of MutatingWebhookConfigurations
+	for _, webhook := range mutatingWebhooks {
+		mutatingWebhook := &v1.MutatingWebhookConfiguration{}
+		if err := b.Client.Get(ctx, types.NamespacedName{Name: webhook}, mutatingWebhook); err != nil {
 			if !errors.IsNotFound(err) {
 				return err
 			} else {
-				klog.Infof("Deployment %s/%s not found, skipping...", deployKey.Namespace, deployKey.Name)
+				klog.Infof("MutatingWebhookConfiguration %s not found, skipping...", webhook)
 				continue
 			}
 		}
 
-		if err := b.Client.Delete(context.TODO(), deployment); err != nil {
-			klog.Errorf("Failed to delete Deployment %s/%s: %v", deployKey.Namespace, deployKey.Name, err)
+		if err := b.Client.Delete(ctx, mutatingWebhook); err != nil {
+			klog.Errorf("Failed to delete MutatingWebhookConfiguration %s: %v", webhook, err)
 			return err
 		}
-		klog.Infof("Successfully deleted Deployment %s/%s", deployKey.Namespace, deployKey.Name)
+		klog.Infof("Successfully deleted MutatingWebhookConfiguration %s", webhook)
+	}
+
+	// Delete ValidatingWebhookConfiguration
+	for _, webhook := range validatingWebhooks {
+		validatingWebhook := &v1.ValidatingWebhookConfiguration{}
+		if err := b.Client.Get(ctx, types.NamespacedName{Name: webhook}, validatingWebhook); err != nil {
+			if !errors.IsNotFound(err) {
+				return err
+			} else {
+				klog.Infof("ValidatingWebhookConfiguration %s not found, skipping...", webhook)
+				continue
+			}
+		}
+
+		if err := b.Client.Delete(ctx, validatingWebhook); err != nil {
+			klog.Errorf("Failed to delete ValidatingWebhookConfiguration %s: %v", webhook, err)
+			return err
+		}
+		klog.Infof("Successfully deleted ValidatingWebhookConfiguration %s", webhook)
+	}
+
+	// Delete the deployments of webhook and secretshare
+	for _, resource := range deleteDeployments {
+		deployKey := types.NamespacedName{Name: resource, Namespace: constant.MasterNamespace}
+		deployment := &appsv1.Deployment{}
+		if err := b.Client.Get(ctx, deployKey, deployment); err != nil {
+			if !errors.IsNotFound(err) {
+				return err
+			} else {
+				klog.Infof("Deployment %s/%s not found, skipping...", constant.MasterNamespace, resource)
+				continue
+			}
+		}
+
+		if err := b.Client.Delete(ctx, deployment); err != nil {
+			klog.Errorf("Failed to delete Deployment %s/%s: %v", constant.MasterNamespace, resource, err)
+			return err
+		}
+		klog.Infof("Successfully deleted Deployment %s/%s", constant.MasterNamespace, resource)
 	}
 	return nil
 }

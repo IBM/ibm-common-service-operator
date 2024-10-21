@@ -108,6 +108,10 @@ const (
 	WebhookServiceName = "ibm-common-service-webhook"
 	// Secretshare is the name of the secretshare
 	Secretshare = "secretshare"
+	// Some WebhookConfigurations
+	CSWebhookConfig = "ibm-common-service-webhook-configuration"
+	OperanReqConfig = "ibm-operandrequest-webhook-configuration"
+	CSMappingConfig = "ibm-cs-ns-mapping-webhook-configuration"
 )
 
 // CsOg is OperatorGroup constent for the common service operator
