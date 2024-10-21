@@ -894,22 +894,22 @@ func (b *Bootstrap) DeleteV3Resources(mutatingWebhooks, validatingWebhooks, dele
 
 	// Delete the deployments of webhook and secretshare
 	for _, resource := range deleteDeployments {
-		deployKey := types.NamespacedName{Name: resource, Namespace: constant.MasterNamespace}
+		deployKey := types.NamespacedName{Name: resource, Namespace: b.CSData.ServicesNs}
 		deployment := &appsv1.Deployment{}
 		if err := b.Client.Get(ctx, deployKey, deployment); err != nil {
 			if !errors.IsNotFound(err) {
 				return err
 			} else {
-				klog.Infof("Deployment %s/%s not found, skipping...", constant.MasterNamespace, resource)
+				klog.Infof("Deployment %s/%s not found, skipping...", b.CSData.ServicesNs, resource)
 				continue
 			}
 		}
 
 		if err := b.Client.Delete(ctx, deployment); err != nil {
-			klog.Errorf("Failed to delete Deployment %s/%s: %v", constant.MasterNamespace, resource, err)
+			klog.Errorf("Failed to delete Deployment %s/%s: %v", b.CSData.ServicesNs, resource, err)
 			return err
 		}
-		klog.Infof("Successfully deleted Deployment %s/%s", constant.MasterNamespace, resource)
+		klog.Infof("Successfully deleted Deployment %s/%s", b.CSData.ServicesNs, resource)
 	}
 	return nil
 }
