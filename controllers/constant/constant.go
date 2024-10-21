@@ -104,6 +104,10 @@ const (
 	OpconKind = "OperandConfig"
 	// DefaultHugePageAllocation is the default huge page allocation
 	DefaultHugePageAllocation = "100Mi"
+	// WebhookServiceName is the name of the webhook service used for v3 operator
+	WebhookServiceName = "ibm-common-service-webhook"
+	// Secretshare is the name of the secretshare
+	Secretshare = "secretshare"
 )
 
 // CsOg is OperatorGroup constent for the common service operator

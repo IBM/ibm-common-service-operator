@@ -29,6 +29,7 @@ import (
 	utilyaml "github.com/ghodss/yaml"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"golang.org/x/mod/semver"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -194,6 +195,12 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 	// Create Keycloak themes ConfigMap
 	if err := b.CreateKeycloakThemesConfigMap(); err != nil {
 		klog.Errorf("Failed to create Keycloak Themes ConfigMap: %v", err)
+		return err
+	}
+
+	deleteResrouces := []string{constant.WebhookServiceName, constant.Secretshare}
+	if err := b.DeleteV3Resources(deleteResrouces); err != nil {
+		klog.Errorf("Failed to delete v3 resources: %v", err)
 		return err
 	}
 
@@ -838,6 +845,30 @@ func (b *Bootstrap) CreateKeycloakThemesConfigMap() error {
 	cmRes := constant.KeycloakThemesConfigMap
 	if err := b.renderTemplate(cmRes, b.CSData, false); err != nil {
 		return err
+	}
+	return nil
+}
+
+func (b *Bootstrap) DeleteV3Resources(resources []string) error {
+
+	for _, resource := range resources {
+		deployKey := types.NamespacedName{Name: resource, Namespace: constant.MasterNamespace}
+
+		deployment := &appsv1.Deployment{}
+		if err := b.Reader.Get(context.TODO(), deployKey, deployment); err != nil {
+			if !errors.IsNotFound(err) {
+				return err
+			} else {
+				klog.Infof("Deployment %s/%s not found, skipping...", deployKey.Namespace, deployKey.Name)
+				continue
+			}
+		}
+
+		if err := b.Client.Delete(context.TODO(), deployment); err != nil {
+			klog.Errorf("Failed to delete Deployment %s/%s: %v", deployKey.Namespace, deployKey.Name, err)
+			return err
+		}
+		klog.Infof("Successfully deleted Deployment %s/%s", deployKey.Namespace, deployKey.Name)
 	}
 	return nil
 }
