@@ -652,4 +652,3 @@ spec:
         - hook: zen5-data-2/restore
         # - hook: zen5-deployment-3/podReady
         # - hook: zen5-data-3/restore
-    

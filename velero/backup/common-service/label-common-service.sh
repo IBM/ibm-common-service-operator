@@ -52,6 +52,10 @@ function main() {
     label_subscription
     label_lsr
     label_cs
+    if [[ $SERVICES_NS != "" ]]; then
+        label_nss
+    fi
+    label_mcsp
     success "Successfully labeled all the resources"
 }
 
@@ -151,6 +155,7 @@ function label_ns_and_related() {
         done <<< "$operand_requests"
 
         # Label the Zen Service
+        ${OC} label customresourcedefinition zenservices.zen.cpd.ibm.com foundationservices.cloudpak.ibm.com=zen --overwrite=true 2>/dev/null
         zen_services=$(${OC} get zenservice -n "$namespace" -o custom-columns=NAME:.metadata.name --no-headers)
         while IFS= read -r zen_service; do
             ${OC} label zenservice $zen_service foundationservices.cloudpak.ibm.com=zen -n "$namespace" --overwrite=true 2>/dev/null
@@ -169,7 +174,6 @@ function label_configmap() {
     title "Start to label the ConfigMaps... "
     ${OC} label configmap common-service-maps foundationservices.cloudpak.ibm.com=configmap -n kube-public --overwrite=true 2>/dev/null
     ${OC} label configmap cs-onprem-tenant-config foundationservices.cloudpak.ibm.com=configmap -n $SERVICES_NS --overwrite=true 2>/dev/null
-    ${OC} label configmap platform-auth-idp foundationservices.cloudpak.ibm.com=configmap -n $SERVICES_NS --overwrite=true 2>/dev/null
     echo ""
 }
 
@@ -224,7 +228,35 @@ function label_cs(){
     title "Start to label the CommonService CR... "
     ${OC} label customresourcedefinition commonservices.operator.ibm.com foundationservices.cloudpak.ibm.com=crd --overwrite=true 2>/dev/null
     ${OC} label commonservices common-service foundationservices.cloudpak.ibm.com=commonservice -n $OPERATOR_NS --overwrite=true 2>/dev/null
-    ${OC} label operandconfig common-service foundationservices.cloudpak.ibm.com=operand -n $SERVICES_NS --overwrite=true 2>/dev/null
+    echo ""
+}
+
+function label_nss(){
+    title "Label Namespacescope resources"
+    local nss_pm="ibm-namespace-scope-operator"
+    ${OC} label subscriptions.operators.coreos.com $nss_pm foundationservices.cloudpak.ibm.com=nss -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label namespacescopes.operator.ibm.com common-service foundationservices.cloudpak.ibm.com=nss -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label customresourcedefinition namespacescopes.operator.ibm.com foundationservices.cloudpak.ibm.com=nss --overwrite=true 2>/dev/null
+    ${OC} label serviceaccount ibm-namespace-scope-operator foundationservices.cloudpak.ibm.com=nss -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label role nss-managed-role-from-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label role nss-managed-role-from-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss -n $SERVICES_NS --overwrite=true 2>/dev/null
+    ${OC} label rolebinding nss-managed-role-from-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label rolebinding nss-managed-role-from-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss -n $SERVICES_NS --overwrite=true 2>/dev/null
+    ${OC} label configmap namespace-scope foundationservices.cloudpak.ibm.com=nss -n $SERVICES_NS --overwrite=true 2>/dev/null
+    if [[ $TETHERED_NS != "" ]]; then
+        for namespace in ${TETHERED_NS//,/ }
+        do
+            ${OC} label role nss-managed-role-from-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss -n $namespace --overwrite=true 2>/dev/null
+            ${OC} label rolebinding nss-managed-role-from-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss -n $namespace --overwrite=true 2>/dev/null
+        done
+    fi
+    echo ""
+}
+
+function label_mcsp(){
+
+    title "Start to label mcsp resources"
+    ${OC} label secret user-mgmt-bootstrap foundationservices.cloudpak.ibm.com=user-mgmt -n $SERVICES_NS --overwrite=true 2>/dev/null
     echo ""
 }
 
