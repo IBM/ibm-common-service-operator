@@ -1086,6 +1086,8 @@ spec:
         force: true
         name: create-postgres-license-config
         namespace: "{{ .OperatorNs }}"
+        labels:
+          operator.ibm.com/opreq-control: 'true'
         data:
           spec:
             activeDeadlineSeconds: 600
@@ -2007,6 +2009,8 @@ spec:
         kind: Job
         name: create-postgres-license-config
         namespace: "{{ .OperatorNs }}"
+        labels:
+          operator.ibm.com/opreq-control: 'true'
         data:
           spec:
             activeDeadlineSeconds: 600
@@ -2147,6 +2151,8 @@ spec:
         kind: Job
         name: create-postgres-license-config
         namespace: "{{ .OperatorNs }}"
+        labels:
+          operator.ibm.com/opreq-control: 'true'
         data:
           spec:
             activeDeadlineSeconds: 600
