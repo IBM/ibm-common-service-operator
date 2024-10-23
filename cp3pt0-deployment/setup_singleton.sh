@@ -236,12 +236,6 @@ function is_migrate_licensing() {
     if [[ $licensing_operator_exist != "fail" ]]; then
         wait_for_licensing_instance_deployment
     else
-        info "No ibm-licensing-operator found, skipping"
-        return 0
-    fi
-
-    local ns=$("$OC" get deployments -A | grep ibm-licensing-service-instance | cut -d ' ' -f1)
-    if [ -z "$ns" ]; then
         info "No LTSR ibm-licensing-operator to migrate, skipping"
         return 0
     fi
