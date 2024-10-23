@@ -78,9 +78,9 @@ const Small = `
         instances: 2
         resources:
           limits:
-            cpu: 300m
-            memory: 768Mi
-            ephemeral-storage: 768Mi
+            cpu: 200m
+            memory: 512Mi
+            ephemeral-storage: 512Mi
           requests:
             ephemeral-storage: 128Mi
             cpu: 75m

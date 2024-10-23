@@ -78,9 +78,9 @@ const Medium = `
         instances: 2
         resources:
           limits:
-            cpu: 750m
-            memory: 1536Mi
-            ephemeral-storage: 768Mi
+            cpu: 500m
+            memory: 1024Mi
+            ephemeral-storage: 512Mi
           requests:
             ephemeral-storage: 128Mi
             cpu: 150m
