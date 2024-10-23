@@ -11,8 +11,8 @@ spec:
         - secrets
         - certificates.cert-manager.io
         - issuers.cert-manager.io
-        # - clusterissuers.cert-manager.io
-        # - certmanagerconfigs.operator.ibm.com
+        - clusterissuers.cert-manager.io
+        - certmanagerconfigs.operator.ibm.com
         - customresourcedefinitions.apiextensions.k8s.io
       labelSelector: foundationservices.cloudpak.ibm.com=cert-manager
       name: cert-manager-resources
@@ -20,61 +20,23 @@ spec:
     - backupRef: cert-manager-resources
       includeClusterResources: true
       includedResourceTypes:
+        - secrets
+        - certificates.cert-manager.io
+        - issuers.cert-manager.io
+        - clusterissuers.cert-manager.io
+        - certmanagerconfigs.operator.ibm.com
+      labelSelector: foundationservices.cloudpak.ibm.com=cert-manager
+      name: cert-manager-workload-resources
+      type: resource
+    - backupRef: cert-manager-resources
+      includeClusterResources: true
+      includedResourceTypes:
         - customresourcedefinitions.apiextensions.k8s.io
       name: cert-manager-crd
-      type: resource
-    - includeClusterResources: true
-      includedResourceTypes:
-        - customresourcedefinitions.apiextensions.k8s.io
-        - secrets
-        - ibmlicenseservicereporters.operator.ibm.com
-      labelSelector: foundationservices.cloudpak.ibm.com=lsr
-      name: license-service-reporter-parent
-      type: resource
-    - backupRef: license-service-reporter-parent
-      includeClusterResources: true
-      includedResourceTypes:
-        - customresourcedefinitions.apiextensions.k8s.io
-      name: license-service-reporter-crd
-      type: resource
-    - backupRef: license-service-reporter-parent
-      includeClusterResources: true
-      includedResourceTypes:
-        - secrets
-        - ibmlicenseservicereporters.operator.ibm.com
-      name: license-service-reporter-instances
       type: resource
     - labelSelector: foundationservices.cloudpak.ibm.com=licensing
       name: licensing-resources
       type: resource
-    - includeClusterResources: true
-      includedResourceTypes:
-        - deployments
-        - serviceaccount
-        - role
-        - rolebinding
-        - configmaps
-      labelSelector: foundationservices.cloudpak.ibm.com=lsr-data
-      name: license-service-reporter-resources
-      type: resource
-    - backupRef: license-service-reporter-resources
-      includeClusterResources: true
-      includedResourceTypes:
-        - serviceaccount
-        - role
-        - rolebinding
-        - configmaps
-      name: lsr-pre-deploy
-      type: resource
-    - backupRef: license-service-reporter-resources
-      includeClusterResources: true
-      includedResourceTypes:
-        - deployments
-      name: lsr-deployment
-      type: resource
-    - labelSelector: foundationservices.cloudpak.ibm.com=lsr-data
-      name: lsr-volume
-      type: volume
     - includedResourceTypes:
         - catalogsources.operators.coreos.com
       labelSelector: foundationservices.cloudpak.ibm.com=catalog
@@ -127,11 +89,6 @@ spec:
       labelSelector: foundationservices.cloudpak.ibm.com=singleton-subscription
       name: singleton-subscriptions
       type: resource
-    - includedResourceTypes:
-        - subscriptions.operators.coreos.com
-      labelSelector: foundationservices.cloudpak.ibm.com=lsr
-      name: license-service-reporter-subscriptions
-      type: resource
     - includeClusterResources: true
       includedResourceTypes:
         - customresourcedefinitions.apiextensions.k8s.io
@@ -148,6 +105,18 @@ spec:
       labelSelector: foundationservices.cloudpak.ibm.com=cpfs-util-backup
       name: setup-tenant-resources
       type: resource
+    - includeClusterResources: true
+      includedResourceTypes:
+        - jobs
+      labelSelector: foundationservices.cloudpak.ibm.com=setup-tenant-job
+      name: setup-tenant-job-yaml
+      restoreStatus:
+        excludedResources:
+          - jobs
+      type: resource
+    - labelSelector: foundationservices.cloudpak.ibm.com=cpfs-util-backup
+      name: cpfs-util-volume
+      type: volume
     - includeClusterResources: true
       includedResourceTypes:
         - customresourcedefinitions.apiextensions.k8s.io
@@ -194,7 +163,20 @@ spec:
         - zenservices.zen.cpd.ibm.com
         - customresourcedefinitions.apiextensions.k8s.io
       labelSelector: foundationservices.cloudpak.ibm.com=zen
-      name: zenservice
+      name: zen
+      type: resource
+    - backupRef: zen
+      includeClusterResources: true
+      includedResourceTypes:
+        - zenservices.zen.cpd.ibm.com
+      labelSelector: foundationservices.cloudpak.ibm.com=zen
+      name: zen-instance
+      type: resource
+    - backupRef: zen
+      includeClusterResources: true
+      includedResourceTypes:
+        - customresourcedefinitions.apiextensions.k8s.io
+      name: zen-crd
       type: resource
     - backupRef: zen-br-resources
       includeClusterResources: true
@@ -211,33 +193,13 @@ spec:
         - deployments
       name: zen-deployment
       type: resource
-    - labelSelector: foundationservices.cloudpak.ibm.com=cs-db-data
-      name: cs-db-volume
+    - labelSelector: foundationservices.cloudpak.ibm.com=mongo-data
+      name: mongo-volume
       type: volume
-    - includeClusterResources: true
-      includedResourceTypes:
+    - includedResourceTypes:
         - deployments
-        - serviceaccount
-        - role
-        - rolebinding
-        - configmaps
-      labelSelector: foundationservices.cloudpak.ibm.com=cs-db-data
-      name: cs-db-br-resources
-      type: resource
-    - backupRef: cs-db-br-resources
-      includeClusterResources: true
-      includedResourceTypes:
-        - serviceaccount
-        - role
-        - rolebinding
-        - configmaps
-      name: cs-db-pre-deploy
-      type: resource
-    - backupRef: cs-db-br-resources
-      includeClusterResources: true
-      includedResourceTypes:
-        - deployments
-      name: cs-db-deployment
+      labelSelector: foundationservices.cloudpak.ibm.com=mongo-data
+      name: mongo-deployment
       type: resource
   hooks:
     - chks:
@@ -247,7 +209,7 @@ spec:
           timeout: 600
       labelSelector: 'k8s.enterprisedb.io/cluster=common-service-db,role=primary'
       name: common-service-db-check
-      namespace: <operator namespace>
+      namespace: <service namespace>
       onError: fail
       selectResource: pod
       timeout: 600
@@ -263,6 +225,18 @@ spec:
       onError: fail
       selectResource: pod
       timeout: 1200
+      type: check
+    - chks:
+        - condition: '{$.status.phase} == {"Running"}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      labelSelector: foundationservices.cloudpak.ibm.com=cpfs-util-backup
+      name: setup-tenant-check
+      namespace: <operator namespace>
+      onError: fail
+      selectResource: pod
+      timeout: 600
       type: check
     - chks:
         - condition: '{$.status.phase} == {"Running"}'
@@ -292,10 +266,58 @@ spec:
         - condition: '{$.status.phase} == {"Running"}'
           name: podReady
           onError: fail
+          timeout: 1200
+      labelSelector: 'k8s.enterprisedb.io/cluster=zen-metastore-edb,role=primary'
+      name: zen-metastore-edb-check
+      namespace: <service namespace>
+      onError: fail
+      selectResource: pod
+      timeout: 1200
+      type: check
+    - chks:
+        - condition: '{$.status.zenStatus} == {"Completed"}'
+          name: zenserviceReady
+          onError: fail
+          timeout: 1800
+      name: zen-check
+      nameSelector: test-zen
+      namespace: <service namespace>
+      onError: fail
+      selectResource: zen.cpd.ibm.com/v1/zenservice
+      timeout: 1800
+      type: check
+    - labelSelector: foundationservices.cloudpak.ibm.com=cpfs-util-backup
+      name: setup-tenant
+      namespace: <operator namespace>
+      onError: fail
+      ops:
+        - command: |
+            ["/bin/bash", "-c", "/cs-br/setup_tenant.sh --operator-namespace <operator namespace> --services-namespace <service namespace> --tethered-namespaces <comma delimited (no spaces) list of Cloud Pak workload namespaces that use this foundational services instance> --license-accept -c v<foundational services version number in use i.e. 4.0, 4.1, 4.2, etc> -p <.spec.size value from commonservice cr> -i <install mode, either Manual or Automatic> -s <catalog source name> -n <catalog source namespace> -v"]
+          container: cpfs-util
+          name: setup-tenant-command
           timeout: 600
-      name: license-service-reporter-check
-      labelSelector: app.kubernetes.io/name=ibm-license-service-reporter
-      namespace: <lsr namespace>
+      selectResource: pod
+      type: exec
+    - labelSelector: foundationservices.cloudpak.ibm.com=cpfs-util-backup
+      name: setup-tenant-job
+      namespace: <operator namespace>
+      onError: fail
+      ops:
+        - command: |
+            ["/bin/bash", "-c", "oc patch job setup-tenant-job -n <operator namespace> --type=\"json\" -p '[{\"op\": \"remove\", \"path\":\"/spec/suspend\"}]'"]
+          container: cpfs-util
+          name: trigger-setup-tenant-job
+          timeout: 600
+      selectResource: pod
+      type: exec
+    - chks:
+        - condition: '{$.status.phase} == {"Succeeded"}'
+          name: jobComplete
+          onError: fail
+          timeout: 600
+      labelSelector: foundationservices.cloudpak.ibm.com=setup-tenant-job
+      name: setup-tenant-job-check
+      namespace: <operator namespace>
       onError: fail
       selectResource: pod
       timeout: 600
@@ -305,76 +327,37 @@ spec:
           name: podReady
           onError: fail
           timeout: 600
-      labelSelector: foundationservices.cloudpak.ibm.com=lsr-data
-      name: lsr-deployment
-      namespace: <lsr namespace>
+      name: platform-identity-provider
+      nameSelector: platform-identity-provider
+      namespace: <service namespace>
       onError: fail
       selectResource: deployment
       timeout: 600
       type: check
-    - labelSelector: foundationservices.cloudpak.ibm.com=lsr-data
-      name: lsr-data
-      namespace: <lsr namespace>
-      onError: fail
-      ops:
-        - command: |
-            ["/bin/bash", "-c", "rm -rf /lsr/lsr-backup/database; /lsr/br_lsr.sh <lsr namespace> backup"]
-          container: lsr-backup-job
-          name: backup
-          timeout: 600
-        - command: |
-            ["/bin/bash", "-c", "/lsr/br_lsr.sh <lsr namespace> restore"]
-          container: lsr-backup-job
-          name: restore
-          timeout: 2000
-      selectResource: pod
-      type: exec
     - chks:
-        - condition: '{$.status.phase} == {"Running"}'
-          name: podReady
-          onError: fail
-          timeout: 1200
-      labelSelector: 'k8s.enterprisedb.io/cluster=zen-metastore-edb,role=primary'
-      name: zen-metastore-edb-check
-      namespace: <operator namespace>
-      onError: fail
-      selectResource: pod
-      timeout: 1200
-      type: check
-    - chks:
-        - condition: '{$.status.phase} == {"Running"}'
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
           name: podReady
           onError: fail
           timeout: 600
-      labelSelector: foundationservices.cloudpak.ibm.com=cs-db-data
-      name: cs-db-deployment
-      namespace: <operator namespace>
+      name: platform-auth-service
+      nameSelector: platform-auth-service
+      namespace: <service namespace>
       onError: fail
-      selectResource: pod
+      selectResource: deployment
       timeout: 600
       type: check
-    - labelSelector: foundationservices.cloudpak.ibm.com=cs-db-data
-      name: cs-db-data
-      namespace: <operator namespace>
+    - chks:
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      name: platform-identity-management
+      nameSelector: platform-identity-management
+      namespace: <service namespace>
       onError: fail
-      ops:
-        - command: |
-            ["/bin/bash", "-c", "/cs-db/br_cs-db.sh backup <operator namespace>"]
-          container: cs-db-br
-          name: cs-db-backup-pre
-          timeout: 600
-        - command: |
-            ["/bin/bash", "-c", "rm -rf /cs-db/cs-db-backup/database"]
-          container: cs-db-br
-          name: cs-db-backup-post
-          timeout: 600
-        - command: |
-            ["/bin/bash", "-c", "/cs-db/br_cs-db.sh restore <operator namespace>"]
-          container: cs-db-br
-          name: restore
-          timeout: 2000
-      selectResource: pod
-      type: exec
+      selectResource: deployment
+      timeout: 600
+      type: check
     - chks:
         - condition: '{$.status.phase} == {"Running"}'
           name: podReady
@@ -382,24 +365,53 @@ spec:
           timeout: 600
       labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
       name: zen5-deployment
-      namespace: <operator namespace>
+      namespace: <service namespace>
       onError: fail
       selectResource: pod
       timeout: 600
       type: check
     - labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
       name: zen5-data
-      namespace: <operator namespace>
+      namespace: <service namespace>
       onError: fail
       ops:
         - command: |
-            ["/bin/bash", "-c", "rm -rf /zen5/zen-backup/database && rm -rf /zen5/zen-backup/objstorage && rm -rf /zen5/zen-backup/secrets && rm -rf /zen5/zen-backup/workspace; /zen5/backup_zen5.sh <operator namespace>"]
+            ["/bin/bash", "-c", "rm -rf /zen5/zen-backup/database && rm -rf /zen5/zen-backup/objstorage && rm -rf /zen5/zen-backup/secrets && rm -rf /zen5/zen-backup/workspace; /zen5/backup_zen5.sh <service namespace>"]
           container: zen5-backup-job
           name: backup
           timeout: 600
         - command: |
-            ["/bin/bash", "-c", "/zen5/restore_zen5.sh <operator namespace> <zenservice name>"]
+            ["/bin/bash", "-c", "/zen5/restore_zen5.sh <service namespace> <zenservice name>"]
           container: zen5-backup-job
+          name: restore
+          timeout: 3600
+      selectResource: pod
+      type: exec
+    - chks:
+        - condition: '{$.status.phase} == {"Running"}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      labelSelector: foundationservices.cloudpak.ibm.com=mongo-data
+      name: mongo-deployment
+      namespace: <operator namespace>
+      onError: fail
+      selectResource: pod
+      timeout: 600
+      type: check
+    - labelSelector: foundationservices.cloudpak.ibm.com=mongo-data
+      name: mongo-data
+      namespace: <operator namespace>
+      onError: fail
+      ops:
+        - command: |
+            ["/bin/bash","-c", "'rm -rf /dump/dump/*'; cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongodump --oplog --out /dump/dump --host mongodb:$MONGODB_SERVICE_PORT --username $ADMIN_USER --password $ADMIN_PASSWORD --authenticationDatabase admin --ssl --sslCAFile /work-dir/ca.pem --sslPEMKeyFile /work-dir/mongo.pem"]
+          container: mongodb-backup
+          name: backup
+          timeout: 600
+        - command: |
+            ["/bin/bash", "-c", "cat /cred/mongo-certs/tls.crt /cred/mongo-certs/tls.key > /work-dir/mongo.pem; cat /cred/cluster-ca/tls.crt /cred/cluster-ca/tls.key > /work-dir/ca.pem; mongorestore --db platform-db --host mongodb:$MONGODB_SERVICE_PORT --username $ADMIN_USER --password $ADMIN_PASSWORD --authenticationDatabase admin --ssl --sslCAFile /work-dir/ca.pem --sslPEMKeyFile /work-dir/mongo.pem /dump/dump/platform-db --drop"]
+          container: mongodb-backup
           name: restore
           timeout: 3600
       selectResource: pod
@@ -408,34 +420,31 @@ spec:
     - failOn: any-error
       name: backup
       sequence:
-        - hook: cs-db-data/cs-db-backup-pre
-        - group: cs-db-volume
-        - group: cs-db-br-resources
-        - hook: cs-db-data/cs-db-backup-post
-        - hook: lsr-data/backup
-        - group: lsr-volume
-        - group: license-service-reporter-parent
-        - group: license-service-reporter-resources
+        - hook: mongo-data/backup
+        - group: mongo-volume
+        - group: mongo-deployment
         - hook: zen5-data/backup
-        - group: zen-volume
-        - group: zenservice
+        - group: cpfs-util-volume
+        - group: zen
         - group: zen-br-resources
         - group: common-services-namespace
         - group: pull-secret
         - group: common-services-catalogs
         - group: common-services-operatorgroups
         - group: common-services-configmaps
-        - group: license-service-reporter-crd
         - group: commonservice-crd
         - group: commonservice-cr
+        - group: cs-operator-permissions
         - group: setup-tenant-resources
+        - group: setup-tenant-job-yaml
         - group: singleton-subscriptions
         - group: cert-manager-resources
-        - group: licensing-resources
-        - group: license-service-reporter-subscriptions
         - group: common-services-subscriptions
-        - group: odlm-resources
+        - group: cert-manager-workload-resources
         - group: operand-resources
+        - group: odlm-resources
+        - group: licensing-resources
+        - group: zen-volume
     - failOn: any-error
       name: restore
       sequence:
@@ -447,32 +456,30 @@ spec:
         - group: common-services-configmaps
         - group: commonservice-crd
         - group: cert-manager-crd
-        - group: license-service-reporter-crd
         - group: singleton-subscriptions
         - group: commonservice-cr
         - hook: cert-manager-operator-check/podReady
         - hook: cert-manager-webhook-check/podReady
-        - group: cert-manager-resources
+        - group: cert-manager-workload-resources
         - group: licensing-resources
-        - group: license-service-reporter-subscriptions
-        - hook: license-service-reporter-check/podReady
-        - group: license-service-reporter-instances
-        - group: lsr-pre-deploy
-        - group: lsr-volume
-        - group: lsr-deployment
-        - hook: lsr-deployment/podReady
-        - hook: lsr-data/restore
         - group: common-services-subscriptions
+        - group: cpfs-util-volume
+        - group: setup-tenant-resources
+        - group: setup-tenant-job-yaml
+        - hook: setup-tenant-check/podReady
+        - hook: setup-tenant-job/trigger-setup-tenant-job
+        - hook: setup-tenant-job-check/jobComplete
         - hook: odlm-check/podReady
         - group: odlm-resources
         - group: operand-resources
-        - hook: common-service-db-check/podReady
-        - group: zenservice
-        - group: cs-db-pre-deploy
-        - group: cs-db-volume
-        - group: cs-db-deployment
-        - hook: cs-db-deployment/podReady
-        - hook: cs-db-data/restore
+        - group: mongo-volume
+        - group: mongo-deployment
+        - hook: mongo-deployment/podReady
+        - hook: platform-identity-management/podReady
+        - hook: platform-auth-service/podReady
+        - hook: platform-identity-provider/podReady
+        - hook: mongo-data/restore
+        - group: zen-instance
         - hook: zen-metastore-edb-check/podReady
         - group: zen-pre-deploy
         - group: zen-volume
