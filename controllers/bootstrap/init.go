@@ -29,7 +29,10 @@ import (
 	utilyaml "github.com/ghodss/yaml"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"golang.org/x/mod/semver"
+	admv1 "k8s.io/api/admissionregistration/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -194,6 +197,13 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 	// Create Keycloak themes ConfigMap
 	if err := b.CreateKeycloakThemesConfigMap(); err != nil {
 		klog.Errorf("Failed to create Keycloak Themes ConfigMap: %v", err)
+		return err
+	}
+
+	mutatingWebhooks := []string{constant.CSWebhookConfig, constant.OperanReqConfig}
+	validatingWebhooks := []string{constant.CSMappingConfig}
+	if err := b.DeleteV3Resources(mutatingWebhooks, validatingWebhooks); err != nil {
+		klog.Errorf("Failed to delete v3 resources: %v", err)
 		return err
 	}
 
@@ -839,6 +849,124 @@ func (b *Bootstrap) CreateKeycloakThemesConfigMap() error {
 	if err := b.renderTemplate(cmRes, b.CSData, false); err != nil {
 		return err
 	}
+	return nil
+}
+
+func (b *Bootstrap) DeleteV3Resources(mutatingWebhooks, validatingWebhooks []string) error {
+
+	// Delete the list of MutatingWebhookConfigurations
+	for _, webhook := range mutatingWebhooks {
+		if err := b.deleteResource(&admv1.MutatingWebhookConfiguration{}, webhook, "", "MutatingWebhookConfiguration"); err != nil {
+			return err
+		}
+	}
+
+	// Delete the list of ValidatingWebhookConfiguration
+	for _, webhook := range validatingWebhooks {
+		if err := b.deleteResource(&admv1.ValidatingWebhookConfiguration{}, webhook, "", "ValidatingWebhookConfiguration"); err != nil {
+			return err
+		}
+	}
+
+	if err := b.deleteWebhookResources(); err != nil {
+		klog.Errorf("Error deleting webhook resources: %v", err)
+	}
+
+	if err := b.deleteSecretShareResources(); err != nil {
+		klog.Errorf("Error deleting secretshare resources: %v", err)
+	}
+	return nil
+}
+
+// deleteWebhookResources deletes resources related to ibm-common-service-webhook
+func (b *Bootstrap) deleteWebhookResources() error {
+	// Delete PodPreset (CR)
+	// if err := b.deleteResource(&PodPreset{}, constant.WebhookServiceName, b.CSData.ServicesNs, "PodPreset"); err != nil {
+	// 	return err
+	// }
+
+	// Delete ServiceAccount
+	if err := b.deleteResource(&corev1.ServiceAccount{}, constant.WebhookServiceName, b.CSData.ServicesNs, "ServiceAccount"); err != nil {
+		return err
+	}
+
+	// Delete Roles and RoleBindings
+	if err := b.deleteResource(&rbacv1.Role{}, constant.WebhookServiceName, b.CSData.ServicesNs, "Role"); err != nil {
+		return err
+	}
+
+	if err := b.deleteResource(&rbacv1.RoleBinding{}, constant.WebhookServiceName, b.CSData.ServicesNs, "RoleBinding"); err != nil {
+		return err
+	}
+
+	if err := b.deleteResource(&rbacv1.ClusterRole{}, constant.WebhookServiceName, "", "ClusterRole"); err != nil {
+		return err
+	}
+
+	if err := b.deleteResource(&rbacv1.ClusterRoleBinding{}, "ibm-common-service-webhook-placeholder", "", "ClusterRoleBinding"); err != nil {
+		return err
+	}
+
+	// Delete Deployment
+	if err := b.deleteResource(&appsv1.Deployment{}, constant.WebhookServiceName, b.CSData.ServicesNs, "Deployment"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// deleteSecretShareResources deletes resources related to secretshare
+func (b *Bootstrap) deleteSecretShareResources() error {
+	if err := b.deleteResource(&corev1.ServiceAccount{}, constant.Secretshare, b.CSData.ServicesNs, "ServiceAccount"); err != nil {
+		return err
+	}
+
+	// Delete SecretShare ClusterRole and ClusterRoleBinding
+	if err := b.deleteResource(&rbacv1.ClusterRole{}, constant.Secretshare, "", "ClusterRole"); err != nil {
+		return err
+	}
+
+	if err := b.deleteResource(&rbacv1.ClusterRoleBinding{}, "secretshare-placeholder", "", "ClusterRoleBinding"); err != nil {
+		return err
+	}
+
+	// Delete SecretShare Operator CR
+	if err := b.deleteResource(&unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "ibmcpcs.ibm.com/v1",
+			"kind":       constant.Secretshare,
+		},
+	}, constant.MasterCR, b.CSData.ServicesNs, "SecretShare Operator CR"); err != nil {
+		return err
+	}
+
+	// Delete SecretShare Operator Deployment
+	if err := b.deleteResource(&appsv1.Deployment{}, constant.Secretshare, b.CSData.ServicesNs, "Deployment"); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (b *Bootstrap) deleteResource(resource client.Object, name, namespace string, resourceType string) error {
+	namespacedName := types.NamespacedName{Name: name}
+	if namespace != "" {
+		namespacedName.Namespace = namespace
+	}
+
+	if err := b.Client.Get(ctx, namespacedName, resource); err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+		klog.Infof("%s %s/%s not found, skipping deletion", resourceType, namespace, name)
+		return nil
+	}
+
+	if err := b.Client.Delete(ctx, resource); err != nil {
+		klog.Errorf("Failed to delete %s %s/%s: %v", resourceType, namespace, name, err)
+		return err
+	}
+
+	klog.Infof("Successfully deleted %s %s/%s", resourceType, namespace, name)
 	return nil
 }
 
