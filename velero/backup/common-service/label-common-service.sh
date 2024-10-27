@@ -273,6 +273,23 @@ function label_ns_and_related() {
         operand_requests=$(${OC} get operandrequest -n "$namespace" -o custom-columns=NAME:.metadata.name --no-headers)
         # Loop through each OperandRequest name
         while IFS= read -r operand_request; do
+            # Skip all the operandrequest with ownerreference
+            ownerReferences=$(${OC} get operandrequest $operand_request -n "$namespace" -o jsonpath='{.metadata.ownerReferences}')
+            if [[ $ownerReferences != "" ]]; then
+                continue
+            fi
+            # Skip all the operandrequest generate by ODLM
+            control_by_odlm=$(${OC} get operandrequest $operand_request -n "$namespace" --show-labels --no-headers | grep "operator.ibm.com/opreq-control=true" || echo "false")
+            if [[ $control_by_odlm != "false" ]]; then
+                continue
+            fi
+            # Skip all the operandrequest we already known it is internal generated
+            internal_operandrequest="ibm-iam-request postgresql-operator-request ibm-bts-request edb-keycloak-request ibm-user-management-request"
+            internal_generated=$(echo "$internal_operandrequest" | grep "$operand_request" || echo "false")
+            if [[ $internal_generated != "false" ]]; then
+                continue
+            fi
+            
             ${OC} label operandrequests $operand_request foundationservices.cloudpak.ibm.com=operand -n "$namespace" --overwrite=true 2>/dev/null
         done <<< "$operand_requests"
 
