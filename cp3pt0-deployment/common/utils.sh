@@ -494,7 +494,8 @@ function wait_for_licensing_instance_deployment() {
         if [ -z "$ns" ]; then
             info "RETRYING: Waiting for Deployment ibm-licensing-service-instance to be ready (${retries} left)"
         else
-          break
+            info "Found licensing instance"
+            break
         fi
 
         ((retries--))
