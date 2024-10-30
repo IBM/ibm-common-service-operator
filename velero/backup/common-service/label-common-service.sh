@@ -283,12 +283,6 @@ function label_ns_and_related() {
             if [[ $control_by_odlm != "false" ]]; then
                 continue
             fi
-            # Skip all the operandrequest we already known it is internal generated
-            internal_operandrequest="ibm-iam-request postgresql-operator-request ibm-bts-request edb-keycloak-request ibm-user-management-request"
-            internal_generated=$(echo "$internal_operandrequest" | grep "$operand_request" || echo "false")
-            if [[ $internal_generated != "false" ]]; then
-                continue
-            fi
             
             ${OC} label operandrequests $operand_request foundationservices.cloudpak.ibm.com=operand -n "$namespace" --overwrite=true 2>/dev/null
         done <<< "$operand_requests"
