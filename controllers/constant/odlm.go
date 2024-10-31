@@ -442,18 +442,58 @@ metadata:
 spec:
   services:
   - name: ibm-platformui-operator-v4.0
+    resources:
+      - apiVersion: apps/v1
+        force: true
+        kind: Deployment
+        labels:
+          operator.ibm.com/opreq-control: 'true'
+        name: meta-api-deploy
+        namespace: "{{ .CPFSNs }}"
     spec:
       operandBindInfo: {}
   - name: ibm-platformui-operator-v4.1
+    resources:
+      - apiVersion: apps/v1
+        force: true
+        kind: Deployment
+        labels:
+          operator.ibm.com/opreq-control: 'true'
+        name: meta-api-deploy
+        namespace: "{{ .CPFSNs }}"
     spec:
       operandBindInfo: {}
   - name: ibm-platformui-operator-v4.2
+    resources:
+      - apiVersion: apps/v1
+        force: true
+        kind: Deployment
+        labels:
+          operator.ibm.com/opreq-control: 'true'
+        name: meta-api-deploy
+        namespace: "{{ .CPFSNs }}"
     spec:
       operandBindInfo: {}
   - name: ibm-platformui-operator-v4.3
+    resources:
+      - apiVersion: apps/v1
+        force: true
+        kind: Deployment
+        labels:
+          operator.ibm.com/opreq-control: 'true'
+        name: meta-api-deploy
+        namespace: "{{ .CPFSNs }}"
     spec:
       operandBindInfo: {}
   - name: ibm-platformui-operator-v4.4
+    resources:
+      - apiVersion: apps/v1
+        force: true
+        kind: Deployment
+        labels:
+          operator.ibm.com/opreq-control: 'true'
+        name: meta-api-deploy
+        namespace: "{{ .CPFSNs }}"
     spec:
       operandBindInfo: {}
 `
@@ -2136,6 +2176,14 @@ spec:
               - name: ibm-im-operator
             registry: common-service
   - name: ibm-zen-operator
+    resources:
+      - apiVersion: apps/v1
+        force: true
+        kind: Deployment
+        labels:
+          operator.ibm.com/opreq-control: 'true'
+        name: meta-api-deploy
+        namespace: "{{ .ServicesNs }}"
     spec:
       operandBindInfo: {}
   - name: ibm-platformui-operator
