@@ -77,7 +77,7 @@ func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return r.ReconcileNonConfigurableCR(ctx, instance)
 	}
 
-	if err := r.Bootstrap.Client.Get(ctx, req.NamespacedName, instance); err != nil {
+	if err := r.Reader.Get(ctx, req.NamespacedName, instance); err != nil {
 		if errors.IsNotFound(err) {
 			if err := r.handleDelete(ctx); err != nil {
 				return ctrl.Result{}, err

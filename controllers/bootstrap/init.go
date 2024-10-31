@@ -242,7 +242,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 	}
 
 	klog.Info("Waiting for ODLM Operator to be ready")
-	if isWaiting, err := b.waitOperatorCSV("ibm-odlm", b.CSData.CPFSNs); err != nil {
+	if isWaiting, err := b.waitOperatorCSV(constant.IBMODLMPackage, "ibm-odlm", b.CSData.CPFSNs); err != nil {
 		return err
 	} else if isWaiting {
 		forceUpdateODLMCRs = true
@@ -572,7 +572,7 @@ func (b *Bootstrap) ListOperandConfig(ctx context.Context, opts ...client.ListOp
 func (b *Bootstrap) ListOperatorConfig(ctx context.Context, opts ...client.ListOption) *odlm.OperatorConfigList {
 	operatorConfigList := &odlm.OperatorConfigList{}
 	if err := b.Client.List(ctx, operatorConfigList, opts...); err != nil {
-		klog.Errorf("failed to List OperandConfig: %v", err)
+		klog.Errorf("failed to List OperatorConfig: %v", err)
 		return nil
 	}
 
@@ -1893,12 +1893,12 @@ func (b *Bootstrap) UpdateResourceWithLabel(resources *unstructured.Unstructured
 	return nil
 }
 
-func (b *Bootstrap) waitOperatorCSV(packageManifest, operatorNs string) (bool, error) {
+func (b *Bootstrap) waitOperatorCSV(subName, packageManifest, operatorNs string) (bool, error) {
 	var isWaiting bool
 	// Wait for the operator CSV to be installed
 	klog.Infof("Waiting for the operator CSV with packageManifest %s in namespace %s to be installed", packageManifest, operatorNs)
 	if err := utilwait.PollImmediate(time.Second*5, time.Minute*5, func() (done bool, err error) {
-		installed, err := b.checkOperatorCSV(packageManifest, operatorNs)
+		installed, err := b.checkOperatorCSV(subName, packageManifest, operatorNs)
 		if err != nil {
 			return false, err
 		} else if !installed {
@@ -1912,37 +1912,43 @@ func (b *Bootstrap) waitOperatorCSV(packageManifest, operatorNs string) (bool, e
 	return isWaiting, nil
 }
 
-func (b *Bootstrap) checkOperatorCSV(packageManifest, operatorNs string) (bool, error) {
-	// List the subscription by packageManifest and operatorNs
-	// The subscription contain label "operators.coreos.com/<packageManifest>.<operatorNs>: ''"
-	subList := &olmv1alpha1.SubscriptionList{}
-	labelKey := util.GetFirstNCharacter(packageManifest+"."+operatorNs, 63)
-	if err := b.Client.List(context.TODO(), subList, &client.ListOptions{
-		LabelSelector: labels.SelectorFromSet(labels.Set{
-			"operators.coreos.com/" + labelKey: "",
-		}),
-		Namespace: operatorNs,
-	}); err != nil {
-		klog.Errorf("Failed to list Subscription by packageManifest %s and operatorNs %s: %v", packageManifest, operatorNs, err)
-		return false, err
-	}
+func (b *Bootstrap) checkOperatorCSV(subName, packageManifest, operatorNs string) (bool, error) {
+	// Get the subscription by name and namespace
+	sub := &olmv1alpha1.Subscription{}
+	if err := b.Reader.Get(context.TODO(), types.NamespacedName{Name: subName, Namespace: operatorNs}, sub); err != nil {
+		klog.Warningf("Failed to get Subscription %s in namespace %s: %v, list subscription by packageManifest and operatorNs", subName, operatorNs, err)
+		// List the subscription by packageManifest and operatorNs
+		// The subscription contain label "operators.coreos.com/<packageManifest>.<operatorNs>: ''"
+		subList := &olmv1alpha1.SubscriptionList{}
+		labelKey := util.GetFirstNCharacter(packageManifest+"."+operatorNs, 63)
+		if err := b.Reader.List(context.TODO(), subList, &client.ListOptions{
+			LabelSelector: labels.SelectorFromSet(labels.Set{
+				"operators.coreos.com/" + labelKey: "",
+			}),
+			Namespace: operatorNs,
+		}); err != nil {
+			klog.Errorf("Failed to list Subscription by packageManifest %s and operatorNs %s: %v", packageManifest, operatorNs, err)
+			return false, err
+		}
 
-	// Check if multiple subscriptions exist
-	if len(subList.Items) > 1 {
-		return false, fmt.Errorf("multiple subscriptions found by packageManifest %s and operatorNs %s", packageManifest, operatorNs)
-	} else if len(subList.Items) == 0 {
-		return false, fmt.Errorf("no subscription found by packageManifest %s and operatorNs %s", packageManifest, operatorNs)
+		// Check if multiple subscriptions exist
+		if len(subList.Items) > 1 {
+			return false, fmt.Errorf("multiple subscriptions found by packageManifest %s and operatorNs %s", packageManifest, operatorNs)
+		} else if len(subList.Items) == 0 {
+			return false, fmt.Errorf("no subscription found by packageManifest %s and operatorNs %s", packageManifest, operatorNs)
+		}
+		sub = &subList.Items[0]
 	}
 
 	// Get the channel in the subscription .spec.channel, and check if it is semver
-	channel := subList.Items[0].Spec.Channel
+	channel := sub.Spec.Channel
 	if !semver.IsValid(channel) {
 		klog.Warningf("channel %s is not a semver for operator with packageManifest %s and operatorNs %s", channel, packageManifest, operatorNs)
 		return false, nil
 	}
 
 	// Get the CSV from subscription .status.installedCSV
-	installedCSV := subList.Items[0].Status.InstalledCSV
+	installedCSV := sub.Status.InstalledCSV
 	var installedVersion string
 	if installedCSV != "" {
 		// installedVersion is the version after the first dot in installedCSV
