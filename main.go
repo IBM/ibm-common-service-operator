@@ -24,6 +24,7 @@ import (
 	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	operatorsv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/package-server/apis/operators/v1"
+	admv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -66,6 +67,7 @@ func init() {
 	utilruntime.Must(nssv1.AddToScheme(scheme))
 	utilruntime.Must(ssv1.AddToScheme(scheme))
 	utilruntime.Must(operatorv3.AddToScheme(scheme))
+	utilruntime.Must(admv1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 
 	utilruntime.Must(olmv1alpha1.AddToScheme(scheme))
