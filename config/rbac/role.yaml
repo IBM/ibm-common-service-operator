@@ -121,6 +121,7 @@ rules:
   - statefulsets
   - daemonsets
   verbs:
+  - delete
   - get
   - list
   - patch
@@ -225,7 +226,7 @@ rules:
   - elasticstacks
   verbs:
   - delete
-# Delete ServiceAccount, RoleBinding, Role
+# Delete ServiceAccount, RoleBinding, Role, secretshares
 - apiGroups:
   - ""
   resources:
@@ -259,3 +260,15 @@ rules:
   - list
   resources:
   - podpresets
+- apiGroups:
+  - ibmcpcs.ibm.com
+  resources:
+  - secretshares
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch

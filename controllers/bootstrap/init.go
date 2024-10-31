@@ -909,7 +909,7 @@ func (b *Bootstrap) deleteWebhookResources() error {
 		return err
 	}
 
-	if err := b.deleteResource(&rbacv1.ClusterRoleBinding{}, "ibm-common-service-webhook-placeholder", "", "ClusterRoleBinding"); err != nil {
+	if err := b.deleteResource(&rbacv1.ClusterRoleBinding{}, "ibm-common-service-webhook-"+b.CSData.ServicesNs, "", "ClusterRoleBinding"); err != nil {
 		return err
 	}
 
@@ -932,7 +932,7 @@ func (b *Bootstrap) deleteSecretShareResources() error {
 		return err
 	}
 
-	if err := b.deleteResource(&rbacv1.ClusterRoleBinding{}, "secretshare-placeholder", "", "ClusterRoleBinding"); err != nil {
+	if err := b.deleteResource(&rbacv1.ClusterRoleBinding{}, "secretshare-"+b.CSData.ServicesNs, "", "ClusterRoleBinding"); err != nil {
 		return err
 	}
 
