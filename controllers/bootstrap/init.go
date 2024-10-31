@@ -256,7 +256,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		return err
 	}
 	// Reinstall/update OperandRegistry and OperandConfig if not installed/updated in the previous step
-	if !existOpreg || !existOpcon {
+	if !existOpreg || !existOpcon || forceUpdateODLMCRs {
 
 		// Set "Pending" condition when creating OperandRegistry and OperandConfig
 		instance.SetPendingCondition(constant.MasterCR, apiv3.ConditionTypePending, corev1.ConditionTrue, apiv3.ConditionReasonInit, apiv3.ConditionMessageInit)
