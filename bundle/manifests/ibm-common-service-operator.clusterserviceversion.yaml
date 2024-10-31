@@ -23,7 +23,7 @@ metadata:
     capabilities: Seamless Upgrades
     cloudPakThemesVersion: styles467.css
     containerImage: icr.io/cpopen/common-service-operator:latest
-    createdAt: "2024-04-11T02:45:28Z"
+    createdAt: "2024-10-31T05:22:07Z"
     description: The IBM Cloud Pak foundational services operator is used to deploy IBM foundational services.
     nss.operator.ibm.com/managed-operators: ibm-common-service-operator
     nss.operator.ibm.com/managed-webhooks: ""
@@ -309,6 +309,19 @@ spec:
                 - infrastructures
               verbs:
                 - get
+            - apiGroups:
+                - rbac.authorization.k8s.io
+              resources:
+                - clusterrolebindings
+                - clusterroles
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
           serviceAccountName: ibm-common-service-operator
       deployments:
         - label:
@@ -453,6 +466,7 @@ spec:
                 - statefulsets
                 - daemonsets
               verbs:
+                - delete
                 - get
                 - list
                 - patch
@@ -554,6 +568,51 @@ spec:
                 - elasticstacks
               verbs:
                 - delete
+            - apiGroups:
+                - ""
+              resources:
+                - serviceaccounts
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
+            - apiGroups:
+                - rbac.authorization.k8s.io
+              resources:
+                - rolebindings
+                - roles
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
+            - apiGroups:
+                - operator.ibm.com
+              resources:
+                - podpresets
+              verbs:
+                - get
+                - delete
+                - list
+            - apiGroups:
+                - ibmcpcs.ibm.com
+              resources:
+                - secretshares
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
           serviceAccountName: ibm-common-service-operator
     strategy: deployment
   installModes:
