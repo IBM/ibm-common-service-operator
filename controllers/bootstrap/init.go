@@ -1270,7 +1270,7 @@ func (b *Bootstrap) IsBYOCert() (bool, error) {
 		client.MatchingLabels(
 			map[string]string{"app.kubernetes.io/instance": "cs-ca-certificate"}),
 	}
-	if certerr := b.Reader.List(ctx, certList, opts...); err != nil {
+	if certerr := b.Reader.List(ctx, certList, opts...); certerr != nil {
 		return false, certerr
 	}
 
@@ -1416,9 +1416,9 @@ func (b *Bootstrap) CleanNamespaceScopeResources() error {
 	if isOpregAPI, err := b.CheckCRD(constant.OpregAPIGroupVersion, constant.OpregKind); err != nil {
 		klog.Errorf("Failed to check if %s CRD exists: %v", constant.OpregKind, err)
 		return err
-	} else if !isOpregAPI && err == nil {
+	} else if !isOpregAPI {
 		klog.Infof("%s CRD does not exist, skip checking no-op installMode", constant.OpregKind)
-	} else if isOpregAPI && err == nil {
+	} else if isOpregAPI {
 		// Get the common-service OperandRegistry
 		operandRegistry, err := b.GetOperandRegistry(ctx, constant.MasterCR, b.CSData.ServicesNs)
 		if err != nil {
