@@ -2183,7 +2183,7 @@ spec:
         labels:
           operator.ibm.com/opreq-control: 'true'
         name: meta-api-deploy
-        namespace: {{ .SerivcesNs }}
+        namespace: "{{ .ServicesNs }}"
     spec:
       operandBindInfo: {}
   - name: ibm-platformui-operator
