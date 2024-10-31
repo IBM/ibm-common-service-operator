@@ -23,7 +23,7 @@ metadata:
     capabilities: Seamless Upgrades
     cloudPakThemesVersion: styles4100.css
     containerImage: icr.io/cpopen/common-service-operator:latest
-    createdAt: "2024-10-31T03:02:18Z"
+    createdAt: "2024-10-31T04:39:08Z"
     description: The IBM Cloud Pak foundational services operator is used to deploy IBM foundational services.
     nss.operator.ibm.com/managed-operators: ibm-common-service-operator
     nss.operator.ibm.com/managed-webhooks: ""
@@ -310,22 +310,10 @@ spec:
               verbs:
                 - get
             - apiGroups:
-                - ""
-              resources:
-                - serviceaccounts
-              verbs:
-                - create
-                - delete
-                - get
-                - list
-                - patch
-                - update
-                - watch
-            - apiGroups:
                 - rbac.authorization.k8s.io
               resources:
-                - rolebindings
-                - roles
+                - clusterrolebindings
+                - clusterroles
               verbs:
                 - create
                 - delete
@@ -579,6 +567,39 @@ spec:
                 - elasticstacks
               verbs:
                 - delete
+            - apiGroups:
+                - ""
+              resources:
+                - serviceaccounts
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
+            - apiGroups:
+                - rbac.authorization.k8s.io
+              resources:
+                - rolebindings
+                - roles
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
+            - apiGroups:
+                - operator.ibm.com
+              resources:
+                - podpresets
+              verbs:
+                - get
+                - delete
+                - list
           serviceAccountName: ibm-common-service-operator
     strategy: deployment
   installModes:

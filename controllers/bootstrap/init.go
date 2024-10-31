@@ -55,6 +55,7 @@ import (
 	"github.com/IBM/ibm-common-service-operator/v4/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/v4/controllers/deploy"
 	nssv1 "github.com/IBM/ibm-namespace-scope-operator/v4/api/v1"
+	ssv1 "github.com/IBM/ibm-secretshare-operator/api/v1"
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/v4/api/v1alpha1"
 
 	certmanagerv1 "github.com/ibm/ibm-cert-manager-operator/apis/cert-manager/v1"
@@ -881,9 +882,14 @@ func (b *Bootstrap) DeleteV3Resources(mutatingWebhooks, validatingWebhooks []str
 // deleteWebhookResources deletes resources related to ibm-common-service-webhook
 func (b *Bootstrap) deleteWebhookResources() error {
 	// Delete PodPreset (CR)
-	// if err := b.deleteResource(&PodPreset{}, constant.WebhookServiceName, b.CSData.ServicesNs, "PodPreset"); err != nil {
-	// 	return err
-	// }
+	if err := b.deleteResource(&unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "operator.ibm.com/v1alpha1",
+			"kind":       "PodPreset",
+		},
+	}, constant.WebhookServiceName, b.CSData.ServicesNs, "PodPreset"); err != nil {
+		return err
+	}
 
 	// Delete ServiceAccount
 	if err := b.deleteResource(&corev1.ServiceAccount{}, constant.WebhookServiceName, b.CSData.ServicesNs, "ServiceAccount"); err != nil {
@@ -931,12 +937,7 @@ func (b *Bootstrap) deleteSecretShareResources() error {
 	}
 
 	// Delete SecretShare Operator CR
-	if err := b.deleteResource(&unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": "ibmcpcs.ibm.com/v1",
-			"kind":       constant.Secretshare,
-		},
-	}, constant.MasterCR, b.CSData.ServicesNs, "SecretShare Operator CR"); err != nil {
+	if err := b.deleteResource(&ssv1.SecretShare{}, constant.MasterCR, b.CSData.ServicesNs, "SecretShare Operator CR"); err != nil {
 		return err
 	}
 
@@ -1424,7 +1425,7 @@ func (b *Bootstrap) CleanNamespaceScopeResources() error {
 		if err != nil {
 			klog.Errorf("Failed to get common-service OperandRegistry: %v", err)
 			return err
-		} else if err == nil && operandRegistry == nil {
+		} else if operandRegistry == nil {
 			klog.Infof("The common-service OperandRegistry is not found in the %s namespace, skip cleaning the NamespaceScope resources", b.CSData.ServicesNs)
 			return nil
 		}
