@@ -66,6 +66,19 @@ rules:
   - config.openshift.io
   resources:
   - infrastructures
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - clusterrolebindings
+  - clusterroles
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -108,6 +121,7 @@ rules:
   - statefulsets
   - daemonsets
   verbs:
+  - delete
   - get
   - list
   - patch
@@ -212,3 +226,49 @@ rules:
   - elasticstacks
   verbs:
   - delete
+# Delete ServiceAccount, RoleBinding, Role, secretshares
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - rolebindings
+  - roles
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - operator.ibm.com
+  verbs:
+  - get
+  - delete
+  - list
+  resources:
+  - podpresets
+- apiGroups:
+  - ibmcpcs.ibm.com
+  resources:
+  - secretshares
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch

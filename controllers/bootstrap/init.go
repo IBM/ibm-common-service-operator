@@ -29,7 +29,10 @@ import (
 	utilyaml "github.com/ghodss/yaml"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"golang.org/x/mod/semver"
+	admv1 "k8s.io/api/admissionregistration/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -52,6 +55,7 @@ import (
 	"github.com/IBM/ibm-common-service-operator/v4/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/v4/controllers/deploy"
 	nssv1 "github.com/IBM/ibm-namespace-scope-operator/v4/api/v1"
+	ssv1 "github.com/IBM/ibm-secretshare-operator/api/v1"
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/v4/api/v1alpha1"
 
 	certmanagerv1 "github.com/ibm/ibm-cert-manager-operator/apis/cert-manager/v1"
@@ -194,6 +198,13 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 	// Create Keycloak themes ConfigMap
 	if err := b.CreateKeycloakThemesConfigMap(); err != nil {
 		klog.Errorf("Failed to create Keycloak Themes ConfigMap: %v", err)
+		return err
+	}
+
+	mutatingWebhooks := []string{constant.CSWebhookConfig, constant.OperanReqConfig}
+	validatingWebhooks := []string{constant.CSMappingConfig}
+	if err := b.DeleteV3Resources(mutatingWebhooks, validatingWebhooks); err != nil {
+		klog.Errorf("Failed to delete v3 resources: %v", err)
 		return err
 	}
 
@@ -842,6 +853,124 @@ func (b *Bootstrap) CreateKeycloakThemesConfigMap() error {
 	return nil
 }
 
+func (b *Bootstrap) DeleteV3Resources(mutatingWebhooks, validatingWebhooks []string) error {
+
+	// Delete the list of MutatingWebhookConfigurations
+	for _, webhook := range mutatingWebhooks {
+		if err := b.deleteResource(&admv1.MutatingWebhookConfiguration{}, webhook, "", "MutatingWebhookConfiguration"); err != nil {
+			return err
+		}
+	}
+
+	// Delete the list of ValidatingWebhookConfiguration
+	for _, webhook := range validatingWebhooks {
+		if err := b.deleteResource(&admv1.ValidatingWebhookConfiguration{}, webhook, "", "ValidatingWebhookConfiguration"); err != nil {
+			return err
+		}
+	}
+
+	if err := b.deleteWebhookResources(); err != nil {
+		klog.Errorf("Error deleting webhook resources: %v", err)
+	}
+
+	if err := b.deleteSecretShareResources(); err != nil {
+		klog.Errorf("Error deleting secretshare resources: %v", err)
+	}
+	return nil
+}
+
+// deleteWebhookResources deletes resources related to ibm-common-service-webhook
+func (b *Bootstrap) deleteWebhookResources() error {
+	// Delete PodPreset (CR)
+	if err := b.deleteResource(&unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "operator.ibm.com/v1alpha1",
+			"kind":       "PodPreset",
+		},
+	}, constant.WebhookServiceName, b.CSData.ServicesNs, "PodPreset"); err != nil {
+		return err
+	}
+
+	// Delete ServiceAccount
+	if err := b.deleteResource(&corev1.ServiceAccount{}, constant.WebhookServiceName, b.CSData.ServicesNs, "ServiceAccount"); err != nil {
+		return err
+	}
+
+	// Delete Roles and RoleBindings
+	if err := b.deleteResource(&rbacv1.Role{}, constant.WebhookServiceName, b.CSData.ServicesNs, "Role"); err != nil {
+		return err
+	}
+
+	if err := b.deleteResource(&rbacv1.RoleBinding{}, constant.WebhookServiceName, b.CSData.ServicesNs, "RoleBinding"); err != nil {
+		return err
+	}
+
+	if err := b.deleteResource(&rbacv1.ClusterRole{}, constant.WebhookServiceName, "", "ClusterRole"); err != nil {
+		return err
+	}
+
+	if err := b.deleteResource(&rbacv1.ClusterRoleBinding{}, "ibm-common-service-webhook-"+b.CSData.ServicesNs, "", "ClusterRoleBinding"); err != nil {
+		return err
+	}
+
+	// Delete Deployment
+	if err := b.deleteResource(&appsv1.Deployment{}, constant.WebhookServiceName, b.CSData.ServicesNs, "Deployment"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// deleteSecretShareResources deletes resources related to secretshare
+func (b *Bootstrap) deleteSecretShareResources() error {
+	if err := b.deleteResource(&corev1.ServiceAccount{}, constant.Secretshare, b.CSData.ServicesNs, "ServiceAccount"); err != nil {
+		return err
+	}
+
+	// Delete SecretShare ClusterRole and ClusterRoleBinding
+	if err := b.deleteResource(&rbacv1.ClusterRole{}, constant.Secretshare, "", "ClusterRole"); err != nil {
+		return err
+	}
+
+	if err := b.deleteResource(&rbacv1.ClusterRoleBinding{}, "secretshare-"+b.CSData.ServicesNs, "", "ClusterRoleBinding"); err != nil {
+		return err
+	}
+
+	// Delete SecretShare Operator CR
+	if err := b.deleteResource(&ssv1.SecretShare{}, constant.MasterCR, b.CSData.ServicesNs, "SecretShare Operator CR"); err != nil {
+		return err
+	}
+
+	// Delete SecretShare Operator Deployment
+	if err := b.deleteResource(&appsv1.Deployment{}, constant.Secretshare, b.CSData.ServicesNs, "Deployment"); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (b *Bootstrap) deleteResource(resource client.Object, name, namespace string, resourceType string) error {
+	namespacedName := types.NamespacedName{Name: name}
+	if namespace != "" {
+		namespacedName.Namespace = namespace
+	}
+
+	if err := b.Client.Get(ctx, namespacedName, resource); err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+		klog.Infof("%s %s/%s not found, skipping deletion", resourceType, namespace, name)
+		return nil
+	}
+
+	if err := b.Client.Delete(ctx, resource); err != nil {
+		klog.Errorf("Failed to delete %s %s/%s: %v", resourceType, namespace, name, err)
+		return err
+	}
+
+	klog.Infof("Successfully deleted %s %s/%s", resourceType, namespace, name)
+	return nil
+}
+
 // CreateCsMaps will create a new common-service-maps configmap if not exists
 func (b *Bootstrap) CreateCsMaps() error {
 
@@ -1142,7 +1271,7 @@ func (b *Bootstrap) IsBYOCert() (bool, error) {
 		client.MatchingLabels(
 			map[string]string{"app.kubernetes.io/instance": "cs-ca-certificate"}),
 	}
-	if certerr := b.Reader.List(ctx, certList, opts...); err != nil {
+	if certerr := b.Reader.List(ctx, certList, opts...); certerr != nil {
 		return false, certerr
 	}
 
@@ -1288,15 +1417,15 @@ func (b *Bootstrap) CleanNamespaceScopeResources() error {
 	if isOpregAPI, err := b.CheckCRD(constant.OpregAPIGroupVersion, constant.OpregKind); err != nil {
 		klog.Errorf("Failed to check if %s CRD exists: %v", constant.OpregKind, err)
 		return err
-	} else if !isOpregAPI && err == nil {
+	} else if !isOpregAPI {
 		klog.Infof("%s CRD does not exist, skip checking no-op installMode", constant.OpregKind)
-	} else if isOpregAPI && err == nil {
+	} else if isOpregAPI {
 		// Get the common-service OperandRegistry
 		operandRegistry, err := b.GetOperandRegistry(ctx, constant.MasterCR, b.CSData.ServicesNs)
 		if err != nil {
 			klog.Errorf("Failed to get common-service OperandRegistry: %v", err)
 			return err
-		} else if err == nil && operandRegistry == nil {
+		} else if operandRegistry == nil {
 			klog.Infof("The common-service OperandRegistry is not found in the %s namespace, skip cleaning the NamespaceScope resources", b.CSData.ServicesNs)
 			return nil
 		}
