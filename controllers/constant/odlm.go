@@ -579,7 +579,7 @@ spec:
         labels:
           operator.ibm.com/opreq-control: 'true'
         name: meta-api-deploy
-        namespace: {{ .OperatorNs }}
+        namespace: "{{ .CPFSNs }}"
     spec:
       operandBindInfo: {}
   - name: ibm-platformui-operator-v4.1
@@ -590,7 +590,7 @@ spec:
         labels:
           operator.ibm.com/opreq-control: 'true'
         name: meta-api-deploy
-        namespace: {{ .OperatorNs }}
+        namespace: "{{ .CPFSNs }}"
     spec:
       operandBindInfo: {}
   - name: ibm-platformui-operator-v4.2
@@ -601,7 +601,7 @@ spec:
         labels:
           operator.ibm.com/opreq-control: 'true'
         name: meta-api-deploy
-        namespace: {{ .OperatorNs }}
+        namespace: "{{ .CPFSNs }}"
     spec:
       operandBindInfo: {}
   - name: ibm-platformui-operator-v4.3
@@ -612,7 +612,7 @@ spec:
         labels:
           operator.ibm.com/opreq-control: 'true'
         name: meta-api-deploy
-        namespace: {{ .OperatorNs }}
+        namespace: "{{ .CPFSNs }}"
     spec:
       operandBindInfo: {}
   - name: ibm-platformui-operator-v4.4
@@ -623,7 +623,7 @@ spec:
         labels:
           operator.ibm.com/opreq-control: 'true'
         name: meta-api-deploy
-        namespace: {{ .OperatorNs }}
+        namespace: "{{ .CPFSNs }}"
     spec:
       operandBindInfo: {}
   - name: ibm-platformui-operator-v6.0
@@ -634,7 +634,7 @@ spec:
         labels:
           operator.ibm.com/opreq-control: 'true'
         name: meta-api-deploy
-        namespace: {{ .OperatorNs }}
+        namespace: "{{ .CPFSNs }}"
     spec:
       operandBindInfo: {}
   - name: ibm-platformui-operator-v6.1
@@ -2364,7 +2364,7 @@ spec:
         labels:
           operator.ibm.com/opreq-control: 'true'
         name: meta-api-deploy
-        namespace: {{ .OperatorNs }}
+        namespace: {{ .SerivcesNs }}
     spec:
       operandBindInfo: {}
   - name: ibm-platformui-operator
