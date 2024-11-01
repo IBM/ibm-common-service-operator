@@ -78,11 +78,11 @@ func TestCheckOperatorCSV(t *testing.T) {
 	}
 
 	// Test case 1: Single subscription found with valid semver
-	result, err := bootstrap.checkOperatorCSV(packageManifest, operatorNs)
+	result, err := bootstrap.checkOperatorCSV("subscription-1", packageManifest, operatorNs)
 	assert.True(t, result)
 	assert.NoError(t, err)
 
-	// Test case 2: Multiple subscriptions found
+	// Test case 2: Multiple subscriptions found and not subscription name matched
 	err = fakeClient.Create(context.TODO(), &olmv1alpha1.Subscription{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "subscription-2",
@@ -100,7 +100,7 @@ func TestCheckOperatorCSV(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	result, err = bootstrap.checkOperatorCSV(packageManifest, operatorNs)
+	result, err = bootstrap.checkOperatorCSV("subscription-non-match", packageManifest, operatorNs)
 	assert.False(t, result)
 	assert.EqualError(t, err, fmt.Sprintf("multiple subscriptions found by packageManifest %s and operatorNs %s", packageManifest, operatorNs))
 
@@ -117,7 +117,7 @@ func TestCheckOperatorCSV(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	result, err = bootstrap.checkOperatorCSV(packageManifest, operatorNs)
+	result, err = bootstrap.checkOperatorCSV("subscription-1", packageManifest, operatorNs)
 	assert.False(t, result)
 	assert.EqualError(t, err, fmt.Sprintf("no subscription found by packageManifest %s and operatorNs %s", packageManifest, operatorNs))
 
@@ -139,7 +139,7 @@ func TestCheckOperatorCSV(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	result, err = bootstrap.checkOperatorCSV(packageManifest, operatorNs)
+	result, err = bootstrap.checkOperatorCSV("subscription-3", packageManifest, operatorNs)
 	assert.False(t, result)
 	assert.NoError(t, err)
 
@@ -153,7 +153,7 @@ func TestCheckOperatorCSV(t *testing.T) {
 	err = fakeClient.Update(context.TODO(), subscription)
 	assert.NoError(t, err)
 
-	result, err = bootstrap.checkOperatorCSV(packageManifest, operatorNs)
+	result, err = bootstrap.checkOperatorCSV("subscription-3", packageManifest, operatorNs)
 	assert.True(t, result)
 	assert.NoError(t, err)
 
@@ -167,7 +167,7 @@ func TestCheckOperatorCSV(t *testing.T) {
 	err = fakeClient.Update(context.TODO(), subscription)
 	assert.NoError(t, err)
 
-	result, err = bootstrap.checkOperatorCSV(packageManifest, operatorNs)
+	result, err = bootstrap.checkOperatorCSV("subscription-3", packageManifest, operatorNs)
 	assert.False(t, result)
 	assert.NoError(t, err)
 
@@ -181,7 +181,7 @@ func TestCheckOperatorCSV(t *testing.T) {
 	err = fakeClient.Update(context.TODO(), subscription)
 	assert.NoError(t, err)
 
-	result, err = bootstrap.checkOperatorCSV(packageManifest, operatorNs)
+	result, err = bootstrap.checkOperatorCSV("subscription-3", packageManifest, operatorNs)
 	assert.True(t, result)
 	assert.NoError(t, err)
 
@@ -232,12 +232,12 @@ func TestWaitOperatorCSV(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	isWaiting, err := bootstrap.waitOperatorCSV(packageManifest, operatorNs)
+	isWaiting, err := bootstrap.waitOperatorCSV("subscription-1", packageManifest, operatorNs)
 	assert.True(t, isWaiting)
 	assert.NoError(t, err)
 
 	// Test case 2: Operator CSV is already installed
-	isWaiting, err = bootstrap.waitOperatorCSV(packageManifest, operatorNs)
+	isWaiting, err = bootstrap.waitOperatorCSV("subscription-1", packageManifest, operatorNs)
 	assert.False(t, isWaiting)
 	assert.NoError(t, err)
 }
