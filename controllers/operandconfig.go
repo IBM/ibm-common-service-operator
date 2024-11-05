@@ -164,6 +164,12 @@ func mergeCSCRs(csSummary, csCR, ruleSlice []interface{}, serviceControllerMappi
 				}
 				newResource := getItemByGVKNameNamespace(summaryCR.(map[string]interface{})["resources"].([]interface{}), opconNs, apiVersion, kind, name, namespace)
 				if newResource != nil {
+					if _, ok := nonDefaultProfileController[serviceController]; ok {
+						if isOpResourceExists(newResource) {
+							klog.Info("### DEBUG: deleting key")
+							newResource.(map[string]interface{})["data"].(map[string]interface{})["spec"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})["cpu"] = struct{}{}
+						}
+					}
 					operator.(map[string]interface{})["resources"].([]interface{})[i] = mergeCRsIntoOperandConfigWithDefaultRules(opResource.(map[string]interface{}), newResource.(map[string]interface{}), false)
 				}
 			}
@@ -455,6 +461,12 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 
 					newResource := getItemByGVKNameNamespace(newConfigForOperator.(map[string]interface{})["resources"].([]interface{}), opconKey.Namespace, apiVersion, kind, name, namespace)
 					if newResource != nil {
+						if _, ok := nonDefaultProfileController[serviceController]; ok {
+							if isOpResourceExists(newResource) {
+								klog.Info("### DEBUG: deleting key")
+								newResource.(map[string]interface{})["data"].(map[string]interface{})["spec"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})["cpu"] = struct{}{}
+							}
+						}
 						opResources[i] = mergeCRsIntoOperandConfigWithDefaultRules(opResource.(map[string]interface{}), newResource.(map[string]interface{}), true)
 					}
 				}
@@ -498,6 +510,22 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 	return isEqual, nil
 }
 
+func isOpResourceExists(opResource interface{}) bool {
+	if opResource.(map[string]interface{})["data"] == nil {
+		klog.Info("### DEBUG: data not exists")
+		return false
+	}
+	if opResource.(map[string]interface{})["data"].(map[string]interface{})["spec"] == nil {
+		klog.Info("### DEBUG: data not exists")
+		return false
+	}
+	if opResource.(map[string]interface{})["data"].(map[string]interface{})["spec"].(map[string]interface{})["resources"] == nil {
+		klog.Info("### DEBUG: resources not exists")
+		return false
+	}
+	return true
+}
+
 func (r *CommonServiceReconciler) getExtremeizes(ctx context.Context, opconServices, ruleSlice []interface{}, extreme Extreme) ([]interface{}, error) {
 	// Fetch all the CommonService instances
 	csReq, err := labels.NewRequirement(constant.CsClonedFromLabel, selection.DoesNotExist, []string{})
@@ -536,12 +564,14 @@ func (r *CommonServiceReconciler) getExtremeizes(ctx context.Context, opconServi
 
 	for _, opService := range opconServices {
 		crSummary := getItemByName(configSummary, opService.(map[string]interface{})["name"].(string))
+
+		rules := getItemByName(ruleSlice, opService.(map[string]interface{})["name"].(string))
+		serviceController := serviceControllerMappingSummary["profileController"]
+		if controller, ok := serviceControllerMappingSummary[opService.(map[string]interface{})["name"].(string)]; ok {
+			serviceController = controller
+		}
+
 		if opService.(map[string]interface{})["spec"] != nil {
-			rules := getItemByName(ruleSlice, opService.(map[string]interface{})["name"].(string))
-			serviceController := serviceControllerMappingSummary["profileController"]
-			if controller, ok := serviceControllerMappingSummary[opService.(map[string]interface{})["name"].(string)]; ok {
-				serviceController = controller
-			}
 			for cr, spec := range opService.(map[string]interface{})["spec"].(map[string]interface{}) {
 				if _, ok := nonDefaultProfileController[serviceController]; ok {
 					// clean up OperandConfig
@@ -588,6 +618,12 @@ func (r *CommonServiceReconciler) getExtremeizes(ctx context.Context, opconServi
 
 					summarizedRes := getItemByGVKNameNamespace(crSummary.(map[string]interface{})["resources"].([]interface{}), r.CSData.ServicesNs, apiVersion, kind, name, namespace)
 					if summarizedRes != nil {
+						if _, ok := nonDefaultProfileController[serviceController]; ok {
+							if isOpResourceExists(summarizedRes) {
+								klog.Info("### DEBUG: deleting key")
+								summarizedRes.(map[string]interface{})["data"].(map[string]interface{})["spec"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})["cpu"] = struct{}{}
+							}
+						}
 						opResources[i] = shrinkSize(opResource.(map[string]interface{}), summarizedRes.(map[string]interface{}), extreme)
 					}
 				}
