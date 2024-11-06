@@ -407,7 +407,7 @@ function refresh_auth_idp(){
     if [[ $auth_pod == "" ]]; then
         info "Pod auth-idp not found, checking later version of pods..."
         local auth_pod=$(${OC} get pods -n $TARGET_NAMESPACE | grep platform-auth | awk '{print $1}')
-        if [[$auth_pod != "" ]]; then
+        if [[ $auth_pod != "" ]]; then
             ${OC} delete pod $auth_pod -n $TARGET_NAMESPACE || error "Pod $auth_pod could not be deleted"
             local idp_pod=$(${OC} get pods -n $TARGET_NAMESPACE | grep platform-identity-provider | awk '{print $1}')
             ${OC} delete pod $idp_pod -n $TARGET_NAMESPACE || error "Pod $idp_pod could not be deleted"
