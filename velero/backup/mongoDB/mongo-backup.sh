@@ -31,7 +31,7 @@ function backup_mongodb(){
   #  Get the storage class from the existing PVCs for use in creating the backup volume
   #
   SAMPLEPV=$(oc get pvc mongodbdir-icp-mongodb-0 -n $CS_NAMESPACE -o jsonpath='{.spec.volumeName}')
-  if [[ -z $CONVERT && $CONVERT == "true" ]]; then
+  if [[ $CONVERT == "true" ]]; then
     STGCLASS="backup-sc"
   else
     STGCLASS=$(oc get pvc --no-headers=true mongodbdir-icp-mongodb-0 -n $CS_NAMESPACE -o jsonpath='{.spec.storageClassName}')
