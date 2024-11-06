@@ -32,6 +32,7 @@ function backup_mongodb(){
   #
   SAMPLEPV=$(oc get pvc mongodbdir-icp-mongodb-0 -n $CS_NAMESPACE -o jsonpath='{.spec.volumeName}')
   if [[ $CONVERT == "true" ]]; then
+    info "inside check"
     STGCLASS="backup-sc"
   else
     STGCLASS=$(oc get pvc --no-headers=true mongodbdir-icp-mongodb-0 -n $CS_NAMESPACE -o jsonpath='{.spec.storageClassName}')
