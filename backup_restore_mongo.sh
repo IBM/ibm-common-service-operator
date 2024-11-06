@@ -138,14 +138,14 @@ function prep_backup() {
         info "mongodbbackup.yaml already present"
     else
         info "mongodbbackup.yaml not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongoDB/mongodbbackup.yaml"
-        wget -O mongodbbackup.yaml https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongoDB/mongodbbackup.yaml || error "Failed to download mongodbbackup.yaml"
+        wget -O mongodbbackup.yaml https://raw.githubusercontent.com/bluzarraga/ibm-common-service-operator/mongobrbug/velero/backup/mongoDB/mongodbbackup.yaml || error "Failed to download mongodbbackup.yaml"
     fi
 
     if [[ -f "mongo-backup.sh" ]]; then
         info "mongo-backup.sh already present"
     else
         info "mongodbbackup.yaml not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongoDB/mongo-backup.sh"
-        wget -O mongo-backup.sh https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongoDB/mongo-backup.sh
+        wget -O mongo-backup.sh https://raw.githubusercontent.com/bluzarraga/ibm-common-service-operator/mongobrbug/velero/backup/mongoDB/mongo-backup.sh
     fi
 
     local pvx=$(${OC} get pv | grep mongodbdir | awk 'FNR==1 {print $1}')
@@ -187,7 +187,7 @@ function backup() {
     msg "-----------------------------------------------------------------------"
     export CS_NAMESPACE=$ORIGINAL_NAMESPACE
     chmod +x mongo-backup.sh
-    ./mongo-backup.sh $ORIGINAL_NAMESPACE
+    ./mongo-backup.sh $ORIGINAL_NAMESPACE "true"
 
     local jobPod=$(${OC} get pods -n $ORIGINAL_NAMESPACE | grep mongodb-backup | awk '{ print $1 }')
     local fileName="backup_from_${ORIGINAL_NAMESPACE}_for_${TARGET_NAMESPACE}.log"

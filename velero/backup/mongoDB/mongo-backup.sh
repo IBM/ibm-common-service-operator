@@ -31,8 +31,12 @@ function backup_mongodb(){
   #  Get the storage class from the existing PVCs for use in creating the backup volume
   #
   SAMPLEPV=$(oc get pvc mongodbdir-icp-mongodb-0 -n $CS_NAMESPACE -o jsonpath='{.spec.volumeName}')
-  STGCLASS=$(oc get pvc --no-headers=true mongodbdir-icp-mongodb-0 -n $CS_NAMESPACE -o jsonpath='{.spec.storageClassName}')
-
+  if [[ -z $CONVERT && $CONVERT == "true" ]]; then
+    STGCLASS="backup-sc"
+  else
+    STGCLASS=$(oc get pvc --no-headers=true mongodbdir-icp-mongodb-0 -n $CS_NAMESPACE -o jsonpath='{.spec.storageClassName}')
+  fi
+  info "Using $STGCLASS for storageclass"
   #
   # Backup MongoDB
   #
@@ -72,7 +76,7 @@ spec:
     spec:
       containers:
       - name: cs-mongodb-backup
-        image: icr.io/cpopen/cpfs/ibm-mongodb@sha256:d62f7145428f62466622160005eafcfee39cbf866df88aaeaee4d99173d1882f
+        image: icr.io/cpopen/cpfs/ibm-mongodb:4.2.3-mongodb.4.0.24
         resources:
           limits:
             cpu: 500m
