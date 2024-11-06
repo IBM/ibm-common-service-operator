@@ -30,9 +30,8 @@ function backup_mongodb(){
   #
   #  Get the storage class from the existing PVCs for use in creating the backup volume
   #
-  SAMPLEPV=$(oc get pvc -n $CS_NAMESPACE | grep mongodb | awk '{ print $3 }')
-  SAMPLEPV=$( echo $SAMPLEPV | awk '{ print $1 }' )
-  STGCLASS=$(oc get pvc --no-headers=true mongodbdir-icp-mongodb-0 -n $CS_NAMESPACE | awk '{ print $6 }')
+  SAMPLEPV=$(oc get pvc mongodbdir-icp-mongodb-0 -n $CS_NAMESPACE -o jsonpath='{.spec.volumeName}')
+  STGCLASS=$(oc get pvc --no-headers=true mongodbdir-icp-mongodb-0 -n $CS_NAMESPACE -o jsonpath='{.spec.storageClassName}')
 
   #
   # Backup MongoDB
