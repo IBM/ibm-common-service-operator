@@ -2,7 +2,7 @@ apiVersion: devops.turbonomic.io/v1alpha1
 kind: OperatorResourceMapping
 metadata:
   name: auth-service-orm
-  namespace: ebijdua-cpfs
+  namespace: $namespace
 spec:
   mappings:
     patterns:
