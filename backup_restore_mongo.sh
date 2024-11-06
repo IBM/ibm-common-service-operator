@@ -404,7 +404,7 @@ function refresh_auth_idp(){
     title " Restarting auth-idp pod in namespace $TARGET_NAMESPACE "
     msg "-----------------------------------------------------------------------"
     local auth_pod=$(${OC} get pods -n $TARGET_NAMESPACE | grep auth-idp | awk '{print $1}')
-    if [[$auth_pod == "" ]]; then
+    if [[ $auth_pod == "" ]]; then
         info "Pod auth-idp not found, checking later version of pods..."
         local auth_pod=$(${OC} get pods -n $TARGET_NAMESPACE | grep platform-auth | awk '{print $1}')
         if [[$auth_pod != "" ]]; then
