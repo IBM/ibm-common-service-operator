@@ -1,0 +1,28 @@
+apiVersion: devops.turbonomic.io/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: opensearch-orm
+  namespace: $namespace
+spec:
+  mappings:
+    patterns:
+      - owned:
+          apiVersion: apps/v1
+          kind: StatefulSet
+          path: .spec.spec.containers[?(@.name=="elasticsearch")].resources
+        ownerPath: .spec.resources
+        selector: os_deploy
+      - owned:
+          apiVersion: apps/v1
+          kind: StatefulSet
+          path: .spec.spec.containers[?(@.name=="haproxy")].resources
+        ownerPath: .spec.resources
+        selector: os_deploy
+    selectors:
+      os_deploy:
+        matchLabels:
+          app.kubernetes.io/name: opensearch
+  owner:
+    apiVersion: elasticsearch.opencontent.ibm.com/v1
+    kind: ElasticsearchCluster
+    name: opensearch
