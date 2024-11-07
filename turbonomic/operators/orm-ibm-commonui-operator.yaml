@@ -1,0 +1,23 @@
+apiVersion: devops.turbonomic.io/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: ibm-commonui-operator-orm
+spec:
+  owner: # target same namespace by default
+    apiVersion: operators.coreos.com/v1alpha1
+    kind: ClusterServiceVersion
+    name: ibm-commonui-operator.v4.6.0
+  mappings:
+    patterns:
+    - ownerPath: .spec.install.spec.deployments[?(@.name=="ibm-commonui-operator")].spec.replicas
+      owned:
+        apiVersion: apps/v1
+        kind: Deployment
+        path: .spec.replicas
+        name: ibm-commonui-operator
+    - ownerPath: .spec.install.spec.deployments[?(@.name=="ibm-commonui-operator")].spec.template.spec.containers[?(@.name=="manager")].resources
+      owned:
+        apiVersion: apps/v1
+        kind: Deployment
+        path: .spec.template.spec.containers[?(@.name=="manager")].resources
+        name: ibm-commonui-operator
