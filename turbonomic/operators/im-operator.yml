@@ -1,0 +1,18 @@
+apiVersion: devops.turbonomic.io/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: im-operator-orm
+  namespace: $namespace
+spec:
+  mappings:
+    patterns:
+    - owned:
+        apiVersion: apps/v1
+        kind: Deployment
+        path: .spec.template.spec.containers[?(@.name=="ibm-iam-operator")].resources
+        name: ibm-iam-operator
+      ownerPath: .spec.install.spec.deployments[?(@.name=="ibm-iam-operator")].spec.template.spec.containers[?(@.name=="ibm-iam-operator")].resources
+  owner:
+    apiVersion: operators.coreos.com/v1alpha1
+    kind: ClusterServiceVersion
+    name: ibm-iam-operator.v4.9.0
