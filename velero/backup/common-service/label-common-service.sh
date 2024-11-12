@@ -273,6 +273,17 @@ function label_ns_and_related() {
         operand_requests=$(${OC} get operandrequest -n "$namespace" -o custom-columns=NAME:.metadata.name --no-headers)
         # Loop through each OperandRequest name
         while IFS= read -r operand_request; do
+            # Skip all the operandrequest with ownerreference
+            ownerReferences=$(${OC} get operandrequest $operand_request -n "$namespace" -o jsonpath='{.metadata.ownerReferences}')
+            if [[ $ownerReferences != "" ]]; then
+                continue
+            fi
+            # Skip all the operandrequest generate by ODLM
+            control_by_odlm=$(${OC} get operandrequest $operand_request -n "$namespace" --show-labels --no-headers | grep "operator.ibm.com/opreq-control=true" || echo "false")
+            if [[ $control_by_odlm != "false" ]]; then
+                continue
+            fi
+            
             ${OC} label operandrequests $operand_request foundationservices.cloudpak.ibm.com=operand -n "$namespace" --overwrite=true 2>/dev/null
         done <<< "$operand_requests"
 
@@ -298,6 +309,7 @@ function label_configmap() {
     title "Start to label the ConfigMaps... "
     ${OC} label configmap common-service-maps foundationservices.cloudpak.ibm.com=configmap -n kube-public --overwrite=true 2>/dev/null
     ${OC} label configmap cs-onprem-tenant-config foundationservices.cloudpak.ibm.com=configmap -n $SERVICES_NS --overwrite=true 2>/dev/null
+    ${OC} label configmap common-web-ui-config foundationservices.cloudpak.ibm.com=configmap -n $SERVICES_NS --overwrite=true 2>/dev/null
     echo ""
 }
 
