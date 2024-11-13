@@ -2,7 +2,9 @@ apiVersion: devops.turbonomic.io/v1alpha1
 kind: OperatorResourceMapping
 metadata:
   name: auth-service-orm
-  namespace: $namespace
+  namespace: {{ placeholder_namespace }}
+  labels:
+    component: cpfs
 spec:
   mappings:
     patterns:
