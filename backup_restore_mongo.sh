@@ -138,14 +138,14 @@ function prep_backup() {
         info "mongodbbackup.yaml already present"
     else
         info "mongodbbackup.yaml not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongoDB/mongodbbackup.yaml"
-        wget -O mongodbbackup.yaml https://raw.githubusercontent.com/bluzarraga/ibm-common-service-operator/mongobrbug/velero/backup/mongoDB/mongodbbackup.yaml || error "Failed to download mongodbbackup.yaml"
+        wget -O mongodbbackup.yaml https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongoDB/mongodbbackup.yaml || error "Failed to download mongodbbackup.yaml"
     fi
 
     if [[ -f "mongo-backup.sh" ]]; then
         info "mongo-backup.sh already present"
     else
         info "mongodbbackup.yaml not found, downloading from https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongoDB/mongo-backup.sh"
-        wget -O mongo-backup.sh https://raw.githubusercontent.com/bluzarraga/ibm-common-service-operator/mongobrbug/velero/backup/mongoDB/mongo-backup.sh
+        wget -O mongo-backup.sh https://raw.githubusercontent.com/IBM/ibm-common-service-operator/scripts/velero/backup/mongoDB/mongo-backup.sh
     fi
 
     local pvx=$(${OC} get pv | grep mongodbdir | awk 'FNR==1 {print $1}')
