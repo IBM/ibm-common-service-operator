@@ -30,14 +30,14 @@ function backup_mongodb(){
   #
   #  Get the storage class from the existing PVCs for use in creating the backup volume
   #
-  SAMPLEPV=$(oc get pvc -n $CS_NAMESPACE | grep mongodb | awk '{ print $3 }')
-  SAMPLEPV=$( echo $SAMPLEPV | awk '{ print $1 }' )
-  #STGCLASS=$(oc get pvc --no-headers=true mongodbdir-icp-mongodb-0 -n $CS_NAMESPACE | awk '{ print $6 }')
-  STGCLASS=ibmc-block-retain-gold
-  # Used by multi-namespace
-  if [[ $CONVERT != "" ]]; then
-    STGCLASS=$CONVERT
+  SAMPLEPV=$(oc get pvc mongodbdir-icp-mongodb-0 -n $CS_NAMESPACE -o jsonpath='{.spec.volumeName}')
+  if [[ $CONVERT == "true" ]]; then
+    info "inside check"
+    STGCLASS="backup-sc"
+  else
+    STGCLASS=$(oc get pvc --no-headers=true mongodbdir-icp-mongodb-0 -n $CS_NAMESPACE -o jsonpath='{.spec.storageClassName}')
   fi
+  info "Using $STGCLASS for storageclass"
   #
   # Backup MongoDB
   #
@@ -61,6 +61,7 @@ EOF
   #
   # Start the backup
   #
+  
   info "Starting backup"
   cat <<EOF | oc apply -f -
 apiVersion: batch/v1
@@ -76,7 +77,7 @@ spec:
     spec:
       containers:
       - name: cs-mongodb-backup
-        image: icr.io/cpopen/cpfs/ibm-mongodb@sha256:d62f7145428f62466622160005eafcfee39cbf866df88aaeaee4d99173d1882f
+        image: icr.io/cpopen/cpfs/ibm-mongodb:4.2.3-mongodb.4.0.24
         resources:
           limits:
             cpu: 500m

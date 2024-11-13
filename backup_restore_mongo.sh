@@ -187,7 +187,7 @@ function backup() {
     msg "-----------------------------------------------------------------------"
     export CS_NAMESPACE=$ORIGINAL_NAMESPACE
     chmod +x mongo-backup.sh
-    ./mongo-backup.sh $ORIGINAL_NAMESPACE true
+    ./mongo-backup.sh $ORIGINAL_NAMESPACE "true"
 
     local jobPod=$(${OC} get pods -n $ORIGINAL_NAMESPACE | grep mongodb-backup | awk '{ print $1 }')
     local fileName="backup_from_${ORIGINAL_NAMESPACE}_for_${TARGET_NAMESPACE}.log"
@@ -404,7 +404,20 @@ function refresh_auth_idp(){
     title " Restarting auth-idp pod in namespace $TARGET_NAMESPACE "
     msg "-----------------------------------------------------------------------"
     local auth_pod=$(${OC} get pods -n $TARGET_NAMESPACE | grep auth-idp | awk '{print $1}')
-    ${OC} delete pod $auth_pod -n $TARGET_NAMESPACE || error "Pod $auth_pod could not be deleted"
+    if [[ $auth_pod == "" ]]; then
+        info "Pod auth-idp not found, checking later version of pods..."
+        local auth_pod=$(${OC} get pods -n $TARGET_NAMESPACE | grep platform-auth | awk '{print $1}')
+        if [[ $auth_pod != "" ]]; then
+            ${OC} delete pod $auth_pod -n $TARGET_NAMESPACE || error "Pod $auth_pod could not be deleted"
+            local idp_pod=$(${OC} get pods -n $TARGET_NAMESPACE | grep platform-identity-provider | awk '{print $1}')
+            ${OC} delete pod $idp_pod -n $TARGET_NAMESPACE || error "Pod $idp_pod could not be deleted"
+            local id_mgmt_pod=$(${OC} get pods -n $TARGET_NAMESPACE | grep platform-identity-management | awk '{print $1}')
+            ${OC} delete pod $id_mgmt_pod -n $TARGET_NAMESPACE || error "Pod $id_mgmt_pod could not be deleted"
+        fi
+    else
+        ${OC} delete pod $auth_pod -n $TARGET_NAMESPACE || error "Pod $auth_pod could not be deleted"
+    fi
+    
     success "Pod $auth_pod deleted. Please allow a few minutes for it to restart."
 }
 
