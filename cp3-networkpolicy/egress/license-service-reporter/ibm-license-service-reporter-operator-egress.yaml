@@ -1,17 +1,15 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: egress-ibm-license-service-reporter-operator
-  namespace: "lsrNamespace"
-  labels:
-    component: cpfs3
+  name: ibm-license-service-reporter-operator-kubernetes-egress
+  namespace: ibm-licensing-namespace
 spec:
   egress:
     - ports:
-        - protocol: TCP
-          port: 443
-        - protocol: TCP
-          port: 6443
+      - protocol: TCP
+        port: 443
+      - protocol: TCP
+        port: 6443
       to:
         - podSelector:
             matchLabels:
@@ -33,6 +31,6 @@ spec:
             dns.operator.openshift.io/daemonset-dns: default
   podSelector:
     matchLabels:
-      name: "ibm-license-service-reporter-operator"
+      name: ibm-license-service-reporter-operator
   policyTypes:
   - Egress
