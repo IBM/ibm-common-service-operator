@@ -129,8 +129,11 @@ func CleanupMongodbPreloadCm(bs *bootstrap.Bootstrap) {
 				time.Sleep(5 * time.Second)
 				continue
 			}
-			klog.Infof(" ConfigMap %s in %s is deleted for the preparation of MongoDB migration.", mongodbPreloadCm, bs.CSData.ServicesNs)
+			klog.Infof("ConfigMap %s in %s is deleted for the preparation of MongoDB migration.", mongodbPreloadCm, bs.CSData.ServicesNs)
+			break
 		}
+		klog.Infof("StatefulSet %s does not have owner reference, skip deleting %s ConfigMap", mongodbStatefulSet, mongodbPreloadCm)
+		break
 	}
 }
 
