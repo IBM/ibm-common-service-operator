@@ -796,8 +796,6 @@ function check_if_certmanager_requested() {
         REQUEST_CERTMANAGER="false"
     fi
 
-
-
 }
 
 function wait_for_certmanager() {
@@ -833,7 +831,6 @@ function wait_for_certmanager() {
     webhook_ns=$(${OC} get deploy -A | grep cert-manager-webhook | awk '{print $1}')
     success "Cert Manager ready. Cert Manager operands deployed in $webhook_ns"
 }
-
 
 function check_certmanager_count(){
     info "Verifying cert manager is deployed"
