@@ -35,6 +35,7 @@ DEBUG=0
 BACKUP_LICENSING="false"
 PREVIEW_MODE=0
 IS_ISOLATED=0
+REQUEST_CERTMANAGER="false"
 
 # ---------- Command variables ----------
 
@@ -117,6 +118,13 @@ function main() {
     #need to get the namespaces for csmaps generation before pausing cs, otherwise namespace-scope cm does not include all namespaces
     prereq
     local ns_list=$(gather_csmaps_ns)
+    # verify if cert manager is requested
+    check_if_certmanager_requested "${ns_list}"
+
+    #verify one and only one cert manager is installed
+    if [[ $REQUEST_CERTMANAGER == "true" ]]
+        check_certmanager_count
+    fi
     pause
     cleanup_webhook
     cleanup_secretshare
@@ -134,7 +142,9 @@ function main() {
         info "Licensing not marked for backup, skipping."
     fi
     restart
-    wait_for_certmanager "${ns_list}"
+    if [[ $REQUEST_CERTMANAGER == "true" ]]
+        wait_for_certmanager "${ns_list}"
+    fi
     wait_for_nss_update "${ns_list}"
     success "Isolation complete"
 }
@@ -177,8 +187,6 @@ function prereq() {
         error "Invalid value for DEBUG. Expected 0 or 1."
     fi
 
-    #verify one and only one cert manager is installed
-    check_certmanager_count
     check_command "${OC}"
     check_command "${YQ}"
     # Check yq version
@@ -762,10 +770,10 @@ function cleanup_secretshare() {
     cleanup_deployment "secretshare" $MASTER_NS
 }
 
-function check_if_certmanager_deployed() {
+function check_if_certmanager_requested() {
     local namespaces=$@
-    info "Checking for cert manager deployed in scope."
-    local deployed="false"
+    info "Checking for cert manager requested in scope."
+    local requested="false"
     for ns in $namespaces
     do
         opreqs=$(${OC} get opreq -n $ns --no-headers | awk '{print $1}' | tr '\n' ' ')
@@ -773,36 +781,22 @@ function check_if_certmanager_deployed() {
         do
             local return_value=$(${OC} get opreq $opreq -n $ns -o yaml | ${YQ} '.spec.requests[]' | grep "name: ibm-cert-manager-operator" || echo "fail")
             if [[ $return_value != "fail" ]]; then
-                deployed="true"
-                info "Cert manager requested in scope, moving on..."
+                requested="true"
+                info "Cert manager requested in scope"
                 break
             fi
         done
     done
 
-    if [[ $deployed == "false" ]]; then
-        info "Cert manager not requested in scope, deploying..."
-        cat <<EOF > /tmp/tmp-opreq.yaml
-apiVersion: operator.ibm.com/v1alpha1
-kind: OperandRequest
-metadata:
-  labels:
-    app.kubernetes.io/instance: operand-deployment-lifecycle-manager
-    app.kubernetes.io/managed-by: operand-deployment-lifecycle-manager
-    app.kubernetes.io/name: odlm
-  name: ibm-cert-manager-operator
-  namespace: $MASTER_NS
-spec:
-  requests:
-    - operands:
-        - name: ibm-cert-manager-operator
-      registry: common-service
-      registryNamespace: $MASTER_NS
-EOF
-
-    ${OC} apply -f /tmp/tmp-opreq.yaml
-    rm -f /tmp/tmp-opreq.yaml
+    if [[ $requested != "false" ]]; then
+        info "Cert manager is requested in scope"
+        REQUEST_CERTMANAGER="true"
+    else
+        info "Cert manager is not requested in scope"
+        REQUEST_CERTMANAGER="false"
     fi
+
+
 
 }
 
@@ -811,7 +805,6 @@ function wait_for_certmanager() {
     title " Wait for Cert Manager pods to come ready "
     msg "-----------------------------------------------------------------------"
     
-    check_if_certmanager_deployed "${namespaces}"
 
     #check cert manager operator pod
     local name="cert-manager-operator"
@@ -840,6 +833,7 @@ function wait_for_certmanager() {
     webhook_ns=$(${OC} get deploy -A | grep cert-manager-webhook | awk '{print $1}')
     success "Cert Manager ready. Cert Manager operands deployed in $webhook_ns"
 }
+
 
 function check_certmanager_count(){
     info "Verifying cert manager is deployed"
