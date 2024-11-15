@@ -850,34 +850,6 @@ rules:
     resources:
       - poddisruptionbudgets
   - verbs:
-      - create
-      - delete
-      - watch
-      - get
-      - list
-      - patch
-      - update
-    apiGroups:
-      - oidc.security.ibm.com
-    resources:
-      - clients
-      - clients/finalizers
-      - clients/status
-  - verbs:
-      - create
-      - delete
-      - watch
-      - get
-      - list
-      - patch
-      - update
-    apiGroups:
-      - ''
-    resources:
-      - secrets
-      - services
-      - endpoints
-  - verbs:
       - get
       - list
       - watch
@@ -1113,6 +1085,107 @@ rules:
       - zen.cpd.ibm.com
     resources:
       - zenextensions
+  - verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+    apiGroups:
+      - ''
+    resources:
+      - pods
+      - services
+      - services/finalizers
+      - serviceaccounts
+      - endpoints
+      - persistentvolumeclaims
+      - events
+      - configmaps
+      - secrets
+  - verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+    apiGroups:
+      - apps
+    resources:
+      - deployments
+      - daemonsets
+      - replicasets
+      - statefulsets
+  - verbs:
+      - get
+      - create
+    apiGroups:
+      - monitoring.coreos.com
+    resources:
+      - servicemonitors
+  - verbs:
+      - update
+    apiGroups:
+      - apps
+    resources:
+      - deployments/finalizers
+    resourceNames:
+      - ibm-mongodb-operator
+  - verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+    apiGroups:
+      - operator.ibm.com
+    resources:
+      - mongodbs
+      - mongodbs/finalizers
+      - mongodbs/status
+  - verbs:
+      - delete
+      - get
+      - list
+      - watch
+    apiGroups:
+      - certmanager.k8s.io
+    resources:
+      - certificates
+      - certificaterequests
+      - orders
+      - challenges
+      - issuers
+  - verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+    apiGroups:
+      - cert-manager.io
+    resources:
+      - certificates
+      - certificaterequests
+      - orders
+      - challenges
+      - issuers
+  - verbs:
+      - delete
+      - get
+      - list
+    apiGroups:
+      - operator.ibm.com
+    resources:
+      - operandrequests
   - verbs:
       - create
       - get
