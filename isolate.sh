@@ -147,8 +147,12 @@ function main() {
     if [[ $REQUEST_CERTMANAGER == "true" ]]; then
         wait_for_certmanager
     else
-        request_certmanager
-        wait_for_certmanager
+        # check if certmanager is requested in excluded namespace
+        check_if_certmanager_requested "${EXCLUDED_NS}"
+        if [[ $REQUEST_CERTMANAGER == "true" ]]; then
+            request_certmanager
+            wait_for_certmanager
+        fi
     fi
     wait_for_nss_update "${ns_list}"
     success "Isolation complete"
