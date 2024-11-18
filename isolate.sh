@@ -118,8 +118,10 @@ function main() {
     #need to get the namespaces for csmaps generation before pausing cs, otherwise namespace-scope cm does not include all namespaces
     prereq
     local ns_list=$(gather_csmaps_ns)
+    local full_ns_list="${ns_list},${EXCLUDED_NS}"
+    full_ns_list=$(echo "${full_ns_list//,/$'\n'}"| sort -u)
     # verify if cert manager is requested
-    check_if_certmanager_requested "${ns_list},${EXCLUDED_NS}"
+    check_if_certmanager_requested "${full_ns_list}"
 
     #verify one and only one cert manager is installed
     if [[ $REQUEST_CERTMANAGER == "true" ]]; then
@@ -148,7 +150,8 @@ function main() {
         wait_for_certmanager
     else
         # check if certmanager is requested in excluded namespace
-        check_if_certmanager_requested "${EXCLUDED_NS}"
+        excluded_namespace=$(echo "${EXCLUDED_NS//,/$'\n'}"| sort -u)
+        check_if_certmanager_requested "${excluded_namespace}"
         if [[ $REQUEST_CERTMANAGER == "true" ]]; then
             request_certmanager
             wait_for_certmanager
