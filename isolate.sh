@@ -119,7 +119,7 @@ function main() {
     prereq
     local ns_list=$(gather_csmaps_ns)
     # verify if cert manager is requested
-    check_if_certmanager_requested "${ns_list}"
+    check_if_certmanager_requested "${ns_list},${EXCLUDED_NS}"
 
     #verify one and only one cert manager is installed
     if [[ $REQUEST_CERTMANAGER == "true" ]]; then
