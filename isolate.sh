@@ -122,9 +122,10 @@ function main() {
     check_if_certmanager_requested "${ns_list}"
 
     #verify one and only one cert manager is installed
-    if [[ $REQUEST_CERTMANAGER == "true" ]]
+    if [[ $REQUEST_CERTMANAGER == "true" ]]; then
         check_certmanager_count
     fi
+
     pause
     cleanup_webhook
     cleanup_secretshare
@@ -142,7 +143,7 @@ function main() {
         info "Licensing not marked for backup, skipping."
     fi
     restart
-    if [[ $REQUEST_CERTMANAGER == "true" ]]
+    if [[ $REQUEST_CERTMANAGER == "true" ]]; then
         wait_for_certmanager "${ns_list}"
     fi
     wait_for_nss_update "${ns_list}"
