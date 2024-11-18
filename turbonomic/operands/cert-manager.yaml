@@ -2,7 +2,7 @@ apiVersion: devops.turbonomic.io/v1alpha1
 kind: OperatorResourceMapping
 metadata:
   name: cert-manager-config-orm
-  namespace: {{ placeholder_namespace }}
+  namespace: {{ placeholder_cert_namespace }}
   labels:
     component: cpfs
 spec:

@@ -13,8 +13,11 @@
 # script base directory
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 
-# common-services namespace
-CS_NAMESPACE=
+# services namespace
+SERVICES_NAMESPACE=
+
+# cert-manager namespace
+CERT_NAMESPACE="ibm-cert-manager"
 
 # is uninstall flag?
 UNINSTALL=
@@ -64,7 +67,7 @@ function main() {
 }
 
 function install_orms() {
-    check_prereqs # TODO: uncomment me
+    check_prereqs
 
     if [[ -z ${UNINSTALL} ]]; then
         install_orm
@@ -97,7 +100,11 @@ function parse_arguments() {
         case "$1" in
         -n | --namespace)
             shift
-            CS_NAMESPACE=$1
+            SERVICES_NAMESPACE=$1
+            ;;
+        -c | --cert-manager-namespace)
+            shift
+            CERT_NAMESPACE=$1
             ;;
         -u | --uninstall)
             shift
@@ -135,16 +142,16 @@ function check_prereqs() {
         success "oc command logged in as ${user}"
     fi
 
-    # checking for CS_NAMESPACE
-    if [[ -z "${CS_NAMESPACE}" ]]; then
-        CS_NAMESPACE=$(oc project -q)
+    # checking for SERVICES_NAMESPACE
+    if [[ -z "${SERVICES_NAMESPACE}" ]]; then
+        SERVICES_NAMESPACE=$(oc project -q)
     fi
 
-    # checking for ibm-common-service-operator in CS_NAMESPACE
-    if [[ -z "$(oc -n ${CS_NAMESPACE} get csv --ignore-not-found | grep 'ibm-common-service-operator')" ]]; then
-        info "IBM Cloud Pak foundational services are not installed in namespace ${CS_NAMESPACE}"
+    # checking for OperandRegistry in SERVICES_NAMESPACE
+    if [[ -z "$(oc -n ${SERVICES_NAMESPACE} get operandregistry common-service --ignore-not-found)" ]]; then
+        info "Missing OperandRegistry, likely IBM Cloud Pak foundational services are not installed in namespace ${SERVICES_NAMESPACE}"
     else
-        success "IBM Cloud Pak foundational services found in namespace ${CS_NAMESPACE}"
+        success "Found OperandRegistry common-service in namespace ${SERVICES_NAMESPACE}"
     fi
 
 }
@@ -153,13 +160,15 @@ function install_orm() {
     title "[$(translate_step ${STEP})] Installing IBM Cloud Pak foundational services OperatorResourceMapping ..."
     msg "-----------------------------------------------------------------------"
 
-    info "Using IBM Cloud Pak foundational services namespace: ${CS_NAMESPACE}"
+    info "Using IBM Cloud Pak foundational services namespace: ${SERVICES_NAMESPACE}"
 
     local dir="${BASE_DIR}/operands"
     
     for file in `ls -1 ${dir}/*.yaml`; do
         info "Installing `basename ${file}` ..."
-        cat ${file} | sed -e "s/{{ placeholder_namespace }}/${CS_NAMESPACE}/g" | oc apply -f -
+        cat ${file} | sed -e "s/{{ placeholder_namespace }}/${SERVICES_NAMESPACE}/g" \
+            | sed -e "s/{{ placeholder_cert_namespace }}/${CERT_NAMESPACE}/g" \
+            | oc apply -f -
     done
 
 }
@@ -168,7 +177,12 @@ function delete_orm() {
     title "[$(translate_step ${STEP})] Removing IBM Cloud Pak foundational services OperatorResourceMapping ..."
     msg "-----------------------------------------------------------------------"
 
-    oc delete operatorresourcemapping -n ${CS_NAMESPACE} --selector=component=cpfs
+    oc delete operatorresourcemapping -n ${SERVICES_NAMESPACE} --selector=component=cpfs
+
+    local is_cert_orm=$(oc get operatorresourcemapping -n ${CERT_NAMESPACE} --ignore-not-found | grep "cert-manager")
+    if [ ! -z ${is_cert_orm} ]; then
+        warning "Must manually delete OperatorResourceMapping for ibm-cert-manager because other tenants could be using it"
+    fi
 }
 
 # --- Run ---
