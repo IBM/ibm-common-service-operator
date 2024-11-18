@@ -143,8 +143,12 @@ function main() {
         info "Licensing not marked for backup, skipping."
     fi
     restart
+    check_if_certmanager_requested "${ns_list}"
     if [[ $REQUEST_CERTMANAGER == "true" ]]; then
-        wait_for_certmanager "${ns_list}"
+        wait_for_certmanager
+    else
+        request_certmanager
+        wait_for_certmanager
     fi
     wait_for_nss_update "${ns_list}"
     success "Isolation complete"
@@ -796,6 +800,31 @@ function check_if_certmanager_requested() {
         info "Cert manager is not requested in scope"
         REQUEST_CERTMANAGER="false"
     fi
+}
+
+function request_certmanager() {
+    # create operandrequst to request cert-manager
+    info "Cert manager not requested in scope, deploying..."
+        cat <<EOF > /tmp/tmp-opreq.yaml
+apiVersion: operator.ibm.com/v1alpha1
+kind: OperandRequest
+metadata:
+  labels:
+    app.kubernetes.io/instance: operand-deployment-lifecycle-manager
+    app.kubernetes.io/managed-by: operand-deployment-lifecycle-manager
+    app.kubernetes.io/name: odlm
+  name: ibm-cert-manager-operator
+  namespace: $MASTER_NS
+spec:
+  requests:
+    - operands:
+        - name: ibm-cert-manager-operator
+      registry: common-service
+      registryNamespace: $MASTER_NS
+EOF
+
+    ${OC} apply -f /tmp/tmp-opreq.yaml
+    rm -f /tmp/tmp-opreq.yaml
 
 }
 
@@ -1072,7 +1101,7 @@ function prev_fail_check() {
         check_CSCR "$MASTER_NS"
         #wait for cert manager to come back ready after scaling up
         local ns_list=$(gather_csmaps_ns)
-        wait_for_certmanager "${ns_list}"
+        wait_for_certmanager
     fi
 
 }
