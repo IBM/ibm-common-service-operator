@@ -3,6 +3,8 @@ kind: NetworkPolicy
 metadata:
   name: egress-ibm-license-service-reporter-operator
   namespace: "lsrNamespace"
+  labels:
+    component: cpfs3
 spec:
   egress:
     - ports:
