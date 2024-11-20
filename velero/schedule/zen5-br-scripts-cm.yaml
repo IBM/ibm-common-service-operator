@@ -50,8 +50,8 @@ data:
 
         #Backup zen metastoredb
         #check if this flag is true, otherwise do not proceed
-        return_value=$(oc get cm ibm-zen-metastore-edb-cm -o jsonpath='{.data.IS_EMBEDDED_DATABASE}{"\n"}' || echo "fail")
-        if [[ $return_value != "fail" ]]; then #obviously needs to be corrected
+        return_value=$(oc get cm ibm-zen-metastore-edb-cm -o jsonpath='{.data.IS_EMBEDDED_DATABASE}{"\n"}')
+        if [[ $return_value != "true" ]] || [[ $return_value != "" ]]; then #obviously needs to be corrected
             info "Value IS_EMBEDDED_DATABASE marked true in configmap ibm-zen-metastore-edb-cm, backing up zen-metastore-edb"
             CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io zen-metastore-edb -o jsonpath="{.status.currentPrimary}" -n $ZEN_NAMESPACE` && \
             oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- mkdir -p /run/zen_backup && \
@@ -59,6 +59,8 @@ data:
             
             #Move backup to backup location
             oc cp $ZEN_NAMESPACE/$CNPG_PRIMARY_POD:/run/zen_backup/zen_db_backup.dump $BACKUP_DIR/database/zen_db_backup.dump
+        else
+            info "Value IS_EMBEDDED_DATABASE marked false in configmap ibm-zen-metastore-edb-cm, skipping back up of zen-metastore-edb."
         fi
         #Backup zen object storage
         #check if this is true
