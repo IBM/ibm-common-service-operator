@@ -51,7 +51,7 @@ data:
         #Backup zen metastoredb
         #check if this flag is true, otherwise do not proceed
         return_value=$(oc get cm ibm-zen-metastore-edb-cm -o jsonpath='{.data.IS_EMBEDDED_DATABASE}{"\n"}')
-        if [[ $return_value != "true" ]] || [[ $return_value != "" ]]; then #obviously needs to be corrected
+        if [[ $return_value == "true" ]] || [[ $return_value == "" ]]; then
             info "Value IS_EMBEDDED_DATABASE marked true in configmap ibm-zen-metastore-edb-cm, backing up zen-metastore-edb"
             CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io zen-metastore-edb -o jsonpath="{.status.currentPrimary}" -n $ZEN_NAMESPACE` && \
             oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- mkdir -p /run/zen_backup && \
@@ -65,8 +65,8 @@ data:
         #Backup zen object storage
         #check if this is true
         return_value=""
-        return_value=$(oc -n $ZEN_NAMESPACE get cm ibm-zen-objectstore-cm -o jsonpath='{.data.IS_EMBEDDED_OBJECTSTORE}{"\n"}' || echo "fail")
-        if [[ $return_value != "fail" ]]; then
+        return_value=$(oc -n $ZEN_NAMESPACE get cm ibm-zen-objectstore-cm -o jsonpath='{.data.IS_EMBEDDED_OBJECTSTORE}{"\n"}')
+        if [[ $return_value == "true" ]] || [[ $return_value == "" ]]; then
             info "IS_EMBEDDED_OBJECTSTORE value true in configmap ibm-zen-objectstore-cm, backing up zen objectstore"
             #Read object storage connection and credentials
             OBJECTSTORE_ENDPOINT=$(oc -n $ZEN_NAMESPACE get cm ibm-zen-objectstore-cm -o jsonpath="{.data.OBJECTSTORE_ENDPOINT}")
@@ -77,6 +77,8 @@ data:
 
             #Move backup to backup location
             oc cp $ZEN_NAMESPACE/zen-minio-0:/tmp/backup $BACKUP_DIR/objstorage && oc exec -t zen-minio-0 -- bash -c "rm -rf /tmp/backup"
+        else
+            info "IS_EMBEDDED_OBJECTSTORE value false in configmap ibm-zen-objectstore-cm, skipping backup of zen objectstore""
         fi
 
         #store list of extensions from source cluster to be restored later
