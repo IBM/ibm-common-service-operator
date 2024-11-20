@@ -2,7 +2,7 @@ apiVersion: devops.turbonomic.io/v1alpha1
 kind: OperatorResourceMapping
 metadata:
   name: opensearch-orm
-  namespace: $namespace
+  namespace: {{ placeholder_namespace }}
 spec:
   mappings:
     patterns:
