@@ -81,29 +81,34 @@ data:
 
     function restore {
 
-        wait_for_cluster_cr
-        CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io common-service-db -o jsonpath="{.status.currentPrimary}" -n $CSDB_NAMESPACE` 
-        oc exec $CNPG_PRIMARY_POD -n $CSDB_NAMESPACE -- mkdir -p /run/cs-db_backup
-        oc cp $BACKUP_DIR/database/cs-db_cloudpak_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_cloudpak_backup.dump
-        oc cp $BACKUP_DIR/database/cs-db_im_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_im_backup.dump
-        oc cp $BACKUP_DIR/database/cs-db_zen_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_zen_backup.dump
-        ACCOUNT_IAM=$(ls $BACKUP_DIR/database/ | grep "cs-db_account_iam_backup.dump" || echo False)
-        if [[ $ACCOUNT_IAM != "False" ]]; then
-            oc cp $BACKUP_DIR/database/cs-db_account_iam_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_account_iam_backup.dump        
+        if [[ $EMBEDDED == "true" ]] || [[ -z $EMBEDDED ]]; then
+            info "Embedded Postgres DB in use, beginning data restore."
+            wait_for_cluster_cr
+            CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io common-service-db -o jsonpath="{.status.currentPrimary}" -n $CSDB_NAMESPACE` 
+            oc exec $CNPG_PRIMARY_POD -n $CSDB_NAMESPACE -- mkdir -p /run/cs-db_backup
+            oc cp $BACKUP_DIR/database/cs-db_cloudpak_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_cloudpak_backup.dump
+            oc cp $BACKUP_DIR/database/cs-db_im_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_im_backup.dump
+            oc cp $BACKUP_DIR/database/cs-db_zen_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_zen_backup.dump
+            ACCOUNT_IAM=$(ls $BACKUP_DIR/database/ | grep "cs-db_account_iam_backup.dump" || echo False)
+            if [[ $ACCOUNT_IAM != "False" ]]; then
+                oc cp $BACKUP_DIR/database/cs-db_account_iam_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_account_iam_backup.dump        
+            fi
+            
+            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
+            info "Beginning restore of cloudpak database..."
+            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname cloudpak --format=c --clean --exit-on-error -v /run/cs-db_backup/cs-db_cloudpak_backup.dump
+            info "Beginning restore of im database..."
+            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname im --format=c --clean --exit-on-error -v /run/cs-db_backup/cs-db_im_backup.dump
+            info "Beginning restore of zen database..."
+            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname zen --format=c --clean --exit-on-error -v /run/cs-db_backup/cs-db_zen_backup.dump
+            if [[ $ACCOUNT_IAM != "False" ]]; then
+                info "Beginning restore of account_iam database..."
+                oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname account_iam --format=c --clean --exit-on-error -v /run/cs-db_backup/cs-db_account_iam_backup.dump        
+            fi
+            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
+        else
+            info "External Postgres DB in use, skipping data restore."
         fi
-        
-        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
-        info "Beginning restore of cloudpak database..."
-        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname cloudpak --format=c --clean --exit-on-error -v /run/cs-db_backup/cs-db_cloudpak_backup.dump
-        info "Beginning restore of im database..."
-        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname im --format=c --clean --exit-on-error -v /run/cs-db_backup/cs-db_im_backup.dump
-        info "Beginning restore of zen database..."
-        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname zen --format=c --clean --exit-on-error -v /run/cs-db_backup/cs-db_zen_backup.dump
-        if [[ $ACCOUNT_IAM != "False" ]]; then
-            info "Beginning restore of account_iam database..."
-            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname account_iam --format=c --clean --exit-on-error -v /run/cs-db_backup/cs-db_account_iam_backup.dump        
-        fi
-        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
 
         info "Rerunning OIDC registration job..."
         oc -n $CSDB_NAMESPACE get job oidc-client-registration -o yaml > /tmp/oidc-client-registration.yaml
