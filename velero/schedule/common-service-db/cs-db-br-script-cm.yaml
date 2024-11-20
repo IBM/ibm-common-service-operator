@@ -48,7 +48,7 @@ data:
     }
 
     function backup {
-        if [[ $EMBEDDED == "true" ]]; then
+        if [[ $EMBEDDED == "true" ]] || [[ -z $EMBEDDED ]]; then
             info "Embedded Postgres DB in use, beginning backup."
             mkdir -p $BACKUP_DIR/database
             CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io common-service-db -o jsonpath="{.status.currentPrimary}" -n $CSDB_NAMESPACE` && \
