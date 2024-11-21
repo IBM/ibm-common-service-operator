@@ -221,6 +221,7 @@ data:
         return_value=""
         return_value=$(oc get cm ibm-zen-metastore-edb-cm -o jsonpath='{.data.IS_EMBEDDED_DATABASE}{"\n"}')
         if [[ $return_value == "true" ]] || [[ $return_value == "" ]]; then
+            info "Value IS_EMBEDDED_DATABASE marked true in configmap ibm-zen-metastore-edb-cm, resetting zen-metastore-edb"
             info "Reset platform metadata and configuration data"
             info "Prepping database..."
             CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io zen-metastore-edb -o jsonpath="{.status.currentPrimary}" -n $ZEN_NAMESPACE` && oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "DROP DATABASE IF EXISTS zen;"  -c "DROP USER IF EXISTS zen_user;" -c "CREATE DATABASE zen;" -c "CREATE USER zen_user;" -c "GRANT CONNECT ON DATABASE zen TO public;" -c "ALTER DATABASE zen OWNER TO zen_user;" -c "GRANT ALL PRIVILEGES ON DATABASE zen to zen_user;"
@@ -233,6 +234,7 @@ data:
         return_value=""
         return_value=$(oc -n $ZEN_NAMESPACE get cm ibm-zen-objectstore-cm -o jsonpath='{.data.IS_EMBEDDED_OBJECTSTORE}{"\n"}')
         if [[ $return_value == "true" ]] || [[ $return_value == "" ]]; then
+            info "IS_EMBEDDED_OBJECTSTORE value true, resetting objectstore data."
             info "Prepping objectstore..."
             IBM_ZEN_BUCKET_NAME=$(oc get cm ibm-zen-objectstore-cm -o=jsonpath='{.data.BUCKET_ZEN_CONFIGURATION}' -n $ZEN_NAMESPACE)
             OBJECTSTORE_ENDPOINT=$(oc get cm ibm-zen-objectstore-cm -o jsonpath="{.data.OBJECTSTORE_ENDPOINT}" -n $ZEN_NAMESPACE)
@@ -249,6 +251,7 @@ data:
         return_value=""
         return_value=$(oc get cm ibm-zen-metastore-edb-cm -o jsonpath='{.data.IS_EMBEDDED_DATABASE}{"\n"}')
         if [[ $return_value == "true" ]] || [[ $return_value == "" ]]; then
+            info "Value IS_EMBEDDED_DATABASE marked true in configmap ibm-zen-metastore-edb-cm, restoring zen-metastore-edb data"
             info "Restore platform metadata."
             #[2.2.4.1] Restore platform metadata (metastore database)
             CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io zen-metastore-edb -o jsonpath="{.status.currentPrimary}"`
@@ -265,6 +268,7 @@ data:
         return_value=""
         return_value=$(oc -n $ZEN_NAMESPACE get cm ibm-zen-objectstore-cm -o jsonpath='{.data.IS_EMBEDDED_OBJECTSTORE}{"\n"}')
         if [[ $return_value == "true" ]] || [[ $return_value == "" ]]; then
+            info "IS_EMBEDDED_OBJECTSTORE value true, restoring objectstore data."
             info "Restore platform configuration data (object storage)."
             IBM_ZEN_BUCKET_NAME=$(oc get cm ibm-zen-objectstore-cm -o=jsonpath='{.data.BUCKET_ZEN_CONFIGURATION}')
             oc cp $BACKUP_DIR/objstorage $ZEN_NAMESPACE/zen-minio-0:/tmp/backup 
