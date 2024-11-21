@@ -10,6 +10,6 @@ spec:
   egress:
     - to:
         - ipBlock:
-            cidr: ${OIDC-CIRD} # CIDR of OIDC
+            cidr: ${OIDC-CIDF}
   policyTypes:
     - Egress
