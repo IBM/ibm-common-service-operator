@@ -10,6 +10,6 @@ spec:
   egress:
     - to:
         - ipBlock:
-            cidr: <CIDR of oidc-issuer-url> # Replace with actual CIDR range
+            cidr: ${OIDC-CIRD} # CIDR of OIDC
   policyTypes:
     - Egress
