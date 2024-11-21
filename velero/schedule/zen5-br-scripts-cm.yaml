@@ -78,7 +78,7 @@ data:
             #Move backup to backup location
             oc cp $ZEN_NAMESPACE/zen-minio-0:/tmp/backup $BACKUP_DIR/objstorage && oc exec -t zen-minio-0 -- bash -c "rm -rf /tmp/backup"
         else
-            info "IS_EMBEDDED_OBJECTSTORE value false in configmap ibm-zen-objectstore-cm, skipping backup of zen objectstore""
+            info "IS_EMBEDDED_OBJECTSTORE value false in configmap ibm-zen-objectstore-cm, skipping backup of zen objectstore"
         fi
 
         #store list of extensions from source cluster to be restored later
@@ -260,7 +260,7 @@ data:
         else
             info "IS_EMBEDDED_DATABASE value false, skipping metastoredb data restore."
         fi
-        
+
         #[2.2.4.2] Restore platform configuration data (object storage)
         return_value=""
         return_value=$(oc -n $ZEN_NAMESPACE get cm ibm-zen-objectstore-cm -o jsonpath='{.data.IS_EMBEDDED_OBJECTSTORE}{"\n"}')
