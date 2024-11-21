@@ -66,7 +66,7 @@ func (r *CommonServiceReconciler) updateOperatorConfig(ctx context.Context, conf
 		Namespace: r.Bootstrap.CSData.ServicesNs,
 	}, operatorConfig); err != nil {
 		if !apierrors.IsNotFound(err) {
-			klog.Errorf("failed to get OperandConfig %s/%s: %v", operatorConfig.GetNamespace(), operatorConfig.GetName(), err)
+			klog.Errorf("failed to get OperatorConfig %s/%s: %v", operatorConfig.GetNamespace(), operatorConfig.GetName(), err)
 			return true, err
 		}
 	}
