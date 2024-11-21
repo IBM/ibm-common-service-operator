@@ -13,9 +13,9 @@ spec:
     metadata:
       annotations:
         backup.velero.io/backup-volumes: cs-db-backup
-        pre.hook.backup.velero.io/command: '["sh", "-c", "rm -rf /cs-db/cs-db-backup/database; /cs-db/br_cs-db.sh backup <cs-db namespace>"]'
+        pre.hook.backup.velero.io/command: '["sh", "-c", "rm -rf /cs-db/cs-db-backup/database; /cs-db/br_cs-db.sh backup <cs-db namespace> <true or false: external postgres in use>"]'
         pre.hook.backup.velero.io/timeout: 300s
-        post.hook.restore.velero.io/command: '["sh", "-c", "/cs-db/br_cs-db.sh restore <cs-db namespace>"]'
+        post.hook.restore.velero.io/command: '["sh", "-c", "/cs-db/br_cs-db.sh restore <cs-db namespace> <true or false: external postgres in use>"]'
         post.hook.restore.velero.io/wait-timeout: 300s
         post.hook.restore.velero.io/exec-timeout: 300s
         post.hook.restore.velero.io/timeout: 720s
