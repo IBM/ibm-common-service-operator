@@ -24,12 +24,12 @@ data:
 
     MODE=$1
     CSDB_NAMESPACE=$2
-    EMBEDDED=$3
     CLUSTER_CR=common-service-db
 
     BACKUP_DIR=/cs-db/cs-db-backup
 
     function main {
+        EMBEDDED=$(oc get cm -n $CSDB_NAMESPACE common-service-db-im -o jsonpath='{.data.IS_EMBEDDED}{"\n"}')
         if [[ $MODE == "backup" ]]; then
             save_log "logs" "backup_log"
             trap cleanup_log EXIT
