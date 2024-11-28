@@ -954,7 +954,7 @@ func (b *Bootstrap) deleteResource(resource client.Object, name, namespace strin
 		namespacedName.Namespace = namespace
 	}
 
-	if err := b.Client.Get(ctx, namespacedName, resource); err != nil {
+	if err := b.Reader.Get(ctx, namespacedName, resource); err != nil {
 		if !errors.IsNotFound(err) {
 			return err
 		}
