@@ -953,11 +953,11 @@ func (b *Bootstrap) deleteResource(resource client.Object, name, namespace strin
 		namespacedName.Namespace = namespace
 	}
 
-	if err := b.Client.Get(ctx, namespacedName, resource); err != nil {
+	if err := b.Reader.Get(ctx, namespacedName, resource); err != nil {
 		if !errors.IsNotFound(err) {
 			return err
 		}
-		klog.Infof("%s %s/%s not found, skipping deletion", resourceType, namespace, name)
+		klog.V(2).Infof("%s %s/%s not found, skipping deletion", resourceType, namespace, name)
 		return nil
 	}
 
