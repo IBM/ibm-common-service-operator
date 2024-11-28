@@ -958,7 +958,7 @@ func (b *Bootstrap) deleteResource(resource client.Object, name, namespace strin
 		if !errors.IsNotFound(err) {
 			return err
 		}
-		klog.Infof("%s %s/%s not found, skipping deletion", resourceType, namespace, name)
+		klog.V(2).Infof("%s %s/%s not found, skipping deletion", resourceType, namespace, name)
 		return nil
 	}
 
