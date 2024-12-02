@@ -236,13 +236,13 @@ spec:
         - condition: '{$.status.phase} == {"Running"}'
           name: podReady
           onError: fail
-          timeout: 1200
+          timeout: 600
       labelSelector: app.kubernetes.io/name=operand-deployment-lifecycle-manager
       name: odlm-check
       namespace: <operator namespace>
       onError: fail
       selectResource: pod
-      timeout: 1200
+      timeout: 600
       type: check
     - chks:
         - condition: '{$.status.phase} == {"Running"}'
