@@ -27,34 +27,6 @@ spec:
         - ibmlicenseservicereporters.operator.ibm.com
       name: license-service-reporter-instances
       type: resource
-    - includeClusterResources: true
-      includedResourceTypes:
-        - deployments
-        - serviceaccount
-        - role
-        - rolebinding
-        - configmaps
-      labelSelector: foundationservices.cloudpak.ibm.com=lsr-data
-      name: license-service-reporter-resources
-      type: resource
-    - backupRef: license-service-reporter-resources
-      includeClusterResources: true
-      includedResourceTypes:
-        - serviceaccount
-        - role
-        - rolebinding
-        - configmaps
-      name: lsr-pre-deploy
-      type: resource
-    - backupRef: license-service-reporter-resources
-      includeClusterResources: true
-      includedResourceTypes:
-        - deployments
-      name: lsr-deployment
-      type: resource
-    - labelSelector: foundationservices.cloudpak.ibm.com=lsr-data
-      name: lsr-volume
-      type: volume
     - includedResourceTypes:
         - catalogsources.operators.coreos.com
       labelSelector: foundationservices.cloudpak.ibm.com=catalog
@@ -115,42 +87,10 @@ spec:
       selectResource: pod
       timeout: 600
       type: check
-    - chks:
-        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
-          name: podReady
-          onError: fail
-          timeout: 600
-      labelSelector: foundationservices.cloudpak.ibm.com=lsr-data
-      name: lsr-deployment
-      namespace: <lsr namespace>
-      onError: fail
-      selectResource: deployment
-      timeout: 600
-      type: check
-    - labelSelector: foundationservices.cloudpak.ibm.com=lsr-data
-      name: lsr-data
-      namespace: <lsr namespace>
-      onError: fail
-      ops:
-        - command: |
-            ["/bin/bash", "-c", "rm -rf /lsr/lsr-backup/database; /lsr/br_lsr.sh <lsr namespace> backup"]
-          container: lsr-backup-job
-          name: backup
-          timeout: 600
-        - command: |
-            ["/bin/bash", "-c", "/lsr/br_lsr.sh <lsr namespace> restore"]
-          container: lsr-backup-job
-          name: restore
-          timeout: 2000
-      selectResource: pod
-      type: exec
   workflows:
     - failOn: any-error
       name: backup
       sequence:
-        # - hook: lsr-data/backup
-        # - group: lsr-volume
-        # - group: license-service-reporter-resources
         - group: pull-secret
         - group: common-services-namespace
         - group: common-services-catalogs
@@ -170,10 +110,4 @@ spec:
         - hook: license-service-reporter-check/podReady
         - group: license-service-reporter-instances
         - hook: license-service-reporter-instance-check/podReady
-        # - group: lsr-pre-deploy
-        # - group: lsr-volume
-        # - group: lsr-deployment
-        # - hook: lsr-deployment/podReady
-        #- hook: lsr-data/restore
-
     

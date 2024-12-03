@@ -291,7 +291,7 @@ spec:
       selectResource: deployment
       timeout: 600
       type: check
-   - chks:
+    - chks:
         - condition: '{$.status.phase} == {"Running"}'
           name: podReady
           onError: fail
