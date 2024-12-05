@@ -170,6 +170,60 @@ data:
         fi
     }
 
+    function update_ROKS_URL(){
+        info "Creating dummy route to update ROKS_URL value..."
+        #create dummy route
+        cat <<EOF > oc apply -f -
+    apiVersion: route.openshift.io/v1
+    kind: Route
+    metadata:
+        annotations:
+            haproxy.router.openshift.io/pod-concurrent-connections: "100"
+            haproxy.router.openshift.io/rate-limit-connections: "true"
+            haproxy.router.openshift.io/rate-limit-connections.concurrent-tcp: "100"
+            haproxy.router.openshift.io/rate-limit-connections.rate-http: "100"
+            haproxy.router.openshift.io/rate-limit-connections.rate-tcp: "100"
+            haproxy.router.openshift.io/timeout: 90s
+        name: dummy
+        namespace: $CSDB_NAMESPACE
+    spec:
+        path: /
+        port:
+            targetPort: 43
+            insecureEdgeTerminationPolicy: Redirect
+            termination: reencrypt
+        wildcardPolicy: None
+        to:
+            kind: Service
+            name: common-web-ui
+            weight: 100
+    EOF
+        
+        #take domain value of route
+        #looks something like dummy-<namespace>.apps.<domain>.cp.fyre.ibm.com
+        #interested in everything after "apps."
+        info "Grabbing new hostname..."
+        dummy_hostname=$(oc get cm platform-auth-idp -n $CSDB_NAMESPACE -o jsonpath='{.spec.host}')
+        len_ns_str=${#CSDB_NAMESPACE}
+        
+        #add the length of the namespace to the length of word "dummy". Also include length of "apps" and the two periods
+        cut_len=$(($len_ns_str+5+2+4))
+        
+        #build correct string
+        actual_hostname=${dummy_hostname:cut_len}
+        info "New hostname: $actual_hostname"
+        new_ROKS_URL="https://oauth-openshift.apps.$actual_hostname"
+        info "New ROKS_URL value: $new_ROKS_URL"
+        
+        #replace value in platform-auth-idp cm
+        info "Updating ROKS_URL value in platform-auth-idp configmap..."
+        oc patch cm platform-auth-idp -n $CSDB_NAMESPACE --type merge --patch '{"data":{"ROKS_URL":['"${new_ROKS_URL}"']}}'
+        
+        #delete dummy route
+        info "Deleting dummy route from namespace $CSDB_NAMESPACE..."
+        oc delete route dummy -n $CSDB_NAMESPACE
+    }
+
     function save_log(){
         local LOG_DIR="$BACKUP_DIR/$1"
         LOG_FILE="$LOG_DIR/$2_$(date +'%Y%m%d%H%M%S').log"
