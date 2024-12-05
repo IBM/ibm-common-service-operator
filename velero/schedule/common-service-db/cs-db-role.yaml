@@ -33,6 +33,8 @@ rules:
       - pods/status
       - jobs
       - secrets
+      - configmaps
+      - routes
   - verbs:
       - get
       - list
