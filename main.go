@@ -154,12 +154,15 @@ func main() {
 			klog.Errorf("Cleanup Webhook Resources failed: %v", err)
 			os.Exit(1)
 		}
-		// Update CS CR Status
-		go goroutines.UpdateCsCrStatus(bs)
+
+		// Setup a channel to suspend go routines
+		ch := make(chan *bootstrap.Bootstrap)
+		// Update CS CR Status, wait for signal from channel
+		go goroutines.UpdateCsCrStatus(ch)
 		// Create CS CR
-		go goroutines.WaitToCreateCsCR(bs)
+		go goroutines.WaitToCreateCsCR(ch)
 		// Delete Keycloak Cert
-		go goroutines.CleanupResources(bs)
+		go goroutines.CleanupResources(ch)
 
 		if err = (&controllers.CommonServiceReconciler{
 			Bootstrap: bs,
@@ -201,6 +204,8 @@ func main() {
 				klog.Error(err, "unable to create controller", "controller", "V1AddLabel")
 				os.Exit(1)
 			}
+			// start go routines
+			ch <- bs
 		}
 	} else {
 		klog.Infof("Common Service Operator goes dormant in the namespace %s", operatorNs)
