@@ -181,6 +181,8 @@ func main() {
 		}
 		if !exist && err == nil {
 			klog.Infof("cert-manager CRD does not exist, skip cert-manager related controllers initialization")
+			// start go routines
+			ch <- bs
 		} else if exist && err == nil {
 
 			if err = (&certmanagerv1controllers.CertificateRefreshReconciler{
