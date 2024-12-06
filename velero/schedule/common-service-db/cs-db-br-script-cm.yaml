@@ -6,6 +6,29 @@ metadata:
   labels:
     foundationservices.cloudpak.ibm.com: cs-db-data
 data:
+  dummy_route.yaml: |
+    apiVersion: route.openshift.io/v1
+    kind: Route
+    metadata:
+        annotations:
+            haproxy.router.openshift.io/pod-concurrent-connections: "100"
+            haproxy.router.openshift.io/rate-limit-connections: "true"
+            haproxy.router.openshift.io/rate-limit-connections.concurrent-tcp: "100"
+            haproxy.router.openshift.io/rate-limit-connections.rate-http: "100"
+            haproxy.router.openshift.io/rate-limit-connections.rate-tcp: "100"
+            haproxy.router.openshift.io/timeout: 90s
+        name: dummy
+    spec:
+        path: /
+        port:
+            targetPort: 43
+            insecureEdgeTerminationPolicy: Redirect
+            termination: reencrypt
+        wildcardPolicy: None
+        to:
+            kind: Service
+            name: common-web-ui
+            weight: 100
   br_cs-db.sh: |
     #!/usr/bin/env bash
 
@@ -111,7 +134,7 @@ data:
         fi
 
         update_ROKS_URL
-        
+
         info "Rerunning OIDC registration job..."
         oc -n $CSDB_NAMESPACE get job oidc-client-registration -o yaml > /tmp/oidc-client-registration.yaml
         oc -n $CSDB_NAMESPACE delete job oidc-client-registration
@@ -175,31 +198,7 @@ data:
     function update_ROKS_URL(){
         info "Creating dummy route to update ROKS_URL value..."
         #create dummy route
-        cat <<EOF > oc apply -f -
-    apiVersion: route.openshift.io/v1
-    kind: Route
-    metadata:
-        annotations:
-            haproxy.router.openshift.io/pod-concurrent-connections: "100"
-            haproxy.router.openshift.io/rate-limit-connections: "true"
-            haproxy.router.openshift.io/rate-limit-connections.concurrent-tcp: "100"
-            haproxy.router.openshift.io/rate-limit-connections.rate-http: "100"
-            haproxy.router.openshift.io/rate-limit-connections.rate-tcp: "100"
-            haproxy.router.openshift.io/timeout: 90s
-        name: dummy
-        namespace: $CSDB_NAMESPACE
-    spec:
-        path: /
-        port:
-            targetPort: 43
-            insecureEdgeTerminationPolicy: Redirect
-            termination: reencrypt
-        wildcardPolicy: None
-        to:
-            kind: Service
-            name: common-web-ui
-            weight: 100
-    EOF
+        oc apply -f dummy_route.yaml -n $CSDB_NAMESPACE
         
         #take domain value of route
         #looks something like dummy-<namespace>.apps.<domain>.cp.fyre.ibm.com
