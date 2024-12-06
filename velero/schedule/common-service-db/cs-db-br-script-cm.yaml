@@ -208,7 +208,7 @@ data:
         len_ns_str=${#CSDB_NAMESPACE}
         
         #add the length of the namespace to the length of word "dummy". Also include length of "apps" and the two periods
-        cut_len=$(($len_ns_str+5+2+4))
+        cut_len=$(($len_ns_str+12))
         
         #build correct string
         actual_hostname=${dummy_hostname:cut_len}
