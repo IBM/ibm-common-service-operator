@@ -204,7 +204,7 @@ data:
         #looks something like dummy-<namespace>.apps.<domain>.cp.fyre.ibm.com
         #interested in everything after "apps."
         info "Grabbing new hostname..."
-        dummy_hostname=$(oc get cm platform-auth-idp -n $CSDB_NAMESPACE -o jsonpath='{.spec.host}')
+        dummy_hostname=$(oc get route dummy -n $CSDB_NAMESPACE -o jsonpath='{.spec.host}')
         len_ns_str=${#CSDB_NAMESPACE}
         
         #add the length of the namespace to the length of word "dummy". Also include length of "apps" and the two periods
