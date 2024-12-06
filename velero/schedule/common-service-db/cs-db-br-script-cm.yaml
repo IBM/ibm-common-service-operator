@@ -218,7 +218,7 @@ data:
         
         #replace value in platform-auth-idp cm
         info "Updating ROKS_URL value in platform-auth-idp configmap..."
-        oc patch cm platform-auth-idp -n $CSDB_NAMESPACE --type merge --patch '{"data":{"ROKS_URL":['"${new_ROKS_URL}"']}}'
+        oc patch cm platform-auth-idp -n $CSDB_NAMESPACE --type merge --patch '{"data":{"ROKS_URL":"'${new_ROKS_URL}'"}}'
         
         #delete dummy route
         info "Deleting dummy route from namespace $CSDB_NAMESPACE..."
