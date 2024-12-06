@@ -20,6 +20,7 @@ rules:
       - extensions
       - apps
       - policy
+      - route.openshift.io
     resources:
       - pods
       - pods/log

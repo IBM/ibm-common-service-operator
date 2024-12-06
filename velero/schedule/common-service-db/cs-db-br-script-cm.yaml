@@ -198,7 +198,7 @@ data:
     function update_ROKS_URL(){
         info "Creating dummy route to update ROKS_URL value..."
         #create dummy route
-        oc apply -f dummy_route.yaml -n $CSDB_NAMESPACE
+        oc apply -f cs-db/dummy_route.yaml -n $CSDB_NAMESPACE
         
         #take domain value of route
         #looks something like dummy-<namespace>.apps.<domain>.cp.fyre.ibm.com
