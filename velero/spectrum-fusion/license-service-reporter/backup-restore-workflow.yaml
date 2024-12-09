@@ -1,3 +1,31 @@
+apiVersion: application.isf.ibm.com/v1alpha1
+kind: Application
+metadata:
+  name: lsr-application
+  namespace: ibm-spectrum-fusion-ns
+spec:
+  enableDR: false
+  includedNamespaces:
+    - <lsr namespace>
+    - openshift-marketplace    
+    - openshift-config
+---
+
+apiVersion: data-protection.isf.ibm.com/v1alpha1
+kind: BackupPolicy
+metadata:
+  name: lsr-backup-policy
+spec:
+  backupStorageLocation: <storage_location>
+  provider: isf-backup-restore
+  retention:
+    number: 5
+    unit: days
+  schedule:
+    cron: '00 0  * * * '
+    timezone: America/New_York
+---
+
 apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
 kind: Recipe
 metadata:
@@ -106,8 +134,22 @@ spec:
         - group: common-services-catalogs
         - group: common-services-operatorgroups
         - group: license-service-reporter-crd
+        - group: license-service-reporter-instances
         - group: license-service-reporter-subscriptions
         - hook: license-service-reporter-check/podReady
-        - group: license-service-reporter-instances
         - hook: license-service-reporter-instance-check/podReady
-    
+---
+
+apiVersion: data-protection.isf.ibm.com/v1alpha1
+kind: PolicyAssignment
+metadata:
+  name: lsr-policy-assignment
+  namespace: ibm-spectrum-fusion-ns
+spec:
+  application: lsr-application
+  backupPolicy: lsr-backup-policy
+  runNow: false
+  recipe:
+    apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+    name: lsr-recipe
+    namespace: ibm-spectrum-fusion-ns
