@@ -137,7 +137,8 @@ func CleanupMongodbPreloadCm(bs *bootstrap.Bootstrap) {
 	}
 }
 
-func CleanupResources(bs *bootstrap.Bootstrap) {
+func CleanupResources(ch chan *bootstrap.Bootstrap) {
+	bs := <-ch
 	go CleanupKeycloakCert(bs)
 	go CleanupMongodbPreloadCm(bs)
 }

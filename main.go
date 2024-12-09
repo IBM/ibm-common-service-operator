@@ -154,13 +154,17 @@ func main() {
 			klog.Errorf("Cleanup Webhook Resources failed: %v", err)
 			os.Exit(1)
 		}
-		// Update CS CR Status
-		go goroutines.UpdateCsCrStatus(bs)
-		// Create CS CR
-		go goroutines.WaitToCreateCsCR(bs)
-		// Delete Keycloak Cert
-		go goroutines.CleanupResources(bs)
 
+		// Setup a channel to suspend go routines
+		ch := make(chan *bootstrap.Bootstrap)
+		// Update CS CR Status, wait for signal from channel
+		go goroutines.UpdateCsCrStatus(ch)
+		// Create CS CR
+		go goroutines.WaitToCreateCsCR(ch)
+		// Delete Keycloak Cert
+		go goroutines.CleanupResources(ch)
+
+		klog.Infof("Setup commonservice manager")
 		if err = (&controllers.CommonServiceReconciler{
 			Bootstrap: bs,
 			Scheme:    mgr.GetScheme(),
@@ -169,6 +173,10 @@ func main() {
 			klog.Errorf("Unable to create controller CommonService: %v", err)
 			os.Exit(1)
 		}
+
+		// start go routines
+		klog.Infof("Start go routines")
+		ch <- bs
 
 		// check if cert-manager CRD does not exist, then skip cert-manager related controllers initialization
 		exist, err := bs.CheckCRD(constant.CertManagerAPIGroupVersionV1, "Certificate")
@@ -180,6 +188,7 @@ func main() {
 			klog.Infof("cert-manager CRD does not exist, skip cert-manager related controllers initialization")
 		} else if exist && err == nil {
 
+			klog.Infof("Set up certmanager Manager")
 			if err = (&certmanagerv1controllers.CertificateRefreshReconciler{
 				Client: mgr.GetClient(),
 				Scheme: mgr.GetScheme(),
