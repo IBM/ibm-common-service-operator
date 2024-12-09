@@ -164,6 +164,7 @@ func main() {
 		// Delete Keycloak Cert
 		go goroutines.CleanupResources(ch)
 
+		klog.Infof("Setup commonservice manager")
 		if err = (&controllers.CommonServiceReconciler{
 			Bootstrap: bs,
 			Scheme:    mgr.GetScheme(),
@@ -174,6 +175,7 @@ func main() {
 		}
 
 		// start go routines
+		klog.Infof("Start go routines")
 		ch <- bs
 
 		// check if cert-manager CRD does not exist, then skip cert-manager related controllers initialization
@@ -186,6 +188,7 @@ func main() {
 			klog.Infof("cert-manager CRD does not exist, skip cert-manager related controllers initialization")
 		} else if exist && err == nil {
 
+			klog.Infof("Set up certmanager Manager")
 			if err = (&certmanagerv1controllers.CertificateRefreshReconciler{
 				Client: mgr.GetClient(),
 				Scheme: mgr.GetScheme(),
