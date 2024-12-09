@@ -173,6 +173,9 @@ func main() {
 			os.Exit(1)
 		}
 
+		// start go routines
+		ch <- bs
+
 		// check if cert-manager CRD does not exist, then skip cert-manager related controllers initialization
 		exist, err := bs.CheckCRD(constant.CertManagerAPIGroupVersionV1, "Certificate")
 		if err != nil {
@@ -181,8 +184,6 @@ func main() {
 		}
 		if !exist && err == nil {
 			klog.Infof("cert-manager CRD does not exist, skip cert-manager related controllers initialization")
-			// start go routines
-			ch <- bs
 		} else if exist && err == nil {
 
 			if err = (&certmanagerv1controllers.CertificateRefreshReconciler{
@@ -206,8 +207,6 @@ func main() {
 				klog.Error(err, "unable to create controller", "controller", "V1AddLabel")
 				os.Exit(1)
 			}
-			// start go routines
-			ch <- bs
 		}
 	} else {
 		klog.Infof("Common Service Operator goes dormant in the namespace %s", operatorNs)
