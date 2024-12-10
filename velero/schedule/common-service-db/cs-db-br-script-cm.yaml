@@ -120,7 +120,7 @@ data:
         rm -f /tmp/oidc-client-registration.yaml
         wait_for_oidc
 
-        info “Restarting Platform Auth Service”
+        info "Restarting platform-auth-service..."
         oc -n $CSDB_NAMESPACE delete pod -l app.kubernetes.io/instance=platform-auth-service
         info "Wait for previous pod to delete..."
         sleep 30
