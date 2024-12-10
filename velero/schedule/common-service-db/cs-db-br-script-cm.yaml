@@ -29,7 +29,7 @@ data:
     BACKUP_DIR=/cs-db/cs-db-backup
 
     function main {
-        EMBEDDED=$(oc get cm -n $CSDB_NAMESPACE common-service-db-im -o jsonpath='{.data.IS_EMBEDDED}{"\n"}')
+        EMBEDDED=$(oc get cm -n $CSDB_NAMESPACE im-datastore-edb-cm -o jsonpath='{.data.IS_EMBEDDED}{"\n"}')
         if [[ $MODE == "backup" ]]; then
             save_log "logs" "backup_log"
             trap cleanup_log EXIT
