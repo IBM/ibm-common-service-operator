@@ -214,12 +214,13 @@ function copy_resource() {
               del(.metadata.ownerReferences) |
               del(.metadata.managedFields) |
               del(.metadata.labels)
-          ' | > common-service-cr.yaml
+          ' | > tmp-resource.yaml
       # delete storageclass field from common-service CR
       if [[ $resourceType == "commonservice" && $storageClass_exist == "true"]]; then 
-        yq -i 'del(.spec.storageClass)' common-service-cr.yaml
+        yq -i 'del(.spec.storageClass)' tmp-resource.yaml
       fi
-      $OC apply -n $TO_NAMESPACE -f common-service-cr.yaml || error "Failed to copy over $resourceType $resourceName."
+      $OC apply -n $TO_NAMESPACE -f tmp-resource.yaml || error "Failed to copy over $resourceType $resourceName."
+      rm tmp-resource.yaml -f
       # Check if the resource is created in TO_NAMESPACE
       check_copied_resource $resourceType $newResourceName $TO_NAMESPACE
     else
