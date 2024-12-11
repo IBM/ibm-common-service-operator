@@ -35,9 +35,8 @@ import (
 var ctx = context.Background()
 
 // UpdateCsCrStatus will update cs cr status according to each bedrock operator
-func UpdateCsCrStatus(ch chan *bootstrap.Bootstrap) {
+func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {
 	for {
-		bs := <-ch
 		instance := &apiv3.CommonService{}
 		if err := bs.Reader.Get(ctx, types.NamespacedName{Name: "common-service", Namespace: bs.CSData.OperatorNs}, instance); err != nil {
 			if !errors.IsNotFound(err) {

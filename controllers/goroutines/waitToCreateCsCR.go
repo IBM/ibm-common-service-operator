@@ -28,9 +28,8 @@ import (
 )
 
 // WaitToCreateCsCR waits for the creation of the CommonService CR in the operator namespace.
-func WaitToCreateCsCR(ch chan *bootstrap.Bootstrap) {
+func WaitToCreateCsCR(bs *bootstrap.Bootstrap) {
 	for {
-		bs := <-ch
 		klog.Infof("Start to Create CommonService CR in the namespace %s", bs.CSData.OperatorNs)
 		if err := bs.CreateCsCR(); err != nil {
 			if strings.Contains(fmt.Sprint(err), "failed to call webhook") {
