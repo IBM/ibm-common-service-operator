@@ -202,20 +202,36 @@ function copy_resource() {
     local newResourceName=${3:-$resourceName}
     title " Copying $resourceType $resourceName from $FROM_NAMESPACE to $TO_NAMESPACE "   
     resource_exists=$(${OC} get $resourceType $resourceName -n $FROM_NAMESPACE || echo "fail")
+    storageClass_exist=$(${OC} get $resourceType $resourceName -n $FROM_NAMESPACE -o yaml | yq '.spec | has("storageClass")')
     if [[ $resource_exists != "fail" ]]; then
-      $OC get $resourceType $resourceName -n $FROM_NAMESPACE -o yaml | \
-          $YQ '
-              .metadata.name = "'$newResourceName'" |
-              del(.metadata.creationTimestamp) | 
-              del(.metadata.resourceVersion) | 
-              del(.metadata.namespace) | 
-              del(.metadata.uid) | 
-              del(.metadata.ownerReferences) |
-              del(.metadata.managedFields) |
-              del(.metadata.labels)
-          ' | \
-          $OC apply -n $TO_NAMESPACE -f - || error "Failed to copy over $resourceType $resourceName."
-      
+      if [[ $resourceType == "commonservice" && $storageClass_exist == "true"]]; then 
+          $OC get $resourceType $resourceName -n $FROM_NAMESPACE -o yaml | \
+              $YQ '
+                  .metadata.name = "'$newResourceName'" |
+                  del(.metadata.creationTimestamp) | 
+                  del(.metadata.resourceVersion) | 
+                  del(.metadata.namespace) | 
+                  del(.metadata.uid) | 
+                  del(.metadata.ownerReferences) |
+                  del(.metadata.managedFields) |
+                  del(.metadata.labels) |
+                  del(.spec.storageClass)
+              ' | \
+              $OC apply -n $TO_NAMESPACE -f - || error "Failed to copy over $resourceType $resourceName."
+      else
+        $OC get $resourceType $resourceName -n $FROM_NAMESPACE -o yaml | \
+            $YQ '
+                .metadata.name = "'$newResourceName'" |
+                del(.metadata.creationTimestamp) | 
+                del(.metadata.resourceVersion) | 
+                del(.metadata.namespace) | 
+                del(.metadata.uid) | 
+                del(.metadata.ownerReferences) |
+                del(.metadata.managedFields) |
+                del(.metadata.labels)
+            ' | \
+            $OC apply -n $TO_NAMESPACE -f - || error "Failed to copy over $resourceType $resourceName."
+      fi
       # Check if the resource is created in TO_NAMESPACE
       check_copied_resource $resourceType $newResourceName $TO_NAMESPACE
     else
