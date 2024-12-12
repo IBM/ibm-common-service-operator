@@ -154,25 +154,26 @@ data:
 
     function wait_for_auth_service {
         info "Waiting for pod platform-auth-service to restart in namespace $CSDB_NAMESPACE."  
-        pod_exists=$(oc get pod -l app.kubernetes.io/instance=platform-auth-service -n $CSDB_NAMESPACE --no-headers || echo fail)    
-        if [[ $job_exists != "fail" ]]; then
-            completed=$(oc get pod -l app.kubernetes.io/instance=platform-auth-service -n $CSDB_NAMESPACE --no-headers | awk '{print $2}')
+        deployment_exists=$(oc get deployment platform-auth-service -n $CSDB_NAMESPACE --no-headers || echo "fail")    
+        if [[ $deployment_exists != "fail" ]]; then
+            replicas=$(oc get deployment platform-auth-service -n $CSDB_NAMESPACE --no-headers -o jsonpath='{.spec.replicas}')
+            ready_replicas=$(oc get deployment platform-auth-service -n $CSDB_NAMESPACE --no-headers -o jsonpath='{.status.readyReplicas}')
             retry_count=60
-            while [[ $completed != "1/1" ]] && [[ $retry_count > 0 ]]
+            while [[ "$replicas" != "$ready_replicas" ]] && [[ $retry_count > 0 ]]
             do
                 info "Wait for pod platform-auth-service to complete. Try again in 5s."
                 sleep 5
                 completed=$(oc get job $job_name -n $CSDB_NAMESPACE --no-headers | awk '{print $2}')
-                retry_count=$retry_count-1
+                retry_count=$((retry_count-1))
             done
 
-            if [[ $retry_count == 0 ]] && [[ $completed != "1/1" ]]; then
+            if [[ $retry_count == 0 ]] && [[ "$replicas" != "$ready_replicas" ]]; then
                 error "Timed out waiting for pod platform-auth-service."
             else
                 info "Pod platform-auth-service restarted."
             fi
         else
-            error "Pod platform-auth-service."
+            error "Deployment platform-auth-service not exist."
         fi
     }
 
