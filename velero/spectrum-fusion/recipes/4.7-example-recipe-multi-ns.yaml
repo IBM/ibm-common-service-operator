@@ -136,7 +136,7 @@ spec:
       includedResourceTypes:
         - customresourcedefinitions.apiextensions.k8s.io
       labelSelector: foundationservices.cloudpak.ibm.com=crd
-      name: commonservices-crd
+      name: commonservice-crd
       type: resource
     - includedResourceTypes:
         - commonservices.operator.ibm.com
@@ -479,7 +479,7 @@ spec:
         - group: singleton-subscriptions
         - group: cert-manager-resources
         - group: license-service-reporter-subscriptions
-        - group: commonservices-crd
+        - group: commonservice-crd
         - group: commonservice-cr
         - group: nss-resources
         - group: common-services-subscriptions
@@ -515,7 +515,7 @@ spec:
         - hook: lsr-data/restore
         # restore common services
         - group: common-services-configmaps
-        - group: commonservices-crd
+        - group: commonservice-crd
         - group: commonservice-cr
         - group: nss-resources
         - group: common-services-subscriptions

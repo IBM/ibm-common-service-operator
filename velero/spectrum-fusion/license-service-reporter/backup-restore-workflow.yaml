@@ -57,38 +57,22 @@ spec:
       type: resource
     - includedResourceTypes:
         - catalogsources.operators.coreos.com
-      labelSelector: foundationservices.cloudpak.ibm.com=catalog
-      name: common-services-catalogs
-      type: resource
-    - includedNamespaces:
-        - openshift-config
-      includedResourceTypes:
-        - secrets
-      labelSelector: foundationservices.cloudpak.ibm.com=pull-secret
-      name: pull-secret
-      type: resource
-    - backupRef: pull-secret
-      includedNamespaces:
-        - openshift-config
-      includedResourceTypes:
-        - secrets
-      labelSelector: foundationservices.cloudpak.ibm.com=pull-secret
-      name: ow-pull-secret
-      restoreOverwriteResources: true
+      labelSelector: foundationservices.cloudpak.ibm.com=lsr
+      name: license-service-reporter-catalog
       type: resource
     - includeClusterResources: true
-      labelSelector: foundationservices.cloudpak.ibm.com=namespace
-      name: common-services-namespace
+      labelSelector: foundationservices.cloudpak.ibm.com=lsr
+      name: license-service-reporter-namespace
       type: resource
     - includedResourceTypes:
         - operatorgroups.operators.coreos.com
-      labelSelector: foundationservices.cloudpak.ibm.com=operatorgroup
-      name: common-services-operatorgroups
+      labelSelector: foundationservices.cloudpak.ibm.com=lsr
+      name: license-service-reporter-operatorgroup
       type: resource
     - includedResourceTypes:
         - subscriptions.operators.coreos.com
       labelSelector: foundationservices.cloudpak.ibm.com=lsr
-      name: license-service-reporter-subscriptions
+      name: license-service-reporter-subscription
       type: resource
   hooks:
     - chks:
@@ -119,23 +103,20 @@ spec:
     - failOn: any-error
       name: backup
       sequence:
-        - group: pull-secret
-        - group: common-services-namespace
-        - group: common-services-catalogs
-        - group: common-services-operatorgroups
+        - group: license-service-reporter-namespace
+        - group: license-service-reporter-catalog
+        - group: license-service-reporter-operatorgroup
         - group: license-service-reporter-parent
-        - group: license-service-reporter-subscriptions
+        - group: license-service-reporter-subscription
     - failOn: any-error
       name: restore
       sequence:
-        - group: common-services-namespace
-        - group: pull-secret
-        - group: ow-pull-secret
-        - group: common-services-catalogs
-        - group: common-services-operatorgroups
+        - group: license-service-reporter-namespace
+        - group: license-service-reporter-catalog
+        - group: license-service-reporter-operatorgroup
         - group: license-service-reporter-crd
         - group: license-service-reporter-instances
-        - group: license-service-reporter-subscriptions
+        - group: license-service-reporter-subscription
         - hook: license-service-reporter-check/podReady
         - hook: license-service-reporter-instance-check/podReady
 ---
