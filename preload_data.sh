@@ -202,6 +202,7 @@ function copy_resource() {
     local newResourceName=${3:-$resourceName}
     title " Copying $resourceType $resourceName from $FROM_NAMESPACE to $TO_NAMESPACE "   
     resource_exists=$(${OC} get $resourceType $resourceName -n $FROM_NAMESPACE || echo "fail")
+    storageClass_exist=$(${OC} get $resourceType $resourceName -n $FROM_NAMESPACE -o yaml | yq '.spec | has("storageClass")')
     if [[ $resource_exists != "fail" ]]; then
       $OC get $resourceType $resourceName -n $FROM_NAMESPACE -o yaml | \
           $YQ '
@@ -213,9 +214,13 @@ function copy_resource() {
               del(.metadata.ownerReferences) |
               del(.metadata.managedFields) |
               del(.metadata.labels)
-          ' | \
-          $OC apply -n $TO_NAMESPACE -f - || error "Failed to copy over $resourceType $resourceName."
-      
+          ' | > tmp-resource.yaml
+      # delete storageclass field from common-service CR
+      if [[ $resourceType == "commonservice" && $storageClass_exist == "true"]]; then 
+        yq -i 'del(.spec.storageClass)' tmp-resource.yaml
+      fi
+      $OC apply -n $TO_NAMESPACE -f tmp-resource.yaml || error "Failed to copy over $resourceType $resourceName."
+      rm tmp-resource.yaml -f
       # Check if the resource is created in TO_NAMESPACE
       check_copied_resource $resourceType $newResourceName $TO_NAMESPACE
     else
