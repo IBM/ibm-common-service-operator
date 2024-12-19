@@ -1046,6 +1046,12 @@ function cleanup_webhook() {
 
 }
 
+function cleanup_webhook_service() {
+    local control_ns=$1
+    info "Deleting ibm-common-service-webhook-service"
+    ${OC} delete service ibm-common-service-webhook -n $control_ns --ignore-not-found
+}
+
 # Clean up secretshare deployment and CR in service_ns
 function cleanup_secretshare() {
     local control_ns=$1
