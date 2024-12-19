@@ -165,6 +165,8 @@ data:
                 sleep 5
                 completed=$(oc get job $job_name -n $CSDB_NAMESPACE --no-headers | awk '{print $2}')
                 retry_count=$((retry_count-1))
+                replicas=$(oc get deployment platform-auth-service -n $CSDB_NAMESPACE --no-headers -o jsonpath='{.spec.replicas}')
+                ready_replicas=$(oc get deployment platform-auth-service -n $CSDB_NAMESPACE --no-headers -o jsonpath='{.status.readyReplicas}')
             done
 
             if [[ $retry_count == 0 ]] && [[ "$replicas" != "$ready_replicas" ]]; then
