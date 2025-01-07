@@ -54,12 +54,12 @@ function main() {
     trap cleanup_log EXIT
     prereq
     if [[ $CLEANUP == "false" ]]; then
-      if [[ $RERUN == "true" ]]; then
-        info "Rerun specified..."
-        deletemongocopy
-      fi
-      # run backup preload
-      backup_preload_mongo
+      # if [[ $RERUN == "true" ]]; then
+      #   info "Rerun specified..."
+      #   deletemongocopy
+      # fi
+      # # run backup preload
+      # backup_preload_mongo
       # copy im credentials
       copy_resource "secret" "platform-auth-idp-credentials"
       copy_resource "secret" "platform-auth-ldaps-ca-cert"
@@ -204,9 +204,8 @@ function copy_resource() {
     resource_exists=$(${OC} get $resourceType $resourceName -n $FROM_NAMESPACE || echo "fail")
     storageClass_exist=$(${OC} get $resourceType $resourceName -n $FROM_NAMESPACE -o yaml | yq '.spec | has("storageClass")')
     if [[ $resource_exists != "fail" ]]; then
-      $OC get $resourceType $resourceName -n $FROM_NAMESPACE -o yaml | \
-          $YQ '
-              .metadata.name = "'$newResourceName'" |
+      $OC get $resourceType $resourceName -n $FROM_NAMESPACE -o yaml > tmp-resource.yaml 
+      $YQ -i '.metadata.name = "'${newResourceName}'" |
               del(.metadata.creationTimestamp) | 
               del(.metadata.resourceVersion) | 
               del(.metadata.namespace) | 
@@ -214,18 +213,20 @@ function copy_resource() {
               del(.metadata.ownerReferences) |
               del(.metadata.managedFields) |
               del(.metadata.labels)
-          ' | > tmp-resource.yaml
+          ' tmp-resource.yaml || error "Could not update tmp-resource.yaml"
       # delete storageclass field from common-service CR
-      if [[ $resourceType == "commonservice" && $storageClass_exist == "true"]]; then 
+      if [[ $resourceType == "commonservice" && $storageClass_exist == "true" ]]; then 
+        info "Deleting storageClass field from commonservice CR"
         yq -i 'del(.spec.storageClass)' tmp-resource.yaml
       fi
       $OC apply -n $TO_NAMESPACE -f tmp-resource.yaml || error "Failed to copy over $resourceType $resourceName."
-      rm tmp-resource.yaml -f
       # Check if the resource is created in TO_NAMESPACE
       check_copied_resource $resourceType $newResourceName $TO_NAMESPACE
     else
       warning "Resource $resourceType $resourceName not found and not migrated from $FROM_NAMESPACE to $TO_NAMESPACE"
     fi
+
+    rm tmp-resource.yaml
 }
 
 function check_copied_resource() {
