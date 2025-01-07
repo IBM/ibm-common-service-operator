@@ -60,7 +60,7 @@ function main() {
       fi
       # run backup preload
       backup_preload_mongo
-      copy im credentials
+      # copy im credentials
       copy_resource "secret" "platform-auth-idp-credentials"
       copy_resource "secret" "platform-auth-ldaps-ca-cert"
       copy_resource "secret" "platform-oidc-credentials"
