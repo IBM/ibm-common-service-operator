@@ -216,7 +216,7 @@ function copy_resource() {
           ' tmp-resource.yaml || error "Could not update tmp-resource.yaml"
       # delete storageclass field from common-service CR
       if [[ $resourceType == "commonservice" && $storageClass_exist == "true" ]]; then 
-        info "Deleting storageClass field from commonservice CR"
+        echo "Deleting storageClass field from commonservice CR"
         yq -i 'del(.spec.storageClass)' tmp-resource.yaml
       fi
       $OC apply -n $TO_NAMESPACE -f tmp-resource.yaml || error "Failed to copy over $resourceType $resourceName."
