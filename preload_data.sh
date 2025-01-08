@@ -217,7 +217,7 @@ function copy_resource() {
       # delete storageclass field from common-service CR
       if [[ $resourceType == "commonservice" && $storageClass_exist == "true" ]]; then 
         echo "Deleting storageClass field from commonservice CR"
-        yq -i 'del(.spec.storageClass)' tmp-resource.yaml
+        $YQ -i 'del(.spec.storageClass)' tmp-resource.yaml
       fi
       $OC apply -n $TO_NAMESPACE -f tmp-resource.yaml || error "Failed to copy over $resourceType $resourceName."
       # Check if the resource is created in TO_NAMESPACE
