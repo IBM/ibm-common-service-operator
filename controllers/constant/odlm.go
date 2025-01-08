@@ -923,6 +923,18 @@ spec:
       - apiVersion: k8s.keycloak.org/v2alpha1
         data:
           spec:
+            scheduling:
+              affinity:
+                nodeAffinity:
+                  requiredDuringSchedulingIgnoredDuringExecution:
+                    nodeSelectorTerms:
+                    - matchExpressions:
+                      - key: kubernetes.io/arch
+                        operator: In
+                        values:
+                        - amd64
+                        - ppc64le
+                        - s390x
             proxy:
               headers: xforwarded
             features:
@@ -967,6 +979,16 @@ spec:
                     - command:
                         - /bin/sh
                         - /mnt/startup/cs-keycloak-entrypoint.sh
+                      name: keycloak
+                      startupProbe:
+                        failureThreshold: 20
+                        httpGet:
+                          path: /health/started
+                          port: 9000
+                          scheme: HTTPS
+                        initialDelaySeconds: 180
+                        periodSeconds: 20
+                        timeoutSeconds: 5
                       volumeMounts:
                         - mountPath: /mnt/truststore
                           name: truststore-volume
@@ -998,17 +1020,6 @@ spec:
                     - name: user-profile-volume
                       configMap: 
                         name: cs-keycloak-user-profile
-                  affinity:
-                    nodeAffinity:
-                      requiredDuringSchedulingIgnoredDuringExecution:
-                        nodeSelectorTerms:
-                        - matchExpressions:
-                          - key: kubernetes.io/arch
-                            operator: In
-                            values:
-                            - amd64
-                            - ppc64le
-                            - s390x
         force: true
         kind: Keycloak
         name: cs-keycloak
