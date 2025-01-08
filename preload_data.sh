@@ -202,7 +202,7 @@ function copy_resource() {
     local newResourceName=${3:-$resourceName}
     title " Copying $resourceType $resourceName from $FROM_NAMESPACE to $TO_NAMESPACE "   
     resource_exists=$(${OC} get $resourceType $resourceName -n $FROM_NAMESPACE || echo "fail")
-    storageClass_exist=$(${OC} get $resourceType $resourceName -n $FROM_NAMESPACE -o yaml | yq '.spec | has("storageClass")')
+    storageClass_exist=$(${OC} get $resourceType $resourceName -n $FROM_NAMESPACE -o yaml | $YQ '.spec | has("storageClass")')
     if [[ $resource_exists != "fail" ]]; then
       $OC get $resourceType $resourceName -n $FROM_NAMESPACE -o yaml > tmp-resource.yaml 
       $YQ -i '.metadata.name = "'${newResourceName}'" |
