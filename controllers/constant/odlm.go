@@ -1020,6 +1020,17 @@ spec:
                     - name: user-profile-volume
                       configMap: 
                         name: cs-keycloak-user-profile
+                  affinity:
+                    nodeAffinity:
+                      requiredDuringSchedulingIgnoredDuringExecution:
+                        nodeSelectorTerms:
+                        - matchExpressions:
+                          - key: kubernetes.io/arch
+                            operator: In
+                            values:
+                            - amd64
+                            - ppc64le
+                            - s390x
         force: true
         kind: Keycloak
         name: cs-keycloak
@@ -1041,6 +1052,24 @@ spec:
                   apiVersion: apiextensions.k8s.io/v1
                   kind: CustomResourceDefinition
                 key: .spec.versions[0].schema.openAPIV3Schema.properties.spec.properties.resources
+                operator: DoesNotExist
+          - path: .spec.unsupported.podTemplate.spec.affinity
+            operation: remove
+            matchExpressions:
+              - objectRef:
+                  name: keycloaks.k8s.keycloak.org
+                  apiVersion: apiextensions.k8s.io/v1
+                  kind: CustomResourceDefinition
+                key: .spec.versions[0].schema.openAPIV3Schema.properties.spec.properties.scheduling
+                operator: Exists
+          - path: .spec.scheduling
+            operation: remove
+            matchExpressions:
+              - objectRef:
+                  name: keycloaks.k8s.keycloak.org
+                  apiVersion: apiextensions.k8s.io/v1
+                  kind: CustomResourceDefinition
+                key: .spec.versions[0].schema.openAPIV3Schema.properties.spec.properties.scheduling
                 operator: DoesNotExist
       - apiVersion: v1
         kind: ConfigMap
