@@ -979,16 +979,6 @@ spec:
                     - command:
                         - /bin/sh
                         - /mnt/startup/cs-keycloak-entrypoint.sh
-                      name: keycloak
-                      startupProbe:
-                        failureThreshold: 20
-                        httpGet:
-                          path: /health/started
-                          port: 9000
-                          scheme: HTTPS
-                        initialDelaySeconds: 180
-                        periodSeconds: 20
-                        timeoutSeconds: 5
                       volumeMounts:
                         - mountPath: /mnt/truststore
                           name: truststore-volume
