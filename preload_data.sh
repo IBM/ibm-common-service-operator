@@ -53,30 +53,31 @@ function main() {
     save_log "cp3pt0-deployment/logs" "preload_data_log" "$DEBUG"
     trap cleanup_log EXIT
     prereq
-    if [[ $CLEANUP == "false" ]]; then
-      if [[ $RERUN == "true" ]]; then
-        info "Rerun specified..."
-        deletemongocopy
-      fi
-      # run backup preload
-      backup_preload_mongo
-      # copy im credentials
-      copy_resource "secret" "platform-auth-idp-credentials"
-      copy_resource "secret" "platform-auth-ldaps-ca-cert"
-      copy_resource "secret" "platform-oidc-credentials"
-      copy_resource "secret" "oauth-client-secret"
-      copy_resource "configmap" "ibm-cpp-config"
-      copy_resource "configmap" "common-web-ui-config"
-      copy_resource "configmap" "platform-auth-idp"
-      copy_resource "commonservice" "common-service" "preload-common-service-from-$FROM_NAMESPACE"
-      copy_resource "secret" "icp-mongodb-client-cert"
-      copy_resource "secret" "mongodb-root-ca-cert"
-      copy_resource "secret" "icp-mongodb-admin"
-      # any extra config
-    else
-      info "Cleanup selected. Cleaning MongoDB in services namespace $TO_NAMESPACE"
-      deletemongocopy
-    fi
+    patch_cert
+    # if [[ $CLEANUP == "false" ]]; then
+    #   if [[ $RERUN == "true" ]]; then
+    #     info "Rerun specified..."
+    #     deletemongocopy
+    #   fi
+    #   # run backup preload
+    #   backup_preload_mongo
+    #   # copy im credentials
+    #   copy_resource "secret" "platform-auth-idp-credentials"
+    #   copy_resource "secret" "platform-auth-ldaps-ca-cert"
+    #   copy_resource "secret" "platform-oidc-credentials"
+    #   copy_resource "secret" "oauth-client-secret"
+    #   copy_resource "configmap" "ibm-cpp-config"
+    #   copy_resource "configmap" "common-web-ui-config"
+    #   copy_resource "configmap" "platform-auth-idp"
+    #   copy_resource "commonservice" "common-service" "preload-common-service-from-$FROM_NAMESPACE"
+    #   copy_resource "secret" "icp-mongodb-client-cert"
+    #   copy_resource "secret" "mongodb-root-ca-cert"
+    #   copy_resource "secret" "icp-mongodb-admin"
+    #   # any extra config
+    # else
+    #   info "Cleanup selected. Cleaning MongoDB in services namespace $TO_NAMESPACE"
+    #   deletemongocopy
+    # fi
 }
 
 function parse_arguments() {
@@ -277,6 +278,41 @@ function pre_req_bpm() {
     exit -1
   fi
 } # parse
+
+
+#
+# Add full DNS name into icp-mongodb-client-cert certificate
+#
+function patch_cert() {
+    info "Adding full DNS name into icp-mongodb-client-cert certificate in $FROM_NAMESPACE"
+
+    full_dnsname=$(${OC} get certificate icp-mongodb-client-cert -n $FROM_NAMESPACE -o=jsonpath='{.spec.dnsNames}') 
+    dns_exist=$(echo $full_dnsname | grep "mongodb.$FROM_NAMESPACE.svc.cluster.local" > /dev/null || echo fail)
+
+    if [[ $dns_exist == "fail" ]]; then
+        info "Updating icp-mongodb-client-cert certificate"
+        original_tls_data=$(${OC} get secret -n $FROM_NAMESPACE --no-headers --ignore-not-found icp-mongodb-client-cert -o jsonpath={.data.'tls\.crt'})
+        ${OC} patch certificate icp-mongodb-client-cert -n $FROM_NAMESPACE --type="json" -p '[{"op": "add", "path":"/spec/dnsNames/1", "value":"mongodb.'"${FROM_NAMESPACE}"'.svc.cluster.local"}]' #2> /dev/null
+
+        # wait for cert-manager renew this certificate secret
+        retries=60
+        delay=10
+        # check secret 
+        while [[ $retries -gt 0 ]]; do
+          # update this secret in default namespace 
+          new_tls_data=$(${OC} get secret -n $FROM_NAMESPACE --no-headers --ignore-not-found icp-mongodb-client-cert -o jsonpath={.data.'tls\.crt'})
+          if [[ ${original_tls_data} == ${new_tls_data} ]]; then 
+            echo "Secret not refreshed, retrying in ${delay} seconds..."
+            retries=$((retries-1))
+            sleep ${delay}
+          else
+            echo "Successfully patched certificate secret"
+            break
+          fi
+        done
+
+    fi
+}
 
 
 #
@@ -1373,6 +1409,7 @@ spec:
   commonName: mongodb-service
   dnsNames:
     - mongodb
+    - mongodb.$FROM_NAMESPACE.svc.cluster.local
   duration: 17520h
   isCA: false
   issuerRef:
