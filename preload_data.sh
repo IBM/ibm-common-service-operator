@@ -53,31 +53,30 @@ function main() {
     save_log "cp3pt0-deployment/logs" "preload_data_log" "$DEBUG"
     trap cleanup_log EXIT
     prereq
-    patch_cert
     # if [[ $CLEANUP == "false" ]]; then
-    #   if [[ $RERUN == "true" ]]; then
-    #     info "Rerun specified..."
-    #     deletemongocopy
-    #   fi
-    #   # run backup preload
-    #   backup_preload_mongo
-    #   # copy im credentials
-    #   copy_resource "secret" "platform-auth-idp-credentials"
-    #   copy_resource "secret" "platform-auth-ldaps-ca-cert"
-    #   copy_resource "secret" "platform-oidc-credentials"
-    #   copy_resource "secret" "oauth-client-secret"
-    #   copy_resource "configmap" "ibm-cpp-config"
-    #   copy_resource "configmap" "common-web-ui-config"
-    #   copy_resource "configmap" "platform-auth-idp"
-    #   copy_resource "commonservice" "common-service" "preload-common-service-from-$FROM_NAMESPACE"
-    #   copy_resource "secret" "icp-mongodb-client-cert"
-    #   copy_resource "secret" "mongodb-root-ca-cert"
-    #   copy_resource "secret" "icp-mongodb-admin"
-    #   # any extra config
-    # else
-    #   info "Cleanup selected. Cleaning MongoDB in services namespace $TO_NAMESPACE"
-    #   deletemongocopy
-    # fi
+      if [[ $RERUN == "true" ]]; then
+        info "Rerun specified..."
+        deletemongocopy
+      fi
+      # run backup preload
+      backup_preload_mongo
+      # copy im credentials
+      copy_resource "secret" "platform-auth-idp-credentials"
+      copy_resource "secret" "platform-auth-ldaps-ca-cert"
+      copy_resource "secret" "platform-oidc-credentials"
+      copy_resource "secret" "oauth-client-secret"
+      copy_resource "configmap" "ibm-cpp-config"
+      copy_resource "configmap" "common-web-ui-config"
+      copy_resource "configmap" "platform-auth-idp"
+      copy_resource "commonservice" "common-service" "preload-common-service-from-$FROM_NAMESPACE"
+      copy_resource "secret" "icp-mongodb-client-cert"
+      copy_resource "secret" "mongodb-root-ca-cert"
+      copy_resource "secret" "icp-mongodb-admin"
+      # any extra config
+    else
+      info "Cleanup selected. Cleaning MongoDB in services namespace $TO_NAMESPACE"
+      deletemongocopy
+    fi
 }
 
 function parse_arguments() {
@@ -248,6 +247,7 @@ function check_copied_resource() {
 #
 function backup_preload_mongo() {
   pre_req_bpm
+  patch_cert
   cleanup
   deploymongocopy
   createdumppvc
