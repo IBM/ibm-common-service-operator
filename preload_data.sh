@@ -53,7 +53,7 @@ function main() {
     save_log "cp3pt0-deployment/logs" "preload_data_log" "$DEBUG"
     trap cleanup_log EXIT
     prereq
-    # if [[ $CLEANUP == "false" ]]; then
+    if [[ $CLEANUP == "false" ]]; then
       if [[ $RERUN == "true" ]]; then
         info "Rerun specified..."
         deletemongocopy
