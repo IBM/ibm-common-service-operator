@@ -247,6 +247,7 @@ function check_copied_resource() {
 #
 function backup_preload_mongo() {
   pre_req_bpm
+  patch_cert
   cleanup
   deploymongocopy
   createdumppvc
@@ -277,6 +278,41 @@ function pre_req_bpm() {
     exit -1
   fi
 } # parse
+
+
+#
+# Add full DNS name into icp-mongodb-client-cert certificate
+#
+function patch_cert() {
+    info "Adding full DNS name into icp-mongodb-client-cert certificate in $FROM_NAMESPACE"
+
+    full_dnsname=$(${OC} get certificates.v1.cert-manager.io icp-mongodb-client-cert -n $FROM_NAMESPACE -o=jsonpath='{.spec.dnsNames}') 
+    dns_exist=$(echo $full_dnsname | grep "mongodb.$FROM_NAMESPACE.svc.cluster.local" > /dev/null || echo fail)
+
+    if [[ $dns_exist == "fail" ]]; then
+        info "Updating icp-mongodb-client-cert certificate"
+        original_tls_data=$(${OC} get secret -n $FROM_NAMESPACE --no-headers --ignore-not-found icp-mongodb-client-cert -o jsonpath={.data.'tls\.crt'})
+        ${OC} patch certificates.v1.cert-manager.io icp-mongodb-client-cert -n $FROM_NAMESPACE --type="json" -p '[{"op": "add", "path":"/spec/dnsNames/0", "value":"mongodb.'"${FROM_NAMESPACE}"'.svc.cluster.local"}]'
+
+        # wait for cert-manager renew this certificate secret
+        retries=60
+        delay=10
+        # check secret 
+        while [[ $retries -gt 0 ]]; do
+          # update this secret in default namespace 
+          new_tls_data=$(${OC} get secret -n $FROM_NAMESPACE --no-headers --ignore-not-found icp-mongodb-client-cert -o jsonpath={.data.'tls\.crt'})
+          if [[ ${original_tls_data} == ${new_tls_data} ]]; then 
+            echo "Secret not refreshed, retrying in ${delay} seconds..."
+            retries=$((retries-1))
+            sleep ${delay}
+          else
+            echo "Successfully patched certificate secret"
+            break
+          fi
+        done
+
+    fi
+}
 
 
 #
@@ -1373,6 +1409,7 @@ spec:
   commonName: mongodb-service
   dnsNames:
     - mongodb
+    - mongodb.$FROM_NAMESPACE.svc.cluster.local
   duration: 17520h
   isCA: false
   issuerRef:
