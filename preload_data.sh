@@ -292,7 +292,7 @@ function patch_cert() {
     if [[ $dns_exist == "fail" ]]; then
         info "Updating icp-mongodb-client-cert certificate"
         original_tls_data=$(${OC} get secret -n $FROM_NAMESPACE --no-headers --ignore-not-found icp-mongodb-client-cert -o jsonpath={.data.'tls\.crt'})
-        ${OC} patch certificate icp-mongodb-client-cert -n $FROM_NAMESPACE --type="json" -p '[{"op": "add", "path":"/spec/dnsNames/1", "value":"mongodb.'"${FROM_NAMESPACE}"'.svc.cluster.local"}]' #2> /dev/null
+        ${OC} patch certificates.v1.cert-manager.io icp-mongodb-client-cert -n $FROM_NAMESPACE --type="json" -p '[{"op": "add", "path":"/spec/dnsNames/0", "value":"mongodb.'"${FROM_NAMESPACE}"'.svc.cluster.local"}]'
 
         # wait for cert-manager renew this certificate secret
         retries=60
