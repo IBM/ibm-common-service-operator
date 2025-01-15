@@ -286,7 +286,7 @@ function pre_req_bpm() {
 function patch_cert() {
     info "Adding full DNS name into icp-mongodb-client-cert certificate in $FROM_NAMESPACE"
 
-    full_dnsname=$(${OC} get certificate icp-mongodb-client-cert -n $FROM_NAMESPACE -o=jsonpath='{.spec.dnsNames}') 
+    full_dnsname=$(${OC} get certificates.v1.cert-manager.io icp-mongodb-client-cert -n $FROM_NAMESPACE -o=jsonpath='{.spec.dnsNames}') 
     dns_exist=$(echo $full_dnsname | grep "mongodb.$FROM_NAMESPACE.svc.cluster.local" > /dev/null || echo fail)
 
     if [[ $dns_exist == "fail" ]]; then
