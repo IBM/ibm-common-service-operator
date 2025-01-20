@@ -784,6 +784,7 @@ spec:
             features:
               enabled:
                 - token-exchange
+                - admin-fine-grained-authz
             db:
               host: keycloak-edb-cluster-rw
               passwordSecret:
