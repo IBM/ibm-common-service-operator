@@ -26,8 +26,11 @@ spec:
     - backupRef: cert-manager-resources
       includeClusterResources: true
       includedResourceTypes:
+        - secrets
+        - certificates.cert-manager.io
+        - issuers.cert-manager.io
         - certmanagerconfigs.operator.ibm.com
-      name: cert-manager-config-cr
+      name: cert-manager-workload-resources
       type: resource
     - includeClusterResources: true
       includedResourceTypes:
@@ -509,7 +512,7 @@ spec:
         - group: common-services-operatorgroups
         - hook: cert-manager-webhook-exists-check/webhookExists
         - group: cert-manager-crds
-        - group: cert-manager-config-cr
+        - group: cert-manager-workload-resources
         - group: cert-manager-subscription
         - hook: cert-manager-operator-check/podReady
         - hook: cert-manager-webhook-check/podReady

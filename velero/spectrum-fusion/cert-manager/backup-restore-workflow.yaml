@@ -52,7 +52,7 @@ spec:
       includeClusterResources: true
       includedResourceTypes:
         - certmanagerconfigs.operator.ibm.com
-      name: cert-manager-config-cr
+      name: ccert-manager-workload-resources
       type: resource
     - includedResourceTypes:
         - catalogsources.operators.coreos.com
@@ -127,7 +127,7 @@ spec:
         - group: cert-manager-catalog
         - group: cert-manager-operatorgroup
         - group: cert-manager-crds
-        - group: cert-manager-config-cr
+        - group: cert-manager-workload-resources
         - group: cert-manager-subscription
         - hook: cert-manager-operator-check/podReady
         - hook: cert-manager-webhook-check/podReady
