@@ -33,7 +33,7 @@ function main() {
     label_catalogsource
     label_ns_and_related 
     label_subscription
-    label_cert_manager_config
+    label_cert_manager_resources
     success "Successfully labeled all the resources"
 }
 
@@ -141,13 +141,15 @@ function label_subscription() {
     echo ""
 }
 
-function label_cert_manager_config(){
+function label_cert_manager_resources(){
     title "Start to label the Cert Manager resources... "
-    ${OC} label customresourcedefinition certmanagerconfigs.operator.ibm.com foundationservices.cloudpak.ibm.com=cert-manager-operator --overwrite=true 2>/dev/null
+    ${OC} label customresourcedefinition certmanagerconfigs.operator.ibm.com foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true 2>/dev/null
+    ${OC} label customresourcedefinition certificates.cert-manager.io foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true 2>/dev/null
+    ${OC} label customresourcedefinition issuers.cert-manager.io foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true 2>/dev/null
     info "Start to label the Cert Manager Configs"
     cert_manager_configs=$(${OC} get certmanagerconfigs.operator.ibm.com -n $CERT_MANAGER_NAMESPACE -o jsonpath='{.items[*].metadata.name}')
     while IFS= read -r cert_manager_config; do
-        ${OC} label certmanagerconfigs.operator.ibm.com $cert_manager_config foundationservices.cloudpak.ibm.com=cert-manager-operator -n $CERT_MANAGER_NAMESPACE --overwrite=true 2>/dev/null
+        ${OC} label certmanagerconfigs.operator.ibm.com $cert_manager_config foundationservices.cloudpak.ibm.com=cert-manager -n $CERT_MANAGER_NAMESPACE --overwrite=true 2>/dev/null
     done <<< "$cert_manager_configs"
 }
 

@@ -39,14 +39,14 @@ spec:
       includedResourceTypes:
         - certmanagerconfigs.operator.ibm.com
         - customresourcedefinitions.apiextensions.k8s.io
-      labelSelector: foundationservices.cloudpak.ibm.com=cert-manager-operator
+      labelSelector: foundationservices.cloudpak.ibm.com=cert-manager
       name: cert-manager-resources
       type: resource
     - backupRef: cert-manager-resources
       includeClusterResources: true
       includedResourceTypes:
         - customresourcedefinitions.apiextensions.k8s.io
-      name: cert-manager-config-crd
+      name: cert-manager-crds
       type: resource
     - backupRef: cert-manager-resources
       includeClusterResources: true
@@ -126,7 +126,7 @@ spec:
         - group: cert-manager-namespace
         - group: cert-manager-catalog
         - group: cert-manager-operatorgroup
-        - group: cert-manager-config-crd
+        - group: cert-manager-crds
         - group: cert-manager-config-cr
         - group: cert-manager-subscription
         - hook: cert-manager-operator-check/podReady
