@@ -320,13 +320,12 @@ function patch_cert() {
 #
 function patch_cm() {
     info "Adding full DNS name into leaf certificate icp-mongodb runtime in $FROM_NAMESPACE"
-    # scale down icp-mongodb statefulset
-    local replicas=$(${OC} get statefulSet icp-mongodb -n $FROM_NAMESPACE -o=jsonpath='{.spec.replicas}') 
-    ${OC} scale statefulSet -n ${FROM_NAMESPACE} icp-mongodb --replicas=0
+
+    # Scale dowun ibm-mongodb-operator
+    local deployments=$(${OC} get deployments ibm-mongodb-operator -n $FROM_NAMESPACE -o=jsonpath='{.spec.replicas}')
+    ${OC} scale deployment -n $FROM_NAMESPACE ibm-mongodb-operator --replicas=0
 
     # update icp-mongodb-init configmap
-    local deployments=$(${OC} get deployments ibm_mongodb_operator -n $FROM_NAMESPACE -o=jsonpath='{.spec.replicas}')
-    ${OC} scale deployment -n ${FROM_NAMESPACE} ibm-mongodb-operator --replicas=0
     cat << EOF | ${OC} apply -n $FROM_NAMESPACE -f -
 kind: ConfigMap
 apiVersion: v1
@@ -689,7 +688,6 @@ EOF
 
     # trigger a rolling upgrade
     ${OC} patch statefulSet icp-mongodb -n ${FROM_NAMESPACE}  -p '{"spec":{"template":{"metadata":{"labels":{"migrating": "'true'"}}}}}'
-    ${OC} scale statefulSet -n ${FROM_NAMESPACE} icp-mongodb --replicas=${replicas}
 
     # wait for mongodb pod running
     status="unknown"
@@ -702,10 +700,9 @@ EOF
       status=$(${OC} get po icp-mongodb-0 --no-headers -n ${FROM_NAMESPACE} -o=jsonpath='{.status.phase}')
     done
 
+    # Scale up ibm-mongodb-operator
     ${OC} scale deployment -n ${FROM_NAMESPACE} ibm-mongodb-operator --replicas=${deployments}
 
-    # wait for mongodb operator running
-    status="unknown"
 
     success "DNS name in namespace: $FROM_NAMESPACE updated" 
 }
