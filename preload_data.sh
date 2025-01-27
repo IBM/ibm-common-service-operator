@@ -72,7 +72,7 @@ function main() {
       copy_resource "secret" "icp-mongodb-client-cert"
       copy_resource "secret" "mongodb-root-ca-cert"
       copy_resource "secret" "icp-mongodb-admin"
-      any extra config
+      #any extra config
     else
       info "Cleanup selected. Cleaning MongoDB in services namespace $TO_NAMESPACE"
       deletemongocopy
