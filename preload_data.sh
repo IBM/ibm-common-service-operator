@@ -255,7 +255,7 @@ function backup_preload_mongo() {
   dumpmongo
   swapmongopvc
   loadmongo
-  #deletemongocopy
+  deletemongocopy
   provision_external_connection
 } # backup_preload_mongo
   
@@ -2036,7 +2036,6 @@ spec:
         app: icp-mongodb
         app.kubernetes.io/instance: common-mongodb
         release: mongodb
-        migrating: 'true'
       annotations:
         clusterhealth.ibm.com/dependencies: ibm-common-services.cert-manager
         productID: 068a62892a1e4db39641342e592daa25
