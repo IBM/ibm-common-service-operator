@@ -331,6 +331,7 @@ function patch_cm() {
       # scale down icp-mongodb statefulset
       ${OC} scale statefulSet -n ${FROM_NAMESPACE} icp-mongodb --replicas=0
     fi
+    
     # update icp-mongodb-init configmap
     cat << EOF | ${OC} apply -n $FROM_NAMESPACE -f -
 kind: ConfigMap
@@ -513,7 +514,9 @@ data:
 
     DNS.5 = 127.0.0.1
 
-    DNS.6 = mongodb.$FROM_NAMESPACE.svc.cluster.local
+    DNS.6 = mongodb
+    
+    DNS.7 = mongodb.$FROM_NAMESPACE.svc.cluster.local
 
     DUMMYEOL
 
@@ -1473,7 +1476,9 @@ data:
 
     DNS.5 = 127.0.0.1
 
-    DNS.6 = mongodb.${FROM_NAMESPACE}.svc.cluster.local
+    DNS.6 = mongodb
+
+    DNS.7 = mongodb.$FROM_NAMESPACE.svc.cluster.local
 
     DUMMYEOL
 
