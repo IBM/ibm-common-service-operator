@@ -3,5 +3,6 @@ apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata: 
   name: {{ include "ibm-common-service-operator.fullname" . }}
+  namespace: {{ .Values.namespace }}
 spec: 
   selfSigned: {}

@@ -351,6 +351,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: ibm-common-service-operator
+  namespace: system
 rules:
 - apiGroups:
   - ""
@@ -623,6 +624,7 @@ metadata:
     app.kubernetes.io/managed-by: ibm-common-service-operator
     app.kubernetes.io/name: ibm-common-service-operator
   name: ibm-common-service-operator
+  namespace: system
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -653,6 +655,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: webhook-service
+  namespace: system
 spec:
   ports:
   - port: 443
@@ -669,6 +672,7 @@ metadata:
     app.kubernetes.io/name: ibm-common-service-operator
     productName: IBM_Cloud_Platform_Common_Services
   name: ibm-common-service-operator
+  namespace: system
 spec:
   replicas: 1
   selector:
@@ -772,6 +776,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: serving-cert
+  namespace: system
 spec:
   dnsNames:
   - webhook-service.$(SERVICE_NAMESPACE).svc
@@ -785,6 +790,7 @@ apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   name: selfsigned-issuer
+  namespace: system
 spec:
   selfSigned: {}
 ---
