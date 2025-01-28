@@ -3,7 +3,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata: 
   name: {{ include "ibm-common-service-operator.fullname" . }}
-  namespace: system
   labels:
     {{- include "ibm-common-service-operator.labels" . | nindent 4 }}
 spec: 

@@ -3,7 +3,6 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata: 
   name: {{ include "ibm-common-service-operator.fullname" . }}
-  namespace: system
   labels:
     {{- include "ibm-common-service-operator.labels" . | nindent 4 }}
 roleRef: 
