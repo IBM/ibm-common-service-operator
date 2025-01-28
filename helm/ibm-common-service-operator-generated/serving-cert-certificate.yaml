@@ -2,11 +2,11 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: serving-cert
-  namespace: system
+  namespace: custom-namespace
 spec:
   dnsNames:
-  - webhook-service.$(SERVICE_NAMESPACE).svc
-  - webhook-service.$(SERVICE_NAMESPACE).svc.cluster.local
+  - webhook-service.custom-namespace.svc
+  - webhook-service.custom-namespace.svc.cluster.local
   issuerRef:
     kind: Issuer
     name: selfsigned-issuer

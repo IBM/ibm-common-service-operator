@@ -1,5 +1,17 @@
 # Adds namespace to all resources.
-namespace: system
+transformers:
+- |-
+  apiVersion: builtin
+  kind: NamespaceTransformer
+  metadata:
+    name: notImportantHere
+    namespace: custom-namespace
+  setRoleBindingSubjects: allServiceAccounts
+  fieldSpecs:
+    - path: metadata/namespace
+      create: true
+
+namespace: custom-namespace
 
 # Value of this field is prepended to the
 # names of all resources, e.g. a deployment named
@@ -56,13 +68,13 @@ vars:
     group: cert-manager.io
     version: v1
     name: serving-cert # this name should match the one in certificate.yaml
-# - name: SERVICE_NAMESPACE # namespace of the service
-#   objref:
-#     kind: Service
-#     version: v1
-#     name: webhook-service
-#   fieldref:
-#     fieldpath: metadata.namespace
+- name: SERVICE_NAMESPACE # namespace of the service
+  objref:
+    kind: Service
+    version: v1
+    name: webhook-service
+  fieldref:
+    fieldpath: metadata.namespace
 - name: SERVICE_NAME
   objref:
     kind: Service

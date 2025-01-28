@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/managed-by: ibm-common-service-operator
     app.kubernetes.io/name: ibm-common-service-operator
   name: ibm-common-service-operator
-  namespace: system
+  namespace: custom-namespace
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -14,4 +14,4 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: ibm-common-service-operator
-  namespace: ibm-common-services
+  namespace: custom-namespace

@@ -11,7 +11,7 @@ webhooks:
     clientConfig: 
       service: 
         name: webhook-service
-        namespace: system
+        namespace: custom-namespace
         path: /mutate-operator-ibm-com-v1alpha1-operandrequest
     failurePolicy: Ignore
     name: moperandrequest.kb.io

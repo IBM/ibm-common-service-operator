@@ -351,7 +351,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: ibm-common-service-operator
-  namespace: system
+  namespace: custom-namespace
 rules:
 - apiGroups:
   - ""
@@ -624,7 +624,7 @@ metadata:
     app.kubernetes.io/managed-by: ibm-common-service-operator
     app.kubernetes.io/name: ibm-common-service-operator
   name: ibm-common-service-operator
-  namespace: system
+  namespace: custom-namespace
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -632,7 +632,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: ibm-common-service-operator
-  namespace: ibm-common-services
+  namespace: custom-namespace
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -649,13 +649,13 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: ibm-common-service-operator
-  namespace: ibm-common-services
+  namespace: custom-namespace
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: webhook-service
-  namespace: system
+  namespace: custom-namespace
 spec:
   ports:
   - port: 443
@@ -672,7 +672,7 @@ metadata:
     app.kubernetes.io/name: ibm-common-service-operator
     productName: IBM_Cloud_Platform_Common_Services
   name: ibm-common-service-operator
-  namespace: system
+  namespace: custom-namespace
 spec:
   replicas: 1
   selector:
@@ -776,11 +776,11 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: serving-cert
-  namespace: system
+  namespace: custom-namespace
 spec:
   dnsNames:
-  - webhook-service.$(SERVICE_NAMESPACE).svc
-  - webhook-service.$(SERVICE_NAMESPACE).svc.cluster.local
+  - webhook-service.custom-namespace.svc
+  - webhook-service.custom-namespace.svc.cluster.local
   issuerRef:
     kind: Issuer
     name: selfsigned-issuer
@@ -790,7 +790,7 @@ apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   name: selfsigned-issuer
-  namespace: system
+  namespace: custom-namespace
 spec:
   selfSigned: {}
 ---
@@ -806,7 +806,7 @@ webhooks:
   clientConfig:
     service:
       name: webhook-service
-      namespace: system
+      namespace: custom-namespace
       path: /mutate-operator-ibm-com-v1alpha1-operandrequest
   failurePolicy: Ignore
   name: moperandrequest.kb.io
@@ -834,7 +834,7 @@ webhooks:
   clientConfig:
     service:
       name: webhook-service
-      namespace: system
+      namespace: custom-namespace
       path: /validate-operator-ibm-com-v3-commonservice
   failurePolicy: Fail
   name: vcommonservice.kb.io
