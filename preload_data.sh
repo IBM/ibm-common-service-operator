@@ -323,8 +323,14 @@ function patch_cm() {
 
     # Scale dowun ibm-mongodb-operator
     local deployments=$(${OC} get deployments ibm-mongodb-operator -n $FROM_NAMESPACE -o=jsonpath='{.spec.replicas}')
+    local replicas=$(${OC} get statefulSet icp-mongodb -n $FROM_NAMESPACE -o=jsonpath='{.spec.replicas}') 
     ${OC} scale deployment -n $FROM_NAMESPACE ibm-mongodb-operator --replicas=0
 
+    migration=$(${OC} get statefulset icp-mongodb -n $FROM_NAMESPACE -o=jsonpath='{.spec.template.metadata.labels.migration}')
+    if [[ $migration != "" ]]; then 
+      # scale down icp-mongodb statefulset
+      ${OC} scale statefulSet -n ${FROM_NAMESPACE} icp-mongodb --replicas=0
+    fi
     # update icp-mongodb-init configmap
     cat << EOF | ${OC} apply -n $FROM_NAMESPACE -f -
 kind: ConfigMap
@@ -507,7 +513,7 @@ data:
 
     DNS.5 = 127.0.0.1
 
-    DNS.6 = mongodb.${FROM_NAMESPACE}.svc.cluster.local
+    DNS.6 = mongodb.$FROM_NAMESPACE.svc.cluster.local
 
     DUMMYEOL
 
@@ -687,7 +693,12 @@ EOF
 
 
     # trigger a rolling upgrade
-    ${OC} patch statefulSet icp-mongodb -n ${FROM_NAMESPACE}  -p '{"spec":{"template":{"metadata":{"labels":{"migrating": "'true'"}}}}}'
+    if [[ $migration != "" ]]; then 
+      # scale down icp-mongodb statefulset
+      ${OC} scale statefulSet -n ${FROM_NAMESPACE} icp-mongodb --replicas=${replicas}
+    else
+      ${OC} patch statefulSet icp-mongodb -n ${FROM_NAMESPACE}  -p '{"spec":{"template":{"metadata":{"labels":{"migrating": "'true'"}}}}}'
+    fi
 
     # wait for mongodb pod running
     status="unknown"
