@@ -798,7 +798,7 @@ apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   annotations:
-    cert-manager.io/inject-ca-from: $(CERTIFICATE_NAMESPACE)/serving-cert
+    cert-manager.io/inject-ca-from: custom-namespace/serving-cert
   name: mutating-webhook-configuration
 webhooks:
 - admissionReviewVersions:
@@ -826,7 +826,7 @@ apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   annotations:
-    cert-manager.io/inject-ca-from: $(CERTIFICATE_NAMESPACE)/serving-cert
+    cert-manager.io/inject-ca-from: custom-namespace/serving-cert
   name: validating-webhook-configuration
 webhooks:
 - admissionReviewVersions:

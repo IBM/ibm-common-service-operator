@@ -4,7 +4,7 @@ kind: MutatingWebhookConfiguration
 metadata: 
   name: {{ include "ibm-common-service-operator.fullname" . }}
   annotations: 
-    cert-manager.io/inject-ca-from: $(CERTIFICATE_NAMESPACE)/serving-cert
+    cert-manager.io/inject-ca-from: custom-namespace/serving-cert
 webhooks:   
   - admissionReviewVersions: 
       - v1
