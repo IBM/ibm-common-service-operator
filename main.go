@@ -45,14 +45,11 @@ import (
 	certmanagerv1 "github.com/ibm/ibm-cert-manager-operator/apis/cert-manager/v1"
 
 	operatorv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
-	"github.com/IBM/ibm-common-service-operator/v4/controllers"
 	"github.com/IBM/ibm-common-service-operator/v4/controllers/bootstrap"
 	certmanagerv1controllers "github.com/IBM/ibm-common-service-operator/v4/controllers/cert-manager"
 	util "github.com/IBM/ibm-common-service-operator/v4/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/v4/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/v4/controllers/goroutines"
-	commonservicewebhook "github.com/IBM/ibm-common-service-operator/v4/controllers/webhooks/commonservice"
-	operandrequestwebhook "github.com/IBM/ibm-common-service-operator/v4/controllers/webhooks/operandrequest"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -155,15 +152,15 @@ func main() {
 			os.Exit(1)
 		}
 
-		klog.Infof("Setup commonservice manager")
-		if err = (&controllers.CommonServiceReconciler{
-			Bootstrap: bs,
-			Scheme:    mgr.GetScheme(),
-			Recorder:  mgr.GetEventRecorderFor("commonservice-controller"),
-		}).SetupWithManager(mgr); err != nil {
-			klog.Errorf("Unable to create controller CommonService: %v", err)
-			os.Exit(1)
-		}
+		// klog.Infof("Setup commonservice manager")
+		// if err = (&controllers.CommonServiceReconciler{
+		// 	Bootstrap: bs,
+		// 	Scheme:    mgr.GetScheme(),
+		// 	Recorder:  mgr.GetEventRecorderFor("commonservice-controller"),
+		// }).SetupWithManager(mgr); err != nil {
+		// 	klog.Errorf("Unable to create controller CommonService: %v", err)
+		// 	os.Exit(1)
+		// }
 
 		klog.Infof("Start go routines")
 		// Update CS CR Status
@@ -210,26 +207,26 @@ func main() {
 		klog.Infof("Common Service Operator in the namespace %s takes charge of resource management", cpfsNs)
 	}
 
-	// Start up the webhook server
-	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
-		if err = (&commonservicewebhook.Defaulter{
-			Client:    mgr.GetClient(),
-			Reader:    mgr.GetAPIReader(),
-			IsDormant: operatorNs != cpfsNs,
-		}).SetupWebhookWithManager(mgr); err != nil {
-			klog.Errorf("Unable to create CommonService webhook: %v", err)
-			os.Exit(1)
-		}
+	// // Start up the webhook server
+	// if os.Getenv("ENABLE_WEBHOOKS") != "false" {
+	// 	if err = (&commonservicewebhook.Defaulter{
+	// 		Client:    mgr.GetClient(),
+	// 		Reader:    mgr.GetAPIReader(),
+	// 		IsDormant: operatorNs != cpfsNs,
+	// 	}).SetupWebhookWithManager(mgr); err != nil {
+	// 		klog.Errorf("Unable to create CommonService webhook: %v", err)
+	// 		os.Exit(1)
+	// 	}
 
-		if err = (&operandrequestwebhook.Defaulter{
-			Client:    mgr.GetClient(),
-			Reader:    mgr.GetAPIReader(),
-			IsDormant: operatorNs != cpfsNs,
-		}).SetupWebhookWithManager(mgr); err != nil {
-			klog.Errorf("Unable to create OperandRequest webhook: %v", err)
-			os.Exit(1)
-		}
-	}
+	// 	if err = (&operandrequestwebhook.Defaulter{
+	// 		Client:    mgr.GetClient(),
+	// 		Reader:    mgr.GetAPIReader(),
+	// 		IsDormant: operatorNs != cpfsNs,
+	// 	}).SetupWebhookWithManager(mgr); err != nil {
+	// 		klog.Errorf("Unable to create OperandRequest webhook: %v", err)
+	// 		os.Exit(1)
+	// 	}
+	// }
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		klog.Errorf("unable to set up health check: %v", err)
