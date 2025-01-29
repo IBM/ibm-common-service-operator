@@ -63,6 +63,11 @@ const (
 
 func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 
+	if os.Getenv("NO_OLM") == "true" {
+		klog.Infof("Reconciling CommonService: %s in non OLM environment", req.NamespacedName)
+		return ctrl.Result{}, nil
+	}
+
 	klog.Infof("Reconciling CommonService: %s", req.NamespacedName)
 
 	// Fetch the CommonService instance

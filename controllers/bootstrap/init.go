@@ -97,6 +97,39 @@ type Resource struct {
 	Scope   string
 }
 
+func NewNonOLMBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
+	cpfsNs := util.GetCPFSNamespace(mgr.GetAPIReader())
+	servicesNs := util.GetServicesNamespace(mgr.GetAPIReader())
+	operatorNs, err := util.GetOperatorNamespace()
+	if err != nil {
+		return
+	}
+	csData := apiv3.CSData{
+		CPFSNs:                  cpfsNs,
+		ServicesNs:              servicesNs,
+		OperatorNs:              operatorNs,
+		CatalogSourceName:       "",
+		CatalogSourceNs:         "",
+		ApprovalMode:            "",
+		WatchNamespaces:         util.GetWatchNamespace(),
+		OnPremMultiEnable:       strconv.FormatBool(util.CheckMultiInstances(mgr.GetAPIReader())),
+		ExcludedCatalog:         constant.ExcludedCatalog,
+		StatusMonitoredServices: constant.StatusMonitoredServices,
+	}
+
+	bs = &Bootstrap{
+		Client:               mgr.GetClient(),
+		Reader:               mgr.GetAPIReader(),
+		Config:               mgr.GetConfig(),
+		EventRecorder:        mgr.GetEventRecorderFor("ibm-common-service-operator"),
+		Manager:              deploy.NewDeployManager(mgr),
+		SaasEnable:           util.CheckSaas(mgr.GetAPIReader()),
+		MultiInstancesEnable: util.CheckMultiInstances(mgr.GetAPIReader()),
+		CSData:               csData,
+	}
+	return
+}
+
 // NewBootstrap is the way to create a NewBootstrap struct
 func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 	cpfsNs := util.GetCPFSNamespace(mgr.GetAPIReader())
