@@ -65,6 +65,30 @@ func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	if os.Getenv("NO_OLM") == "true" {
 		klog.Infof("Reconciling CommonService: %s in non OLM environment", req.NamespacedName)
+
+		klog.Infof("Start to Create ODLM CR in the namespace %s", r.Bootstrap.CSData.OperatorNs)
+		// Check if ODLM OperandRegistry and OperandConfig are created
+		klog.Info("Checking if OperandRegistry and OperandConfig CRD already exist")
+		existOpreg, _ := r.Bootstrap.CheckCRD(constant.OpregAPIGroupVersion, constant.OpregKind)
+		existOpcon, _ := r.Bootstrap.CheckCRD(constant.OpregAPIGroupVersion, constant.OpconKind)
+		// Install/update Opreg and Opcon resources before installing ODLM if CRDs exist
+		if existOpreg && existOpcon {
+
+			klog.Info("Installing/Updating OperandRegistry")
+			if err := r.Bootstrap.InstallOrUpdateOpreg(true, ""); err != nil {
+				klog.Errorf("Fail to Installing/Updating OperandConfig: %v", err)
+				return ctrl.Result{}, err
+			}
+
+			klog.Info("Installing/Updating OperandConfig")
+			if err := r.Bootstrap.InstallOrUpdateOpcon(true); err != nil {
+				klog.Errorf("Fail to Installing/Updating OperandConfig: %v", err)
+				return ctrl.Result{}, err
+			}
+		} else {
+			klog.Error("ODLM CRD not ready, waiting for it to be ready")
+		}
+
 		return ctrl.Result{}, nil
 	}
 
