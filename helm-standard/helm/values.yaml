@@ -9,4 +9,4 @@ imageRegistryNamespaceOperand: cpopen/cpfs
 # following are examples, not required:
 operatorNamespace: ibm-common-services
 servicesNamespace: service
-operatorImage: quay.io/yuchen_li1/common-service-operator-amd64:dev   # will update later
+operatorImage: ibm-common-service-operator 
