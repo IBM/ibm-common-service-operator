@@ -47,9 +47,9 @@ spec:
                   fieldPath: metadata.namespace
             - name: WATCH_NAMESPACE
               valueFrom: 
-                configMapKeyRef: 
-                  key: namespaces
-                  name: namespace-scope
+                fieldRef: 
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
                   optional: true
             - name: NO_OLM
               value: "true"
