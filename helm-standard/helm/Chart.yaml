@@ -1,0 +1,6 @@
+apiVersion: v2
+name: ibm-odlm
+description: A Helm chart for ibm-common-service-operator
+type: application
+version: 4.6.11
+appVersion: 4.6.11
