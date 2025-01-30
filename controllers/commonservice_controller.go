@@ -98,7 +98,6 @@ func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if os.Getenv("NO_OLM") == "true" {
 		klog.Infof("Reconciling CommonService: %s in non OLM environment", req.NamespacedName)
 
-		klog.Infof("HEllO")
 		if err := configurationcollector.CreateUpdateConfig(r.Bootstrap); err != nil {
 			klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 			return ctrl.Result{}, err
