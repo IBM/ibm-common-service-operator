@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/name: Issuer
     operator.ibm.com/managedByCsOperator: "true"
   name: cs-ca-issuer
-  namespace: {{ .Values. serviceNamespace }}
+  namespace: {{ .Values.serviceNamespace }}
 spec:
   ca:
     secretName: cs-ca-certificate-secret
