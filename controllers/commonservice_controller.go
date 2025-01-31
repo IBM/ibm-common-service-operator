@@ -98,6 +98,7 @@ func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if os.Getenv("NO_OLM") == "true" {
 		klog.Infof("Reconciling CommonService: %s in non OLM environment", req.NamespacedName)
 
+		// create ibm-cpp-config configmap
 		if err := configurationcollector.CreateUpdateConfig(r.Bootstrap); err != nil {
 			klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 			return ctrl.Result{}, err
@@ -119,6 +120,12 @@ func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			klog.Info("Installing/Updating OperandConfig")
 			if err := r.Bootstrap.InstallOrUpdateOpcon(true); err != nil {
 				klog.Errorf("Fail to Installing/Updating OperandConfig: %v", err)
+				return ctrl.Result{}, err
+			}
+
+			// Temporary solution for EDB image ConfigMap reference
+			if err := r.Bootstrap.CreateEDBImageMaps(); err != nil {
+				klog.Errorf("Failed to create EDB Image ConfigMap: %v", err)
 				return ctrl.Result{}, err
 			}
 		} else {
