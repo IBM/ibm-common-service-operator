@@ -1,5 +1,17 @@
 # Adds namespace to all resources.
-namespace: system
+transformers:
+- |-
+  apiVersion: builtin
+  kind: NamespaceTransformer
+  metadata:
+    name: notImportantHere
+    namespace: custom-namespace
+  setRoleBindingSubjects: allServiceAccounts
+  fieldSpecs:
+    - path: metadata/namespace
+      create: true
+
+namespace: custom-namespace
 
 # Value of this field is prepended to the
 # names of all resources, e.g. a deployment named
@@ -23,6 +35,7 @@ bases:
 - ../certmanager
 # [PROMETHEUS] To enable prometheus monitor, uncomment all sections with 'PROMETHEUS'. 
 #- ../prometheus
+- ../service_account
 
 patchesStrategicMerge:
   # Protect the /metrics endpoint by putting it behind auth.
@@ -32,7 +45,7 @@ patchesStrategicMerge:
 
 # [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix including the one in 
 # crd/kustomization.yaml
-- manager_webhook_patch.yaml
+# - manager_webhook_patch.yaml
 
 # [CERTMANAGER] To enable cert-manager, uncomment all sections with 'CERTMANAGER'.
 # Uncomment 'CERTMANAGER' sections in crd/kustomization.yaml to enable the CA injection in the admission webhooks.

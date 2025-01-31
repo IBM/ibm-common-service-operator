@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ibm-common-service-operator
-  namespace: ibm-common-services
+  # namespace: ibm-common-services
   labels:
     app.kubernetes.io/instance: "ibm-common-service-operator"
     app.kubernetes.io/managed-by: "ibm-common-service-operator"
@@ -70,8 +70,14 @@ spec:
               fieldPath: metadata.namespace
         - name: WATCH_NAMESPACE
           valueFrom:
-            fieldRef:
-              fieldPath: metadata.annotations['olm.targetNamespaces']
+            configMapKeyRef:
+              name: namespace-scope
+              key: namespaces
+              optional: true
+        - name: NO_OLM
+          value: 'true'
+        - name: ENABLE_WEBHOOKS
+          value: 'false'
         - name: OPERATOR_NAME
           value: "ibm-common-service-operator"
         resources:

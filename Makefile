@@ -20,8 +20,8 @@ OPERATOR_SDK ?= $(shell which operator-sdk)
 CONTROLLER_GEN ?= $(shell which controller-gen)
 KUSTOMIZE ?= $(shell which kustomize)
 YQ_VERSION=v4.27.3
-KUSTOMIZE_VERSION=v3.8.7
-OPERATOR_SDK_VERSION=v1.31.0
+KUSTOMIZE_VERSION=v5.0.0
+OPERATOR_SDK_VERSION=v1.38.0
 CONTROLLER_TOOLS_VERSION ?= v0.14.0
 
 CSV_PATH=bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
@@ -79,6 +79,8 @@ REGISTRY ?= "docker-na-public.artifactory.swg-devops.com/hyc-cloud-private-scrat
 OPERATOR_IMAGE_NAME ?= common-service-operator
 # Current Operator bundle image name
 BUNDLE_IMAGE_NAME ?= common-service-operator-bundle
+# Current Operator image with registry
+IMG ?= icr.io/cpopen/common-service-operator:latest
 
 CHANNELS := v4.11
 DEFAULT_CHANNEL := v4.11
@@ -101,6 +103,11 @@ include common/Makefile.common.mk
 include hack/keycloak-themes/Makefile
 
 ##@ Development
+
+## Location to install dependencies to
+LOCALBIN ?= $(shell pwd)/bin
+$(LOCALBIN):
+	mkdir -p $(LOCALBIN)
 
 clis: yq kustomize operator-sdk
 
@@ -238,6 +245,31 @@ bundle-manifests: clis
 generate-all: yq kustomize operator-sdk generate manifests cloudpak-theme-version ## Generate bundle manifests, metadata and package manifests
 	$(OPERATOR_SDK) generate kustomize manifests -q
 	- make bundle-manifests CHANNELS=v4.11 DEFAULT_CHANNEL=v4.11
+
+##@ Helm Chart Generation
+
+.PHONY: deploy-dryrun
+deploy-dryrun: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
+	$(KUSTOMIZE) build config/default --output config/ibm-common-service-operator.yaml
+
+.PHONY: helm
+helm: deploy-dryrun kustohelmize
+	$(KUSTOHELMIZE) create --from=config/ibm-common-service-operator.yaml helm/ibm-common-service-operator
+	helm lint helm/ibm-common-service-operator
+
+KUBERNETES-SPLIT-YAML ?= $(LOCALBIN)/kubernetes-split-yaml
+KUSTOHELMIZE ?= $(LOCALBIN)/kustohelmize
+
+.PHONY: kubernetes-split-yaml
+kubernetes-split-yaml: $(KUBERNETES-SPLIT-YAML) ## Download kubernetes-split-yaml locally if necessary.
+$(KUBERNETES-SPLIT-YAML): $(LOCALBIN)
+	GOBIN=$(LOCALBIN) go install github.com/mogensen/kubernetes-split-yaml@v0.4.0
+
+.PHONY: kustohelmize
+kustohelmize: $(KUSTOHELMIZE) ## Download kustohelmize locally if necessary.
+$(KUSTOHELMIZE): $(LOCALBIN) kubernetes-split-yaml
+	GOBIN=$(LOCALBIN) go install github.com/yeahdongcn/kustohelmize@v0.4.0
 
 ##@ Test
 

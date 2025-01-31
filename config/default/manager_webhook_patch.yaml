@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ibm-common-service-operator
-  namespace: ibm-common-services
+  # namespace: ibm-common-services
 spec:
   template:
     spec:
