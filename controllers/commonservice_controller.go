@@ -104,6 +104,12 @@ func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			return ctrl.Result{}, err
 		}
 
+		// deploy Cert Manager CR
+		if err := r.Bootstrap.DeployCertManagerCR(); err != nil {
+			klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
+			return ctrl.Result{}, err
+		}
+
 		klog.Infof("Start to Create ODLM CR in the namespace %s", r.Bootstrap.CSData.OperatorNs)
 		// Check if ODLM OperandRegistry and OperandConfig are created
 		klog.Info("Checking if OperandRegistry and OperandConfig CRD already exist")
