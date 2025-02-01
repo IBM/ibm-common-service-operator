@@ -255,8 +255,10 @@ deploy-dryrun: manifests kustomize ## Deploy controller to the K8s cluster speci
 
 .PHONY: helm
 helm: deploy-dryrun kustohelmize
-	$(KUSTOHELMIZE) create --from=config/ibm-common-service-operator.yaml helm/ibm-common-service-operator
-	helm lint helm/ibm-common-service-operator
+	$(KUSTOHELMIZE) create --from=config/ibm-common-service-operator.yaml generate-helm/ibm-common-service-operator
+	helm lint generate-helm/ibm-common-service-operator
+	bash scripts/restructure_helm.sh
+	helm lint helm
 
 KUBERNETES-SPLIT-YAML ?= $(LOCALBIN)/kubernetes-split-yaml
 KUSTOHELMIZE ?= $(LOCALBIN)/kustohelmize
