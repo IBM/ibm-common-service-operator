@@ -9,6 +9,13 @@ operatorVersion: 4.11.0
 
 # other configuration you think you might need for your operator
 # following are examples, not required:
-operatorNamespace: operators
-servicesNamespace: services
-operatorImage: ibm-common-service-operator
+operatorNamespace: <operator namespace>
+servicesNamespace: <services namespace>
+operatorImage: common-service-operator
+
+# CR configurations
+
+commonServiceSpec:
+  license:
+    accept: false
+  size: starterset

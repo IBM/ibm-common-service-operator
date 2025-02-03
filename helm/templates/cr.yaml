@@ -1,0 +1,15 @@
+apiVersion: operator.ibm.com/v3
+kind: CommonService
+metadata:
+  annotations:
+    version: '-1'
+  name: common-service
+  namespace: {{ .Values.operatorNamespace }}
+  labels:
+    foundationservices.cloudpak.ibm.com: commonservice
+spec:
+  license:
+    accept: {{ .Values.commonServiceSpec.license.accept }}
+  operatorNamespace: {{ .Values.operatorNamespace }}
+  servicesNamespace: {{ .Values.servicesNamespace }}
+  size: {{ .Values.commonServiceSpec.size }}
