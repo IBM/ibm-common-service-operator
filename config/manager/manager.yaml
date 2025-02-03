@@ -23,6 +23,7 @@ spec:
         app.kubernetes.io/managed-by: "ibm-common-service-operator"
         app.kubernetes.io/name: "ibm-common-service-operator"
         productName: IBM_Cloud_Platform_Common_Services
+        intent: protected
       annotations:
         productName: "IBM Cloud Platform Common Services"
         productID: "068a62892a1e4db39641342e592daa25"

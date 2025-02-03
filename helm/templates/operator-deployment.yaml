@@ -23,6 +23,7 @@ spec:
         app.kubernetes.io/instance: ibm-common-service-operator
         app.kubernetes.io/managed-by: ibm-common-service-operator
         app.kubernetes.io/name: ibm-common-service-operator
+        intent: protected
         name: ibm-common-service-operator
         productName: IBM_Cloud_Platform_Common_Services
     spec: 
@@ -39,7 +40,7 @@ spec:
                       - s390x
       containers:         
         - name: ibm-common-service-operator
-          image: icr.io/cpopen/common-service-operator:latest
+          image: "{{ .Values.imagePullPrefix }}/{{ .Values.imageRegistryNamespaceOperator }}/{{ .Values.operatorImage }}:{{ .Values.tag }}"
           command: 
             - /manager
           env:             
