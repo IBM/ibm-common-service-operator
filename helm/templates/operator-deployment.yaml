@@ -51,7 +51,6 @@ spec:
                 configMapKeyRef:
                   key: namespaces
                   name: namespace-scope
-                  optional: true
             - name: NO_OLM
               value: "true"
             - name: ENABLE_WEBHOOKS
