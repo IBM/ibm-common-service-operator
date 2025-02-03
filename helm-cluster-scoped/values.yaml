@@ -3,8 +3,9 @@ imagePullSecret: ibm-entitlement-key
 imageRegistryNamespaceOperand: cpopen/cpfs
 imageRegistryNamespaceOperator: cpopen
 operatorImage: ibm-common-service-operator
-operatorNamespace: operator-ns
-tag: latest
+operatorNamespace: operators
+operatorVersion: latest
+servicesNamespace: service
 
 commonservicesOperatorIbmComCrd: {}
 ibmCommonServiceOperatorCr: {}

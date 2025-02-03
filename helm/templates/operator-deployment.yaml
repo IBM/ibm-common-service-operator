@@ -22,7 +22,7 @@ spec:
         app.kubernetes.io/instance: ibm-common-service-operator
         app.kubernetes.io/managed-by: ibm-common-service-operator
         app.kubernetes.io/name: ibm-common-service-operator
-        intent: protected
+        intent: projected
         name: ibm-common-service-operator
         productName: IBM_Cloud_Platform_Common_Services
     spec: 
@@ -39,7 +39,7 @@ spec:
                       - s390x
       containers:         
         - name: ibm-common-service-operator
-          image: "{{ .Values.imagePullPrefix }}/{{ .Values.imageRegistryNamespaceOperator }}/{{ .Values.operatorImage }}:{{ .Values.tag }}"
+          image: "{{ .Values.imagePullPrefix }}/{{ .Values.imageRegistryNamespaceOperator }}/{{ .Values.operatorImage }}:{{ .Values.operatorVersion }}"
           command: 
             - /manager
           env:             
@@ -95,5 +95,7 @@ spec:
             runAsNonRoot: true
             seccompProfile: 
               type: RuntimeDefault
+      imagePullSecrets:         
+        - name: {{ .Values.imagePullSecret }}
       serviceAccountName: ibm-common-service-operator
       terminationGracePeriodSeconds: 10
