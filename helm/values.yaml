@@ -9,4 +9,4 @@ imageRegistryNamespaceOperand: cpopen/cpfs
 # following are examples, not required:
 operatorNamespace: operators
 servicesNamespace: services
-operatorImage: ibm-common-service-operator 
+operatorImage: ibm-common-service-operator
