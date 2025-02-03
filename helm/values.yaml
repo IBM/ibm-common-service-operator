@@ -1,12 +1,22 @@
 imagePullPrefix: icr.io
 imagePullSecret: ibm-entitlement-key
-
-# Note there are no leading or trailing /'s
-imageRegistryNamespaceOperator: cpopen
 imageRegistryNamespaceOperand: cpopen/cpfs
-
-# other configuration you think you might need for your operator
-# following are examples, not required:
+imageRegistryNamespaceOperator: cpopen
+operatorImage: ibm-common-service-operator
 operatorNamespace: operators
-servicesNamespace: services
-operatorImage: ibm-common-service-operator 
+operatorVersion: latest
+servicesNamespace: service
+
+commonservicesOperatorIbmComCrd: {}
+ibmCommonServiceOperatorCr: {}
+ibmCommonServiceOperatorCrb: {}
+ibmCommonServiceOperatorDeployment: {}
+ibmCommonServiceOperatorRb: {}
+ibmCommonServiceOperatorRole: {}
+ibmCommonServiceOperatorSa: {}
+mutatingWebhookConfigurationMutatingwebhookconfiguration: {}
+selfsignedIssuerIssuer: {}
+servingCertCertificate: {}
+validatingWebhookConfigurationValidatingwebhookconfiguration: {}
+webhookServiceSvc: {}
+
