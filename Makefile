@@ -38,6 +38,7 @@ VERSION ?= $(shell git describe --exact-match 2> /dev/null || \
 RELEASE_VERSION ?= $(shell cat ./version/version.go | grep "Version =" | awk '{ print $$3}' | tr -d '"')
 PREVIOUS_VERSION := 3.23.0
 LATEST_VERSION ?= latest
+DESCRIPTION ?= "A Helm chart for the IBM Common Service Operator"
 
 LOCAL_OS := $(shell uname)
 ifeq ($(LOCAL_OS),Linux)
@@ -255,7 +256,7 @@ deploy-dryrun: manifests kustomize ## Deploy controller to the K8s cluster speci
 
 .PHONY: helm
 helm: deploy-dryrun kustohelmize
-	$(KUSTOHELMIZE) create --from=config/ibm-common-service-operator.yaml generate-helm/ibm-common-service-operator
+	$(KUSTOHELMIZE) create --from=config/ibm-common-service-operator.yaml generate-helm/ibm-common-service-operator --version=$(RELEASE_VERSION) --app-version=$(RELEASE_VERSION) --description=$(DESCRIPTION)
 	helm lint generate-helm/ibm-common-service-operator
 	bash scripts/restructure_helm.sh
 	helm lint helm

@@ -68,7 +68,6 @@ cp $HELM_SRC_DIR/crds/* $CLUSTER_SCOPED_DIR/templates/crds.yaml
 # Todo: rest of resources
 
 # Copy Helm values, Chart.yaml and helper.tpl
-#sed -i -e "s/^version:.*/version: $CHART_VERSION/" -e "s/^appVersion:.*/appVersion: $CHART_VERSION/" $HELM_DIR/Chart.yaml
 for dir in $HELM_DIR $CLUSTER_SCOPED_DIR; do cp $HELM_SRC_DIR/{values.yaml,Chart.yaml} "$dir/"; done
 for dir in $HELM_DIR $CLUSTER_SCOPED_DIR; do cp $HELM_SRC_DIR/templates/_helpers.tpl "$dir/templates/"; done
 
