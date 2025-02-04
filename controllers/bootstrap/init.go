@@ -257,6 +257,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 	}
 
 	if os.Getenv("NO_OLM") != "true" {
+		// skip deploy ODLM in no-olm
 		klog.Info("Installing ODLM Operator")
 		if err := b.renderTemplate(constant.ODLMSubscription, b.CSData); err != nil {
 			return err
