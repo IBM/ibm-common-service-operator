@@ -2043,9 +2043,6 @@ spec:
       commonWebUI: {}
       switcheritem: {}
       navconfiguration: {}
-  - name: ibm-cert-manager-operator
-    spec:
-      certManager: {}
   - name: ibm-management-ingress-operator
     spec:
       managementIngress: {}
@@ -2056,7 +2053,6 @@ spec:
       nginxIngress: {}
   - name: ibm-auditlogging-operator
     spec:
-      auditLogging: {}
       operandBindInfo: {}
       operandRequest: {}
   - name: ibm-platform-api-operator
