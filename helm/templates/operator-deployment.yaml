@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata: 
   name: ibm-common-service-operator
-  namespace: {{ .Values.operatorNamespace }}
+  namespace: {{ .Values.global.operatorNamespace }}
 spec: 
   replicas: 1
   selector: 
@@ -37,7 +37,7 @@ spec:
                       - s390x
       containers:         
         - name: ibm-common-service-operator
-          image: {{ .Values.imagePullPrefix}}/{{ .Values.imageRegistryNamespaceOperator}}/common-service-operator:4.11.0
+          image: {{ .Values.global.imagePullPrefix}}/{{ .Values.imageRegistryNamespaceOperator}}/common-service-operator:4.11.0
           command: 
             - /manager
           env:             
@@ -93,6 +93,6 @@ spec:
             seccompProfile: 
               type: RuntimeDefault
       imagePullSecrets:
-        - name: {{ .Values.imagePullSecret }}
+        - name: {{ .Values.global.imagePullSecret }}
       serviceAccountName: ibm-common-service-operator
       terminationGracePeriodSeconds: 10
