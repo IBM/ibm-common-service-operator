@@ -4,12 +4,12 @@ metadata:
   annotations:
     version: '-1'
   name: common-service
-  namespace: {{ .Values.operatorNamespace }}
+  namespace: {{ .Values.global.operatorNamespace }}
   labels:
     foundationservices.cloudpak.ibm.com: commonservice
 spec:
   license:
-    accept: {{ .Values.commonServiceSpec.license.accept }}
-  operatorNamespace: {{ .Values.operatorNamespace }}
-  servicesNamespace: {{ .Values.servicesNamespace }}
+    accept: {{ .Values.global.licenseAccept }}
+  operatorNamespace: {{ .Values.global.operatorNamespace }}
+  servicesNamespace: {{ .Values.global.instanceNamespace }}
   size: {{ .Values.commonServiceSpec.size }}
