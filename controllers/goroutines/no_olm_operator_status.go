@@ -46,30 +46,11 @@ func UpdateNoOLMCsCrStatus(bs *bootstrap.Bootstrap) {
 
 		var operatorSlice []apiv3.BedrockOperator
 
-		operatorsName := []string{}
-
-		// wait ODLM OperandRegistry CR resources
-		if err := bs.WaitResourceReady("operator.ibm.com/v1alpha1", "OperandRegistry"); err != nil {
-			klog.Error("Failed to wait for resource ready with kind: OperandRegistry, apiGroupVersion: operator.ibm.com/v1alpha1")
-			continue
-		}
-
-		opreg, err := bs.GetOperandRegistry(ctx_NoOLM, "common-service", bs.CSData.ServicesNs)
-		if err != nil || opreg == nil {
-			// klog.Warning("OperandRegistry common-service is not ready, retry in 5 seconds")
-			time.Sleep(5 * time.Second)
-			continue
-		}
-
-		for i := range opreg.Spec.Operators {
-			operatorsName = append(operatorsName, opreg.Spec.Operators[i].Name)
-		}
-
-		for _, name := range operatorsName {
+		for _, name := range constant.DeploymentsName {
 			var opt apiv3.BedrockOperator
 			var err error
 
-			opt, err = getNoOLMBedrockOperator(bs, name, bs.CSData.CPFSNs, instance)
+			opt, err = getNoOLMBedrockOperator(bs, name, bs.CSData.CPFSNs)
 
 			if err == nil {
 				operatorSlice = append(operatorSlice, opt)
@@ -98,7 +79,7 @@ func UpdateNoOLMCsCrStatus(bs *bootstrap.Bootstrap) {
 	}
 }
 
-func getNoOLMBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string, reference *apiv3.CommonService) (apiv3.BedrockOperator, error) {
+func getNoOLMBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string) (apiv3.BedrockOperator, error) {
 	var opt apiv3.BedrockOperator
 	opt.Name = name
 

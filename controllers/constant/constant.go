@@ -114,6 +114,11 @@ const (
 	CSMappingConfig = "ibm-cs-ns-mapping-webhook-configuration"
 )
 
+// Bedrock Deployment names for No OLM
+var (
+	DeploymentsName = []string{"ibm-common-service-operator", "operand-deployment-lifecycle-manager", "ibm-namespace-scope-operator", "ibm-commonui-operator", "ibm-iam-operator"}
+)
+
 // CsOg is OperatorGroup constent for the common service operator
 const CsOperatorGroup = `
 apiVersion: operators.coreos.com/v1
