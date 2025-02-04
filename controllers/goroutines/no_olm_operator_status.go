@@ -90,7 +90,7 @@ func getNoOLMBedrockOperator(bs *bootstrap.Bootstrap, name, namespace string) (a
 		Namespace: namespace,
 	}
 	if err := bs.Client.Get(ctx_NoOLM, deploymentKey, deployment); err != nil {
-		return opt, nil
+		return opt, err
 	}
 
 	if deployment.Status.ReadyReplicas != *deployment.Spec.Replicas {

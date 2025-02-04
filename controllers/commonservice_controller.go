@@ -263,13 +263,13 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 	instance.Status.Phase = CRUpdating
 	newConfigs, serviceControllerMapping, statusErr := r.getNewConfigs(cs)
 	if statusErr != nil {
-		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
+		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
 		instance.SetErrorCondition(constant.MasterCR, apiv3.ConditionTypeError, corev1.ConditionTrue, apiv3.ConditionReasonError, statusErr.Error())
 		instance.Status.Phase = CRFailed
 	}
 
 	if statusErr = r.Client.Status().Update(ctx, instance); statusErr != nil {
-		klog.Errorf("Fail to update %s/%s: %v", instance.Namespace, instance.Name, err)
+		klog.Errorf("Fail to update %s/%s: %v", instance.Namespace, instance.Name, statusErr)
 		return ctrl.Result{}, statusErr
 	}
 
