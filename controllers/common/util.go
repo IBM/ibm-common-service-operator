@@ -517,7 +517,7 @@ func GetApprovalModeinNs(r client.Reader, ns string) (approvalMode string, err e
 
 // GetCatalogSource gets CatalogSource will be used by operators
 func GetCatalogSource(packageName, ns string, r client.Reader) (CatalogSourceName, CatalogSourceNS string) {
-	if os.Getenv("NO_OLM") != "true" {
+	if os.Getenv("NO_OLM") == "true" {
 		klog.V(2).Infof("set catalogsource name and namespace to empty in no olm environment")
 		return "", ""
 	}
