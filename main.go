@@ -168,6 +168,9 @@ func main() {
 		if os.Getenv("NO_OLM") != "true" {
 			// Update CS CR Status
 			go goroutines.UpdateCsCrStatus(bs)
+		} else {
+			// Update CS CR Status
+			go goroutines.UpdateNoOLMCsCrStatus(bs)
 		}
 
 		// Create CS CR
