@@ -270,6 +270,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 			forceUpdateODLMCRs = true
 		}
 	}
+	forceUpdateODLMCRs = true
 
 	// wait ODLM OperandRegistry and OperandConfig CRD
 	if err := b.waitResourceReady(constant.OpregAPIGroupVersion, constant.OpregKind); err != nil {

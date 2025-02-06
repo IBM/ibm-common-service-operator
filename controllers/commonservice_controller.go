@@ -267,12 +267,6 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 		instance.SetErrorCondition(constant.MasterCR, apiv3.ConditionTypeError, corev1.ConditionTrue, apiv3.ConditionReasonError, statusErr.Error())
 		instance.Status.Phase = CRFailed
 	}
-
-	if statusErr = r.Client.Status().Update(ctx, instance); statusErr != nil {
-		klog.Errorf("Fail to update %s/%s: %v", instance.Namespace, instance.Name, statusErr)
-		return ctrl.Result{}, statusErr
-	}
-
 	var isEqual bool
 	if isEqual, statusErr = r.updateOperandConfig(ctx, newConfigs, serviceControllerMapping); statusErr != nil {
 		if statusErr := r.updatePhase(ctx, instance, CRFailed); statusErr != nil {
