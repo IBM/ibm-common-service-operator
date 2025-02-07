@@ -1,0 +1,7 @@
+imEnabled: "true"
+
+global:
+  operatorNamespace: "cs-op"
+  instanceNamespace: "cs-serv"
+  releaseVersion: "1"
+  tetheredNamespaces: ["test"]

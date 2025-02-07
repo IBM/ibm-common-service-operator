@@ -1,0 +1,6 @@
+apiVersion: operator.ibm.com/v3
+kind: CommonService
+metadata:
+  name: common-service
+  namespace: {{ .Values.global.operatorNamespace }}
+spec:
