@@ -43,6 +43,14 @@ rules:
   - list
   - get
   - delete
+- apiGroups: 
+  - "batch"
+  resources:
+  - jobs
+  verbs:
+  - list
+  - get
+  - delete
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -84,7 +92,6 @@ rules:
   - ""
   resources:
   - configmaps
-  - jobs
   - serviceaccounts
   verbs:
   - list

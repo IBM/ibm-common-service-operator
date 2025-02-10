@@ -20,6 +20,7 @@ spec:
           - |
             operatorNamespace={{ .Values.global.operatorNamespace }}
             servicesNamespace={{ .Values.global.instanceNamespace }}
+            namespaces=$(oc get cm namespace-scope -n $operatorNamespace -o jsonpath="{.data.namespaces}")
 
             nssSub=$(oc get subscription.operators.coreos.com -n "$operatorNamespace" -o jsonpath="{.items[?(@.spec.name=='ibm-namespace-scope-operator')].metadata.name}")
             nssCSV=$(oc get --ignore-not-found sub $nssSub -n $operatorNamespace -o jsonpath='{.status.currentCSV}')
@@ -53,7 +54,6 @@ spec:
             {{- end }}
 
             #loop for removing roles from services and tethered namespace
-            namespaces=$(oc get cm namespace-scope -n $operatorNamespace -o jsonpath="{.data.namespaces}")
             for ns in ${namespaces//,/ }; do
                 roles=""
                 #get cs operator roles
