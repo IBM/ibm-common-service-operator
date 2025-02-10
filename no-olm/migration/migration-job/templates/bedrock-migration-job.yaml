@@ -48,8 +48,9 @@ spec:
             oc delete --ignore-not-found csv $iamCSV -n $operatorNamespace && oc delete --ignore-not-found sub $iamSub -n $operatorNamespace
             oc delete --ignore-not-found csv $uiCSV -n $operatorNamespace && oc delete --ignore-not-found sub $uiSub -n $operatorNamespace
             oc delete --ignore-not-found csv $edbCSV -n $operatorNamespace && oc delete --ignore-not-found sub $edbSub -n $operatorNamespace
-            oc delete sa postgresql-operator-manager edb-license-sa -n $operatorNamespace
-            oc delete sa ibm-iam-operand-restricted ibm-commonui-operand common-service-db -n $servicesNamespace
+            oc delete --ignore-not-found sa postgresql-operator-manager edb-license-sa -n $operatorNamespace
+            oc delete --ignore-not-found sa ibm-iam-operand-restricted ibm-commonui-operand common-service-db -n $servicesNamespace
+            oc delete --ignore-not-found role edb-license-role -n $operatorNamespace
             oc delete --ignore-not-found job create-postgres-license-config -n $operatorNamespace
             {{- end }}
 
@@ -70,7 +71,7 @@ spec:
                 roles="${roles} $(oc get roles -n $ns | grep cloud-native-postgresql | awk '{print $1}' | tr "\n" " ")"
                 roles="${roles} $(oc get roles -n $ns | grep common-service-db | awk '{print $1}' | tr "\n" " ")"
                 if [[ $ns != $servicesNamespace ]]; then
-                    edbSA=$(oc get sa -n $ns | grep postgresql-operator-controller-manager | awk '{print $1}' | tr "\n" " ")
+                    edbSA=$(oc get sa -n $ns --ignore-not-found | grep postgresql-operator-controller-manager | awk '{print $1}' | tr "\n" " ")
                     oc delete sa $edbSA -n $ns --ignore-not-found
                 fi
                 {{- end }}
