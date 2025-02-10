@@ -13,3 +13,4 @@ spec:
   operatorNamespace: {{ .Values.global.operatorNamespace }}
   servicesNamespace: {{ .Values.global.instanceNamespace }}
   size: {{ .Values.commonServiceSpec.size }}
+  storageClass: {{ .Values.global.blockStorageClass }}
