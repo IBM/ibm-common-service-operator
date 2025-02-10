@@ -35,6 +35,8 @@ spec:
 
             oc delete --ignore-not-found csv $csCSV -n $operatorNamespace && oc delete --ignore-not-found sub $csSub -n $operatorNamespace
             oc delete --ignore-not-found csv $nssCSV -n $operatorNamespace && oc delete --ignore-not-found sub $nssSub -n $operatorNamespace
+            oc delete --ignore-not-found csv $odlmCSV -n $operatorNamespace && oc delete --ignore-not-found sub $odlmSub -n $operatorNamespace
+            
             {{- if .Values.imEnabled }}
             iamSub=$(oc get subscription.operators.coreos.com -n "$operatorNamespace" -o jsonpath="{.items[?(@.spec.name=='ibm-iam-operator')].metadata.name}")
             iamCSV=$(oc get --ignore-not-found sub $iamSub -n $operatorNamespace -o jsonpath='{.status.currentCSV}')
@@ -48,8 +50,6 @@ spec:
             oc delete sa postgresql-operator-manager edb-license-sa -n $operatorNamespace
             oc delete sa ibm-iam-operand-restricted ibm-commonui-operand common-service-db -n $servicesNamespace
             {{- end }}
-            sleep 30
-            oc delete --ignore-not-found csv $odlmCSV -n $operatorNamespace && oc delete --ignore-not-found sub $odlmSub -n $operatorNamespace
 
             #loop for removing roles from services and tethered namespace
             namespaces=$(oc get cm namespace-scope -n $operatorNamespace -o jsonpath="{.data.namespaces}")

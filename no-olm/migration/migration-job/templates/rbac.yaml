@@ -31,6 +31,7 @@ rules:
   - roles
   - rolebindings
   - serviceaccounts
+  - configmaps
   verbs:
   - list
   - get
@@ -69,6 +70,7 @@ rules:
   - roles
   - rolebindings
   - serviceaccounts
+  - configmaps
   verbs:
   - list
   - get
@@ -91,7 +93,7 @@ roleRef:
   kind: Role
   name: bedrock-migration-job-role
 {{- end }}
-{{- for range $i := .Values.global.tetheredNamespace }}
+{{- range $i := .Values.global.tetheredNamespaces }}
 ---
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
@@ -108,6 +110,7 @@ rules:
   - roles
   - rolebindings
   - serviceaccounts
+  - configmaps
   verbs:
   - list
   - get
@@ -124,7 +127,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: bedrock-migration-job-sa
-    namespace: {{ .Values.global.operatorNamespace }}
+    namespace: {{ $.Values.global.operatorNamespace }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
