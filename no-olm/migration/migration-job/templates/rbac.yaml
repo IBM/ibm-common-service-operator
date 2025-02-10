@@ -26,11 +26,18 @@ rules:
   - get
   - delete
 - apiGroups: 
-  - ""
+  - "rbac.authorization.k8s.io"
   resources:
   - roles
   - rolebindings
   - serviceaccounts
+  verbs:
+  - list
+  - get
+  - delete
+- apiGroups: 
+  - ""
+  resources:
   - configmaps
   verbs:
   - list
@@ -65,11 +72,18 @@ metadata:
     "helm.sh/hook-weight": "-1"
 rules:
 - apiGroups: 
-  - ""
+  - "rbac.authorization.k8s.io"
   resources:
   - roles
   - rolebindings
   - serviceaccounts
+  verbs:
+  - list
+  - get
+  - delete
+- apiGroups: 
+  - ""
+  resources:
   - configmaps
   verbs:
   - list
@@ -105,11 +119,18 @@ metadata:
     "helm.sh/hook-weight": "-1"
 rules:
 - apiGroups: 
-  - ""
+  - "rbac.authorization.k8s.io"
   resources:
   - roles
   - rolebindings
   - serviceaccounts
+  verbs:
+  - list
+  - get
+  - delete
+- apiGroups: 
+  - ""
+  resources:
   - configmaps
   verbs:
   - list
