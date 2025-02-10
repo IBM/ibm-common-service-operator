@@ -30,7 +30,6 @@ rules:
   resources:
   - roles
   - rolebindings
-  - serviceaccounts
   verbs:
   - list
   - get
@@ -39,6 +38,7 @@ rules:
   - ""
   resources:
   - configmaps
+  - serviceaccounts
   verbs:
   - list
   - get
@@ -76,7 +76,6 @@ rules:
   resources:
   - roles
   - rolebindings
-  - serviceaccounts
   verbs:
   - list
   - get
@@ -85,6 +84,8 @@ rules:
   - ""
   resources:
   - configmaps
+  - jobs
+  - serviceaccounts
   verbs:
   - list
   - get
@@ -123,7 +124,6 @@ rules:
   resources:
   - roles
   - rolebindings
-  - serviceaccounts
   verbs:
   - list
   - get
@@ -132,6 +132,7 @@ rules:
   - ""
   resources:
   - configmaps
+  - serviceaccounts
   verbs:
   - list
   - get

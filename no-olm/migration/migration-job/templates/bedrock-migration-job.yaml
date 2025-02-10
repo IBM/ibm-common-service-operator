@@ -49,6 +49,7 @@ spec:
             oc delete --ignore-not-found csv $edbCSV -n $operatorNamespace && oc delete --ignore-not-found sub $edbSub -n $operatorNamespace
             oc delete sa postgresql-operator-manager edb-license-sa -n $operatorNamespace
             oc delete sa ibm-iam-operand-restricted ibm-commonui-operand common-service-db -n $servicesNamespace
+            oc delete --ignore-not-found job create-postgres-license-config -n $operatorNamespace
             {{- end }}
 
             #loop for removing roles from services and tethered namespace
