@@ -1421,6 +1421,8 @@ spec:
               resizeInUseVolumes: true
               size: 10Gi
             postgresql:
+              parameters:
+                max_slot_wal_keep_size: "8GB"
               pg_hba:
                 - hostssl cloudpak cpadmin all cert
                 - hostssl im im_user all cert
