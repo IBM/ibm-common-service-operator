@@ -130,10 +130,11 @@ func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			}
 
 			// Temporary solution for EDB image ConfigMap reference
-			if err := r.Bootstrap.CreateEDBImageMaps(); err != nil {
-				klog.Errorf("Failed to create EDB Image ConfigMap: %v", err)
-				return ctrl.Result{}, err
-			}
+			klog.Infof("It is a non-OLM mode, skip creating EDB Image ConfigMap...")
+			// if err := r.Bootstrap.CreateEDBImageMaps(); err != nil {
+			// 	klog.Errorf("Failed to create EDB Image ConfigMap: %v", err)
+			// 	return ctrl.Result{}, err
+			// }
 		} else {
 			klog.Error("ODLM CRD not ready, waiting for it to be ready")
 		}
