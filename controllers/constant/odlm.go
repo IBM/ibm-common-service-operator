@@ -1588,7 +1588,7 @@ spec:
                 track_io_timing: "on"
                 pg_stat_statements.track: all
                 pg_stat_statements.max: "10000"
-                max_slot_wal_keep_size: "8Gi"
+                max_slot_wal_keep_size: "8GB"
               pg_hba:
                 - hostssl cloudpak cpadmin all cert
                 - hostssl im im_user all cert
