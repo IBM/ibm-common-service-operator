@@ -17,23 +17,33 @@
 package controllers
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
+	"text/template"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 
-	"github.com/IBM/ibm-common-service-operator/controllers/constant"
-	"github.com/IBM/ibm-common-service-operator/controllers/size"
+	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
+	util "github.com/IBM/ibm-common-service-operator/v4/controllers/common"
+	"github.com/IBM/ibm-common-service-operator/v4/controllers/constant"
+	"github.com/IBM/ibm-common-service-operator/v4/controllers/size"
 )
 
-var (
-	clusterScopeOperators = []string{"ibm-cert-manager-operator", "ibm-licensing-operator"}
-)
-
-func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, inScope bool) ([]interface{}, map[string]string, error) {
+func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured) ([]interface{}, map[string]string, error) {
 	var newConfigs []interface{}
 	var err error
+
+	csObject := &apiv3.CommonService{}
+	if err := r.Client.Get(context.TODO(), types.NamespacedName{Name: cs.GetName(), Namespace: cs.GetNamespace()}, csObject); err != nil {
+		return nil, nil, err
+	}
+
 	// Update storageclass in OperandConfig
 	if cs.Object["spec"].(map[string]interface{})["storageClass"] != nil {
 		klog.Info("Applying storageClass configuration")
@@ -42,6 +52,28 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 			return nil, nil, err
 		}
 		newConfigs = append(newConfigs, storageConfig...)
+	}
+
+	// Update EnableInstanaMetricCollection in OperandConfig
+	if cs.Object["spec"].(map[string]interface{})["enableInstanaMetricCollection"] != nil {
+		klog.Info("Applying enableInstanaMetricCollection configuration")
+
+		t := template.Must(template.New("template InstanaEnable").Parse(constant.InstanaEnableTemplate))
+		var tmplWriter bytes.Buffer
+		instanaEnable := struct {
+			InstanaEnable bool
+		}{
+			InstanaEnable: cs.Object["spec"].(map[string]interface{})["enableInstanaMetricCollection"].(bool),
+		}
+		if err := t.Execute(&tmplWriter, instanaEnable); err != nil {
+			return nil, nil, err
+		}
+		s := tmplWriter.String()
+		instanaConfig, err := convertStringToSlice(s)
+		if err != nil {
+			return nil, nil, err
+		}
+		newConfigs = append(newConfigs, instanaConfig...)
 	}
 
 	// Update routeHost
@@ -64,16 +96,6 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 		newConfigs = append(newConfigs, adminUsernameConfig...)
 	}
 
-	// Update multipleInstancesEnabled when multi-instances
-	if r.Bootstrap.MultiInstancesEnable {
-		klog.Info("Applying multipleInstancesEnabled configuration")
-		multipleinstancesenabledConfig, err := convertStringToSlice(strings.ReplaceAll(constant.MultipleInstancesEnabledTemplate, "placeholder", "true"))
-		if err != nil {
-			return nil, nil, err
-		}
-		newConfigs = append(newConfigs, multipleinstancesenabledConfig...)
-	}
-
 	// if there is a fipsEnabled field for overall
 	if enabled := cs.Object["spec"].(map[string]interface{})["fipsEnabled"]; enabled != nil {
 		klog.Info("Applying fips configuration")
@@ -83,6 +105,33 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 			return nil, nil, err
 		}
 		newConfigs = append(newConfigs, fipsEnabledConfig...)
+	}
+
+	// if there is a hugepage setting enabled
+	if hugespages := cs.Object["spec"].(map[string]interface{})["hugepages"]; hugespages != nil {
+		klog.Info("Applying hugepages configuration")
+		if enable := hugespages.(map[string]interface{})["enable"]; enable != nil && enable.(bool) {
+			hugePagesStruct, err := UnmarshalHugePages(hugespages)
+			if err != nil {
+				return nil, nil, err
+			}
+			for size, allocation := range hugePagesStruct.HugePagesSizes {
+				if !strings.HasPrefix(size, "hugepages-") {
+					return nil, nil, fmt.Errorf("invalid hugepage size format: %s", size)
+				}
+
+				if allocation == "" {
+					allocation = constant.DefaultHugePageAllocation
+				}
+				replacer := strings.NewReplacer("placeholder1", size, "placeholder2", allocation)
+				hugePagesConfig, err := convertStringToSlice(replacer.Replace(constant.HugePagesTemplate))
+				if err != nil {
+					return nil, nil, err
+				}
+				newConfigs = append(newConfigs, hugePagesConfig...)
+			}
+
+		}
 	}
 
 	// Update storageclass for API Catalog
@@ -98,6 +147,19 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 		}
 	}
 
+	if labels := cs.Object["spec"].(map[string]interface{})["labels"]; labels != nil {
+		klog.Info("Applying label configuration")
+		labelset := csObject.Spec.Labels
+		for key, value := range labelset {
+			replacer := strings.NewReplacer("placeholder1", key, "placeholder2", value)
+			labelConfig, err := convertStringToSlice(replacer.Replace(constant.ServiceLabelTemplate))
+			if err != nil {
+				return nil, nil, err
+			}
+			newConfigs = append(newConfigs, labelConfig...)
+		}
+	}
+
 	klog.Info("Applying size configuration")
 	var sizeConfigs []interface{}
 	serviceControllerMapping := make(map[string]string)
@@ -108,49 +170,38 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured, i
 
 	switch cs.Object["spec"].(map[string]interface{})["size"] {
 	case "starterset", "starter":
-		sizeConfigs, serviceControllerMapping, err = applySizeTemplate(cs, size.StarterSet, serviceControllerMapping, inScope)
+		sizeConfigs, serviceControllerMapping, err = applySizeTemplate(cs, size.StarterSet, serviceControllerMapping, r.CSData.ServicesNs)
 		if err != nil {
 			return sizeConfigs, serviceControllerMapping, err
 		}
 	case "small":
-		sizeConfigs, serviceControllerMapping, err = applySizeTemplate(cs, size.Small, serviceControllerMapping, inScope)
+		sizeConfigs, serviceControllerMapping, err = applySizeTemplate(cs, size.Small, serviceControllerMapping, r.CSData.ServicesNs)
 		if err != nil {
 			return sizeConfigs, serviceControllerMapping, err
 		}
 	case "medium":
-		sizeConfigs, serviceControllerMapping, err = applySizeTemplate(cs, size.Medium, serviceControllerMapping, inScope)
+		sizeConfigs, serviceControllerMapping, err = applySizeTemplate(cs, size.Medium, serviceControllerMapping, r.CSData.ServicesNs)
 		if err != nil {
 			return sizeConfigs, serviceControllerMapping, err
 		}
 	case "large", "production":
-		sizeConfigs, serviceControllerMapping, err = applySizeTemplate(cs, size.Large, serviceControllerMapping, inScope)
+		sizeConfigs, serviceControllerMapping, err = applySizeTemplate(cs, size.Large, serviceControllerMapping, r.CSData.ServicesNs)
 		if err != nil {
 			return sizeConfigs, serviceControllerMapping, err
 		}
 	default:
-		sizeConfigs, serviceControllerMapping = applySizeConfigs(cs, serviceControllerMapping, inScope)
+		sizeConfigs, serviceControllerMapping = applySizeConfigs(cs, serviceControllerMapping)
 	}
 	newConfigs = append(newConfigs, sizeConfigs...)
 
 	return newConfigs, serviceControllerMapping, nil
 }
 
-func applySizeConfigs(cs *unstructured.Unstructured, serviceControllerMapping map[string]string, inScope bool) ([]interface{}, map[string]string) {
+func applySizeConfigs(cs *unstructured.Unstructured, serviceControllerMapping map[string]string) ([]interface{}, map[string]string) {
 	var dest []interface{}
+
 	if cs.Object["spec"].(map[string]interface{})["services"] != nil {
 		for _, configSize := range cs.Object["spec"].(map[string]interface{})["services"].([]interface{}) {
-			if !inScope {
-				isClusterScope := false
-				for _, operator := range clusterScopeOperators {
-					if configSize.(map[string]interface{})["name"].(string) == operator {
-						isClusterScope = true
-						break
-					}
-				}
-				if !isClusterScope {
-					continue
-				}
-			}
 			if controller, ok := configSize.(map[string]interface{})["managementStrategy"]; ok {
 				serviceControllerMapping[configSize.(map[string]interface{})["name"].(string)] = controller.(string)
 			}
@@ -161,7 +212,7 @@ func applySizeConfigs(cs *unstructured.Unstructured, serviceControllerMapping ma
 	return dest, serviceControllerMapping
 }
 
-func applySizeTemplate(cs *unstructured.Unstructured, sizeTemplate string, serviceControllerMapping map[string]string, inScope bool) ([]interface{}, map[string]string, error) {
+func applySizeTemplate(cs *unstructured.Unstructured, sizeTemplate string, serviceControllerMapping map[string]string, opconNs string) ([]interface{}, map[string]string, error) {
 
 	var src []interface{}
 	if cs.Object["spec"].(map[string]interface{})["services"] != nil {
@@ -174,20 +225,11 @@ func applySizeTemplate(cs *unstructured.Unstructured, sizeTemplate string, servi
 		klog.Errorf("convert size to interface slice: %v", err)
 		return nil, nil, err
 	}
-	var newSizes []interface{}
-	if !inScope {
-		// delete all namespace-scoped operator's template
-		for _, configSize := range sizes {
-			for _, operator := range clusterScopeOperators {
-				if configSize.(map[string]interface{})["name"].(string) == operator {
-					newSizes = append(newSizes, configSize)
-				}
-			}
-		}
-		sizes = newSizes
-	}
 
-	for _, configSize := range sizes {
+	for i, configSize := range sizes {
+		if configSize == nil {
+			continue
+		}
 		config := getItemByName(src, configSize.(map[string]interface{})["name"].(string))
 		if config == nil {
 			continue
@@ -195,12 +237,68 @@ func applySizeTemplate(cs *unstructured.Unstructured, sizeTemplate string, servi
 		if controller, ok := config.(map[string]interface{})["managementStrategy"]; ok {
 			serviceControllerMapping[configSize.(map[string]interface{})["name"].(string)] = controller.(string)
 		}
-		if configSize == nil {
-			continue
+		// check if configSize['spec'] and config['spec'] are not nil
+		if configSize.(map[string]interface{})["spec"] != nil && config.(map[string]interface{})["spec"] != nil {
+			for cr, size := range mergeSizeProfile(configSize.(map[string]interface{})["spec"].(map[string]interface{}), config.(map[string]interface{})["spec"].(map[string]interface{})) {
+				configSize.(map[string]interface{})["spec"].(map[string]interface{})[cr] = size
+			}
 		}
-		for cr, size := range mergeSizeProfile(configSize.(map[string]interface{})["spec"].(map[string]interface{}), config.(map[string]interface{})["spec"].(map[string]interface{})) {
-			configSize.(map[string]interface{})["spec"].(map[string]interface{})[cr] = size
+		// check if configSize['resources'] and config['resources'] are not nil
+		if configSize.(map[string]interface{})["resources"] != nil && config.(map[string]interface{})["resources"] != nil {
+			// loop through configSize['resources'] and config['resources']
+			for i, res := range configSize.(map[string]interface{})["resources"].([]interface{}) {
+				var apiVersion, kind, name, namespace string
+				if res.(map[string]interface{})["apiVersion"] != nil {
+					apiVersion = res.(map[string]interface{})["apiVersion"].(string)
+				}
+				if res.(map[string]interface{})["kind"] != nil {
+					kind = res.(map[string]interface{})["kind"].(string)
+				}
+				if res.(map[string]interface{})["name"] != nil {
+					name = res.(map[string]interface{})["name"].(string)
+				}
+				if res.(map[string]interface{})["namespace"] != nil {
+					namespace = res.(map[string]interface{})["namespace"].(string)
+				}
+				// check if above 4 fields are all set
+				if apiVersion == "" || kind == "" || name == "" {
+					klog.Warningf("Skipping merging resource %s/%s/%s/%s, because apiVersion, kind or name is not set", apiVersion, kind, name, namespace)
+					continue
+				}
+				// check if namespace is set, if not, set it to OperandConfig namespace
+				if namespace == "" {
+					namespace = opconNs
+				}
+				newConfig := getItemByGVKNameNamespace(config.(map[string]interface{})["resources"].([]interface{}), opconNs, apiVersion, kind, name, namespace)
+				if newConfig != nil {
+					configSize.(map[string]interface{})["resources"].([]interface{})[i] = mergeSizeProfile(res.(map[string]interface{}), newConfig.(map[string]interface{}))
+				}
+			}
+			sizes[i].(map[string]interface{})["resources"] = configSize.(map[string]interface{})["resources"]
 		}
 	}
 	return sizes, serviceControllerMapping, nil
+}
+
+// UnmarshalHugePages unmarshals the hugepages map to HugePages struct
+func UnmarshalHugePages(hugespages interface{}) (*apiv3.HugePages, error) {
+	hugespagesBytes, err := json.Marshal(hugespages)
+	if err != nil {
+		return nil, err
+	}
+
+	hugePagesStruct := &apiv3.HugePages{}
+	if err := json.Unmarshal(hugespagesBytes, hugePagesStruct); err != nil {
+		return nil, err
+	}
+
+	hugespagesBytesSanitized, err := json.Marshal(util.SanitizeData(hugespages, "string", true))
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(hugespagesBytesSanitized, &hugePagesStruct.HugePagesSizes); err != nil {
+		return nil, err
+	}
+
+	return hugePagesStruct, nil
 }

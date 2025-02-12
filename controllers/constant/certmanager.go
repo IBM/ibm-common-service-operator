@@ -16,12 +16,23 @@
 
 package constant
 
+// SecretWatchLabel is a string of secrets that watched by cert manager operator labels
+const SecretWatchLabel string = "operator.ibm.com/watched-by-cert-manager"
+
+// Labels and Annotations added by this operator
+const (
+	OperatorGeneratedAnno = "ibm-cert-manager-operator-generated"
+	ProperV1Label         = "ibm-cert-manager-operator/conditionally-generated-v1"
+	RefreshCALabel        = "ibm-cert-manager-operator/refresh-ca-chain"
+)
+
 var (
 	CertManagerAPIGroupVersionV1Alpha1 = "certmanager.k8s.io/v1alpha1"
 	CertManagerAPIGroupVersionV1       = "cert-manager.io/v1"
 	CertManagerKinds                   = []string{"Issuer", "Certificate"}
 	CertManagerIssuers                 = []string{CSSSIssuer, CSCAIssuer}
 	CertManagerCerts                   = []string{CSCACert}
+	KeycloakCert                       = "cs-keycloak-tls-cert"
 )
 
 // CSCAIssuer is the CR of cs-ca-issuer
@@ -82,4 +93,23 @@ spec:
   isCA: true
   duration: 17520h0m0s
   renewBefore: 5840h0m0s
+`
+
+const KeycloakCertTemplate = `
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cs-keycloak-tls-cert
+  namespace: {{ .ServicesNs }}
+spec:
+  commonName: cs-keycloak-service
+  dnsNames:
+      - cs-keycloak-service
+      - cs-keycloak-service.{{ .ServicesNs }}
+      - cs-keycloak-service.{{ .ServicesNs }}.svc
+      - cs-keycloak-service.{{ .ServicesNs }}.svc.cluster.local
+  issuerRef:
+      kind: Issuer
+      name: cs-ca-issuer
+  secretName: cs-keycloak-tls-secret
 `

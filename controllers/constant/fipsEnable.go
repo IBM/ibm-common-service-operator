@@ -50,4 +50,24 @@ const FipsEnabledTemplate = `
     authentication:
       config:
         fipsEnabled: placeholder
+- name: ibm-im-operator-v4.3
+  spec:
+    authentication:
+      config:
+        fipsEnabled: placeholder
+- name: ibm-im-operator-v4.4
+  spec:
+    authentication:
+      config:
+        fipsEnabled: placeholder
+- name: ibm-im-operator-v4.5
+  spec:
+    authentication:
+      config:
+        fipsEnabled: placeholder
+- name: ibm-im-operator-v4.6
+  spec:
+    authentication:
+      config:
+        fipsEnabled: placeholder
 `

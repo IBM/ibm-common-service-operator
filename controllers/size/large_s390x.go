@@ -68,6 +68,26 @@ const Large = `
           limits:
             cpu: 1000m
             memory: 350Mi
+- name: common-service-postgresql
+  resources:
+  - apiVersion: postgresql.k8s.enterprisedb.io/v1
+    kind: Cluster
+    name: common-service-db
+    data:
+      spec:
+        instances: 2
+        resources:
+          limits:
+            cpu: 1500m
+            memory: 3072Mi
+            ephemeral-storage: 1024Mi
+          requests:
+            ephemeral-storage: 500Mi
+            cpu: 384m
+            memory: 768Mi
+        postgresql:
+          parameters:
+            max_connections: "1100"
 - name: ibm-im-mongodb-operator
   spec:
     mongoDB:
@@ -449,6 +469,166 @@ const Large = `
             cpu: 410m
             memory: 335Mi
       replicas: 3
+- name: ibm-im-operator-v4.3
+  spec:
+    authentication:
+      authService:
+        resources:
+          limits:
+            cpu: 2000m
+            memory: 745Mi
+          requests:
+            ephemeral-storage: 256Mi
+            cpu: 725m
+            memory: 695Mi
+      clientRegistration:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 50Mi
+          requests:
+            ephemeral-storage: 256Mi
+            cpu: 20m
+            memory: 50Mi
+      identityManager:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 530Mi
+          requests:
+            ephemeral-storage: 256Mi
+            cpu: 340m
+            memory: 385Mi
+      identityProvider:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 480Mi
+          requests:
+            ephemeral-storage: 256Mi
+            cpu: 410m
+            memory: 335Mi
+      replicas: 3
+- name: ibm-im-operator-v4.4
+  spec:
+    authentication:
+      authService:
+        resources:
+          limits:
+            cpu: 2000m
+            memory: 745Mi
+          requests:
+            ephemeral-storage: 256Mi
+            cpu: 725m
+            memory: 695Mi
+      clientRegistration:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 50Mi
+          requests:
+            ephemeral-storage: 256Mi
+            cpu: 20m
+            memory: 50Mi
+      identityManager:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 530Mi
+          requests:
+            ephemeral-storage: 256Mi
+            cpu: 340m
+            memory: 385Mi
+      identityProvider:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 480Mi
+          requests:
+            ephemeral-storage: 256Mi
+            cpu: 410m
+            memory: 335Mi
+      replicas: 3
+- name: ibm-im-operator-v4.5
+  spec:
+    authentication:
+      authService:
+        resources:
+          limits:
+            cpu: 2000m
+            memory: 745Mi
+          requests:
+            ephemeral-storage: 256Mi
+            cpu: 725m
+            memory: 695Mi
+      clientRegistration:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 50Mi
+          requests:
+            ephemeral-storage: 256Mi
+            cpu: 20m
+            memory: 50Mi
+      identityManager:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 530Mi
+          requests:
+            ephemeral-storage: 256Mi
+            cpu: 340m
+            memory: 385Mi
+      identityProvider:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 480Mi
+          requests:
+            ephemeral-storage: 256Mi
+            cpu: 410m
+            memory: 335Mi
+      replicas: 3
+- name: ibm-im-operator-v4.6
+  spec:
+    authentication:
+      authService:
+        resources:
+          limits:
+            cpu: 2000m
+            memory: 745Mi
+          requests:
+            ephemeral-storage: 256Mi
+            cpu: 725m
+            memory: 695Mi
+      clientRegistration:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 50Mi
+          requests:
+            ephemeral-storage: 256Mi
+            cpu: 20m
+            memory: 50Mi
+      identityManager:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 530Mi
+          requests:
+            ephemeral-storage: 256Mi
+            cpu: 340m
+            memory: 385Mi
+      identityProvider:
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 480Mi
+          requests:
+            ephemeral-storage: 256Mi
+            cpu: 410m
+            memory: 335Mi
+      replicas: 3
 - name: ibm-management-ingress-operator
   spec:
     managementIngress:
@@ -583,6 +763,42 @@ const Large = `
           ephemeral-storage: 256Mi
           cpu: 300m
           memory: 384Mi
+- name: ibm-idp-config-ui-operator-v4.3
+  spec:
+    commonWebUI:
+      replicas: 3
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 430Mi
+        requests:
+          ephemeral-storage: 256Mi
+          cpu: 300m
+          memory: 384Mi
+- name: ibm-idp-config-ui-operator-v4.4
+  spec:
+    commonWebUI:
+      replicas: 3
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 430Mi
+        requests:
+          ephemeral-storage: 256Mi
+          cpu: 300m
+          memory: 384Mi
+- name: ibm-idp-config-ui-operator-v4.5
+  spec:
+    commonWebUI:
+      replicas: 3
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 430Mi
+        requests:
+          ephemeral-storage: 256Mi
+          cpu: 300m
+          memory: 384Mi
 - name: ibm-platform-api-operator
   spec:
     platformApi:
@@ -674,4 +890,49 @@ const Large = `
   spec:
     apicatalogmanager:
       profile: large
+- name: edb-keycloak
+  resources:
+  - apiVersion: postgresql.k8s.enterprisedb.io/v1
+    kind: Cluster
+    name: keycloak-edb-cluster
+    data:
+      spec:
+        instances: 3
+        resources:
+          limits:
+            cpu: 750m
+            memory: 1500Mi
+          requests:
+            cpu: 750m
+            memory: 1500Mi
+- name: keycloak-operator
+  resources:
+  - apiVersion: k8s.keycloak.org/v2alpha1
+    kind: Keycloak
+    name: cs-keycloak
+    data:
+      spec:
+        instances: 3
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+            ephemeral-storage: 512Mi
+          requests:
+            cpu: 1000m
+            memory: 1Gi
+            ephemeral-storage: 256Mi
+        unsupported:
+          podTemplate:
+            spec:
+              containers:
+                - resources:
+                    limits:
+                      cpu: 1000m
+                      memory: 1Gi
+                      ephemeral-storage: 512Mi
+                    requests:
+                      cpu: 1000m
+                      memory: 1Gi
+                      ephemeral-storage: 256Mi
 `

@@ -17,6 +17,7 @@
 package goroutines
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -26,10 +27,12 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 
-	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
-	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
-	"github.com/IBM/ibm-common-service-operator/controllers/constant"
+	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
+	"github.com/IBM/ibm-common-service-operator/v4/controllers/bootstrap"
+	"github.com/IBM/ibm-common-service-operator/v4/controllers/constant"
 )
+
+var ctx = context.Background()
 
 // UpdateCsCrStatus will update cs cr status according to each bedrock operator
 func UpdateCsCrStatus(bs *bootstrap.Bootstrap) {

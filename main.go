@@ -24,6 +24,7 @@ import (
 	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	operatorsv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/package-server/apis/operators/v1"
+	admv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -37,22 +38,21 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/IBM/controller-filtered-cache/filteredcache"
-	nssv1 "github.com/IBM/ibm-namespace-scope-operator/api/v1"
+	nssv1 "github.com/IBM/ibm-namespace-scope-operator/v4/api/v1"
 	ssv1 "github.com/IBM/ibm-secretshare-operator/api/v1"
-	odlm "github.com/IBM/operand-deployment-lifecycle-manager/api/v1alpha1"
+	odlm "github.com/IBM/operand-deployment-lifecycle-manager/v4/api/v1alpha1"
 
 	certmanagerv1 "github.com/ibm/ibm-cert-manager-operator/apis/cert-manager/v1"
-	cmconstants "github.com/ibm/ibm-cert-manager-operator/controllers/resources"
 
-	operatorv3 "github.com/IBM/ibm-common-service-operator/api/v3"
-	"github.com/IBM/ibm-common-service-operator/controllers"
-	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
-	certmanagerv1controllers "github.com/IBM/ibm-common-service-operator/controllers/cert-manager"
-	util "github.com/IBM/ibm-common-service-operator/controllers/common"
-	"github.com/IBM/ibm-common-service-operator/controllers/constant"
-	"github.com/IBM/ibm-common-service-operator/controllers/goroutines"
-	commonservicewebhook "github.com/IBM/ibm-common-service-operator/controllers/webhooks/commonservice"
-	operandrequestwebhook "github.com/IBM/ibm-common-service-operator/controllers/webhooks/operandrequest"
+	operatorv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
+	"github.com/IBM/ibm-common-service-operator/v4/controllers"
+	"github.com/IBM/ibm-common-service-operator/v4/controllers/bootstrap"
+	certmanagerv1controllers "github.com/IBM/ibm-common-service-operator/v4/controllers/cert-manager"
+	util "github.com/IBM/ibm-common-service-operator/v4/controllers/common"
+	"github.com/IBM/ibm-common-service-operator/v4/controllers/constant"
+	"github.com/IBM/ibm-common-service-operator/v4/controllers/goroutines"
+	commonservicewebhook "github.com/IBM/ibm-common-service-operator/v4/controllers/webhooks/commonservice"
+	operandrequestwebhook "github.com/IBM/ibm-common-service-operator/v4/controllers/webhooks/operandrequest"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -67,6 +67,7 @@ func init() {
 	utilruntime.Must(nssv1.AddToScheme(scheme))
 	utilruntime.Must(ssv1.AddToScheme(scheme))
 	utilruntime.Must(operatorv3.AddToScheme(scheme))
+	utilruntime.Must(admv1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 
 	utilruntime.Must(olmv1alpha1.AddToScheme(scheme))
@@ -100,7 +101,7 @@ func main() {
 			LabelSelector: constant.CsManagedLabel,
 		},
 		corev1.SchemeGroupVersion.WithKind("Secret"): {
-			LabelSelector: cmconstants.SecretWatchLabel,
+			LabelSelector: constant.SecretWatchLabel,
 		},
 	}
 	clusterGVKList := []schema.GroupVersionKind{
@@ -141,7 +142,6 @@ func main() {
 	// If Common Service Operator Namespace is not in the same as .spec.operatorNamespace(cpfsNs) in default CS CR,
 	// this Common Service Operator is not in the operatorNamespace(cpfsNs) under this tenant, and goes dormant.
 	if operatorNs == cpfsNs {
-
 		// New bootstrap Object
 		bs, err := bootstrap.NewBootstrap(mgr)
 		if err != nil {
@@ -153,13 +153,8 @@ func main() {
 			klog.Errorf("Cleanup Webhook Resources failed: %v", err)
 			os.Exit(1)
 		}
-		// Create or Update CPP configuration
-		go goroutines.CreateUpdateConfig(bs)
-		// Update CS CR Status
-		go goroutines.UpdateCsCrStatus(bs)
-		// Create CS CR
-		go goroutines.WaitToCreateCsCR(bs)
 
+		klog.Infof("Setup commonservice manager")
 		if err = (&controllers.CommonServiceReconciler{
 			Bootstrap: bs,
 			Scheme:    mgr.GetScheme(),
@@ -168,26 +163,52 @@ func main() {
 			klog.Errorf("Unable to create controller CommonService: %v", err)
 			os.Exit(1)
 		}
-		if err = (&certmanagerv1controllers.CertificateRefreshReconciler{
-			Client: mgr.GetClient(),
-			Scheme: mgr.GetScheme(),
-		}).SetupWithManager(mgr); err != nil {
-			klog.Error(err, "unable to create controller", "controller", "CertificateRefresh")
+
+		klog.Infof("Start go routines")
+		if os.Getenv("NO_OLM") != "true" {
+			// Update CS CR Status
+			go goroutines.UpdateCsCrStatus(bs)
+		} else {
+			// Update CS CR Status
+			go goroutines.UpdateNoOLMCsCrStatus(bs)
+		}
+
+		// Create CS CR
+		go goroutines.WaitToCreateCsCR(bs)
+		// Delete Keycloak Cert
+		go goroutines.CleanupResources(bs)
+
+		// check if cert-manager CRD does not exist, then skip cert-manager related controllers initialization
+		exist, err := bs.CheckCRD(constant.CertManagerAPIGroupVersionV1, "Certificate")
+		if err != nil {
+			klog.Errorf("Failed to check if cert-manager CRD exists: %v", err)
 			os.Exit(1)
 		}
-		if err = (&certmanagerv1controllers.PodRefreshReconciler{
-			Client: mgr.GetClient(),
-			Scheme: mgr.GetScheme(),
-		}).SetupWithManager(mgr); err != nil {
-			klog.Error(err, "unable to create controller", "controller", "PodRefresh")
-			os.Exit(1)
-		}
-		if err = (&certmanagerv1controllers.V1AddLabelReconciler{
-			Client: mgr.GetClient(),
-			Scheme: mgr.GetScheme(),
-		}).SetupWithManager(mgr); err != nil {
-			klog.Error(err, "unable to create controller", "controller", "V1AddLabel")
-			os.Exit(1)
+		if !exist && err == nil {
+			klog.Infof("cert-manager CRD does not exist, skip cert-manager related controllers initialization")
+		} else if exist && err == nil {
+
+			if err = (&certmanagerv1controllers.CertificateRefreshReconciler{
+				Client: mgr.GetClient(),
+				Scheme: mgr.GetScheme(),
+			}).SetupWithManager(mgr); err != nil {
+				klog.Error(err, "unable to create controller", "controller", "CertificateRefresh")
+				os.Exit(1)
+			}
+			if err = (&certmanagerv1controllers.PodRefreshReconciler{
+				Client: mgr.GetClient(),
+				Scheme: mgr.GetScheme(),
+			}).SetupWithManager(mgr); err != nil {
+				klog.Error(err, "unable to create controller", "controller", "PodRefresh")
+				os.Exit(1)
+			}
+			if err = (&certmanagerv1controllers.V1AddLabelReconciler{
+				Client: mgr.GetClient(),
+				Scheme: mgr.GetScheme(),
+			}).SetupWithManager(mgr); err != nil {
+				klog.Error(err, "unable to create controller", "controller", "V1AddLabel")
+				os.Exit(1)
+			}
 		}
 	} else {
 		klog.Infof("Common Service Operator goes dormant in the namespace %s", operatorNs)

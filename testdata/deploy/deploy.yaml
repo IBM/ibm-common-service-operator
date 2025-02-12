@@ -15,52 +15,47 @@ spec:
         name: ibm-common-service-operator
       annotations:
         description: The IBM Common Service Operator is used to deploy IBM Common Services
-        operatorChannel: v4.3
-        operatorVersion: 4.3.1
+        operatorChannel: v4.11
+        operatorVersion: 4.11.0
+        cloudPakThemesVersion: styles4100.css
     spec:
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
-            - matchExpressions:
-              - key: kubernetes.io/arch
-                operator: In
-                values:
-                - amd64
-                - ppc64le
-                - s390x
+              - matchExpressions:
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values:
+                      - amd64
+                      - ppc64le
+                      - s390x
       containers:
-      - command:
-        - /manager
-        env:
-        - name: OPERATOR_NAME
-          value: ibm-common-service-operator
-        - name: IBM_CS_WEBHOOK_IMAGE
-          value: icr.io/cpopen/cpfs/ibm-cs-webhook:1.18.0
-        - name: IBM_SECRETSHARE_OPERATOR_IMAGE
-          value: icr.io/cpopen/cpfs/ibm-secretshare-operator:1.19.0
-        - name: IBM_ZEN_OPERATOR_IMAGE
-          value: icr.io/cpopen/ibm-zen-operator:1.7.0
-        image: siji/operator:cs
-        imagePullPolicy: IfNotPresent
-        name: ibm-common-service-operator
-        resources:
-          limits:
-            cpu: 500m
-            memory: 512Mi
-          requests:
-            cpu: 100m
-            memory: 200Mi
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-            - ALL
-          privileged: false
-          readOnlyRootFilesystem: true
-          runAsNonRoot: true
-        terminationMessagePath: /dev/termination-log
-        terminationMessagePolicy: File
+        - command:
+            - /manager
+          env:
+            - name: OPERATOR_NAME
+              value: ibm-common-service-operator
+          image: siji/operator:cs
+          imagePullPolicy: IfNotPresent
+          name: ibm-common-service-operator
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 200Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
       dnsPolicy: ClusterFirst
       restartPolicy: Always
       schedulerName: default-scheduler

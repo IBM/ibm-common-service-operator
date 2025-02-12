@@ -74,6 +74,26 @@ const ConfigurationRules = `
             cpu: LARGEST_VALUE
             memory: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
+- name: common-service-postgresql
+  resources:
+  - apiVersion: postgresql.k8s.enterprisedb.io/v1
+    kind: Cluster
+    name: common-service-db
+    data:
+      spec:
+        instances: LARGEST_VALUE
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+          requests:
+            ephemeral-storage: LARGEST_VALUE
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE    
+        postgresql:
+          parameters:
+            max_connections: LARGEST_VALUE     
 - name: ibm-im-mongodb-operator
   spec:
     mongoDB:
@@ -543,6 +563,230 @@ const ConfigurationRules = `
             cpu: LARGEST_VALUE
             ephemeral-storage: LARGEST_VALUE
             memory: LARGEST_VALUE
+- name: ibm-im-operator-v4.3
+  spec:
+    authentication:
+      config:
+        fipsEnabled: LARGEST_VALUE
+      replicas: LARGEST_VALUE
+      authService:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      clientRegistration:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      identityManager:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      identityProvider:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      initMongodb:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+            memory: LARGEST_VALUE
+- name: ibm-im-operator-v4.4
+  spec:
+    authentication:
+      config:
+        fipsEnabled: LARGEST_VALUE
+      replicas: LARGEST_VALUE
+      authService:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      clientRegistration:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      identityManager:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      identityProvider:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      initMongodb:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+            memory: LARGEST_VALUE
+- name: ibm-im-operator-v4.5
+  spec:
+    authentication:
+      config:
+        fipsEnabled: LARGEST_VALUE
+      replicas: LARGEST_VALUE
+      authService:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      clientRegistration:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      identityManager:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      identityProvider:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      initMongodb:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+            memory: LARGEST_VALUE
+- name: ibm-im-operator-v4.6
+  spec:
+    authentication:
+      config:
+        fipsEnabled: LARGEST_VALUE
+      replicas: LARGEST_VALUE
+      authService:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      clientRegistration:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      identityManager:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      identityProvider:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+            memory: LARGEST_VALUE
+      initMongodb:
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+            memory: LARGEST_VALUE
 - name: ibm-management-ingress-operator
   spec:
     managementIngress:
@@ -746,6 +990,78 @@ const ConfigurationRules = `
               cpu: LARGEST_VALUE
               memory: LARGEST_VALUE
               ephemeral-storage: LARGEST_VALUE
+- name: ibm-idp-config-ui-operator-v4.3
+  spec:
+    commonWebUI:
+      replicas: LARGEST_VALUE
+      resources:
+        requests:
+          memory: LARGEST_VALUE
+          cpu: LARGEST_VALUE
+          ephemeral-storage: LARGEST_VALUE
+        limits:
+          memory: LARGEST_VALUE
+          cpu: LARGEST_VALUE
+          ephemeral-storage: LARGEST_VALUE
+      commonWebUIConfig:
+        dashboardData:
+          resources:
+            limits:
+              cpu: LARGEST_VALUE
+              memory: LARGEST_VALUE
+              ephemeral-storage: LARGEST_VALUE
+            requests:
+              cpu: LARGEST_VALUE
+              memory: LARGEST_VALUE
+              ephemeral-storage: LARGEST_VALUE
+- name: ibm-idp-config-ui-operator-v4.4
+  spec:
+    commonWebUI:
+      replicas: LARGEST_VALUE
+      resources:
+        requests:
+          memory: LARGEST_VALUE
+          cpu: LARGEST_VALUE
+          ephemeral-storage: LARGEST_VALUE
+        limits:
+          memory: LARGEST_VALUE
+          cpu: LARGEST_VALUE
+          ephemeral-storage: LARGEST_VALUE
+      commonWebUIConfig:
+        dashboardData:
+          resources:
+            limits:
+              cpu: LARGEST_VALUE
+              memory: LARGEST_VALUE
+              ephemeral-storage: LARGEST_VALUE
+            requests:
+              cpu: LARGEST_VALUE
+              memory: LARGEST_VALUE
+              ephemeral-storage: LARGEST_VALUE
+- name: ibm-idp-config-ui-operator-v4.5
+  spec:
+    commonWebUI:
+      replicas: LARGEST_VALUE
+      resources:
+        requests:
+          memory: LARGEST_VALUE
+          cpu: LARGEST_VALUE
+          ephemeral-storage: LARGEST_VALUE
+        limits:
+          memory: LARGEST_VALUE
+          cpu: LARGEST_VALUE
+          ephemeral-storage: LARGEST_VALUE
+      commonWebUIConfig:
+        dashboardData:
+          resources:
+            limits:
+              cpu: LARGEST_VALUE
+              memory: LARGEST_VALUE
+              ephemeral-storage: LARGEST_VALUE
+            requests:
+              cpu: LARGEST_VALUE
+              memory: LARGEST_VALUE
+              ephemeral-storage: LARGEST_VALUE
 - name: ibm-platform-api-operator
   spec:
     platformApi:
@@ -845,4 +1161,49 @@ const ConfigurationRules = `
   spec:
     apicatalogmanager:
       profile: LARGEST_VALUE
+- name: edb-keycloak
+  resources:
+  - apiVersion: postgresql.k8s.enterprisedb.io/v1
+    kind: Cluster
+    name: keycloak-edb-cluster
+    data:
+      spec:
+        instances: LARGEST_VALUE
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+- name: keycloak-operator
+  resources:
+  - apiVersion: k8s.keycloak.org/v2alpha1
+    kind: Keycloak
+    name: cs-keycloak
+    data:
+      spec:
+        instances: LARGEST_VALUE
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+          requests:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+        unsupported:
+          podTemplate:
+            spec:
+              containers:
+                - resources:
+                    limits:
+                      cpu: LARGEST_VALUE
+                      memory: LARGEST_VALUE
+                      ephemeral-storage: LARGEST_VALUE
+                    requests:
+                      cpu: LARGEST_VALUE
+                      memory: LARGEST_VALUE
+                      ephemeral-storage: LARGEST_VALUE
 `

@@ -14,10 +14,19 @@ rules:
   resourceNames:
   - common-service-maps
 - verbs:
+  - delete
+  apiGroups:
+  - ""
+  resources:
+  - configmaps
+  resourceNames:
+  - cloud-native-postgresql-image-list
+- verbs:
   - create
   - get
   - list
   - watch
+  - update
   apiGroups:
   - ''
   resources:
@@ -57,12 +66,43 @@ rules:
   - config.openshift.io
   resources:
   - infrastructures
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - clusterrolebindings
+  - clusterroles
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: ibm-common-service-operator
 rules:
+- apiGroups:
+  - ""
+  verbs:
+  - delete
+  - patch
+  resources:
+  - configmaps
+- apiGroups:
+  - operator.ibm.com
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - watch
+  - patch
+  resources:
+  - namespacescopes
 - apiGroups:
   - cert-manager.io
   resources:
@@ -81,6 +121,7 @@ rules:
   - statefulsets
   - daemonsets
   verbs:
+  - delete
   - get
   - list
   - patch
@@ -94,6 +135,7 @@ rules:
   - commonservices/status
   - operandconfigs
   - operandregistries
+  - operatorconfigs
   verbs:
   - create
   - delete
@@ -184,3 +226,49 @@ rules:
   - elasticstacks
   verbs:
   - delete
+# Delete ServiceAccount, RoleBinding, Role, secretshares
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - rolebindings
+  - roles
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - operator.ibm.com
+  verbs:
+  - get
+  - delete
+  - list
+  resources:
+  - podpresets
+- apiGroups:
+  - ibmcpcs.ibm.com
+  resources:
+  - secretshares
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch

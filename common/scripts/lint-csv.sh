@@ -40,7 +40,7 @@ echo "Lint alm-examples"
 $YQ eval '.metadata.annotations.alm-examples' $CSV_PATH  | $JQ . >/dev/null || STATUS=1
 
 # Lint yamls, only CS Operator needs this part
-for section in csV3OperandConfig csV3SaasOperandConfig csV3OperandRegistry csV3SaasOperandRegistry csOperatorSubscription csSecretshareOperator csWebhookOperator csWebhookOperatorEnableOpreqWebhook nsRestrictedSubscription nsSubscription odlmClusterSubscription odlmNamespacedSubscription; do
+for section in csV4OperandConfig csV4SaasOperandConfig csV4OperandRegistry csV4SaasOperandRegistry csOperatorSubscription csSecretshareOperator csWebhookOperator csWebhookOperatorEnableOpreqWebhook nsRestrictedSubscription nsSubscription odlmClusterSubscription odlmNamespacedSubscription; do
     echo "Lint $section"
     $YQ eval '.metadata.annotations.$section' $CSV_PATH  | $YQ - >/dev/null || STATUS=1
 done

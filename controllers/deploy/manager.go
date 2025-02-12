@@ -19,6 +19,7 @@ package deploy
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
@@ -32,7 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	util "github.com/IBM/ibm-common-service-operator/controllers/common"
+	util "github.com/IBM/ibm-common-service-operator/v4/controllers/common"
 )
 
 type Manager struct {
@@ -165,6 +166,10 @@ func (d *Manager) GetDeployment() (*appsv1.Deployment, error) {
 
 // DeleteOperator delete operator's csv and subscription from specific namespace
 func (d *Manager) DeleteOperator(name, namespace string) error {
+	if os.Getenv("NO_OLM") == "true" {
+		klog.V(2).Infof("skip delete operator in no-olm environment")
+		return nil
+	}
 	// Get existing operator's subscription
 	subName := name
 	subNs := namespace

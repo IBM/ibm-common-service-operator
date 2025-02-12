@@ -149,7 +149,7 @@ NEXT_DEPLOYMENT:
 			}
 			restartedTime, err := time.Parse("2006-1-2.150405", labelTime)
 			if err != nil {
-				return deploymentsToUpdate, fmt.Errorf("error parsing time-restarted: %v", err)
+				return deploymentsToUpdate, fmt.Errorf("error parsing time-restarted for deployment: %v", err)
 			}
 			if restartedTime.After(lastUpdatedTime) {
 				continue
@@ -198,9 +198,13 @@ NEXT_STATEFULSET:
 			if err != nil {
 				return statefulsetsToUpdate, fmt.Errorf("error parsing NotAfter time: %v", err)
 			}
-			restartedTime, err := time.Parse("2006-1-2.150405", statefulset.ObjectMeta.Labels[restartLabel])
+			labelTime := statefulset.ObjectMeta.Labels[restartLabel]
+			if t := strings.Split(labelTime, "."); len(t[len(t)-1]) == 4 {
+				labelTime = labelTime + string("00")
+			}
+			restartedTime, err := time.Parse("2006-1-2.150405", labelTime)
 			if err != nil {
-				return statefulsetsToUpdate, fmt.Errorf("error parsing time-restarted: %v", err)
+				return statefulsetsToUpdate, fmt.Errorf("error parsing time-restarted for statefulSet: %v", err)
 			}
 			if restartedTime.After(lastUpdatedTime) {
 				continue
@@ -248,9 +252,13 @@ NEXT_DAEMONSET:
 			if err != nil {
 				return daemonsetsToUpdate, fmt.Errorf("error parsing NotAfter time: %v", err)
 			}
-			restartedTime, err := time.Parse("2006-1-2.150405", daemonset.ObjectMeta.Labels[restartLabel])
+			labelTime := daemonset.ObjectMeta.Labels[restartLabel]
+			if t := strings.Split(labelTime, "."); len(t[len(t)-1]) == 4 {
+				labelTime = labelTime + string("00")
+			}
+			restartedTime, err := time.Parse("2006-1-2.150405", labelTime)
 			if err != nil {
-				return daemonsetsToUpdate, fmt.Errorf("error parsing time-restarted: %v", err)
+				return daemonsetsToUpdate, fmt.Errorf("error parsing time-restarted for daemonSet: %v", err)
 			}
 			if restartedTime.After(lastUpdatedTime) {
 				continue
@@ -340,7 +348,7 @@ func (r *PodRefreshReconciler) updateDaemonSetAnnotations(daemonsetsToUpdate []a
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *PodRefreshReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	klog.Infof("Set up")
+	klog.V(2).Infof("Set up")
 
 	// Create a new controller
 	c, err := controller.New("podrefresh-controller", mgr, controller.Options{Reconciler: r})

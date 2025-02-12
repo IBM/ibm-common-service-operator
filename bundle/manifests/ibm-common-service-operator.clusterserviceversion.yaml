@@ -21,25 +21,33 @@ metadata:
         }
       ]
     capabilities: Seamless Upgrades
+    cloudPakThemesVersion: styles4100.css
     containerImage: icr.io/cpopen/common-service-operator:latest
-    createdAt: "2023-09-20T20:40:14Z"
-    description: The IBM Common Service Operator is used to deploy IBM Common Services
+    createdAt: "2024-10-31T05:22:07Z"
+    description: The IBM Cloud Pak foundational services operator is used to deploy IBM foundational services.
     nss.operator.ibm.com/managed-operators: ibm-common-service-operator
     nss.operator.ibm.com/managed-webhooks: ""
-    olm.skipRange: ">=3.3.0 <4.3.1"
-    operatorChannel: v4.3
-    operatorVersion: 4.3.1
+    olm.skipRange: ">=3.3.0 <4.11.0"
+    operatorChannel: v4.11
+    operatorVersion: 4.11.0
     operators.openshift.io/infrastructure-features: '["disconnected"]'
     operators.operatorframework.io/builder: operator-sdk-v1.31.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     repository: https://github.com/IBM/ibm-common-service-operator
+    features.operators.openshift.io/disconnected: "true"
+    features.operators.openshift.io/fips-compliant: "true"
+    features.operators.openshift.io/proxy-aware: "false"
+    features.operators.openshift.io/tls-profiles: "false"
+    features.operators.openshift.io/token-auth-aws: "false"
+    features.operators.openshift.io/token-auth-azure: "false"
+    features.operators.openshift.io/token-auth-gcp: "false"
     support: IBM
   labels:
     operatorframework.io/arch.amd64: supported
     operatorframework.io/arch.ppc64le: supported
     operatorframework.io/arch.s390x: supported
     operatorframework.io/os.linux: supported
-  name: ibm-common-service-operator.v4.3.1
+  name: ibm-common-service-operator.v4.11.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -50,14 +58,29 @@ spec:
         kind: CommonService
         name: commonservices.operator.ibm.com
         specDescriptors:
-          - description: 'Accepting the license - URL: https://ibm.biz/integration-licenses'
+          - description: License information for this instance. You must accept the license.
+            displayName: License
+            path: license
+          - description: Read and accept the license that is applicable to your installation. For more information, see https://ibm.biz/icpfs39license
             displayName: Accept
             path: license.accept
             value:
               - false
             x-descriptors:
               - urn:alm:descriptor:com.tectonic.ui:checkbox
-          - description: The size of deployment profile for IBM Cloud Pak foundational services
+          - path: license.license
+            x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:hidden
+          - path: license.use
+            x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:hidden
+          - path: license.key
+            x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:hidden
+          - path: license.use
+            x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:hidden
+          - description: The size of deployment profile for IBM Cloud Pak foundational services.
             displayName: Size
             path: size
             x-descriptors:
@@ -67,6 +90,29 @@ spec:
               - urn:alm:descriptor:com.tectonic.ui:select:medium
               - urn:alm:descriptor:com.tectonic.ui:select:large
               - urn:alm:descriptor:com.tectonic.ui:select:production
+          - displayName: Operator namespace
+            path: operatorNamespace
+            x-descriptors:
+              - urn:alm:descriptor:io.kubernetes:Namespace
+          - displayName: Services namespace
+            path: servicesNamespace
+            x-descriptors:
+              - urn:alm:descriptor:io.kubernetes:Namespace
+          - displayName: Storage class
+            path: storageClass
+            x-descriptors:
+              - urn:alm:descriptor:io.kubernetes:StorageClass
+              - urn:alm:descriptor:com.tectonic.ui:advanced
+          - displayName: FIPS mode
+            path: fipsEnabled
+            x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+              - urn:alm:descriptor:com.tectonic.ui:advanced
+          - displayName: HugePages Setting
+            path: hugePages.enable
+            x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+              - urn:alm:descriptor:com.tectonic.ui:advanced
           - description: The profile controller for IBM Cloud Pak foundational services
             displayName: ProfileController
             path: profileController
@@ -75,6 +121,44 @@ spec:
               - urn:alm:descriptor:com.tectonic.ui:select:commonservice
               - urn:alm:descriptor:com.tectonic.ui:select:turbonomic
               - urn:alm:descriptor:com.tectonic.ui:select:vpa
+              - urn:alm:descriptor:com.tectonic.ui:advanced
+          - displayName: Identity management custom hostname
+            path: routeHost
+            x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:advanced
+          - displayName: Identity management custom certificates
+            path: BYOCACertificate
+            x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:booleanSwitch
+              - urn:alm:descriptor:com.tectonic.ui:advanced
+          - displayName: Identity management default admin username
+            path: defaultAdminUser
+            x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:advanced
+          - displayName: Custom OLM catalog name
+            path: catalogName
+            x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:advanced
+          - displayName: Custom OLM catalog namespace
+            path: catalogNamespace
+            x-descriptors:
+              - urn:alm:descriptor:io.kubernetes:Namespace
+              - urn:alm:descriptor:com.tectonic.ui:advanced
+          - displayName: OLM Install Plan approval mode
+            path: installPlanApproval
+            x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:select:Automatic
+              - urn:alm:descriptor:com.tectonic.ui:select:Manual
+              - urn:alm:descriptor:com.tectonic.ui:advanced
+          - path: manualManagement
+            x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:hidden
+          - path: features
+            x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:hidden
+          - path: services
+            x-descriptors:
+              - urn:alm:descriptor:com.tectonic.ui:hidden
         statusDescriptors:
           - description: Installed Bedrock Operator Name
             displayName: Name
@@ -105,9 +189,8 @@ spec:
 
     When you install this operator, the operator completes the following tasks:
 
-      - Installs ODLM in all namespaces mode
-      - Creates the `ibm-common-services` namespace
-      - Creates the Common Services `OperandRegistry` and `OperandConfig` in the `ibm-common-services` namespace
+      - Installs ODLM operator namespace
+      - Creates the Common Services `OperandRegistry` and `OperandConfig` in the service namespace
 
     # Details
     For more information about installing this operator and other Common Services operators, see [Installer documentation](http://ibm.biz/cpcs_opinstall). If you are using this operator as part of an IBM Cloud Pak, see the documentation for that IBM Cloud Pak to learn more about how to install and use the operator service. For more information about IBM Cloud Paks, see [IBM Cloud Paks that use Common Services](http://ibm.biz/cpcs_cloudpaks).
@@ -124,7 +207,7 @@ spec:
 
     ## Operator versions
 
-     - 4.3.1
+     - 4.11.0
 
     ## Prerequisites
 
@@ -184,6 +267,14 @@ spec:
                 - update
             - apiGroups:
                 - ""
+              resourceNames:
+                - cloud-native-postgresql-image-list
+              resources:
+                - configmaps
+              verbs:
+                - delete
+            - apiGroups:
+                - ""
               resources:
                 - configmaps
               verbs:
@@ -191,6 +282,7 @@ spec:
                 - get
                 - list
                 - watch
+                - update
             - apiGroups:
                 - ""
               resources:
@@ -224,6 +316,19 @@ spec:
                 - infrastructures
               verbs:
                 - get
+            - apiGroups:
+                - rbac.authorization.k8s.io
+              resources:
+                - clusterrolebindings
+                - clusterroles
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
           serviceAccountName: ibm-common-service-operator
       deployments:
         - label:
@@ -249,8 +354,8 @@ spec:
                   app.kubernetes.io/instance: ibm-common-service-operator
                   app.kubernetes.io/managed-by: ibm-common-service-operator
                   app.kubernetes.io/name: ibm-common-service-operator
-                  productName: IBM_Cloud_Platform_Common_Services
                   name: ibm-common-service-operator
+                  productName: IBM_Cloud_Platform_Common_Services
               spec:
                 affinity:
                   nodeAffinity:
@@ -278,12 +383,6 @@ spec:
                             fieldPath: metadata.annotations['olm.targetNamespaces']
                       - name: OPERATOR_NAME
                         value: ibm-common-service-operator
-                      - name: IBM_CS_WEBHOOK_IMAGE
-                        value: icr.io/cpopen/cpfs/ibm-cs-webhook:1.18.0
-                      - name: IBM_SECRETSHARE_OPERATOR_IMAGE
-                        value: icr.io/cpopen/cpfs/ibm-secretshare-operator:1.19.0
-                      - name: IBM_ZEN_OPERATOR_IMAGE
-                        value: icr.io/cpopen/ibm-zen-operator:1.7.0
                     image: icr.io/cpopen/common-service-operator:latest
                     imagePullPolicy: IfNotPresent
                     livenessProbe:
@@ -323,6 +422,8 @@ spec:
                       privileged: false
                       readOnlyRootFilesystem: true
                       runAsNonRoot: true
+                      seccompProfile:
+                        type: RuntimeDefault
                     volumeMounts:
                       - mountPath: /tmp/k8s-webhook-server/serving-certs
                         name: cert
@@ -336,6 +437,24 @@ spec:
                       secretName: webhook-server-cert
       permissions:
         - rules:
+            - apiGroups:
+                - ""
+              resources:
+                - configmaps
+              verbs:
+                - delete
+                - patch
+            - apiGroups:
+                - operator.ibm.com
+              resources:
+                - namespacescopes
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - watch
+                - patch
             - apiGroups:
                 - cert-manager.io
               resources:
@@ -354,6 +473,7 @@ spec:
                 - statefulsets
                 - daemonsets
               verbs:
+                - delete
                 - get
                 - list
                 - patch
@@ -367,6 +487,7 @@ spec:
                 - commonservices/status
                 - operandconfigs
                 - operandregistries
+                - operatorconfigs
               verbs:
                 - create
                 - delete
@@ -454,6 +575,51 @@ spec:
                 - elasticstacks
               verbs:
                 - delete
+            - apiGroups:
+                - ""
+              resources:
+                - serviceaccounts
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
+            - apiGroups:
+                - rbac.authorization.k8s.io
+              resources:
+                - rolebindings
+                - roles
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
+            - apiGroups:
+                - operator.ibm.com
+              resources:
+                - podpresets
+              verbs:
+                - get
+                - delete
+                - list
+            - apiGroups:
+                - ibmcpcs.ibm.com
+              resources:
+                - secretshares
+              verbs:
+                - create
+                - delete
+                - get
+                - list
+                - patch
+                - update
+                - watch
           serviceAccountName: ibm-common-service-operator
     strategy: deployment
   installModes:
@@ -476,13 +642,9 @@ spec:
       name: IBM Support
   maturity: alpha
   minKubeVersion: 1.19.0
-  nativeAPIs:
-    - group: cert-manager.io
-      kind: Certificate
-      version: v1
   provider:
     name: IBM
-  version: 4.3.1
+  version: 4.11.0
   webhookdefinitions:
     - admissionReviewVersions:
         - v1
@@ -525,7 +687,5 @@ spec:
       type: ValidatingAdmissionWebhook
       webhookPath: /validate-operator-ibm-com-v3-commonservice
   relatedImages:
-    - image: icr.io/cpopen/common-service-operator:4.3.1
+    - image: icr.io/cpopen/common-service-operator:4.11.0
       name: COMMON_SERVICE_OPERATOR_IMAGE
-    - image: icr.io/cpopen/cpfs/cpfs-utils:latest
-      name: CPFS_UTILS_IMAGE

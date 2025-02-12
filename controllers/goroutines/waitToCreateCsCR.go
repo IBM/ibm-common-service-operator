@@ -24,13 +24,13 @@ import (
 
 	"k8s.io/klog"
 
-	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
+	"github.com/IBM/ibm-common-service-operator/v4/controllers/bootstrap"
 )
 
-// CreateUpdateConfig deploys config builder for global cpp configmap
+// WaitToCreateCsCR waits for the creation of the CommonService CR in the operator namespace.
 func WaitToCreateCsCR(bs *bootstrap.Bootstrap) {
 	for {
-		klog.Infof("Creating CommonService CR in the namespace %s", bs.CSData.OperatorNs)
+		klog.Infof("Start to Create CommonService CR in the namespace %s", bs.CSData.OperatorNs)
 		if err := bs.CreateCsCR(); err != nil {
 			if strings.Contains(fmt.Sprint(err), "failed to call webhook") {
 				klog.Infof("Webhook Server not ready, waiting for it to be ready : %v", err)
@@ -44,5 +44,4 @@ func WaitToCreateCsCR(bs *bootstrap.Bootstrap) {
 		}
 
 	}
-
 }

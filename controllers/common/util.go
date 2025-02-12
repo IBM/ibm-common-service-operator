@@ -19,6 +19,7 @@ package common
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"os"
@@ -46,9 +47,10 @@ import (
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
-	"github.com/IBM/ibm-common-service-operator/controllers/constant"
-	nssv1 "github.com/IBM/ibm-namespace-scope-operator/api/v1"
+	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
+	"github.com/IBM/ibm-common-service-operator/v4/controllers/constant"
+	nssv1 "github.com/IBM/ibm-namespace-scope-operator/v4/api/v1"
+	odlm "github.com/IBM/operand-deployment-lifecycle-manager/v4/api/v1alpha1"
 )
 
 type CsMaps struct {
@@ -492,7 +494,13 @@ func GetControlNs(r client.Reader) (controlNs string) {
 	return
 }
 
+// could have issue
 func GetApprovalModeinNs(r client.Reader, ns string) (approvalMode string, err error) {
+	// set approval mode to empty in non-olm environment
+	if os.Getenv("NO_OLM") == "true" {
+		klog.V(2).Infof("set approval mode to empty in no olm environment")
+		return "", nil
+	}
 	approvalMode = string(olmv1alpha1.ApprovalAutomatic)
 	subList := &olmv1alpha1.SubscriptionList{}
 	if err := r.List(context.TODO(), subList, &client.ListOptions{Namespace: ns}); err != nil {
@@ -509,6 +517,10 @@ func GetApprovalModeinNs(r client.Reader, ns string) (approvalMode string, err e
 
 // GetCatalogSource gets CatalogSource will be used by operators
 func GetCatalogSource(packageName, ns string, r client.Reader) (CatalogSourceName, CatalogSourceNS string) {
+	if os.Getenv("NO_OLM") == "true" {
+		klog.V(2).Infof("set catalogsource name and namespace to empty in no olm environment")
+		return "", ""
+	}
 	subList := &olmv1alpha1.SubscriptionList{}
 	if err := r.List(context.TODO(), subList, &client.ListOptions{Namespace: ns}); err != nil {
 		klog.Info(err)
@@ -675,6 +687,16 @@ func EnsureLabelsForConfigMap(cm *corev1.ConfigMap, labels map[string]string) {
 	}
 }
 
+// EnsureLabels ensures that the specifc resource has the certain labels
+func EnsureLabels(resource *unstructured.Unstructured, labels map[string]string) {
+	if resource.Object["metadata"].(map[string]interface{})["labels"] == nil {
+		resource.Object["metadata"].(map[string]interface{})["labels"] = make(map[string]string)
+	}
+	for k, v := range labels {
+		resource.Object["metadata"].(map[string]interface{})["labels"].(map[string]string)[k] = v
+	}
+}
+
 // GetRequestNs gets requested-from-namespace of map-to-common-service-namespace
 func GetRequestNs(r client.Reader) (requestNs []string) {
 	operatorNs, err := GetOperatorNamespace()
@@ -712,45 +734,44 @@ func GetRequestNs(r client.Reader) (requestNs []string) {
 }
 
 // GetNssCmNs gets namespaces from namespace-scope ConfigMap
-func GetNssCmNs(r client.Reader, cpfsNamespace string) (nssCmNs []string) {
-	nssConfigMap := GetCmOfNss(r, cpfsNamespace)
-
+func GetNssCmNs(r client.Reader, cpfsNamespace string) ([]string, error) {
+	nssConfigMap, err := GetCmOfNss(r, cpfsNamespace)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
 	nssNsMems, ok := nssConfigMap.Data["namespaces"]
 	if !ok {
 		klog.Infof("There is no namespace in configmap %v/%v", cpfsNamespace, constant.NamespaceScopeConfigmapName)
-		return
+		return nil, nil
 	}
-	nssCmNs = strings.Split(nssNsMems, ",")
+	nssCmNs := strings.Split(nssNsMems, ",")
 
-	return nssCmNs
+	return nssCmNs, nil
 }
 
 // GetCmOfNss gets ConfigMap of Namespace-scope
-func GetCmOfNss(r client.Reader, operatorNs string) *corev1.ConfigMap {
+func GetCmOfNss(r client.Reader, operatorNs string) (*corev1.ConfigMap, error) {
 	cmName := constant.NamespaceScopeConfigmapName
 	cmNs := operatorNs
 	nssConfigmap := &corev1.ConfigMap{}
 
-	for {
-		if err := utilwait.PollImmediateInfinite(time.Second*10, func() (done bool, err error) {
-			err = r.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: cmNs}, nssConfigmap)
-			if err != nil {
-				if errors.IsNotFound(err) {
-					klog.Infof("waiting for configmap %v/%v", operatorNs, constant.NamespaceScopeConfigmapName)
-					return false, nil
-				}
-				return false, err
+	if err := utilwait.PollImmediate(time.Second*5, time.Second*30, func() (done bool, err error) {
+		err = r.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: cmNs}, nssConfigmap)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				klog.Infof("waiting for configmap %v/%v", operatorNs, constant.NamespaceScopeConfigmapName)
 			}
-			return true, nil
-		}); err == nil {
-			break
-		} else {
-			klog.Errorf("Failed to get configmap %v/%v: %v, retry in 10 seconds", operatorNs, constant.NamespaceScopeConfigmapName, err)
-			time.Sleep(10 * time.Second)
+			return false, err
 		}
+		return true, nil
+	}); err != nil {
+		return nil, err
 	}
 
-	return nssConfigmap
+	return nssConfigmap, nil
 }
 
 func GetResourcesDynamically(ctx context.Context, dynamic dynamic.Interface, group string, version string, resource string) (
@@ -793,6 +814,104 @@ func EnsureLabelsForCsCR(cs *apiv3.CommonService, labels map[string]string) {
 	}
 }
 
-func CompareCsCR(csCR *apiv3.CommonService, existingCsCR *apiv3.CommonService) (needUpdate bool) {
-	return !equality.Semantic.DeepEqual(csCR.GetLabels(), existingCsCR.GetLabels()) || !equality.Semantic.DeepEqual(csCR.GetAnnotations(), existingCsCR.GetAnnotations()) || !equality.Semantic.DeepEqual(csCR.Spec, existingCsCR.Spec)
+func CompareObj(newObj *unstructured.Unstructured, existingObj *unstructured.Unstructured) (needUpdate bool) {
+	return !equality.Semantic.DeepEqual(newObj.GetLabels(), existingObj.GetLabels()) || !equality.Semantic.DeepEqual(newObj.GetAnnotations(), existingObj.GetAnnotations()) || !equality.Semantic.DeepEqual(newObj.Object["spec"], existingObj.Object["spec"])
+}
+
+// ReadFile reads file from local path
+func ReadFile(path string) ([]byte, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		klog.Error(err)
+		return nil, err
+	}
+	defer file.Close()
+
+	fileInfo, err := file.Stat()
+	if err != nil {
+		klog.Error(err)
+		return nil, err
+	}
+
+	fileSize := fileInfo.Size()
+	buffer := make([]byte, fileSize)
+
+	_, err = file.Read(buffer)
+	if err != nil {
+		klog.Error(err)
+		return nil, err
+	}
+
+	return buffer, nil
+}
+
+// EncodeBase64 encodes data to base64 string
+func EncodeBase64(data []byte) string {
+	return base64.StdEncoding.EncodeToString(data)
+}
+
+// SanitizeData keep the key-value pair in the map if the value fulfill the valueType and requirement
+func SanitizeData(data interface{}, valueType string, isEmpty bool) interface{} {
+	// check data type
+	switch data.(type) {
+	case map[string]interface{}:
+		sanitizedData := make(map[string]interface{})
+		for key, value := range data.(map[string]interface{}) {
+			switch valueType {
+			case "string":
+				if v, ok := value.(string); ok && (isEmpty || v != "") {
+					sanitizedData[key] = v
+				}
+			case "bool":
+				if v, ok := value.(bool); ok {
+					sanitizedData[key] = v
+				}
+			case "int":
+				if v, ok := value.(int); ok {
+					sanitizedData[key] = v
+				}
+			case "float64":
+				if v, ok := value.(float64); ok {
+					sanitizedData[key] = v
+				}
+			}
+		}
+		return sanitizedData
+	default:
+		klog.Errorf("data type is not map[string]interface{}")
+		return nil
+	}
+}
+
+func UpdateOpRegUserManaged(opreg *odlm.OperandRegistry, operatorName string, value bool) error {
+	packageName := GetPackageNameByServiceName(opreg, operatorName)
+	if packageName == "" {
+		return fmt.Errorf("failed to find package name while updating OperandRegistry with user managed field")
+	}
+	for i := range opreg.Spec.Operators {
+		i := i
+		if opreg.Spec.Operators[i].PackageName != packageName {
+			continue
+		}
+
+		opreg.Spec.Operators[i].UserManaged = value
+	}
+	return nil
+}
+
+func GetPackageNameByServiceName(opreg *odlm.OperandRegistry, operatorName string) string {
+	for _, v := range opreg.Spec.Operators {
+		v := v
+		if v.Name == operatorName {
+			return v.PackageName
+		}
+	}
+	return ""
+}
+
+func GetFirstNCharacter(str string, n int) string {
+	if n >= len(str) {
+		return str
+	}
+	return str[:n]
 }

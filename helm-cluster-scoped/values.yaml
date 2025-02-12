@@ -1,0 +1,11 @@
+# Note there are no leading or trailing /'s
+imageRegistryNamespaceOperator: cpopen
+imageRegistryNamespaceOperand: cpopen/cpfs
+
+#Commented out values are covered by a global values file
+# imagePullPrefix: icr.io
+# imagePullSecret: ibm-entitlement-key
+# other configuration you think you might need for your operator
+# following are examples, not required:
+# operatorNamespace: ""
+# servicesNamespace: ""

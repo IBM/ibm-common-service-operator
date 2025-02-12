@@ -1,0 +1,407 @@
+/*
+:root {
+    --textColor: #f6f5f7;
+  }
+*/
+
+@font-face {
+  font-family: IBM Plex Sans;
+  src: url("../fonts/IBMPlexSans-Regular.woff2") format("woff2"),
+    url("../fonts/IBMPlexSans-Regular.woff") format("woff");
+  font-weight: normal;
+}
+
+body {
+  background: #161616 !important;
+  color: #f4f4f4;
+}
+
+body .login-pf-page {
+  font-family: IBM Plex Sans;
+  padding-top: 0px;
+  background: #161616 !important;
+}
+
+.login-pf-page a, #reset-login {
+  color: #78A9FF;
+}
+
+/* set ibm cloudpak header */
+.kc-logo-text {
+  background-image: url(../img/login-header.svg);
+  background-repeat: no-repeat;
+  height: 48px;
+  width: 100%;
+  margin: 0 auto;
+}
+.kc-logo-text span {
+  display: none;
+}
+
+
+#kc-locale-wrapper {
+  display: none;
+}
+
+#kc-content-wrapper {
+  border-top: 1px solid #393939;
+  padding-top: 5px;
+}
+
+.kc-form-wrapper {
+  background-color: #262626;
+}
+
+.login-pf-page .card-pf {
+  background: #161616;
+  margin: 56px auto auto auto;
+  width: 288px;
+  padding: 0px;
+}
+
+.login-pf-page .login-pf-header {
+  margin-bottom: 40px;
+}
+
+.login-pf-page .login-pf-header h1 {
+  line-height: 40px;
+  letter-spacing: 0;
+  color: #f4f4f4;
+  font-size: 32px;
+  text-align: left;
+  margin: 0px;
+}
+
+/* input fields and labels */
+.pf-c-form__label.pf-c-form__label-text {
+  margin: .5rem 0;
+  color: #c6c6c6;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: .32px;
+}
+
+#username,#password,#password-new,#password-confirm,#email,#firstName,#lastName {
+  height: 48px;
+  background-color: #262626;
+  background: #262626;
+  font-size: .875rem;
+  font-weight: 300;
+  line-height: 1.28572;
+  letter-spacing: .16px;
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  padding: 0 1rem;
+  border: none;
+  border-bottom: 1px solid #6f6f6f;
+  transition: background-color 70ms cubic-bezier(.2,0,.38,.9),outline 70ms cubic-bezier(.2,0,.38,.9);
+  color: #f4f4f4;
+}
+
+#username[aria-invalid=true], #password[aria-invalid=true] {
+  border: none;
+  border: 2px solid #fa4d56;
+  background-image: var(--pf-c-form-control--invalid--BackgroundUrl);
+  background-position: var(--pf-c-form-control--invalid--BackgroundPosition);
+  background-size: var(--pf-c-form-control--invalid--BackgroundSize);
+  background-repeat: no-repeat;
+}
+
+#input-error {
+  color: #ff8389;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.32px;
+}
+
+/* input fields */
+#username:focus,#password:focus,#password-new:focus,#password-confirm:focus,#email:focus,#firstName:focus,#lastName:focus {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
+}
+
+/* login button, submit button, buttons on other panels */
+#kc-login, .pf-c-button.pf-m-primary.pf-m-block.btn-lg, .pf-c-button.pf-m-primary.btn-lg, .pf-c-button.btn-default.btn-lg {
+  border: 1px solid transparent;
+  background-color: #0f62fe;
+  color: #fff;
+  min-height: 3rem;
+  cursor: pointer;
+  text-align: left;
+  font-size: .875rem;
+  font-weight: 300;
+  letter-spacing: .16px;
+  outline: none;
+}
+
+/* for update password screen */
+#kc-form-buttons {
+  display: flex;
+  flex-direction: row-reverse;
+}
+.pf-c-button.pf-m-primary.btn-lg {
+  width: 100%;
+}
+/* cancel button */
+.pf-c-button.btn-default.btn-lg {
+  background-image: none;
+  background-color: #393939;
+  width: 100%;
+  margin-right: 1px;
+}
+.pf-c-button.btn-default.btn-lg::after {
+  min-height: 3rem;
+}
+
+#kc-login:hover, .pf-c-button.pf-m-primary.pf-m-block.btn-lg:hover, .pf-c-button.pf-m-primary.btn-lg:hover {
+  background-color: #0353e9;
+}
+.pf-c-button.btn-default.btn-lg:hover {
+  background-color: #474747;
+}
+
+#kc-login:focus, .pf-c-button.pf-m-primary.pf-m-block.btn-lg:focus, .pf-c-button.pf-m-primary.btn-lg:focus,
+.pf-c-button.btn-default.btn-lg:focus {
+  border-color: #fff;
+  box-shadow: inset 0 0 0 1px #fff,inset 0 0 0 2px #161616;
+}
+
+/* show password button */
+.pf-c-input-group .pf-c-button.pf-m-control {
+  background-color: #262626;
+  color: #ffffff;
+  /*border-bottom: 1px solid #6f6f6f; puts text field line under button
+  outline: 2px solid transparent;*/
+  height: 48px;
+}
+.fa.fa-eye {
+  width: 16px;
+  height: 16px;
+}
+.fa-eye::before {
+  content: url("../img/view.svg");
+}
+.fa.fa-eye-slash {
+  width: 16px;
+  height: 16px;
+}
+.fa-eye-slash::before {
+  content: url("../img/view--off.svg");
+}
+
+/* The following block of styling is to get the carbon checkbox */
+.checkbox label {
+  padding-left: 27px;
+}
+/* This rule is specifically for the remember me checkbox - had odd alignment,don't know why */
+.form-group.login-pf-settings .checkbox label {
+  padding-top: 2px;
+}
+label:has( > input[type=checkbox]:focus)::before {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+}
+label:has( > input[type=checkbox]:checked)::before {
+  border-width: 1px;
+  border-color: #f4f4f4;
+  background-color: #f4f4f4;
+}
+label:has( > input[type=checkbox]:checked)::after {
+  transform: scale(1) rotate(-45deg);
+}
+label:has( > input[type=checkbox])::before {
+  position: absolute;
+  top: .125rem;
+  left: 0;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid #f4f4f4;
+  margin: .125rem .125rem .125rem .1875rem;
+  background-color: transparent;
+  border-radius: 1px;
+  content: "";
+}
+label:has( > input[type=checkbox])::after {
+  position: absolute;
+  top: .5rem;
+  left: .4375rem;
+  width: .5625rem;
+  height: .3125rem;
+  border-bottom: 2px solid #161616;
+  border-left: 2px solid #161616;
+  margin-top: -.1875rem;
+  background: none;
+  content: "";
+  transform: scale(0) rotate(-45deg);
+  transform-origin: bottom right;
+}
+#rememberMe, #logout-sessions {
+  position: absolute;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  margin: -1px;
+  clip: rect(0,0,0,0);
+  visibility: inherit;
+  white-space: nowrap;
+  top: 1.25rem;
+  left: .7rem;
+}
+
+/* hack to align forgot password with remember me */
+/* .form-group.login-pf-settings div span a { */
+a[tabindex="5"] {
+    margin-top: 12px;
+    margin-bottom: 20px;
+    display: block;
+}
+
+/* additional providers styling */
+.kc-social-section hr {
+  border-top: 1px solid #393939;
+}
+
+.kc-social-item {
+  text-align: left;
+}
+
+.kc-social-links li {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.pf-c-button.pf-m-block {
+  display: block;
+  width: 100%;
+}
+
+.pf-c-button::after {
+  border: 1px solid transparent;
+  /*display: none;*/
+}
+
+.pf-c-button.kc-social-item {
+  background-color: transparent;
+  color: #ffffff;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #ffffff;
+  text-decoration: none;
+  outline: none;
+  font-size: 14px;
+  line-height: 18px;
+  letter-spacing: 0.16px;
+  font-weight: 300;
+  padding: 13px 10px 13px 10px;
+}
+
+.pf-c-button.kc-social-item:focus {
+  background-color: #ffffff;
+  color: #161616;
+  border-color: #fff;
+  box-shadow: inset 0 0 0 1px #fff,inset 0 0 0 2px #161616;
+}
+
+.pf-c-button.kc-social-item:hover {
+  background-color: #ffffff;
+  color: #161616;
+  border-width: 1px;
+  border-style: solid;
+  border-color: transparent;
+}
+
+.pf-c-button.kc-social-item:active {
+  background-color: #6f6f6f;
+  border-width: 1px;
+  border-style: solid;
+  border-color: transparent;
+}
+
+#kc-social-providers h4, #kc-social-providers h2 {
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: .32px;
+  color: #c6c6c6;
+  font-weight: 400;
+}
+
+.kc-social-provider-logo {
+  display: none;
+  font-size: 23px;
+  width: 30px;
+  height: 25px;
+  /* float: left; didn't work */
+  position: absolute;
+  left: 15px;
+}
+
+a:visited,:active {
+  text-decoration:none;
+}
+
+/* Warning dialog - required for set new password */
+.alert-warning.pf-c-alert.pf-m-inline.pf-m-warning {
+  background: #262626;
+  border-left: 3px solid #f1c21b;
+  border-top: none;
+  height: 66px;
+}
+
+.alert-warning.pf-c-alert.pf-m-inline.pf-m-warning .pf-c-alert__icon {
+  color: #f1c21b;
+  font-size: .875rem;
+  font-weight: 600;
+  line-height: 1.28572;
+  letter-spacing: .16px;
+  margin: 0 .25rem 0 0;
+}
+
+.pf-c-alert__title.kc-feedback-text {
+  color: #f4f4f4;
+  font-size: 14px;
+  font-weight: 200;
+  line-height: 18px;
+  letter-spacing: .16px;
+  margin: 0 .25rem 0 0;
+}
+
+/* error dialog */
+.alert-error.pf-c-alert.pf-m-inline.pf-m-danger {
+  background: #262626;
+  color: #f4f4f4;
+  border-left: 3px solid #da1e28;
+  border-top: none;
+  font-size: 14px;
+  font-weight: 200;
+  line-height: 18px;
+  letter-spacing: .16px;
+  margin: 0 .25rem 0 0;
+}
+
+/* infor alert */
+.alert-info.pf-c-alert.pf-m-inline.pf-m-info {
+  background: #262626;
+  color: #f4f4f4;
+  border-left: 3px solid #4589ff;
+  border-top: none;
+  font-size: 14px;
+  font-weight: 200;
+  line-height: 18px;
+  letter-spacing: .16px;
+  margin: 0 .25rem 0 0;
+}
+
+#kc-form-options .checkbox {
+  margin-bottom: 20px;
+}
+
+#kc-attempted-username {
+  line-height: 40px;
+  letter-spacing: 0;
+  color: #f4f4f4;
+  font-size: 32px;
+  text-align: left;
+  margin: 0px;
+}

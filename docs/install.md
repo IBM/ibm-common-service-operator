@@ -136,7 +136,7 @@ So far, the IBM Common Service Operator and ODLM operator installation is comple
 
 ### Accept License
 
-Accepting the license - URL: https://ibm.biz/integration-licenses
+Accepting the license - URL: https://ibm.biz/icpfs39license
 
 ```yaml
 apiVersion: operator.ibm.com/v3

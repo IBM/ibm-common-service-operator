@@ -32,7 +32,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	certmanagerv1 "github.com/ibm/ibm-cert-manager-operator/apis/cert-manager/v1"
-	res "github.com/ibm/ibm-cert-manager-operator/controllers/resources"
+
+	"github.com/IBM/ibm-common-service-operator/v4/controllers/constant"
 )
 
 var logd = log.Log.WithName("controller_certificaterefresh")
@@ -78,7 +79,7 @@ func (r *CertificateRefreshReconciler) Reconcile(ctx context.Context, req ctrl.R
 	foundCA := false
 	// check this secret has refresh label or not
 	// if this secret has refresh label
-	if secret.GetLabels()[res.RefreshCALabel] == "true" {
+	if secret.GetLabels()[constant.RefreshCALabel] == "true" {
 		foundCA = true
 	} else {
 		// Get the certificate by this secret in the same namespace
@@ -95,7 +96,7 @@ func (r *CertificateRefreshReconciler) Reconcile(ctx context.Context, req ctrl.R
 		// if we found this certificate in the same namespace
 		if foundCert {
 			// check this certificate has refresh label or not
-			if cert.Labels[res.RefreshCALabel] == "true" {
+			if cert.Labels[constant.RefreshCALabel] == "true" {
 				foundCA = true
 			}
 		}
@@ -228,7 +229,7 @@ func (r *CertificateRefreshReconciler) findLeafSecrets(v1Certs []certmanagerv1.C
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *CertificateRefreshReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	klog.Infof("Set up")
+	klog.V(2).Infof("Set up")
 
 	// Create a new controller
 	c, err := controller.New("certificaterefresh-controller", mgr, controller.Options{Reconciler: r})

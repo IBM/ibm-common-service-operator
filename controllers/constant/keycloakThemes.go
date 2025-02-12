@@ -16,13 +16,19 @@
 
 package constant
 
-const MultipleInstancesEnabledTemplate = `
-- name: ibm-management-ingress-operator
-  spec:
-    managementIngress:
-      multipleInstancesEnabled: placeholder
-- name: ibm-commonui-operator
-  spec:
-    commonWebUI:
-      multipleInstancesEnabled: placeholder
+const KeycloakThemesJar = `/hack/keycloak-themes/cloudpak-theme.jar`
+
+const KeycloakThemesConfigMap = `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cs-keycloak-theme
+  namespace: "{{ .ServicesNs }}"
+  labels:
+    operator.ibm.com/managedByCsOperator: "true"
+  annotations:
+    version: {{ .Version }}
+    themesVersion: {{ .CloudPakThemesVersion }}
+binaryData:
+  cloudpak-theme.jar: {{ .CloudPakThemes }}
 `

@@ -20,9 +20,9 @@ OPERATOR_SDK ?= $(shell which operator-sdk)
 CONTROLLER_GEN ?= $(shell which controller-gen)
 KUSTOMIZE ?= $(shell which kustomize)
 YQ_VERSION=v4.27.3
-KUSTOMIZE_VERSION=v3.8.7
-OPERATOR_SDK_VERSION=v1.31.0
-CONTROLLER_TOOLS_VERSION ?= v0.6.1
+KUSTOMIZE_VERSION=v5.0.0
+OPERATOR_SDK_VERSION=v1.38.0
+CONTROLLER_TOOLS_VERSION ?= v0.14.0
 
 CSV_PATH=bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
 
@@ -79,9 +79,11 @@ REGISTRY ?= "docker-na-public.artifactory.swg-devops.com/hyc-cloud-private-scrat
 OPERATOR_IMAGE_NAME ?= common-service-operator
 # Current Operator bundle image name
 BUNDLE_IMAGE_NAME ?= common-service-operator-bundle
+# Current Operator image with registry
+IMG ?= icr.io/cpopen/common-service-operator:latest
 
-CHANNELS := v4.3
-DEFAULT_CHANNEL := v4.3
+CHANNELS := v4.11
+DEFAULT_CHANNEL := v4.11
 
 # Options for 'bundle-build'
 ifneq ($(origin CHANNELS), undefined)
@@ -92,17 +94,20 @@ BUNDLE_DEFAULT_CHANNEL := --default-channel=$(DEFAULT_CHANNEL)
 endif
 BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 
-# Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
-CRD_OPTIONS ?= "crd:trivialVersions=true"
-
 ifeq ($(BUILD_LOCALLY),0)
     export CONFIG_DOCKER_TARGET = config-docker
     export CONFIG_DOCKER_TARGET_QUAY = config-docker-quay
 endif
 
 include common/Makefile.common.mk
+include hack/keycloak-themes/Makefile
 
 ##@ Development
+
+## Location to install dependencies to
+LOCALBIN ?= $(shell pwd)/bin
+$(LOCALBIN):
+	mkdir -p $(LOCALBIN)
 
 clis: yq kustomize operator-sdk
 
@@ -179,7 +184,7 @@ deploy: manifests ## Deploy controller in the configured Kubernetes cluster in ~
 	cd config/manager && $(KUSTOMIZE) edit set image quay.io/opencloudio/common-service-operator=$(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME):$(RELEASE_VERSION)
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
-build-dev-image:
+build-dev-image: cloudpak-theme.jar
 	@echo "Building the $(OPERATOR_IMAGE_NAME) docker dev image for $(LOCAL_ARCH)..."
 	@docker build -t $(REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):dev \
 	--build-arg VCS_REF=$(VCS_REF) --build-arg VCS_URL=$(VCS_URL) \
@@ -224,7 +229,7 @@ test-profile: yq
 ##@ Generate code and manifests
 
 manifests: controller-gen ## Generate manifests e.g. CRD, RBAC etc.
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=ibm-common-service-operator webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) crd rbac:roleName=ibm-common-service-operator webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
 generate: controller-gen ## Generate code e.g. API etc.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
@@ -237,9 +242,34 @@ bundle-manifests: clis
 	$(YQ) eval -i '.spec.webhookdefinitions[0].deploymentName = "ibm-common-service-operator" | .spec.webhookdefinitions[1].deploymentName = "ibm-common-service-operator"' ${CSV_PATH}
 	$(YQ) eval-all -i '.spec.relatedImages = load("config/manifests/bases/ibm-common-service-operator.clusterserviceversion.yaml").spec.relatedImages' bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
 
-generate-all: yq kustomize operator-sdk generate manifests ## Generate bundle manifests, metadata and package manifests
+generate-all: yq kustomize operator-sdk generate manifests cloudpak-theme-version ## Generate bundle manifests, metadata and package manifests
 	$(OPERATOR_SDK) generate kustomize manifests -q
-	- make bundle-manifests CHANNELS=v4.3 DEFAULT_CHANNEL=v4.3
+	- make bundle-manifests CHANNELS=v4.11 DEFAULT_CHANNEL=v4.11
+
+##@ Helm Chart Generation
+
+.PHONY: deploy-dryrun
+deploy-dryrun: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
+	$(KUSTOMIZE) build config/default --output config/ibm-common-service-operator.yaml
+
+.PHONY: helm
+helm: deploy-dryrun kustohelmize
+	$(KUSTOHELMIZE) create --from=config/ibm-common-service-operator.yaml helm/ibm-common-service-operator
+	helm lint helm/ibm-common-service-operator
+
+KUBERNETES-SPLIT-YAML ?= $(LOCALBIN)/kubernetes-split-yaml
+KUSTOHELMIZE ?= $(LOCALBIN)/kustohelmize
+
+.PHONY: kubernetes-split-yaml
+kubernetes-split-yaml: $(KUBERNETES-SPLIT-YAML) ## Download kubernetes-split-yaml locally if necessary.
+$(KUBERNETES-SPLIT-YAML): $(LOCALBIN)
+	GOBIN=$(LOCALBIN) go install github.com/mogensen/kubernetes-split-yaml@v0.4.0
+
+.PHONY: kustohelmize
+kustohelmize: $(KUSTOHELMIZE) ## Download kustohelmize locally if necessary.
+$(KUSTOHELMIZE): $(LOCALBIN) kubernetes-split-yaml
+	GOBIN=$(LOCALBIN) go install github.com/yeahdongcn/kustohelmize@v0.4.0
 
 ##@ Test
 
@@ -255,7 +285,7 @@ e2e-test: ## Run e2e test
 
 ##@ Build
 
-build-operator-image: $(CONFIG_DOCKER_TARGET) ## Build the operator image.
+build-operator-image: $(CONFIG_DOCKER_TARGET) cloudpak-theme.jar ## Build the operator image.
 	@echo "Building the $(OPERATOR_IMAGE_NAME) docker image for $(LOCAL_ARCH)..."
 	@docker build -t $(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(VERSION) \
 	--build-arg VCS_REF=$(VCS_REF) --build-arg VCS_URL=$(VCS_URL) \
