@@ -3,6 +3,8 @@ kind: Deployment
 metadata: 
   name: ibm-common-service-operator
   namespace: {{ .Values.global.operatorNamespace }}
+  labels:
+    component-id: {{ .Chart.Name }}
 spec: 
   replicas: 1
   selector: 
