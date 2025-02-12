@@ -4,6 +4,8 @@ kind: RoleBinding
 metadata: 
   name: ibm-common-service-operator
   namespace: {{ .Values.global.operatorNamespace }}
+  labels:
+    component-id: {{ .Chart.Name }}
 roleRef: 
   kind: Role
   apiGroup: rbac.authorization.k8s.io
@@ -19,6 +21,8 @@ kind: Role
 metadata: 
   name: ibm-common-service-operator
   namespace: {{ .Values.global.operatorNamespace }}
+  labels:
+    component-id: {{ .Chart.Name }}
 rules:   
   - apiGroups: 
       - ""
@@ -209,3 +213,5 @@ kind: ServiceAccount
 metadata: 
   name: ibm-common-service-operator
   namespace: {{ .Values.global.operatorNamespace }}
+  labels:
+    component-id: {{ .Chart.Name }}

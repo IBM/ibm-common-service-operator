@@ -1,6 +1,7 @@
 # Note there are no leading or trailing /'s
-imageRegistryNamespaceOperator: cpopen
-imageRegistryNamespaceOperand: cpopen/cpfs
+cpfs:
+  imageRegistryNamespaceOperator: cpopen
+  imageRegistryNamespaceOperand: cpopen/cpfs
 
 # Commented out values are handled by a global values file
 # imagePullPrefix: icr.io
