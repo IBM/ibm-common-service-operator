@@ -19,6 +19,7 @@ package deploy
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
@@ -165,6 +166,10 @@ func (d *Manager) GetDeployment() (*appsv1.Deployment, error) {
 
 // DeleteOperator delete operator's csv and subscription from specific namespace
 func (d *Manager) DeleteOperator(name, namespace string) error {
+	if os.Getenv("NO_OLM") == "true" {
+		klog.V(2).Infof("skip delete operator in no-olm environment")
+		return nil
+	}
 	// Get existing operator's subscription
 	subName := name
 	subNs := namespace

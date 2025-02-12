@@ -98,39 +98,6 @@ type Resource struct {
 	Scope   string
 }
 
-func NewNonOLMBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
-	cpfsNs := util.GetCPFSNamespace(mgr.GetAPIReader())
-	servicesNs := util.GetServicesNamespace(mgr.GetAPIReader())
-	operatorNs, err := util.GetOperatorNamespace()
-	if err != nil {
-		return
-	}
-	csData := apiv3.CSData{
-		CPFSNs:                  cpfsNs,
-		ServicesNs:              servicesNs,
-		OperatorNs:              operatorNs,
-		CatalogSourceName:       "",
-		CatalogSourceNs:         "",
-		ApprovalMode:            "",
-		WatchNamespaces:         util.GetWatchNamespace(),
-		OnPremMultiEnable:       strconv.FormatBool(util.CheckMultiInstances(mgr.GetAPIReader())),
-		ExcludedCatalog:         constant.ExcludedCatalog,
-		StatusMonitoredServices: constant.StatusMonitoredServices,
-	}
-
-	bs = &Bootstrap{
-		Client:               mgr.GetClient(),
-		Reader:               mgr.GetAPIReader(),
-		Config:               mgr.GetConfig(),
-		EventRecorder:        mgr.GetEventRecorderFor("ibm-common-service-operator"),
-		Manager:              deploy.NewDeployManager(mgr),
-		SaasEnable:           util.CheckSaas(mgr.GetAPIReader()),
-		MultiInstancesEnable: util.CheckMultiInstances(mgr.GetAPIReader()),
-		CSData:               csData,
-	}
-	return
-}
-
 // NewBootstrap is the way to create a NewBootstrap struct
 func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 	cpfsNs := util.GetCPFSNamespace(mgr.GetAPIReader())
@@ -141,10 +108,13 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 	}
 
 	catalogSourceName, catalogSourceNs := util.GetCatalogSource(constant.IBMCSPackage, operatorNs, mgr.GetAPIReader())
-	if catalogSourceName == "" || catalogSourceNs == "" {
-		err = fmt.Errorf("failed to get catalogsource")
-		return
+	if os.Getenv("NO_OLM") != "true" {
+		if catalogSourceName == "" || catalogSourceNs == "" {
+			err = fmt.Errorf("failed to get catalogsource")
+			return
+		}
 	}
+
 	approvalMode, err := util.GetApprovalModeinNs(mgr.GetAPIReader(), operatorNs)
 	if err != nil {
 		return
@@ -197,13 +167,18 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 
 // InitResources initialize resources at the bootstrap of operator
 func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLMCRs bool) error {
-	installPlanApproval := instance.Spec.InstallPlanApproval
 
-	if installPlanApproval != "" {
-		if installPlanApproval != olmv1alpha1.ApprovalAutomatic && installPlanApproval != olmv1alpha1.ApprovalManual {
-			return fmt.Errorf("invalid value for installPlanApproval %v", installPlanApproval)
+	installPlanApproval := instance.Spec.InstallPlanApproval
+	if os.Getenv("NO_OLM") != "true" {
+		if installPlanApproval != "" {
+			if installPlanApproval != olmv1alpha1.ApprovalAutomatic && installPlanApproval != olmv1alpha1.ApprovalManual {
+				return fmt.Errorf("invalid value for installPlanApproval %v", installPlanApproval)
+			}
+			b.CSData.ApprovalMode = string(installPlanApproval)
 		}
-		b.CSData.ApprovalMode = string(installPlanApproval)
+	} else {
+		// set installPlanApproval to empty in non olm environment
+		installPlanApproval = ""
 	}
 
 	// Clean v3 Namespace Scope Operator and CRs in the servicesNamespace
@@ -284,15 +259,20 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		}
 	}
 
-	klog.Info("Installing ODLM Operator")
-	if err := b.renderTemplate(constant.ODLMSubscription, b.CSData); err != nil {
-		return err
-	}
+	if os.Getenv("NO_OLM") != "true" {
+		// skip deploy ODLM in no-olm
+		klog.Info("Installing ODLM Operator")
+		if err := b.renderTemplate(constant.ODLMSubscription, b.CSData); err != nil {
+			return err
+		}
 
-	klog.Info("Waiting for ODLM Operator to be ready")
-	if isWaiting, err := b.waitOperatorCSV(constant.IBMODLMPackage, "ibm-odlm", b.CSData.CPFSNs); err != nil {
-		return err
-	} else if isWaiting {
+		klog.Info("Waiting for ODLM Operator to be ready")
+		if isWaiting, err := b.waitOperatorCSV(constant.IBMODLMPackage, "ibm-odlm", b.CSData.CPFSNs); err != nil {
+			return err
+		} else if isWaiting {
+			forceUpdateODLMCRs = true
+		}
+	} else {
 		forceUpdateODLMCRs = true
 	}
 
@@ -536,6 +516,10 @@ func (b *Bootstrap) DeleteFromYaml(objectTemplate string, data interface{}) erro
 
 // GetSubscription returns the subscription instance of "name" from "namespace" namespace
 func (b *Bootstrap) GetSubscription(ctx context.Context, name, namespace string) (*unstructured.Unstructured, error) {
+	if os.Getenv("NO_OLM") == "true" {
+		klog.V(2).Infof("skip get subscription in no olm environment")
+		return nil, nil
+	}
 	klog.Infof("Fetch Subscription: %v/%v", namespace, name)
 	sub := &unstructured.Unstructured{}
 	sub.SetGroupVersionKind(olmv1alpha1.SchemeGroupVersion.WithKind("subscription"))
@@ -553,6 +537,10 @@ func (b *Bootstrap) GetSubscription(ctx context.Context, name, namespace string)
 
 // GetSubscription returns the subscription instances from a  namespace
 func (b *Bootstrap) ListSubscriptions(ctx context.Context, namespace string, listOptions client.ListOptions) (*unstructured.UnstructuredList, error) {
+	if os.Getenv("NO_OLM") == "true" {
+		klog.V(2).Infof("skip list subscription in no olm environment")
+		return nil, nil
+	}
 	klog.Infof("List Subscriptions in namespace %v", namespace)
 	subs := &unstructured.UnstructuredList{}
 	subs.SetGroupVersionKind(olmv1alpha1.SchemeGroupVersion.WithKind("SubscriptionList"))
@@ -661,6 +649,11 @@ func (b *Bootstrap) ListIssuer(ctx context.Context, opts ...client.ListOption) *
 }
 
 func (b *Bootstrap) CheckOperatorCatalog(ns string) error {
+
+	if os.Getenv("NO_OLM") == "true" {
+		klog.V(2).Infof("skip ckeck catalog in no olm environment")
+		return nil
+	}
 
 	err := utilwait.PollImmediate(time.Second*10, time.Minute*3, func() (done bool, err error) {
 		subList := &olmv1alpha1.SubscriptionList{}
@@ -1120,6 +1113,11 @@ func (b *Bootstrap) GetObjs(objectTemplate string, data interface{}, alwaysUpdat
 // need this function because common service operator is not in operandRegistry
 func (b *Bootstrap) UpdateCsOpApproval() error {
 	var commonserviceNS string
+	if os.Getenv("NO_OLM") == "true" {
+		klog.V(2).Infof("skip update common-service operator approval mode in no olm environment")
+		return nil
+	}
+
 	operatorNs, err := util.GetOperatorNamespace()
 	if err != nil {
 		klog.Errorf("Getting operator namespace failed: %v", err)
@@ -1177,6 +1175,11 @@ func (b *Bootstrap) UpdateCsOpApproval() error {
 }
 
 func (b *Bootstrap) updateApprovalMode() error {
+	if os.Getenv("NO_OLM") == "true" {
+		klog.V(2).Infof("skip update ApprovalMode in no olm environment")
+		return nil
+	}
+
 	opreg := &odlm.OperandRegistry{}
 	opregKey := types.NamespacedName{
 		Name:      "common-service",
@@ -1434,6 +1437,11 @@ func (b *Bootstrap) DeployCertManagerCR() error {
 // CleanNamespaceScopeResources will delete the v3 NamesapceScopes resources and namespace scope operator
 // NamespaceScope resources include common-service, nss-managedby-odlm, nss-odlm-scope, and odlm-scope-managedby-odlm
 func (b *Bootstrap) CleanNamespaceScopeResources() error {
+
+	if os.Getenv("NO_OLM") == "true" {
+		klog.V(2).Infof("skip cleanup namespace scope resources in no olm environment")
+		return nil
+	}
 
 	// get namespace-scope ConfigMap in operatorNamespace
 	nssCmNs, err := util.GetNssCmNs(b.Reader, b.CSData.OperatorNs)
@@ -2141,6 +2149,10 @@ func (b *Bootstrap) waitOperatorCSV(subName, packageManifest, operatorNs string)
 }
 
 func (b *Bootstrap) checkOperatorCSV(subName, packageManifest, operatorNs string) (bool, error) {
+	if os.Getenv("NO_OLM") == "true" {
+		klog.V(2).Infof("skip checking operator CSV in no olm environment")
+		return false, nil
+	}
 	// Get the subscription by name and namespace
 	sub := &olmv1alpha1.Subscription{}
 	if err := b.Reader.Get(context.TODO(), types.NamespacedName{Name: subName, Namespace: operatorNs}, sub); err != nil {
