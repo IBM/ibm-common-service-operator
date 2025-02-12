@@ -2,6 +2,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata: 
   name: ibm-common-service-operator
+  labels:
+    component-id: {{ .Chart.Name }}
 rules:   
   - apiGroups: 
       - ""
@@ -81,6 +83,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata: 
   name: ibm-common-service-operator
+  labels:
+    component-id: {{ .Chart.Name }}
 roleRef: 
   kind: ClusterRole
   apiGroup: rbac.authorization.k8s.io

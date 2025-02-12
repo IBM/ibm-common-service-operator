@@ -3,6 +3,8 @@ kind: Deployment
 metadata: 
   name: ibm-common-service-operator
   namespace: {{ .Values.global.operatorNamespace }}
+  labels:
+    component-id: {{ .Chart.Name }}
 spec: 
   replicas: 1
   selector: 
@@ -37,7 +39,7 @@ spec:
                       - s390x
       containers:         
         - name: ibm-common-service-operator
-          image: {{ .Values.global.imagePullPrefix}}/{{ .Values.imageRegistryNamespaceOperator}}/common-service-operator:4.11.0
+          image: {{ .Values.global.imagePullPrefix}}/{{ .Values.cpfs.imageRegistryNamespaceOperator}}/common-service-operator:4.11.0
           command: 
             - /manager
           env:             
