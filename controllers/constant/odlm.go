@@ -2399,7 +2399,7 @@ metadata:
   name: operand-deployment-lifecycle-manager-app
   namespace: "{{ .CPFSNs }}"
 spec:
-  channel: v4.3
+  channel: v4.4
   installPlanApproval: {{ .ApprovalMode }}
   name: ibm-odlm
   source: {{ .CatalogSourceName }}

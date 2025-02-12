@@ -199,9 +199,12 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 	}
 
 	// Temporary solution for EDB image ConfigMap reference
-	if err := b.CreateEDBImageMaps(); err != nil {
-		klog.Errorf("Failed to create EDB Image ConfigMap: %v", err)
-		return err
+	if os.Getenv("NO_OLM") != "true" {
+		klog.Infof("It is not a non-OLM mode, create EDB Image ConfigMap")
+		if err := b.CreateEDBImageMaps(); err != nil {
+			klog.Errorf("Failed to create EDB Image ConfigMap: %v", err)
+			return err
+		}
 	}
 
 	// Create Keycloak themes ConfigMap
