@@ -1,0 +1,7 @@
+#not sure this is necessary
+apiVersion: operator.ibm.com/v1
+kind: NamespaceScope
+metadata:
+  name: common-service
+  namespace: {{ .Values.global.operatorNamespace }}
+spec:
