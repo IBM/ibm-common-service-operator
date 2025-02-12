@@ -94,7 +94,7 @@ func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if !instance.Spec.License.Accept {
 		klog.Error("Accept license by changing .spec.license.accept to true in the CommonService CR. Operator will not proceed until then")
 	}
-  
+
 	// If the CommonService CR is not paused, continue to reconcile
 	if !r.reconcilePauseRequest(instance) {
 		if r.checkNamespace(req.NamespacedName.String()) {
