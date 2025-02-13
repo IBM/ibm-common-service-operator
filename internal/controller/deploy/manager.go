@@ -32,7 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	util "github.com/IBM/ibm-common-service-operator/v4/controllers/common"
+	util "github.com/IBM/ibm-common-service-operator/v4/internal/controller/common"
 )
 
 type Manager struct {

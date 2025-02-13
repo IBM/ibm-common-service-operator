@@ -27,8 +27,8 @@ import (
 	"k8s.io/klog"
 
 	v3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
-	util "github.com/IBM/ibm-common-service-operator/v4/controllers/common"
-	"github.com/IBM/ibm-common-service-operator/v4/controllers/constant"
+	util "github.com/IBM/ibm-common-service-operator/v4/internal/controller/common"
+	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/constant"
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/v4/api/v1alpha1"
 )
 

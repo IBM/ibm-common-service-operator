@@ -30,9 +30,9 @@ import (
 	"k8s.io/klog"
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
-	util "github.com/IBM/ibm-common-service-operator/v4/controllers/common"
-	"github.com/IBM/ibm-common-service-operator/v4/controllers/constant"
-	"github.com/IBM/ibm-common-service-operator/v4/controllers/size"
+	util "github.com/IBM/ibm-common-service-operator/v4/internal/controller/common"
+	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/constant"
+	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/size"
 )
 
 func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured) ([]interface{}, map[string]string, error) {

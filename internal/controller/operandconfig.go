@@ -31,9 +31,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
-	util "github.com/IBM/ibm-common-service-operator/v4/controllers/common"
-	"github.com/IBM/ibm-common-service-operator/v4/controllers/constant"
-	"github.com/IBM/ibm-common-service-operator/v4/controllers/rules"
+	util "github.com/IBM/ibm-common-service-operator/v4/internal/controller/common"
+	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/constant"
+	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/rules"
 )
 
 var (

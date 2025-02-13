@@ -23,17 +23,8 @@ metadata:
     capabilities: Seamless Upgrades
     cloudPakThemesVersion: styles4100.css
     containerImage: icr.io/cpopen/common-service-operator:latest
-    createdAt: "2024-10-31T05:22:07Z"
+    createdAt: "2025-02-13T21:51:07Z"
     description: The IBM Cloud Pak foundational services operator is used to deploy IBM foundational services.
-    nss.operator.ibm.com/managed-operators: ibm-common-service-operator
-    nss.operator.ibm.com/managed-webhooks: ""
-    olm.skipRange: ">=3.3.0 <4.11.0"
-    operatorChannel: v4.11
-    operatorVersion: 4.11.0
-    operators.openshift.io/infrastructure-features: '["disconnected"]'
-    operators.operatorframework.io/builder: operator-sdk-v1.31.0
-    operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
-    repository: https://github.com/IBM/ibm-common-service-operator
     features.operators.openshift.io/disconnected: "true"
     features.operators.openshift.io/fips-compliant: "true"
     features.operators.openshift.io/proxy-aware: "false"
@@ -41,6 +32,15 @@ metadata:
     features.operators.openshift.io/token-auth-aws: "false"
     features.operators.openshift.io/token-auth-azure: "false"
     features.operators.openshift.io/token-auth-gcp: "false"
+    nss.operator.ibm.com/managed-operators: ibm-common-service-operator
+    nss.operator.ibm.com/managed-webhooks: ""
+    olm.skipRange: ">=3.3.0 <4.11.0"
+    operatorChannel: v4.11
+    operatorVersion: 4.11.0
+    operators.openshift.io/infrastructure-features: '["disconnected"]'
+    operators.operatorframework.io/builder: operator-sdk-v1.38.0
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
+    repository: https://github.com/IBM/ibm-common-service-operator
     support: IBM
   labels:
     operatorframework.io/arch.amd64: supported
@@ -381,6 +381,10 @@ spec:
                         valueFrom:
                           fieldRef:
                             fieldPath: metadata.annotations['olm.targetNamespaces']
+                      - name: NO_OLM
+                        value: "true"
+                      - name: ENABLE_WEBHOOKS
+                        value: "false"
                       - name: OPERATOR_NAME
                         value: ibm-common-service-operator
                     image: icr.io/cpopen/common-service-operator:latest
@@ -394,10 +398,6 @@ spec:
                       periodSeconds: 60
                       timeoutSeconds: 10
                     name: ibm-common-service-operator
-                    ports:
-                      - containerPort: 9443
-                        name: webhook-server
-                        protocol: TCP
                     readinessProbe:
                       failureThreshold: 10
                       httpGet:
@@ -424,17 +424,8 @@ spec:
                       runAsNonRoot: true
                       seccompProfile:
                         type: RuntimeDefault
-                    volumeMounts:
-                      - mountPath: /tmp/k8s-webhook-server/serving-certs
-                        name: cert
-                        readOnly: true
                 serviceAccountName: ibm-common-service-operator
                 terminationGracePeriodSeconds: 10
-                volumes:
-                  - name: cert
-                    secret:
-                      defaultMode: 420
-                      secretName: webhook-server-cert
       permissions:
         - rules:
             - apiGroups:
