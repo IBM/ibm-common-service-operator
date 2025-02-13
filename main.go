@@ -144,10 +144,19 @@ func main() {
 	// this Common Service Operator is not in the operatorNamespace(cpfsNs) under this tenant, and goes dormant.
 	if operatorNs == cpfsNs {
 		// New bootstrap Object
-		bs, err := bootstrap.NewBootstrap(mgr)
-		if err != nil {
-			klog.Errorf("Bootstrap failed: %v", err)
-			os.Exit(1)
+		var bs *bootstrap.Bootstrap
+		if os.Getenv("NO_OLM") == "true" {
+			bs, err = bootstrap.NewNonOLMBootstrap(mgr)
+			if err != nil {
+				klog.Errorf("No olm Bootstrap failed: %v", err)
+				os.Exit(1)
+			}
+		} else {
+			bs, err = bootstrap.NewBootstrap(mgr)
+			if err != nil {
+				klog.Errorf("Bootstrap failed: %v", err)
+				os.Exit(1)
+			}
 		}
 
 		if err := bs.CleanupWebhookResources(); err != nil {
