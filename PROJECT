@@ -1,5 +1,5 @@
 domain: ibm.com
-layout: go.kubebuilder.io/v3
+layout: go.kubebuilder.io/v4
 projectName: ibm-common-service-operator
 repo: github.com/IBM/ibm-common-service-operator
 resources:

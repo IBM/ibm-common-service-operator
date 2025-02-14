@@ -25,9 +25,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 
-	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
-	util "github.com/IBM/ibm-common-service-operator/controllers/common"
-	"github.com/IBM/ibm-common-service-operator/controllers/constant"
+	"github.com/IBM/ibm-common-service-operator/internal/controller/bootstrap"
+	util "github.com/IBM/ibm-common-service-operator/internal/controller/common"
+	"github.com/IBM/ibm-common-service-operator/internal/controller/constant"
 )
 
 const (

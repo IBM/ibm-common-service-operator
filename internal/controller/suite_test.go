@@ -35,9 +35,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
-	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
-	"github.com/IBM/ibm-common-service-operator/controllers/constant"
-	"github.com/IBM/ibm-common-service-operator/controllers/deploy"
+	"github.com/IBM/ibm-common-service-operator/internal/controller/bootstrap"
+	"github.com/IBM/ibm-common-service-operator/internal/controller/constant"
+	"github.com/IBM/ibm-common-service-operator/internal/controller/deploy"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -69,7 +69,7 @@ var _ = BeforeSuite(func(done Done) {
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
 		UseExistingCluster: UseExistingCluster(),
-		CRDDirectoryPaths:  []string{filepath.Join("..", "config", "crd", "bases"), filepath.Join("..", "odlmcrds")},
+		CRDDirectoryPaths:  []string{filepath.Join("..", "..", "config", "crd", "bases"), filepath.Join("..", "odlmcrds")},
 	}
 
 	var err error

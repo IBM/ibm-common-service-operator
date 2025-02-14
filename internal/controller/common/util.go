@@ -48,7 +48,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
-	"github.com/IBM/ibm-common-service-operator/controllers/constant"
+	"github.com/IBM/ibm-common-service-operator/internal/controller/constant"
 	nssv1 "github.com/IBM/ibm-namespace-scope-operator/v4/api/v1"
 )
 
