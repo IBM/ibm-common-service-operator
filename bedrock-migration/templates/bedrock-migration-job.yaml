@@ -19,6 +19,7 @@ spec:
           - bash
           - -c
           - |
+            echo "Starting cleanup for OLM -> No OLM migration..."
             operatorNamespace={{ .Values.global.operatorNamespace }}
             servicesNamespace={{ .Values.global.instanceNamespace }}
             namespaces=$(oc get cm namespace-scope -n $operatorNamespace -o jsonpath="{.data.namespaces}")
@@ -34,12 +35,14 @@ spec:
             odlmSub=$(oc get subscription.operators.coreos.com -n "$operatorNamespace" -o jsonpath="{.items[?(@.spec.name=='ibm-odlm')].metadata.name}")
             odlmCSV=$(oc get --ignore-not-found sub $odlmSub -n $operatorNamespace -o jsonpath='{.status.currentCSV}')
             odlmVersion=$(oc get --ignore-not-found csv $odlmCSV -n $operatorNamespace -o jsonpath='{.spec.version}')
-
+            
+            echo "Deleting CS, NSS, and ODLM CSVs and Subscriptions..."
             oc delete --ignore-not-found csv $csCSV -n $operatorNamespace && oc delete --ignore-not-found sub $csSub -n $operatorNamespace
             oc delete --ignore-not-found csv $nssCSV -n $operatorNamespace && oc delete --ignore-not-found sub $nssSub -n $operatorNamespace
             oc delete --ignore-not-found csv $odlmCSV -n $operatorNamespace && oc delete --ignore-not-found sub $odlmSub -n $operatorNamespace
             
             {{- if .Values.imEnabled }}
+            echo "Deleting IAM, Common UI, and EDB resources in operator namespace $operatorNamespace..."
             iamSub=$(oc get subscription.operators.coreos.com -n "$operatorNamespace" -o jsonpath="{.items[?(@.spec.name=='ibm-iam-operator')].metadata.name}")
             iamCSV=$(oc get --ignore-not-found sub $iamSub -n $operatorNamespace -o jsonpath='{.status.currentCSV}')
             uiSub=$(oc get subscription.operators.coreos.com -n "$operatorNamespace" -o jsonpath="{.items[?(@.spec.name=='ibm-commonui-operator-app')].metadata.name}")
@@ -56,7 +59,9 @@ spec:
             {{- end }}
 
             #loop for removing roles from services and tethered namespace
+            echo "Cleaning up roles and rolebindings in namespaces $namespaces..."
             for ns in ${namespaces//,/ }; do
+                echo "Processing namespace $ns..."
                 roles=""
                 #get cs operator roles
                 roles="${roles} $(oc get roles -n $ns | grep ibm-common-service-op | awk '{print $1}' | tr "\n" " ")"
@@ -81,6 +86,7 @@ spec:
 
                 oc delete role $roles -n $ns --ignore-not-found
                 oc delete rolebindings $roles -n $ns --ignore-not-found
+                echo "Namespace $ns complete."
             done
       restartPolicy: Never
       serviceAccount: bedrock-migration-job-sa
