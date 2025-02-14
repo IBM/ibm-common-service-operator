@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: bedrock-migration-job-{{ .Release.appVersion }}
+  name: bedrock-migration-job-{{ .Chart.AppVersion }}
   namespace: {{ .Values.global.operatorNamespace }}
   annotations:
     "helm.sh/hook-delete-policy": before-hook-creation
