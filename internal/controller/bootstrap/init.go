@@ -52,9 +52,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
-	util "github.com/IBM/ibm-common-service-operator/v4/controllers/common"
-	"github.com/IBM/ibm-common-service-operator/v4/controllers/constant"
-	"github.com/IBM/ibm-common-service-operator/v4/controllers/deploy"
+	util "github.com/IBM/ibm-common-service-operator/v4/internal/controller/common"
+	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/constant"
+	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/deploy"
 	nssv1 "github.com/IBM/ibm-namespace-scope-operator/v4/api/v1"
 	ssv1 "github.com/IBM/ibm-secretshare-operator/api/v1"
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/v4/api/v1alpha1"

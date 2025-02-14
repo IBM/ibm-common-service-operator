@@ -169,10 +169,10 @@ code-dev: ## Run the default dev commands which are the go tidy, fmt, vet then e
 	- make check
 
 build: ## Build manager binary
-	go build -o bin/manager main.go
+	go build -o bin/manager cmd/main.go
 
 run: generate code-fmt code-vet manifests ## Run against the configured Kubernetes cluster in ~/.kube/config
-	ENABLE_WEBHOOKS=false OPERATOR_NAMESPACE="$${OPERATOR_NAMESPACE:-ibm-common-services}" OPERATOR_NAME=ibm-common-service-operator go run ./main.go -v=2
+	ENABLE_WEBHOOKS=false OPERATOR_NAMESPACE="$${OPERATOR_NAMESPACE:-ibm-common-services}" OPERATOR_NAME=ibm-common-service-operator go run ./cmd/main.go -v=2
 
 install: manifests ## Install CRDs into a cluster
 	$(KUSTOMIZE) build config/crd | kubectl apply -f -
