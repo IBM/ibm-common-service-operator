@@ -987,6 +987,9 @@ spec:
                     - command:
                         - /bin/sh
                         - /mnt/startup/cs-keycloak-entrypoint.sh
+                      env:
+                        - name: KC_HOSTNAME_BACKCHANNEL_DYNAMIC
+                          value: 'true'
                       volumeMounts:
                         - mountPath: /mnt/truststore
                           name: truststore-volume
