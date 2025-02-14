@@ -40,10 +40,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
-	"github.com/IBM/ibm-common-service-operator/controllers/bootstrap"
-	util "github.com/IBM/ibm-common-service-operator/controllers/common"
-	"github.com/IBM/ibm-common-service-operator/controllers/configurationcollector"
-	"github.com/IBM/ibm-common-service-operator/controllers/constant"
+	"github.com/IBM/ibm-common-service-operator/internal/controller/bootstrap"
+	util "github.com/IBM/ibm-common-service-operator/internal/controller/common"
+	"github.com/IBM/ibm-common-service-operator/internal/controller/configurationcollector"
+	"github.com/IBM/ibm-common-service-operator/internal/controller/constant"
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/v4/api/v1alpha1"
 )
 
