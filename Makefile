@@ -81,7 +81,7 @@ OPERATOR_IMAGE_NAME ?= common-service-operator
 # Current Operator bundle image name
 BUNDLE_IMAGE_NAME ?= common-service-operator-bundle
 # Current Operator image with registry
-IMG ?= icr.io/cpopen/common-service-operator:latest
+IMG ?= icr.io/cpopen/common-service-operator:4.11.0
 
 CHANNELS := v4.11
 DEFAULT_CHANNEL := v4.11
@@ -182,7 +182,7 @@ uninstall: manifests ## Uninstall CRDs from a cluster
 	$(KUSTOMIZE) build config/crd | kubectl delete -f -
 
 deploy: manifests ## Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-	cd config/manager && $(KUSTOMIZE) edit set image quay.io/opencloudio/common-service-operator=$(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME):$(RELEASE_VERSION)
+	cd config/manager && $(KUSTOMIZE) edit set image icr.io/cpopen/common-service-operator=$(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME):$(RELEASE_VERSION)
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
 build-dev-image: cloudpak-theme.jar
@@ -236,6 +236,7 @@ generate: controller-gen ## Generate code e.g. API etc.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 bundle-manifests: clis
+	cd config/manager && $(KUSTOMIZE) edit set image icr.io/cpopen/common-service-operator=${IMG}
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle \
 	-q --overwrite --version $(RELEASE_VERSION) $(BUNDLE_METADATA_OPTS)
 	echo "\n  # OpenShift annotations." >> bundle/metadata/annotations.yaml ;\
@@ -253,7 +254,7 @@ generate-all: yq kustomize operator-sdk generate manifests cloudpak-theme-versio
 
 .PHONY: deploy-dryrun
 deploy-dryrun: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
+	cd config/manager && $(KUSTOMIZE) edit set image icr.io/cpopen/common-service-operator=${IMG}
 	$(KUSTOMIZE) build config/default --output config/ibm-common-service-operator.yaml
 
 .PHONY: helm
@@ -291,7 +292,7 @@ e2e-test: ## Run e2e test
 build-operator-image: $(CONFIG_DOCKER_TARGET) cloudpak-theme.jar ## Build the operator image.
 	@echo "Building the $(OPERATOR_IMAGE_NAME) docker image for $(LOCAL_ARCH)..."
 	@docker build -t $(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(VERSION) \
-	--build-arg VCS_REF=$(VCS_REF) --build-arg VCS_URL=$(VCS_URL) \
+	--build-arg VCS_REF=$(VCS_REF) --build-arg VCS_URL=$(VCS_URL) --build-arg RELEASE_VERSION=$(RELEASE_VERSION) \
 	--build-arg GOARCH=$(LOCAL_ARCH) -f Dockerfile .
 
 ##@ Release
