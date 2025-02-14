@@ -12,6 +12,11 @@ cpfs:
 # operatorNamespace: ""
 # servicesNamespace: ""
 
+global:
+  tetheredNamespace: [tenant1,tenant2]
+  operatorNamespace: operator-ns
+  instanceNamespace: services-ns
+
 # CR configurations
 
 commonServiceSpec:
