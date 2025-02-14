@@ -48,7 +48,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
-	"github.com/IBM/ibm-common-service-operator/v4/controllers/constant"
+	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/constant"
 	nssv1 "github.com/IBM/ibm-namespace-scope-operator/v4/api/v1"
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/v4/api/v1alpha1"
 )

@@ -30,8 +30,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
-	util "github.com/IBM/ibm-common-service-operator/v4/controllers/common"
-	"github.com/IBM/ibm-common-service-operator/v4/controllers/constant"
+	util "github.com/IBM/ibm-common-service-operator/v4/internal/controller/common"
+	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/constant"
 )
 
 // +kubebuilder:docs-gen:collapse=Imports

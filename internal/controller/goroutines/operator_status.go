@@ -28,8 +28,8 @@ import (
 	"k8s.io/klog"
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
-	"github.com/IBM/ibm-common-service-operator/v4/controllers/bootstrap"
-	"github.com/IBM/ibm-common-service-operator/v4/controllers/constant"
+	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/bootstrap"
+	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/constant"
 )
 
 var ctx = context.Background()
