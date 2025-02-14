@@ -102,3 +102,5 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
 else
     echo "Not support on other operating systems"
 fi
+
+make generate-all
