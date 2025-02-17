@@ -113,7 +113,7 @@ spec:
                 {{- end }}
 
                 #get nss roles?
-                echo "${roles}"
+                echo "Roles to delete: ${roles}"
 
                 if [[ ! -z $roles ]]; then
                   oc delete role $roles -n $ns --ignore-not-found

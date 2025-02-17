@@ -72,7 +72,6 @@ roleRef:
 {{- if .Values.global.instanceNamespace -}}
 {{- $watchNamespaces = append $watchNamespaces .Values.global.instanceNamespace -}}
 {{- end -}}
-{{- $watchNamespaces = prepend $watchNamespaces .Values.global.operatorNamespace -}}
 {{- range $namespace := $watchNamespaces | uniq }}
 ---
 kind: Role
