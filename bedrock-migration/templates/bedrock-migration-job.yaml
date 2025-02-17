@@ -28,7 +28,7 @@ spec:
               echo "NamespaceScope Subscription not present in operator namespace $operatorNamespace, skipping deleting Subscription and CSV."
             else
               nssCSV=$(oc get --ignore-not-found sub $nssSub -n $operatorNamespace -o jsonpath='{.status.currentCSV}')
-              echo "Deleting NamespaceScope CSV and Subscritpion in operator namespace $operatorNamespace..."
+              echo "Deleting NamespaceScope CSV and Subscription in operator namespace $operatorNamespace..."
               oc delete --ignore-not-found csv $nssCSV -n $operatorNamespace && oc delete --ignore-not-found sub $nssSub -n $operatorNamespace
             fi
             
@@ -37,7 +37,7 @@ spec:
               echo "Common Service Subscription not present in operator namespace $operatorNamespace, skipping deleting Subscription and CSV."
             else
               csCSV=$(oc get --ignore-not-found sub $csSub -n $operatorNamespace -o jsonpath='{.status.currentCSV}')
-              echo "Deleting Common Service CSV and Subscritpion in operator namespace $operatorNamespace..."
+              echo "Deleting Common Service CSV and Subscription in operator namespace $operatorNamespace..."
               oc delete --ignore-not-found csv $csCSV -n $operatorNamespace && oc delete --ignore-not-found sub $csSub -n $operatorNamespace
             fi
             
@@ -46,7 +46,7 @@ spec:
               echo "ODLM Subscription not present in operator namespace $operatorNamespace, skipping deleting Subscription and CSV."
             else
               odlmCSV=$(oc get --ignore-not-found sub $odlmSub -n $operatorNamespace -o jsonpath='{.status.currentCSV}')
-              echo "Deleting ODLM CSV and Subscritpion in operator namespace $operatorNamespace..."
+              echo "Deleting ODLM CSV and Subscription in operator namespace $operatorNamespace..."
               oc delete --ignore-not-found csv $odlmCSV -n $operatorNamespace && oc delete --ignore-not-found sub $odlmSub -n $operatorNamespace
             fi
             
@@ -58,7 +58,7 @@ spec:
               echo "IM Subscription not present in operator namespace $operatorNamespace, skipping deleting Subscription and CSV."
             else
               iamCSV=$(oc get --ignore-not-found sub $iamSub -n $operatorNamespace -o jsonpath='{.status.currentCSV}')
-              echo "Deleting IM CSV and Subscritpion in operator namespace $operatorNamespace..."
+              echo "Deleting IM CSV and Subscription in operator namespace $operatorNamespace..."
               oc delete --ignore-not-found csv $iamCSV -n $operatorNamespace && oc delete --ignore-not-found sub $iamSub -n $operatorNamespace
             fi
             
@@ -67,7 +67,7 @@ spec:
               echo "Common UI Subscription not present in operator namespace $operatorNamespace, skipping deleting Subscription and CSV."
             else
               uiCSV=$(oc get --ignore-not-found sub $uiSub -n $operatorNamespace -o jsonpath='{.status.currentCSV}')
-              echo "Deleting Common UI CSV and Subscritpion in operator namespace $operatorNamespace..."
+              echo "Deleting Common UI CSV and Subscription in operator namespace $operatorNamespace..."
               oc delete --ignore-not-found csv $uiCSV -n $operatorNamespace && oc delete --ignore-not-found sub $uiSub -n $operatorNamespace
             fi
             
@@ -76,7 +76,7 @@ spec:
               echo "EDB Subscription not present in operator namespace $operatorNamespace, skipping deleting Subscription and CSV."
             else
               edbCSV=$(oc get --ignore-not-found sub $edbSub -n $operatorNamespace -o jsonpath='{.status.currentCSV}')
-              echo "Deleting EDB CSV and Subscritpion in operator namespace $operatorNamespace..."
+              echo "Deleting EDB CSV and Subscription in operator namespace $operatorNamespace..."
               oc delete --ignore-not-found csv $edbCSV -n $operatorNamespace && oc delete --ignore-not-found sub $edbSub -n $operatorNamespace
             fi
 
