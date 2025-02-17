@@ -112,7 +112,7 @@ spec:
                 fi
                 {{- end }}
 
-                if [[ -z $roles ]]; then
+                if [[ -z ${roles// /} ]]; then
                   echo "No roles present in namespace $ns, skipping..."
                 else
                   echo "Roles to delete: ${roles} debug"
