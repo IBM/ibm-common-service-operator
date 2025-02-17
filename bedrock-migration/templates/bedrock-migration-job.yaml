@@ -115,7 +115,7 @@ spec:
                 if [[ -z $roles ]]; then
                   echo "No roles present in namespace $ns, skipping..."
                 else
-                  echo "Roles to delete: ${roles}"
+                  echo "Roles to delete: ${roles} debug"
                   oc delete role $roles -n $ns --ignore-not-found
                   oc delete rolebindings $roles -n $ns --ignore-not-found
                 fi
