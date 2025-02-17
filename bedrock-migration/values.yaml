@@ -1,0 +1,9 @@
+imEnabled: "true" #should this be a global value? Is there a better way to determine this?
+
+#stand-in global values for testing
+global:
+  operatorNamespace: "cs-op"
+  instanceNamespace: "cs-serv"
+  tetheredNamespace: [""]
+  imagePullPrefix: icr.io
+  imagePullSecret: ibm-entitlement-key
