@@ -45,14 +45,14 @@ import (
 	certmanagerv1 "github.com/ibm/ibm-cert-manager-operator/apis/cert-manager/v1"
 
 	operatorv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
-	"github.com/IBM/ibm-common-service-operator/v4/controllers"
-	"github.com/IBM/ibm-common-service-operator/v4/controllers/bootstrap"
-	certmanagerv1controllers "github.com/IBM/ibm-common-service-operator/v4/controllers/cert-manager"
-	util "github.com/IBM/ibm-common-service-operator/v4/controllers/common"
-	"github.com/IBM/ibm-common-service-operator/v4/controllers/constant"
-	"github.com/IBM/ibm-common-service-operator/v4/controllers/goroutines"
-	commonservicewebhook "github.com/IBM/ibm-common-service-operator/v4/controllers/webhooks/commonservice"
-	operandrequestwebhook "github.com/IBM/ibm-common-service-operator/v4/controllers/webhooks/operandrequest"
+	controllers "github.com/IBM/ibm-common-service-operator/v4/internal/controller"
+	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/bootstrap"
+	certmanagerv1controllers "github.com/IBM/ibm-common-service-operator/v4/internal/controller/cert-manager"
+	util "github.com/IBM/ibm-common-service-operator/v4/internal/controller/common"
+	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/constant"
+	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/goroutines"
+	commonservicewebhook "github.com/IBM/ibm-common-service-operator/v4/internal/controller/webhooks/commonservice"
+	operandrequestwebhook "github.com/IBM/ibm-common-service-operator/v4/internal/controller/webhooks/operandrequest"
 	// +kubebuilder:scaffold:imports
 )
 
