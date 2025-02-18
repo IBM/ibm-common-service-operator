@@ -326,7 +326,7 @@ function patch_cm() {
     local replicas=$(${OC} get statefulSet icp-mongodb -n $FROM_NAMESPACE -o=jsonpath='{.spec.replicas}') 
     ${OC} scale deployment -n $FROM_NAMESPACE ibm-mongodb-operator --replicas=0
 
-    migration=$(${OC} get statefulset icp-mongodb -n $FROM_NAMESPACE -o=jsonpath='{.spec.template.metadata.labels.migration}')
+    migration=$(${OC} get statefulset icp-mongodb -n $FROM_NAMESPACE -o=jsonpath='{.spec.template.metadata.labels.migrating}')
     if [[ $migration != "" ]]; then 
       # scale down icp-mongodb statefulset
       ${OC} scale statefulSet -n ${FROM_NAMESPACE} icp-mongodb --replicas=0
@@ -703,15 +703,14 @@ EOF
       ${OC} patch statefulSet icp-mongodb -n ${FROM_NAMESPACE}  -p '{"spec":{"template":{"metadata":{"labels":{"migrating": "'true'"}}}}}'
     fi
 
-    # wait for mongodb pod running
-    status="unknown"
-  
-    while [[ "$status" != "Running" ]]
+    # wait for mongodb statefulSet ready
+    readyReplicas="0"
+    while [[ "$replicas" != "$readyReplicas" ]]
     do
-      info "Waiting for MongoDB to initialize"
+      info "Waiting for MongoDB statefulSet to initialize"
       sleep 10
-      ${OC} get po icp-mongodb-0 --no-headers -n ${FROM_NAMESPACE}
-      status=$(${OC} get po icp-mongodb-0 --no-headers -n ${FROM_NAMESPACE} -o=jsonpath='{.status.phase}')
+      ${OC} get statefulset icp-mongodb -n ${FROM_NAMESPACE}
+      readyReplicas=$(${OC} get statefulSet icp-mongodb --no-headers -n ${FROM_NAMESPACE} -o=jsonpath='{.status.readyReplicas}')
     done
 
     # Scale up ibm-mongodb-operator
