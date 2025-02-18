@@ -50,7 +50,6 @@ spec:
               oc delete --ignore-not-found csv $odlmCSV -n $operatorNamespace && oc delete --ignore-not-found subscription.operators.coreos.com $odlmSub -n $operatorNamespace
             fi
             
-            {{- if .Values.zen.iamIntegration }}
             echo "Deleting IAM, Common UI, and EDB resources in operator namespace $operatorNamespace..."
             
             iamSub=$(oc get subscription.operators.coreos.com -n "$operatorNamespace" -o jsonpath="{.items[?(@.spec.name=='ibm-iam-operator')].metadata.name}")
@@ -85,7 +84,6 @@ spec:
             oc delete --ignore-not-found sa ibm-iam-operand-restricted ibm-commonui-operand common-service-db -n $servicesNamespace
             oc delete --ignore-not-found role edb-license-role -n $operatorNamespace
             oc delete --ignore-not-found job create-postgres-license-config -n $operatorNamespace
-            {{- end }}
 
             #loop for removing roles from services and tethered namespace
             echo "Cleaning up roles and rolebindings in namespaces $namespaces..."
@@ -97,7 +95,6 @@ spec:
                 #get odlm roles
                 roles="${roles} $(oc get roles -n $ns | grep operand-deployment-l | awk '{print $1}' | tr "\n" " ")"
                 
-                {{- if .Values.zen.iamIntegration }}
                 #get iam roles
                 roles="${roles} $(oc get roles -n $ns | grep ibm-iam | awk '{print $1}' | tr "\n" " ")"
                 #get ui roles
@@ -108,9 +105,10 @@ spec:
                 roles="${roles} $(oc get roles -n $ns | grep common-service-db | awk '{print $1}' | tr "\n" " ")"
                 if [[ $ns != $servicesNamespace ]]; then
                     edbSA=$(oc get sa -n $ns --ignore-not-found | grep postgresql-operator-controller-manager | awk '{print $1}' | tr "\n" " ")
-                    oc delete sa $edbSA -n $ns --ignore-not-found
+                    if [[ ${edbSA// /} != "" ]]; then
+                      oc delete sa $edbSA -n $ns --ignore-not-found
+                    fi
                 fi
-                {{- end }}
 
                 if [[ -z ${roles// /} ]]; then
                   echo "No roles present in namespace $ns, skipping..."
