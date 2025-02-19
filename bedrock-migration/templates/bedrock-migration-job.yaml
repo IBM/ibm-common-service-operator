@@ -97,12 +97,15 @@ spec:
                 
                 #get iam roles
                 roles="${roles} $(oc get roles -n $ns | grep ibm-iam | awk '{print $1}' | tr "\n" " ")"
+                
                 #get ui roles
                 roles="${roles} $(oc get roles -n $ns | grep ibm-commonui | awk '{print $1}' | tr "\n" " ")"
+                
                 #get edb roles
                 roles="${roles} $(oc get roles -n $ns | grep postgresql-operator-controller-manager | awk '{print $1}' | tr "\n" " ")"
                 roles="${roles} $(oc get roles -n $ns | grep cloud-native-postgresql | awk '{print $1}' | tr "\n" " ")"
                 roles="${roles} $(oc get roles -n $ns | grep common-service-db | awk '{print $1}' | tr "\n" " ")"
+                
                 if [[ $ns != $servicesNamespace ]]; then
                     edbSA=$(oc get sa -n $ns --ignore-not-found | grep postgresql-operator-controller-manager | awk '{print $1}' | tr "\n" " ")
                     if [[ ${edbSA// /} != "" ]]; then
