@@ -25,6 +25,7 @@ FROM docker-na-public.artifactory.swg-devops.com/hyc-cloud-private-edge-docker-l
 
 ARG VCS_REF
 ARG VCS_URL
+ARG RELEASE_VERSION
 
 LABEL org.label-schema.vendor="IBM" \
   org.label-schema.name="ibm common service operator" \
@@ -34,7 +35,10 @@ LABEL org.label-schema.vendor="IBM" \
   org.label-schema.license="Licensed Materials - Property of IBM" \
   org.label-schema.schema-version="1.0" \
   name="common-service-operator" \
+  maintainer="IBM" \
   vendor="IBM" \
+  version=$RELEASE_VERSION \
+  release=$RELEASE_VERSION \
   description="Deploy ODLM and IBM Common Services" \
   summary="Deploy ODLM and IBM Common Services"
 
