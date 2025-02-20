@@ -1,0 +1,14 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ibm-common-service-operator
+spec:
+  template:
+    spec:
+      containers:
+      - name: ibm-common-service-operator
+        env:
+        - name: NO_OLM
+          value: "true"
+        - name: ENABLE_WEBHOOKS
+          value: "false"
