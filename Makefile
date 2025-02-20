@@ -254,8 +254,11 @@ generate-all: yq kustomize operator-sdk generate manifests cloudpak-theme-versio
 
 .PHONY: deploy-dryrun
 deploy-dryrun: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cd config/manager && $(KUSTOMIZE) edit set image icr.io/cpopen/common-service-operator=${IMG}
+	cd config/manager && \
+	$(KUSTOMIZE) edit set image icr.io/cpopen/common-service-operator=${IMG} && \
+	$(KUSTOMIZE) edit add patch --path non-olm-env-patch.yaml 
 	$(KUSTOMIZE) build config/default --output config/ibm-common-service-operator.yaml
+	cd config/manager && $(KUSTOMIZE) edit remove patch --path non-olm-env-patch.yaml
 
 .PHONY: helm
 helm: deploy-dryrun kustohelmize
