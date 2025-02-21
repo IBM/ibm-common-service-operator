@@ -611,7 +611,7 @@ function label_helm_namespace_scope(){
             ${OC} label rolebinding ibm-zen-operator-rolebinding foundationservices.cloudpak.ibm.com=zen-chart -n $namespace --overwrite=true 2>/dev/null
         done
     fi
-
+    success "Namespace scoped charts labeled."
 }
 
 # ---------- Info functions ----------#
