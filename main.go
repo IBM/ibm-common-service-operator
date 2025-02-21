@@ -51,7 +51,6 @@ import (
 	util "github.com/IBM/ibm-common-service-operator/v4/controllers/common"
 	"github.com/IBM/ibm-common-service-operator/v4/controllers/constant"
 	"github.com/IBM/ibm-common-service-operator/v4/controllers/goroutines"
-	noolmcommonservicecontroller "github.com/IBM/ibm-common-service-operator/v4/controllers/no-olm"
 	commonservicewebhook "github.com/IBM/ibm-common-service-operator/v4/controllers/webhooks/commonservice"
 	operandrequestwebhook "github.com/IBM/ibm-common-service-operator/v4/controllers/webhooks/operandrequest"
 	// +kubebuilder:scaffold:imports
@@ -163,28 +162,14 @@ func main() {
 			klog.Errorf("Cleanup Webhook Resources failed: %v", err)
 			os.Exit(1)
 		}
-		if os.Getenv("NO_OLM") != "true" {
-			klog.Infof("Setup commonservice manager")
-			if err = (&controllers.CommonServiceReconciler{
-				Bootstrap: bs,
-				Scheme:    mgr.GetScheme(),
-				Recorder:  mgr.GetEventRecorderFor("commonservice-controller"),
-			}).SetupWithManager(mgr); err != nil {
-				klog.Errorf("Unable to create controller CommonService: %v", err)
-				os.Exit(1)
-			}
-
-		} else {
-			klog.Infof("Setup no olm commonservice manager")
-			if err = (&noolmcommonservicecontroller.NoOLMCommonServiceReconciler{
-				Bootstrap: bs,
-				Scheme:    mgr.GetScheme(),
-				Recorder:  mgr.GetEventRecorderFor("no-olmcommonservice-controller"),
-			}).SetupWithManager(mgr); err != nil {
-				klog.Errorf("Unable to create controller CommonService: %v", err)
-				os.Exit(1)
-			}
-
+		klog.Infof("Setup commonservice manager")
+		if err = (&controllers.CommonServiceReconciler{
+			Bootstrap: bs,
+			Scheme:    mgr.GetScheme(),
+			Recorder:  mgr.GetEventRecorderFor("commonservice-controller"),
+		}).SetupWithManager(mgr); err != nil {
+			klog.Errorf("Unable to create controller CommonService: %v", err)
+			os.Exit(1)
 		}
 
 		klog.Infof("Start go routines")
