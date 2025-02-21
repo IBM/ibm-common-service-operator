@@ -779,6 +779,18 @@ spec:
       - apiVersion: k8s.keycloak.org/v2alpha1
         data:
           spec:
+            scheduling:
+              affinity:
+                nodeAffinity:
+                  requiredDuringSchedulingIgnoredDuringExecution:
+                    nodeSelectorTerms:
+                    - matchExpressions:
+                      - key: kubernetes.io/arch
+                        operator: In
+                        values:
+                        - amd64
+                        - ppc64le
+                        - s390x
             proxy:
               headers: xforwarded
             features:
@@ -887,6 +899,24 @@ spec:
                   apiVersion: apiextensions.k8s.io/v1
                   kind: CustomResourceDefinition
                 key: .spec.versions[0].schema.openAPIV3Schema.properties.spec.properties.resources
+                operator: DoesNotExist
+          - path: .spec.unsupported.podTemplate.spec.affinity
+            operation: remove
+            matchExpressions:
+              - objectRef:
+                  name: keycloaks.k8s.keycloak.org
+                  apiVersion: apiextensions.k8s.io/v1
+                  kind: CustomResourceDefinition
+                key: .spec.versions[0].schema.openAPIV3Schema.properties.spec.properties.scheduling
+                operator: Exists
+          - path: .spec.scheduling
+            operation: remove
+            matchExpressions:
+              - objectRef:
+                  name: keycloaks.k8s.keycloak.org
+                  apiVersion: apiextensions.k8s.io/v1
+                  kind: CustomResourceDefinition
+                key: .spec.versions[0].schema.openAPIV3Schema.properties.spec.properties.scheduling
                 operator: DoesNotExist
       - apiVersion: v1
         kind: ConfigMap
