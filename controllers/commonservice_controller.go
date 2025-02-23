@@ -63,11 +63,6 @@ const (
 
 func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 
-	if os.Getenv("NO_OLM") == "true" {
-		klog.Infof("Reconciling CommonService: %s in No OLM environment", req.NamespacedName)
-		return r.NoOLMReconcile(ctx, req)
-	}
-
 	klog.Infof("Reconciling CommonService: %s", req.NamespacedName)
 
 	// Fetch the CommonService instance
@@ -98,6 +93,11 @@ func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	if !instance.Spec.License.Accept {
 		klog.Error("Accept license by changing .spec.license.accept to true in the CommonService CR. Operator will not proceed until then")
+	}
+
+	if os.Getenv("NO_OLM") == "true" {
+		klog.Infof("Reconciling CommonService: %s in No OLM environment", req.NamespacedName)
+		return r.NoOLMReconcile(ctx, req, instance)
 	}
 
 	// If the CommonService CR is not paused, continue to reconcile

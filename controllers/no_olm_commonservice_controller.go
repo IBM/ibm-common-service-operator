@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"os"
 	"reflect"
-	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -36,34 +35,16 @@ import (
 	"github.com/IBM/ibm-common-service-operator/v4/controllers/constant"
 )
 
-func (r *CommonServiceReconciler) NoOLMReconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-
-	klog.Infof("Reconciling CommonService: %s", req.NamespacedName)
-
-	// Fetch the CommonService instance
-	instance := &apiv3.CommonService{}
-	if req.Name == constant.MasterCR && util.Contains(strings.Split(r.Bootstrap.CSData.WatchNamespaces, ","), req.Namespace) && req.Namespace != r.Bootstrap.CSData.OperatorNs {
-		if err := r.Bootstrap.Client.Get(ctx, req.NamespacedName, instance); err != nil {
-			if errors.IsNotFound(err) {
-				klog.Infof("Finished reconciling to delete CommonService: %s/%s", req.NamespacedName.Namespace, req.NamespacedName.Name)
-			}
-			return ctrl.Result{}, client.IgnoreNotFound(err)
-		}
-		return r.ReconcileNoOLMNonConfigurableCR(ctx, instance)
-	}
-
-	if !instance.Spec.License.Accept {
-		klog.Error("Accept license by changing .spec.license.accept to true in the CommonService CR. Operator will not proceed until then")
-	}
+func (r *CommonServiceReconciler) NoOLMReconcile(ctx context.Context, req ctrl.Request, instance *apiv3.CommonService) (ctrl.Result, error) {
 
 	klog.Infof("Reconciling CommonService: %s in non OLM environment", req.NamespacedName)
 
 	// If the CommonService CR is not paused, continue to reconcile
 	if !r.reconcilePauseRequest(instance) {
 		if r.checkNamespace(req.NamespacedName.String()) {
-			return r.ReconcileMasterCR(ctx, instance)
+			return r.ReconcileNoOLMMasterCR(ctx, instance)
 		}
-		return r.ReconcileGeneralCR(ctx, instance)
+		return r.ReconcileNoOLMGeneralCR(ctx, instance)
 	}
 	// If the CommonService CR is paused, update the status to pending
 	if err := r.updatePhase(ctx, instance, CRPending); err != nil {
