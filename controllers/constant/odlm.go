@@ -33,11 +33,14 @@ var (
 	CSV4SaasOperandConfig   string
 )
 
-// ServiceNames defines the list of EDB service names used in the OperandConfig template.
-var ServiceNames = []string{
-	"cloud-native-postgresql",
-	"cloud-native-postgresql-v1.22",
-	"cloud-native-postgresql-v1.25",
+// ServiceNames defines the list of service names used in the OperandConfig template.
+var ServiceNames = map[string][]string{
+	"PostgreSQL": {
+		"cloud-native-postgresql",
+		"cloud-native-postgresql-v1.22",
+		"cloud-native-postgresql-v1.25",
+	},
+	// Add more service categories as needed
 }
 
 const (
@@ -518,7 +521,7 @@ metadata:
     version: {{ .Version }}
 spec:
   services:
-  {{- range .ServiceNames }}
+  {{- range .ServiceNames.PostgreSQL }}
   - name: {{ . }}
     resources:
       - apiVersion: batch/v1
