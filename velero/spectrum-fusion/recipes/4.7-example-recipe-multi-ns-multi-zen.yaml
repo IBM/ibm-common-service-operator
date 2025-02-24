@@ -309,18 +309,6 @@ spec:
       timeout: 600
       type: check
     - chks:
-        - condition: '{$.metadata.name} != null'
-          name: webhookExists
-          onError: fail
-          timeout: 600
-      name: cert-manager-webhook-exists-check
-      nameSelector: cert-manager-webhook
-      namespace: <cert manager namespace>
-      onError: fail
-      selectResource: deployment
-      timeout: 600
-      type: check
-    - chks:
         - condition: '{$.status.phase} == {"Running"}'
           name: podReady
           onError: fail
@@ -573,7 +561,6 @@ spec:
         - group: ow-pull-secret
         - group: common-services-catalogs
         - group: common-services-operatorgroups
-        - hook: cert-manager-webhook-exists-check/webhookExists
         - group: cert-manager-crds
         - group: cert-manager-workload-resources
         - group: cert-manager-subscription

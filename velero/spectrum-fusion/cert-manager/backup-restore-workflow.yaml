@@ -52,7 +52,7 @@ spec:
       includeClusterResources: true
       includedResourceTypes:
         - certmanagerconfigs.operator.ibm.com
-      name: ccert-manager-workload-resources
+      name: cert-manager-workload-resources
       type: resource
     - includedResourceTypes:
         - catalogsources.operators.coreos.com
@@ -98,18 +98,6 @@ spec:
       selectResource: deployment
       timeout: 600
       type: check
-    - chks:
-        - condition: '{$.metadata.name} != null'
-          name: webhookExists
-          onError: fail
-          timeout: 600
-      name: cert-manager-webhook-exists-check
-      nameSelector: cert-manager-webhook
-      namespace: <cert manager namespace>
-      onError: fail
-      selectResource: deployment
-      timeout: 600
-      type: check
   workflows:
     - failOn: essential-error
       name: backup
@@ -122,7 +110,6 @@ spec:
     - failOn: essential-error
       name: restore
       sequence:
-        - hook: cert-manager-webhook-exists-check/webhookExists
         - group: cert-manager-namespace
         - group: cert-manager-catalog
         - group: cert-manager-operatorgroup
