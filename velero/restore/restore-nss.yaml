@@ -1,7 +1,7 @@
 apiVersion: velero.io/v1
 kind: Restore
 metadata:
-  name: restore-catalog
+  name: restore-nss
   namespace: velero
 spec:
   backupName: __BACKUP_NAME__
