@@ -46,6 +46,7 @@ type CSData struct {
 	CloudPakThemesVersion   string
 	ExcludedCatalog         string
 	StatusMonitoredServices string
+	ServiceNames            []string
 }
 
 // +kubebuilder:pruning:PreserveUnknownFields
