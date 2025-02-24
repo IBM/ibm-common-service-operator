@@ -714,7 +714,7 @@ EOF
     done
 
     # Scale up ibm-mongodb-operator
-    ${OC} scale deployment -n ${FROM_NAMESPACE} ibm-mongodb-operator --replicas=${deployments}
+    # ${OC} scale deployment -n ${FROM_NAMESPACE} ibm-mongodb-operator --replicas=${deployments}
 
 
     success "DNS name in namespace: $FROM_NAMESPACE updated" 
