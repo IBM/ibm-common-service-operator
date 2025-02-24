@@ -160,6 +160,7 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		OnPremMultiEnable:       strconv.FormatBool(util.CheckMultiInstances(mgr.GetAPIReader())),
 		ExcludedCatalog:         constant.ExcludedCatalog,
 		StatusMonitoredServices: constant.StatusMonitoredServices,
+		ServiceNames:            constant.ServiceNames,
 	}
 
 	bs = &Bootstrap{
@@ -809,6 +810,7 @@ func (b *Bootstrap) InstallOrUpdateOpcon(forceUpdateODLMCRs bool) error {
 		constant.UserMgmtOpCon,
 		constant.IdpConfigUIOpCon,
 		constant.PlatformUIOpCon,
+		constant.EDBOpCon,
 		constant.KeyCloakOpCon,
 		constant.CommonServicePGOpCon,
 	}
