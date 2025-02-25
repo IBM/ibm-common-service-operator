@@ -28,3 +28,4 @@ spec:
       - zen-chart
       - edb-chart
       - iam-chart
+      - nss

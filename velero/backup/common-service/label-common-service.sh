@@ -75,7 +75,9 @@ function main() {
         label_lsr
     fi
     label_cs
-    label_nss
+    if [[ $SERVICES_NS != "" ]]; then
+        label_nss
+    fi
     label_mcsp
     success "Successfully labeled all the resources"
 }
