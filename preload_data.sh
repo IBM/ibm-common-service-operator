@@ -2389,12 +2389,12 @@ function deletemongocopy {
     warning "Volume for pvc cs-mongodump not found in $TO_NAMESPACE. It may have already been deleted."
   else
     ${OC} patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Delete" }}'
-    ${OC} delete pvc cs-mongodump -n $TO_NAMESPACE --ignore-not-found --timeout=10s
+    ${OC} delete pvc cs-mongodump -n $TO_NAMESPACE --ignore-not-found --timeout=30s
     if [ $? -ne 0 ]; then
       info "Failed to delete pvc cs-mongodump, patching its finalizer to null..."
       ${OC} patch pvc cs-mongodump -n $TO_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]' --ignore-not-found
     fi
-    ${OC} delete pv $VOL --ignore-not-found --timeout=10s
+    ${OC} delete pv $VOL --ignore-not-found --timeout=30s
     if [ $? -ne 0 ]; then
       info "Failed to delete pv $VOL, patching its finalizer to null..."
       ${OC} patch pv $VOL --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
