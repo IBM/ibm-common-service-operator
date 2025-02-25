@@ -458,7 +458,7 @@ function label_helm_cluster_scope(){
     title "Begin labeling cluster scoped resources installed via helm..."
     #TODO get name of helm secret for each chart
     #odlm cluster resources (crds)
-    ${OC} label crd operandbindinfos.operator.ibm.com operandconfigs.operator.ibm.com operandregistries.operator.ibm.com foundationservices.cloudpak.ibm.com=odlm-cluster  --overwrite=true 2>/dev/null
+    ${OC} label crd operandbindinfos.operator.ibm.com operandconfigs.operator.ibm.com operandregistries.operator.ibm.com operandrequests.operator.ibm.com foundationservices.cloudpak.ibm.com=odlm-cluster  --overwrite=true 2>/dev/null
     #helm secret
     odlm_release_name=$(${OC} get crd operandbindinfos.operator.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
     odlm_release_namespace=$(${OC} get crd operandbindinfos.operator.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
