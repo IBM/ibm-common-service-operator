@@ -465,7 +465,6 @@ function label_helm_cluster_scope(){
     ${OC} label secret sh.helm.release.v1.$odlm_release_name.v1 -n $odlm_release_namespace foundationservices.cloudpak.ibm.com=odlm-cluster  --overwrite=true 2>/dev/null
 
     #cs operator cluster resources (crds, clusterrole, clusterrolebinding)
-    ${OC} label crd commonservices.operator.ibm.com foundationservices.cloudpak.ibm.com=cs-cluster  --overwrite=true 2>/dev/null
     ${OC} label clusterrole ibm-common-service-operator foundationservices.cloudpak.ibm.com=cs-cluster  --overwrite=true 2>/dev/null
     ${OC} label clusterrolebinding ibm-common-service-operator foundationservices.cloudpak.ibm.com=cs-cluster  --overwrite=true 2>/dev/null
     cs_release_name=$(${OC} get crd commonservices.operator.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
