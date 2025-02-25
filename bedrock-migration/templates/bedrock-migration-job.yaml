@@ -1,0 +1,133 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: bedrock-migration-job
+  namespace: {{ .Values.global.operatorNamespace }}
+  annotations:
+    "helm.sh/hook-delete-policy": before-hook-creation
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-weight": "0"
+spec:
+  template:
+    spec:
+      containers:
+      - name: bedrock-migration-job
+        image: {{ .Values.global.imagePullPrefix }}/{{ .Values.cpfs.imageRegistryNamespaceOperator }}/cpfs-utils:4.6.7
+        command:
+          - bash
+          - -c
+          - |
+            echo "Starting cleanup for OLM -> No OLM migration..."
+            operatorNamespace={{ .Values.global.operatorNamespace }}
+            servicesNamespace={{ .Values.global.instanceNamespace }}
+            namespaces=$(oc get cm namespace-scope -n $operatorNamespace -o jsonpath="{.data.namespaces}")
+
+            
+            nssSub=$(oc get subscription.operators.coreos.com -n "$operatorNamespace" -o jsonpath="{.items[?(@.spec.name=='ibm-namespace-scope-operator')].metadata.name}")
+            if [[ -z $nssSub ]]; then
+              echo "NamespaceScope Subscription not present in operator namespace $operatorNamespace, skipping deleting Subscription and CSV."
+            else
+              nssCSV=$(oc get --ignore-not-found subscription.operators.coreos.com $nssSub -n $operatorNamespace -o jsonpath='{.status.currentCSV}')
+              echo "Deleting NamespaceScope CSV and Subscription in operator namespace $operatorNamespace..."
+              oc delete --ignore-not-found csv $nssCSV -n $operatorNamespace && oc delete --ignore-not-found subscription.operators.coreos.com $nssSub -n $operatorNamespace
+              oc delete namespacescopes.operator.ibm.com common-service -n $operatorNamespace --ignore-not-found --timeout=10s
+              if [ $? -ne 0 ]; then
+                  info "Failed to delete NSS CR, patching its finalizer to null..."
+                  oc patch namespacescopes.operator.ibm.com common-service -n $operatorNamespace --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+              fi
+            fi
+            
+            csSub=$(oc get subscription.operators.coreos.com -n "$operatorNamespace" -o jsonpath="{.items[?(@.spec.name=='ibm-common-service-operator')].metadata.name}")
+            if [[ -z $csSub ]]; then
+              echo "Common Service Subscription not present in operator namespace $operatorNamespace, skipping deleting Subscription and CSV."
+            else
+              csCSV=$(oc get --ignore-not-found subscription.operators.coreos.com $csSub -n $operatorNamespace -o jsonpath='{.status.currentCSV}')
+              echo "Deleting Common Service CSV and Subscription in operator namespace $operatorNamespace..."
+              oc delete --ignore-not-found csv $csCSV -n $operatorNamespace && oc delete --ignore-not-found subscription.operators.coreos.com $csSub -n $operatorNamespace
+            fi
+            
+            odlmSub=$(oc get subscription.operators.coreos.com -n "$operatorNamespace" -o jsonpath="{.items[?(@.spec.name=='ibm-odlm')].metadata.name}")
+            if [[ -z $odlmSub ]]; then
+              echo "ODLM Subscription not present in operator namespace $operatorNamespace, skipping deleting Subscription and CSV."
+            else
+              odlmCSV=$(oc get --ignore-not-found subscription.operators.coreos.com $odlmSub -n $operatorNamespace -o jsonpath='{.status.currentCSV}')
+              echo "Deleting ODLM CSV and Subscription in operator namespace $operatorNamespace..."
+              oc delete --ignore-not-found csv $odlmCSV -n $operatorNamespace && oc delete --ignore-not-found subscription.operators.coreos.com $odlmSub -n $operatorNamespace
+            fi
+            
+            echo "Deleting IAM, Common UI, and EDB resources in operator namespace $operatorNamespace..."
+            
+            iamSub=$(oc get subscription.operators.coreos.com -n "$operatorNamespace" -o jsonpath="{.items[?(@.spec.name=='ibm-iam-operator')].metadata.name}")
+            if [[ -z $iamSub ]]; then
+              echo "IM Subscription not present in operator namespace $operatorNamespace, skipping deleting Subscription and CSV."
+            else
+              iamCSV=$(oc get --ignore-not-found subscription.operators.coreos.com $iamSub -n $operatorNamespace -o jsonpath='{.status.currentCSV}')
+              echo "Deleting IM CSV and Subscription in operator namespace $operatorNamespace..."
+              oc delete --ignore-not-found csv $iamCSV -n $operatorNamespace && oc delete --ignore-not-found subscription.operators.coreos.com $iamSub -n $operatorNamespace
+            fi
+            
+            uiSub=$(oc get subscription.operators.coreos.com -n "$operatorNamespace" -o jsonpath="{.items[?(@.spec.name=='ibm-commonui-operator-app')].metadata.name}")
+            if [[ -z $uiSub ]]; then
+              echo "Common UI Subscription not present in operator namespace $operatorNamespace, skipping deleting Subscription and CSV."
+            else
+              uiCSV=$(oc get --ignore-not-found subscription.operators.coreos.com $uiSub -n $operatorNamespace -o jsonpath='{.status.currentCSV}')
+              echo "Deleting Common UI CSV and Subscription in operator namespace $operatorNamespace..."
+              oc delete --ignore-not-found csv $uiCSV -n $operatorNamespace && oc delete --ignore-not-found subscription.operators.coreos.com $uiSub -n $operatorNamespace
+            fi
+            
+            edbSub=$(oc get subscription.operators.coreos.com -n "$operatorNamespace" -o jsonpath="{.items[?(@.spec.name=='cloud-native-postgresql')].metadata.name}")
+            if [[ -z $edbSub ]]; then
+              echo "EDB Subscription not present in operator namespace $operatorNamespace, skipping deleting Subscription and CSV."
+            else
+              edbCSV=$(oc get --ignore-not-found subscription.operators.coreos.com $edbSub -n $operatorNamespace -o jsonpath='{.status.currentCSV}')
+              echo "Deleting EDB CSV and Subscription in operator namespace $operatorNamespace..."
+              oc delete --ignore-not-found csv $edbCSV -n $operatorNamespace && oc delete --ignore-not-found subscription.operators.coreos.com $edbSub -n $operatorNamespace
+            fi
+
+            echo "Deleting IM, UI, and EDB ServiceAccounts and Jobs in operator namespace $operatorNamespace and services namespace $servicesNamespace..."
+            oc delete --ignore-not-found sa postgresql-operator-manager edb-license-sa -n $operatorNamespace
+            oc delete --ignore-not-found sa ibm-iam-operand-restricted ibm-commonui-operand common-service-db -n $servicesNamespace
+            oc delete --ignore-not-found role edb-license-role -n $operatorNamespace
+            oc delete --ignore-not-found job create-postgres-license-config -n $operatorNamespace
+
+            #loop for removing roles from services and tethered namespace
+            echo "Cleaning up roles and rolebindings in namespaces $namespaces..."
+            for ns in ${namespaces//,/ }; do
+                echo "Processing namespace $ns..."
+                roles=""
+                #get cs operator roles
+                roles="${roles} $(oc get roles -n $ns | grep ibm-common-service-op | awk '{print $1}' | tr "\n" " ")"
+                #get odlm roles
+                roles="${roles} $(oc get roles -n $ns | grep operand-deployment-l | awk '{print $1}' | tr "\n" " ")"
+                
+                #get iam roles
+                roles="${roles} $(oc get roles -n $ns | grep ibm-iam | awk '{print $1}' | tr "\n" " ")"
+                
+                #get ui roles
+                roles="${roles} $(oc get roles -n $ns | grep ibm-commonui | awk '{print $1}' | tr "\n" " ")"
+                
+                #get edb roles
+                roles="${roles} $(oc get roles -n $ns | grep postgresql-operator-controller-manager | awk '{print $1}' | tr "\n" " ")"
+                roles="${roles} $(oc get roles -n $ns | grep cloud-native-postgresql | awk '{print $1}' | tr "\n" " ")"
+                roles="${roles} $(oc get roles -n $ns | grep common-service-db | awk '{print $1}' | tr "\n" " ")"
+                
+                if [[ $ns != $servicesNamespace ]]; then
+                    edbSA=$(oc get sa -n $ns --ignore-not-found | grep postgresql-operator-controller-manager | awk '{print $1}' | tr "\n" " ")
+                    if [[ ${edbSA// /} != "" ]]; then
+                      oc delete sa $edbSA -n $ns --ignore-not-found
+                    fi
+                fi
+
+                if [[ -z ${roles// /} ]]; then
+                  echo "No roles present in namespace $ns, skipping..."
+                else
+                  echo "Roles to delete: ${roles}"
+                  oc delete role $roles -n $ns --ignore-not-found
+                  oc delete rolebindings $roles -n $ns --ignore-not-found
+                fi
+                echo "Namespace $ns complete."
+            done
+      restartPolicy: Never
+      serviceAccount: bedrock-migration-job-sa
+      imagePullSecrets:
+      - name: {{ .Values.global.imagePullSecret }}

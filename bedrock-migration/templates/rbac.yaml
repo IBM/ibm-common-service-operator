@@ -1,0 +1,121 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: bedrock-migration-job-sa
+  namespace: {{ .Values.global.operatorNamespace }}
+  annotations:
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-weight": "-1"
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: bedrock-migration-job-role
+  namespace: {{ .Values.global.operatorNamespace }}
+  annotations:
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-weight": "-1"
+rules: 
+- apiGroups: 
+  - operators.coreos.com
+  resources:
+  - subscriptions
+  - clusterserviceversions
+  verbs:
+  - list
+  - get
+  - delete
+- apiGroups: 
+  - "rbac.authorization.k8s.io"
+  resources:
+  - roles
+  - rolebindings
+  verbs:
+  - list
+  - get
+  - delete
+- apiGroups: 
+  - ""
+  resources:
+  - configmaps
+  - serviceaccounts
+  verbs:
+  - list
+  - get
+  - delete
+- apiGroups: 
+  - "batch"
+  resources:
+  - jobs
+  verbs:
+  - list
+  - get
+  - delete
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: bedrock-migration-job-rb
+  namespace: {{ .Values.global.operatorNamespace }}
+  annotations:
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-weight": "-1"
+subjects:
+  - kind: ServiceAccount
+    name: bedrock-migration-job-sa
+    namespace: {{ .Values.global.operatorNamespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: bedrock-migration-job-role
+{{- $watchNamespaces := .Values.global.tetheredNamespace | default list -}}
+{{- if .Values.global.instanceNamespace -}}
+{{- $watchNamespaces = append $watchNamespaces .Values.global.instanceNamespace -}}
+{{- end -}}
+{{- range $namespace := $watchNamespaces | uniq }}
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: bedrock-migration-job-role
+  namespace: {{ $namespace }}
+  annotations:
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-weight": "-1"
+rules:
+- apiGroups: 
+  - "rbac.authorization.k8s.io"
+  resources:
+  - roles
+  - rolebindings
+  verbs:
+  - list
+  - get
+  - delete
+- apiGroups: 
+  - ""
+  resources:
+  - configmaps
+  - serviceaccounts
+  verbs:
+  - list
+  - get
+  - delete
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: bedrock-migration-job-rb
+  namespace: {{ $namespace }}
+  annotations:
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-weight": "-1"
+subjects:
+  - kind: ServiceAccount
+    name: bedrock-migration-job-sa
+    namespace: {{ $.Values.global.operatorNamespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: bedrock-migration-job-role
+{{- end }}
