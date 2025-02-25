@@ -37,7 +37,7 @@ spec:
                       - s390x
       containers:         
         - name: ibm-common-service-operator
-          image: {{ .Values.global.imagePullPrefix}}/{{ .Values.imageRegistryNamespaceOperator}}/common-service-operator:4.11.0
+          image: {{ .Values.global.imagePullPrefix}}/{{ .Values.imageRegistryNamespaceOperator}}/common-service-operator:4.12.0
           command: 
             - /manager
           env:             
