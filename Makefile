@@ -38,7 +38,7 @@ VERSION ?= $(shell git describe --exact-match 2> /dev/null || \
                 git describe --match=$(git rev-parse --short=8 HEAD) --always --dirty --abbrev=8)
 RELEASE_VERSION ?= $(shell cat ./version/version.go | grep "Version =" | awk '{ print $$3}' | tr -d '"')
 PREVIOUS_VERSION := 3.23.0
-LATEST_VERSION ?= 4.11.0
+LATEST_VERSION ?= 4.12.0
 
 LOCAL_OS := $(shell uname)
 ifeq ($(LOCAL_OS),Linux)
@@ -83,8 +83,8 @@ BUNDLE_IMAGE_NAME ?= common-service-operator-bundle
 # Current Operator image with registry
 IMG ?= icr.io/cpopen/common-service-operator:$(LATEST_VERSION)
 
-CHANNELS := v4.11
-DEFAULT_CHANNEL := v4.11
+CHANNELS := v4.12
+DEFAULT_CHANNEL := v4.12
 
 # Options for 'bundle-build'
 ifneq ($(origin CHANNELS), undefined)
@@ -248,7 +248,7 @@ bundle-manifests: clis
 
 generate-all: yq kustomize operator-sdk generate manifests cloudpak-theme-version ## Generate bundle manifests, metadata and package manifests
 	$(OPERATOR_SDK) generate kustomize manifests -q
-	- make bundle-manifests CHANNELS=v4.11 DEFAULT_CHANNEL=v4.11
+	- make bundle-manifests CHANNELS=v4.12 DEFAULT_CHANNEL=v4.12
 
 ##@ Helm Chart Generation
 
