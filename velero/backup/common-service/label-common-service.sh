@@ -426,6 +426,8 @@ function label_nss(){
         nss_release_name=$(${OC} get deploy ibm-namespace-scope-operator -n $OPERATOR_NS -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
         nss_release_namespace=$(${OC} get deploy ibm-namespace-scope-operator -n $OPERATOR_NS -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
         ${OC} label secret sh.helm.release.v1.$nss_release_name.v1 -n $nss_release_namespace foundationservices.cloudpak.ibm.com=nss  --overwrite=true 2>/dev/null
+        ${OC} label role ibm-namespace-scope-operator -n $OPERATOR_NS foundationservices.cloudpak.ibm.com=nss  --overwrite=true 2>/dev/null
+        ${OC} label rolebinding ibm-namespace-scope-operator -n $OPERATOR_NS foundationservices.cloudpak.ibm.com=nss  --overwrite=true 2>/dev/null
     fi
 
     # The following resources are labeled with 'nss' are bundled together for backup
