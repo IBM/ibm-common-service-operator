@@ -88,6 +88,7 @@ const Small = `
         postgresql:
           parameters:
             max_connections: "600"
+            shared_buffers: 64MB
 - name: ibm-im-mongodb-operator
   spec:
     mongoDB:
