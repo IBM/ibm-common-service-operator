@@ -56,6 +56,7 @@ function main() {
     if [[ $CLEANUP == "false" ]]; then
       if [[ $RERUN == "true" ]]; then
         info "Rerun specified..."
+        cleanup
         deletemongocopy
       fi
       # run backup preload
@@ -75,6 +76,7 @@ function main() {
       #any extra config
     else
       info "Cleanup selected. Cleaning MongoDB in services namespace $TO_NAMESPACE"
+      cleanup
       deletemongocopy
     fi
 }
