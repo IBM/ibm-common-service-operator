@@ -88,6 +88,7 @@ const Large = `
         postgresql:
           parameters:
             max_connections: "1100"
+            shared_buffers: 150MB
 - name: ibm-im-mongodb-operator
   spec:
     mongoDB:
