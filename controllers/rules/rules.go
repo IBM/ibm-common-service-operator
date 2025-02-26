@@ -93,7 +93,8 @@ const ConfigurationRules = `
             memory: LARGEST_VALUE    
         postgresql:
           parameters:
-            max_connections: LARGEST_VALUE     
+            max_connections: LARGEST_VALUE
+            shared_buffers: LARGEST_VALUE
 - name: ibm-im-mongodb-operator
   spec:
     mongoDB:

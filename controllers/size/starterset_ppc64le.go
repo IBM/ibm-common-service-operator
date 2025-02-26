@@ -88,6 +88,7 @@ const StarterSet = `
         postgresql:
           parameters:
             max_connections: "400"
+            shared_buffers: 64MB
 - name: ibm-im-mongodb-operator
   spec:
     mongoDB:

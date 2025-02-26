@@ -88,6 +88,7 @@ const Medium = `
         postgresql:
           parameters:
             max_connections: "750"
+            shared_buffers: 96MB
 - name: ibm-im-mongodb-operator
   spec:
     mongoDB:
