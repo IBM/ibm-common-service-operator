@@ -1123,6 +1123,15 @@ spec:
                   kind: CustomResourceDefinition
                 key: .spec.versions[0].schema.openAPIV3Schema.properties.spec.properties.scheduling
                 operator: DoesNotExist
+          - path: .spec.unsupported.podTemplate.spec.containers[0].command
+            operation: remove
+            matchExpressions:
+              - objectRef:
+                  name: keycloaks.k8s.keycloak.org
+                  apiVersion: apiextensions.k8s.io/v1
+                  kind: CustomResourceDefinition
+                key: .spec.versions[0].schema.openAPIV3Schema.properties.spec.properties.truststores
+                operator: Exists
       - apiVersion: v1
         kind: ConfigMap
         force: true
