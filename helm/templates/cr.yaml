@@ -6,6 +6,7 @@ metadata:
   name: common-service
   namespace: {{ .Values.global.operatorNamespace }}
   labels:
+    component-id: {{ .Chart.Name }}
     foundationservices.cloudpak.ibm.com: commonservice
 spec:
   license:
@@ -13,3 +14,4 @@ spec:
   operatorNamespace: {{ .Values.global.operatorNamespace }}
   servicesNamespace: {{ .Values.global.instanceNamespace }}
   size: {{ .Values.commonServiceSpec.size }}
+  storageClass: {{ .Values.global.blockStorageClass }}

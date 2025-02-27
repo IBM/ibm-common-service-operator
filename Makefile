@@ -23,6 +23,7 @@ YQ_VERSION=v4.27.3
 KUSTOMIZE_VERSION=v5.0.0
 OPERATOR_SDK_VERSION=v1.38.0
 CONTROLLER_TOOLS_VERSION ?= v0.14.0
+OPENSHIFT_VERSIONS ?= v4.12-v4.17
 
 CSV_PATH=bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
 
@@ -37,7 +38,7 @@ VERSION ?= $(shell git describe --exact-match 2> /dev/null || \
                 git describe --match=$(git rev-parse --short=8 HEAD) --always --dirty --abbrev=8)
 RELEASE_VERSION ?= $(shell cat ./version/version.go | grep "Version =" | awk '{ print $$3}' | tr -d '"')
 PREVIOUS_VERSION := 3.23.0
-LATEST_VERSION ?= latest
+LATEST_VERSION ?= 4.12.0
 
 LOCAL_OS := $(shell uname)
 ifeq ($(LOCAL_OS),Linux)
@@ -80,10 +81,10 @@ OPERATOR_IMAGE_NAME ?= common-service-operator
 # Current Operator bundle image name
 BUNDLE_IMAGE_NAME ?= common-service-operator-bundle
 # Current Operator image with registry
-IMG ?= icr.io/cpopen/common-service-operator:latest
+IMG ?= icr.io/cpopen/common-service-operator:$(LATEST_VERSION)
 
-CHANNELS := v4.11
-DEFAULT_CHANNEL := v4.11
+CHANNELS := v4.12
+DEFAULT_CHANNEL := v4.12
 
 # Options for 'bundle-build'
 ifneq ($(origin CHANNELS), undefined)
@@ -169,10 +170,10 @@ code-dev: ## Run the default dev commands which are the go tidy, fmt, vet then e
 	- make check
 
 build: ## Build manager binary
-	go build -o bin/manager main.go
+	go build -o bin/manager cmd/main.go
 
 run: generate code-fmt code-vet manifests ## Run against the configured Kubernetes cluster in ~/.kube/config
-	ENABLE_WEBHOOKS=false OPERATOR_NAMESPACE="$${OPERATOR_NAMESPACE:-ibm-common-services}" OPERATOR_NAME=ibm-common-service-operator go run ./main.go -v=2
+	ENABLE_WEBHOOKS=false OPERATOR_NAMESPACE="$${OPERATOR_NAMESPACE:-ibm-common-services}" OPERATOR_NAME=ibm-common-service-operator go run ./cmd/main.go -v=2
 
 install: manifests ## Install CRDs into a cluster
 	$(KUSTOMIZE) build config/crd | kubectl apply -f -
@@ -181,13 +182,13 @@ uninstall: manifests ## Uninstall CRDs from a cluster
 	$(KUSTOMIZE) build config/crd | kubectl delete -f -
 
 deploy: manifests ## Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-	cd config/manager && $(KUSTOMIZE) edit set image quay.io/opencloudio/common-service-operator=$(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME):$(RELEASE_VERSION)
+	cd config/manager && $(KUSTOMIZE) edit set image icr.io/cpopen/common-service-operator=$(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME):$(RELEASE_VERSION)
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
 build-dev-image: cloudpak-theme.jar
 	@echo "Building the $(OPERATOR_IMAGE_NAME) docker dev image for $(LOCAL_ARCH)..."
 	@docker build -t $(REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):dev \
-	--build-arg VCS_REF=$(VCS_REF) --build-arg VCS_URL=$(VCS_URL) \
+	--build-arg VCS_REF=$(VCS_REF) --build-arg VCS_URL=$(VCS_URL) --build-arg RELEASE_VERSION=$(RELEASE_VERSION) \
 	--build-arg GOARCH=$(LOCAL_ARCH) -f Dockerfile .
 	@docker push $(REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):dev
 
@@ -235,8 +236,11 @@ generate: controller-gen ## Generate code e.g. API etc.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 bundle-manifests: clis
+	cd config/manager && $(KUSTOMIZE) edit set image icr.io/cpopen/common-service-operator=${IMG}
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle \
 	-q --overwrite --version $(RELEASE_VERSION) $(BUNDLE_METADATA_OPTS)
+	echo "\n  # OpenShift annotations." >> bundle/metadata/annotations.yaml ;\
+	echo "  com.redhat.openshift.versions: $(OPENSHIFT_VERSIONS)" >> bundle/metadata/annotations.yaml ;\
 	$(OPERATOR_SDK) bundle validate ./bundle
 	$(YQ) eval -i '.metadata.annotations."olm.skipRange" = ">=3.3.0 <${RELEASE_VERSION}"' ${CSV_PATH}
 	$(YQ) eval -i '.spec.webhookdefinitions[0].deploymentName = "ibm-common-service-operator" | .spec.webhookdefinitions[1].deploymentName = "ibm-common-service-operator"' ${CSV_PATH}
@@ -244,14 +248,17 @@ bundle-manifests: clis
 
 generate-all: yq kustomize operator-sdk generate manifests cloudpak-theme-version ## Generate bundle manifests, metadata and package manifests
 	$(OPERATOR_SDK) generate kustomize manifests -q
-	- make bundle-manifests CHANNELS=v4.11 DEFAULT_CHANNEL=v4.11
+	- make bundle-manifests CHANNELS=v4.12 DEFAULT_CHANNEL=v4.12
 
 ##@ Helm Chart Generation
 
 .PHONY: deploy-dryrun
 deploy-dryrun: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
+	cd config/manager && \
+	$(KUSTOMIZE) edit set image icr.io/cpopen/common-service-operator=${IMG} && \
+	$(KUSTOMIZE) edit add patch --path non-olm-env-patch.yaml 
 	$(KUSTOMIZE) build config/default --output config/ibm-common-service-operator.yaml
+	cd config/manager && $(KUSTOMIZE) edit remove patch --path non-olm-env-patch.yaml
 
 .PHONY: helm
 helm: deploy-dryrun kustohelmize
@@ -288,7 +295,7 @@ e2e-test: ## Run e2e test
 build-operator-image: $(CONFIG_DOCKER_TARGET) cloudpak-theme.jar ## Build the operator image.
 	@echo "Building the $(OPERATOR_IMAGE_NAME) docker image for $(LOCAL_ARCH)..."
 	@docker build -t $(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(VERSION) \
-	--build-arg VCS_REF=$(VCS_REF) --build-arg VCS_URL=$(VCS_URL) \
+	--build-arg VCS_REF=$(VCS_REF) --build-arg VCS_URL=$(VCS_URL) --build-arg RELEASE_VERSION=$(RELEASE_VERSION) \
 	--build-arg GOARCH=$(LOCAL_ARCH) -f Dockerfile .
 
 ##@ Release

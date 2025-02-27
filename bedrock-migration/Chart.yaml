@@ -1,0 +1,6 @@
+apiVersion: v2
+name: bedrock-migration
+description: A Helm chart for migrating Bedrock from OLM to No OLM
+type: application
+version: 4.12.0
+appVersion: "4.12.0"

@@ -11,12 +11,12 @@ COPY go.sum go.sum
 RUN go mod download
 
 # Copy the go source
-COPY main.go main.go
+COPY cmd/main.go cmd/main.go
 COPY api/ api/
-COPY controllers/ controllers/
+COPY internal/controller/ internal/controller/
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux GO111MODULE=on go build -a -o manager main.go
+RUN CGO_ENABLED=0 GOOS=linux GO111MODULE=on go build -a -o manager cmd/main.go
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
@@ -25,6 +25,7 @@ FROM docker-na-public.artifactory.swg-devops.com/hyc-cloud-private-edge-docker-l
 
 ARG VCS_REF
 ARG VCS_URL
+ARG RELEASE_VERSION
 
 LABEL org.label-schema.vendor="IBM" \
   org.label-schema.name="ibm common service operator" \
@@ -34,7 +35,10 @@ LABEL org.label-schema.vendor="IBM" \
   org.label-schema.license="Licensed Materials - Property of IBM" \
   org.label-schema.schema-version="1.0" \
   name="common-service-operator" \
+  maintainer="IBM" \
   vendor="IBM" \
+  version=$RELEASE_VERSION \
+  release=$RELEASE_VERSION \
   description="Deploy ODLM and IBM Common Services" \
   summary="Deploy ODLM and IBM Common Services"
 

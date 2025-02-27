@@ -731,7 +731,7 @@ spec:
           value: "false"
         - name: OPERATOR_NAME
           value: ibm-common-service-operator
-        image: icr.io/cpopen/common-service-operator:latest
+        image: icr.io/cpopen/common-service-operator:4.12.0
         imagePullPolicy: IfNotPresent
         livenessProbe:
           failureThreshold: 10

@@ -20,7 +20,7 @@ Red Hat OpenShift Container Platform 4.3 or newer installed on one of the follow
 
 ## Operator versions
 
- - 4.11.0
+ - 4.12.0
 
 ## Prerequisites
 
@@ -50,4 +50,3 @@ If, as a developer, you are looking to build and test this operator to try out a
 ### End-to-End testing
 
 For more instructions on how to run end-to-end testing with the Operand Deployment Lifecycle Manager, see [ODLM guide](https://github.com/IBM/operand-deployment-lifecycle-manager/blob/master/docs/install/common-service-integration.md#end-to-end-test).
-

@@ -22,18 +22,9 @@ metadata:
       ]
     capabilities: Seamless Upgrades
     cloudPakThemesVersion: styles4100.css
-    containerImage: icr.io/cpopen/common-service-operator:latest
-    createdAt: "2024-10-31T05:22:07Z"
+    containerImage: icr.io/cpopen/common-service-operator:4.12.0
+    createdAt: "2025-02-20T00:28:09Z"
     description: The IBM Cloud Pak foundational services operator is used to deploy IBM foundational services.
-    nss.operator.ibm.com/managed-operators: ibm-common-service-operator
-    nss.operator.ibm.com/managed-webhooks: ""
-    olm.skipRange: ">=3.3.0 <4.11.0"
-    operatorChannel: v4.11
-    operatorVersion: 4.11.0
-    operators.openshift.io/infrastructure-features: '["disconnected"]'
-    operators.operatorframework.io/builder: operator-sdk-v1.31.0
-    operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
-    repository: https://github.com/IBM/ibm-common-service-operator
     features.operators.openshift.io/disconnected: "true"
     features.operators.openshift.io/fips-compliant: "true"
     features.operators.openshift.io/proxy-aware: "false"
@@ -41,13 +32,22 @@ metadata:
     features.operators.openshift.io/token-auth-aws: "false"
     features.operators.openshift.io/token-auth-azure: "false"
     features.operators.openshift.io/token-auth-gcp: "false"
+    nss.operator.ibm.com/managed-operators: ibm-common-service-operator
+    nss.operator.ibm.com/managed-webhooks: ""
+    olm.skipRange: ">=3.3.0 <4.12.0"
+    operatorChannel: v4.12
+    operatorVersion: 4.12.0
+    operators.openshift.io/infrastructure-features: '["disconnected"]'
+    operators.operatorframework.io/builder: operator-sdk-v1.38.0
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
+    repository: https://github.com/IBM/ibm-common-service-operator
     support: IBM
   labels:
     operatorframework.io/arch.amd64: supported
     operatorframework.io/arch.ppc64le: supported
     operatorframework.io/arch.s390x: supported
     operatorframework.io/os.linux: supported
-  name: ibm-common-service-operator.v4.11.0
+  name: ibm-common-service-operator.v4.12.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -207,7 +207,7 @@ spec:
 
     ## Operator versions
 
-     - 4.11.0
+     - 4.12.0
 
     ## Prerequisites
 
@@ -383,7 +383,7 @@ spec:
                             fieldPath: metadata.annotations['olm.targetNamespaces']
                       - name: OPERATOR_NAME
                         value: ibm-common-service-operator
-                    image: icr.io/cpopen/common-service-operator:latest
+                    image: icr.io/cpopen/common-service-operator:4.12.0
                     imagePullPolicy: IfNotPresent
                     livenessProbe:
                       failureThreshold: 10
@@ -394,10 +394,6 @@ spec:
                       periodSeconds: 60
                       timeoutSeconds: 10
                     name: ibm-common-service-operator
-                    ports:
-                      - containerPort: 9443
-                        name: webhook-server
-                        protocol: TCP
                     readinessProbe:
                       failureThreshold: 10
                       httpGet:
@@ -424,17 +420,8 @@ spec:
                       runAsNonRoot: true
                       seccompProfile:
                         type: RuntimeDefault
-                    volumeMounts:
-                      - mountPath: /tmp/k8s-webhook-server/serving-certs
-                        name: cert
-                        readOnly: true
                 serviceAccountName: ibm-common-service-operator
                 terminationGracePeriodSeconds: 10
-                volumes:
-                  - name: cert
-                    secret:
-                      defaultMode: 420
-                      secretName: webhook-server-cert
       permissions:
         - rules:
             - apiGroups:
@@ -644,7 +631,7 @@ spec:
   minKubeVersion: 1.19.0
   provider:
     name: IBM
-  version: 4.11.0
+  version: 4.12.0
   webhookdefinitions:
     - admissionReviewVersions:
         - v1
@@ -687,5 +674,5 @@ spec:
       type: ValidatingAdmissionWebhook
       webhookPath: /validate-operator-ibm-com-v3-commonservice
   relatedImages:
-    - image: icr.io/cpopen/common-service-operator:4.11.0
+    - image: icr.io/cpopen/common-service-operator:4.12.0
       name: COMMON_SERVICE_OPERATOR_IMAGE
