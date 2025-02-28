@@ -102,6 +102,10 @@ const (
 	OpregKind = "OperandRegistry"
 	// OpconKind is the kind of OperandConfig
 	OpconKind = "OperandConfig"
+	// SubscriptionAPIGroupVersion is the api group version of Subscription
+	SubscriptionAPIGroupVersion = "operators.coreos.com/v1alpha1"
+	// SubscriptionKind is the kind of Subscription
+	SubscriptionKind = "Subscription"
 	// DefaultHugePageAllocation is the default huge page allocation
 	DefaultHugePageAllocation = "100Mi"
 	// WebhookServiceName is the name of the webhook service used for v3 operator
@@ -112,6 +116,8 @@ const (
 	CSWebhookConfig = "ibm-common-service-webhook-configuration"
 	OperanReqConfig = "ibm-operandrequest-webhook-configuration"
 	CSMappingConfig = "ibm-cs-ns-mapping-webhook-configuration"
+	// RequeueDuration is the requeue time duration for request
+	RequeueDuration = 30 * time.Second
 )
 
 // CsOg is OperatorGroup constent for the common service operator
