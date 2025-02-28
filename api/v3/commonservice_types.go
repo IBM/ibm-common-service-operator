@@ -278,6 +278,15 @@ type ConditionType string
 type ResourceType string
 
 const (
+	CRInitializing string = "Initializing"
+	CRUpdating     string = "Updating"
+	CRPending      string = "Pending"
+	CRSucceeded    string = "Succeeded"
+	CRFailed       string = "Failed"
+	CRNotReady     string = "NotReady"
+)
+
+const (
 	ConditionTypeBlocked     ConditionType = "Blocked"
 	ConditionTypeReady       ConditionType = "Ready"
 	ConditionTypeWarning     ConditionType = "Warning"

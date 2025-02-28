@@ -2142,30 +2142,10 @@ func (b *Bootstrap) waitOperatorCSV(subName, packageManifest, operatorNs string)
 
 func (b *Bootstrap) checkOperatorCSV(subName, packageManifest, operatorNs string) (bool, error) {
 	// Get the subscription by name and namespace
-	sub := &olmv1alpha1.Subscription{}
-	if err := b.Reader.Get(context.TODO(), types.NamespacedName{Name: subName, Namespace: operatorNs}, sub); err != nil {
-		klog.Warningf("Failed to get Subscription %s in namespace %s: %v, list subscription by packageManifest and operatorNs", subName, operatorNs, err)
-		// List the subscription by packageManifest and operatorNs
-		// The subscription contain label "operators.coreos.com/<packageManifest>.<operatorNs>: ''"
-		subList := &olmv1alpha1.SubscriptionList{}
-		labelKey := util.GetFirstNCharacter(packageManifest+"."+operatorNs, 63)
-		if err := b.Reader.List(context.TODO(), subList, &client.ListOptions{
-			LabelSelector: labels.SelectorFromSet(labels.Set{
-				"operators.coreos.com/" + labelKey: "",
-			}),
-			Namespace: operatorNs,
-		}); err != nil {
-			klog.Errorf("Failed to list Subscription by packageManifest %s and operatorNs %s: %v", packageManifest, operatorNs, err)
-			return false, err
-		}
-
-		// Check if multiple subscriptions exist
-		if len(subList.Items) > 1 {
-			return false, fmt.Errorf("multiple subscriptions found by packageManifest %s and operatorNs %s", packageManifest, operatorNs)
-		} else if len(subList.Items) == 0 {
-			return false, fmt.Errorf("no subscription found by packageManifest %s and operatorNs %s", packageManifest, operatorNs)
-		}
-		sub = &subList.Items[0]
+	sub, err := b.fetchSubscription(subName, packageManifest, operatorNs)
+	if err != nil {
+		klog.Errorf("Failed to get Subscription %s in namespace %s: %v", subName, operatorNs, err)
+		return false, err
 	}
 
 	// Get the channel in the subscription .spec.channel, and check if it is semver
@@ -2192,4 +2172,170 @@ func (b *Bootstrap) checkOperatorCSV(subName, packageManifest, operatorNs string
 	}
 
 	return true, nil
+}
+
+// CheckSubOperatorStatus checks the status of the sub-operator by listing the OperandRegistry
+func (b *Bootstrap) CheckSubOperatorStatus(instance *apiv3.CommonService) (bool, error) {
+	// Get the common-service OperandRegistry
+	operandRegistry, err := b.GetOperandRegistry(ctx, constant.MasterCR, b.CSData.ServicesNs)
+	if err != nil || operandRegistry == nil {
+		klog.Errorf("Failed to get common-service OperandRegistry: %v", err)
+		return false, err
+
+	}
+	var operatorSlice []apiv3.BedrockOperator
+
+	if operandRegistry.Status.Phase == odlm.RegistryReady || operandRegistry.Status.OperatorsStatus == nil {
+		klog.Infof("There is no service installed yet from the OperandRegistry %s/%s , skipping checking the operator status", operandRegistry.GetNamespace(), operandRegistry.GetName())
+		instance.Status.BedrockOperators = operatorSlice
+		instance.Status.OverallStatus = ""
+		return false, nil
+	}
+	for opt := range operandRegistry.Status.OperatorsStatus {
+		operator, err := b.GetOperatorInfo(operandRegistry.Spec.Operators, opt)
+		if err != nil {
+			klog.Errorf("Failed to get operator %s info: %v", opt, err)
+			return false, err
+		}
+		optStatus, err := b.setOperatorStatus(instance, operator.Name, operator.PackageName, operator.Namespace)
+		if err != nil {
+			klog.Errorf("Failed to get operator status: %v", err)
+			return false, err
+		}
+		// Only optStatus append into the operatorSlice if the optStatus.name is not duplicated
+		// Otherwise overwrite the existing one
+		if len(operatorSlice) == 0 {
+			operatorSlice = append(operatorSlice, optStatus)
+		} else {
+			for i, opt := range operatorSlice {
+				if opt.Name == optStatus.Name {
+					operatorSlice[i] = optStatus
+					break
+				}
+				if i == len(operatorSlice)-1 {
+					operatorSlice = append(operatorSlice, optStatus)
+				}
+			}
+		}
+	}
+	instance.Status.BedrockOperators = operatorSlice
+
+	instance.Status.OverallStatus = apiv3.CRSucceeded
+	for _, opt := range operatorSlice {
+		if opt.OperatorStatus != apiv3.CRSucceeded {
+			instance.Status.OverallStatus = apiv3.CRNotReady
+			break
+		}
+	}
+	if instance.Status.OverallStatus == apiv3.CRNotReady {
+		return false, fmt.Errorf("the operator overall status is not ready")
+	}
+	return true, nil
+}
+
+func (b *Bootstrap) GetOperatorInfo(optList []odlm.Operator, optName string) (*odlm.Operator, error) {
+	for _, opt := range optList {
+		if opt.Name == optName {
+			return &opt, nil
+		}
+	}
+	return nil, fmt.Errorf("operator %s not found in OperandRegistry", optName)
+}
+
+func (b *Bootstrap) setOperatorStatus(instance *apiv3.CommonService, name, packageManifest, namespace string) (apiv3.BedrockOperator, error) {
+	var opt apiv3.BedrockOperator
+	opt.Name = name
+
+	sub, err := b.fetchSubscription(name, packageManifest, namespace)
+	if err != nil {
+		klog.Errorf("Failed to get Subscription %s in namespace %s: %v", name, namespace, err)
+		return opt, err
+	}
+
+	installedCSV := sub.Status.InstalledCSV
+	if installedCSV != "" {
+		opt.Name = installedCSV[:strings.IndexByte(installedCSV, '.')]
+		opt.Version = installedCSV[strings.IndexByte(installedCSV, '.')+1:]
+
+		csv := &olmv1alpha1.ClusterServiceVersion{}
+		csvKey := types.NamespacedName{
+			Name:      installedCSV,
+			Namespace: namespace,
+		}
+		if err := b.Reader.Get(context.TODO(), csvKey, csv); err != nil {
+			klog.Errorf("Failed to get %s CSV: %s", name, err)
+			opt.OperatorStatus = apiv3.CRNotReady
+		} else {
+			if len(csv.Status.Conditions) > 0 {
+				csvStatus := csv.Status.Conditions[len(csv.Status.Conditions)-1].Phase
+				opt.OperatorStatus = fmt.Sprintf("%v", csvStatus)
+			} else {
+				opt.OperatorStatus = apiv3.CRNotReady
+			}
+		}
+	} else {
+		klog.Warningf("Failed to get installed CSV for Subscription %s in namespace %s", name, namespace)
+		opt.OperatorStatus = apiv3.CRNotReady
+	}
+
+	// fetch installplanName
+	installplanName := ""
+	if sub.Status.Install != nil {
+		installplanName = sub.Status.Install.Name
+	}
+	opt.InstallPlanName = installplanName
+
+	// determinate subscription status
+	if installplanName == "" {
+		opt.SubscriptionStatus = apiv3.CRFailed
+		opt.InstallPlanName = "Not Found"
+	} else {
+		currentCSV := sub.Status.CurrentCSV
+		if installedCSV == currentCSV && installedCSV != "" {
+			opt.SubscriptionStatus = apiv3.CRSucceeded
+		} else {
+			opt.SubscriptionStatus = fmt.Sprintf("%v", sub.Status.State)
+		}
+	}
+
+	if opt.OperatorStatus == "" || opt.OperatorStatus != apiv3.CRSucceeded || opt.SubscriptionStatus == "" || opt.SubscriptionStatus != apiv3.CRSucceeded {
+		opt.Troubleshooting = "Operator status is not healthy, please check " + constant.GeneralTroubleshooting + " for more information"
+	}
+
+	if opt.SubscriptionStatus == "" || opt.SubscriptionStatus != apiv3.CRSucceeded {
+		b.EventRecorder.Eventf(instance, "Warning", "Bedrock Operator Failed", "Subscription %s/%s is not healthy, please check troubleshooting document %s for reasons and solutions", name, installedCSV, constant.GeneralTroubleshooting)
+	} else if opt.OperatorStatus == "" || opt.OperatorStatus != apiv3.CRSucceeded {
+		b.EventRecorder.Eventf(instance, "Warning", "Bedrock Operator Failed", "ClusterServiceVersion %s/%s is not healthy, please check troubleshooting document %s for reasons and solutions", namespace, installedCSV, constant.GeneralTroubleshooting)
+	}
+
+	return opt, nil
+}
+
+func (b *Bootstrap) fetchSubscription(subName, packageManifest, operatorNs string) (*olmv1alpha1.Subscription, error) {
+	sub := &olmv1alpha1.Subscription{}
+	if err := b.Reader.Get(context.TODO(), types.NamespacedName{Name: subName, Namespace: operatorNs}, sub); err != nil {
+		klog.V(2).Infof("Failed to get Subscription %s in namespace %s: %v, list subscription by packageManifest and operatorNs", subName, operatorNs, err)
+		// List the subscription by packageManifest and operatorNs
+		// The subscription contain label "operators.coreos.com/<packageManifest>.<operatorNs>: ''"
+		subList := &olmv1alpha1.SubscriptionList{}
+		labelKey := util.GetFirstNCharacter(packageManifest+"."+operatorNs, 63)
+		if err := b.Reader.List(context.TODO(), subList, &client.ListOptions{
+			LabelSelector: labels.SelectorFromSet(labels.Set{
+				"operators.coreos.com/" + labelKey: "",
+			}),
+			Namespace: operatorNs,
+		}); err != nil {
+			klog.Errorf("Failed to list Subscription by packageManifest %s and operatorNs %s: %v", packageManifest, operatorNs, err)
+			return nil, err
+		}
+
+		// Check if multiple subscriptions exist
+		if len(subList.Items) > 1 {
+			return nil, fmt.Errorf("multiple subscriptions found by packageManifest %s and operatorNs %s", packageManifest, operatorNs)
+		} else if len(subList.Items) == 0 {
+			return nil, fmt.Errorf("no subscription found by packageManifest %s and operatorNs %s", packageManifest, operatorNs)
+		}
+		sub = &subList.Items[0]
+	}
+	return sub, nil
 }
