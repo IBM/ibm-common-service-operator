@@ -263,6 +263,7 @@ func mergeChangedMap(key string, defaultMap interface{}, changedMap interface{},
 					"fips_enabled":    true,
 					"instances":       true,
 					"max_connections": true,
+					"shared_buffers":  true,
 				}
 				if _, ok := comparableKeys[key]; ok {
 					if directAssign {

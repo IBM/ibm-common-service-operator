@@ -33,6 +33,27 @@ var (
 	}
 )
 
+// normalizeResourceQuantity converts non-standard resource quantity formats
+// to formats that resource.ParseQuantity can parse
+func normalizeResourceQuantity(quantity string) string {
+	// In Kubernetes, memory units are like "M" or "Mi", not "MB"
+	if len(quantity) > 2 {
+		if quantity[len(quantity)-2:] == "kB" {
+			return quantity[:len(quantity)-2] + "k"
+		}
+		if quantity[len(quantity)-2:] == "MB" {
+			return quantity[:len(quantity)-2] + "M"
+		}
+		if quantity[len(quantity)-2:] == "GB" {
+			return quantity[:len(quantity)-2] + "G"
+		}
+		if quantity[len(quantity)-2:] == "TB" {
+			return quantity[:len(quantity)-2] + "T"
+		}
+	}
+	return quantity
+}
+
 func resourceStringComparison(resourceA, resourceB string) (string, string, error) {
 	if sizeA, ok := profileSize[resourceA]; ok {
 		if sizeB, ok := profileSize[resourceB]; ok {
@@ -44,11 +65,16 @@ func resourceStringComparison(resourceA, resourceB string) (string, string, erro
 		err := fmt.Errorf("failed to compare resources %s and %s", resourceA, resourceB)
 		return "", "", err
 	}
-	quantityA, err := resource.ParseQuantity(resourceA)
+
+	// Normalize the resource quantities to handle formats like "96MB" -> "96M"
+	normalizedA := normalizeResourceQuantity(resourceA)
+	normalizedB := normalizeResourceQuantity(resourceB)
+
+	quantityA, err := resource.ParseQuantity(normalizedA)
 	if err != nil {
 		return "", "", err
 	}
-	quantityB, err := resource.ParseQuantity(resourceB)
+	quantityB, err := resource.ParseQuantity(normalizedB)
 	if err != nil {
 		return "", "", err
 	}
