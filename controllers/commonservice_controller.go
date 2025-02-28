@@ -313,12 +313,11 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 
 	var optStatusReady bool
 	var optStatusErr error
-	if optStatusReady, optStatusErr = r.Bootstrap.CheckSubOperatorStatus(instance); statusErr != nil {
+	if optStatusReady, optStatusErr = r.Bootstrap.CheckSubOperatorStatus(instance); optStatusErr != nil {
 		klog.Errorf("Failed to check the status of the operators in the OperandRegistry: %v", optStatusErr)
 		return ctrl.Result{}, optStatusErr
 	} else if !optStatusReady {
-		klog.Infof("Operators in the OperandRegistry are not ready yet, requeue the CommonService CR in %s", constant.RequeueDuration)
-		return ctrl.Result{RequeueAfter: constant.RequeueDuration}, nil
+		klog.Infof("Operators in the OperandRegistry are not deployed yet, skip operator status update")
 	}
 
 	klog.Infof("Finished reconciling CommonService: %s/%s", instance.Namespace, instance.Name)

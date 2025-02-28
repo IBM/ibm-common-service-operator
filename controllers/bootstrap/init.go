@@ -2088,8 +2088,10 @@ func (b *Bootstrap) CheckSubOperatorStatus(instance *apiv3.CommonService) (bool,
 	}
 	var operatorSlice []apiv3.BedrockOperator
 
-	if operandRegistry.Status.OperatorsStatus == nil {
-		klog.Warningf("Failed to get the status of the sub-operators in the OperandRegistry %s/%s", operandRegistry.GetNamespace(), operandRegistry.GetName())
+	if operandRegistry.Status.Phase == odlm.RegistryReady || operandRegistry.Status.OperatorsStatus == nil {
+		klog.Infof("There is no service installed yet from the OperandRegistry %s/%s , skipping checking the operator status", operandRegistry.GetNamespace(), operandRegistry.GetName())
+		instance.Status.BedrockOperators = operatorSlice
+		instance.Status.OverallStatus = ""
 		return false, nil
 	}
 	for opt := range operandRegistry.Status.OperatorsStatus {
@@ -2129,7 +2131,7 @@ func (b *Bootstrap) CheckSubOperatorStatus(instance *apiv3.CommonService) (bool,
 		}
 	}
 	if instance.Status.OverallStatus == apiv3.CRNotReady {
-		return false, nil
+		return false, fmt.Errorf("the operator overall status is not ready")
 	}
 	return true, nil
 }
