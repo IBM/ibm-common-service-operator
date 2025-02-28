@@ -146,7 +146,13 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
   - name: ibm-im-operator-v4.10
     namespace: "{{ .CPFSNs }}"
-    channel: v4.9
+    channel: v4.10
+    packageName: ibm-iam-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+  - name: ibm-im-operator-v4.11
+    namespace: "{{ .CPFSNs }}"
+    channel: v4.11
     packageName: ibm-iam-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -211,6 +217,12 @@ spec:
   - name: ibm-idp-config-ui-operator-v4.7
     namespace: "{{ .CPFSNs }}"
     channel: v4.7
+    packageName: ibm-commonui-operator-app
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+  - name: ibm-idp-config-ui-operator-v4.8
+    namespace: "{{ .CPFSNs }}"
+    channel: v4.8
     packageName: ibm-commonui-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -483,6 +495,13 @@ spec:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       operandBindInfo: 
         operand: ibm-im-operator
+  - name: ibm-im-operator-v4.11
+    spec:
+      authentication:
+        config:
+          onPremMultipleDeploy: {{ .OnPremMultiEnable }}
+      operandBindInfo: 
+        operand: ibm-im-operator
 `
 
 	UserMgmtOpCon = `
@@ -572,6 +591,16 @@ spec:
       switcheritem: {}
       navconfiguration: {}
   - name: ibm-idp-config-ui-operator-v4.6
+    spec:
+      commonWebUI: {}
+      switcheritem: {}
+      navconfiguration: {}
+  - name: ibm-idp-config-ui-operator-v4.7
+    spec:
+      commonWebUI: {}
+      switcheritem: {}
+      navconfiguration: {}
+  - name: ibm-idp-config-ui-operator-v4.8
     spec:
       commonWebUI: {}
       switcheritem: {}
@@ -1841,7 +1870,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
   - name: ibm-im-operator
     namespace: "{{ .CPFSNs }}"
-    channel: v4.10
+    channel: v4.11
     packageName: ibm-iam-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -1871,7 +1900,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
   - name: ibm-idp-config-ui-operator
     namespace: "{{ .CPFSNs }}"
-    channel: v4.7
+    channel: v4.8
     packageName: ibm-commonui-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -2430,7 +2459,7 @@ metadata:
   name: operand-deployment-lifecycle-manager-app
   namespace: "{{ .CPFSNs }}"
 spec:
-  channel: v4.4
+  channel: v4.5
   installPlanApproval: {{ .ApprovalMode }}
   name: ibm-odlm
   source: {{ .CatalogSourceName }}
