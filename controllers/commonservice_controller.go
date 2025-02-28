@@ -23,6 +23,7 @@ import (
 	"reflect"
 	"strings"
 
+	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -310,6 +311,16 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 		return ctrl.Result{}, statusErr
 	}
 
+	var optStatusReady bool
+	var optStatusErr error
+	if optStatusReady, optStatusErr = r.Bootstrap.CheckSubOperatorStatus(instance); statusErr != nil {
+		klog.Errorf("Failed to check the status of the operators in the OperandRegistry: %v", optStatusErr)
+		return ctrl.Result{}, optStatusErr
+	} else if !optStatusReady {
+		klog.Infof("Operators in the OperandRegistry are not ready yet, requeue the CommonService CR in %s", constant.RequeueDuration)
+		return ctrl.Result{RequeueAfter: constant.RequeueDuration}, nil
+	}
+
 	klog.Infof("Finished reconciling CommonService: %s/%s", instance.Namespace, instance.Name)
 	return ctrl.Result{}, nil
 }
@@ -552,6 +563,28 @@ func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 					// Return true if the length of .status.operatorsStatus array has changed, indicating that a operator has been added or removed
 					return len(oldOperandRegistry.Status.OperatorsStatus) != len(newOperandRegistry.Status.OperatorsStatus)
+				},
+			},
+			))
+	}
+	if isSubscriptionAPI, err := r.Bootstrap.CheckCRD(constant.SubscriptionAPIGroupVersion, constant.SubscriptionKind); err != nil {
+		klog.Errorf("Failed to check if Subscription CRD exists: %v", err)
+		return err
+	} else if isSubscriptionAPI {
+		controller = controller.Watches(
+			&source.Kind{Type: &olmv1alpha1.Subscription{}},
+			handler.EnqueueRequestsFromMapFunc(r.mappingToCsRequestForOperandRegistry()),
+			builder.WithPredicates(predicate.Funcs{
+				UpdateFunc: func(e event.UpdateEvent) bool {
+					oldObject := e.ObjectOld.(*olmv1alpha1.Subscription)
+					newObject := e.ObjectNew.(*olmv1alpha1.Subscription)
+					return (oldObject.Status.InstalledCSV != "" && newObject.Status.InstalledCSV != "" && oldObject.Status.InstalledCSV != newObject.Status.InstalledCSV)
+				},
+				DeleteFunc: func(e event.DeleteEvent) bool {
+					return !e.DeleteStateUnknown
+				},
+				CreateFunc: func(e event.CreateEvent) bool {
+					return true
 				},
 			},
 			))

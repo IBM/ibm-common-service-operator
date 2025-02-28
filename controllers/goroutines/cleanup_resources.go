@@ -17,6 +17,7 @@
 package goroutines
 
 import (
+	"context"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -33,6 +34,8 @@ const (
 	mongodbPreloadCm   = "mongodb-preload-endpoint"
 	mongodbStatefulSet = "icp-mongodb"
 )
+
+var ctx = context.Background()
 
 // Cleanup_Keycloak_Cert will delete Keycloak Certificate when OperandConfig is updated to new version
 func CleanupKeycloakCert(bs *bootstrap.Bootstrap) {

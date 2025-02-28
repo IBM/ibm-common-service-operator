@@ -165,8 +165,6 @@ func main() {
 		}
 
 		klog.Infof("Start go routines")
-		// Update CS CR Status
-		go goroutines.UpdateCsCrStatus(bs)
 		// Create CS CR
 		go goroutines.WaitToCreateCsCR(bs)
 		// Delete Keycloak Cert
