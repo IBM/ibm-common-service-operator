@@ -47,7 +47,7 @@ func (r *CommonServiceReconciler) NoOLMReconcile(ctx context.Context, req ctrl.R
 		return r.ReconcileNoOLMGeneralCR(ctx, instance)
 	}
 	// If the CommonService CR is paused, update the status to pending
-	if err := r.updatePhase(ctx, instance, CRPending); err != nil {
+	if err := r.updatePhase(ctx, instance, apiv3.CRPending); err != nil {
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 		return ctrl.Result{}, err
 	}
@@ -94,13 +94,13 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 	if instance.Status.Phase == "" {
 		// Set "Reconciling" condition and "Initializing" for phase
 		instance.SetPendingCondition(constant.MasterCR, apiv3.ConditionTypeReconciling, corev1.ConditionTrue, apiv3.ConditionReasonReconcile, apiv3.ConditionMessageReconcile)
-		instance.Status.Phase = CRInitializing
+		instance.Status.Phase = apiv3.CRInitializing
 		if statusErr = r.Client.Status().Update(ctx, instance); statusErr != nil {
 			klog.Errorf("Fail to update %s/%s: %v", instance.Namespace, instance.Name, statusErr)
 			return ctrl.Result{}, statusErr
 		}
 	} else {
-		if statusErr = r.updatePhase(ctx, instance, CRUpdating); statusErr != nil {
+		if statusErr = r.updatePhase(ctx, instance, apiv3.CRUpdating); statusErr != nil {
 			klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
 			return ctrl.Result{}, statusErr
 		}
@@ -144,7 +144,7 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 		if err := r.Reader.Get(ctx, types.NamespacedName{Name: r.Bootstrap.CSData.ServicesNs}, ns); err != nil {
 			if errors.IsNotFound(err) {
 				klog.Errorf("Not found servicesNamespace %s specified in the common-service CR.", r.Bootstrap.CSData.ServicesNs)
-				if err := r.updatePhase(ctx, instance, CRFailed); err != nil {
+				if err := r.updatePhase(ctx, instance, apiv3.CRFailed); err != nil {
 					klog.Error(err)
 				}
 				klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
@@ -237,12 +237,12 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 	}
 	// Set "Pengding" condition and "Updating" for phase when config CS CR
 	instance.SetPendingCondition(constant.MasterCR, apiv3.ConditionTypeReconciling, corev1.ConditionTrue, apiv3.ConditionReasonConfig, apiv3.ConditionMessageConfig)
-	instance.Status.Phase = CRUpdating
+	instance.Status.Phase = apiv3.CRUpdating
 	newConfigs, serviceControllerMapping, statusErr := r.getNewConfigs(cs)
 	if statusErr != nil {
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
 		instance.SetErrorCondition(constant.MasterCR, apiv3.ConditionTypeError, corev1.ConditionTrue, apiv3.ConditionReasonError, statusErr.Error())
-		instance.Status.Phase = CRFailed
+		instance.Status.Phase = apiv3.CRFailed
 	}
 
 	if statusErr = r.Client.Status().Update(ctx, instance); statusErr != nil {
@@ -252,7 +252,7 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 
 	var isEqual bool
 	if isEqual, statusErr = r.updateOperandConfig(ctx, newConfigs, serviceControllerMapping); statusErr != nil {
-		if statusErr := r.updatePhase(ctx, instance, CRFailed); statusErr != nil {
+		if statusErr := r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
 			klog.Error(statusErr)
 		}
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
@@ -262,7 +262,7 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 	}
 
 	if err := r.Bootstrap.UpdateEDBUserManaged(); err != nil {
-		if statusErr := r.updatePhase(ctx, instance, CRFailed); statusErr != nil {
+		if statusErr := r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
 			klog.Error(statusErr)
 		}
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
@@ -270,7 +270,7 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 	}
 
 	if isEqual, statusErr = r.updateOperatorConfig(ctx, instance.Spec.OperatorConfigs); statusErr != nil {
-		if statusErr := r.updatePhase(ctx, instance, CRFailed); statusErr != nil {
+		if statusErr := r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
 			klog.Error(statusErr)
 		}
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
@@ -280,7 +280,7 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 	}
 
 	if statusErr = configurationcollector.CreateUpdateConfig(r.Bootstrap); statusErr != nil {
-		if statusErr := r.updatePhase(ctx, instance, CRFailed); statusErr != nil {
+		if statusErr := r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
 			klog.Error(statusErr)
 		}
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
@@ -297,7 +297,7 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 		return ctrl.Result{}, statusErr
 	}
 	// Set Succeeded phase
-	if statusErr = r.updatePhase(ctx, instance, CRSucceeded); statusErr != nil {
+	if statusErr = r.updatePhase(ctx, instance, apiv3.CRSucceeded); statusErr != nil {
 		klog.Error(statusErr)
 		return ctrl.Result{}, statusErr
 	}
@@ -310,12 +310,12 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 func (r *CommonServiceReconciler) ReconcileNoOLMGeneralCR(ctx context.Context, instance *apiv3.CommonService) (ctrl.Result, error) {
 
 	if instance.Status.Phase == "" {
-		if err := r.updatePhase(ctx, instance, CRInitializing); err != nil {
+		if err := r.updatePhase(ctx, instance, apiv3.CRInitializing); err != nil {
 			klog.Error(err)
 			return ctrl.Result{}, err
 		}
 	} else {
-		if err := r.updatePhase(ctx, instance, CRUpdating); err != nil {
+		if err := r.updatePhase(ctx, instance, apiv3.CRUpdating); err != nil {
 			klog.Error(err)
 			return ctrl.Result{}, err
 		}
@@ -330,7 +330,7 @@ func (r *CommonServiceReconciler) ReconcileNoOLMGeneralCR(ctx context.Context, i
 	}
 	if err := r.Reader.Get(ctx, opconKey, opcon); err != nil {
 		klog.Errorf("failed to get OperandConfig %s: %v", opconKey.String(), err)
-		if err := r.updatePhase(ctx, instance, CRFailed); err != nil {
+		if err := r.updatePhase(ctx, instance, apiv3.CRFailed); err != nil {
 			klog.Error(err)
 		}
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
@@ -345,7 +345,7 @@ func (r *CommonServiceReconciler) ReconcileNoOLMGeneralCR(ctx context.Context, i
 	// Generate Issuer and Certificate CR
 	if err := r.Bootstrap.DeployCertManagerCR(); err != nil {
 		klog.Errorf("Failed to deploy cert manager CRs: %v", err)
-		if err := r.updatePhase(ctx, instance, CRFailed); err != nil {
+		if err := r.updatePhase(ctx, instance, apiv3.CRFailed); err != nil {
 			klog.Error(err)
 		}
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
@@ -354,7 +354,7 @@ func (r *CommonServiceReconciler) ReconcileNoOLMGeneralCR(ctx context.Context, i
 
 	newConfigs, serviceControllerMapping, err := r.getNewConfigs(cs)
 	if err != nil {
-		if err := r.updatePhase(ctx, instance, CRFailed); err != nil {
+		if err := r.updatePhase(ctx, instance, apiv3.CRFailed); err != nil {
 			klog.Error(err)
 		}
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
@@ -363,7 +363,7 @@ func (r *CommonServiceReconciler) ReconcileNoOLMGeneralCR(ctx context.Context, i
 
 	isEqual, err := r.updateOperandConfig(ctx, newConfigs, serviceControllerMapping)
 	if err != nil {
-		if err := r.updatePhase(ctx, instance, CRFailed); err != nil {
+		if err := r.updatePhase(ctx, instance, apiv3.CRFailed); err != nil {
 			klog.Error(err)
 		}
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
@@ -377,7 +377,7 @@ func (r *CommonServiceReconciler) ReconcileNoOLMGeneralCR(ctx context.Context, i
 
 	isEqual, err = r.updateOperatorConfig(ctx, instance.Spec.OperatorConfigs)
 	if err != nil {
-		if err := r.updatePhase(ctx, instance, CRFailed); err != nil {
+		if err := r.updatePhase(ctx, instance, apiv3.CRFailed); err != nil {
 			klog.Error(err)
 		}
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
@@ -401,7 +401,7 @@ func (r *CommonServiceReconciler) ReconcileNoOLMGeneralCR(ctx context.Context, i
 		return ctrl.Result{}, err
 	}
 
-	if err := r.updatePhase(ctx, instance, CRSucceeded); err != nil {
+	if err := r.updatePhase(ctx, instance, apiv3.CRSucceeded); err != nil {
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 		return ctrl.Result{}, err
 	}
@@ -414,12 +414,12 @@ func (r *CommonServiceReconciler) ReconcileNoOLMGeneralCR(ctx context.Context, i
 func (r *CommonServiceReconciler) ReconcileNoOLMNonConfigurableCR(ctx context.Context, instance *apiv3.CommonService) (ctrl.Result, error) {
 
 	if instance.Status.Phase == "" {
-		if err := r.updatePhase(ctx, instance, CRInitializing); err != nil {
+		if err := r.updatePhase(ctx, instance, apiv3.CRInitializing); err != nil {
 			klog.Error(err)
 			return ctrl.Result{}, err
 		}
 	} else {
-		if err := r.updatePhase(ctx, instance, CRUpdating); err != nil {
+		if err := r.updatePhase(ctx, instance, apiv3.CRUpdating); err != nil {
 			klog.Error(err)
 			return ctrl.Result{}, err
 		}
@@ -442,7 +442,7 @@ func (r *CommonServiceReconciler) ReconcileNoOLMNonConfigurableCR(ctx context.Co
 		return ctrl.Result{}, err
 	}
 
-	if err := r.updatePhase(ctx, instance, CRSucceeded); err != nil {
+	if err := r.updatePhase(ctx, instance, apiv3.CRSucceeded); err != nil {
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 		return ctrl.Result{}, err
 	}
