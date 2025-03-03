@@ -850,6 +850,94 @@ spec:
         kind: ConfigMap
         name: cs-keycloak-user-profile
       - apiVersion: v1
+        kind: ServiceAccount
+        name: convert-secret-sa
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: Role
+        name: convert-secret-role
+        data:
+          rules:
+          - apiGroups:
+            - ""
+            resources:
+            - secrets
+            - configmaps
+            verbs:
+            - create
+            - update
+            - patch
+            - get
+            - list
+            - delete
+            - watch
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        name: convert-secret-rolebinding
+        data:
+          subjects:
+          - kind: ServiceAccount
+            name: convert-secret-sa
+          roleRef:
+            kind: Role
+            name: convert-secret-role
+            apiGroup: rbac.authorization.k8s.io
+      - apiVersion: batch/v1
+        kind: Job
+        force: true
+        name: convert-secret-job
+        data:
+          spec:
+            template:
+              spec:
+                affinity:
+                  nodeAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                      nodeSelectorTerms:
+                      - matchExpressions:
+                        - key: kubernetes.io/arch
+                          operator: In
+                          values:
+                          - amd64
+                          - ppc64le
+                          - s390x
+                restartPolicy: OnFailure
+                serviceAccountName: convert-secret-sa
+                containers:
+                - name: convert-secret-job
+                  image: icr.io/cpopen/cpfs/cpfs-utils:latest
+                  command:
+                    - /bin/sh
+                    - -c
+                    - |              
+                      # Check if the secret already exists
+                      if oc get secret cs-keycloak-ca-certs -n {{ .OperatorNs }} >/dev/null 2>&1; then
+                        echo "Secretcs-keycloak-ca-certs already exists. Skipping conversion."
+                        exit 0
+                      fi
+                      
+                      # Check if ConfigMap exists
+                      if ! oc get configmap cs-keycloak-ca-certs -n {{ .OperatorNs }} >/dev/null 2>&1; then
+                        echo "ConfigMap cs-keycloak-ca-certs not found. Nothing to conversion."
+                        exit 0
+                      fi
+                      
+                      # Extract certificate file names from ConfigMap
+                      CERT_FILES=$(oc get configmap cs-keycloak-ca-certs -n {{ .OperatorNs }} -o yaml | yq e '.data | keys | .[]' -)              
+                      
+                      # Create a temporary directory
+                      mkdir -p /tmp/certs
+
+                      # Extract certificates from ConfigMap and save them as files
+                      for CERT in $CERT_FILES; do
+                        oc get configmap cs-keycloak-ca-certs -n {{ .OperatorNs }} -o yaml | yq e ".data[\"$CERT\"]"> /tmp/certs/$CERT
+                      done
+                      
+                      # Create Secret from extracted certificates
+                      oc create secret generic cs-keycloak-ca-certs -n {{ .OperatorNs }} \
+                        $(for CERT in $CERT_FILES; do echo --from-file=/tmp/certs/$CERT; done)
+                      
+                      echo "Conversion complete. Secret created: cs-keycloak-ca-certs"
+      - apiVersion: v1
         annotations:
           service.beta.openshift.io/serving-cert-secret-name: cpfs-opcon-cs-keycloak-tls-secret
         labels:
