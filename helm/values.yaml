@@ -13,7 +13,7 @@ cpfs:
 # servicesNamespace: ""
 
 global:
-  tetheredNamespace: []
+  tetheredNamespaces: []
   operatorNamespace: operator-ns
   instanceNamespace:
 
