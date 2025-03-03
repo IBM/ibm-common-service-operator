@@ -283,7 +283,7 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 	}
 
 	if err := r.Bootstrap.UpdateEDBUserManaged(); err != nil {
-		if statusErr := r.updatePhase(ctx, instance, CRFailed); statusErr != nil {
+		if statusErr := r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
 			klog.Error(statusErr)
 		}
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)

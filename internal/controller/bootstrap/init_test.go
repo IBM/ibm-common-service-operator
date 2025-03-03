@@ -32,8 +32,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
-	"github.com/IBM/ibm-common-service-operator/controllers/constant"
+	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
+	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/constant"
 )
 
 func init() {
@@ -48,6 +48,7 @@ func TestCheckOperatorCSV(t *testing.T) {
 	// Create a Bootstrap instance
 	bootstrap := &Bootstrap{
 		Client: fakeClient,
+		Reader: fakeClient,
 	}
 
 	// Define the packageManifest and operatorNs
@@ -198,6 +199,7 @@ func TestWaitOperatorCSV(t *testing.T) {
 	// Create a Bootstrap instance
 	bootstrap := &Bootstrap{
 		Client: fakeClient,
+		Reader: fakeClient,
 	}
 
 	// Define the packageManifest and operatorNs
