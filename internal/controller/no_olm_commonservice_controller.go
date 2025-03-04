@@ -33,6 +33,7 @@ import (
 	util "github.com/IBM/ibm-common-service-operator/v4/internal/controller/common"
 	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/configurationcollector"
 	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/constant"
+	noOLMwebhooks "github.com/IBM/ibm-common-service-operator/v4/internal/controller/webhooks/no-olm"
 )
 
 func (r *CommonServiceReconciler) NoOLMReconcile(ctx context.Context, req ctrl.Request, instance *apiv3.CommonService) (ctrl.Result, error) {
@@ -57,6 +58,11 @@ func (r *CommonServiceReconciler) NoOLMReconcile(ctx context.Context, req ctrl.R
 }
 
 func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, instance *apiv3.CommonService) (ctrl.Result, error) {
+
+	// TODO: set commonservice cr as owner
+	if err := noOLMwebhooks.Config.Reconcile(context.TODO(), r.Client); err != nil {
+		return ctrl.Result{}, err
+	}
 
 	var statusErr error
 	// Defer to Set error/ready/warning condition

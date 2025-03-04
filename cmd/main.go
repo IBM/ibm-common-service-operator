@@ -52,6 +52,7 @@ import (
 	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/constant"
 	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/goroutines"
 	commonservicewebhook "github.com/IBM/ibm-common-service-operator/v4/internal/controller/webhooks/commonservice"
+	webhooks "github.com/IBM/ibm-common-service-operator/v4/internal/controller/webhooks/no-olm"
 	operandrequestwebhook "github.com/IBM/ibm-common-service-operator/v4/internal/controller/webhooks/operandrequest"
 	// +kubebuilder:scaffold:imports
 )
@@ -212,6 +213,12 @@ func main() {
 			}).SetupWithManager(mgr); err != nil {
 				klog.Error(err, "unable to create controller", "controller", "V1AddLabel")
 				os.Exit(1)
+			}
+		}
+
+		if os.Getenv("NO_OLM") != "true" {
+			if err := webhooks.SetupWebhooks(mgr, bs); err != nil {
+				klog.Error(err, "Error setting up webhook server")
 			}
 		}
 	} else {
