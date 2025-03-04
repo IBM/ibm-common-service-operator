@@ -31,7 +31,7 @@ import (
 // WebhookRegister knows how the register a webhook into the server. Either by
 // regstering to the WebhookBuilder or directly to the webhook server.
 type WebhookRegister interface {
-	RegisterToBuilder(blrd *builder.WebhookBuilder) *builder.WebhookBuilder
+	RegisterToBuilder(bldr *builder.WebhookBuilder) *builder.WebhookBuilder
 	RegisterToServer(scheme *runtime.Scheme, srv *webhook.Server) error
 
 	GetReconciler(scheme *runtime.Scheme) (WebhookReconciler, error)
