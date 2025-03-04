@@ -577,10 +577,10 @@ function label_helm_namespace_scope(){
     ${OC} label deploy ibm-zen-operator foundationservices.cloudpak.ibm.com=zen-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
     #zenservice covered in label_ns_and_related function
     ${OC} label role ibm-zen-operator-role foundationservices.cloudpak.ibm.com=zen-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
-    ${OC} label role ibm-zen-operator-rolebinding foundationservices.cloudpak.ibm.com=zen-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label rolebinding ibm-zen-operator-rolebinding foundationservices.cloudpak.ibm.com=zen-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
     ${OC} label serviceaccount ibm-zen-operator-serviceaccount foundationservices.cloudpak.ibm.com=zen-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
     ${OC} label role ibm-zen-operator-role foundationservices.cloudpak.ibm.com=zen-chart  -n $SERVICES_NS --overwrite=true 2>/dev/null
-    ${OC} label role ibm-zen-operator-rolebinding foundationservices.cloudpak.ibm.com=zen-chart  -n $SERVICES_NS --overwrite=true 2>/dev/null
+    ${OC} label rolebinding ibm-zen-operator-rolebinding foundationservices.cloudpak.ibm.com=zen-chart  -n $SERVICES_NS --overwrite=true 2>/dev/null
     zen_release_name=$(${OC} get deploy ibm-zen-operator -n $OPERATOR_NS -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
     zen_release_namespace=$(${OC} get deploy ibm-zen-operator -n $OPERATOR_NS -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
     ${OC} label secret sh.helm.release.v1.$zen_release_name.v1 -n $zen_release_namespace foundationservices.cloudpak.ibm.com=zen-chart  --overwrite=true 2>/dev/null
