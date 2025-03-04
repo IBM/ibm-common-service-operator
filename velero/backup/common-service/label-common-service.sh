@@ -313,9 +313,9 @@ function label_ns_and_related() {
 
         # Label the Zen Service
         if [[ $NO_OLM == "false" ]]; then
-            ${OC} label customresourcedefinition zenservices.zen.cpd.ibm.com foundationservices.cloudpak.ibm.com=zen --overwrite=true 2>/dev/null
+            ${OC} label customresourcedefinition zenservices.zen.cpd.ibm.com zenextensions.zen.cpd.ibm.com foundationservices.cloudpak.ibm.com=zen --overwrite=true 2>/dev/null
         else
-            ${OC} label customresourcedefinition zenservices.zen.cpd.ibm.com foundationservices.cloudpak.ibm.com=zen-chart --overwrite=true 2>/dev/null
+            ${OC} label customresourcedefinition zenservices.zen.cpd.ibm.com zenextensions.zen.cpd.ibm.com foundationservices.cloudpak.ibm.com=zen-cluster --overwrite=true 2>/dev/null
         fi
         zen_services=$(${OC} get zenservice -n "$namespace" -o custom-columns=NAME:.metadata.name --no-headers)
         while IFS= read -r zen_service; do
