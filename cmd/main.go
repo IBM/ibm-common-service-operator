@@ -216,7 +216,7 @@ func main() {
 			}
 		}
 
-		if os.Getenv("NO_OLM") != "true" {
+		if os.Getenv("NO_OLM") == "true" {
 			if err := webhooks.SetupWebhooks(mgr, bs); err != nil {
 				klog.Error(err, "Error setting up webhook server")
 			}
