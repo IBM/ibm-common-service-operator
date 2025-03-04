@@ -73,10 +73,10 @@ data:
             oc -n $ZEN_NAMESPACE extract secret/ibm-zen-objectstore-secret --to=$BACKUP_DIR/workspace --confirm
 
             #Backup object storage data
-            oc -n $ZEN_NAMESPACE exec -t zen-minio-0 -- bash -c "rm -rf /tmp/backup && mkdir -p /tmp/backup && export HOME=/tmp && /workdir/bin/mc alias set zenobjstore ${OBJECTSTORE_ENDPOINT} $(<${BACKUP_DIR}/workspace/accesskey) $(<${BACKUP_DIR}/workspace/secretkey) --config-dir=/tmp/.mc --insecure && /workdir/bin/mc cp --recursive zenobjstore/ /tmp/backup/ --insecure" 
+            oc -n $ZEN_NAMESPACE exec -t zen-minio-0 -- bash -c "rm -rf /workdir/home/.minio/backup && mkdir -p /workdir/home/.minio/backup && export HOME=/workdir/home/.minio && /workdir/bin/mc alias set zenobjstore ${OBJECTSTORE_ENDPOINT} $(<${BACKUP_DIR}/workspace/accesskey) $(<${BACKUP_DIR}/workspace/secretkey) --config-dir=/workdir/home/.minio/.mc --insecure && /workdir/bin/mc cp --recursive zenobjstore/ /workdir/home/.minio/backup --insecure" 
 
             #Move backup to backup location
-            oc cp $ZEN_NAMESPACE/zen-minio-0:/tmp/backup $BACKUP_DIR/objstorage && oc exec -t zen-minio-0 -- bash -c "rm -rf /tmp/backup"
+            oc cp $ZEN_NAMESPACE/zen-minio-0:/workdir/home/.minio/backup $BACKUP_DIR/objstorage && oc exec -t zen-minio-0 -- bash -c "rm -rf /workdir/home/.minio/backup"
         else
             info "IS_EMBEDDED_OBJECTSTORE value false in configmap ibm-zen-objectstore-cm, skipping backup of zen objectstore"
         fi
@@ -242,7 +242,7 @@ data:
 
             #[2.2.3.2.2] Remove and recreate Zen bucket
             info "Remove and recreate Zen bucket."
-            oc -n $ZEN_NAMESPACE exec -t zen-minio-0 -- bash -c "rm -rf /tmp/backup && mkdir -p /tmp/backup && export HOME=/tmp && /workdir/bin/mc alias set zenobjstore ${OBJECTSTORE_ENDPOINT} $(<${BACKUP_DIR}/workspace/accesskey) $(<${BACKUP_DIR}/workspace/secretkey) --config-dir=/tmp/.mc --insecure && /workdir/bin/mc ls zenobjstore/${IBM_ZEN_BUCKET_NAME} --insecure && /workdir/bin/mc rb zenobjstore/${IBM_ZEN_BUCKET_NAME} --force --dangerous --insecure && /workdir/bin/mc mb zenobjstore/${IBM_ZEN_BUCKET_NAME} --insecure"
+            oc -n $ZEN_NAMESPACE exec -t zen-minio-0 -- bash -c "rm -rf /workdir/home/.minio/backup && mkdir -p /workdir/home/.minio/backup && export HOME=/workdir/home/.minio && /workdir/bin/mc alias set zenobjstore ${OBJECTSTORE_ENDPOINT} $(<${BACKUP_DIR}/workspace/accesskey) $(<${BACKUP_DIR}/workspace/secretkey) --config-dir=/workdir/home/.minio/.mc --insecure && /workdir/bin/mc ls zenobjstore/${IBM_ZEN_BUCKET_NAME} --insecure && /workdir/bin/mc rb zenobjstore/${IBM_ZEN_BUCKET_NAME} --force --dangerous --insecure && /workdir/bin/mc mb zenobjstore/${IBM_ZEN_BUCKET_NAME} --insecure"
         else
             info "IS_EMBEDDED_OBJECTSTORE value false, skipping objectstore reset."
         fi
@@ -271,8 +271,8 @@ data:
             info "IS_EMBEDDED_OBJECTSTORE value true, restoring objectstore data."
             info "Restore platform configuration data (object storage)."
             IBM_ZEN_BUCKET_NAME=$(oc get cm ibm-zen-objectstore-cm -o=jsonpath='{.data.BUCKET_ZEN_CONFIGURATION}')
-            oc cp $BACKUP_DIR/objstorage $ZEN_NAMESPACE/zen-minio-0:/tmp/backup 
-            oc -n $ZEN_NAMESPACE exec -t zen-minio-0 -- bash -c "export HOME=/tmp && /workdir/bin/mc alias set zenobjstore ${OBJECTSTORE_ENDPOINT} $(<${BACKUP_DIR}/workspace/accesskey) $(<${BACKUP_DIR}/workspace/secretkey) --config-dir=/tmp/.mc --insecure && /workdir/bin/mc cp --recursive /tmp/backup/objstorage/${IBM_ZEN_BUCKET_NAME}/ zenobjstore/${IBM_ZEN_BUCKET_NAME}/ --insecure"
+            oc cp $BACKUP_DIR/objstorage $ZEN_NAMESPACE/zen-minio-0:/workdir/home/.minio/backup 
+            oc -n $ZEN_NAMESPACE exec -t zen-minio-0 -- bash -c "export HOME=/workdir/home/.minio && /workdir/bin/mc alias set zenobjstore ${OBJECTSTORE_ENDPOINT} $(<${BACKUP_DIR}/workspace/accesskey) $(<${BACKUP_DIR}/workspace/secretkey) --config-dir=/workdir/home/.minio/.mc --insecure && /workdir/bin/mc cp --recursive /workdir/home/.minio/backup/objstorage/${IBM_ZEN_BUCKET_NAME}/ zenobjstore/${IBM_ZEN_BUCKET_NAME}/ --insecure"
         else
             info "IS_EMBEDDED_OBJECTSTORE value false, skipping objectstore restore."
         fi
