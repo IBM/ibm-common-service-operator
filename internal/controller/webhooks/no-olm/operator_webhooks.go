@@ -138,6 +138,7 @@ func (webhookConfig *CSWebhookConfig) SetupServer(mgr manager.Manager, namespace
 		}
 	}
 
+	// TODO: remove this
 	klog.Info("here")
 	if err := bldr.Complete(); err != nil {
 		klog.Error(err, "error: %s")
