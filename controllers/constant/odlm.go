@@ -917,7 +917,7 @@ spec:
                 serviceAccountName: convert-secret-sa
                 containers:
                   - name: convert-secret-job
-                    image: icr.io/cpopen/cpfs/cpfs-utils:latest
+                    image: {{ .UtilsImage }}
                     command: ["/bin/sh", "/mnt/scripts/convert-secrets.sh"]
                     volumeMounts:
                     - name: script-volume
