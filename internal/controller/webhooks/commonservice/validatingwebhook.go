@@ -31,9 +31,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	operatorv3 "github.com/IBM/ibm-common-service-operator/api/v3"
-	controller "github.com/IBM/ibm-common-service-operator/controllers"
-	util "github.com/IBM/ibm-common-service-operator/controllers/common"
-	"github.com/IBM/ibm-common-service-operator/controllers/constant"
+	controller "github.com/IBM/ibm-common-service-operator/internal/controller"
+	util "github.com/IBM/ibm-common-service-operator/internal/controller/common"
+	"github.com/IBM/ibm-common-service-operator/internal/controller/constant"
 )
 
 // +kubebuilder:webhook:path=/validate-operator-ibm-com-v3-commonservice,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.ibm.com,resources=commonservices,verbs=create;update,versions=v3,name=vcommonservice.kb.io,admissionReviewVersions=v1

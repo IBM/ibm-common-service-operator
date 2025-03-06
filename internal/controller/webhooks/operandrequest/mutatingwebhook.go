@@ -31,7 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	util "github.com/IBM/ibm-common-service-operator/controllers/common"
+	util "github.com/IBM/ibm-common-service-operator/internal/controller/common"
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/v4/api/v1alpha1"
 )
 
