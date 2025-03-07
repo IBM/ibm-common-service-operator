@@ -116,6 +116,7 @@ func NewNonOLMBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		OnPremMultiEnable:       strconv.FormatBool(util.CheckMultiInstances(mgr.GetAPIReader())),
 		ExcludedCatalog:         constant.ExcludedCatalog,
 		StatusMonitoredServices: constant.StatusMonitoredServices,
+		ServiceNames:            constant.ServiceNames,
 	}
 
 	bs = &Bootstrap{
