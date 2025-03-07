@@ -55,7 +55,7 @@ data:
             info "Value IS_EMBEDDED_DATABASE marked true in configmap ibm-zen-metastore-edb-cm, backing up zen-metastore-edb"
             CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io zen-metastore-edb -o jsonpath="{.status.currentPrimary}" -n $ZEN_NAMESPACE` && \
             oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- mkdir -p /run/zen_backup && \
-            oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=zen -f /run/zen_backup/zen_db_backup.dump
+            oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=zen -f /run/zen_backup/zen_db_backup.dump --format=c
             
             #Move backup to backup location
             oc cp $ZEN_NAMESPACE/$CNPG_PRIMARY_POD:/run/zen_backup/zen_db_backup.dump $BACKUP_DIR/database/zen_db_backup.dump
@@ -258,7 +258,8 @@ data:
             oc exec $CNPG_PRIMARY_POD -n $ZEN_NAMESPACE -- mkdir -p /run/zen_backup
             oc cp $BACKUP_DIR/database/zen_db_backup.dump $ZEN_NAMESPACE/$CNPG_PRIMARY_POD:/run/zen_backup/zen_db_backup.dump
             oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
-            oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -d zen -f /run/zen_backup/zen_db_backup.dump
+            oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname zen --format=c --clean --exit-on-error -v /run/zen_backup/zen_db_backup.dump
+            # oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -d zen -f /run/zen_backup/zen_db_backup.dump
             oc -n $ZEN_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
         else
             info "IS_EMBEDDED_DATABASE value false, skipping metastoredb data restore."
