@@ -352,7 +352,14 @@ data:
         oc patch zenservice ${ZENSERVICE_NAME} --namespace ${ZEN_NAMESPACE} --type=merge --patch '{"spec": {"ignoreForMaintenance": false}}'
 
         #Re-run iam config job
-        oc get job iam-config-job -n $ZEN_NAMESPACE -o json |jq 'del(.spec.selector)' |jq 'del(.spec.template.metadata.labels)'| oc replace --force -f -
+        info "Rerunning IAM config job..."
+        oc -n $ZEN_NAMESPACE get job iam-config-job -o yaml > /tmp/iam-config-job.yaml
+        oc -n $ZEN_NAMESPACE delete job iam-config-job
+        yq -i 'del(.metadata.creationTimestamp) | del(.metadata.managedFields) | del(.metadata.resourceVersion) | del(.metadata.uid) | del(.spec.selector) | del(.spec.template.metadata.labels) | del(.status)' /tmp/iam-config-job.yaml || error "Failed to remove metadata fields from temp iam config job yaml for namespace ${ZEN_NAMESPACE}."
+        info "Wait for previous job to delete..."
+        sleep 30
+        oc apply -f /tmp/iam-config-job.yaml
+        rm -f /tmp/iam-config-job.yaml
         wait_for_iam_config
         success "Restore complete for zenservice $ZENSERVICE_NAME in namespace $ZEN_NAMESPACE."
     }
