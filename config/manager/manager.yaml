@@ -74,6 +74,8 @@ spec:
               fieldPath: metadata.annotations['olm.targetNamespaces']
         - name: OPERATOR_NAME
           value: "ibm-common-service-operator"
+        - name: UTILS_IMAGE
+          value: icr.io/cpopen/cpfs/cpfs-utils:latest
         resources:
           limits:
             cpu: 500m

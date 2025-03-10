@@ -127,6 +127,7 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		ExcludedCatalog:         constant.ExcludedCatalog,
 		StatusMonitoredServices: constant.StatusMonitoredServices,
 		ServiceNames:            constant.ServiceNames,
+		UtilsImage:              util.GetUtilsImage(),
 	}
 
 	bs = &Bootstrap{

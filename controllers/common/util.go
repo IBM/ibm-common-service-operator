@@ -278,6 +278,14 @@ func GetWatchNamespace() string {
 	return ns
 }
 
+func GetUtilsImage() string {
+	image, found := os.LookupEnv("UTILS_IMAGE")
+	if !found {
+		return ""
+	}
+	return image
+}
+
 // GetNSSCMSynchronization returns whether NSS ConfigMap shchronization with OperatorGroup is enabled
 func GetNSSCMSynchronization() bool {
 	isEnable, found := os.LookupEnv("NSSCM_SYNC_MODE")
