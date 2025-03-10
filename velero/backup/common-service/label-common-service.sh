@@ -464,7 +464,7 @@ function label_helm_cluster_scope(){
     odlm_release_namespace=$(${OC} get crd operandbindinfos.operator.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
     ${OC} label secret sh.helm.release.v1.$odlm_release_name.v1 -n $odlm_release_namespace foundationservices.cloudpak.ibm.com=odlm-cluster  --overwrite=true 2>/dev/null
 
-    #cs operator cluster resources (crds, clusterrole, clusterrolebinding)
+    #cs operator cluster resources (crds, clusterrole, clusterrolebinding), crd covered elsewhere in script
     ${OC} label clusterrole ibm-common-service-operator foundationservices.cloudpak.ibm.com=cs-cluster  --overwrite=true 2>/dev/null
     ${OC} label clusterrolebinding ibm-common-service-operator foundationservices.cloudpak.ibm.com=cs-cluster  --overwrite=true 2>/dev/null
     cs_release_name=$(${OC} get crd commonservices.operator.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
@@ -511,9 +511,7 @@ function label_helm_cluster_scope(){
 
 function label_helm_namespace_scope(){
     title "Begin labeling namespace scoped resources installed via helm..."
-    #probably best to label going through the namespaces from the start
     #label rbac and resources in operator and services namespace first
-    #TODO get name of helm secret for each chart
     #odlm
     ${OC} label deploy operand-deployment-lifecycle-manager foundationservices.cloudpak.ibm.com=odlm-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
     ${OC} label serviceaccount operand-deployment-lifecycle-manager foundationservices.cloudpak.ibm.com=odlm-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
@@ -608,12 +606,13 @@ function label_helm_namespace_scope(){
             #edb
             ${OC} label role postgresql-operator-controller-manager foundationservices.cloudpak.ibm.com=edb-chart -n $namespace --overwrite=true 2>/dev/null
             ${OC} label rolebinding postgresql-operator-controller-manager foundationservices.cloudpak.ibm.com=edb-chart -n $namespace --overwrite=true 2>/dev/null
-    
+            
             #zen
             ${OC} label role ibm-zen-operator-role foundationservices.cloudpak.ibm.com=zen-chart -n $namespace --overwrite=true 2>/dev/null
             ${OC} label rolebinding ibm-zen-operator-rolebinding foundationservices.cloudpak.ibm.com=zen-chart -n $namespace --overwrite=true 2>/dev/null
         done
     fi
+
     success "Namespace scoped charts labeled."
 }
 

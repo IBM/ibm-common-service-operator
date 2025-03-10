@@ -56,6 +56,7 @@ function main() {
     if [[ $CLEANUP == "false" ]]; then
       if [[ $RERUN == "true" ]]; then
         info "Rerun specified..."
+        cleanup
         deletemongocopy
       fi
       # run backup preload
@@ -75,6 +76,7 @@ function main() {
       #any extra config
     else
       info "Cleanup selected. Cleaning MongoDB in services namespace $TO_NAMESPACE"
+      cleanup
       deletemongocopy
     fi
 }
@@ -714,7 +716,7 @@ EOF
     done
 
     # Scale up ibm-mongodb-operator
-    ${OC} scale deployment -n ${FROM_NAMESPACE} ibm-mongodb-operator --replicas=${deployments}
+    # ${OC} scale deployment -n ${FROM_NAMESPACE} ibm-mongodb-operator --replicas=${deployments}
 
 
     success "DNS name in namespace: $FROM_NAMESPACE updated" 
@@ -2389,12 +2391,12 @@ function deletemongocopy {
     warning "Volume for pvc cs-mongodump not found in $TO_NAMESPACE. It may have already been deleted."
   else
     ${OC} patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Delete" }}'
-    ${OC} delete pvc cs-mongodump -n $TO_NAMESPACE --ignore-not-found --timeout=10s
+    ${OC} delete pvc cs-mongodump -n $TO_NAMESPACE --ignore-not-found --timeout=30s
     if [ $? -ne 0 ]; then
       info "Failed to delete pvc cs-mongodump, patching its finalizer to null..."
       ${OC} patch pvc cs-mongodump -n $TO_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]' --ignore-not-found
     fi
-    ${OC} delete pv $VOL --ignore-not-found --timeout=10s
+    ${OC} delete pv $VOL --ignore-not-found --timeout=30s
     if [ $? -ne 0 ]; then
       info "Failed to delete pv $VOL, patching its finalizer to null..."
       ${OC} patch pv $VOL --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
