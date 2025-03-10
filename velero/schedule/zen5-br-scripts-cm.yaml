@@ -351,6 +351,9 @@ data:
         info "Remove zenservice from maintenance mode."
         oc patch zenservice ${ZENSERVICE_NAME} --namespace ${ZEN_NAMESPACE} --type=merge --patch '{"spec": {"ignoreForMaintenance": false}}'
 
+        #Re-run iam config job
+        oc get job iam-config-job -n $ZEN_NAMESPACE -o json |jq 'del(.spec.selector)' |jq 'del(.spec.template.metadata.labels)'| oc replace --force -f -
+        wait_for_iam_config
         success "Restore complete for zenservice $ZENSERVICE_NAME in namespace $ZEN_NAMESPACE."
     }
 
@@ -375,6 +378,31 @@ data:
             fi
         else
             error "Zenservice $ZENSERVICE_NAME not present."
+        fi
+    }
+
+    function wait_for_iam_config {
+        job_name="iam-config-job"
+        info "Waiting for job $job_name to complete in namespace $ZEN_NAMESPACE."
+        job_exists=$(oc get job $job_name -n $ZEN_NAMESPACE --no-headers || echo fail)
+        if [[ $job_exists != "fail" ]]; then
+            completed=$(oc get job $job_name -n $ZEN_NAMESPACE --no-headers | awk '{print $2}')
+            retry_count=20
+            while [[ $completed != "1/1" ]] && [[ $retry_count > 0 ]]
+            do
+                info "Wait for job $job_name to complete. Try again in 15s."
+                sleep 15
+                completed=$(oc get job $job_name -n $ZEN_NAMESPACE --no-headers | awk '{print $2}')
+                retry_count=$retry_count-1
+            done
+
+            if [[ $retry_count == 0 ]] && [[ $completed != "1/1" ]]; then
+                error "Timed out waiting for job $job_name."
+            else
+                info "Job $job_name completed."
+            fi
+        else
+            error "Job $job_name not present."
         fi
     }
 
