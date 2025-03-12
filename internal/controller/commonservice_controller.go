@@ -489,7 +489,7 @@ func (r *CommonServiceReconciler) mappingToCsRequestForOperandRegistry() handler
 			return nil
 		}
 		if operandRegistry.Name == constant.MasterCR && operandRegistry.Namespace == r.Bootstrap.CSData.ServicesNs {
-			if shouldReconcile(operandRegistry) {
+			if isNonNoopOperandReconcile(operandRegistry) {
 				// Enqueue a reconciliation request for the corresponding CommonService
 				return []reconcile.Request{
 					{NamespacedName: types.NamespacedName{Name: constant.MasterCR, Namespace: r.Bootstrap.CSData.OperatorNs}},
@@ -500,8 +500,25 @@ func (r *CommonServiceReconciler) mappingToCsRequestForOperandRegistry() handler
 	}
 }
 
-// shouldReconcile checks the conditions for reconciliation
-func shouldReconcile(operandRegistry *odlm.OperandRegistry) bool {
+func (r *CommonServiceReconciler) isODLMManagedSubscription() handler.MapFunc {
+	return func(object client.Object) []reconcile.Request {
+		subscription, ok := object.(*olmv1alpha1.Subscription)
+		if !ok {
+			// It's not an Subscription, ignore
+			return nil
+		}
+		if subscription.GetLabels()[constant.OpreqLabel] == "true" {
+			// Enqueue a reconciliation request for the corresponding CommonService
+			return []reconcile.Request{
+				{NamespacedName: types.NamespacedName{Name: constant.MasterCR, Namespace: r.Bootstrap.CSData.OperatorNs}},
+			}
+		}
+		return nil
+	}
+}
+
+// isNonNoopOperandReconcile checks only no-op operators trigger the reconcile
+func isNonNoopOperandReconcile(operandRegistry *odlm.OperandRegistry) bool {
 
 	if operandRegistry.Status.OperatorsStatus != nil {
 		// List all requested operators
@@ -570,9 +587,10 @@ func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		klog.Errorf("Failed to check if Subscription CRD exists: %v", err)
 		return err
 	} else if isSubscriptionAPI {
+		klog.Infof("Subscription CRD exists, start watching Subscription")
 		controller = controller.Watches(
 			&source.Kind{Type: &olmv1alpha1.Subscription{}},
-			handler.EnqueueRequestsFromMapFunc(r.mappingToCsRequestForOperandRegistry()),
+			handler.EnqueueRequestsFromMapFunc(r.isODLMManagedSubscription()),
 			builder.WithPredicates(predicate.Funcs{
 				UpdateFunc: func(e event.UpdateEvent) bool {
 					oldObject := e.ObjectOld.(*olmv1alpha1.Subscription)

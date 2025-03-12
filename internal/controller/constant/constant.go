@@ -118,6 +118,8 @@ const (
 	CSMappingConfig = "ibm-cs-ns-mapping-webhook-configuration"
 	// RequeueDuration is the requeue time duration for request
 	RequeueDuration = 30 * time.Second
+	// OpreqLabel is the label used to label the Subscription/CR/Configmap managed by ODLM
+	OpreqLabel string = "operator.ibm.com/opreq-control"
 )
 
 // CsOg is OperatorGroup constent for the common service operator
