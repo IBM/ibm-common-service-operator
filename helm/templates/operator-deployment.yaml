@@ -48,11 +48,13 @@ spec:
                 fieldRef: 
                   apiVersion: v1
                   fieldPath: metadata.namespace
+          {{- $watchNamespaces := .Values.global.tetheredNamespaces | default list -}}
+          {{- if .Values.global.instanceNamespace -}}
+          {{- $watchNamespaces = append $watchNamespaces .Values.global.instanceNamespace -}}
+          {{- end -}}
+          {{- $watchNamespaces = prepend $watchNamespaces .Values.global.operatorNamespace }}
             - name: WATCH_NAMESPACE
-              valueFrom:
-                configMapKeyRef:
-                  key: namespaces
-                  name: namespace-scope
+              value: {{ uniq $watchNamespaces | join "," | quote }}
             - name: NO_OLM
               value: "true"
             - name: ENABLE_WEBHOOKS
