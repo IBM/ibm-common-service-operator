@@ -55,6 +55,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
 
     # update cs operator channel in Makefile & bundle.Dockerfile & annotations.yaml
     sed -i "s/$CURRENT_CHANNEL/$NEW_CHANNEL/g" Makefile
+    sed -i "s/$CURRENT_DEV_CSV/$NEW_DEV_CSV/g" Makefile
     echo "Updated the Makefile"
 
     sed -i "s/$CURRENT_CHANNEL/$NEW_CHANNEL/g" bundle.Dockerfile
@@ -91,6 +92,7 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
 
     # update cs operator channel in Makefile & bundle.Dockerfile & annotations.yaml
     sed -i "" "s/$CURRENT_CHANNEL/$NEW_CHANNEL/g" Makefile
+    sed -i "" "s/$CURRENT_DEV_CSV/$NEW_DEV_CSV/g" Makefile
     echo "Updated the Makefile"
 
     sed -i "" "s/$CURRENT_CHANNEL/$NEW_CHANNEL/g" bundle.Dockerfile
@@ -102,3 +104,5 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
 else
     echo "Not support on other operating systems"
 fi
+
+make generate-all
