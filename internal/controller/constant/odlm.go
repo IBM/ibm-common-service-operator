@@ -1173,7 +1173,7 @@ spec:
                     apiVersion: route.openshift.io/v1
                     kind: Route
                     name: keycloak
-                    path: .spec.host
+                    path: https://+.spec.host
                   required: true
             http:
               tlsSecret: cs-keycloak-tls-secret
@@ -1196,6 +1196,9 @@ spec:
                     - command:
                         - /bin/sh
                         - /mnt/startup/cs-keycloak-entrypoint.sh
+                      env:
+                        - name: KC_HOSTNAME_BACKCHANNEL_DYNAMIC
+                          value: 'true'
                       volumeMounts:
                         - mountPath: /mnt/truststore
                           name: truststore-volume
