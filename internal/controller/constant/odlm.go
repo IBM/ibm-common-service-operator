@@ -2153,6 +2153,12 @@ spec:
     packageName: ibm-opencontent-flink
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+  - channel: v1.1
+    name: ibm-opensearch-operator
+    namespace: "{{ .CPFSNs }}"
+    packageName: ibm-opensearch-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode}}
 `
 )
 
