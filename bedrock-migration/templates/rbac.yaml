@@ -51,6 +51,15 @@ rules:
   - list
   - get
   - delete
+- apiGroups: 
+  - "operator.ibm.com"
+  resources:
+  - namespacescopes
+  verbs:
+  - list
+  - get
+  - delete
+  - patch
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
