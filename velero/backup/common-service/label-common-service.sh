@@ -465,16 +465,16 @@ function label_helm_cluster_scope(){
     ${OC} label secret sh.helm.release.v1.$odlm_release_name.v1 -n $odlm_release_namespace foundationservices.cloudpak.ibm.com=odlm-cluster  --overwrite=true 2>/dev/null
 
     #cs operator cluster resources (crds, clusterrole, clusterrolebinding), crd covered elsewhere in script
-    ${OC} label clusterrole ibm-common-service-operator foundationservices.cloudpak.ibm.com=cs-cluster  --overwrite=true 2>/dev/null
-    ${OC} label clusterrolebinding ibm-common-service-operator foundationservices.cloudpak.ibm.com=cs-cluster  --overwrite=true 2>/dev/null
+    ${OC} label clusterrole ibm-common-service-operator-$OPERATOR_NS foundationservices.cloudpak.ibm.com=cs-cluster  --overwrite=true 2>/dev/null
+    ${OC} label clusterrolebinding ibm-common-service-operator-$OPERATOR_NS foundationservices.cloudpak.ibm.com=cs-cluster  --overwrite=true 2>/dev/null
     cs_release_name=$(${OC} get crd commonservices.operator.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
     cs_release_namespace=$(${OC} get crd commonservices.operator.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
     ${OC} label secret sh.helm.release.v1.$cs_release_name.v1 -n $cs_release_namespace foundationservices.cloudpak.ibm.com=cs-cluster  --overwrite=true 2>/dev/null
 
     #IM operator cluster resources (crds, clusterrole, clusterrolebinding)
     ${OC} label crd clients.oidc.security.ibm.com authentications.operator.ibm.com foundationservices.cloudpak.ibm.com=iam-cluster  --overwrite=true 2>/dev/null
-    ${OC} label clusterrole ibm-iam-operator foundationservices.cloudpak.ibm.com=iam-cluster  --overwrite=true 2>/dev/null
-    ${OC} label clusterrolebinding ibm-iam-operator foundationservices.cloudpak.ibm.com=iam-cluster  --overwrite=true 2>/dev/null
+    ${OC} label clusterrole ibm-iam-operator-$OPERATOR_NS foundationservices.cloudpak.ibm.com=iam-cluster  --overwrite=true 2>/dev/null
+    ${OC} label clusterrolebinding ibm-iam-operator-$OPERATOR_NS foundationservices.cloudpak.ibm.com=iam-cluster  --overwrite=true 2>/dev/null
     im_release_name=$(${OC} get crd authentications.operator.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
     im_release_namespace=$(${OC} get crd authentications.operator.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
     ${OC} label secret sh.helm.release.v1.$im_release_name.v1 -n $im_release_namespace foundationservices.cloudpak.ibm.com=iam-cluster  --overwrite=true 2>/dev/null
@@ -489,10 +489,10 @@ function label_helm_cluster_scope(){
     #TODO verify none of this info changes
     ${OC} label crd backups.postgresql.k8s.enterprisedb.io clusters.postgresql.k8s.enterprisedb.io poolers.postgresql.k8s.enterprisedb.io scheduledbackups.postgresql.k8s.enterprisedb.io clusterimagecatalogs.postgresql.k8s.enterprisedb.io imagecatalogs.postgresql.k8s.enterprisedb.io publications.postgresql.k8s.enterprisedb.io subscriptions.postgresql.k8s.enterprisedb.io databases.postgresql.k8s.enterprisedb.io foundationservices.cloudpak.ibm.com=edb-cluster  --overwrite=true 2>/dev/null
     #still need the final name value for these items, will likely match the deployment name
-    ${OC} label clusterrole postgresql-operator-controller-manager foundationservices.cloudpak.ibm.com=edb-cluster  --overwrite=true 2>/dev/null
-    ${OC} label clusterrolebinding postgresql-operator-controller-manager foundationservices.cloudpak.ibm.com=edb-cluster  --overwrite=true 2>/dev/null
-    ${OC} label validatingwebhookconfiguration postgresql-operator-validating-webhook-configuration foundationservices.cloudpak.ibm.com=edb-cluster  --overwrite=true 2>/dev/null
-    ${OC} label mutatingwebhookconfiguration postgresql-operator-mutating-webhook-configuration foundationservices.cloudpak.ibm.com=edb-cluster  --overwrite=true 2>/dev/null
+    ${OC} label clusterrole postgresql-operator-controller-manager-$OPERATOR_NS foundationservices.cloudpak.ibm.com=edb-cluster  --overwrite=true 2>/dev/null
+    ${OC} label clusterrolebinding postgresql-operator-controller-manager-$OPERATOR_NS foundationservices.cloudpak.ibm.com=edb-cluster  --overwrite=true 2>/dev/null
+    ${OC} label validatingwebhookconfiguration postgresql-operator-validating-webhook-configuration-$OPERATOR_NS foundationservices.cloudpak.ibm.com=edb-cluster  --overwrite=true 2>/dev/null
+    ${OC} label mutatingwebhookconfiguration postgresql-operator-mutating-webhook-configuration-$OPERATOR_NS foundationservices.cloudpak.ibm.com=edb-cluster  --overwrite=true 2>/dev/null
     edb_release_name=$(${OC} get crd clusters.postgresql.k8s.enterprisedb.io -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
     edb_release_namespace=$(${OC} get crd clusters.postgresql.k8s.enterprisedb.io -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
     ${OC} label secret sh.helm.release.v1.$edb_release_name.v1 -n $edb_release_namespace foundationservices.cloudpak.ibm.com=edb-cluster  --overwrite=true 2>/dev/null
@@ -500,8 +500,8 @@ function label_helm_cluster_scope(){
     #zen? (crds, clusterrole, clusterrolebinding)
     #assuming we are still responsible for zen
     #CRD covered in label_ns_and_related function
-    ${OC} label clusterrole ibm-zen-operator-cluster-role foundationservices.cloudpak.ibm.com=zen-cluster  --overwrite=true 2>/dev/null
-    ${OC} label clusterrolebinding ibm-zen-operator-cluster-role-binding foundationservices.cloudpak.ibm.com=zen-cluster  --overwrite=true 2>/dev/null
+    ${OC} label clusterrole ibm-zen-operator-cluster-role-$OPERATOR_NS foundationservices.cloudpak.ibm.com=zen-cluster  --overwrite=true 2>/dev/null
+    ${OC} label clusterrolebinding ibm-zen-operator-cluster-role-binding-$OPERATOR_NS foundationservices.cloudpak.ibm.com=zen-cluster  --overwrite=true 2>/dev/null
     zen_release_name=$(${OC} get clusterrole ibm-zen-operator-cluster-role -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
     zen_release_namespace=$(${OC} get clusterrole ibm-zen-operator-cluster-role -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
     ${OC} label secret sh.helm.release.v1.$zen_release_name.v1 -n $zen_release_namespace foundationservices.cloudpak.ibm.com=zen-cluster  --overwrite=true 2>/dev/null
