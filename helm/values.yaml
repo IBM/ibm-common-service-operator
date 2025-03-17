@@ -13,6 +13,7 @@ cpfs:
 # servicesNamespace: ""
 
 global:
+  imagePullPrefix: icr.io
   tetheredNamespaces: []
   operatorNamespace: operator-ns
   instanceNamespace:
