@@ -32,7 +32,7 @@ spec:
               oc delete --ignore-not-found csv $nssCSV -n $operatorNamespace && oc delete --ignore-not-found subscription.operators.coreos.com $nssSub -n $operatorNamespace
               oc delete namespacescopes.operator.ibm.com common-service -n $operatorNamespace --ignore-not-found --timeout=10s
               if [ $? -ne 0 ]; then
-                  info "Failed to delete NSS CR, patching its finalizer to null..."
+                  echo "Failed to delete NSS CR, patching its finalizer to null..."
                   oc patch namespacescopes.operator.ibm.com common-service -n $operatorNamespace --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
               fi
             fi
