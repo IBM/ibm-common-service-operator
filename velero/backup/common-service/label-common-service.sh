@@ -57,17 +57,11 @@ function main() {
         label_catalogsource
         label_subscription
     else
-        #TODO create function(s) to label chart resources
         label_helm_cluster_scope
         label_helm_namespace_scope
-        #charts to label
-        #odlm
-        #cs operator
-        #ibm iam operator
-        #common ui 
-        #edb
-        #zen?
-        #nss already covered in the label_nss function
+        if [[ $ENABLE_LICENSING -eq 1 ]]; then
+            label_helm_licensing
+        fi
     fi
     label_ns_and_related 
     label_configmap
@@ -614,6 +608,21 @@ function label_helm_namespace_scope(){
     fi
 
     success "Namespace scoped charts labeled."
+}
+
+function label_helm_licensing() {
+    title "Labeling Licensing cluster and namespace resources..."
+    ${OC} label clusterrole ibm-license-service ibm-license-service-restricted ibm-licensing-default-reader ibm-licensing-operator foundationservices.cloudpak.ibm.com=licensing-cluster  --overwrite=true 2>/dev/null
+    ${OC} label clusterrolebinding ibm-license-service ibm-license-service-restricted ibm-licensing-default-reader ibm-licensing-operator ibm-license-service-cluster-monitoring-view foundationservices.cloudpak.ibm.com=licensing-cluster  --overwrite=true 2>/dev/null
+    ${OC} label customresourcedefinition ibmlicensingdefinitions.operator.ibm.com ibmlicensingquerysources.operator.ibm.com ibmlicensings.operator.ibm.com foundationservices.cloudpak.ibm.com=licensing-cluster  --overwrite=true 2>/dev/null
+
+    ${OC} label ibmlicensing instance -n $LICENSING_NAMESPACE foundationservices.cloudpak.ibm.com=licensing-chart --overwrite=true 2>/dev/null
+    ${OC} label deployment ibm-licensing-operator -n $LICENSING_NAMESPACE foundationservices.cloudpak.ibm.com=licensing-chart --overwrite=true 2>/dev/null
+    ${OC} label role ibm-license-service ibm-license-service-restricted ibm-licensing-operator -n $LICENSING_NAMESPACE foundationservices.cloudpak.ibm.com=licensing-chart --overwrite=true 2>/dev/null
+    ${OC} label rolebinding ibm-license-service ibm-license-service-restricted ibm-licensing-operator -n $LICENSING_NAMESPACE foundationservices.cloudpak.ibm.com=licensing-chart --overwrite=true 2>/dev/null
+    ${OC} label serviceaccount ibm-license-service ibm-license-service-restricted ibm-licensing-default-reader ibm-licensing-operator -n $LICENSING_NAMESPACE foundationservices.cloudpak.ibm.com=licensing-chart --overwrite=true 2>/dev/null
+    success "Licensing resources labeled"
+
 }
 
 # ---------- Info functions ----------#
