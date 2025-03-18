@@ -158,7 +158,6 @@ function parse_arguments() {
             ADDITIONAL_SOURCES=$1
             ;;
         --no-olm)
-            shift
             NO_OLM="true"
             ;;
         -h | --help)
