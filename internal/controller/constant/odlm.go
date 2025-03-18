@@ -977,12 +977,49 @@ spec:
             hostname:
               hostname:
                 templatingValueFrom:
-                  objectRef:
-                    apiVersion: route.openshift.io/v1
-                    kind: Route
-                    name: keycloak
-                    path: .spec.host
-                  required: true
+                  conditional:
+                    expression:
+                      greaterThan:
+                        left:
+                          objectRef:
+                            apiVersion: apps/v1
+                            kind: Deployment
+                            name: rhbk-operator
+                            path: .metadata.labels.olm\.owner
+                        right:
+                          literal: rhbk-operator.v26.0.0
+                    then:
+                      objectRef:
+                        apiVersion: route.openshift.io/v1
+                        kind: Route
+                        name: keycloak
+                        path: 'https://+.spec.host'
+                      required: true
+                    else:                        
+                      objectRef:
+                        apiVersion: route.openshift.io/v1
+                        kind: Route
+                        name: keycloak
+                        path: .spec.host
+                      required: true
+            additionalOptions:
+              templatingValueFrom:
+                conditional:
+                  expression:
+                    greaterThan:
+                      left:
+                        objectRef:
+                          apiVersion: apps/v1
+                          kind: Deployment
+                          name: rhbk-operator
+                          path: .metadata.labels.olm\.owner
+                      right:
+                        literal: rhbk-operator.v26.0.0
+                  then:
+                      array:
+                        - map:
+                            name: hostname-backchannel-dynamic
+                            value: 'true'
             http:
               tlsSecret: cs-keycloak-tls-secret
             ingress:
