@@ -59,6 +59,8 @@ import (
 	ssv1 "github.com/IBM/ibm-secretshare-operator/api/v1"
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/v4/api/v1alpha1"
 
+	"maps"
+
 	certmanagerv1 "github.com/ibm/ibm-cert-manager-operator/apis/cert-manager/v1"
 )
 
@@ -1939,9 +1941,7 @@ func (b *Bootstrap) UpdateResourceLabel(instance *apiv3.CommonService) error {
 	// get spec.labels in the spec
 	for _, cs := range csObjectList.Items {
 		labels := cs.Spec.Labels
-		for key, val := range labels {
-			(labelsMap)[key] = val
-		}
+		maps.Copy(labelsMap, labels)
 	}
 
 	if len(labelsMap) == 0 {
@@ -1960,15 +1960,15 @@ func (b *Bootstrap) UpdateResourceLabel(instance *apiv3.CommonService) error {
 
 	klog.Infof("add label to configmaps")
 	// update labels in the configmap
-	cmNames := []string{"common-services-maps", "namespace-scope"}
+	nsscmName := "namespace-scope"
 	cmList := &corev1.ConfigMapList{}
-	for _, cmName := range cmNames {
-		cm := &corev1.ConfigMap{}
-		if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: b.CSData.ServicesNs}, cm); err != nil && !errors.IsNotFound(err) {
-			return err
-		} else if errors.IsNotFound(err) {
-			klog.V(3).Infof("configmap %s is not found in namespace: %s", cmName, b.CSData.ServicesNs)
-		}
+
+	cm := &corev1.ConfigMap{}
+	if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: nsscmName, Namespace: b.CSData.OperatorNs}, cm); err != nil && !errors.IsNotFound(err) {
+		return err
+	} else if errors.IsNotFound(err) {
+		klog.V(3).Infof("configmap %s is not found in namespace: %s", nsscmName, b.CSData.OperatorNs)
+	} else {
 		cmList.Items = append(cmList.Items, *cm)
 	}
 	cmUnstructedList, err := util.ObjectListToNewUnstructuredList(cmList)
@@ -2002,8 +2002,9 @@ func (b *Bootstrap) UpdateResourceLabel(instance *apiv3.CommonService) error {
 		return err
 	} else if errors.IsNotFound(err) {
 		klog.V(3).Infof("OperandRegistry common-service is not found in namespace: %s", b.CSData.ServicesNs)
+	} else {
+		opregList.Items = append(opregList.Items, *opreg)
 	}
-	opregList.Items = append(opregList.Items, *opreg)
 	opregUnstructedList, err := util.ObjectListToNewUnstructuredList(opregList)
 	if err != nil {
 		return err
@@ -2022,8 +2023,9 @@ func (b *Bootstrap) UpdateResourceLabel(instance *apiv3.CommonService) error {
 			return err
 		} else if errors.IsNotFound(err) {
 			klog.V(3).Infof("Issuer %s is not found in namespace: %s", issuerName, b.CSData.ServicesNs)
+		} else {
+			issuerList.Items = append(issuerList.Items, *issuer)
 		}
-		issuerList.Items = append(issuerList.Items, *issuer)
 	}
 	issuerUnstructedList, err := util.ObjectListToNewUnstructuredList(issuerList)
 	if err != nil {
@@ -2042,8 +2044,9 @@ func (b *Bootstrap) UpdateResourceLabel(instance *apiv3.CommonService) error {
 		return err
 	} else if errors.IsNotFound(err) {
 		klog.V(3).Infof("certificate cs-ca-certificate is not found in namespace: %s", b.CSData.ServicesNs)
+	} else {
+		certList.Items = append(certList.Items, *cert)
 	}
-	certList.Items = append(certList.Items, *cert)
 	certUnstructedList, err := util.ObjectListToNewUnstructuredList(certList)
 	if err != nil {
 		return err
@@ -2056,6 +2059,9 @@ func (b *Bootstrap) UpdateResourceLabel(instance *apiv3.CommonService) error {
 }
 
 func (b *Bootstrap) UpdateResourceWithLabel(resources *unstructured.UnstructuredList, labels map[string]string) error {
+	if len(resources.Items) == 0 {
+		return nil
+	}
 	for _, resource := range resources.Items {
 		util.EnsureLabels(&resource, labels)
 		klog.Infof("Updating labels in %s %s/%s", resource.GetKind(), resource.GetNamespace(), resource.GetName())
