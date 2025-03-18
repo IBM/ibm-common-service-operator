@@ -138,8 +138,6 @@ func (webhookConfig *CSWebhookConfig) SetupServer(mgr manager.Manager, namespace
 		}
 	}
 
-	// TODO: remove this
-	klog.Info("here")
 	if err := bldr.Complete(); err != nil {
 		klog.Error(err, "error: %s")
 		return err
@@ -166,8 +164,9 @@ func (webhookConfig *CSWebhookConfig) Reconcile(ctx context.Context, client clie
 		return err
 	}
 
-	// Create (if it doesn't exist) the config map where the CA certificate is
-	// injected
+	// Create (if it doesn't exist) the config map where the CA certificate is injected
+
+	// Create webhook certificates
 	caConfigMap := &corev1.ConfigMap{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      webhookConfig.CAConfigMap,
