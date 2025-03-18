@@ -23,7 +23,7 @@ metadata:
     capabilities: Seamless Upgrades
     cloudPakThemesVersion: styles467.css
     containerImage: icr.io/cpopen/common-service-operator:latest
-    createdAt: "2025-03-06T19:45:25Z"
+    createdAt: "2025-03-05T20:28:45Z"
     description: The IBM Cloud Pak foundational services operator is used to deploy IBM foundational services.
     nss.operator.ibm.com/managed-operators: ibm-common-service-operator
     nss.operator.ibm.com/managed-webhooks: ""
@@ -375,6 +375,8 @@ spec:
                             fieldPath: metadata.annotations['olm.targetNamespaces']
                       - name: OPERATOR_NAME
                         value: ibm-common-service-operator
+                      - name: UTILS_IMAGE
+                        value: icr.io/cpopen/cpfs/cpfs-utils:latest
                     image: icr.io/cpopen/common-service-operator:latest
                     imagePullPolicy: IfNotPresent
                     livenessProbe:

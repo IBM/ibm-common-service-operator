@@ -47,6 +47,7 @@ type CSData struct {
 	ExcludedCatalog         string
 	StatusMonitoredServices string
 	ServiceNames            map[string][]string
+	UtilsImage              string
 }
 
 // +kubebuilder:pruning:PreserveUnknownFields
