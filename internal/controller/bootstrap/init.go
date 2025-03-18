@@ -2056,6 +2056,9 @@ func (b *Bootstrap) UpdateResourceLabel(instance *apiv3.CommonService) error {
 
 func (b *Bootstrap) UpdateResourceWithLabel(resources *unstructured.UnstructuredList, labels map[string]string) error {
 	for _, resource := range resources.Items {
+		if resource.GetName() == "" {
+			continue
+		}
 		util.EnsureLabels(&resource, labels)
 		klog.Infof("Updating labels in %s %s/%s", resource.GetKind(), resource.GetNamespace(), resource.GetName())
 		if err := b.UpdateObject(&resource); err != nil {
