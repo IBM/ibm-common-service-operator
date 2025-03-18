@@ -784,9 +784,7 @@ spec:
                     privileged: false
                     readOnlyRootFilesystem: false
                 containers:
-                - command:
-                  - bash
-                  - '-c'
+                - command: ["bash", "-c"]
                   args:
                   - |
                     kubectl delete pods -l app.kubernetes.io/name=cloud-native-postgresql
@@ -1053,6 +1051,40 @@ spec:
             kind: Role
             name: convert-secret-role
             apiGroup: rbac.authorization.k8s.io
+      - apiVersion: v1
+        kind: ConfigMap
+        name: convert-secrets
+        data:
+          data:
+            convert-secrets.sh: |
+              #!/usr/bin/env bash
+              # Check if the secret already exists
+              if oc get secret cs-keycloak-ca-certs >/dev/null 2>&1; then
+                echo "Secret cs-keycloak-ca-certs already exists. Skipping conversion."
+                exit 0
+              fi
+              
+              # Check if ConfigMap exists
+              if ! oc get configmap cs-keycloak-ca-certs >/dev/null 2>&1; then
+                echo "ConfigMap cs-keycloak-ca-certs not found. Nothing to conversion."
+                exit 0
+              fi
+              
+              # Extract certificate file names from ConfigMap
+              CERT_FILES=$(oc get configmap cs-keycloak-ca-certs -o yaml | yq e '.data | keys | .[]' -)              
+              
+              # Create a temporary directory
+              mkdir -p /tmp/certs
+              # Extract certificates from ConfigMap and save them as files
+              for CERT in $CERT_FILES; do
+                oc get configmap cs-keycloak-ca-certs -o yaml | yq e ".data[\"$CERT\"]"> /tmp/certs/$CERT
+              done
+              
+              # Create Secret from extracted certificates
+              oc create secret generic cs-keycloak-ca-certs \
+                $(for CERT in $CERT_FILES; do echo --from-file=/tmp/certs/$CERT; done)
+              
+              echo "Conversion complete. Secret created: cs-keycloak-ca-certs"
       - apiVersion: batch/v1
         kind: Job
         force: true
@@ -1077,37 +1109,14 @@ spec:
                 containers:
                 - name: convert-secret-job
                   image: icr.io/cpopen/cpfs/cpfs-utils:latest
-                  command:
-                    - /bin/sh
-                    - -c
-                    - |              
-                      # Check if the secret already exists
-                      if oc get secret cs-keycloak-ca-certs >/dev/null 2>&1; then
-                        echo "Secret cs-keycloak-ca-certs already exists. Skipping conversion."
-                        exit 0
-                      fi
-                      
-                      # Check if ConfigMap exists
-                      if ! oc get configmap cs-keycloak-ca-certs >/dev/null 2>&1; then
-                        echo "ConfigMap cs-keycloak-ca-certs not found. Nothing to conversion."
-                        exit 0
-                      fi
-                      
-                      # Extract certificate file names from ConfigMap
-                      CERT_FILES=$(oc get configmap cs-keycloak-ca-certs -o yaml | yq e '.data | keys | .[]' -)              
-                      
-                      # Create a temporary directory
-                      mkdir -p /tmp/certs
-                      # Extract certificates from ConfigMap and save them as files
-                      for CERT in $CERT_FILES; do
-                        oc get configmap cs-keycloak-ca-certs -o yaml | yq e ".data[\"$CERT\"]"> /tmp/certs/$CERT
-                      done
-                      
-                      # Create Secret from extracted certificates
-                      oc create secret generic cs-keycloak-ca-certs \
-                        $(for CERT in $CERT_FILES; do echo --from-file=/tmp/certs/$CERT; done)
-                      
-                      echo "Conversion complete. Secret created: cs-keycloak-ca-certs"
+                  command: ["/bin/sh", "/mnt/scripts/convert-secrets.sh"]
+                  volumeMounts
+                    - name: script-volume
+                      mountPath: /mnt/scripts
+                volumes:
+                - name: script-volume
+                  configMap:
+                    name: convert-secrets
       - apiVersion: v1
         annotations:
           service.beta.openshift.io/serving-cert-secret-name: cpfs-opcon-cs-keycloak-tls-secret
@@ -1302,9 +1311,7 @@ spec:
                         required: true
                 spec:
                   containers:
-                    - command:
-                        - /bin/sh
-                        - /mnt/startup/cs-keycloak-entrypoint.sh
+                    - command: ["/bin/sh", "/mnt/startup/cs-keycloak-entrypoint.sh"]
                       volumeMounts:
                         - mountPath: /mnt/truststore
                           name: truststore-volume
@@ -1572,9 +1579,7 @@ spec:
                     privileged: false
                     readOnlyRootFilesystem: false
                 containers:
-                - command:
-                  - bash
-                  - '-c'
+                - command: ["bash", "-c"]
                   args:
                   - |
                     kubectl delete pods -l app.kubernetes.io/name=cloud-native-postgresql
