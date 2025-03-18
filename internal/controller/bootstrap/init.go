@@ -2238,7 +2238,7 @@ func (b *Bootstrap) CheckSubOperatorStatus(instance *apiv3.CommonService) (bool,
 
 func (b *Bootstrap) GetOperatorInfo(optList []odlm.Operator, optName string) (*odlm.Operator, error) {
 	for _, opt := range optList {
-		if opt.Name == optName {
+		if opt.Name == optName && opt.InstallMode != "no-op" { // If the operator is no-op mode, skip it
 			return &opt, nil
 		}
 	}
