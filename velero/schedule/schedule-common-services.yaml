@@ -58,3 +58,5 @@ spec:
         - iam-chart
         - iam-cluster
         - nss-cluster
+        - licensing-cluster
+        - licensing-chart
