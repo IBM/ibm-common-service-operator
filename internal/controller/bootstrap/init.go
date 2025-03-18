@@ -1958,7 +1958,6 @@ func (b *Bootstrap) UpdateResourceLabel(instance *apiv3.CommonService) error {
 		}
 	}
 
-	klog.Infof("add label to configmaps")
 	// update labels in the configmap
 	nsscmName := "namespace-scope"
 	cmList := &corev1.ConfigMapList{}
@@ -1979,7 +1978,6 @@ func (b *Bootstrap) UpdateResourceLabel(instance *apiv3.CommonService) error {
 		return err
 	}
 
-	klog.Infof("add label to opcon and opreg")
 	// Update labels in the OperandConfig and OperandRegistry
 	opconfigList := &odlm.OperandConfigList{}
 	opcon := &odlm.OperandConfig{}
@@ -2013,7 +2011,6 @@ func (b *Bootstrap) UpdateResourceLabel(instance *apiv3.CommonService) error {
 		return err
 	}
 
-	klog.Infof("add label to issuer")
 	// update labels in the Issuer
 	issuerList := &certmanagerv1.IssuerList{}
 	issuerNames := []string{"cs-ss-issuer", "cs-ca-issuer"}
@@ -2036,7 +2033,6 @@ func (b *Bootstrap) UpdateResourceLabel(instance *apiv3.CommonService) error {
 		return err
 	}
 
-	klog.Infof("add label to certificate")
 	// update labels in the Certificate
 	certList := &certmanagerv1.CertificateList{}
 	cert := &certmanagerv1.Certificate{}
