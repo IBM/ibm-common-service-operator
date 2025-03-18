@@ -831,19 +831,9 @@ spec:
         namespace: "{{ $.OperatorNs }}"
         data:
           rules:
-          - apiGroups:
-            - ""
-            resources:
-            - pods
-            - secrets
-            verbs:
-            - create
-            - update
-            - patch
-            - get
-            - list
-            - delete
-            - watch
+          - apiGroups: [""]
+            resources: ["pods", "secrets"]
+            verbs: ["create", "update", "patch", "get", "list", "delete", "watch"]
       - apiVersion: rbac.authorization.k8s.io/v1
         kind: RoleBinding
         name: edb-license-rolebinding
@@ -1049,19 +1039,9 @@ spec:
         name: convert-secret-role
         data:
           rules:
-          - apiGroups:
-            - ""
-            resources:
-            - secrets
-            - configmaps
-            verbs:
-            - create
-            - update
-            - patch
-            - get
-            - list
-            - delete
-            - watch
+          - apiGroups: [""]
+            resources: ["configmaps", "secrets"]
+            verbs: ["create", "update", "patch", "get", "list", "delete", "watch"]
       - apiVersion: rbac.authorization.k8s.io/v1
         kind: RoleBinding
         name: convert-secret-rolebinding
@@ -1625,19 +1605,9 @@ spec:
         namespace: "{{ .OperatorNs }}"
         data:
           rules:
-          - apiGroups:
-            - ""
-            resources:
-            - pods
-            - secrets
-            verbs:
-            - create
-            - update
-            - patch
-            - get
-            - list
-            - delete
-            - watch
+          - apiGroups: [""]
+            resources: ["pods", "secrets"]
+            verbs: ["create", "update", "patch", "get", "list", "delete", "watch"] 
       - apiVersion: rbac.authorization.k8s.io/v1
         kind: RoleBinding
         name: edb-license-rolebinding
