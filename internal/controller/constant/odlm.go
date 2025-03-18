@@ -1107,16 +1107,16 @@ spec:
                 restartPolicy: OnFailure
                 serviceAccountName: convert-secret-sa
                 containers:
-                - name: convert-secret-job
-                  image: icr.io/cpopen/cpfs/cpfs-utils:latest
-                  command: ["/bin/sh", "/mnt/scripts/convert-secrets.sh"]
-                  volumeMounts
-                    - name: script-volume
-                      mountPath: /mnt/scripts
+                  - name: convert-secret-job
+                    image: {{ .UtilsImage }}
+                    command: ["/bin/sh", "/mnt/scripts/convert-secrets.sh"]
+                    volumeMounts:
+                      - name: script-volume
+                        mountPath: /mnt/scripts
                 volumes:
-                - name: script-volume
-                  configMap:
-                    name: convert-secrets
+                  - name: script-volume
+                    configMap:
+                      name: convert-secrets
       - apiVersion: v1
         annotations:
           service.beta.openshift.io/serving-cert-secret-name: cpfs-opcon-cs-keycloak-tls-secret
