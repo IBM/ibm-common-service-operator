@@ -784,9 +784,7 @@ spec:
                     privileged: false
                     readOnlyRootFilesystem: false
                 containers:
-                - command:
-                  - bash
-                  - '-c'
+                - command: ["bash", "-c"]
                   args:
                   - |
                     kubectl delete pods -l app.kubernetes.io/name=cloud-native-postgresql
@@ -831,19 +829,9 @@ spec:
         namespace: "{{ $.OperatorNs }}"
         data:
           rules:
-          - apiGroups:
-            - ""
-            resources:
-            - pods
-            - secrets
-            verbs:
-            - create
-            - update
-            - patch
-            - get
-            - list
-            - delete
-            - watch
+          - apiGroups: [""]
+            resources: ["pods", "secrets"]
+            verbs: ["create", "update", "patch", "get", "list", "delete", "watch"]
       - apiVersion: rbac.authorization.k8s.io/v1
         kind: RoleBinding
         name: edb-license-rolebinding
@@ -1042,6 +1030,94 @@ spec:
         kind: ConfigMap
         name: cs-keycloak-user-profile
       - apiVersion: v1
+        kind: ServiceAccount
+        name: convert-secret-sa
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: Role
+        name: convert-secret-role
+        data:
+          rules:
+          - apiGroups: [""]
+            resources: ["configmaps", "secrets"]
+            verbs: ["create", "update", "patch", "get", "list", "delete", "watch"]
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        name: convert-secret-rolebinding
+        data:
+          subjects:
+          - kind: ServiceAccount
+            name: convert-secret-sa
+          roleRef:
+            kind: Role
+            name: convert-secret-role
+            apiGroup: rbac.authorization.k8s.io
+      - apiVersion: v1
+        kind: ConfigMap
+        name: convert-secrets
+        data:
+          data:
+            convert-secrets.sh: |
+              #!/usr/bin/env bash
+              # Check if the secret already exists
+              if oc get secret cs-keycloak-ca-certs >/dev/null 2>&1; then
+                echo "Secret cs-keycloak-ca-certs already exists. Skipping conversion."
+                exit 0
+              fi
+              
+              # Check if ConfigMap exists
+              if ! oc get configmap cs-keycloak-ca-certs >/dev/null 2>&1; then
+                echo "ConfigMap cs-keycloak-ca-certs not found. Nothing to conversion."
+                exit 0
+              fi
+              
+              # Extract certificate file names from ConfigMap
+              CERT_FILES=$(oc get configmap cs-keycloak-ca-certs -o yaml | yq e '.data | keys | .[]' -)              
+              
+              # Create a temporary directory
+              mkdir -p /tmp/certs
+              # Extract certificates from ConfigMap and save them as files
+              for CERT in $CERT_FILES; do
+                oc get configmap cs-keycloak-ca-certs -o yaml | yq e ".data[\"$CERT\"]"> /tmp/certs/$CERT
+              done
+              
+              # Create Secret from extracted certificates
+              oc create secret generic cs-keycloak-ca-certs \
+                $(for CERT in $CERT_FILES; do echo --from-file=/tmp/certs/$CERT; done)
+              
+              echo "Conversion complete. Secret created: cs-keycloak-ca-certs"
+      - apiVersion: batch/v1
+        kind: Job
+        force: true
+        name: convert-secret-job
+        data:
+          spec:
+            template:
+              spec:
+                affinity:
+                  nodeAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                      nodeSelectorTerms:
+                      - matchExpressions:
+                        - key: kubernetes.io/arch
+                          operator: In
+                          values:
+                          - amd64
+                          - ppc64le
+                          - s390x
+                restartPolicy: OnFailure
+                serviceAccountName: convert-secret-sa
+                containers:
+                  - name: convert-secret-job
+                    image: {{ .UtilsImage }}
+                    command: ["/bin/sh", "/mnt/scripts/convert-secrets.sh"]
+                    volumeMounts:
+                      - name: script-volume
+                        mountPath: /mnt/scripts
+                volumes:
+                  - name: script-volume
+                    configMap:
+                      name: convert-secrets
+      - apiVersion: v1
         annotations:
           service.beta.openshift.io/serving-cert-secret-name: cpfs-opcon-cs-keycloak-tls-secret
         labels:
@@ -1151,6 +1227,11 @@ spec:
                         - amd64
                         - ppc64le
                         - s390x
+            truststores:
+              my-truststore:
+                secret:
+                  name: cs-keycloak-ca-certs
+                  optional: true
             proxy:
               headers: xforwarded
             features:
@@ -1230,9 +1311,7 @@ spec:
                         required: true
                 spec:
                   containers:
-                    - command:
-                        - /bin/sh
-                        - /mnt/startup/cs-keycloak-entrypoint.sh
+                    - command: ["/bin/sh", "/mnt/startup/cs-keycloak-entrypoint.sh"]
                       volumeMounts:
                         - mountPath: /mnt/truststore
                           name: truststore-volume
@@ -1314,6 +1393,24 @@ spec:
                   apiVersion: apiextensions.k8s.io/v1
                   kind: CustomResourceDefinition
                 key: .spec.versions[0].schema.openAPIV3Schema.properties.spec.properties.scheduling
+                operator: DoesNotExist
+          - path: .spec.unsupported.podTemplate.spec.containers[0].command
+            operation: remove
+            matchExpressions:
+              - objectRef:
+                  name: keycloaks.k8s.keycloak.org
+                  apiVersion: apiextensions.k8s.io/v1
+                  kind: CustomResourceDefinition
+                key: .spec.versions[0].schema.openAPIV3Schema.properties.spec.properties.truststores
+                operator: Exists
+          - path: .spec.truststores
+            operation: remove
+            matchExpressions:
+              - objectRef:
+                  name: keycloaks.k8s.keycloak.org
+                  apiVersion: apiextensions.k8s.io/v1
+                  kind: CustomResourceDefinition
+                key: .spec.versions[0].schema.openAPIV3Schema.properties.spec.properties.truststores
                 operator: DoesNotExist
       - apiVersion: v1
         kind: ConfigMap
@@ -1482,9 +1579,7 @@ spec:
                     privileged: false
                     readOnlyRootFilesystem: false
                 containers:
-                - command:
-                  - bash
-                  - '-c'
+                - command: ["bash", "-c"]
                   args:
                   - |
                     kubectl delete pods -l app.kubernetes.io/name=cloud-native-postgresql
@@ -1529,19 +1624,9 @@ spec:
         namespace: "{{ .OperatorNs }}"
         data:
           rules:
-          - apiGroups:
-            - ""
-            resources:
-            - pods
-            - secrets
-            verbs:
-            - create
-            - update
-            - patch
-            - get
-            - list
-            - delete
-            - watch
+          - apiGroups: [""]
+            resources: ["pods", "secrets"]
+            verbs: ["create", "update", "patch", "get", "list", "delete", "watch"] 
       - apiVersion: rbac.authorization.k8s.io/v1
         kind: RoleBinding
         name: edb-license-rolebinding
