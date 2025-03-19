@@ -10,7 +10,7 @@ metadata:
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: bedrock-migration-job-role
+  name: bedrock-migration-job-role-{{ .Values.global.operatorNamespace }}
   namespace: {{ .Values.global.operatorNamespace }}
   annotations:
     "helm.sh/hook": pre-install
