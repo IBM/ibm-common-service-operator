@@ -76,7 +76,7 @@ subjects:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: bedrock-migration-job-role
+  name: bedrock-migration-job-role-{{ .Values.global.operatorNamespace }}
 {{- $watchNamespaces := .Values.global.tetheredNamespaces | default list -}}
 {{- if .Values.global.instanceNamespace -}}
 {{- $watchNamespaces = append $watchNamespaces .Values.global.instanceNamespace -}}
