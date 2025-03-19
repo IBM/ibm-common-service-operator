@@ -86,7 +86,6 @@ spec:
 
             echo "Deleting EDB config resources in namespace $operatorNamespace to be regenerated after migration..."
             oc delete secret postgresql-operator-controller-manager-config --ignore-not-found -n $operatorNamespace
-            oc delete configmap postgresql-operator-controller-manager-config --ignore-not-found -n $operatorNamespace
             oc delete configmap cloud-native-postgresql-image-list --ignore-not-found -n $operatorNamespace
 
             echo "Deleting IM, UI, and EDB ServiceAccounts and Jobs in operator namespace $operatorNamespace and services namespace $servicesNamespace..."
