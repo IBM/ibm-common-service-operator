@@ -39,6 +39,7 @@ rules:
   resources:
   - configmaps
   - serviceaccounts
+  - secrets
   verbs:
   - list
   - get
