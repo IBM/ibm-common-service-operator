@@ -1,4 +1,3 @@
-#not sure this is necessary
 apiVersion: operator.ibm.com/v3
 kind: CommonService
 metadata:
