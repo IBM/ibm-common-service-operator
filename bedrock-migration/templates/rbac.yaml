@@ -25,6 +25,7 @@ rules:
   - list
   - get
   - delete
+  - watch
 - apiGroups: 
   - "rbac.authorization.k8s.io"
   resources:
@@ -34,6 +35,7 @@ rules:
   - list
   - get
   - delete
+  - watch
 - apiGroups: 
   - ""
   resources:
@@ -44,6 +46,7 @@ rules:
   - list
   - get
   - delete
+  - watch
 - apiGroups: 
   - "batch"
   resources:
@@ -52,6 +55,7 @@ rules:
   - list
   - get
   - delete
+  - watch
 - apiGroups: 
   - "operator.ibm.com"
   resources:
@@ -61,6 +65,7 @@ rules:
   - get
   - delete
   - patch
+  - watch
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -102,6 +107,7 @@ rules:
   - list
   - get
   - delete
+  - watch
 - apiGroups: 
   - ""
   resources:
@@ -111,6 +117,7 @@ rules:
   - list
   - get
   - delete
+  - watch
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
