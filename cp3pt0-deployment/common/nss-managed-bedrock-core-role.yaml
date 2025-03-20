@@ -1658,3 +1658,34 @@ rules:
       - secrets
     resourceNames:
       - postgresql-operator-controller-manager-1-22-7-service-cert
+  - verbs:
+      - get
+      - create
+      - delete
+      - list
+      - patch
+      - update
+      - watch
+    resources:
+      - databases
+      - publications
+      - subscriptions
+    apiGroups:
+      - postgresql.k8s.enterprisedb.io
+  - verbs:
+      - get
+      - patch
+      - update
+    resources:
+      - databases/status
+      - publications/status
+    apiGroups:
+      - postgresql.k8s.enterprisedb.io
+  - verbs:
+      - get
+      - list
+      - watch
+    resources:
+      - imagecatalogs
+    apiGroups:
+      - postgresql.k8s.enterprisedb.io
