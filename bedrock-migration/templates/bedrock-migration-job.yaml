@@ -12,7 +12,7 @@ spec:
     spec:
       containers:
       - name: bedrock-migration-job
-        image: {{ .Values.global.imagePullPrefix }}/{{ .Values.cpfs.imageRegistryNamespaceOperand }}/cpfs-utils:4.6.7
+        image: {{ .Values.cpfs.imagePullPrefix | default .Values.global.imagePullPrefix }}/{{ .Values.cpfs.imageRegistryNamespaceOperand }}/cpfs-utils:4.6.7
         command:
           - bash
           - -c
@@ -113,6 +113,9 @@ spec:
                 roles="${roles} $(oc get roles -n $ns | grep postgresql-operator-controller-manager | awk '{print $1}' | tr "\n" " ")"
                 roles="${roles} $(oc get roles -n $ns | grep cloud-native-postgresql | awk '{print $1}' | tr "\n" " ")"
                 roles="${roles} $(oc get roles -n $ns | grep common-service-db | awk '{print $1}' | tr "\n" " ")"
+
+                #get nss roles
+                roles="${roles} $(oc get roles -n $ns | grep nss-managed-role-from | awk '{print $1}' | tr "\n" " ")"
                 
                 if [[ $ns != $servicesNamespace ]]; then
                     edbSA=$(oc get sa -n $ns --ignore-not-found | grep postgresql-operator-controller-manager | awk '{print $1}' | tr "\n" " ")
