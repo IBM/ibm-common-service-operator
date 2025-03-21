@@ -297,7 +297,7 @@ function create_sf_resources(){
     ${OC} apply -f ./templates/backup_storage_location_secret.yaml -f ./templates/backup_storage_location.yaml || error "Unable to create backup storage location resources to namespace $SF_NAMESPACE."
     
     change_ns="false"
-    if [[ $SF_NAMESPACE != "ibm-spectrum-fusion-ns" ]]; then
+    if [[ $SF_NAMESPACE != "ibm-fusion" ]]; then
         change_ns="true"
     fi
     
