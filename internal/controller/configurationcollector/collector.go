@@ -34,7 +34,7 @@ import (
 
 func Buildconfig(config map[string]string, bs *bootstrap.Bootstrap) map[string]string {
 	builder := configbuilder{data: config, bs: bs}
-	updatedConfig := builder.setDefaultStorageClass()
+	updatedConfig := builder.setDefaultStorageClass().setKeycloakOperatorChannels()
 	return updatedConfig.data
 }
 
@@ -85,6 +85,15 @@ func (b *configbuilder) setDefaultStorageClass() *configbuilder {
 		b.data["storageclass.list"] = strings.Join(allSCList, ",")
 	}
 
+	return b
+}
+
+// setKeycloakOperatorChannels sets the keycloak operator channels in the config
+func (b *configbuilder) setKeycloakOperatorChannels() *configbuilder {
+	if b.data == nil {
+		b.data = make(map[string]string)
+	}
+	b.data["keycloak-operator"] = "- stable-v28\n- stable-v26\n- stable-v24\n- stable-v22"
 	return b
 }
 
