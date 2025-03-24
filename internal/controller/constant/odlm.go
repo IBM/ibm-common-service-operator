@@ -275,8 +275,9 @@ metadata:
     status-monitored-services: {{ .StatusMonitoredServices }}
 spec:
   operators:
-  - channel: stable-v1.22
+  - channel: stable-v1.25
     fallbackChannels:
+      - stable-v1.22
       - stable
     installPlanApproval: {{ .ApprovalMode }}
     name: common-service-postgresql
@@ -1527,7 +1528,7 @@ spec:
           spec:
             requests:
               - operands:
-                  - name: cloud-native-postgresql-v1.22
+                  - name: cloud-native-postgresql-v1.25
                 registry: common-service
                 registryNamespace: {{ .ServicesNs }}
         force: true
