@@ -240,7 +240,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		}
 
 		klog.Info("Installing/Updating OperandRegistry")
-		if err := b.InstallOrUpdateOpreg(forceUpdateODLMCRs, installPlanApproval); err != nil {
+		if err := b.InstallOrUpdateOpreg(installPlanApproval); err != nil {
 			return err
 		}
 
@@ -279,7 +279,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		}
 
 		klog.Info("Installing/Updating OperandRegistry")
-		if err := b.InstallOrUpdateOpreg(forceUpdateODLMCRs, installPlanApproval); err != nil {
+		if err := b.InstallOrUpdateOpreg(installPlanApproval); err != nil {
 			return err
 		}
 
@@ -729,12 +729,27 @@ func (b *Bootstrap) ResourceExists(dc discovery.DiscoveryInterface, apiGroupVers
 }
 
 // InstallOrUpdateOpreg will install or update OperandRegistry when Opreg CRD is existent
-func (b *Bootstrap) InstallOrUpdateOpreg(forceUpdateODLMCRs bool, installPlanApproval olmv1alpha1.Approval) error {
+func (b *Bootstrap) InstallOrUpdateOpreg(installPlanApproval olmv1alpha1.Approval) error {
 
 	if installPlanApproval != "" || b.CSData.ApprovalMode == string(olmv1alpha1.ApprovalManual) {
 		if err := b.updateApprovalMode(); err != nil {
 			return err
 		}
+	}
+
+	// Read channel list from cpp configmap
+	configMap := &corev1.ConfigMap{}
+	err := b.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      constant.IBMCPPCONFIG,
+		Namespace: b.CSData.ServicesNs,
+	}, configMap)
+
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+		klog.Infof("ConfigMap %s not found in namespace %s, using default values", constant.IBMCPPCONFIG, b.CSData.ServicesNs)
+		configMap.Data = make(map[string]string)
 	}
 
 	var baseReg string
@@ -753,13 +768,13 @@ func (b *Bootstrap) InstallOrUpdateOpreg(forceUpdateODLMCRs bool, installPlanApp
 		baseReg = constant.CSV3OpReg
 	}
 
-	concatenatedReg, err := constant.ConcatenateRegistries(baseReg, registries, b.CSData)
+	concatenatedReg, err := constant.ConcatenateRegistries(baseReg, registries, b.CSData, configMap.Data)
 	if err != nil {
 		klog.Errorf("failed to concatenate OperandRegistry: %v", err)
 		return err
 	}
 
-	if err := b.renderTemplate(concatenatedReg, b.CSData, forceUpdateODLMCRs); err != nil {
+	if err := b.renderTemplate(concatenatedReg, b.CSData, true); err != nil {
 		return err
 	}
 	return nil

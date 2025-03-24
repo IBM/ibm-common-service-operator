@@ -19,9 +19,14 @@ package constant
 import (
 	"bytes"
 	"fmt"
+	"regexp"
+	"sort"
+	"strconv"
+	"strings"
 	"text/template"
 
 	utilyaml "github.com/ghodss/yaml"
+	"k8s.io/klog"
 
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/v4/api/v1alpha1"
 )
@@ -240,9 +245,8 @@ metadata:
     status-monitored-services: {{ .StatusMonitoredServices }}
 spec:
   operators:
-  - channel: stable-v24
-    fallbackChannels:
-      - stable-v22
+  - channel: []
+    fallbackChannels: []
     installPlanApproval: {{ .ApprovalMode }}
     name: keycloak-operator
     namespace: "{{ .ServicesNs }}"
@@ -2268,7 +2272,7 @@ spec:
 `
 
 // ConcatenateRegistries concatenate the two YAML strings and return the new YAML string
-func ConcatenateRegistries(baseRegistryTemplate string, insertedRegistryTemplateList []string, data interface{}) (string, error) {
+func ConcatenateRegistries(baseRegistryTemplate string, insertedRegistryTemplateList []string, data interface{}, cppdata map[string]string) (string, error) {
 	baseRegistry := odlm.OperandRegistry{}
 	var template []byte
 	var err error
@@ -2296,6 +2300,10 @@ func ConcatenateRegistries(baseRegistryTemplate string, insertedRegistryTemplate
 	}
 	// add new operators to baseRegistry
 	baseRegistry.Spec.Operators = append(baseRegistry.Spec.Operators, newOperators...)
+
+	// Update default and fallback channels with ConfigMap data
+	operatorNames := []string{"keycloak-operator"} // List of operators to process
+	processdDynamicChannels(&baseRegistry, cppdata, operatorNames)
 
 	opregBytes, err := utilyaml.Marshal(baseRegistry)
 	if err != nil {
@@ -2350,4 +2358,117 @@ func applyTemplate(objectTemplate string, data interface{}) ([]byte, error) {
 	}
 
 	return buffer.Bytes(), nil
+}
+
+// processFallbackChannels updates operator entries with dynamic fallback channels based on ibm-cpp-config data
+func processdDynamicChannels(registry *odlm.OperandRegistry, configMapData map[string]string, operatorNames []string) error {
+	for i, operator := range registry.Spec.Operators {
+		// Check if this operator is in our list of operators to process
+		for _, opName := range operatorNames {
+			if operator.Name == opName {
+				klog.Infof("1111 operator.Name %v and opName %v", operator.Name, opName)
+				// Get channel list for this operator from ConfigMap
+				channelListKey := opName
+				channelListStr, exists := configMapData[channelListKey]
+				klog.Infof("2222 channelListKey %v and channelListStr %v", channelListKey, channelListStr)
+				if !exists {
+					continue // Skip if no channel list exists for this operator
+				}
+
+				// Parse channel list from ConfigMap (assuming YAML list format)
+				var channelList []string
+				// split the string by comma
+				//lines := strings.Split(channelListStr, ",")
+				lines := strings.Split(channelListStr, "\n")
+				for _, line := range lines {
+					line = strings.TrimSpace(line)
+					if strings.HasPrefix(line, "- ") {
+						channel := strings.TrimPrefix(line, "- ")
+						channelList = append(channelList, channel)
+					}
+				}
+				klog.Infof("3333 channelList %v", channelList)
+
+				if len(channelList) == 0 {
+					continue // Skip if channel list is empty
+				}
+
+				// Get the highest version (first in list)
+				highestVersion := channelList[0]
+
+				// Get current channel
+				var currentChannel string
+				if operator.Name == "keycloak-operator" {
+					// For keycloak, check the keycloak_version in ConfigMap or use a default
+					keycloakVersion, exists := configMapData["keycloak_channel"]
+					if exists {
+						currentChannel = keycloakVersion // cpfi version
+					} else {
+						currentChannel = "stable-v24" // Default for keycloak
+					}
+				} else {
+					// skip if not keycloak-operator
+					continue
+				}
+
+				klog.Infof("4444 currentChannel %v and highestVersion %v", currentChannel, highestVersion)
+
+				// If current channel is less than highest version in list
+				if compareVersions(currentChannel, highestVersion) < 0 {
+					registry.Spec.Operators[i].Channel = currentChannel
+					// Get all versions less than current channel
+					var fallbacks []string
+					for _, channel := range channelList {
+						if compareVersions(channel, currentChannel) < 0 {
+							fallbacks = append(fallbacks, channel)
+						}
+					}
+
+					// Sort fallbacks in descending order
+					sort.Slice(fallbacks, func(i, j int) bool {
+						return compareVersions(fallbacks[i], fallbacks[j]) > 0
+					})
+
+					klog.Infof("5555 fallbacks %v", fallbacks)
+
+					// Update the operator's fallback channels
+					registry.Spec.Operators[i].FallbackChannels = fallbacks
+				} else {
+					registry.Spec.Operators[i].Channel = highestVersion
+					// Simplified: Just remove the first item (highest version) from the channel list
+					if len(channelList) > 1 {
+						registry.Spec.Operators[i].FallbackChannels = channelList[1:]
+					} else {
+						registry.Spec.Operators[i].FallbackChannels = []string{}
+					}
+				}
+				break // Found and processed this operator, move to next one
+			}
+		}
+	}
+	return nil
+}
+
+// compareVersions compares version strings (e.g., "stable-v22" vs "stable-v24")
+// Returns -1 if v1 < v2, 0 if v1 == v2, 1 if v1 > v2
+func compareVersions(v1, v2 string) int {
+	// Extract version numbers
+	re := regexp.MustCompile(`v(\d+)`)
+	v1Matches := re.FindStringSubmatch(v1)
+	v2Matches := re.FindStringSubmatch(v2)
+
+	if len(v1Matches) < 2 || len(v2Matches) < 2 {
+		// Default behavior if pattern doesn't match
+		return strings.Compare(v1, v2)
+	}
+
+	v1Num, _ := strconv.Atoi(v1Matches[1])
+	v2Num, _ := strconv.Atoi(v2Matches[1])
+
+	if v1Num < v2Num {
+		return -1
+	} else if v1Num > v2Num {
+		return 1
+	}
+	return 0
 }
