@@ -26,7 +26,6 @@ import (
 	"text/template"
 
 	utilyaml "github.com/ghodss/yaml"
-	"k8s.io/klog"
 
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/v4/api/v1alpha1"
 )
@@ -245,7 +244,7 @@ metadata:
     status-monitored-services: {{ .StatusMonitoredServices }}
 spec:
   operators:
-  - channel: []
+  - channel: ""
     fallbackChannels: []
     installPlanApproval: {{ .ApprovalMode }}
     name: keycloak-operator
@@ -2277,7 +2276,7 @@ func ConcatenateRegistries(baseRegistryTemplate string, insertedRegistryTemplate
 	var template []byte
 	var err error
 
-	// unmarshal first OprandRegistry
+	// Unmarshal first OprandRegistry
 	if template, err = applyTemplate(baseRegistryTemplate, data); err != nil {
 		return "", err
 	}
@@ -2298,7 +2297,7 @@ func ConcatenateRegistries(baseRegistryTemplate string, insertedRegistryTemplate
 
 		newOperators = append(newOperators, insertedRegistry.Spec.Operators...)
 	}
-	// add new operators to baseRegistry
+	// Add new operators to baseRegistry
 	baseRegistry.Spec.Operators = append(baseRegistry.Spec.Operators, newOperators...)
 
 	// Update default and fallback channels with ConfigMap data
@@ -2319,7 +2318,7 @@ func ConcatenateConfigs(baseConfigTemplate string, insertedConfigTemplateList []
 	var template []byte
 	var err error
 
-	// unmarshal first OprandCongif
+	// unmarshal first OprandConfig
 	if template, err = applyTemplate(baseConfigTemplate, data); err != nil {
 		return "", err
 	}
@@ -2339,7 +2338,7 @@ func ConcatenateConfigs(baseConfigTemplate string, insertedConfigTemplateList []
 
 		newServices = append(newServices, insertedConfig.Spec.Services...)
 	}
-	// add new services to baseConfig
+	// Add new services to baseConfig
 	baseConfig.Spec.Services = append(baseConfig.Spec.Services, newServices...)
 
 	opconBytes, err := utilyaml.Marshal(baseConfig)
@@ -2366,19 +2365,14 @@ func processdDynamicChannels(registry *odlm.OperandRegistry, configMapData map[s
 		// Check if this operator is in our list of operators to process
 		for _, opName := range operatorNames {
 			if operator.Name == opName {
-				klog.Infof("1111 operator.Name %v and opName %v", operator.Name, opName)
 				// Get channel list for this operator from ConfigMap
 				channelListKey := opName
 				channelListStr, exists := configMapData[channelListKey]
-				klog.Infof("2222 channelListKey %v and channelListStr %v", channelListKey, channelListStr)
 				if !exists {
 					continue // Skip if no channel list exists for this operator
 				}
 
-				// Parse channel list from ConfigMap (assuming YAML list format)
 				var channelList []string
-				// split the string by comma
-				//lines := strings.Split(channelListStr, ",")
 				lines := strings.Split(channelListStr, "\n")
 				for _, line := range lines {
 					line = strings.TrimSpace(line)
@@ -2387,31 +2381,24 @@ func processdDynamicChannels(registry *odlm.OperandRegistry, configMapData map[s
 						channelList = append(channelList, channel)
 					}
 				}
-				klog.Infof("3333 channelList %v", channelList)
-
 				if len(channelList) == 0 {
-					continue // Skip if channel list is empty
+					continue
 				}
 
-				// Get the highest version (first in list)
+				// Get the highest version supported by Bedrocks (first in list)
 				highestVersion := channelList[0]
-
-				// Get current channel
 				var currentChannel string
 				if operator.Name == "keycloak-operator" {
-					// For keycloak, check the keycloak_version in ConfigMap or use a default
-					keycloakVersion, exists := configMapData["keycloak_channel"]
+					// For keycloak, check the keycloak_preferred_channel in ConfigMap or use a default
+					keycloakVersion, exists := configMapData["keycloak_preferred_channel"]
 					if exists {
-						currentChannel = keycloakVersion // cpfi version
+						currentChannel = keycloakVersion
 					} else {
 						currentChannel = "stable-v24" // Default for keycloak
 					}
 				} else {
-					// skip if not keycloak-operator
 					continue
 				}
-
-				klog.Infof("4444 currentChannel %v and highestVersion %v", currentChannel, highestVersion)
 
 				// If current channel is less than highest version in list
 				if compareVersions(currentChannel, highestVersion) < 0 {
@@ -2429,20 +2416,17 @@ func processdDynamicChannels(registry *odlm.OperandRegistry, configMapData map[s
 						return compareVersions(fallbacks[i], fallbacks[j]) > 0
 					})
 
-					klog.Infof("5555 fallbacks %v", fallbacks)
-
 					// Update the operator's fallback channels
 					registry.Spec.Operators[i].FallbackChannels = fallbacks
 				} else {
 					registry.Spec.Operators[i].Channel = highestVersion
-					// Simplified: Just remove the first item (highest version) from the channel list
 					if len(channelList) > 1 {
 						registry.Spec.Operators[i].FallbackChannels = channelList[1:]
 					} else {
 						registry.Spec.Operators[i].FallbackChannels = []string{}
 					}
 				}
-				break // Found and processed this operator, move to next one
+				break
 			}
 		}
 	}
@@ -2450,7 +2434,7 @@ func processdDynamicChannels(registry *odlm.OperandRegistry, configMapData map[s
 }
 
 // compareVersions compares version strings (e.g., "stable-v22" vs "stable-v24")
-// Returns -1 if v1 < v2, 0 if v1 == v2, 1 if v1 > v2
+// Returns -1 if v1 < v2; 0 if v1 == v2; 1 if v1 > v2
 func compareVersions(v1, v2 string) int {
 	// Extract version numbers
 	re := regexp.MustCompile(`v(\d+)`)
@@ -2458,7 +2442,6 @@ func compareVersions(v1, v2 string) int {
 	v2Matches := re.FindStringSubmatch(v2)
 
 	if len(v1Matches) < 2 || len(v2Matches) < 2 {
-		// Default behavior if pattern doesn't match
 		return strings.Compare(v1, v2)
 	}
 

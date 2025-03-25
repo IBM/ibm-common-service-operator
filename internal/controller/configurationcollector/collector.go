@@ -93,7 +93,7 @@ func (b *configbuilder) setKeycloakOperatorChannels() *configbuilder {
 	if b.data == nil {
 		b.data = make(map[string]string)
 	}
-	b.data["keycloak-operator"] = "- stable-v28\n- stable-v26\n- stable-v24\n- stable-v22"
+	b.data["keycloak-operator"] = constant.KeyCloakVersions
 	return b
 }
 
