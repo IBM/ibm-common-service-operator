@@ -56,9 +56,6 @@ function main() {
     if [[ $NO_OLM == "false" ]]; then
         label_catalogsource
         label_subscription
-        if [[ $ENABLE_LSR -eq 1 ]]; then
-            label_lsr
-        fi
     else
         label_helm_cluster_scope
         label_helm_namespace_scope
@@ -74,6 +71,9 @@ function main() {
     label_cs
     if [[ $SERVICES_NS != "" ]]; then
         label_nss
+    fi
+    if [[ $ENABLE_LSR -eq 1 ]]; then
+        label_lsr
     fi
     label_mcsp
     success "Successfully labeled all the resources"
