@@ -60,3 +60,5 @@ spec:
         - nss-cluster
         - licensing-cluster
         - licensing-chart
+        - lsr-cluster
+        - lsr-chart
