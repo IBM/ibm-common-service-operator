@@ -93,7 +93,21 @@ func (b *configbuilder) setKeycloakOperatorChannels() *configbuilder {
 	if b.data == nil {
 		b.data = make(map[string]string)
 	}
-	b.data["keycloak-operator"] = constant.KeyCloakVersions
+
+	keycloakChannels, exists := constant.DefaultChannels["keycloak-operator"]
+	if !exists || len(keycloakChannels) == 0 {
+		keycloakChannels = []string{"stable-v24", "stable-v22"}
+	}
+
+	var channelStr strings.Builder
+	for _, channel := range keycloakChannels {
+		channelStr.WriteString("- ")
+		channelStr.WriteString(channel)
+		channelStr.WriteString("\n")
+	}
+
+	b.data["keycloak-operator"] = channelStr.String()
+
 	return b
 }
 

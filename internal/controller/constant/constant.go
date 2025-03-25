@@ -122,9 +122,12 @@ const (
 	RequeueDuration = 30 * time.Second
 	// OpreqLabel is the label used to label the Subscription/CR/Configmap managed by ODLM
 	OpreqLabel string = "operator.ibm.com/opreq-control"
-	// KeyCloak Operator versions
-	KeyCloakVersions = "- stable-v26\n- stable-v24\n- stable-v22"
 )
+
+// DefaultChannels defines the default channels available for each operator
+var DefaultChannels = map[string][]string{
+	"keycloak-operator": {"stable-v26", "stable-v24", "stable-v22"},
+}
 
 // CsOg is OperatorGroup constent for the common service operator
 const CsOperatorGroup = `

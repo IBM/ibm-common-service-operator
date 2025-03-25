@@ -2365,28 +2365,13 @@ func processdDynamicChannels(registry *odlm.OperandRegistry, configMapData map[s
 		// Check if this operator is in our list of operators to process
 		for _, opName := range operatorNames {
 			if operator.Name == opName {
-				// Get channel list for this operator from ConfigMap
-				channelListKey := opName
-				channelListStr, exists := configMapData[channelListKey]
-				if !exists {
-					continue // Skip if no channel list exists for this operator
-				}
 
-				var channelList []string
-				lines := strings.Split(channelListStr, "\n")
-				for _, line := range lines {
-					line = strings.TrimSpace(line)
-					if strings.HasPrefix(line, "- ") {
-						channel := strings.TrimPrefix(line, "- ")
-						channelList = append(channelList, channel)
-					}
-				}
-				if len(channelList) == 0 {
+				channelList, exists := DefaultChannels[operator.Name]
+				if !exists || len(channelList) == 0 {
 					continue
 				}
-
-				// Get the highest version supported by Bedrocks (first in list)
 				highestVersion := channelList[0]
+
 				var currentChannel string
 				if operator.Name == "keycloak-operator" {
 					// For keycloak, check the keycloak_preferred_channel in ConfigMap or use a default
