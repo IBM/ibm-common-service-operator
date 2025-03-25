@@ -2360,7 +2360,7 @@ func applyTemplate(objectTemplate string, data interface{}) ([]byte, error) {
 }
 
 // processFallbackChannels updates operator entries with dynamic fallback channels based on ibm-cpp-config data
-func processdDynamicChannels(registry *odlm.OperandRegistry, configMapData map[string]string, operatorNames []string) error {
+func processdDynamicChannels(registry *odlm.OperandRegistry, configMapData map[string]string, operatorNames []string) {
 	for i, operator := range registry.Spec.Operators {
 		// Check if this operator is in our list of operators to process
 		for _, opName := range operatorNames {
@@ -2430,7 +2430,6 @@ func processdDynamicChannels(registry *odlm.OperandRegistry, configMapData map[s
 			}
 		}
 	}
-	return nil
 }
 
 // compareVersions compares version strings (e.g., "stable-v22" vs "stable-v24")
