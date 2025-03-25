@@ -42,6 +42,8 @@ const (
 	ClusterOperatorNamespace = "openshift-operators"
 	// CS map configMap
 	CsMapConfigMap = "common-service-maps"
+	// CS map configMap namespace
+	CsMapConfigMapNs = "kube-public"
 	// CS Saas configMap
 	SaasConfigMap = "saas-config"
 	// Namespace Scope Operator resource name
