@@ -62,6 +62,9 @@ function main() {
         if [[ $ENABLE_LICENSING -eq 1 ]]; then
             label_helm_licensing
         fi
+        if [[ $ENABLE_LSR -eq 1 ]]; then
+            label_helm_lsr
+        fi
     fi
     label_ns_and_related 
     label_configmap
@@ -622,6 +625,20 @@ function label_helm_licensing() {
     ${OC} label serviceaccount ibm-license-service ibm-license-service-restricted ibm-licensing-default-reader ibm-licensing-operator -n $LICENSING_NAMESPACE foundationservices.cloudpak.ibm.com=licensing-chart --overwrite=true 2>/dev/null
     success "Licensing resources labeled"
 
+}
+
+function label_helm_lsr() {
+    title "Labeling License Service Reporter cluster and namespace resources..."
+    ${OC} label clusterrole manager-role foundationservices.cloudpak.ibm.com=lsr-cluster  --overwrite=true 2>/dev/null
+    ${OC} label clusterrolebinding manager-rolebinding foundationservices.cloudpak.ibm.com=lsr-cluster  --overwrite=true 2>/dev/null
+    ${OC} label customresourcedefinition ibmlicenseservicereporters.operator.ibm.com foundationservices.cloudpak.ibm.com=lsr-cluster  --overwrite=true 2>/dev/null
+
+    ${OC} label ibmlicenseservicereporters.operator.ibm.com instance -n $LSR_NAMESPACE foundationservices.cloudpak.ibm.com=lsr-chart  --overwrite=true 2>/dev/null
+    ${OC} label deployment ibm-license-service-reporter-operator -n $LSR_NAMESPACE foundationservices.cloudpak.ibm.com=lsr-chart  --overwrite=true 2>/dev/null
+    ${OC} label role ibm-license-service-reporter leader-election-role manager-role -n $LSR_NAMESPACE foundationservices.cloudpak.ibm.com=lsr-chart  --overwrite=true 2>/dev/null
+    ${OC} label rolebinding ibm-license-service-reporter leader-election-rolebinding manager-rolebinding -n $LSR_NAMESPACE foundationservices.cloudpak.ibm.com=lsr-chart  --overwrite=true 2>/dev/null
+    ${OC} label serviceaccount ibm-license-service-reporter ibm-license-service-reporter-operator -n $LSR_NAMESPACE foundationservices.cloudpak.ibm.com=lsr-chart  --overwrite=true 2>/dev/null
+    success "LSR resources labeled"
 }
 
 # ---------- Info functions ----------#
