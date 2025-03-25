@@ -1657,7 +1657,7 @@ rules:
     resources:
       - secrets
     resourceNames:
-      - postgresql-operator-controller-manager-1-22-7-service-cert
+      - postgresql-operator-controller-manager-1-25-1-service-cert
   - verbs:
       - get
       - create
@@ -1679,6 +1679,7 @@ rules:
     resources:
       - databases/status
       - publications/status
+      - subscriptions/status
     apiGroups:
       - postgresql.k8s.enterprisedb.io
   - verbs:
@@ -1687,5 +1688,6 @@ rules:
       - watch
     resources:
       - imagecatalogs
+      - clusterimagecatalogs
     apiGroups:
       - postgresql.k8s.enterprisedb.io
