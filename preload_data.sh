@@ -57,7 +57,6 @@ function main() {
       if [[ $RERUN == "true" ]]; then
         info "Rerun specified..."
         cleanup
-        deletemongocopy
       fi
       # run backup preload
       backup_preload_mongo
@@ -77,7 +76,6 @@ function main() {
     else
       info "Cleanup selected. Cleaning MongoDB in services namespace $TO_NAMESPACE"
       cleanup
-      deletemongocopy
     fi
 }
 
@@ -257,7 +255,7 @@ function backup_preload_mongo() {
   dumpmongo
   swapmongopvc
   loadmongo
-  deletemongocopy
+  cleanup
   provision_external_connection
 } # backup_preload_mongo
   
@@ -327,6 +325,10 @@ function patch_cm() {
     local deployments=$(${OC} get deployments ibm-mongodb-operator -n $FROM_NAMESPACE -o=jsonpath='{.spec.replicas}')
     local replicas=$(${OC} get statefulSet icp-mongodb -n $FROM_NAMESPACE -o=jsonpath='{.spec.replicas}') 
     ${OC} scale deployment -n $FROM_NAMESPACE ibm-mongodb-operator --replicas=0
+    # Scale down ibm-mongodb-operator in CSV level
+    local mongo_csv=$("${OC}" get -n "${FROM_NAMESPACE}" csv | (grep ibm-mongodb-operator || echo "fail") | awk '{print $1}')
+    ${OC} patch csv ${mongo_csv} -n ${FROM_NAMESPACE} --type='json' -p='[{"op": "replace", "path": "/spec/install/spec/deployments/0/spec/replicas", "value": '0'}]'
+
 
     migration=$(${OC} get statefulset icp-mongodb -n $FROM_NAMESPACE -o=jsonpath='{.spec.template.metadata.labels.migrating}')
     if [[ $migration != "" ]]; then 
@@ -759,8 +761,53 @@ function cleanup() {
     fi
   fi
   success "Previous run cleaned up."
-} # cleanup
 
+  title "Deleting the stand up mongodb statefulset in $TO_NAMESPACE"
+  msg "-----------------------------------------------------------------------"
+
+  currentns=$(${OC} project $TO_NAMESPACE -q)
+  if [[ "$currentns" -ne "$TO_NAMESPACE" ]]; then
+    error "Cannot switch to $TO_NAMESPACE"
+  fi
+
+  #delete all other resources EXCEPT icp-mongodb-admin
+  ${OC} delete statefulset icp-mongodb --ignore-not-found
+  ${OC} delete service icp-mongodb --ignore-not-found
+  ${OC} delete issuer god-issuer --ignore-not-found
+  ${OC} delete cm ibm-cpp-config --ignore-not-found
+  ${OC} delete certificate icp-mongodb-client-cert --ignore-not-found
+  ${OC} delete cm icp-mongodb --ignore-not-found
+  ${OC} delete cm icp-mongodb-init --ignore-not-found
+  ${OC} delete cm icp-mongodb-install --ignore-not-found
+  ${OC} delete secret icp-mongodb-keyfile --ignore-not-found
+  ${OC} delete secret icp-mongodb-metrics --ignore-not-found
+  ${OC} delete sa ibm-mongodb-operand --ignore-not-found
+  ${OC} delete service mongodb --ignore-not-found
+  ${OC} delete certificate mongodb-root-ca-cert --ignore-not-found
+  ${OC} delete issuer mongodb-root-ca-issuer --ignore-not-found
+  ${OC} delete cm namespace-scope --ignore-not-found
+  
+  #delete mongodump pvc and pv
+  VOL=$(${OC} get pvc cs-mongodump -o=jsonpath='{.spec.volumeName}' --ignore-not-found)
+  if [[ -z "$VOL" ]]; then
+    warning "Volume for pvc cs-mongodump not found in $TO_NAMESPACE. It may have already been deleted."
+  else
+    ${OC} patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Delete" }}'
+    ${OC} delete pvc cs-mongodump -n $TO_NAMESPACE --ignore-not-found --timeout=30s
+    if [ $? -ne 0 ]; then
+      info "Failed to delete pvc cs-mongodump, patching its finalizer to null..."
+      ${OC} patch pvc cs-mongodump -n $TO_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]' --ignore-not-found
+    fi
+    ${OC} delete pv $VOL --ignore-not-found --timeout=30s
+    if [ $? -ne 0 ]; then
+      info "Failed to delete pv $VOL, patching its finalizer to null..."
+      ${OC} patch pv $VOL --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
+    fi
+  fi
+
+  success "MongoDB removed from services namespace $TO_NAMESPACE"
+
+} # cleanup
 
 #
 #  Create the dump PVC
@@ -2354,58 +2401,6 @@ EOF
   success "Temporary Mongo copy deployed to namespace $TO_NAMESPACE"
 
 } # deploymongocopy
-
-
-#
-# Delete the mongo copy
-#
-function deletemongocopy {
-  title "Deleting the stand up mongodb statefulset in $TO_NAMESPACE"
-  msg "-----------------------------------------------------------------------"
-
-  currentns=$(${OC} project $TO_NAMESPACE -q)
-  if [[ "$currentns" -ne "$TO_NAMESPACE" ]]; then
-    error "Cannot switch to $TO_NAMESPACE"
-  fi
-
-  #delete all other resources EXCEPT icp-mongodb-admin
-  ${OC} delete statefulset icp-mongodb --ignore-not-found
-  ${OC} delete service icp-mongodb --ignore-not-found
-  ${OC} delete issuer god-issuer --ignore-not-found
-  ${OC} delete cm ibm-cpp-config --ignore-not-found
-  ${OC} delete certificate icp-mongodb-client-cert --ignore-not-found
-  ${OC} delete cm icp-mongodb --ignore-not-found
-  ${OC} delete cm icp-mongodb-init --ignore-not-found
-  ${OC} delete cm icp-mongodb-install --ignore-not-found
-  ${OC} delete secret icp-mongodb-keyfile --ignore-not-found
-  ${OC} delete secret icp-mongodb-metrics --ignore-not-found
-  ${OC} delete sa ibm-mongodb-operand --ignore-not-found
-  ${OC} delete service mongodb --ignore-not-found
-  ${OC} delete certificate mongodb-root-ca-cert --ignore-not-found
-  ${OC} delete issuer mongodb-root-ca-issuer --ignore-not-found
-  ${OC} delete cm namespace-scope --ignore-not-found
-  
-  #delete mongodump pvc and pv
-  VOL=$(${OC} get pvc cs-mongodump -o=jsonpath='{.spec.volumeName}' --ignore-not-found)
-  if [[ -z "$VOL" ]]; then
-    warning "Volume for pvc cs-mongodump not found in $TO_NAMESPACE. It may have already been deleted."
-  else
-    ${OC} patch pv $VOL -p '{"spec": { "persistentVolumeReclaimPolicy" : "Delete" }}'
-    ${OC} delete pvc cs-mongodump -n $TO_NAMESPACE --ignore-not-found --timeout=30s
-    if [ $? -ne 0 ]; then
-      info "Failed to delete pvc cs-mongodump, patching its finalizer to null..."
-      ${OC} patch pvc cs-mongodump -n $TO_NAMESPACE --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]' --ignore-not-found
-    fi
-    ${OC} delete pv $VOL --ignore-not-found --timeout=30s
-    if [ $? -ne 0 ]; then
-      info "Failed to delete pv $VOL, patching its finalizer to null..."
-      ${OC} patch pv $VOL --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]'
-    fi
-  fi
-
-  success "MongoDB removed from services namespace $TO_NAMESPACE"
-
-} # deletemongocopy
 
 function delete_mongo_pods() {
   local namespace=$1
