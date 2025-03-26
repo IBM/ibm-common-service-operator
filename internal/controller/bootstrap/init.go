@@ -468,6 +468,25 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 				obj.Object["spec"].(map[string]interface{})["config"] = sub.Object["spec"].(map[string]interface{})["config"]
 			}
 			update = !equality.Semantic.DeepEqual(sub.Object["spec"], obj.Object["spec"])
+		} else if gvk.Kind == "Certificate" {
+			// ignore renewBefore time when updating the certificate
+			klog.Info("create or update certificate")
+			cert := &unstructured.Unstructured{}
+			cert.SetGroupVersionKind(olmv1alpha1.SchemeGroupVersion.WithKind("certificate"))
+			certKey := types.NamespacedName{
+				Name:      obj.GetName(),
+				Namespace: obj.GetNamespace(),
+			}
+			if err := b.Client.Get(ctx, certKey, cert); err != nil {
+				klog.Errorf("Failed to get certificate for %s.", obj.GetName())
+				return err
+			}
+			// use renewBefore time in certificate in the cluster
+			if obj.Object["spec"].(map[string]interface{})["renewBefore"] != nil {
+				klog.Info("ignore renewBefore")
+				cert.Object["spec"].(map[string]interface{})["renewBefore"] = obj.Object["spec"].(map[string]interface{})["renewBefore"]
+			}
+			update = !equality.Semantic.DeepEqual(cert.Object["spec"], obj.Object["spec"])
 		} else {
 			v1IsLarger, convertErr := util.CompareVersion(obj.GetAnnotations()["version"], objInCluster.GetAnnotations()["version"])
 			if convertErr != nil {
