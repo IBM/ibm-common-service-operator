@@ -375,7 +375,7 @@ spec:
                             fieldPath: metadata.annotations['olm.targetNamespaces']
                       - name: OPERATOR_NAME
                         value: ibm-common-service-operator
-                      - name: UTILS_IMAGE
+                      - name: CPFS_UTILS_IMAGE
                         value: icr.io/cpopen/cpfs/cpfs-utils:latest
                     image: icr.io/cpopen/common-service-operator:latest
                     imagePullPolicy: IfNotPresent
