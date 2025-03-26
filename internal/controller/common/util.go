@@ -280,7 +280,7 @@ func GetWatchNamespace() string {
 }
 
 func GetUtilsImage() string {
-	image, found := os.LookupEnv("UTILS_IMAGE")
+	image, found := os.LookupEnv("CPFS_UTILS_IMAGE")
 	if !found {
 		return ""
 	}
