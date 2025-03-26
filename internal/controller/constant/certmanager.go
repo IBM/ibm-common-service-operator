@@ -79,7 +79,7 @@ metadata:
     app.kubernetes.io/name: Certificate
     operator.ibm.com/managedByCsOperator: 'true'
     ibm-cert-manager-operator/refresh-ca-chain: 'true'
-    manage-cert-rotation: yes
+    manage-cert-rotation: 'yes'
   name: cs-ca-certificate
   namespace: "placeholder"
 spec:
