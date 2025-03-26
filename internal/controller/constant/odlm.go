@@ -322,6 +322,7 @@ spec:
     scope: public
   - channel: stable
     fallbackChannels:
+      - stable-v1.25
       - stable-v1.22
     installPlanApproval: {{ .ApprovalMode }}
     name: edb-keycloak
@@ -2220,8 +2221,8 @@ spec:
     operatorConfig: cloud-native-postgresql-operator-config
   - channel: stable-v1.25
     fallbackChannels:
-      - stable
       - stable-v1.22
+      - stable
     name: cloud-native-postgresql-v1.25
     namespace: "{{ .CPFSNs }}"
     packageName: cloud-native-postgresql
