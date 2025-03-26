@@ -472,7 +472,11 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 			// ignore renewBefore time when updating the certificate
 			klog.Info("create or update certificate")
 			cert := &unstructured.Unstructured{}
-			cert.SetGroupVersionKind(olmv1alpha1.SchemeGroupVersion.WithKind("certificate"))
+			cert.SetGroupVersionKind(schema.GroupVersionKind{
+				Group:   "cert-manager.io",
+				Version: "v1",
+				Kind:    "Certificate",
+			})
 			certKey := types.NamespacedName{
 				Name:      obj.GetName(),
 				Namespace: obj.GetNamespace(),
@@ -486,7 +490,7 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 				klog.Info("ignore renewBefore")
 				cert.Object["spec"].(map[string]interface{})["renewBefore"] = obj.Object["spec"].(map[string]interface{})["renewBefore"]
 			}
-			update = !equality.Semantic.DeepEqual(cert.Object["spec"], obj.Object["spec"])
+			update = !equality.Semantic.DeepEqual(cert.Object["spec"], obj.Object["spec"]) || !equality.Semantic.DeepEqual(cert.GetLabels(), obj.GetLabels()) || !equality.Semantic.DeepEqual(cert.GetAnnotations(), obj.GetAnnotations())
 		} else {
 			v1IsLarger, convertErr := util.CompareVersion(obj.GetAnnotations()["version"], objInCluster.GetAnnotations()["version"])
 			if convertErr != nil {
