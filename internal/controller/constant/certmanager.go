@@ -77,7 +77,7 @@ metadata:
     app.kubernetes.io/instance: cs-ca-certificate
     app.kubernetes.io/managed-by: cert-manager-controller
     app.kubernetes.io/name: Certificate
-    operator.ibm.com/managedByCsOperator: "true"
+    operator.ibm.com/managedByCsOperator: 'true'
     ibm-cert-manager-operator/refresh-ca-chain: 'true'
     manage-cert-rotation: yes
   name: cs-ca-certificate
