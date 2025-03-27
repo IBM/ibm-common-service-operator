@@ -683,3 +683,5 @@ spec:
       name: CPFS_UTILS_IMAGE
     - image: icr.io/cpopen/cpfs/must-gather:latest
       name: MUST_GATHER_IMAGE
+    - image: icr.io/cpopen/cpfs/cpfs-oadp-plugins:4.12.0
+      name: CPFS_OADP_PLUGINS_IMAGE
