@@ -22,5 +22,5 @@ spec:
     - key: foundationservices.cloudpak.ibm.com
       operator: In
       values:
-      - licensing-cluster
-      - licensing-chart
+      - ls-cluster
+      - ls-chart

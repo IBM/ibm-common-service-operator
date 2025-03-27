@@ -614,19 +614,19 @@ function label_helm_namespace_scope(){
 
 function label_helm_licensing() {
     title "Labeling Licensing cluster and namespace resources..."
-    ${OC} label clusterrole ibm-license-service ibm-license-service-restricted ibm-licensing-default-reader ibm-licensing-operator foundationservices.cloudpak.ibm.com=licensing-cluster  --overwrite=true 2>/dev/null
-    ${OC} label clusterrolebinding ibm-license-service ibm-license-service-restricted ibm-licensing-default-reader ibm-licensing-operator ibm-license-service-cluster-monitoring-view foundationservices.cloudpak.ibm.com=licensing-cluster  --overwrite=true 2>/dev/null
-    ${OC} label customresourcedefinition ibmlicensingdefinitions.operator.ibm.com ibmlicensingquerysources.operator.ibm.com ibmlicensings.operator.ibm.com foundationservices.cloudpak.ibm.com=licensing-cluster  --overwrite=true 2>/dev/null
+    ${OC} label clusterrole ibm-license-service ibm-license-service-restricted ibm-licensing-default-reader ibm-licensing-operator foundationservices.cloudpak.ibm.com=ls-cluster  --overwrite=true 2>/dev/null
+    ${OC} label clusterrolebinding ibm-license-service ibm-license-service-restricted ibm-licensing-default-reader ibm-licensing-operator ibm-license-service-cluster-monitoring-view foundationservices.cloudpak.ibm.com=ls-cluster  --overwrite=true 2>/dev/null
+    ${OC} label customresourcedefinition ibmlicensingdefinitions.operator.ibm.com ibmlicensingquerysources.operator.ibm.com ibmlicensings.operator.ibm.com foundationservices.cloudpak.ibm.com=ls-cluster  --overwrite=true 2>/dev/null
 
-    ${OC} label ibmlicensing instance -n $LICENSING_NAMESPACE foundationservices.cloudpak.ibm.com=licensing-chart --overwrite=true 2>/dev/null
-    ${OC} label deployment ibm-licensing-operator -n $LICENSING_NAMESPACE foundationservices.cloudpak.ibm.com=licensing-chart --overwrite=true 2>/dev/null
-    ${OC} label role ibm-license-service ibm-license-service-restricted ibm-licensing-operator -n $LICENSING_NAMESPACE foundationservices.cloudpak.ibm.com=licensing-chart --overwrite=true 2>/dev/null
-    ${OC} label rolebinding ibm-license-service ibm-license-service-restricted ibm-licensing-operator -n $LICENSING_NAMESPACE foundationservices.cloudpak.ibm.com=licensing-chart --overwrite=true 2>/dev/null
-    ${OC} label serviceaccount ibm-license-service ibm-license-service-restricted ibm-licensing-default-reader ibm-licensing-operator -n $LICENSING_NAMESPACE foundationservices.cloudpak.ibm.com=licensing-chart --overwrite=true 2>/dev/null
+    ${OC} label ibmlicensing instance -n $LICENSING_NAMESPACE foundationservices.cloudpak.ibm.com=ls-chart --overwrite=true 2>/dev/null
+    ${OC} label deployment ibm-licensing-operator -n $LICENSING_NAMESPACE foundationservices.cloudpak.ibm.com=ls-chart --overwrite=true 2>/dev/null
+    ${OC} label role ibm-license-service ibm-license-service-restricted ibm-licensing-operator -n $LICENSING_NAMESPACE foundationservices.cloudpak.ibm.com=ls-chart --overwrite=true 2>/dev/null
+    ${OC} label rolebinding ibm-license-service ibm-license-service-restricted ibm-licensing-operator -n $LICENSING_NAMESPACE foundationservices.cloudpak.ibm.com=ls-chart --overwrite=true 2>/dev/null
+    ${OC} label serviceaccount ibm-license-service ibm-license-service-restricted ibm-licensing-default-reader ibm-licensing-operator -n $LICENSING_NAMESPACE foundationservices.cloudpak.ibm.com=ls-chart --overwrite=true 2>/dev/null
     
     lis_release_name=$(${OC} get deploy ibm-licensing-operator -n $LICENSING_NAMESPACE -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
     lis_release_namespace=$(${OC} get deploy ibm-licensing-operator -n $LICENSING_NAMESPACE -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
-    ${OC} label secret sh.helm.release.v1.$lis_release_name.v1 -n $lis_release_namespace foundationservices.cloudpak.ibm.com=licensing-chart  --overwrite=true 2>/dev/null
+    ${OC} label secret sh.helm.release.v1.$lis_release_name.v1 -n $lis_release_namespace foundationservices.cloudpak.ibm.com=ls-chart  --overwrite=true 2>/dev/null
 
     success "Licensing resources labeled"
 
