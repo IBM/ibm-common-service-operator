@@ -34,7 +34,7 @@ import (
 
 func Buildconfig(config map[string]string, bs *bootstrap.Bootstrap) map[string]string {
 	builder := configbuilder{data: config, bs: bs}
-	updatedConfig := builder.setDefaultStorageClass()
+	updatedConfig := builder.setDefaultStorageClass().setKeycloakOperatorChannels()
 	return updatedConfig.data
 }
 
@@ -84,6 +84,29 @@ func (b *configbuilder) setDefaultStorageClass() *configbuilder {
 	if len(allSCList) != 0 {
 		b.data["storageclass.list"] = strings.Join(allSCList, ",")
 	}
+
+	return b
+}
+
+// setKeycloakOperatorChannels sets the keycloak operator channels in the config
+func (b *configbuilder) setKeycloakOperatorChannels() *configbuilder {
+	if b.data == nil {
+		b.data = make(map[string]string)
+	}
+
+	keycloakChannels, exists := constant.DefaultChannels["keycloak-operator"]
+	if !exists || len(keycloakChannels) == 0 {
+		keycloakChannels = []string{"stable-v24", "stable-v22"}
+	}
+
+	var channelStr strings.Builder
+	for _, channel := range keycloakChannels {
+		channelStr.WriteString("- ")
+		channelStr.WriteString(channel)
+		channelStr.WriteString("\n")
+	}
+
+	b.data["keycloak-operator"] = channelStr.String()
 
 	return b
 }
