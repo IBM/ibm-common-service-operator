@@ -1281,7 +1281,7 @@ spec:
               templatingValueFrom:
                 conditional:
                   expression:
-                    greaterThan:
+                    lessThan:
                       left:
                         objectRef:
                           apiVersion: apps/v1
@@ -1291,10 +1291,18 @@ spec:
                       right:
                         literal: rhbk-operator.v26.0.0
                   then:
-                      array:
-                        - map:
-                            name: hostname-backchannel-dynamic
-                            value: 'true'
+                    array:
+                      - map:
+                          name: spi-user-profile-declarative-user-profile-config-file
+                          value: /mnt/user-profile/cs-keycloak-user-profile.json       
+                  else:
+                    array:
+                      - map:
+                          name: spi-user-profile-declarative-user-profile-config-file
+                          value: /mnt/user-profile/cs-keycloak-user-profile.json
+                      - map:
+                          name: hostname-backchannel-dynamic
+                          value: 'true'
             http:
               tlsSecret: cs-keycloak-tls-secret
             ingress:
