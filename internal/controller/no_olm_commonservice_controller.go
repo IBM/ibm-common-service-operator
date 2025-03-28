@@ -296,6 +296,11 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 		klog.Error(statusErr)
 		return ctrl.Result{}, statusErr
 	}
+
+	if statusErr = r.Bootstrap.UpdateManageCertRotationLabel(instance); statusErr != nil {
+		klog.Error(statusErr)
+		return ctrl.Result{}, statusErr
+	}
 	// Set Succeeded phase
 	if statusErr = r.updatePhase(ctx, instance, apiv3.CRSucceeded); statusErr != nil {
 		klog.Error(statusErr)
@@ -385,6 +390,11 @@ func (r *CommonServiceReconciler) ReconcileNoOLMGeneralCR(ctx context.Context, i
 	}
 
 	if err := r.Bootstrap.UpdateResourceLabel(instance); err != nil {
+		klog.Error(err)
+		return ctrl.Result{}, err
+	}
+
+	if err = r.Bootstrap.UpdateManageCertRotationLabel(instance); err != nil {
 		klog.Error(err)
 		return ctrl.Result{}, err
 	}

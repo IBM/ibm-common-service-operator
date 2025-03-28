@@ -21,9 +21,10 @@ const SecretWatchLabel string = "operator.ibm.com/watched-by-cert-manager"
 
 // Labels and Annotations added by this operator
 const (
-	OperatorGeneratedAnno = "ibm-cert-manager-operator-generated"
-	ProperV1Label         = "ibm-cert-manager-operator/conditionally-generated-v1"
-	RefreshCALabel        = "ibm-cert-manager-operator/refresh-ca-chain"
+	OperatorGeneratedAnno   = "ibm-cert-manager-operator-generated"
+	ProperV1Label           = "ibm-cert-manager-operator/conditionally-generated-v1"
+	RefreshCALabel          = "ibm-cert-manager-operator/refresh-ca-chain"
+	ManageCertRotationLabel = "manage-cert-rotation"
 )
 
 var (
@@ -77,8 +78,9 @@ metadata:
     app.kubernetes.io/instance: cs-ca-certificate
     app.kubernetes.io/managed-by: cert-manager-controller
     app.kubernetes.io/name: Certificate
-    operator.ibm.com/managedByCsOperator: "true"
+    operator.ibm.com/managedByCsOperator: 'true'
     ibm-cert-manager-operator/refresh-ca-chain: 'true'
+    manage-cert-rotation: 'yes'
   name: cs-ca-certificate
   namespace: "placeholder"
 spec:
