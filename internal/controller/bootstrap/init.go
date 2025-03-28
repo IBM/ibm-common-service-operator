@@ -2092,6 +2092,53 @@ func (b *Bootstrap) UpdateResourceWithLabel(resources *unstructured.Unstructured
 	return nil
 }
 
+func (b *Bootstrap) UpdateManageCertRotationLabel(instance *apiv3.CommonService) error {
+
+	// Fetch all the CommonService instances
+	csReq, err := labels.NewRequirement(constant.CsClonedFromLabel, selection.DoesNotExist, []string{})
+	if err != nil {
+		return err
+	}
+	csObjectList := &apiv3.CommonServiceList{}
+	if err := b.Client.List(ctx, csObjectList, &client.ListOptions{
+		LabelSelector: labels.NewSelector().Add(*csReq),
+	}); err != nil {
+		return err
+	}
+	csObjectList.Items = append(csObjectList.Items, *instance)
+
+	// if EnableManageCertRotation is set to false in any cs cr,
+	// we set the value of this label to 'no'
+	// otherwise, set the value of this label to 'yes'
+	certLabel := make(map[string]string)
+	for _, cs := range csObjectList.Items {
+		if cs.Spec.DisableManageCertRotation {
+			certLabel[constant.ManageCertRotationLabel] = "no"
+			break
+		}
+		certLabel[constant.ManageCertRotationLabel] = "yes"
+	}
+
+	// update labels in the Certificate
+	certList := &certmanagerv1.CertificateList{}
+	cert := &certmanagerv1.Certificate{}
+	if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: "cs-ca-certificate", Namespace: b.CSData.ServicesNs}, cert); err != nil && !errors.IsNotFound(err) {
+		return err
+	} else if errors.IsNotFound(err) {
+		klog.V(3).Infof("certificate cs-ca-certificate is not found in namespace: %s", b.CSData.ServicesNs)
+	} else {
+		certList.Items = append(certList.Items, *cert)
+	}
+	certUnstructedList, err := util.ObjectListToNewUnstructuredList(certList)
+	if err != nil {
+		return err
+	}
+	if err := b.UpdateResourceWithLabel(certUnstructedList, certLabel); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (b *Bootstrap) UpdateEDBUserManaged() error {
 	operatorNamespace, err := util.GetOperatorNamespace()
 	if err != nil {
