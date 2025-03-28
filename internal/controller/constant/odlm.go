@@ -1742,9 +1742,21 @@ spec:
             - maxSkew: 1
               topologyKey: topology.kubernetes.io/zone
               whenUnsatisfiable: ScheduleAnyway
+              labelSelector:
+                matchExpressions:
+                  - key: k8s.enterprisedb.io/cluster
+                    operator: In
+                    values:
+                      - common-service-db
             - maxSkew: 1
               topologyKey: topology.kubernetes.io/region
               whenUnsatisfiable: ScheduleAnyway
+              labelSelector:
+                matchExpressions:
+                  - key: k8s.enterprisedb.io/cluster
+                    operator: In
+                    values:
+                      - common-service-db
             imageName:
               templatingValueFrom:
                 default:
