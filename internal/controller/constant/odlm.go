@@ -865,10 +865,10 @@ spec:
         name: cs-keycloak-user-profile
       - apiVersion: v1
         kind: ServiceAccount
-        name: convert-secret-sa
+        name: cs-keycloak-pre-upgrade-sa
       - apiVersion: rbac.authorization.k8s.io/v1
         kind: Role
-        name: convert-secret-role
+        name: cs-keycloak-pre-upgrade-role
         data:
           rules:
           - apiGroups: [""]
@@ -876,21 +876,21 @@ spec:
             verbs: ["create", "update", "patch", "get", "list", "delete", "watch"]
       - apiVersion: rbac.authorization.k8s.io/v1
         kind: RoleBinding
-        name: convert-secret-rolebinding
+        name: cs-keycloak-pre-upgrade-rolebinding
         data:
           subjects:
           - kind: ServiceAccount
-            name: convert-secret-sa
+            name: cs-keycloak-pre-upgrade-sa
           roleRef:
             kind: Role
-            name: convert-secret-role
+            name: cs-keycloak-pre-upgrade-role
             apiGroup: rbac.authorization.k8s.io
       - apiVersion: v1
         kind: ConfigMap
-        name: convert-secrets
+        name: cs-keycloak-pre-upgrade
         data:
           data:
-            convert-secrets.sh: |
+            cs-keycloak-pre-upgrade.sh: |
               #!/usr/bin/env bash
               # Check if the secret already exists
               if oc get secret cs-keycloak-ca-certs >/dev/null 2>&1; then
@@ -923,7 +923,7 @@ spec:
       - apiVersion: batch/v1
         kind: Job
         force: true
-        name: convert-secret-job
+        name: cs-keycloak-pre-upgrade-job
         data:
           spec:
             template:
@@ -940,18 +940,18 @@ spec:
                           - ppc64le
                           - s390x
                 restartPolicy: OnFailure
-                serviceAccountName: convert-secret-sa
+                serviceAccountName: cs-keycloak-pre-upgrade-sa
                 containers:
-                  - name: convert-secret-job
+                  - name: cs-keycloak-pre-upgrade-job
                     image: {{ .UtilsImage }}
-                    command: ["/bin/sh", "/mnt/scripts/convert-secrets.sh"]
+                    command: ["/bin/sh", "/mnt/scripts/cs-keycloak-pre-upgrade.sh"]
                     volumeMounts:
                       - name: script-volume
                         mountPath: /mnt/scripts
                 volumes:
                   - name: script-volume
                     configMap:
-                      name: convert-secrets
+                      name: cs-keycloak-pre-upgrade
       - apiVersion: v1
         annotations:
           service.beta.openshift.io/serving-cert-secret-name: cpfs-opcon-cs-keycloak-tls-secret
