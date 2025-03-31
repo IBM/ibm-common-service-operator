@@ -42,6 +42,8 @@ const (
 	ClusterOperatorNamespace = "openshift-operators"
 	// CS map configMap
 	CsMapConfigMap = "common-service-maps"
+	// CS map configMap namespace
+	CsMapConfigMapNs = "kube-public"
 	// CS Saas configMap
 	SaasConfigMap = "saas-config"
 	// Namespace Scope Operator resource name
@@ -121,6 +123,11 @@ const (
 	// OpreqLabel is the label used to label the Subscription/CR/Configmap managed by ODLM
 	OpreqLabel string = "operator.ibm.com/opreq-control"
 )
+
+// DefaultChannels defines the default channels available for each operator
+var DefaultChannels = map[string][]string{
+	"keycloak-operator": {"stable-v26", "stable-v24", "stable-v22"},
+}
 
 // CsOg is OperatorGroup constent for the common service operator
 const CsOperatorGroup = `

@@ -22,6 +22,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"reflect"
 	"strconv"
@@ -276,6 +277,14 @@ func GetWatchNamespace() string {
 		return ns
 	}
 	return ns
+}
+
+func GetUtilsImage() string {
+	image, found := os.LookupEnv("CPFS_UTILS_IMAGE")
+	if !found {
+		return ""
+	}
+	return image
 }
 
 // GetNSSCMSynchronization returns whether NSS ConfigMap shchronization with OperatorGroup is enabled
@@ -678,12 +687,13 @@ func EnsureLabelsForConfigMap(cm *corev1.ConfigMap, labels map[string]string) {
 
 // EnsureLabels ensures that the specifc resource has the certain labels
 func EnsureLabels(resource *unstructured.Unstructured, labels map[string]string) {
-	if resource.Object["metadata"].(map[string]interface{})["labels"] == nil {
-		resource.Object["metadata"].(map[string]interface{})["labels"] = make(map[string]string)
+	if resource.GetLabels() == nil {
+		resource.SetLabels(labels)
+		return
 	}
-	for k, v := range labels {
-		resource.Object["metadata"].(map[string]interface{})["labels"].(map[string]string)[k] = v
-	}
+	newLabels := resource.GetLabels()
+	maps.Copy(newLabels, labels)
+	resource.SetLabels(newLabels)
 }
 
 // GetRequestNs gets requested-from-namespace of map-to-common-service-namespace

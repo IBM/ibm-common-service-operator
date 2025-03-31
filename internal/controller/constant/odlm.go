@@ -19,6 +19,10 @@ package constant
 import (
 	"bytes"
 	"fmt"
+	"regexp"
+	"sort"
+	"strconv"
+	"strings"
 	"text/template"
 
 	utilyaml "github.com/ghodss/yaml"
@@ -37,8 +41,6 @@ var (
 var ServiceNames = map[string][]string{
 	"PostgreSQL": {
 		"cloud-native-postgresql",
-		"cloud-native-postgresql-v1.22",
-		"cloud-native-postgresql-v1.25",
 	},
 	// Add more service categories as needed
 }
@@ -240,16 +242,23 @@ metadata:
     status-monitored-services: {{ .StatusMonitoredServices }}
 spec:
   operators:
-  - channel: stable-v24
-    fallbackChannels:
-      - stable-v22
+  - channel: ""
+    fallbackChannels: []
     installPlanApproval: {{ .ApprovalMode }}
     name: keycloak-operator
     namespace: "{{ .ServicesNs }}"
     packageName: rhbk-operator
     scope: public
+  - channel: stable-v26
+    installPlanApproval: {{ .ApprovalMode }}
+    name: keycloak-operator-v26
+    namespace: "{{ .ServicesNs }}"
+    packageName: rhbk-operator
+    scope: public
+    configName: keycloak-operator
   - channel: stable
     fallbackChannels:
+      - stable-v1.25
       - stable-v1.22
     installPlanApproval: {{ .ApprovalMode }}
     name: edb-keycloak
@@ -275,8 +284,9 @@ metadata:
     status-monitored-services: {{ .StatusMonitoredServices }}
 spec:
   operators:
-  - channel: stable-v1.22
+  - channel: stable-v1.25
     fallbackChannels:
+      - stable-v1.22
       - stable
     installPlanApproval: {{ .ApprovalMode }}
     name: common-service-postgresql
@@ -592,9 +602,7 @@ spec:
                     privileged: false
                     readOnlyRootFilesystem: false
                 containers:
-                - command:
-                  - bash
-                  - '-c'
+                - command: ["bash", "-c"]
                   args:
                   - |
                     kubectl delete pods -l app.kubernetes.io/name=cloud-native-postgresql
@@ -639,19 +647,9 @@ spec:
         namespace: "{{ $.OperatorNs }}"
         data:
           rules:
-          - apiGroups:
-            - ""
-            resources:
-            - pods
-            - secrets
-            verbs:
-            - create
-            - update
-            - patch
-            - get
-            - list
-            - delete
-            - watch
+          - apiGroups: [""]
+            resources: ["pods", "secrets"]
+            verbs: ["create", "update", "patch", "get", "list", "delete", "watch"]
       - apiVersion: rbac.authorization.k8s.io/v1
         kind: RoleBinding
         name: edb-license-rolebinding
@@ -704,7 +702,23 @@ spec:
               public-cs-keycloak-service:
                 configmap: cs-keycloak-service
             description: Binding information that should be accessible to Keycloak adopters
-            operand: keycloak-operator
+            operand:
+              templatingValueFrom:
+                conditional:
+                  expression:
+                    lessThan:
+                      left:
+                        objectRef:
+                          apiVersion: apps/v1
+                          kind: Deployment
+                          name: rhbk-operator
+                          path: .metadata.labels.olm\.owner
+                      right:
+                        literal: rhbk-operator.v26.0.0
+                  then:
+                    literal: "keycloak-operator" 
+                  else:
+                    literal: "keycloak-operator-v26"
             registry: common-service
             registryNamespace: {{ .ServicesNs }}
         force: true
@@ -850,6 +864,95 @@ spec:
         kind: ConfigMap
         name: cs-keycloak-user-profile
       - apiVersion: v1
+        kind: ServiceAccount
+        name: cs-keycloak-pre-upgrade-sa
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: Role
+        name: cs-keycloak-pre-upgrade-role
+        data:
+          rules:
+          - apiGroups: [""]
+            resources: ["secrets", "configmaps"]
+            verbs: ["create", "update", "patch", "get", "list", "delete", "watch"]
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        name: cs-keycloak-pre-upgrade-rolebinding
+        data:
+          subjects:
+          - kind: ServiceAccount
+            name: cs-keycloak-pre-upgrade-sa
+          roleRef:
+            kind: Role
+            name: cs-keycloak-pre-upgrade-role
+            apiGroup: rbac.authorization.k8s.io
+      - apiVersion: v1
+        kind: ConfigMap
+        name: cs-keycloak-pre-upgrade
+        data:
+          data:
+            cs-keycloak-pre-upgrade.sh: |
+              #!/usr/bin/env bash
+              # Check if the secret already exists
+              if oc get secret cs-keycloak-ca-certs >/dev/null 2>&1; then
+                echo "Secret cs-keycloak-ca-certs already exists. Skipping conversion."
+                exit 0
+              fi
+              
+              # Check if ConfigMap exists
+              if ! oc get configmap cs-keycloak-ca-certs >/dev/null 2>&1; then
+                echo "ConfigMap cs-keycloak-ca-certs not found. Nothing to conversion."
+                exit 0
+              fi
+              
+              # Extract certificate file names from ConfigMap
+              CERT_FILES=$(oc get configmap cs-keycloak-ca-certs -o yaml | yq e '.data | keys | .[]' -)              
+              
+              # Create a temporary directory
+              mkdir -p /tmp/certs
+
+              # Extract certificates from ConfigMap and save them as files
+              for CERT in $CERT_FILES; do
+                oc get configmap cs-keycloak-ca-certs -o yaml | yq e ".data[\"$CERT\"]"> /tmp/certs/$CERT
+              done
+              
+              # Create Secret from extracted certificates
+              oc create secret generic cs-keycloak-ca-certs \
+                $(for CERT in $CERT_FILES; do echo --from-file=/tmp/certs/$CERT; done)
+              
+              echo "Conversion complete. Secret created: cs-keycloak-ca-certs"
+      - apiVersion: batch/v1
+        kind: Job
+        force: true
+        name: cs-keycloak-pre-upgrade-job
+        data:
+          spec:
+            template:
+              spec:
+                affinity:
+                  nodeAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                      nodeSelectorTerms:
+                      - matchExpressions:
+                        - key: kubernetes.io/arch
+                          operator: In
+                          values:
+                          - amd64
+                          - ppc64le
+                          - s390x
+                restartPolicy: OnFailure
+                serviceAccountName: cs-keycloak-pre-upgrade-sa
+                containers:
+                  - name: cs-keycloak-pre-upgrade-job
+                    image: {{ .UtilsImage }}
+                    command: ["/bin/sh", "/mnt/scripts/cs-keycloak-pre-upgrade.sh"]
+                    volumeMounts:
+                      - name: script-volume
+                        mountPath: /mnt/scripts
+                volumes:
+                  - name: script-volume
+                    configMap:
+                      name: cs-keycloak-pre-upgrade
+      - apiVersion: v1
         annotations:
           service.beta.openshift.io/serving-cert-secret-name: cpfs-opcon-cs-keycloak-tls-secret
         labels:
@@ -959,6 +1062,11 @@ spec:
                         - amd64
                         - ppc64le
                         - s390x
+            truststores:
+              my-truststore:
+                secret:
+                  name: cs-keycloak-ca-certs
+                  optional: true
             proxy:
               headers: xforwarded
             features:
@@ -977,12 +1085,57 @@ spec:
             hostname:
               hostname:
                 templatingValueFrom:
-                  objectRef:
-                    apiVersion: route.openshift.io/v1
-                    kind: Route
-                    name: keycloak
-                    path: .spec.host
-                  required: true
+                  conditional:
+                    expression:
+                      greaterThan:
+                        left:
+                          objectRef:
+                            apiVersion: apps/v1
+                            kind: Deployment
+                            name: rhbk-operator
+                            path: .metadata.labels.olm\.owner
+                        right:
+                          literal: rhbk-operator.v26.0.0
+                    then:
+                      objectRef:
+                        apiVersion: route.openshift.io/v1
+                        kind: Route
+                        name: keycloak
+                        path: 'https://+.spec.host'
+                      required: true
+                    else:                        
+                      objectRef:
+                        apiVersion: route.openshift.io/v1
+                        kind: Route
+                        name: keycloak
+                        path: .spec.host
+                      required: true
+            additionalOptions:
+              templatingValueFrom:
+                conditional:
+                  expression:
+                    lessThan:
+                      left:
+                        objectRef:
+                          apiVersion: apps/v1
+                          kind: Deployment
+                          name: rhbk-operator
+                          path: .metadata.labels.olm\.owner
+                      right:
+                        literal: rhbk-operator.v26.0.0
+                  then:
+                    array:
+                      - map:
+                          name: spi-user-profile-declarative-user-profile-config-file
+                          value: /mnt/user-profile/cs-keycloak-user-profile.json       
+                  else:
+                    array:
+                      - map:
+                          name: spi-user-profile-declarative-user-profile-config-file
+                          value: /mnt/user-profile/cs-keycloak-user-profile.json
+                      - map:
+                          name: hostname-backchannel-dynamic
+                          value: 'true'
             http:
               tlsSecret: cs-keycloak-tls-secret
             ingress:
@@ -1001,9 +1154,7 @@ spec:
                         required: true
                 spec:
                   containers:
-                    - command:
-                        - /bin/sh
-                        - /mnt/startup/cs-keycloak-entrypoint.sh
+                    - command: ["/bin/sh", "/mnt/startup/cs-keycloak-entrypoint.sh"]
                       volumeMounts:
                         - mountPath: /mnt/truststore
                           name: truststore-volume
@@ -1085,6 +1236,24 @@ spec:
                   apiVersion: apiextensions.k8s.io/v1
                   kind: CustomResourceDefinition
                 key: .spec.versions[0].schema.openAPIV3Schema.properties.spec.properties.scheduling
+                operator: DoesNotExist
+          - path: .spec.unsupported.podTemplate.spec.containers[0].command
+            operation: remove
+            matchExpressions:
+              - objectRef:
+                  name: keycloaks.k8s.keycloak.org
+                  apiVersion: apiextensions.k8s.io/v1
+                  kind: CustomResourceDefinition
+                key: .spec.versions[0].schema.openAPIV3Schema.properties.spec.properties.truststores
+                operator: Exists
+          - path: .spec.truststores
+            operation: remove
+            matchExpressions:
+              - objectRef:
+                  name: keycloaks.k8s.keycloak.org
+                  apiVersion: apiextensions.k8s.io/v1
+                  kind: CustomResourceDefinition
+                key: .spec.versions[0].schema.openAPIV3Schema.properties.spec.properties.truststores
                 operator: DoesNotExist
       - apiVersion: v1
         kind: ConfigMap
@@ -1253,9 +1422,7 @@ spec:
                     privileged: false
                     readOnlyRootFilesystem: false
                 containers:
-                - command:
-                  - bash
-                  - '-c'
+                - command: ["bash", "-c"]
                   args:
                   - |
                     kubectl delete pods -l app.kubernetes.io/name=cloud-native-postgresql
@@ -1300,19 +1467,9 @@ spec:
         namespace: "{{ .OperatorNs }}"
         data:
           rules:
-          - apiGroups:
-            - ""
-            resources:
-            - pods
-            - secrets
-            verbs:
-            - create
-            - update
-            - patch
-            - get
-            - list
-            - delete
-            - watch
+          - apiGroups: [""]
+            resources: ["pods", "secrets"]
+            verbs: ["create", "update", "patch", "get", "list", "delete", "watch"]
       - apiVersion: rbac.authorization.k8s.io/v1
         kind: RoleBinding
         name: edb-license-rolebinding
@@ -1404,7 +1561,7 @@ spec:
           spec:
             requests:
               - operands:
-                  - name: cloud-native-postgresql-v1.22
+                  - name: cloud-native-postgresql-v1.25
                 registry: common-service
                 registryNamespace: {{ .ServicesNs }}
         force: true
@@ -1873,16 +2030,18 @@ spec:
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     operatorConfig: cloud-native-postgresql-operator-config
+    configName: cloud-native-postgresql
   - channel: stable-v1.25
     fallbackChannels:
-      - stable
       - stable-v1.22
+      - stable
     name: cloud-native-postgresql-v1.25
     namespace: "{{ .CPFSNs }}"
     packageName: cloud-native-postgresql
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     operatorConfig: cloud-native-postgresql-operator-config
+    configName: cloud-native-postgresql
   - channel: alpha
     name: ibm-user-data-services-operator
     namespace: "{{ .CPFSNs }}"
@@ -2145,12 +2304,12 @@ spec:
 `
 
 // ConcatenateRegistries concatenate the two YAML strings and return the new YAML string
-func ConcatenateRegistries(baseRegistryTemplate string, insertedRegistryTemplateList []string, data interface{}) (string, error) {
+func ConcatenateRegistries(baseRegistryTemplate string, insertedRegistryTemplateList []string, data interface{}, cppdata map[string]string) (string, error) {
 	baseRegistry := odlm.OperandRegistry{}
 	var template []byte
 	var err error
 
-	// unmarshal first OprandRegistry
+	// Unmarshal first OprandRegistry
 	if template, err = applyTemplate(baseRegistryTemplate, data); err != nil {
 		return "", err
 	}
@@ -2171,8 +2330,12 @@ func ConcatenateRegistries(baseRegistryTemplate string, insertedRegistryTemplate
 
 		newOperators = append(newOperators, insertedRegistry.Spec.Operators...)
 	}
-	// add new operators to baseRegistry
+	// Add new operators to baseRegistry
 	baseRegistry.Spec.Operators = append(baseRegistry.Spec.Operators, newOperators...)
+
+	// Update default and fallback channels with ConfigMap data
+	operatorNames := []string{"keycloak-operator"} // List of operators to process
+	processdDynamicChannels(&baseRegistry, cppdata, operatorNames)
 
 	opregBytes, err := utilyaml.Marshal(baseRegistry)
 	if err != nil {
@@ -2188,7 +2351,7 @@ func ConcatenateConfigs(baseConfigTemplate string, insertedConfigTemplateList []
 	var template []byte
 	var err error
 
-	// unmarshal first OprandCongif
+	// unmarshal first OprandConfig
 	if template, err = applyTemplate(baseConfigTemplate, data); err != nil {
 		return "", err
 	}
@@ -2208,7 +2371,7 @@ func ConcatenateConfigs(baseConfigTemplate string, insertedConfigTemplateList []
 
 		newServices = append(newServices, insertedConfig.Spec.Services...)
 	}
-	// add new services to baseConfig
+	// Add new services to baseConfig
 	baseConfig.Spec.Services = append(baseConfig.Spec.Services, newServices...)
 
 	opconBytes, err := utilyaml.Marshal(baseConfig)
@@ -2227,4 +2390,85 @@ func applyTemplate(objectTemplate string, data interface{}) ([]byte, error) {
 	}
 
 	return buffer.Bytes(), nil
+}
+
+// processFallbackChannels updates operator entries with dynamic fallback channels based on ibm-cpp-config data
+func processdDynamicChannels(registry *odlm.OperandRegistry, configMapData map[string]string, operatorNames []string) {
+	for i, operator := range registry.Spec.Operators {
+		// Check if this operator is in our list of operators to process
+		for _, opName := range operatorNames {
+			if operator.Name == opName {
+
+				channelList, exists := DefaultChannels[operator.Name]
+				if !exists || len(channelList) == 0 {
+					continue
+				}
+				highestVersion := channelList[0]
+
+				var currentChannel string
+				if operator.Name == "keycloak-operator" {
+					// For keycloak, check the keycloak_preferred_channel in ConfigMap or use a default
+					keycloakVersion, exists := configMapData["keycloak_preferred_channel"]
+					if exists {
+						currentChannel = keycloakVersion
+					} else {
+						currentChannel = "stable-v24" // Default for keycloak
+					}
+				} else {
+					continue
+				}
+
+				// If current channel is less than highest version in list
+				if compareVersions(currentChannel, highestVersion) < 0 {
+					registry.Spec.Operators[i].Channel = currentChannel
+					// Get all versions less than current channel
+					var fallbacks []string
+					for _, channel := range channelList {
+						if compareVersions(channel, currentChannel) < 0 {
+							fallbacks = append(fallbacks, channel)
+						}
+					}
+
+					// Sort fallbacks in descending order
+					sort.Slice(fallbacks, func(i, j int) bool {
+						return compareVersions(fallbacks[i], fallbacks[j]) > 0
+					})
+
+					// Update the operator's fallback channels
+					registry.Spec.Operators[i].FallbackChannels = fallbacks
+				} else {
+					registry.Spec.Operators[i].Channel = highestVersion
+					if len(channelList) > 1 {
+						registry.Spec.Operators[i].FallbackChannels = channelList[1:]
+					} else {
+						registry.Spec.Operators[i].FallbackChannels = []string{}
+					}
+				}
+				break
+			}
+		}
+	}
+}
+
+// compareVersions compares version strings (e.g., "stable-v22" vs "stable-v24")
+// Returns -1 if v1 < v2; 0 if v1 == v2; 1 if v1 > v2
+func compareVersions(v1, v2 string) int {
+	// Extract version numbers
+	re := regexp.MustCompile(`v(\d+)`)
+	v1Matches := re.FindStringSubmatch(v1)
+	v2Matches := re.FindStringSubmatch(v2)
+
+	if len(v1Matches) < 2 || len(v2Matches) < 2 {
+		return strings.Compare(v1, v2)
+	}
+
+	v1Num, _ := strconv.Atoi(v1Matches[1])
+	v2Num, _ := strconv.Atoi(v2Matches[1])
+
+	if v1Num < v2Num {
+		return -1
+	} else if v1Num > v2Num {
+		return 1
+	}
+	return 0
 }

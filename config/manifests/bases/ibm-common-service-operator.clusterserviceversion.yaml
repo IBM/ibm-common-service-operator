@@ -271,4 +271,6 @@ spec:
     name: COMMON_SERVICE_OPERATOR_IMAGE
   - image: icr.io/cpopen/cpfs/cpfs-utils:latest
     name: CPFS_UTILS_IMAGE
+  - image: icr.io/cpopen/cpfs/must-gather:latest
+    name: MUST_GATHER_IMAGE
   version: 0.0.0

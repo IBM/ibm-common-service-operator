@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"maps"
 	"reflect"
 	"strconv"
 	"strings"
@@ -127,6 +128,7 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		ExcludedCatalog:         constant.ExcludedCatalog,
 		StatusMonitoredServices: constant.StatusMonitoredServices,
 		ServiceNames:            constant.ServiceNames,
+		UtilsImage:              util.GetUtilsImage(),
 	}
 
 	bs = &Bootstrap{
@@ -238,7 +240,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		}
 
 		klog.Info("Installing/Updating OperandRegistry")
-		if err := b.InstallOrUpdateOpreg(forceUpdateODLMCRs, installPlanApproval); err != nil {
+		if err := b.InstallOrUpdateOpreg(installPlanApproval); err != nil {
 			return err
 		}
 
@@ -277,7 +279,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		}
 
 		klog.Info("Installing/Updating OperandRegistry")
-		if err := b.InstallOrUpdateOpreg(forceUpdateODLMCRs, installPlanApproval); err != nil {
+		if err := b.InstallOrUpdateOpreg(installPlanApproval); err != nil {
 			return err
 		}
 
@@ -727,12 +729,27 @@ func (b *Bootstrap) ResourceExists(dc discovery.DiscoveryInterface, apiGroupVers
 }
 
 // InstallOrUpdateOpreg will install or update OperandRegistry when Opreg CRD is existent
-func (b *Bootstrap) InstallOrUpdateOpreg(forceUpdateODLMCRs bool, installPlanApproval olmv1alpha1.Approval) error {
+func (b *Bootstrap) InstallOrUpdateOpreg(installPlanApproval olmv1alpha1.Approval) error {
 
 	if installPlanApproval != "" || b.CSData.ApprovalMode == string(olmv1alpha1.ApprovalManual) {
 		if err := b.updateApprovalMode(); err != nil {
 			return err
 		}
+	}
+
+	// Read channel list from cpp configmap
+	configMap := &corev1.ConfigMap{}
+	err := b.Client.Get(context.TODO(), types.NamespacedName{
+		Name:      constant.IBMCPPCONFIG,
+		Namespace: b.CSData.ServicesNs,
+	}, configMap)
+
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+		klog.Infof("ConfigMap %s not found in namespace %s, using default values", constant.IBMCPPCONFIG, b.CSData.ServicesNs)
+		configMap.Data = make(map[string]string)
 	}
 
 	var baseReg string
@@ -751,13 +768,13 @@ func (b *Bootstrap) InstallOrUpdateOpreg(forceUpdateODLMCRs bool, installPlanApp
 		baseReg = constant.CSV3OpReg
 	}
 
-	concatenatedReg, err := constant.ConcatenateRegistries(baseReg, registries, b.CSData)
+	concatenatedReg, err := constant.ConcatenateRegistries(baseReg, registries, b.CSData, configMap.Data)
 	if err != nil {
 		klog.Errorf("failed to concatenate OperandRegistry: %v", err)
 		return err
 	}
 
-	if err := b.renderTemplate(concatenatedReg, b.CSData, forceUpdateODLMCRs); err != nil {
+	if err := b.renderTemplate(concatenatedReg, b.CSData, true); err != nil {
 		return err
 	}
 	return nil
@@ -1900,9 +1917,7 @@ func (b *Bootstrap) UpdateResourceLabel(instance *apiv3.CommonService) error {
 	// get spec.labels in the spec
 	for _, cs := range csObjectList.Items {
 		labels := cs.Spec.Labels
-		for key, val := range labels {
-			(labelsMap)[key] = val
-		}
+		maps.Copy(labelsMap, labels)
 	}
 
 	if len(labelsMap) == 0 {
@@ -1920,15 +1935,14 @@ func (b *Bootstrap) UpdateResourceLabel(instance *apiv3.CommonService) error {
 	}
 
 	// update labels in the configmap
-	cmNames := []string{"common-services-maps", "namespace-scope"}
+	nsscmName := "namespace-scope"
 	cmList := &corev1.ConfigMapList{}
-	for _, cmName := range cmNames {
-		cm := &corev1.ConfigMap{}
-		if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: b.CSData.ServicesNs}, cm); err != nil && !errors.IsNotFound(err) {
-			return err
-		} else if errors.IsNotFound(err) {
-			klog.V(3).Infof("configmap %s is not found in namespace: %s", cmName, b.CSData.ServicesNs)
-		}
+	cm := &corev1.ConfigMap{}
+	if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: nsscmName, Namespace: b.CSData.OperatorNs}, cm); err != nil && !errors.IsNotFound(err) {
+		return err
+	} else if errors.IsNotFound(err) {
+		klog.V(3).Infof("configmap %s is not found in namespace: %s", nsscmName, b.CSData.OperatorNs)
+	} else {
 		cmList.Items = append(cmList.Items, *cm)
 	}
 	cmUnstructedList, err := util.ObjectListToNewUnstructuredList(cmList)
@@ -1961,8 +1975,9 @@ func (b *Bootstrap) UpdateResourceLabel(instance *apiv3.CommonService) error {
 		return err
 	} else if errors.IsNotFound(err) {
 		klog.V(3).Infof("OperandRegistry common-service is not found in namespace: %s", b.CSData.ServicesNs)
+	} else {
+		opregList.Items = append(opregList.Items, *opreg)
 	}
-	opregList.Items = append(opregList.Items, *opreg)
 	opregUnstructedList, err := util.ObjectListToNewUnstructuredList(opregList)
 	if err != nil {
 		return err
@@ -1980,9 +1995,11 @@ func (b *Bootstrap) UpdateResourceLabel(instance *apiv3.CommonService) error {
 			return err
 		} else if errors.IsNotFound(err) {
 			klog.V(3).Infof("Issuer %s is not found in namespace: %s", issuerName, b.CSData.ServicesNs)
+		} else {
+			issuerList.Items = append(issuerList.Items, *issuer)
 		}
-		issuerList.Items = append(issuerList.Items, *issuer)
 	}
+
 	issuerUnstructedList, err := util.ObjectListToNewUnstructuredList(issuerList)
 	if err != nil {
 		return err
@@ -1999,8 +2016,9 @@ func (b *Bootstrap) UpdateResourceLabel(instance *apiv3.CommonService) error {
 		return err
 	} else if errors.IsNotFound(err) {
 		klog.V(3).Infof("certificate cs-ca-certificate is not found in namespace: %s", b.CSData.ServicesNs)
+	} else {
+		certList.Items = append(certList.Items, *cert)
 	}
-	certList.Items = append(certList.Items, *cert)
 	certUnstructedList, err := util.ObjectListToNewUnstructuredList(certList)
 	if err != nil {
 		return err
@@ -2008,12 +2026,14 @@ func (b *Bootstrap) UpdateResourceLabel(instance *apiv3.CommonService) error {
 	if err := b.UpdateResourceWithLabel(certUnstructedList, labelsMap); err != nil {
 		return err
 	}
-
 	return nil
 }
 
 func (b *Bootstrap) UpdateResourceWithLabel(resources *unstructured.UnstructuredList, labels map[string]string) error {
 	for _, resource := range resources.Items {
+		if resource.GetName() == "" {
+			continue
+		}
 		util.EnsureLabels(&resource, labels)
 		klog.Infof("Updating labels in %s %s/%s", resource.GetKind(), resource.GetNamespace(), resource.GetName())
 		if err := b.UpdateObject(&resource); err != nil {
@@ -2138,7 +2158,7 @@ func (b *Bootstrap) CheckSubOperatorStatus(instance *apiv3.CommonService) (bool,
 
 func (b *Bootstrap) GetOperatorInfo(optList []odlm.Operator, optName string) (*odlm.Operator, error) {
 	for _, opt := range optList {
-		if opt.Name == optName {
+		if opt.Name == optName && opt.InstallMode != "no-op" { // If the operator is no-op mode, skip it
 			return &opt, nil
 		}
 	}
