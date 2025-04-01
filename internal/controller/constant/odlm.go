@@ -37,8 +37,6 @@ var (
 var ServiceNames = map[string][]string{
 	"PostgreSQL": {
 		"cloud-native-postgresql",
-		"cloud-native-postgresql-v1.22",
-		"cloud-native-postgresql-v1.25",
 	},
 	// Add more service categories as needed
 }
@@ -320,6 +318,13 @@ spec:
     namespace: "{{ .ServicesNs }}"
     packageName: rhbk-operator
     scope: public
+  - channel: stable-v26
+    installPlanApproval: {{ .ApprovalMode }}
+    name: keycloak-operator-v26
+    namespace: "{{ .ServicesNs }}"
+    packageName: rhbk-operator
+    scope: public
+    configName: keycloak-operator
   - channel: stable
     fallbackChannels:
       - stable-v1.25
@@ -886,7 +891,23 @@ spec:
               public-cs-keycloak-service:
                 configmap: cs-keycloak-service
             description: Binding information that should be accessible to Keycloak adopters
-            operand: keycloak-operator
+            operand:
+              templatingValueFrom:
+                conditional:
+                  expression:
+                    lessThan:
+                      left:
+                        objectRef:
+                          apiVersion: apps/v1
+                          kind: Deployment
+                          name: rhbk-operator
+                          path: .metadata.labels.olm\.owner
+                      right:
+                        literal: rhbk-operator.v26.0.0
+                  then:
+                    literal: "keycloak-operator" 
+                  else:
+                    literal: "keycloak-operator-v26"
             registry: common-service
             registryNamespace: {{ .ServicesNs }}
         force: true
@@ -2233,6 +2254,7 @@ spec:
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     operatorConfig: cloud-native-postgresql-operator-config
+    configName: cloud-native-postgresql
   - channel: stable-v1.25
     fallbackChannels:
       - stable-v1.22
@@ -2243,6 +2265,7 @@ spec:
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     operatorConfig: cloud-native-postgresql-operator-config
+    configName: cloud-native-postgresql
   - channel: alpha
     name: ibm-user-data-services-operator
     namespace: "{{ .CPFSNs }}"
