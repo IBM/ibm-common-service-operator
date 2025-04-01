@@ -73,6 +73,10 @@ spec:
                 type: string
               enableInstanaMetricCollection:
                 type: boolean
+              disableManageCertRotation:
+                description: DisableManageCertRotation is a bool to enable or disable
+                  schedule cert renewal
+                type: boolean
               features:
                 description: Features defines the configurations of Cloud Pak Services
                 properties:
