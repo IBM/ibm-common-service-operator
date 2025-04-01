@@ -1,0 +1,15 @@
+global: 
+
+  operatorNamespace: helm-test
+
+  instanceNamespace: helm-test-services # this is servicesNamespace 
+
+  imagePullPrefix: docker-na-public.artifactory.swg-devops.com
+
+  imagePullSecret: ibm-entitlement-key 
+
+  licenseAccept: true 
+
+imageRegistryNamespaceOperator: hyc-cloud-private-integration-docker-local/ibmcom 
+
+imageRegistryNamespaceOperand: hyc-cloud-private-integration-docker-local/ibmcom 
