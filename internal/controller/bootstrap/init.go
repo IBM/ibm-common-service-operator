@@ -19,6 +19,7 @@ package bootstrap
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"reflect"
@@ -416,6 +417,74 @@ func (b *Bootstrap) CreateCsCR() error {
 			return err
 		}
 	}
+	return nil
+}
+
+func (b *Bootstrap) CreateCsCRNoOLM() error {
+
+	cs := util.NewUnstructured("operator.ibm.com", "CommonService", "v3")
+	cs.SetName("common-service")
+	cs.SetNamespace(b.CSData.OperatorNs)
+
+	deploy, err := b.GetDeployment()
+	if err != nil {
+		return err
+	}
+
+	annotations := deploy.GetAnnotations()
+	almExample := annotations["alm-examples"]
+
+	if _, err := b.GetObject(cs); errors.IsNotFound(err) { // Only if it's a fresh install
+		// Fresh Intall: No ODLM and NO CR
+		return b.CreateOrUpdateFromJson(almExample)
+	} else if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (b *Bootstrap) CreateOrUpdateFromJson(objectTemplate string, alwaysUpdate ...bool) error {
+	// Create a slice for crTemplates
+	var crTemplates []interface{}
+
+	// Convert CR template string to slice
+	if err := json.Unmarshal([]byte(objectTemplate), &crTemplates); err != nil {
+		return err
+	}
+
+	for _, crTemplate := range crTemplates {
+		// Create an unstruct object for CR and request its value to CR template
+		var cr unstructured.Unstructured
+		cr.Object = crTemplate.(map[string]interface{})
+
+		name := cr.GetName()
+		if name == "" {
+			continue
+		}
+
+		spec := cr.Object["spec"]
+		if spec == "" {
+			continue
+		}
+
+		err := b.Client.Get(ctx, types.NamespacedName{
+			Name:      name,
+			Namespace: b.CSData.OperatorNs,
+		}, &cr)
+
+		if err != nil && !errors.IsNotFound(err) {
+			return err
+		} else if errors.IsNotFound(err) {
+			// Create Custom Resource
+			if err := b.CreateObject(&cr); err != nil {
+				return err
+			}
+			continue
+		} else {
+			klog.V(2).Infof("skip creating cs cr, it already exist")
+		}
+	}
+
 	return nil
 }
 

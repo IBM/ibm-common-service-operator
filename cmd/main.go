@@ -172,9 +172,13 @@ func main() {
 			os.Exit(1)
 		}
 
-		klog.Infof("Start go routines")
 		// Create CS CR
-		go goroutines.WaitToCreateCsCR(bs)
+		klog.Infof("Start go routines")
+		if os.Getenv("NO_OLM") == "true" {
+			go goroutines.WaitToCreateCsCRNoOLM(bs)
+		} else {
+			go goroutines.WaitToCreateCsCR(bs)
+		}
 		// Delete Keycloak Cert
 		go goroutines.CleanupResources(bs)
 
