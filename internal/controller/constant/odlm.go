@@ -2150,6 +2150,12 @@ metadata:
     status-monitored-services: {{ .StatusMonitoredServices }}
 spec:
   operators:
+  - name: ibm-usage-metering-operator
+    namespace: "{{ .CPFSNs }}"
+    channel: v1.0
+    packageName: ibm-usage-metering-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
   - name: ibm-user-management-operator
     namespace: "{{ .CPFSNs }}"
     channel: v1.0
@@ -2372,6 +2378,9 @@ metadata:
     version: {{ .Version }}
 spec:
   services:
+  - name: ibm-usage-metering-operator
+    spec:
+      ibmUsageMetering: {}
   - name: ibm-licensing-operator
     spec:
       operandBindInfo: {}
