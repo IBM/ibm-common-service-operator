@@ -124,6 +124,9 @@ type CommonServiceSpec struct {
 	License LicenseList `json:"license"`
 	// +optional
 	EnableInstanaMetricCollection bool `json:"enableInstanaMetricCollection,omitempty"`
+	// DisableManageCertRotation is a bool to enable or disable schedule cert renewal
+	// +optional
+	DisableManageCertRotation bool `json:"disableManageCertRotation,omitempty"`
 }
 
 // OperatorConfig is configuration composed of key-value pairs to be injected into specified CSVs

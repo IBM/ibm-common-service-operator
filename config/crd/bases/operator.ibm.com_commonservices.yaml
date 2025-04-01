@@ -68,6 +68,10 @@ spec:
                   DefalutAdminUser is the name of the default admin user for foundational
                   services IM, default is cpadmin
                 type: string
+              disableManageCertRotation:
+                description: DisableManageCertRotation is a bool to enable or disable
+                  schedule cert renewal
+                type: boolean
               enableInstanaMetricCollection:
                 type: boolean
               features:
