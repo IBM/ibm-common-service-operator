@@ -26,6 +26,7 @@ YQ=yq
 FROM_NAMESPACE=""
 TO_NAMESPACE=""
 NUM=$#
+TEMPDIR="./"
 TEMPFILE="_TMP.yaml"
 DEBUG=0
 z_or_power_ENV="false"
@@ -50,7 +51,7 @@ trap 'error "Error occurred in function $FUNCNAME at line $LINENO"' ERR
 function main() {
     ARGUMENTS="$@"
     parse_arguments "$@"
-    save_log "cp3pt0-deployment/logs" "preload_data_log" "$DEBUG"
+    save_log "$TEMPDIR" "preload_data_log" "$DEBUG"
     trap cleanup_log EXIT
     prereq
     if [[ $CLEANUP == "false" ]]; then
@@ -110,6 +111,10 @@ function parse_arguments() {
         -v | --debug)
             shift
             DEBUG=$1
+            ;;
+        -o | --output-dir)
+            shift
+            TEMPDIR=$1
             ;;
         -h | --help)
             print_usage
@@ -204,7 +209,7 @@ function copy_resource() {
     resource_exists=$(${OC} get $resourceType $resourceName -n $FROM_NAMESPACE || echo "fail")
     storageClass_exist=$(${OC} get $resourceType $resourceName -n $FROM_NAMESPACE -o yaml | $YQ '.spec | has("storageClass")')
     if [[ $resource_exists != "fail" ]]; then
-      $OC get $resourceType $resourceName -n $FROM_NAMESPACE -o yaml > tmp-resource.yaml 
+      $OC get $resourceType $resourceName -n $FROM_NAMESPACE -o yaml > $TEMPDIR/tmp-resource.yaml 
       $YQ -i '.metadata.name = "'${newResourceName}'" |
               del(.metadata.creationTimestamp) | 
               del(.metadata.resourceVersion) | 
@@ -213,20 +218,20 @@ function copy_resource() {
               del(.metadata.ownerReferences) |
               del(.metadata.managedFields) |
               del(.metadata.labels)
-          ' tmp-resource.yaml || error "Could not update tmp-resource.yaml"
+          ' $TEMPDIR/tmp-resource.yaml || error "Could not update tmp-resource.yaml"
       # delete storageclass field from common-service CR
       if [[ $resourceType == "commonservice" && $storageClass_exist == "true" ]]; then 
         echo "Deleting storageClass field from commonservice CR"
-        $YQ -i 'del(.spec.storageClass)' tmp-resource.yaml
+        $YQ -i 'del(.spec.storageClass)' $TEMPDIR/tmp-resource.yaml
       fi
-      $OC apply -n $TO_NAMESPACE -f tmp-resource.yaml || error "Failed to copy over $resourceType $resourceName."
+      $OC apply -n $TO_NAMESPACE -f $TEMPDIR/tmp-resource.yaml || error "Failed to copy over $resourceType $resourceName."
       # Check if the resource is created in TO_NAMESPACE
       check_copied_resource $resourceType $newResourceName $TO_NAMESPACE
     else
       warning "Resource $resourceType $resourceName not found and not migrated from $FROM_NAMESPACE to $TO_NAMESPACE"
     fi
 
-    rm tmp-resource.yaml
+    rm $TEMPDIR/tmp-resource.yaml
 }
 
 function check_copied_resource() {
@@ -1314,14 +1319,14 @@ function dumplogs() {
   count=$(echo $pod | wc -w)
   if [[ $count -eq 1 ]]; then
     info "Saving $1 logs in _${1}.log"
-    ${OC} logs $pod > _${1}.log
+    ${OC} logs $pod > $TEMPDIR/_${1}.log
   elif [[ $count -eq 0 ]]; then
     info "No pods found for $1"
   else
     info "Multiple pods found for $1"
     for p in $pod; do
       info "Saving $p logs in _${1}_${p}.log"
-      ${OC} logs $p > _${1}_${p}.log
+      ${OC} logs $p > $TEMPDIR/_${1}_${p}.log
     done
   fi
 } # dumplogs
