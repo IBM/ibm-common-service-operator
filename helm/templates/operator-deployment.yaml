@@ -94,7 +94,7 @@ spec:
               value: "false"
             - name: OPERATOR_NAME
               value: ibm-common-service-operator
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           livenessProbe: 
             failureThreshold: 10
             httpGet: 
