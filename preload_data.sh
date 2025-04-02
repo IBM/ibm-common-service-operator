@@ -26,6 +26,7 @@ YQ=yq
 FROM_NAMESPACE=""
 TO_NAMESPACE=""
 NUM=$#
+TEMPDIR="./"
 TEMPFILE="_TMP.yaml"
 DEBUG=0
 z_or_power_ENV="false"
@@ -50,7 +51,7 @@ trap 'error "Error occurred in function $FUNCNAME at line $LINENO"' ERR
 function main() {
     ARGUMENTS="$@"
     parse_arguments "$@"
-    save_log "cp3pt0-deployment/logs" "preload_data_log" "$DEBUG"
+    save_log "$TEMPDIR" "preload_data_log" "$DEBUG"
     trap cleanup_log EXIT
     prereq
     if [[ $CLEANUP == "false" ]]; then
@@ -110,6 +111,10 @@ function parse_arguments() {
         -v | --debug)
             shift
             DEBUG=$1
+            ;;
+        -o | --output-dir)
+            shift
+            TEMPDIR=$1
             ;;
         -h | --help)
             print_usage
@@ -204,7 +209,7 @@ function copy_resource() {
     resource_exists=$(${OC} get $resourceType $resourceName -n $FROM_NAMESPACE || echo "fail")
     storageClass_exist=$(${OC} get $resourceType $resourceName -n $FROM_NAMESPACE -o yaml | $YQ '.spec | has("storageClass")')
     if [[ $resource_exists != "fail" ]]; then
-      $OC get $resourceType $resourceName -n $FROM_NAMESPACE -o yaml > tmp-resource.yaml 
+      $OC get $resourceType $resourceName -n $FROM_NAMESPACE -o yaml > $TEMPDIR/tmp-resource.yaml 
       $YQ -i '.metadata.name = "'${newResourceName}'" |
               del(.metadata.creationTimestamp) | 
               del(.metadata.resourceVersion) | 
@@ -213,20 +218,20 @@ function copy_resource() {
               del(.metadata.ownerReferences) |
               del(.metadata.managedFields) |
               del(.metadata.labels)
-          ' tmp-resource.yaml || error "Could not update tmp-resource.yaml"
+          ' $TEMPDIR/tmp-resource.yaml || error "Could not update tmp-resource.yaml"
       # delete storageclass field from common-service CR
       if [[ $resourceType == "commonservice" && $storageClass_exist == "true" ]]; then 
         echo "Deleting storageClass field from commonservice CR"
-        $YQ -i 'del(.spec.storageClass)' tmp-resource.yaml
+        $YQ -i 'del(.spec.storageClass)' $TEMPDIR/tmp-resource.yaml
       fi
-      $OC apply -n $TO_NAMESPACE -f tmp-resource.yaml || error "Failed to copy over $resourceType $resourceName."
+      $OC apply -n $TO_NAMESPACE -f $TEMPDIR/tmp-resource.yaml || error "Failed to copy over $resourceType $resourceName."
       # Check if the resource is created in TO_NAMESPACE
       check_copied_resource $resourceType $newResourceName $TO_NAMESPACE
     else
       warning "Resource $resourceType $resourceName not found and not migrated from $FROM_NAMESPACE to $TO_NAMESPACE"
     fi
 
-    rm tmp-resource.yaml
+    rm $TEMPDIR/tmp-resource.yaml
 }
 
 function check_copied_resource() {
@@ -730,8 +735,8 @@ EOF
 function cleanup() {
   title "Cleaning up any previous copy operations..."
   msg "-----------------------------------------------------------------------"
-  if [[ -f $TEMPFILE ]]; then
-    rm $TEMPFILE
+  if [[ -f "$TEMPDIR/$TEMPFILE" ]]; then
+    rm "$TEMPDIR/$TEMPFILE"
   fi
   ${OC} delete job mongodb-backup -n $FROM_NAMESPACE --ignore-not-found
   ${OC} delete job mongodb-restore -n $TO_NAMESPACE --ignore-not-found
@@ -826,7 +831,7 @@ function createdumppvc() {
     error "Cannnot get storage class name from PVC mongodbdir-icp-mongodb-0 in $FROM_NAMESPACE"
   fi
 
-  cat <<EOF >$TEMPFILE
+  cat <<EOF >"$TEMPDIR/$TEMPFILE"
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -842,7 +847,7 @@ spec:
   volumeMode: Filesystem
 EOF
 
-  ${OC} apply -f $TEMPFILE
+  ${OC} apply -f "$TEMPDIR/$TEMPFILE"
 
   wait_trigger=$(${OC} get sc $stgclass -o yaml | grep volumeBindingMode: | awk '{print $2}')
   if [[ $wait_trigger == "WaitForFirstConsumer" ]]; then
@@ -875,7 +880,7 @@ function dumpmongo() {
   ibm_mongodb_image=$(${OC} get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
 
   if [[ $z_or_power_ENV == "false" ]]; then
-    cat <<EOF >$TEMPFILE
+    cat <<EOF >"$TEMPDIR/$TEMPFILE"
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -978,7 +983,7 @@ EOF
     #need to delete the mongo pods one at a time
     delete_mongo_pods "$FROM_NAMESPACE"
     ${OC} delete job mongodb-backup -n $FROM_NAMESPACE --ignore-not-found
-    cat <<EOF >$TEMPFILE
+    cat <<EOF >"$TEMPDIR/$TEMPFILE"
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -1038,7 +1043,7 @@ EOF
   fi
 
   info "Running Backup" 
-  ${OC} apply -f $TEMPFILE -n $FROM_NAMESPACE
+  ${OC} apply -f "$TEMPDIR/$TEMPFILE" -n $FROM_NAMESPACE
   ${OC} get pods -n $FROM_NAMESPACE | grep mongodb-backup || echo ""
   wait_for_job_complete "mongodb-backup" "$FROM_NAMESPACE"
 
@@ -1088,7 +1093,7 @@ function swapmongopvc() {
       error "Cannnot get storage class name from PVC mongodbdir-icp-mongodb-0 in $FROM_NAMESPACE"
     fi
     
-    cat <<EOF >$TEMPFILE
+    cat <<EOF >"$TEMPDIR/$TEMPFILE"
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -1123,7 +1128,7 @@ EOF
         "${OC}" label pv $VOL $not_deprecated_region_label=$region $deprecated_region_label- $not_deprecated_zone_label=$zone $deprecated_zone_label- --overwrite 
     fi
 
-    cat <<EOF >$TEMPFILE
+    cat <<EOF >"$TEMPDIR/$TEMPFILE"
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -1141,7 +1146,7 @@ EOF
   fi
 
 
-  ${OC} create -f $TEMPFILE
+  ${OC} create -f "$TEMPDIR/$TEMPFILE"
 
   status=$(${OC} get pvc cs-mongodump -n $TO_NAMESPACE --no-headers | awk '{print $2}')
   wait_trigger=$(${OC} get sc $stgclass -o yaml | grep volumeBindingMode: | awk '{print $2}')
@@ -1180,7 +1185,7 @@ function loadmongo() {
   ibm_mongodb_image=$(${OC} get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
 
   if [[ $z_or_power_ENV == "false" ]]; then
-    cat <<EOF >$TEMPFILE
+    cat <<EOF >"$TEMPDIR/$TEMPFILE"
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -1240,7 +1245,7 @@ EOF
   else
     debug1 "Applying z/power restore job"
     ${OC} delete job mongodb-restore -n $TO_NAMESPACE --ignore-not-found
-    cat <<EOF >$TEMPFILE
+    cat <<EOF >"$TEMPDIR/$TEMPFILE"
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -1300,7 +1305,7 @@ EOF
   fi
 
   info "Running Restore"
-  ${OC} apply -f $TEMPFILE -n $TO_NAMESPACE
+  ${OC} apply -f "$TEMPDIR/$TEMPFILE" -n $TO_NAMESPACE
   wait_for_job_complete "mongodb-restore" "$TO_NAMESPACE"
   success "Restore Complete"
 } # loadmongo
@@ -1314,14 +1319,14 @@ function dumplogs() {
   count=$(echo $pod | wc -w)
   if [[ $count -eq 1 ]]; then
     info "Saving $1 logs in _${1}.log"
-    ${OC} logs $pod > _${1}.log
+    ${OC} logs $pod > $TEMPDIR/_${1}.log
   elif [[ $count -eq 0 ]]; then
     info "No pods found for $1"
   else
     info "Multiple pods found for $1"
     for p in $pod; do
       info "Saving $p logs in _${1}_${p}.log"
-      ${OC} logs $p > _${1}_${p}.log
+      ${OC} logs $p > $TEMPDIR/_${1}_${p}.log
     done
   fi
 } # dumplogs
