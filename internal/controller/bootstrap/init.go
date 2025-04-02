@@ -421,6 +421,7 @@ func (b *Bootstrap) CreateCsCR() error {
 }
 
 func (b *Bootstrap) CreateCsCRNoOLM() error {
+	klog.V(2).Infof("creating cs cr")
 
 	cs := util.NewUnstructured("operator.ibm.com", "CommonService", "v3")
 	cs.SetName("common-service")
@@ -444,6 +445,8 @@ func (b *Bootstrap) CreateCsCRNoOLM() error {
 }
 
 func (b *Bootstrap) CreateOrUpdateFromJson(objectTemplate string, alwaysUpdate ...bool) error {
+	klog.V(2).Infof("creating cs cr from Json: %s", objectTemplate)
+
 	// Create a slice for crTemplates
 	var crTemplates []interface{}
 
