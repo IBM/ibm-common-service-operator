@@ -735,8 +735,8 @@ EOF
 function cleanup() {
   title "Cleaning up any previous copy operations..."
   msg "-----------------------------------------------------------------------"
-  if [[ -f $TEMPFILE ]]; then
-    rm $TEMPFILE
+  if [[ -f "$TEMPDIR/$TEMPFILE" ]]; then
+    rm "$TEMPDIR/$TEMPFILE"
   fi
   ${OC} delete job mongodb-backup -n $FROM_NAMESPACE --ignore-not-found
   ${OC} delete job mongodb-restore -n $TO_NAMESPACE --ignore-not-found
@@ -831,7 +831,7 @@ function createdumppvc() {
     error "Cannnot get storage class name from PVC mongodbdir-icp-mongodb-0 in $FROM_NAMESPACE"
   fi
 
-  cat <<EOF >$TEMPFILE
+  cat <<EOF >"$TEMPDIR/$TEMPFILE"
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -847,7 +847,7 @@ spec:
   volumeMode: Filesystem
 EOF
 
-  ${OC} apply -f $TEMPFILE
+  ${OC} apply -f "$TEMPDIR/$TEMPFILE"
 
   wait_trigger=$(${OC} get sc $stgclass -o yaml | grep volumeBindingMode: | awk '{print $2}')
   if [[ $wait_trigger == "WaitForFirstConsumer" ]]; then
@@ -880,7 +880,7 @@ function dumpmongo() {
   ibm_mongodb_image=$(${OC} get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
 
   if [[ $z_or_power_ENV == "false" ]]; then
-    cat <<EOF >$TEMPFILE
+    cat <<EOF >"$TEMPDIR/$TEMPFILE"
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -983,7 +983,7 @@ EOF
     #need to delete the mongo pods one at a time
     delete_mongo_pods "$FROM_NAMESPACE"
     ${OC} delete job mongodb-backup -n $FROM_NAMESPACE --ignore-not-found
-    cat <<EOF >$TEMPFILE
+    cat <<EOF >"$TEMPDIR/$TEMPFILE"
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -1043,7 +1043,7 @@ EOF
   fi
 
   info "Running Backup" 
-  ${OC} apply -f $TEMPFILE -n $FROM_NAMESPACE
+  ${OC} apply -f "$TEMPDIR/$TEMPFILE" -n $FROM_NAMESPACE
   ${OC} get pods -n $FROM_NAMESPACE | grep mongodb-backup || echo ""
   wait_for_job_complete "mongodb-backup" "$FROM_NAMESPACE"
 
@@ -1093,7 +1093,7 @@ function swapmongopvc() {
       error "Cannnot get storage class name from PVC mongodbdir-icp-mongodb-0 in $FROM_NAMESPACE"
     fi
     
-    cat <<EOF >$TEMPFILE
+    cat <<EOF >"$TEMPDIR/$TEMPFILE"
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -1128,7 +1128,7 @@ EOF
         "${OC}" label pv $VOL $not_deprecated_region_label=$region $deprecated_region_label- $not_deprecated_zone_label=$zone $deprecated_zone_label- --overwrite 
     fi
 
-    cat <<EOF >$TEMPFILE
+    cat <<EOF >"$TEMPDIR/$TEMPFILE"
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -1146,7 +1146,7 @@ EOF
   fi
 
 
-  ${OC} create -f $TEMPFILE
+  ${OC} create -f "$TEMPDIR/$TEMPFILE"
 
   status=$(${OC} get pvc cs-mongodump -n $TO_NAMESPACE --no-headers | awk '{print $2}')
   wait_trigger=$(${OC} get sc $stgclass -o yaml | grep volumeBindingMode: | awk '{print $2}')
@@ -1185,7 +1185,7 @@ function loadmongo() {
   ibm_mongodb_image=$(${OC} get pod icp-mongodb-0 -n $FROM_NAMESPACE -o=jsonpath='{range .spec.containers[0]}{.image}{end}')
 
   if [[ $z_or_power_ENV == "false" ]]; then
-    cat <<EOF >$TEMPFILE
+    cat <<EOF >"$TEMPDIR/$TEMPFILE"
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -1245,7 +1245,7 @@ EOF
   else
     debug1 "Applying z/power restore job"
     ${OC} delete job mongodb-restore -n $TO_NAMESPACE --ignore-not-found
-    cat <<EOF >$TEMPFILE
+    cat <<EOF >"$TEMPDIR/$TEMPFILE"
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -1305,7 +1305,7 @@ EOF
   fi
 
   info "Running Restore"
-  ${OC} apply -f $TEMPFILE -n $TO_NAMESPACE
+  ${OC} apply -f "$TEMPDIR/$TEMPFILE" -n $TO_NAMESPACE
   wait_for_job_complete "mongodb-restore" "$TO_NAMESPACE"
   success "Restore Complete"
 } # loadmongo
