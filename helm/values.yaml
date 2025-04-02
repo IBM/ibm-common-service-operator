@@ -3,7 +3,6 @@ cpfs:
   imageRegistryNamespaceOperator: cpopen
   imageRegistryNamespaceOperand: cpopen/cpfs
   labels:
-    test: test
 
 # Commented out values are handled by a global values file
 # imagePullPrefix: icr.io
