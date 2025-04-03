@@ -490,15 +490,24 @@ func (r *CommonServiceReconciler) ReconcileNonConfigurableCR(ctx context.Context
 	return ctrl.Result{}, nil
 }
 
-func (r *CommonServiceReconciler) mappingToCsRequest() handler.MapFunc {
+func (r *CommonServiceReconciler) mappingToCsRequestForConfigMaps() handler.MapFunc {
 	return func(object client.Object) []reconcile.Request {
-		CsInstance := []reconcile.Request{}
-		cmName := object.GetName()
-		cmNs := object.GetNamespace()
-		if cmName == constant.CsMapConfigMap && cmNs == "kube-public" {
-			CsInstance = append(CsInstance, reconcile.Request{NamespacedName: types.NamespacedName{Name: constant.MasterCR, Namespace: r.Bootstrap.CSData.OperatorNs}})
+		configMap, ok := object.(*corev1.ConfigMap)
+		if !ok {
+			return nil
 		}
-		return CsInstance
+
+		// Check two configmaps: common-service-maps and ibm-cpp-config
+		if (configMap.Name == constant.CsMapConfigMap && configMap.Namespace == constant.CsMapConfigMapNs) ||
+			(configMap.Name == constant.IBMCPPCONFIG && configMap.Namespace == r.Bootstrap.CSData.ServicesNs) {
+			return []reconcile.Request{
+				{NamespacedName: types.NamespacedName{
+					Name:      constant.MasterCR,
+					Namespace: r.Bootstrap.CSData.OperatorNs,
+				}},
+			}
+		}
+		return nil
 	}
 }
 
@@ -567,17 +576,11 @@ func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				predicate.LabelChangedPredicate{}))).
 		Watches(
 			&source.Kind{Type: &corev1.ConfigMap{}},
-			handler.EnqueueRequestsFromMapFunc(r.mappingToCsRequest()),
+			handler.EnqueueRequestsFromMapFunc(r.mappingToCsRequestForConfigMaps()),
 			builder.WithPredicates(predicate.Funcs{
-				CreateFunc: func(e event.CreateEvent) bool {
-					return true
-				},
-				DeleteFunc: func(e event.DeleteEvent) bool {
-					return !e.DeleteStateUnknown
-				},
-				UpdateFunc: func(e event.UpdateEvent) bool {
-					return true
-				},
+				CreateFunc: func(e event.CreateEvent) bool { return true },
+				UpdateFunc: func(e event.UpdateEvent) bool { return true },
+				DeleteFunc: func(e event.DeleteEvent) bool { return !e.DeleteStateUnknown },
 			}))
 	if isOpregAPI, err := r.Bootstrap.CheckCRD(constant.OpregAPIGroupVersion, constant.OpregKind); err != nil {
 		klog.Errorf("Failed to check if OperandRegistry CRD exists: %v", err)
