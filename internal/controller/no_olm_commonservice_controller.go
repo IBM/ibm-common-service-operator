@@ -194,7 +194,7 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 	// Install/update Opreg and Opcon resources before installing ODLM if CRDs exist
 	if existOpreg && existOpcon {
 		klog.Info("Installing/Updating OperandRegistry")
-		if err := r.Bootstrap.InstallOrUpdateOpreg(forceUpdateODLMCRs, ""); err != nil {
+		if err := r.Bootstrap.InstallOrUpdateOpreg(""); err != nil {
 			klog.Errorf("Fail to Installing/Updating OperandConfig: %v", err)
 			return ctrl.Result{}, err
 		}
