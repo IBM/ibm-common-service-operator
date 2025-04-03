@@ -19,6 +19,7 @@ package bootstrap
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"reflect"
@@ -416,6 +417,101 @@ func (b *Bootstrap) CreateCsCR() error {
 			return err
 		}
 	}
+	return nil
+}
+
+func (b *Bootstrap) CreateCsCRNoOLM() error {
+	klog.V(2).Infof("creating cs cr")
+
+	cs := util.NewUnstructured("operator.ibm.com", "CommonService", "v3")
+	cs.SetName("common-service")
+	cs.SetNamespace(b.CSData.OperatorNs)
+
+	deploy, err := b.GetDeployment()
+	if err != nil {
+		return err
+	}
+
+	annotations := deploy.GetAnnotations()
+	almExample := annotations["alm-examples"]
+
+	if _, err := b.GetObject(cs); errors.IsNotFound(err) { // Only if it's a fresh install
+		// Fresh Intall: No ODLM and NO CR
+		return b.CreateOrUpdateFromJson(almExample)
+	} else if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (b *Bootstrap) CreateOrUpdateFromJson(objectTemplate string, alwaysUpdate ...bool) error {
+	klog.V(2).Infof("creating object from Json: %s", objectTemplate)
+
+	// Create a slice for crTemplates
+	var crTemplates []interface{}
+
+	// Convert CR template string to slice
+	if err := json.Unmarshal([]byte(objectTemplate), &crTemplates); err != nil {
+		return err
+	}
+
+	for _, crTemplate := range crTemplates {
+		// Create an unstruct object for CR and request its value to CR template
+
+		forceUpdate := false
+		if len(alwaysUpdate) != 0 {
+			forceUpdate = alwaysUpdate[0]
+		}
+		update := forceUpdate
+
+		var cr unstructured.Unstructured
+		cr.Object = crTemplate.(map[string]interface{})
+
+		name := cr.GetName()
+		if name == "" {
+			continue
+		}
+
+		spec := cr.Object["spec"]
+		if spec == "" {
+			continue
+		}
+
+		crInCluster := unstructured.Unstructured{}
+		crInCluster.SetGroupVersionKind(cr.GroupVersionKind())
+
+		if err := b.Client.Get(ctx, types.NamespacedName{
+			Name:      name,
+			Namespace: b.CSData.OperatorNs,
+		}, &crInCluster); err != nil && !errors.IsNotFound(err) {
+			return err
+		} else if errors.IsNotFound(err) {
+			// Create Custom Resource
+			if err := b.CreateObject(&cr); err != nil {
+				return err
+			}
+			continue
+		} else {
+			// Compare version
+			v1IsLarger, convertErr := util.CompareVersion(cr.GetAnnotations()["version"], crInCluster.GetAnnotations()["version"])
+			if convertErr != nil {
+				return convertErr
+			}
+			if v1IsLarger {
+				update = true
+			}
+		}
+
+		if update {
+			klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", cr.GetName(), cr.GetNamespace(), cr.GetKind(), cr.GetObjectKind().GroupVersionKind().Group, cr.GetObjectKind().GroupVersionKind().Version)
+			resourceVersion := crInCluster.GetResourceVersion()
+			cr.SetResourceVersion(resourceVersion)
+			if err := b.UpdateObject(&cr); err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 

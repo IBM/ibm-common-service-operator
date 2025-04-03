@@ -8,6 +8,37 @@ metadata:
     {{- with .Values.cpfs.labels }}
       {{- toYaml . | nindent 4 }}
     {{- end }}
+  annotations:
+    alm-examples: |
+      [
+        {
+          "apiVersion": "operator.ibm.com/v3",
+          "kind": "CommonService",
+          "metadata": {
+            "labels": {
+              "component-id": "{{ .Chart.Name }}",
+              "foundationservices.cloudpak.ibm.com": "commonservice",
+              {{- range $key, $val := .Values.cpfs.labels }}
+              "{{ $key }}": "{{ $val }}"
+              {{- end}}
+            },
+            "annotations": {
+              "apiVersion": "-1"
+            },
+            "name": "common-service",
+            "namespace": "{{ .Values.global.operatorNamespace }}"
+          },
+          "spec": {
+            "license": {
+              "accept": {{ .Values.global.licenseAccept }}
+            },
+            "operatorNamespace": "{{ .Values.global.operatorNamespace }}",
+            "servicesNamespace": "{{ .Values.global.instanceNamespace }}",
+            "size": "{{ .Values.commonServiceSpec.size }}",
+            "storageClass": "{{ .Values.global.blockStorageClass }}"
+          }
+        }
+      ]
 spec: 
   replicas: 1
   selector: 
