@@ -57,26 +57,23 @@ function main() {
         label_catalogsource
         label_subscription
     else
-        #TODO create function(s) to label chart resources
         label_helm_cluster_scope
         label_helm_namespace_scope
-        #charts to label
-        #odlm
-        #cs operator
-        #ibm iam operator
-        #common ui 
-        #edb
-        #zen?
-        #nss already covered in the label_nss function
+        if [[ $ENABLE_LICENSING -eq 1 ]]; then
+            label_helm_licensing
+        fi
+        if [[ $ENABLE_LSR -eq 1 ]]; then
+            label_helm_lsr
+        fi
     fi
     label_ns_and_related 
     label_configmap
-    if [[ $ENABLE_LSR -eq 1 ]]; then
-        label_lsr
-    fi
     label_cs
     if [[ $SERVICES_NS != "" ]]; then
         label_nss
+    fi
+    if [[ $ENABLE_LSR -eq 1 ]]; then
+        label_lsr
     fi
     label_mcsp
     success "Successfully labeled all the resources"
@@ -164,7 +161,6 @@ function parse_arguments() {
             ADDITIONAL_SOURCES=$1
             ;;
         --no-olm)
-            shift
             NO_OLM="true"
             ;;
         -h | --help)
@@ -614,6 +610,45 @@ function label_helm_namespace_scope(){
     fi
 
     success "Namespace scoped charts labeled."
+}
+
+function label_helm_licensing() {
+    title "Labeling Licensing cluster and namespace resources..."
+    ${OC} label clusterrole ibm-license-service ibm-license-service-restricted ibm-licensing-default-reader ibm-licensing-operator foundationservices.cloudpak.ibm.com=ls-cluster  --overwrite=true 2>/dev/null
+    ${OC} label clusterrolebinding ibm-license-service ibm-license-service-restricted ibm-licensing-default-reader ibm-licensing-operator ibm-license-service-cluster-monitoring-view foundationservices.cloudpak.ibm.com=ls-cluster  --overwrite=true 2>/dev/null
+    ${OC} label customresourcedefinition ibmlicensingdefinitions.operator.ibm.com ibmlicensingquerysources.operator.ibm.com ibmlicensings.operator.ibm.com foundationservices.cloudpak.ibm.com=ls-cluster  --overwrite=true 2>/dev/null
+
+    ${OC} label ibmlicensing instance -n $LICENSING_NAMESPACE foundationservices.cloudpak.ibm.com=ls-chart --overwrite=true 2>/dev/null
+    ${OC} label deployment ibm-licensing-operator -n $LICENSING_NAMESPACE foundationservices.cloudpak.ibm.com=ls-chart --overwrite=true 2>/dev/null
+    ${OC} label role ibm-license-service ibm-license-service-restricted ibm-licensing-operator -n $LICENSING_NAMESPACE foundationservices.cloudpak.ibm.com=ls-chart --overwrite=true 2>/dev/null
+    ${OC} label rolebinding ibm-license-service ibm-license-service-restricted ibm-licensing-operator -n $LICENSING_NAMESPACE foundationservices.cloudpak.ibm.com=ls-chart --overwrite=true 2>/dev/null
+    ${OC} label serviceaccount ibm-license-service ibm-license-service-restricted ibm-licensing-default-reader ibm-licensing-operator -n $LICENSING_NAMESPACE foundationservices.cloudpak.ibm.com=ls-chart --overwrite=true 2>/dev/null
+    
+    lis_release_name=$(${OC} get deploy ibm-licensing-operator -n $LICENSING_NAMESPACE -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
+    lis_release_namespace=$(${OC} get deploy ibm-licensing-operator -n $LICENSING_NAMESPACE -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
+    ${OC} label secret sh.helm.release.v1.$lis_release_name.v1 -n $lis_release_namespace foundationservices.cloudpak.ibm.com=ls-chart  --overwrite=true 2>/dev/null
+
+    success "Licensing resources labeled"
+
+}
+
+function label_helm_lsr() {
+    title "Labeling License Service Reporter cluster and namespace resources..."
+    ${OC} label clusterrole manager-role foundationservices.cloudpak.ibm.com=lsr-cluster  --overwrite=true 2>/dev/null
+    ${OC} label clusterrolebinding manager-rolebinding foundationservices.cloudpak.ibm.com=lsr-cluster  --overwrite=true 2>/dev/null
+    ${OC} label customresourcedefinition ibmlicenseservicereporters.operator.ibm.com foundationservices.cloudpak.ibm.com=lsr-cluster  --overwrite=true 2>/dev/null
+
+    ${OC} label ibmlicenseservicereporters.operator.ibm.com instance -n $LSR_NAMESPACE foundationservices.cloudpak.ibm.com=lsr-chart  --overwrite=true 2>/dev/null
+    ${OC} label deployment ibm-license-service-reporter-operator -n $LSR_NAMESPACE foundationservices.cloudpak.ibm.com=lsr-chart  --overwrite=true 2>/dev/null
+    ${OC} label role ibm-license-service-reporter leader-election-role manager-role -n $LSR_NAMESPACE foundationservices.cloudpak.ibm.com=lsr-chart  --overwrite=true 2>/dev/null
+    ${OC} label rolebinding ibm-license-service-reporter leader-election-rolebinding manager-rolebinding -n $LSR_NAMESPACE foundationservices.cloudpak.ibm.com=lsr-chart  --overwrite=true 2>/dev/null
+    ${OC} label serviceaccount ibm-license-service-reporter ibm-license-service-reporter-operator -n $LSR_NAMESPACE foundationservices.cloudpak.ibm.com=lsr-chart  --overwrite=true 2>/dev/null
+    
+    lsr_release_name=$(${OC} get deploy ibm-license-service-reporter-operator -n $LSR_NAMESPACE -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
+    lsr_release_namespace=$(${OC} get deploy ibm-license-service-reporter-operator -n $LSR_NAMESPACE -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
+    ${OC} label secret sh.helm.release.v1.$lsr_release_name.v1 -n $lsr_release_namespace foundationservices.cloudpak.ibm.com=lsr-chart  --overwrite=true 2>/dev/null
+
+    success "LSR resources labeled"
 }
 
 # ---------- Info functions ----------#
