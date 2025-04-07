@@ -17,8 +17,9 @@ metadata:
           "metadata": {
             "labels": {
               "component-id": "{{ .Chart.Name }}",
-              "foundationservices.cloudpak.ibm.com": "commonservice",
+              "foundationservices.cloudpak.ibm.com": "commonservice"
               {{- range $key, $val := .Values.cpfs.labels }}
+              ,
               "{{ $key }}": "{{ $val }}"
               {{- end}}
             },
