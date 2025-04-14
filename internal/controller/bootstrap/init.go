@@ -2366,6 +2366,10 @@ func (b *Bootstrap) CheckSubOperatorStatus(instance *apiv3.CommonService) (bool,
 			klog.Errorf("Failed to get operator %s info: %v", opt, err)
 			return false, err
 		}
+		if operator == nil {
+			klog.Infof("The operator %s is in no-op mode, skipping it", opt)
+			continue
+		}
 		optStatus, err := b.setOperatorStatus(instance, operator.Name, operator.PackageName, operator.Namespace)
 		if err != nil {
 			klog.Errorf("Failed to get operator status: %v", err)
@@ -2406,6 +2410,9 @@ func (b *Bootstrap) GetOperatorInfo(optList []odlm.Operator, optName string) (*o
 	for _, opt := range optList {
 		if opt.Name == optName && opt.InstallMode != "no-op" { // If the operator is no-op mode, skip it
 			return &opt, nil
+		}
+		if opt.Name == optName && opt.InstallMode == "no-op" {
+			return nil, nil
 		}
 	}
 	return nil, fmt.Errorf("operator %s not found in OperandRegistry", optName)
