@@ -2203,10 +2203,10 @@ func (b *Bootstrap) UpdateManageCertRotationLabel(instance *apiv3.CommonService)
 	certLabel := make(map[string]string)
 	for _, cs := range csObjectList.Items {
 		if cs.Spec.DisableManageCertRotation {
-			certLabel[constant.ManageCertRotationLabel] = "no"
+			certLabel[constant.ManageCertRotationLabel] = "false"
 			break
 		}
-		certLabel[constant.ManageCertRotationLabel] = "yes"
+		certLabel[constant.ManageCertRotationLabel] = "true"
 	}
 
 	// update labels in the Certificate
