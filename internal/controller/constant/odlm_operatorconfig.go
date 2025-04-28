@@ -16,8 +16,26 @@
 
 package constant
 
-const PostGresOperatorConfig = `
-apiVersion: operator.ibm.com/v1alpha1
+import "fmt"
+
+var PostGresOperatorConfig string
+
+// Populate PostGresOperatorConfig at package initialization
+func init() {
+	services := []string{
+		"edb-keycloak",
+		"cloud-native-postgresql",
+		"common-service-postgresql",
+		"cloud-native-postgresql-v1.22",
+		"cloud-native-postgresql-v1.25",
+	}
+
+	servicesConfig := ""
+	for _, service := range services {
+		servicesConfig += fmt.Sprintf(postgresServiceTemplate, service)
+	}
+
+	PostGresOperatorConfig = `apiVersion: operator.ibm.com/v1alpha1
 kind: OperatorConfig
 metadata:
   name: cloud-native-postgresql-operator-config
@@ -28,8 +46,11 @@ metadata:
   annotations:
     version: {{ .Version }}
 spec:
-  services:
-    - name: edb-keycloak
+  services:` + servicesConfig
+}
+
+const postgresServiceTemplate = `
+    - name: %s
       replicas: placeholder-size
       affinity:
         nodeAffinity:
@@ -74,189 +95,4 @@ spec:
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
-              app.kubernetes.io/name: cloud-native-postgresql
-    - name: cloud-native-postgresql
-      replicas: placeholder-size
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: kubernetes.io/arch
-                operator: In
-                values:
-                - amd64
-                - ppc64le
-                - s390x
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 90
-            podAffinityTerm:
-              topologyKey: topology.kubernetes.io/zone
-              labelSelector:
-                matchExpressions:
-                - key: app.kubernetes.io/name
-                  operator: In
-                  values:
-                  - cloud-native-postgresql
-          - weight: 50
-            podAffinityTerm:
-              topologyKey: kubernetes.io/hostname
-              labelSelector:
-                matchExpressions:
-                - key: app.kubernetes.io/name
-                  operator: In
-                  values:
-                  - cloud-native-postgresql
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: topology.kubernetes.io/zone
-          whenUnsatisfiable: ScheduleAnyway
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/name: cloud-native-postgresql
-        - maxSkew: 1
-          topologyKey: topology.kubernetes.io/region
-          whenUnsatisfiable: ScheduleAnyway
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/name: cloud-native-postgresql
-    - name: common-service-postgresql
-      replicas: placeholder-size
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: kubernetes.io/arch
-                operator: In
-                values:
-                - amd64
-                - ppc64le
-                - s390x
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 90
-            podAffinityTerm:
-              topologyKey: topology.kubernetes.io/zone
-              labelSelector:
-                matchExpressions:
-                - key: app.kubernetes.io/name
-                  operator: In
-                  values:
-                  - cloud-native-postgresql
-          - weight: 50
-            podAffinityTerm:
-              topologyKey: kubernetes.io/hostname
-              labelSelector:
-                matchExpressions:
-                - key: app.kubernetes.io/name
-                  operator: In
-                  values:
-                  - cloud-native-postgresql
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: topology.kubernetes.io/zone
-          whenUnsatisfiable: ScheduleAnyway
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/name: cloud-native-postgresql
-        - maxSkew: 1
-          topologyKey: topology.kubernetes.io/region
-          whenUnsatisfiable: ScheduleAnyway
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/name: cloud-native-postgresql
-    - name: cloud-native-postgresql-v1.22
-      replicas: placeholder-size
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: kubernetes.io/arch
-                operator: In
-                values:
-                - amd64
-                - ppc64le
-                - s390x
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 90
-            podAffinityTerm:
-              topologyKey: topology.kubernetes.io/zone
-              labelSelector:
-                matchExpressions:
-                - key: app.kubernetes.io/name
-                  operator: In
-                  values:
-                  - cloud-native-postgresql
-          - weight: 50
-            podAffinityTerm:
-              topologyKey: kubernetes.io/hostname
-              labelSelector:
-                matchExpressions:
-                - key: app.kubernetes.io/name
-                  operator: In
-                  values:
-                  - cloud-native-postgresql
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: topology.kubernetes.io/zone
-          whenUnsatisfiable: ScheduleAnyway
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/name: cloud-native-postgresql
-        - maxSkew: 1
-          topologyKey: topology.kubernetes.io/region
-          whenUnsatisfiable: ScheduleAnyway
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/name: cloud-native-postgresql
-    - name: cloud-native-postgresql-v1.25
-      replicas: placeholder-size
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: kubernetes.io/arch
-                operator: In
-                values:
-                - amd64
-                - ppc64le
-                - s390x
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 90
-            podAffinityTerm:
-              topologyKey: topology.kubernetes.io/zone
-              labelSelector:
-                matchExpressions:
-                - key: app.kubernetes.io/name
-                  operator: In
-                  values:
-                  - cloud-native-postgresql
-          - weight: 50
-            podAffinityTerm:
-              topologyKey: kubernetes.io/hostname
-              labelSelector:
-                matchExpressions:
-                - key: app.kubernetes.io/name
-                  operator: In
-                  values:
-                  - cloud-native-postgresql
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: topology.kubernetes.io/zone
-          whenUnsatisfiable: ScheduleAnyway
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/name: cloud-native-postgresql
-        - maxSkew: 1
-          topologyKey: topology.kubernetes.io/region
-          whenUnsatisfiable: ScheduleAnyway
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/name: cloud-native-postgresql
-`
+              app.kubernetes.io/name: cloud-native-postgresql`
