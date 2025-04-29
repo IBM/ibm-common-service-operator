@@ -76,6 +76,28 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured) (
 		newConfigs = append(newConfigs, instanaConfig...)
 	}
 
+	// Update AutoScaleConfig in OperandConfig
+	if cs.Object["spec"].(map[string]interface{})["autoScaleConfig"] != nil {
+		klog.Info("Applying autoScaleConfig configuration")
+
+		t := template.Must(template.New("template AutoScaleConfigTemplate").Parse(constant.AutoScaleConfigTemplate))
+		var tmplWriter bytes.Buffer
+		autoScaleConfigEnable := struct {
+			AutoScaleConfigEnable bool
+		}{
+			AutoScaleConfigEnable: cs.Object["spec"].(map[string]interface{})["autoScaleConfig"].(bool),
+		}
+		if err := t.Execute(&tmplWriter, autoScaleConfigEnable); err != nil {
+			return nil, nil, err
+		}
+		s := tmplWriter.String()
+		autoScaleConfigConfig, err := convertStringToSlice(s)
+		if err != nil {
+			return nil, nil, err
+		}
+		newConfigs = append(newConfigs, autoScaleConfigConfig...)
+	}
+
 	// Update routeHost
 	if cs.Object["spec"].(map[string]interface{})["routeHost"] != nil {
 		klog.Info("Applying routeHost configuration")
