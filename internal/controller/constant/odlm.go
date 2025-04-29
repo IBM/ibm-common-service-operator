@@ -1110,11 +1110,26 @@ spec:
                         name: keycloak
                         path: .spec.host
                       required: true
+              backchannelDynamic:
+                templatingValueFrom:
+                  conditional:
+                    expression:
+                      greaterThan:
+                        left:
+                          objectRef:
+                            apiVersion: apps/v1
+                            kind: Deployment
+                            name: rhbk-operator
+                            path: .metadata.labels.olm\.owner
+                        right:
+                          literal: rhbk-operator.v26.0.0
+                    then:
+                      literal: true
             additionalOptions:
               templatingValueFrom:
                 conditional:
                   expression:
-                    lessThan:
+                    greaterThan:
                       left:
                         objectRef:
                           apiVersion: apps/v1
@@ -1122,20 +1137,12 @@ spec:
                           name: rhbk-operator
                           path: .metadata.labels.olm\.owner
                       right:
-                        literal: rhbk-operator.v26.0.0
+                        literal: rhbk-operator.v24.0.0
                   then:
                     array:
                       - map:
                           name: spi-user-profile-declarative-user-profile-config-file
-                          value: /mnt/user-profile/cs-keycloak-user-profile.json       
-                  else:
-                    array:
-                      - map:
-                          name: spi-user-profile-declarative-user-profile-config-file
                           value: /mnt/user-profile/cs-keycloak-user-profile.json
-                      - map:
-                          name: hostname-backchannel-dynamic
-                          value: 'true'
             http:
               tlsSecret: cs-keycloak-tls-secret
             ingress:
