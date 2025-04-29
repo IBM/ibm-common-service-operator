@@ -127,6 +127,9 @@ type CommonServiceSpec struct {
 	// DisableManageCertRotation is a bool to enable or disable schedule cert renewal
 	// +optional
 	DisableManageCertRotation bool `json:"disableManageCertRotation,omitempty"`
+	// AutoScaleConfig is a bool to enable or disable HPA
+	// +optional
+	AutoScaleConfig bool `json:"autoScaleConfig,omitempty"`
 }
 
 // OperatorConfig is configuration composed of key-value pairs to be injected into specified CSVs

@@ -53,6 +53,9 @@ spec:
                   BYOCACertificate enables the option to replace the cs-ca-certificate with
                   your own CA certificate
                 type: boolean
+              autoScaleConfig:
+                description: AutoScaleConfig is a bool to enable or disable HPA
+                type: boolean
               catalogName:
                 description: |-
                   CatalogName is the name of the CatalogSource that will be used for ODLM
