@@ -1124,7 +1124,7 @@ spec:
                         right:
                           literal: rhbk-operator.v26.0.0
                     then:
-                      literal: true
+                      boolean: true
             additionalOptions:
               templatingValueFrom:
                 conditional:
