@@ -400,7 +400,7 @@ data:
                 info "Wait for job $job_name to complete. Try again in 15s."
                 sleep 15
                 completed=$(oc get job $job_name -n $ZEN_NAMESPACE --no-headers | awk '{print $2}')
-                retry_count=$retry_count-1
+                retry_count=$((retry_count-1))
             done
 
             if [[ $retry_count == 0 ]] && ([[ $completed != "1/1" ]] && [[ $completed != "Complete" ]]); then
