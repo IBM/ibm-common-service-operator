@@ -378,7 +378,7 @@ data:
                 retry_count=$((retry_count-1))
             done
 
-            if [[ $retry_count == 0 ]] && [[ $completed != "1/1" ]]; then
+            if [[ $retry_count == 0 ]] && [[ $completed != "100%" ]]; then
                 error "Timed out waiting for zenservice $ZENSERVICE_NAME."
             else
                 info "Zenservice $ZENSERVICE_NAME ready."
