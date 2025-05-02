@@ -4,8 +4,8 @@ metadata:
   name: bedrock-migration-job-sa
   namespace: {{ .Values.global.operatorNamespace }}
   annotations:
-    "helm.sh/hook": post-install,post-upgrade
-    "helm.sh/hook-weight": "0"
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-weight": "-1"
 ---
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
@@ -13,7 +13,7 @@ metadata:
   name: bedrock-migration-job-role-{{ .Values.global.operatorNamespace }}
   namespace: {{ .Values.global.operatorNamespace }}
   annotations:
-    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook": pre-install
     "helm.sh/hook-weight": "0"
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded,hook-failed
 rules: 
@@ -74,7 +74,7 @@ metadata:
   name: bedrock-migration-job-rb-{{ .Values.global.operatorNamespace }}
   namespace: {{ .Values.global.operatorNamespace }}
   annotations:
-    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook": pre-install
     "helm.sh/hook-weight": "1"
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded,hook-failed
 subjects:
@@ -97,7 +97,7 @@ metadata:
   name: bedrock-migration-job-role
   namespace: {{ $namespace }}
   annotations:
-    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook": pre-install
     "helm.sh/hook-weight": "0"
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded,hook-failed
 rules:
@@ -128,7 +128,7 @@ metadata:
   name: bedrock-migration-job-rb
   namespace: {{ $namespace }}
   annotations:
-    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook": pre-install
     "helm.sh/hook-weight": "1"
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded,hook-failed
 subjects:
