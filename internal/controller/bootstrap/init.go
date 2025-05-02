@@ -477,17 +477,6 @@ func (b *Bootstrap) CreateOrUpdateFromJson(objectTemplate string, alwaysUpdate .
 			continue
 		}
 
-		if license := cr.Object["spec"].(map[string]interface{})["license"]; license != nil {
-			if licenseAcceptance := license.(map[string]interface{})["accept"]; licenseAcceptance != nil {
-				klog.Infof("licenseacceptence not nil")
-				if licenseAcceptance == "" {
-					licenseAcceptance = false
-				} else {
-					klog.Infof("licenseacceptence not empty")
-				}
-			}
-		}
-
 		crInCluster := unstructured.Unstructured{}
 		crInCluster.SetGroupVersionKind(cr.GroupVersionKind())
 
