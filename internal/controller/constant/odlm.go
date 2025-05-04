@@ -1110,32 +1110,67 @@ spec:
                         name: keycloak
                         path: .spec.host
                       required: true
+              backchannelDynamic:
+                templatingValueFrom:
+                  conditional:
+                    expression:
+                      and:
+                        - greaterThan:
+                            left:
+                              objectRef:
+                                apiVersion: apps/v1
+                                kind: Deployment
+                                name: rhbk-operator
+                                path: .metadata.labels.olm\.owner
+                            right:
+                              literal: rhbk-operator.v26.0.0
+                        - equal:
+                            left:
+                              objectRef:
+                                apiVersion: apiextensions.k8s.io/v1
+                                kind: CustomResourceDefinition
+                                name: keycloaks.k8s.keycloak.org
+                                path: .spec.versions[0].schema.openAPIV3Schema.properties.spec.properties.hostname.properties.backchannelDynamic.type
+                            right:
+                              literal: "boolean"
+                    then:
+                      boolean: true
             additionalOptions:
               templatingValueFrom:
                 conditional:
                   expression:
-                    lessThan:
-                      left:
-                        objectRef:
-                          apiVersion: apps/v1
-                          kind: Deployment
-                          name: rhbk-operator
-                          path: .metadata.labels.olm\.owner
-                      right:
-                        literal: rhbk-operator.v26.0.0
+                    and:
+                      - greaterThan:
+                          left:
+                            objectRef:
+                              apiVersion: apps/v1
+                              kind: Deployment
+                              name: rhbk-operator
+                              path: .metadata.labels.olm\.owner
+                          right:
+                            literal: rhbk-operator.v26.0.0
+                      - notEqual:
+                          left:
+                            objectRef:
+                              apiVersion: apiextensions.k8s.io/v1
+                              kind: CustomResourceDefinition
+                              name: keycloaks.k8s.keycloak.org
+                              path: .spec.versions[0].schema.openAPIV3Schema.properties.spec.properties.hostname.properties.backchannelDynamic.type
+                          right:
+                            literal: "boolean"
                   then:
-                    array:
-                      - map:
-                          name: spi-user-profile-declarative-user-profile-config-file
-                          value: /mnt/user-profile/cs-keycloak-user-profile.json       
-                  else:
                     array:
                       - map:
                           name: spi-user-profile-declarative-user-profile-config-file
                           value: /mnt/user-profile/cs-keycloak-user-profile.json
                       - map:
                           name: hostname-backchannel-dynamic
-                          value: 'true'
+                          value: "true"
+                  else:
+                    array:
+                      - map:
+                          name: spi-user-profile-declarative-user-profile-config-file
+                          value: /mnt/user-profile/cs-keycloak-user-profile.json
             http:
               tlsSecret: cs-keycloak-tls-secret
             ingress:
