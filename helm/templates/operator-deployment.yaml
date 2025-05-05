@@ -35,7 +35,7 @@ metadata:
             },
             "operatorNamespace": "{{ .Values.global.operatorNamespace }}",
             "servicesNamespace": "{{ .Values.global.instanceNamespace }}",
-            "size": "{{ .Values.commonServiceSpec.size }}",
+            "size": "{{ .Values.cpfs.size }}",
             "storageClass": "{{ .Values.global.blockStorageClass }}"
           }
         }
