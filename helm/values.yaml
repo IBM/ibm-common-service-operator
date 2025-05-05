@@ -4,10 +4,7 @@ cpfs:
   imageRegistryNamespaceOperand: cpopen/cpfs
   labels:
   # CR configurations
-  commonServiceSpec:
-    # license:
-    #   accept: false
-    size: starterset
+  size: starterset
 
 # Commented out values are handled by a global values file
 # imagePullPrefix: icr.io
