@@ -6,7 +6,7 @@ metadata:
   annotations:
     "helm.sh/hook-delete-policy": before-hook-creation
     "helm.sh/hook": pre-install
-    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-weight": "2"
 spec:
   template:
     spec:
@@ -130,6 +130,7 @@ spec:
                 fi
                 echo "Namespace $ns complete."
             done
+            oc delete serviceaccount bedrock-migration-job-sa -n $operatorNamespace --ignore-not-found
       restartPolicy: Never
       serviceAccount: bedrock-migration-job-sa
       imagePullSecrets:
