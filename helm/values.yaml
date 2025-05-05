@@ -3,6 +3,11 @@ cpfs:
   imageRegistryNamespaceOperator: cpopen
   imageRegistryNamespaceOperand: cpopen/cpfs
   labels:
+  # CR configurations
+  commonServiceSpec:
+    # license:
+    #   accept: false
+    size: starterset
 
 # Commented out values are handled by a global values file
 # imagePullPrefix: icr.io
@@ -18,10 +23,3 @@ global:
   tetheredNamespaces: []
   operatorNamespace: operator-ns
   instanceNamespace:
-
-# CR configurations
-
-commonServiceSpec:
-  # license:
-  #   accept: false
-  size: starterset
