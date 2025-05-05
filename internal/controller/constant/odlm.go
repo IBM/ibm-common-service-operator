@@ -738,6 +738,9 @@ spec:
   - name: ibm-platformui-operator-v6.1
     spec:
       operandBindInfo: {}
+  - name: ibm-platformui-operator-v6.2
+    spec:
+      operandBindInfo: {}
 `
 )
 
