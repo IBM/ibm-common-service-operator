@@ -308,6 +308,12 @@ spec:
     packageName: ibm-zen-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+  - name: ibm-platformui-operator-v6.2
+    namespace: "{{ .CPFSNs }}"
+    channel: v6.2
+    packageName: ibm-zen-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
 `
 )
 
@@ -2295,7 +2301,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
   - name: ibm-platformui-operator
     namespace: "{{ .CPFSNs }}"
-    channel: v6.1
+    channel: v6.2
     packageName: ibm-zen-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
