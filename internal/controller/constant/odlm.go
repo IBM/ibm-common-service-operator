@@ -1917,8 +1917,6 @@ spec:
                 required: true
             bootstrap:
               initdb:
-                database: cloudpak
-                owner: cpadmin
                 dataChecksums: true
                 postInitApplicationSQL:
                   - CREATE USER im_user
