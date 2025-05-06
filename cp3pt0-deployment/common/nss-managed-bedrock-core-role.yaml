@@ -1691,3 +1691,24 @@ rules:
       - clusterimagecatalogs
     apiGroups:
       - postgresql.k8s.enterprisedb.io
+  - verbs:
+      - get
+      - list
+      - patch
+      - update
+      - watch
+      - create
+    resources:
+      - ibmcpd
+      - ibmcpds
+    apiGroups:
+      - cpd.ibm.com
+  - verbs:
+      - get
+      - list
+      - patch
+      - update
+    resources:
+      - db2uengines
+    apiGroups:
+      - db2u.databases.ibm.com
