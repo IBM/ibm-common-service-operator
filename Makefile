@@ -160,6 +160,7 @@ endif
 
 check: lint-all ## Check all files lint error
 	./common/scripts/lint-csv.sh
+	echo "Checking GHE pull"
 
 code-dev: ## Run the default dev commands which are the go tidy, fmt, vet then execute the $ make code-gen
 	@echo Running the common required commands for developments purposes
