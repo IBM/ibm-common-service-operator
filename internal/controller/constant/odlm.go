@@ -1764,15 +1764,30 @@ spec:
                 owner: app
             imageName:
               templatingValueFrom:
-                default:
-                  required: true
-                  configMapKeyRef:
-                    name: cloud-native-postgresql-image-list
-                    key: ibm-postgresql-14-operand-image
-                    namespace: {{ .OperatorNs }}
-                configMapKeyRef:
-                    name: ibm-cpp-config
-                    key: edb-keycloak-operand-image
+                conditional:
+                  expression:
+                    equal:
+                      left:
+                        objectRef:
+                          apiVersion: v1
+                          kind: ConfigMap
+                          name: cloud-native-postgresql-operand-images-config
+                          namespace: {{ .OperatorNs }}
+                          path: .metadata.labels.app\.kubernetes\.io/name
+                      right:
+                        literal: cloud-native-postgresql
+                  then:
+                    configMapKeyRef:
+                      name: cloud-native-postgresql-operand-images-config
+                      key: ibm-postgresql-16-operand-image
+                      namespace: {{ .OperatorNs }}
+                  else:
+                    default:
+                      required: true
+                      configMapKeyRef:
+                        name: cloud-native-postgresql-image-list
+                        key: ibm-postgresql-16-operand-image
+                        namespace: {{ .OperatorNs }}
             imagePullSecrets:
               - name: ibm-entitlement-key
             logLevel: info
@@ -2016,12 +2031,30 @@ spec:
                       - common-service-db
             imageName:
               templatingValueFrom:
-                default:
-                  required: true
-                  configMapKeyRef:
-                    name: cloud-native-postgresql-image-list
-                    key: ibm-postgresql-16-operand-image
-                    namespace: {{ .OperatorNs }}
+                conditional:
+                  expression:
+                    equal:
+                      left:
+                        objectRef:
+                          apiVersion: v1
+                          kind: ConfigMap
+                          name: cloud-native-postgresql-operand-images-config
+                          namespace: {{ .OperatorNs }}
+                          path: .metadata.labels.app\.kubernetes\.io/name
+                      right:
+                        literal: cloud-native-postgresql
+                  then:
+                    configMapKeyRef:
+                      name: cloud-native-postgresql-operand-images-config
+                      key: ibm-postgresql-16-operand-image
+                      namespace: {{ .OperatorNs }}
+                  else:
+                    default:
+                      required: true
+                      configMapKeyRef:
+                        name: cloud-native-postgresql-image-list
+                        key: ibm-postgresql-16-operand-image
+                        namespace: {{ .OperatorNs }}
             imagePullSecrets:
               - name: ibm-entitlement-key
             logLevel: info
