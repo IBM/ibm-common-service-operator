@@ -2302,6 +2302,12 @@ spec:
     packageName: ibm-events-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+  - channel: v5.2
+    name: ibm-events-operator-v5.2
+    namespace: "{{ .CPFSNs }}"
+    packageName: ibm-events-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
   - name: ibm-platformui-operator
     namespace: "{{ .CPFSNs }}"
     channel: v6.2
