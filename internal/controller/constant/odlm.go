@@ -586,6 +586,10 @@ spec:
                           name: cloud-native-postgresql-image-list
                           key: edb-postgres-license-provider-image
                           namespace: {{ $.OperatorNs }}
+                      configMapKeyRef:
+                        name: cloud-native-postgresql-operand-images-config
+                        key: edb-postgres-license-provider-image
+                        namespace: {{ $.OperatorNs }}
                   name: edb-license
                   resources:
                     limits:
@@ -615,6 +619,10 @@ spec:
                           name: cloud-native-postgresql-image-list
                           key: edb-postgres-license-provider-image
                           namespace: {{ $.OperatorNs }}
+                      configMapKeyRef:
+                        name: cloud-native-postgresql-operand-images-config
+                        key: edb-postgres-license-provider-image
+                        namespace: {{ $.OperatorNs }}
                   name: restart-edb-pod
                   resources:
                     limits:
@@ -1441,6 +1449,10 @@ spec:
                           name: cloud-native-postgresql-image-list
                           key: edb-postgres-license-provider-image
                           namespace: {{ .OperatorNs }}
+                      configMapKeyRef:
+                        name: cloud-native-postgresql-operand-images-config
+                        key: edb-postgres-license-provider-image
+                        namespace: {{ $.OperatorNs }}
                   name: edb-license
                   resources:
                     limits:
@@ -1470,6 +1482,10 @@ spec:
                           name: cloud-native-postgresql-image-list
                           key: edb-postgres-license-provider-image
                           namespace: {{ .OperatorNs }}
+                      configMapKeyRef:
+                        name: cloud-native-postgresql-operand-images-config
+                        key: edb-postgres-license-provider-image
+                        namespace: {{ $.OperatorNs }}
                   name: restart-edb-pod
                   resources:
                     limits:
@@ -1547,8 +1563,9 @@ spec:
                     key: ibm-postgresql-14-operand-image
                     namespace: {{ .OperatorNs }}
                 configMapKeyRef:
-                    name: ibm-cpp-config
-                    key: edb-keycloak-operand-image
+                  name: cloud-native-postgresql-operand-images-config
+                  key: ibm-postgresql-14-operand-image
+                  namespace: {{ .OperatorNs }}
             imagePullSecrets:
               - name: ibm-entitlement-key
             logLevel: info
@@ -1800,6 +1817,10 @@ spec:
                     name: cloud-native-postgresql-image-list
                     key: ibm-postgresql-16-operand-image
                     namespace: {{ .OperatorNs }}
+                configMapKeyRef:
+                  name: cloud-native-postgresql-operand-images-config
+                  key: ibm-postgresql-16-operand-image
+                  namespace: {{ .OperatorNs }}
             imagePullSecrets:
               - name: ibm-entitlement-key
             logLevel: info
