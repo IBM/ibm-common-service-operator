@@ -364,13 +364,16 @@ function pre_req() {
         error "Channel is not semantic vx.y"
     fi
     
-    # When Common Service channel info is less then maintained channel, update maintained channel for backward compatibility e.g., v4.1 and v4.0
-    # Otherwise, maintained channel is pinned at v4.2
+    # When Common Service channel is less than v4.2, maintained channel is the same as CS channel (e.g., v4.1 or v4.0)
+    # When Common Service channel is between v4.2 and v4.12, maintained channel is pinned at v4.2
+    # When Common Service  channel is greater than v4.12, maintained channel is pinned at v4.3
     IFS='.' read -r channel_major channel_minor <<< "${CHANNEL#v}"
     IFS='.' read -r maintained_major maintained_minor <<< "${MAINTAINED_CHANNEL#v}"
 
     if (( channel_major < maintained_major )) || { (( channel_major == maintained_major )) && (( channel_minor < maintained_minor )); }; then
         MAINTAINED_CHANNEL="$CHANNEL"
+    elif (( channel_major == 4 )) && (( channel_minor > 12 )); then
+        MAINTAINED_CHANNEL="v4.3"
     fi
 
     # When Common Service channel is less than v4.5, use maintained channel for ODLM channel
