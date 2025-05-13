@@ -21,6 +21,7 @@ CONTROL_NS=""
 CHANNEL="v4.13"
 ODLM_CHANNEL="v4.5"
 MAINTAINED_CHANNEL="v4.2"
+SINGLETON_CHANNEL="v4.2"
 SOURCE="opencloud-operators"
 CERT_MANAGER_SOURCE="ibm-cert-manager-catalog"
 LICENSING_SOURCE="ibm-licensing-catalog"
@@ -85,7 +86,7 @@ function main() {
         arguments+=" --enable-private-catalog"
     fi
     
-    ${BASE_DIR}/setup_singleton.sh "--operator-namespace" "$SERVICES_NS" "-c" "$MAINTAINED_CHANNEL" "--cert-manager-source" "$CERT_MANAGER_SOURCE" "--licensing-source" "$LICENSING_SOURCE" "--license-accept" $arguments "--yq" "$YQ" "--oc" "$OC"
+    ${BASE_DIR}/setup_singleton.sh "--operator-namespace" "$SERVICES_NS" "-c" "$SINGLETON_CHANNEL" "--cert-manager-source" "$CERT_MANAGER_SOURCE" "--licensing-source" "$LICENSING_SOURCE" "--license-accept" $arguments "--yq" "$YQ" "--oc" "$OC"
 
     if [ $? -ne 0 ]; then
         error "Failed to migrate singleton services"
@@ -367,15 +368,18 @@ function pre_req() {
     # When Common Service channel is less than v4.2, maintained channel is the same as CS channel (e.g., v4.1 or v4.0)
     # When Common Service channel is between v4.2 and v4.12, maintained channel is pinned at v4.2
     # When Common Service  channel is greater than v4.12, maintained channel is pinned at v4.3
+    # The singleton channel follows the same rule as maintained channel for channels less than v4.2
+
     IFS='.' read -r channel_major channel_minor <<< "${CHANNEL#v}"
     IFS='.' read -r maintained_major maintained_minor <<< "${MAINTAINED_CHANNEL#v}"
 
     if (( channel_major < maintained_major )) || { (( channel_major == maintained_major )) && (( channel_minor < maintained_minor )); }; then
         MAINTAINED_CHANNEL="$CHANNEL"
+        SINGLETON_CHANNEL="$CHANNEL"
     elif (( channel_major == 4 )) && (( channel_minor > 12 )); then
         MAINTAINED_CHANNEL="v4.3"
     fi
-
+    
     # When Common Service channel is less than v4.5, use maintained channel for ODLM channel
     # When Common Service channel is between v4.5 and v4.10, use v4.3 for ODLM channel
     # When Common Service channel is v4.11, use v4.4 for ODLM channel
