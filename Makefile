@@ -158,7 +158,7 @@ else
 OPERATOR_SDK=$(shell which operator-sdk)
 endif
 
-check: lint-all ## Check all files lint error
+check: lint-all get-cluster-credentials ## Check all files lint error
 	./common/scripts/lint-csv.sh
 	echo "Checking GHE pull"
 	@common/scripts/ghe_config.sh
