@@ -19,7 +19,7 @@ KUBECTL=$(which kubectl)
 GIT_USERNAME=$(${KUBECTL} get secret helm-repo-cred -o jsonpath='{.data.username}' | base64 --decode)
 GIT_TOKEN=$(${KUBECTL} get secret helm-repo-cred -o jsonpath='{.data.password}' | base64 --decode)
 
-${KUBECTL} get secret -A
+${KUBECTL} get secret -A | grep "helm-repo-cred"
 
 # support other container tools, e.g. podman
 GIT=$(which git)
