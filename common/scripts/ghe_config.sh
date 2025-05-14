@@ -28,3 +28,9 @@ GIT=$(which git)
 ${GIT} clone "https://$URL_ENCODED_USERNAME:$GIT_TOKEN@github.ibm.com/IBMPrivateCloud/helm-charts-reduction.git"
 echo "clone repo"
 ls
+
+cp helm-cluster-scoped helm-charts-reduction/source-charts/ibm-common-service-operator-cluster-scoped
+cp helm helm-charts-reduction/source-charts/ibm-common-service-operator
+
+cd helm-charts-reduction
+${GIT} status
