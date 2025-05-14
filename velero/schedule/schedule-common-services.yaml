@@ -62,3 +62,4 @@ spec:
         - licensing-chart
         - lsr-cluster
         - lsr-chart
+        - ibm-cm-chart
