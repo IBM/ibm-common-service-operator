@@ -499,8 +499,8 @@ function label_helm_cluster_scope(){
     #zen? (crds, clusterrole, clusterrolebinding)
     #assuming we are still responsible for zen
     #CRD covered in label_ns_and_related function
-    ${OC} label clusterrole ibm-zen-operator-cluster-role-$OPERATOR_NS foundationservices.cloudpak.ibm.com=zen-cluster  --overwrite=true 2>/dev/null
-    ${OC} label clusterrolebinding ibm-zen-operator-cluster-role-binding-$OPERATOR_NS foundationservices.cloudpak.ibm.com=zen-cluster  --overwrite=true 2>/dev/null
+    ${OC} label clusterrole ibm-zen-operator-cluster-role foundationservices.cloudpak.ibm.com=zen-cluster  --overwrite=true 2>/dev/null
+    ${OC} label clusterrolebinding ibm-zen-operator-cluster-role-binding foundationservices.cloudpak.ibm.com=zen-cluster  --overwrite=true 2>/dev/null
     zen_release_name=$(${OC} get clusterrole ibm-zen-operator-cluster-role -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
     zen_release_namespace=$(${OC} get clusterrole ibm-zen-operator-cluster-role -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
     ${OC} label secret sh.helm.release.v1.$zen_release_name.v1 -n $zen_release_namespace foundationservices.cloudpak.ibm.com=zen-cluster  --overwrite=true 2>/dev/null
@@ -652,6 +652,7 @@ function label_helm_cert_manager() {
     title "Labeling IBM Cert Manager cluster and namespace resources..."
     #cluster resources
     ${OC} label clusterrole ibm-cert-manager-operator foundationservices.cloudpak.ibm.com=ibm-cm-chart --overwrite=true 2>/dev/null
+    ${OC} label clusterrolebinding ibm-cert-manager-operator foundationservices.cloudpak.ibm.com=ibm-cm-chart --overwrite=true 2>/dev/null
     ${OC} label customresourcedefinition challenges.acme.cert-manager.io orders.acme.cert-manager.io certificaterequests.cert-manager.io certificates.cert-manager.io clusterissuers.cert-manager.io issuers.cert-manager.io certmanagerconfigs.operator.ibm.com foundationservices.cloudpak.ibm.com=ibm-cm-chart --overwrite=true 2>/dev/null
 
     #namespace resources
