@@ -29,8 +29,8 @@ ${GIT} clone "https://$URL_ENCODED_USERNAME:$GIT_TOKEN@github.ibm.com/IBMPrivate
 echo "clone repo"
 ls
 
-cp helm-cluster-scoped helm-charts-reduction/source-charts/ibm-common-service-operator-cluster-scoped
-cp helm helm-charts-reduction/source-charts/ibm-common-service-operator
+cp -r helm-cluster-scoped helm-charts-reduction/source-charts/ibm-common-service-operator-cluster-scoped
+cp -r helm helm-charts-reduction/source-charts/ibm-common-service-operator
 
 cd helm-charts-reduction
 ${GIT} status
