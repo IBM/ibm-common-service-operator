@@ -26,6 +26,7 @@ GIT=$(which git)
 
 # login the docker registry
 ${GIT} clone "https://$URL_ENCODED_USERNAME:$GIT_TOKEN@github.ibm.com/IBMPrivateCloud/helm-charts-reduction.git"
+${GIT} checkout staging
 echo "clone repo"
 ls
 
@@ -39,3 +40,6 @@ cd helm-charts-reduction
 echo "check reduction folder 2"
 ls
 ${GIT} status
+${GIT} add .
+${GIT} commit -s -m "updated helm files for ibm-common-service-operator"
+${GIT} push
