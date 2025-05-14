@@ -16,15 +16,15 @@
 #
 
 KUBECTL=$(which kubectl)
-GIT_USERNAME=$(${KUBECTL} get secret helm-repo-cred -o jsonpath='{.data.username}' | base64 --decode)
-GIT_TOKEN=$(${KUBECTL} get secret helm-repo-cred -o jsonpath='{.data.password}' | base64 --decode)
+GIT_USERNAME=$(${KUBECTL} -n default get secret helm-repo-cred -o jsonpath='{.data.username}' | base64 --decode)
+GIT_TOKEN=$(${KUBECTL} -n default get secret helm-repo-cred -o jsonpath='{.data.password}' | base64 --decode)
 
-${KUBECTL} get secret -A | grep "helm-repo-cred"
+URL_ENCODED_USERNAME=$(echo $GIT_USERNAME | jq -Rr @uri)
 
 # support other container tools, e.g. podman
 GIT=$(which git)
 
 # login the docker registry
-${GIT} clone "https://$GIT_USERNAME:$GIT_TOKEN@github.ibm.com/IBMPrivateCloud/helm-charts-reduction.git"
+${GIT} clone "https://$URL_ENCODED_USERNAME:$GIT_TOKEN@github.ibm.com/IBMPrivateCloud/helm-charts-reduction.git"
 echo "clone repo"
 ls
