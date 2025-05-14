@@ -414,8 +414,8 @@ function label_nss(){
         ${OC} label customresourcedefinition namespacescopes.operator.ibm.com foundationservices.cloudpak.ibm.com=crd --overwrite=true 2>/dev/null
     else
         #cluster scoped resources
-        ${OC} label clusterrole ibm-namespace-scope-operator foundationservices.cloudpak.ibm.com=nss-cluster --overwrite=true 2>/dev/null
-        ${OC} label clusterrolebinding ibm-namespace-scope-operator foundationservices.cloudpak.ibm.com=nss-cluster --overwrite=true 2>/dev/null
+        ${OC} label clusterrole ibm-namespace-scope-operator-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss-cluster --overwrite=true 2>/dev/null
+        ${OC} label clusterrolebinding ibm-namespace-scope-operator-$OPERATOR_NS foundationservices.cloudpak.ibm.com=nss-cluster --overwrite=true 2>/dev/null
         ${OC} label customresourcedefinition namespacescopes.operator.ibm.com foundationservices.cloudpak.ibm.com=nss-cluster --overwrite=true 2>/dev/null
         nss_cluster_release_name=$(${OC} get crd namespacescopes.operator.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
         nss_cluster_release_namespace=$(${OC} get crd namespacescopes.operator.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
@@ -504,6 +504,8 @@ function label_helm_cluster_scope(){
     zen_release_name=$(${OC} get clusterrole ibm-zen-operator-cluster-role -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
     zen_release_namespace=$(${OC} get clusterrole ibm-zen-operator-cluster-role -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
     ${OC} label secret sh.helm.release.v1.$zen_release_name.v1 -n $zen_release_namespace foundationservices.cloudpak.ibm.com=zen-cluster  --overwrite=true 2>/dev/null
+
+    #namespace scope (clusterrole,clusterrolebinding)
 
     success "Cluster scoped charts labeled."
 }
