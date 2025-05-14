@@ -505,8 +505,6 @@ function label_helm_cluster_scope(){
     zen_release_namespace=$(${OC} get clusterrole ibm-zen-operator-cluster-role -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
     ${OC} label secret sh.helm.release.v1.$zen_release_name.v1 -n $zen_release_namespace foundationservices.cloudpak.ibm.com=zen-cluster  --overwrite=true 2>/dev/null
 
-    #namespace scope (clusterrole,clusterrolebinding)
-
     success "Cluster scoped charts labeled."
 }
 
