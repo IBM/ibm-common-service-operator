@@ -1915,11 +1915,10 @@ spec:
                 required: true
             bootstrap:
               initdb:
+                database: im
+                owner: im_user
                 dataChecksums: true
                 postInitApplicationSQL:
-                  - CREATE USER im_user
-                  - CREATE DATABASE im OWNER im_user
-                  - GRANT ALL PRIVILEGES ON DATABASE im TO im_user
                   - CREATE USER zen_user
                   - CREATE DATABASE zen OWNER zen_user
                   - GRANT ALL PRIVILEGES ON DATABASE zen TO zen_user
