@@ -1874,8 +1874,6 @@ spec:
         data:
           spec:
             bindings:
-              protected-cloudpak-db:
-                secret: common-service-db-app
               protected-zen-db:
                 configmap: common-service-db-zen
                 secret: common-service-db-zen-tls-secret
@@ -2007,7 +2005,6 @@ spec:
                 pg_stat_statements.max: "10000"
                 max_slot_wal_keep_size: "8GB"
               pg_hba:
-                - hostssl cloudpak cpadmin all cert
                 - hostssl im im_user all cert
                 - hostssl zen zen_user all cert
                 - host zen instana_user all scram-sha-256
