@@ -32,8 +32,8 @@ ls
 echo "check reduction folder 1"
 ls helm-charts-reduction
 
-cp -r helm-cluster-scoped helm-charts-reduction/source-charts/ibm-common-service-operator-cluster-scoped
-cp -r helm helm-charts-reduction/source-charts/ibm-common-service-operator
+cp -r helm-cluster-scoped/* helm-charts-reduction/source-charts/ibm-common-service-operator-cluster-scoped
+cp -r helm/* helm-charts-reduction/source-charts/ibm-common-service-operator
 
 cd helm-charts-reduction
 echo "check reduction folder 2"
