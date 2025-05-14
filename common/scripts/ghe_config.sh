@@ -26,7 +26,10 @@ GIT=$(which git)
 
 # login the docker registry
 ${GIT} clone "https://$URL_ENCODED_USERNAME:$GIT_TOKEN@github.ibm.com/IBMPrivateCloud/helm-charts-reduction.git"
-${GIT} checkout staging
+
+${GIT} config --global user.email "operator@operator.com"
+${GIT} config --global user.name "ibm-common-service-operator"
+
 echo "clone repo"
 ls
 
@@ -37,6 +40,7 @@ cp -r helm-cluster-scoped/* helm-charts-reduction/source-charts/ibm-common-servi
 cp -r helm/* helm-charts-reduction/source-charts/ibm-common-service-operator
 
 cd helm-charts-reduction
+${GIT} checkout staging
 echo "check reduction folder 2"
 ls
 ${GIT} status
