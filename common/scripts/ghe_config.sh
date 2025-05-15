@@ -26,14 +26,15 @@ git clone "https://$URL_ENCODED_USERNAME:$GIT_TOKEN@github.ibm.com/IBMPrivateClo
 git config --global user.email "operator@operator.com"
 git config --global user.name "ibm-common-service-operator"
 
+git checkout staging
+
 cp -r helm-cluster-scoped/* helm-charts-reduction/source-charts/ibm-common-service-operator-cluster-scoped
 cp -r helm/* helm-charts-reduction/source-charts/ibm-common-service-operator
 
 cd helm-charts-reduction
-git checkout staging
 
 is_changes=$(git status --short)
-if [ -z ${is_changes} ]; then
+if [ -z "${is_changes}" ]; then
     echo "No changes to add/commit, skipping"
     exit 0
 fi
