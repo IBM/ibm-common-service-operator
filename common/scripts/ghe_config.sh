@@ -31,8 +31,8 @@ git config --global user.name "ibm-common-service-operator"
 cd helm-charts-reduction
 git checkout staging
 
-cp -r ../helm-cluster-scoped/* helm-charts-reduction/source-charts/ibm-common-service-operator-cluster-scoped
-cp -r ../helm/* helm-charts-reduction/source-charts/ibm-common-service-operator
+cp -r ../helm-cluster-scoped/* source-charts/ibm-common-service-operator-cluster-scoped
+cp -r ../helm/* source-charts/ibm-common-service-operator
 
 is_changes=$(git status --short)
 if [ -z "${is_changes}" ]; then
