@@ -21,24 +21,38 @@ GIT_TOKEN=$(${KUBECTL} -n default get secret helm-repo-cred -o jsonpath='{.data.
 
 URL_ENCODED_USERNAME=$(echo $GIT_USERNAME | jq -Rr @uri)
 
-rm -rf helm-charts-reduction
+retries=5
+sleep_timer=5
 
-git clone "https://$URL_ENCODED_USERNAME:$GIT_TOKEN@github.ibm.com/IBMPrivateCloud/helm-charts-reduction.git"
+while true; do
+    
+    if [ $retries -eq 0 ]; then
+        break
+    fi
 
-git config --global user.email "operator@operator.com"
-git config --global user.name "ibm-common-service-operator"
+    rm -rf helm-charts-reduction
 
-cd helm-charts-reduction
-git checkout staging
+    git clone "https://$URL_ENCODED_USERNAME:$GIT_TOKEN@github.ibm.com/IBMPrivateCloud/helm-charts-reduction.git"
 
-cp -r ../helm-cluster-scoped/* source-charts/ibm-common-service-operator-cluster-scoped
-cp -r ../helm/* source-charts/ibm-common-service-operator
+    git config --global user.email "operator@operator.com"
+    git config --global user.name "ibm-common-service-operator"
 
-is_changes=$(git status --short)
-if [ -z "${is_changes}" ]; then
-    echo "No changes to add/commit, skipping"
-    exit 0
-fi
-git add .
-git commit -s -m "updated helm files for ibm-common-service-operator"
-git push
+    cd helm-charts-reduction
+    git checkout staging
+
+    cp -r ../helm-cluster-scoped/* source-charts/ibm-common-service-operator-cluster-scoped
+    cp -r ../helm/* source-charts/ibm-common-service-operator
+
+    is_changes=$(git status --short)
+    if [ -z "${is_changes}" ]; then
+        echo "No changes to add/commit, skipping"
+        exit 0
+    fi
+    git add .
+    git commit -s -m "updated helm files for ibm-common-service-operator"
+    git push
+    if [ $? -eq 0 ]; then
+        break
+    fi
+    retries=$(( retries - 1 ))
+done
