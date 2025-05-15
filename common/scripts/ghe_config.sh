@@ -21,6 +21,8 @@ GIT_TOKEN=$(${KUBECTL} -n default get secret helm-repo-cred -o jsonpath='{.data.
 
 URL_ENCODED_USERNAME=$(echo $GIT_USERNAME | jq -Rr @uri)
 
+rm -rf helm-charts-reduction
+
 git clone "https://$URL_ENCODED_USERNAME:$GIT_TOKEN@github.ibm.com/IBMPrivateCloud/helm-charts-reduction.git"
 
 git config --global user.email "operator@operator.com"
