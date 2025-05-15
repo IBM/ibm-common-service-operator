@@ -21,14 +21,10 @@ GIT_TOKEN=$(${KUBECTL} -n default get secret helm-repo-cred -o jsonpath='{.data.
 
 URL_ENCODED_USERNAME=$(echo $GIT_USERNAME | jq -Rr @uri)
 
-# support other container tools, e.g. podman
-GIT=$(which git)
+git clone "https://$URL_ENCODED_USERNAME:$GIT_TOKEN@github.ibm.com/IBMPrivateCloud/helm-charts-reduction.git"
 
-# login the docker registry
-${GIT} clone "https://$URL_ENCODED_USERNAME:$GIT_TOKEN@github.ibm.com/IBMPrivateCloud/helm-charts-reduction.git"
-
-${GIT} config --global user.email "operator@operator.com"
-${GIT} config --global user.name "ibm-common-service-operator"
+git config --global user.email "operator@operator.com"
+git config --global user.name "ibm-common-service-operator"
 
 echo "clone repo"
 ls
@@ -40,10 +36,15 @@ cp -r helm-cluster-scoped/* helm-charts-reduction/source-charts/ibm-common-servi
 cp -r helm/* helm-charts-reduction/source-charts/ibm-common-service-operator
 
 cd helm-charts-reduction
-${GIT} checkout staging
+git checkout staging
 echo "check reduction folder 2"
 ls
-${GIT} status
-${GIT} add .
-${GIT} commit -s -m "updated helm files for ibm-common-service-operator"
-${GIT} push
+
+is_changes=$(git status --short)
+if [ -z ${is_changes} ]; then
+    echo "No changes to add/commit, skipping"
+    exit 0
+fi
+git add .
+git commit -s -m "updated helm files for ibm-common-service-operator"
+git push
