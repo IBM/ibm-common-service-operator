@@ -273,3 +273,10 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - postgresql.k8s.enterprisedb.io
+  resources:
+  - clusters
+  verbs:
+  - get
+  - list

@@ -2515,3 +2515,175 @@ func (b *Bootstrap) fetchSubscription(subName, packageManifest, operatorNs strin
 	}
 	return sub, nil
 }
+
+// Wait for Postgres Cluster CR image to be updated with the image from the configmap
+func (b *Bootstrap) WaitForPostgresClusterImageUpdate(ctx context.Context, instance *apiv3.CommonService) error {
+	// Check if Postgres Cluster CR "common-service-db" is created in service namespace
+	pgCluster := &unstructured.Unstructured{}
+	pgCluster.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   constant.PGClusterGroup,
+		Version: "v1",
+		Kind:    constant.PGClusterKind,
+	})
+
+	if clusterCRDExists, err := b.CheckCRD(constant.PGClusterGroup+"/v1", constant.PGClusterKind); err != nil {
+		klog.Errorf("Failed to check if Postgres Cluster CRD exists: %v", err)
+		return err
+	} else if !clusterCRDExists {
+		klog.Infof("Postgres %s Cluster CRD not found, skipping Postgres Cluster image update check", constant.PGClusterGroup+"/v1")
+		return nil
+	}
+
+	if err := b.Client.Get(ctx, types.NamespacedName{
+		Name:      constant.CSPGCluster,
+		Namespace: b.CSData.ServicesNs,
+	}, pgCluster); err != nil {
+		if errors.IsNotFound(err) {
+			klog.Infof("Postgres Cluster CR %s not found in namespace %s, skipping Cluster CR image update check", constant.CSPGCluster, b.CSData.ServicesNs)
+			return nil
+		}
+		return err
+	}
+
+	configMap, err := b.getPostgresImageConfigMap(ctx)
+	if err != nil {
+		return err
+	} else if configMap == nil {
+		klog.Infof("Neither %s nor %s configmap found in namespace %s, skipping Postgres Cluster image update check",
+			constant.PostgreSQLImageConfigMap, constant.CSPostgreSQLImageConfigMap, b.CSData.OperatorNs)
+		return nil
+	}
+	configMapName := configMap.GetName()
+	imageKeyName := constant.PostgreSQL16ImageKey
+
+	// Get the image from the configmap
+	desiredImage, exists := configMap.Data[imageKeyName]
+	if !exists {
+		klog.Infof("Image key %s not found in configmap %s/%s, skipping image update check",
+			imageKeyName, b.CSData.OperatorNs, configMapName)
+		return nil
+	}
+
+	// Get current image from the Postgres Cluster CR
+	currentImage, found, err := unstructured.NestedString(pgCluster.Object, "spec", "imageName")
+	if err != nil {
+		return err
+	}
+
+	// If image is already updated, return nil
+	if found && currentImage == desiredImage {
+		klog.Infof("Postgres Cluster CR %s image already updated to the desired image in configmap %s/%s",
+			constant.CSPGCluster, b.CSData.OperatorNs, configMapName)
+		return nil
+	}
+
+	// Update the configmap with ODLM metadata to trigger ODLM reconciliation
+	if err := b.updateConfigMapWithODLMMetadata(ctx, configMap); err != nil {
+		return err
+	}
+
+	// Wait for the image to be updated
+	return utilwait.PollImmediate(time.Second*10, time.Minute*2, func() (done bool, err error) {
+		// Fetch the latest Postgres Cluster CR
+		err = b.Client.Get(ctx, types.NamespacedName{
+			Name:      constant.CSPGCluster,
+			Namespace: b.CSData.ServicesNs,
+		}, pgCluster)
+
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, err
+		}
+
+		// Check if image is updated
+		currentImage, found, err := unstructured.NestedString(pgCluster.Object, "spec", "imageName")
+		if err != nil {
+			return false, err
+		}
+
+		if found && currentImage == desiredImage {
+			klog.Infof("Postgres Cluster CR %s image updated to the desired image in configmap %s/%s",
+				constant.CSPGCluster, b.CSData.OperatorNs, configMapName)
+			return true, nil
+		}
+
+		klog.Infof("Postgres Cluster CR %s image is not updated, waiting for update to the desired image in configmap %s/%s",
+			constant.CSPGCluster, b.CSData.OperatorNs, configMapName)
+		return false, nil
+	})
+}
+
+// getPostgresImageConfigMap gets the configmap containing PostgreSQL image information
+// It first tries to get the configmap deployed with Postgres Operator,
+// and if not found, it looks for the configmap created by CS operator
+func (b *Bootstrap) getPostgresImageConfigMap(ctx context.Context) (*corev1.ConfigMap, error) {
+	configMap := &corev1.ConfigMap{}
+	configMapName := constant.PostgreSQLImageConfigMap
+
+	if err := b.Client.Get(ctx, types.NamespacedName{
+		Name:      configMapName,
+		Namespace: b.CSData.OperatorNs,
+	}, configMap); err != nil && errors.IsNotFound(err) {
+		// If the configmap is not found, find configmap created by CS operator
+		configMapName = constant.CSPostgreSQLImageConfigMap
+
+		if err := b.Client.Get(ctx, types.NamespacedName{
+			Name:      configMapName,
+			Namespace: b.CSData.OperatorNs,
+		}, configMap); err != nil {
+			if errors.IsNotFound(err) {
+
+				return nil, nil
+			}
+			klog.Errorf("Failed to get configmap %s in namespace %s: %v", configMapName, b.CSData.OperatorNs, err)
+			return nil, err
+		}
+	} else if err != nil {
+		klog.Errorf("Failed to get configmap %s in namespace %s: %v", configMapName, b.CSData.OperatorNs, err)
+		return nil, err
+	}
+
+	return configMap, nil
+}
+
+// updateConfigMapWithODLMMetadata adds ODLM-specific labels and annotations to a ConfigMap
+// to ensure it's properly reconciled by the Operand Deployment Lifecycle Manager
+func (b *Bootstrap) updateConfigMapWithODLMMetadata(ctx context.Context, configMap *corev1.ConfigMap) error {
+	// Check if the configmap has the required label and annotation
+	needsLabelUpdate := false
+	cmLabels := configMap.GetLabels()
+	if cmLabels == nil {
+		cmLabels = make(map[string]string)
+		needsLabelUpdate = true
+	}
+
+	if _, exists := cmLabels[constant.ODLMWatchLabel]; !exists {
+		cmLabels[constant.ODLMWatchLabel] = "true"
+		needsLabelUpdate = true
+	}
+
+	cmAnnotations := configMap.GetAnnotations()
+	if cmAnnotations == nil {
+		cmAnnotations = make(map[string]string)
+		needsLabelUpdate = true
+	}
+
+	expectedAnnotation := fmt.Sprintf("OperandConfig.%s.common-service", b.CSData.ServicesNs)
+	if cmAnnotations[constant.ODLMReferenceAnno] != expectedAnnotation {
+		cmAnnotations[constant.ODLMReferenceAnno] = expectedAnnotation
+		needsLabelUpdate = true
+	}
+
+	if needsLabelUpdate {
+		klog.Infof("Updating configmap %s/%s with ODLM labels and annotations to trigger the ODLM reconciliation", configMap.Namespace, configMap.Name)
+		configMap.SetLabels(cmLabels)
+		configMap.SetAnnotations(cmAnnotations)
+		if err := b.Client.Update(ctx, configMap); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
