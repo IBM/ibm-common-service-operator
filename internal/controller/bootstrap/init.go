@@ -2526,6 +2526,14 @@ func (b *Bootstrap) WaitForPostgresClusterImageUpdate(ctx context.Context, insta
 		Kind:    constant.PGClusterKind,
 	})
 
+	if clusterCRDExists, err := b.CheckCRD(constant.PGClusterGroup+"/v1", constant.PGClusterKind); err != nil {
+		klog.Errorf("Failed to check if Postgres Cluster CRD exists: %v", err)
+		return err
+	} else if !clusterCRDExists {
+		klog.Infof("Postgres %s Cluster CRD not found, skipping Postgres Cluster image update check", constant.PGClusterGroup+"/v1")
+		return nil
+	}
+
 	if err := b.Client.Get(ctx, types.NamespacedName{
 		Name:      constant.CSPGCluster,
 		Namespace: b.CSData.ServicesNs,
