@@ -91,7 +91,7 @@ function print_usage() {
     echo "Options:"
     echo "   -n, --namespace string       IBM Common Services namespace. Default is same namespace as IBM Common Services"
     echo "   -z, --zen-namespace string   Zen namespace. Default is same namespace as IBM Common Services"
-    echo "   -u, --uninstall              Uninstall IBM Common Services Network Policies"
+    echo "   -u, --uninstall              Uninstall both ingress and egress IBM Common Services Network Policies"
     echo "   -e, --egress                 Deploy only egress NetworkPolicies. Without this option, only ingress NetworkPolicies are deployed"
     echo "   -h, --help                   Print usage information"
     echo ""

@@ -115,7 +115,7 @@ function print_usage() {
     echo "   -lsr, --licensing-svc-reporter-namespace string      License Service Reporter namespace. No default value"
     echo "   -flink, --flink-namespace string                     Flink namespace. No default value"
     echo "   -opensearch, --opensearch-namespace string           Opensearch namespace. No default value"
-    echo "   -u, --uninstall                                      Uninstall IBM Common Services Network Policies"
+    echo "   -u, --uninstall                                      Uninstall both ingress and egress IBM Common Services Network Policies"
     echo "   -e, --egress                                         Deploy egress NetworkPolicies. Without this option, only ingress NetworkPolicies are deployed"
     echo "   -h, --help                                           Print usage information"
     echo ""
