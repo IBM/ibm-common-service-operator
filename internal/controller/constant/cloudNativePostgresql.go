@@ -24,6 +24,7 @@ metadata:
   namespace: "{{ .CPFSNs }}"
   labels:
     operator.ibm.com/managedByCsOperator: "true"
+    operator.ibm.com/watched-by-odlm: "true"
   annotations:
     version: {{ .Version }}
 data:
