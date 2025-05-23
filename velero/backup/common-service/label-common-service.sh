@@ -408,7 +408,7 @@ function label_nss(){
     # Using the same label as common service operator has for both sub and crd
     if [[ $NO_OLM == "false" ]]; then
         ${OC} label subscriptions.operators.coreos.com $nss_pm foundationservices.cloudpak.ibm.com=subscription -n $OPERATOR_NS --overwrite=true 2>/dev/null
-        ${OC} label customresourcedefinition namespacescopes.operator.ibm.com foundationservices.cloudpak.ibm.com=crd --overwrite=true 2>/dev/null
+        ${OC} label customresourcedefinition namespacescopes.operator.ibm.com foundationservices.cloudpak.ibm.com=nss --overwrite=true 2>/dev/null
     else
         #cluster scoped resources
         ${OC} label clusterrole ibm-namespace-scope-operator foundationservices.cloudpak.ibm.com=nss-cluster --overwrite=true 2>/dev/null
