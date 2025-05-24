@@ -134,7 +134,7 @@ spec:
       includedResourceTypes:
         - customresourcedefinitions.apiextensions.k8s.io
       labelSelector: foundationservices.cloudpak.ibm.com=crd
-      name: commonservices-crd
+      name: commonservice-crd
       type: resource
     - includedResourceTypes:
         - commonservices.operator.ibm.com
@@ -298,6 +298,18 @@ spec:
           timeout: 600
       name: license-service-reporter-check
       labelSelector: app.kubernetes.io/name=ibm-license-service-reporter
+      namespace: <lsr namespace>
+      onError: fail
+      selectResource: pod
+      timeout: 600
+      type: check
+    - chks:
+        - condition: '{$.status.phase} == {"Running"}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      name: license-service-reporter-instance-check
+      labelSelector: app.kubernetes.io/instance=ibm-license-service-reporter
       namespace: <lsr namespace>
       onError: fail
       selectResource: pod
@@ -522,7 +534,7 @@ spec:
         - group: common-services-operatorgroups
         - group: common-services-configmaps
         - group: license-service-reporter-crd
-        - group: commonservices-crd
+        - group: commonservice-crd
         - group: commonservice-cr
         - group: nss-resources
         - group: singleton-subscriptions
@@ -553,6 +565,7 @@ spec:
         - group: license-service-reporter-subscriptions
         - hook: license-service-reporter-check/podReady
         - group: license-service-reporter-instances
+        - hook: license-service-reporter-instance-check/podReady
         - group: lsr-pre-deploy
         - group: lsr-volume
         - group: lsr-deployment
@@ -560,7 +573,7 @@ spec:
         - hook: lsr-data/restore
         # restore common services
         - group: common-services-configmaps
-        - group: commonservices-crd
+        - group: commonservice-crd
         - group: commonservice-cr
         - group: nss-resources
         - group: common-services-subscriptions

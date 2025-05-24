@@ -281,6 +281,18 @@ spec:
       timeout: 600
       type: check
     - chks:
+        - condition: '{$.status.phase} == {"Running"}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      name: license-service-reporter-instance-check
+      labelSelector: app.kubernetes.io/instance=ibm-license-service-reporter
+      namespace: <lsr namespace>
+      onError: fail
+      selectResource: pod
+      timeout: 600
+      type: check
+    - chks:
         - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
           name: podReady
           onError: fail
@@ -405,7 +417,6 @@ spec:
         - group: common-services-catalogs
         - group: common-services-operatorgroups
         - group: common-services-configmaps
-        - group: license-service-reporter-crd
         - group: commonservice-crd
         - group: commonservice-cr
         - group: singleton-subscriptions
@@ -436,6 +447,7 @@ spec:
         - group: license-service-reporter-subscriptions
         - hook: license-service-reporter-check/podReady
         - group: license-service-reporter-instances
+        - hook: license-service-reporter-instance-check/podReady
         - group: lsr-pre-deploy
         - group: lsr-volume
         - group: lsr-deployment
