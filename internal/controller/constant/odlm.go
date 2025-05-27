@@ -1711,8 +1711,6 @@ spec:
         data:
           spec:
             bindings:
-              protected-cloudpak-db:
-                secret: common-service-db-app
               protected-zen-db:
                 configmap: common-service-db-zen
                 secret: common-service-db-zen-tls-secret
@@ -1756,13 +1754,10 @@ spec:
                 required: true
             bootstrap:
               initdb:
-                database: cloudpak
-                owner: cpadmin
+                database: im
+                owner: im_user
                 dataChecksums: true
                 postInitApplicationSQL:
-                  - CREATE USER im_user
-                  - CREATE DATABASE im OWNER im_user
-                  - GRANT ALL PRIVILEGES ON DATABASE im TO im_user
                   - CREATE USER zen_user
                   - CREATE DATABASE zen OWNER zen_user
                   - GRANT ALL PRIVILEGES ON DATABASE zen TO zen_user
@@ -1847,7 +1842,6 @@ spec:
               parameters:
                 max_slot_wal_keep_size: "8GB"
               pg_hba:
-                - hostssl cloudpak cpadmin all cert
                 - hostssl im im_user all cert
                 - hostssl zen zen_user all cert
       - apiVersion: v1
