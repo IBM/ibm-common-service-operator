@@ -615,6 +615,13 @@ spec:
                 - patch
                 - update
                 - watch
+            - apiGroups:
+                - postgresql.k8s.enterprisedb.io
+              resources:
+                - clusters
+              verbs:
+                - get
+                - list
           serviceAccountName: ibm-common-service-operator
     strategy: deployment
   installModes:
