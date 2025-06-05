@@ -355,17 +355,10 @@ func (r *CommonService) UpdateConfigStatus(CSData *CSData, operatorDeployed, ser
 		r.Status.ConfigStatus.ServicesNamespace = ServicesNamespace(CSData.ServicesNs)
 	}
 
-	if r.Spec.CatalogName != "" {
-		r.Status.ConfigStatus.CatalogName = r.Spec.CatalogName
-	} else {
-		r.Status.ConfigStatus.CatalogName = CatalogName(CSData.CatalogSourceName)
-	}
+	r.Status.ConfigStatus.CatalogName = r.Spec.CatalogName
 
-	if r.Spec.CatalogNamespace != "" {
-		r.Status.ConfigStatus.CatalogNamespace = r.Spec.CatalogNamespace
-	} else {
-		r.Status.ConfigStatus.CatalogNamespace = CatalogNamespace(CSData.CatalogSourceNs)
-	}
+	r.Status.ConfigStatus.CatalogNamespace = r.Spec.CatalogNamespace
+
 	r.Status.ConfigStatus.OperatorDeployed = true
 	r.Status.ConfigStatus.ServicesDeployed = true
 	r.Status.ConfigStatus.Configurable = true
