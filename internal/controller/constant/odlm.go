@@ -70,16 +70,22 @@ spec:
     channel: v4.0
     packageName: ibm-mongodb-operator-app
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-im-mongodb-operator-v4.1
     namespace: "{{ .CPFSNs }}"
     channel: v4.1
     packageName: ibm-mongodb-operator-app
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-im-mongodb-operator-v4.2
     namespace: "{{ .CPFSNs }}"
     channel: v4.2
     packageName: ibm-mongodb-operator-app
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
 	IMOpReg = `
@@ -102,36 +108,48 @@ spec:
     packageName: ibm-iam-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-im-operator-v4.1
     namespace: "{{ .CPFSNs }}"
     channel: v4.1
     packageName: ibm-iam-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-im-operator-v4.2
     namespace: "{{ .CPFSNs }}"
     channel: v4.2
     packageName: ibm-iam-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-im-operator-v4.3
     namespace: "{{ .CPFSNs }}"
     channel: v4.3
     packageName: ibm-iam-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-im-operator-v4.4
     namespace: "{{ .CPFSNs }}"
     channel: v4.4
     packageName: ibm-iam-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-im-operator-v4.5
     namespace: "{{ .CPFSNs }}"
     channel: v4.5
     packageName: ibm-iam-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
 	IdpConfigUIOpReg = `
@@ -154,30 +172,40 @@ spec:
     packageName: ibm-commonui-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-idp-config-ui-operator-v4.1
     namespace: "{{ .CPFSNs }}"
     channel: v4.1
     packageName: ibm-commonui-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-idp-config-ui-operator-v4.2
     namespace: "{{ .CPFSNs }}"
     channel: v4.2
     packageName: ibm-commonui-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-idp-config-ui-operator-v4.3
     namespace: "{{ .CPFSNs }}"
     channel: v4.3
     packageName: ibm-commonui-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-idp-config-ui-operator-v4.4
     namespace: "{{ .CPFSNs }}"
     channel: v4.4
     packageName: ibm-commonui-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
 	PlatformUIOpReg = `
@@ -200,30 +228,40 @@ spec:
     packageName: ibm-zen-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-platformui-operator-v4.1
     namespace: "{{ .CPFSNs }}"
     channel: v4.1
     packageName: ibm-zen-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-platformui-operator-v4.2
     namespace: "{{ .CPFSNs }}"
     channel: v4.2
     packageName: ibm-zen-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-platformui-operator-v4.3
     namespace: "{{ .CPFSNs }}"
     channel: v4.3
     packageName: ibm-zen-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-platformui-operator-v4.4
     namespace: "{{ .CPFSNs }}"
     channel: v4.4
     packageName: ibm-zen-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 )
 
@@ -249,6 +287,8 @@ spec:
     namespace: "{{ .ServicesNs }}"
     packageName: rhbk-operator
     scope: public
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: stable-v26
     installPlanApproval: {{ .ApprovalMode }}
     name: keycloak-operator-v26
@@ -268,6 +308,8 @@ spec:
     packageName: cloud-native-postgresql
     scope: public
     operatorConfig: cloud-native-postgresql-operator-config
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 )
 
@@ -296,6 +338,8 @@ spec:
     packageName: cloud-native-postgresql
     scope: public
     operatorConfig: cloud-native-postgresql-operator-config
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 )
 
@@ -1943,12 +1987,16 @@ spec:
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     installMode: no-op
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-mongodb-operator
     namespace: "{{ .ServicesNs }}"
     channel: v3.23
     packageName: ibm-mongodb-operator-app
     installPlanApproval: {{ .ApprovalMode }}
     installMode: no-op
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-cert-manager-operator
     namespace: "{{ .ServicesNs }}"
     channel: v3.23
@@ -1956,6 +2004,8 @@ spec:
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     installMode: no-op
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-iam-operator
     namespace: "{{ .ServicesNs }}"
     channel: v3.23
@@ -1963,6 +2013,8 @@ spec:
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     installMode: no-op
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-healthcheck-operator
     namespace: "{{ .ServicesNs }}"
     channel: v3.23
@@ -1970,6 +2022,8 @@ spec:
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     installMode: no-op
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-commonui-operator
     namespace: "{{ .ServicesNs }}"
     channel: v3.23
@@ -1977,6 +2031,8 @@ spec:
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     installMode: no-op
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-management-ingress-operator
     namespace: "{{ .ServicesNs }}"
     channel: v3.23
@@ -1984,6 +2040,8 @@ spec:
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     installMode: no-op
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-ingress-nginx-operator
     namespace: "{{ .ServicesNs }}"
     channel: v3.23
@@ -1991,6 +2049,8 @@ spec:
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     installMode: no-op
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-auditlogging-operator
     namespace: "{{ .ServicesNs }}"
     channel: v3.23
@@ -1998,6 +2058,8 @@ spec:
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     installMode: no-op
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-platform-api-operator
     namespace: "{{ .ServicesNs }}"
     channel: v3.23
@@ -2005,6 +2067,8 @@ spec:
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     installMode: no-op
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: v3.23
     name: ibm-monitoring-grafana-operator
     namespace: "{{ .ServicesNs }}"
@@ -2012,6 +2076,8 @@ spec:
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     installMode: no-op
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: v3.23
     name: ibm-zen-operator
     namespace: "{{ .ServicesNs }}"
@@ -2019,6 +2085,8 @@ spec:
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     installMode: no-op
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: v3.23
     name: ibm-zen-cpp-operator
     namespace: "{{ .CPFSNs }}"
@@ -2026,6 +2094,8 @@ spec:
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     installMode: no-op
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
 	CSV4OpReg = `
@@ -2048,42 +2118,56 @@ spec:
     packageName: ibm-iam-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-im-mongodb-operator
     namespace: "{{ .CPFSNs }}"
     channel: v4.2
     installMode: no-op
     packageName: ibm-mongodb-operator-app
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: v3
     name: ibm-events-operator
     namespace: "{{ .CPFSNs }}"
     packageName: ibm-events-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: v5.1
     name: ibm-events-operator-v5.1
     namespace: "{{ .CPFSNs }}"
     packageName: ibm-events-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: v5.2
     name: ibm-events-operator-v5.2
     namespace: "{{ .CPFSNs }}"
     packageName: ibm-events-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-platformui-operator
     namespace: "{{ .CPFSNs }}"
     channel: v4.4
     packageName: ibm-zen-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-idp-config-ui-operator
     namespace: "{{ .CPFSNs }}"
     channel: v4.4
     packageName: ibm-commonui-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: stable
     name: cloud-native-postgresql
     namespace: "{{ .CPFSNs }}"
@@ -2091,6 +2175,8 @@ spec:
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     operatorConfig: cloud-native-postgresql-operator-config
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: stable-v1.22
     fallbackChannels:
       - stable
@@ -2101,6 +2187,8 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     operatorConfig: cloud-native-postgresql-operator-config
     configName: cloud-native-postgresql
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: stable-v1.25
     fallbackChannels:
       - stable-v1.22
@@ -2112,60 +2200,80 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     operatorConfig: cloud-native-postgresql-operator-config
     configName: cloud-native-postgresql
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: alpha
     name: ibm-user-data-services-operator
     namespace: "{{ .CPFSNs }}"
     packageName: ibm-user-data-services-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: v3
     name: ibm-bts-operator
     namespace: "{{ .CPFSNs }}"
     packageName: ibm-bts-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: v3.34
     name: ibm-bts-operator-v3.34
     namespace: "{{ .CPFSNs }}"
     packageName: ibm-bts-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: v3.35
     name: ibm-bts-operator-v3.35
     namespace: "{{ .CPFSNs }}"
     packageName: ibm-bts-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: v1.3
     name: ibm-automation-flink
     namespace: "{{ .CPFSNs }}"
     packageName: ibm-automation-flink
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: v1.3
     name: ibm-automation-elastic
     namespace: "{{ .CPFSNs }}"
     packageName: ibm-automation-elastic
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: v1.1
     name: ibm-elasticsearch-operator
     namespace: "{{ .CPFSNs }}"
     packageName: ibm-elasticsearch-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode}}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: v2.0
     name: ibm-opencontent-flink
     namespace: "{{ .CPFSNs }}"
     packageName: ibm-opencontent-flink
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: v1.1
     name: ibm-opensearch-operator
     namespace: "{{ .CPFSNs }}"
     packageName: ibm-opensearch-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode}}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 )
 
@@ -2191,12 +2299,16 @@ spec:
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     installMode: no-op
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-mongodb-operator
     namespace: "{{ .ServicesNs }}"
     channel: v3.23
     packageName: ibm-mongodb-operator-app
     installPlanApproval: {{ .ApprovalMode }}
     installMode: no-op
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-cert-manager-operator
     namespace: "{{ .ServicesNs }}"
     channel: v3.23
@@ -2204,6 +2316,8 @@ spec:
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     installMode: no-op
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-iam-operator
     namespace: "{{ .ServicesNs }}"
     channel: v3.23
@@ -2211,6 +2325,8 @@ spec:
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     installMode: no-op
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-management-ingress-operator
     namespace: "{{ .ServicesNs }}"
     channel: v3.23
@@ -2218,6 +2334,8 @@ spec:
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     installMode: no-op
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-ingress-nginx-operator
     namespace: "{{ .ServicesNs }}"
     channel: v3.23
@@ -2225,6 +2343,8 @@ spec:
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     installMode: no-op
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: v3.23
     name: ibm-zen-operator
     namespace: "{{ .ServicesNs }}"
@@ -2232,6 +2352,8 @@ spec:
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     installMode: no-op
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   `
 )
 
