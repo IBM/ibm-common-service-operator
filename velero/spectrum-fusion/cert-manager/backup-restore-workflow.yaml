@@ -56,16 +56,16 @@ spec:
       type: resource
     - includedResourceTypes:
         - catalogsources.operators.coreos.com
-      labelSelector: foundationservices.cloudpak.ibm.com=cert-manager-operator
+      labelSelector: foundationservices.cloudpak.ibm.com=catalog
       name: cert-manager-catalog
       type: resource
     - includeClusterResources: true 
-      labelSelector: foundationservices.cloudpak.ibm.com=cert-manager-operator
+      labelSelector: foundationservices.cloudpak.ibm.com=namespace
       name: cert-manager-namespace
       type: resource
     - includedResourceTypes:
         - operatorgroups.operators.coreos.com
-      labelSelector: foundationservices.cloudpak.ibm.com=cert-manager-operator
+      labelSelector: foundationservices.cloudpak.ibm.com=operatorgroup
       name: cert-manager-operatorgroup
       type: resource
     - includedResourceTypes:

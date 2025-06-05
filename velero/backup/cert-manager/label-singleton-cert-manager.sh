@@ -114,7 +114,7 @@ function label_catalogsource() {
     if [ $ENABLE_PRIVATE_CATALOG -eq 1 ]; then
         CM_SOURCE_NS=$CERT_MANAGER_NAMESPACE
     fi
-    ${OC} label catalogsource "$CM_SOURCE" foundationservices.cloudpak.ibm.com=cert-manager-operator -n "$CM_SOURCE_NS" --overwrite=true 2>/dev/null
+    ${OC} label catalogsource "$CM_SOURCE" foundationservices.cloudpak.ibm.com=catalog -n "$CM_SOURCE_NS" --overwrite=true 2>/dev/null
     echo ""
 }
 
@@ -123,11 +123,11 @@ function label_ns_and_related() {
     title "Start to label the namespaces, operatorgroups... "
 
     # Label the cert manager namespace
-    ${OC} label namespace "$CERT_MANAGER_NAMESPACE" foundationservices.cloudpak.ibm.com=cert-manager-operator --overwrite=true 2>/dev/null
+    ${OC} label namespace "$CERT_MANAGER_NAMESPACE" foundationservices.cloudpak.ibm.com=namespace --overwrite=true 2>/dev/null
     
     # Label the cert manager OperatorGroup
     operator_group=$(${OC} get operatorgroup -n "$CERT_MANAGER_NAMESPACE" -o jsonpath='{.items[*].metadata.name}')
-    ${OC} label operatorgroup "$operator_group" foundationservices.cloudpak.ibm.com=cert-manager-operator -n "$CERT_MANAGER_NAMESPACE" --overwrite=true 2>/dev/null
+    ${OC} label operatorgroup "$operator_group" foundationservices.cloudpak.ibm.com=operatorgroup -n "$CERT_MANAGER_NAMESPACE" --overwrite=true 2>/dev/null
     
     echo ""
 }
