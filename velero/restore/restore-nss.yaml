@@ -1,7 +1,7 @@
 apiVersion: velero.io/v1
 kind: Restore
 metadata:
-  name: restore-licensing
+  name: restore-nss
   namespace: velero
 spec:
   backupName: __BACKUP_NAME__
@@ -20,6 +20,5 @@ spec:
     - key: foundationservices.cloudpak.ibm.com
       operator: In
       values:
-      - ls-cluster
-      - ls-chart
-      - licensing
+      - nss-cluster
+      - nss

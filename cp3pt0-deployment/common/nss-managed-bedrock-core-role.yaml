@@ -674,6 +674,7 @@ rules:
       - create
       - patch
       - update
+      - delete
     apiGroups:
       - ibmevents.ibm.com
     resources:
@@ -1336,6 +1337,16 @@ rules:
   - verbs:
       - get
       - list
+      - patch
+      - update
+      - watch
+    apiGroups:
+      - watsonxaiifm.cpd.ibm.com
+    resources:
+      - watsonxaiifm
+  - verbs:
+      - get
+      - list
     apiGroups:
       - ibm.com
     resources:
@@ -1647,4 +1658,58 @@ rules:
     resources:
       - secrets
     resourceNames:
-      - postgresql-operator-controller-manager-1-22-7-service-cert
+      - postgresql-operator-controller-manager-1-25-1-service-cert
+  - verbs:
+      - get
+      - create
+      - delete
+      - list
+      - patch
+      - update
+      - watch
+    resources:
+      - databases
+      - publications
+      - subscriptions
+    apiGroups:
+      - postgresql.k8s.enterprisedb.io
+  - verbs:
+      - get
+      - patch
+      - update
+    resources:
+      - databases/status
+      - publications/status
+      - subscriptions/status
+    apiGroups:
+      - postgresql.k8s.enterprisedb.io
+  - verbs:
+      - get
+      - list
+      - watch
+    resources:
+      - imagecatalogs
+      - clusterimagecatalogs
+    apiGroups:
+      - postgresql.k8s.enterprisedb.io
+  - verbs:
+      - get
+      - list
+      - patch
+      - update
+      - watch
+      - create
+    resources:
+      - ibmcpd
+      - ibmcpds
+    apiGroups:
+      - cpd.ibm.com
+  - verbs:
+      - get
+      - list
+      - patch
+      - update
+    resources:
+      - db2uengines
+    apiGroups:
+      - db2u.databases.ibm.com
