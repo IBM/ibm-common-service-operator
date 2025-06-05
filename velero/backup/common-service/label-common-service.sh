@@ -72,12 +72,16 @@ function main() {
     fi
     label_ns_and_related 
     label_configmap
-    label_cs
-    if [[ $SERVICES_NS != "" ]]; then
-        label_nss
+    label_subscription
+    if [[ $ENABLE_CERT_MANAGER -eq 1 ]]; then
+        label_cert_manager
     fi
     if [[ $ENABLE_LSR -eq 1 ]]; then
         label_lsr
+    fi
+    label_cs
+    if [[ $SERVICES_NS != "" ]]; then
+        label_nss
     fi
     label_mcsp
     success "Successfully labeled all the resources"
@@ -365,6 +369,18 @@ function label_subscription() {
         ${OC} label subscriptions.operators.coreos.com $lsr_pm foundationservices.cloudpak.ibm.com=lsr -n $LSR_NAMESPACE --overwrite=true 2>/dev/null
     fi
     echo ""
+}
+
+function label_cert_manager(){
+    title "Start to label the Cert Manager resources... "
+    ${OC} label customresourcedefinition certmanagerconfigs.operator.ibm.com foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true 2>/dev/null
+    ${OC} label customresourcedefinition certificates.cert-manager.io foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true 2>/dev/null
+    ${OC} label customresourcedefinition issuers.cert-manager.io foundationservices.cloudpak.ibm.com=cert-manager --overwrite=true 2>/dev/null
+    info "Start to label the Cert Manager Configs"
+    cert_manager_configs=$(${OC} get certmanagerconfigs.operator.ibm.com -n $CERT_MANAGER_NAMESPACE -o jsonpath='{.items[*].metadata.name}')
+    while IFS= read -r cert_manager_config; do
+        ${OC} label certmanagerconfigs.operator.ibm.com $cert_manager_config foundationservices.cloudpak.ibm.com=cert-manager -n $CERT_MANAGER_NAMESPACE --overwrite=true 2>/dev/null
+    done <<< "$cert_manager_configs"
 }
 
 function label_lsr() {
