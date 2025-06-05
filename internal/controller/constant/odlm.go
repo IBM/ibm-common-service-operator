@@ -256,6 +256,8 @@ spec:
     packageName: rhbk-operator
     scope: public
     configName: keycloak-operator
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: stable
     fallbackChannels:
       - stable-v1.25
@@ -2367,8 +2369,8 @@ spec:
   channel: v4.3
   installPlanApproval: {{ .ApprovalMode }}
   name: ibm-odlm
-  source: {{ .CatalogSourceName }}
-  sourceNamespace: "{{ .CatalogSourceNs }}"
+  source: {{ .ODLMCatalogSourceName }}
+  sourceNamespace: "{{ .ODLMCatalogSourceNs }}"
 `
 
 // ConcatenateRegistries concatenate the two YAML strings and return the new YAML string

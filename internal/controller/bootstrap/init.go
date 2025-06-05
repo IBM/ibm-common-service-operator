@@ -107,21 +107,25 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		return
 	}
 
-	catalogSourceName, catalogSourceNs := util.GetCatalogSource(constant.IBMCSPackage, operatorNs, mgr.GetAPIReader())
-	if catalogSourceName == "" || catalogSourceNs == "" {
-		err = fmt.Errorf("failed to get catalogsource")
+	odlmCatalogSourceName, odlmcatalogSourceNs := util.GetCatalogSource(constant.IBMCSPackage, operatorNs, mgr.GetAPIReader())
+	if odlmCatalogSourceName == "" || odlmcatalogSourceNs == "" {
+		err = fmt.Errorf("failed to get ODLM catalogsource")
 		return
 	}
+
 	approvalMode, err := util.GetApprovalModeinNs(mgr.GetAPIReader(), operatorNs)
 	if err != nil {
 		return
 	}
+
 	csData := apiv3.CSData{
 		CPFSNs:                  cpfsNs,
 		ServicesNs:              servicesNs,
 		OperatorNs:              operatorNs,
-		CatalogSourceName:       catalogSourceName,
-		CatalogSourceNs:         catalogSourceNs,
+		CatalogSourceName:       "",
+		CatalogSourceNs:         "",
+		ODLMCatalogSourceName:   odlmCatalogSourceName,
+		ODLMCatalogSourceNs:     odlmcatalogSourceNs,
 		ApprovalMode:            approvalMode,
 		WatchNamespaces:         util.GetWatchNamespace(),
 		OnPremMultiEnable:       strconv.FormatBool(util.CheckMultiInstances(mgr.GetAPIReader())),
