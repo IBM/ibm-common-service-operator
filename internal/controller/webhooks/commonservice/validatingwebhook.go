@@ -62,11 +62,11 @@ func (r *Defaulter) Handle(ctx context.Context, req admission.Request) admission
 		return admission.Errored(http.StatusBadRequest, operatorNsErr)
 	}
 
-	// catalogSourceName, catalogSourceNs := util.GetCatalogSource(constant.IBMCSPackage, operatorNs, r.Reader)
-	// if catalogSourceName == "" || catalogSourceNs == "" {
-	// 	err := fmt.Errorf("failed to get catalogsource")
-	// 	return admission.Errored(http.StatusBadRequest, err)
-	// }
+	catalogSourceName, catalogSourceNs := util.GetCatalogSource(constant.IBMCSPackage, operatorNs, r.Reader)
+	if catalogSourceName == "" || catalogSourceNs == "" {
+		err := fmt.Errorf("failed to get catalogsource")
+		return admission.Errored(http.StatusBadRequest, err)
+	}
 
 	// handle the request from CommonService
 	cs := &operatorv3.CommonService{}
@@ -106,6 +106,11 @@ func (r *Defaulter) Handle(ctx context.Context, req admission.Request) admission
 			return admission.Denied(fmt.Sprintf("Services Namespace: %v should be one of WATCH_NAMESPACE", serviceNs))
 		}
 
+		// deny if only spec.catalogName or spec.catalogNamespace is set, should be set together
+		if (cs.Spec.CatalogName != "" && cs.Spec.CatalogNamespace == "") || (cs.Spec.CatalogName == "" && cs.Spec.CatalogNamespace != "") {
+			return admission.Denied("Both User-Definded CatalogSource Name and Namespace must be set together in CommonService CR")
+		}
+
 	} else {
 		klog.Infof("Start to validate non-master CommonService CR")
 		// check OperatorNamespace
@@ -122,19 +127,20 @@ func (r *Defaulter) Handle(ctx context.Context, req admission.Request) admission
 			return admission.Denied(fmt.Sprintf("Services Namespace: %v is not allowed to be configured in namespace %v", servicesNamespace, req.AdmissionRequest.Namespace))
 		}
 
-		// // check CatalogName
-		// catalogName := cs.Spec.CatalogName
-		// deniedCatalog := r.CheckConfig(string(catalogName), catalogSourceName)
-		// if deniedCatalog {
-		// 	return admission.Denied(fmt.Sprintf("CatalogSource Name: %v is not allowed to be configured in namespace %v", catalogName, req.AdmissionRequest.Namespace))
-		// }
+		// check CatalogName
+		catalogName := cs.Spec.CatalogName
+		deniedCatalog := r.CheckConfig(string(catalogName), catalogSourceName)
+		if deniedCatalog {
+			return admission.Denied(fmt.Sprintf("CatalogSource Name: %v is not allowed to be configured in namespace %v", catalogName, req.AdmissionRequest.Namespace))
+		}
 
-		// // check CatalogNamespace
-		// catalogNamespace := cs.Spec.CatalogNamespace
-		// deniedCatalogNs := r.CheckConfig(string(catalogNamespace), catalogSourceNs)
-		// if deniedCatalogNs {
-		// 	return admission.Denied(fmt.Sprintf("CatalogSource Namespace: %v is not allowed to be configured in namespace %v", catalogNamespace, req.AdmissionRequest.Namespace))
-		// }
+		// check CatalogNamespace
+		catalogNamespace := cs.Spec.CatalogNamespace
+		deniedCatalogNs := r.CheckConfig(string(catalogNamespace), catalogSourceNs)
+		if deniedCatalogNs {
+			return admission.Denied(fmt.Sprintf("CatalogSource Namespace: %v is not allowed to be configured in namespace %v", catalogNamespace, req.AdmissionRequest.Namespace))
+		}
+
 	}
 
 	// check HugePageSetting

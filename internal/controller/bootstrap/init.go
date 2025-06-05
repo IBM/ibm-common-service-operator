@@ -1416,7 +1416,7 @@ func (b *Bootstrap) DeployCertManagerCR() error {
 	return nil
 }
 
-// CleanNamespaceScopeResources will delete the v3 NamesapceScopes resources and namespace scope operator
+// CleanNamespaceScopeResources will delete the v3 NamespaceScopes resources and namespace scope operator
 // NamespaceScope resources include common-service, nss-managedby-odlm, nss-odlm-scope, and odlm-scope-managedby-odlm
 func (b *Bootstrap) CleanNamespaceScopeResources() error {
 

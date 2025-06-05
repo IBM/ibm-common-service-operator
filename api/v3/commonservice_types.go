@@ -203,7 +203,7 @@ type ConfigurableCR struct {
 type ConfigStatus struct {
 	// CatalogName is the name of the CatalogSource foundational services is using
 	CatalogName CatalogName `json:"catalogName,omitempty"`
-	// CatalogNamespace is the namesapce of the CatalogSource
+	// CatalogNamespace is the namespace of the CatalogSource
 	CatalogNamespace CatalogNamespace `json:"catalogNamespace,omitempty"`
 	// OperatorNamespace is the namespace of where the foundational services'
 	// operators will be installed in.
