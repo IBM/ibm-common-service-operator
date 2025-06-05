@@ -326,7 +326,7 @@ function label_subscription() {
     
     ${OC} label subscriptions.operators.coreos.com $cs_pm foundationservices.cloudpak.ibm.com=subscription -n $OPERATOR_NS --overwrite=true 2>/dev/null
     if [[ $ENABLE_CERT_MANAGER -eq 1 ]]; then
-        ${OC} label subscriptions.operators.coreos.com $cm_pm foundationservices.cloudpak.ibm.com=cert-manager-operator -n $CERT_MANAGER_NAMESPACE --overwrite=true 2>/dev/null
+        ${OC} label subscriptions.operators.coreos.com $cm_pm foundationservices.cloudpak.ibm.com=singleton-subscription -n $CERT_MANAGER_NAMESPACE --overwrite=true 2>/dev/null
     fi
     if [[ $ENABLE_LICENSING -eq 1 ]]; then
         ${OC} label subscriptions.operators.coreos.com $lis_pm foundationservices.cloudpak.ibm.com=singleton-subscription -n $LICENSING_NAMESPACE --overwrite=true 2>/dev/null

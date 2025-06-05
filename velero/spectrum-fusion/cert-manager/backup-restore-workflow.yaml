@@ -70,7 +70,7 @@ spec:
       type: resource
     - includedResourceTypes:
         - subscriptions.operators.coreos.com
-      labelSelector: foundationservices.cloudpak.ibm.com=cert-manager-operator
+      labelSelector: foundationservices.cloudpak.ibm.com=singleton-subscription
       name: cert-manager-subscription
       type: resource
   hooks:

@@ -137,7 +137,7 @@ function label_subscription() {
 
     title "Start to label the Subscriptions... "
     local cm_pm="ibm-cert-manager-operator"
-    ${OC} label subscriptions.operators.coreos.com $cm_pm foundationservices.cloudpak.ibm.com=cert-manager-operator -n $CERT_MANAGER_NAMESPACE --overwrite=true 2>/dev/null
+    ${OC} label subscriptions.operators.coreos.com $cm_pm foundationservices.cloudpak.ibm.com=singleton-subscription -n $CERT_MANAGER_NAMESPACE --overwrite=true 2>/dev/null
     echo ""
 }
 
