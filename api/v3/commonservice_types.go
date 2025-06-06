@@ -38,6 +38,8 @@ type CSData struct {
 	OperatorNs              string
 	CatalogSourceName       string
 	CatalogSourceNs         string
+	ODLMCatalogSourceName   string
+	ODLMCatalogSourceNs     string
 	IsolatedModeEnable      string
 	ApprovalMode            string
 	OnPremMultiEnable       string
@@ -213,7 +215,7 @@ type ConfigurableCR struct {
 type ConfigStatus struct {
 	// CatalogName is the name of the CatalogSource foundational services is using
 	CatalogName CatalogName `json:"catalogName,omitempty"`
-	// CatalogNamespace is the namesapce of the CatalogSource
+	// CatalogNamespace is the namespace of the CatalogSource
 	CatalogNamespace CatalogNamespace `json:"catalogNamespace,omitempty"`
 	// OperatorNamespace is the namespace of where the foundational services'
 	// operators will be installed in.
@@ -365,17 +367,10 @@ func (r *CommonService) UpdateConfigStatus(CSData *CSData, operatorDeployed, ser
 		r.Status.ConfigStatus.ServicesNamespace = ServicesNamespace(CSData.ServicesNs)
 	}
 
-	if r.Spec.CatalogName != "" {
-		r.Status.ConfigStatus.CatalogName = r.Spec.CatalogName
-	} else {
-		r.Status.ConfigStatus.CatalogName = CatalogName(CSData.CatalogSourceName)
-	}
+	r.Status.ConfigStatus.CatalogName = r.Spec.CatalogName
 
-	if r.Spec.CatalogNamespace != "" {
-		r.Status.ConfigStatus.CatalogNamespace = r.Spec.CatalogNamespace
-	} else {
-		r.Status.ConfigStatus.CatalogNamespace = CatalogNamespace(CSData.CatalogSourceNs)
-	}
+	r.Status.ConfigStatus.CatalogNamespace = r.Spec.CatalogNamespace
+
 	r.Status.ConfigStatus.OperatorDeployed = true
 	r.Status.ConfigStatus.ServicesDeployed = true
 	r.Status.ConfigStatus.Configurable = true
