@@ -288,7 +288,7 @@ spec:
                       services is using
                     type: string
                   catalogNamespace:
-                    description: CatalogNamespace is the namesapce of the CatalogSource
+                    description: CatalogNamespace is the namespace of the CatalogSource
                     type: string
                   configurable:
                     description: |-
