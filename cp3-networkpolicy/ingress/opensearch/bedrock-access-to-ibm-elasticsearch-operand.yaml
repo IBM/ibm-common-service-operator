@@ -1,20 +1,24 @@
 kind: NetworkPolicy
 apiVersion: networking.k8s.io/v1
 metadata:
-  name: ingress-ibm-flink-operator
-  namespace: "opNamespace"
+  name: ingress-ibm-elasticsearch-operand
+  namespace: "opensearchNamespace"
   labels:
     component: cpfs3
 spec:
-  podSelector: 
+  podSelector:
     matchLabels:
-      app.kubernetes.io/name: flink-kubernetes-operator
+      app.kubernetes.io/managed-by: ibm-elasticsearch
   ingress:
     - ports:
       - protocol: TCP
         port: 443
       - protocol: TCP
-        port: 6443
+        port: 19300
+      - protocol: TCP
+        port: 9300
+      - protocol: TCP
+        port: 9200
       from:
         - podSelector: {}
   policyTypes:
