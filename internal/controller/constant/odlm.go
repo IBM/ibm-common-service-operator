@@ -174,6 +174,12 @@ spec:
     packageName: ibm-iam-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+  - name: ibm-im-operator-v4.13
+    namespace: "{{ .CPFSNs }}"
+    channel: v4.13
+    packageName: ibm-iam-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
 `
 
 	IdpConfigUIOpReg = `
@@ -247,6 +253,12 @@ spec:
   - name: ibm-idp-config-ui-operator-v4.9
     namespace: "{{ .CPFSNs }}"
     channel: v4.9
+    packageName: ibm-commonui-operator-app
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+  - name: ibm-idp-config-ui-operator-v4.10
+    namespace: "{{ .CPFSNs }}"
+    channel: v4.10
     packageName: ibm-commonui-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -547,6 +559,13 @@ spec:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       operandBindInfo: 
         operand: ibm-im-operator
+  - name: ibm-im-operator-v4.13
+    spec:
+      authentication:
+        config:
+          onPremMultipleDeploy: {{ .OnPremMultiEnable }}
+      operandBindInfo: 
+        operand: ibm-im-operator
 `
 
 	UserMgmtOpCon = `
@@ -651,6 +670,11 @@ spec:
       switcheritem: {}
       navconfiguration: {}
   - name: ibm-idp-config-ui-operator-v4.9
+    spec:
+      commonWebUI: {}
+      switcheritem: {}
+      navconfiguration: {}
+  - name: ibm-idp-config-ui-operator-v4.10
     spec:
       commonWebUI: {}
       switcheritem: {}
@@ -2301,7 +2325,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
   - name: ibm-im-operator
     namespace: "{{ .CPFSNs }}"
-    channel: v4.12
+    channel: v4.13
     packageName: ibm-iam-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -2337,7 +2361,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
   - name: ibm-idp-config-ui-operator
     namespace: "{{ .CPFSNs }}"
-    channel: v4.9
+    channel: v4.10
     packageName: ibm-commonui-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
