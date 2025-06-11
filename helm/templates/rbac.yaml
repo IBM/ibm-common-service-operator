@@ -242,5 +242,6 @@ rules:
     verbs:
       - get
       - list
+      - update
 ---
 {{- end }}

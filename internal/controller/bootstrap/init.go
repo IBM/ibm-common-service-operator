@@ -2516,8 +2516,8 @@ func (b *Bootstrap) fetchSubscription(subName, packageManifest, operatorNs strin
 	return sub, nil
 }
 
-// Wait for Postgres Cluster CR image to be updated with the image from the configmap
-func (b *Bootstrap) WaitForPostgresClusterImageUpdate(ctx context.Context, instance *apiv3.CommonService) error {
+// UpdatePostgresClusterImage checks if the Postgres Cluster image needs to be updated
+func (b *Bootstrap) UpdatePostgresClusterImage(ctx context.Context, instance *apiv3.CommonService) error {
 	// Check if Postgres Cluster CR "common-service-db" is created in service namespace
 	pgCluster := &unstructured.Unstructured{}
 	pgCluster.SetGroupVersionKind(schema.GroupVersionKind{
@@ -2583,7 +2583,8 @@ func (b *Bootstrap) WaitForPostgresClusterImageUpdate(ctx context.Context, insta
 	}
 
 	// Wait for the image to be updated
-	return utilwait.PollImmediate(time.Second*10, time.Minute*2, func() (done bool, err error) {
+	// If timeout occurs, controller will update the image in the Postgres Cluster CR
+	if err := utilwait.PollImmediate(time.Second*10, time.Minute*1, func() (done bool, err error) {
 		// Fetch the latest Postgres Cluster CR
 		err = b.Client.Get(ctx, types.NamespacedName{
 			Name:      constant.CSPGCluster,
@@ -2592,6 +2593,8 @@ func (b *Bootstrap) WaitForPostgresClusterImageUpdate(ctx context.Context, insta
 
 		if err != nil {
 			if errors.IsNotFound(err) {
+				klog.Infof("Postgres Cluster CR %s not found in namespace %s, skipping image update check",
+					constant.CSPGCluster, b.CSData.ServicesNs)
 				return true, nil
 			}
 			return false, err
@@ -2603,7 +2606,13 @@ func (b *Bootstrap) WaitForPostgresClusterImageUpdate(ctx context.Context, insta
 			return false, err
 		}
 
-		if found && currentImage == desiredImage {
+		if !found {
+			klog.Warningf("spec.imageName field not found in Postgres Cluster CR %s in namespace %s",
+				constant.CSPGCluster, b.CSData.ServicesNs)
+			return false, nil
+		}
+
+		if currentImage == desiredImage {
 			klog.Infof("Postgres Cluster CR %s image updated to the desired image in configmap %s/%s",
 				constant.CSPGCluster, b.CSData.OperatorNs, configMapName)
 			return true, nil
@@ -2612,7 +2621,23 @@ func (b *Bootstrap) WaitForPostgresClusterImageUpdate(ctx context.Context, insta
 		klog.Infof("Postgres Cluster CR %s image is not updated, waiting for update to the desired image in configmap %s/%s",
 			constant.CSPGCluster, b.CSData.OperatorNs, configMapName)
 		return false, nil
-	})
+	}); err != nil {
+		klog.Warningf("Failed to wait for Postgres Cluster CR %s image update: %v", constant.CSPGCluster, err)
+		// If the image is not updated, update the Postgres Cluster CR with the desired image
+		klog.Infof("Updating Postgres Cluster CR %s image to the desired image %s in configmap %s/%s",
+			constant.CSPGCluster, desiredImage, b.CSData.OperatorNs, configMapName)
+		if err := unstructured.SetNestedField(pgCluster.Object, desiredImage, "spec", "imageName"); err != nil {
+			klog.Errorf("Failed to set desired image in Postgres Cluster CR %s: %v", constant.CSPGCluster, err)
+			return err
+		}
+		if err := b.Client.Update(ctx, pgCluster); err != nil {
+			return fmt.Errorf("failed to update Postgres Cluster CR %s image update: %v", constant.CSPGCluster, err)
+		}
+	}
+
+	klog.Infof("Postgres Cluster CR %s image successfully updated to the desired image in configmap %s/%s",
+		constant.CSPGCluster, b.CSData.OperatorNs, configMapName)
+	return nil
 }
 
 // getPostgresImageConfigMap gets the configmap containing PostgreSQL image information
