@@ -596,11 +596,9 @@ spec:
           spec:
             bindings:
               public-account-iam-config-dev:
-                configmap: account-iam-env-configmap-dev
+                configmap: account-iam-env-configmap-development
               public-bootstrap-creds:
                 secret: user-mgmt-bootstrap
-              public-ibmcloudca-secret:
-                secret: ibmcloud-cluster-ca-secret
               public-mcsp-integration-details:
                 secret: mcsp-im-integration-details
             description: Binding information that should be accessible to User Management adopters
