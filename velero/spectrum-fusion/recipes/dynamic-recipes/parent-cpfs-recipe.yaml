@@ -109,7 +109,7 @@ spec:
           timeout: 600
       labelSelector: app.kubernetes.io/name=operand-deployment-lifecycle-manager
       name: odlm-check
-      namespace: <operator namespace>
+      namespace: cs-op
       onError: fail
       selectResource: pod
       timeout: 600

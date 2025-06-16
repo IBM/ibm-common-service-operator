@@ -54,7 +54,7 @@ spec:
           timeout: 1200
       labelSelector: 'k8s.enterprisedb.io/cluster=zen-metastore-edb,role=primary'
       name: zen-metastore-edb-check
-      namespace: <service namespace>
+      namespace: cs-serv
       onError: fail
       selectResource: pod
       timeout: 1200
@@ -66,23 +66,23 @@ spec:
           timeout: 600
       labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
       name: zen5-deployment
-      namespace: <service namespace>
+      namespace: cs-serv
       onError: fail
       selectResource: pod
       timeout: 600
       type: check
     - labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
       name: zen5-data
-      namespace: <service namespace>
+      namespace: cs-serv
       onError: fail
       ops:
         - command: |
-            ["/bin/bash", "-c", "rm -rf /zen5/zen-backup/database && rm -rf /zen5/zen-backup/objstorage && rm -rf /zen5/zen-backup/secrets && rm -rf /zen5/zen-backup/workspace; /zen5/backup_zen5.sh <service namespace>"]
+            ["/bin/bash", "-c", "rm -rf /zen5/zen-backup/database && rm -rf /zen5/zen-backup/objstorage && rm -rf /zen5/zen-backup/secrets && rm -rf /zen5/zen-backup/workspace; /zen5/backup_zen5.sh cs-serv"]
           container: zen5-backup-job
           name: backup
           timeout: 600
         - command: |
-            ["/bin/bash", "-c", "/zen5/restore_zen5.sh <service namespace> <zenservice name>"]
+            ["/bin/bash", "-c", "/zen5/restore_zen5.sh cs-serv lite-cr"]
           container: zen5-backup-job
           name: restore
           timeout: 3600

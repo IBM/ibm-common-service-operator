@@ -47,7 +47,7 @@ spec:
           timeout: 600
       labelSelector: 'k8s.enterprisedb.io/cluster=common-service-db,role=primary'
       name: common-service-db-check
-      namespace: <service namespace>
+      namespace: cs-serv
       onError: fail
       selectResource: pod
       timeout: 600
@@ -59,7 +59,7 @@ spec:
           timeout: 600
       labelSelector: foundationservices.cloudpak.ibm.com=cs-db-data
       name: cs-db-deployment
-      namespace: <service namespace>
+      namespace: cs-serv
       onError: fail
       selectResource: pod
       timeout: 600
@@ -71,7 +71,7 @@ spec:
           timeout: 600
       name: platform-identity-provider
       nameSelector: platform-identity-provider
-      namespace: <service namespace>
+      namespace: cs-serv
       onError: fail
       selectResource: deployment
       timeout: 600
@@ -83,7 +83,7 @@ spec:
           timeout: 600
       name: platform-auth-service
       nameSelector: platform-auth-service
-      namespace: <service namespace>
+      namespace: cs-serv
       onError: fail
       selectResource: deployment
       timeout: 600
@@ -95,18 +95,18 @@ spec:
           timeout: 600
       name: platform-identity-management
       nameSelector: platform-identity-management
-      namespace: <service namespace>
+      namespace: cs-serv
       onError: fail
       selectResource: deployment
       timeout: 600
       type: check
     - labelSelector: foundationservices.cloudpak.ibm.com=cs-db-data
       name: cs-db-data
-      namespace: <service namespace>
+      namespace: cs-serv
       onError: fail
       ops:
         - command: |
-            ["/bin/bash", "-c", "/cs-db/br_cs-db.sh backup <service namespace>"]
+            ["/bin/bash", "-c", "/cs-db/br_cs-db.sh backup cs-serv"]
           container: cs-db-br
           name: cs-db-backup-pre
           timeout: 600
@@ -116,7 +116,7 @@ spec:
           name: cs-db-backup-post
           timeout: 600
         - command: |
-            ["/bin/bash", "-c", "sleep 120 && /cs-db/br_cs-db.sh restore <service namespace>"]
+            ["/bin/bash", "-c", "sleep 120 && /cs-db/br_cs-db.sh restore cs-serv"]
           container: cs-db-br
           name: restore
           timeout: 2000

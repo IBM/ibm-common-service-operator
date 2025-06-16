@@ -25,7 +25,7 @@ spec:
           timeout: 600
       name: nss-check
       nameSelector: ibm-namespace-scope-operator
-      namespace: <operator namespace>
+      namespace: cs-op
       onError: fail
       selectResource: deployment
       timeout: 600
