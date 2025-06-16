@@ -1,0 +1,46 @@
+apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+kind: Recipe
+metadata:
+  labels:
+    dp.isf.ibm.com/parent-recipe: cpfs-parent-recipe
+    dp.isf.ibm.com/parent-recipe-namespace: ibm-fusion
+  name: nss-child
+  namespace: ibm-fusion
+spec:
+  appType: common-service
+  groups:
+    - includedResourceTypes:
+        - roles
+        - rolebindings
+        - serviceaccounts
+        - namespacescopes.operator.ibm.com
+      labelSelector: foundationservices.cloudpak.ibm.com=nss
+      name: nss-resources
+      type: resource
+  hooks:
+    - chks:
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      name: nss-check
+      nameSelector: ibm-namespace-scope-operator
+      namespace: <operator namespace>
+      onError: fail
+      selectResource: deployment
+      timeout: 600
+      type: check
+  workflows:
+    - name: post-backup
+      priority: 0
+      sequence:
+        #nss
+        - group: nss-resources
+    - name: restore-nss
+      sequence:
+        # nss
+        - group: nss-resources
+        - hook: nss-check/podReady
+
+    #TODO add priorities
+    
