@@ -14,6 +14,7 @@ spec:
         - rolebindings
         - serviceaccounts
         - namespacescopes.operator.ibm.com
+        #- subscriptions.operators.coreos.com TODO change labeling script to label nss sub as nss, verify matches manual labeling instructions
       labelSelector: foundationservices.cloudpak.ibm.com=nss
       name: nss-resources
       type: resource
