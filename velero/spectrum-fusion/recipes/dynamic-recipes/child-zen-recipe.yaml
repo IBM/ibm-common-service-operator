@@ -29,7 +29,7 @@ spec:
       labelSelector: foundationservices.cloudpak.ibm.com=zen
       name: zenservice
       type: resource
-    - backupRef: zen-br-resources
+    - backupRef: zen-child.zen-br-resources
       labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
       includeClusterResources: true
       includedResourceTypes:
@@ -39,7 +39,7 @@ spec:
         - configmaps
       name: zen-pre-deploy
       type: resource
-    - backupRef: zen-br-resources
+    - backupRef: zen-child.zen-br-resources
       includeClusterResources: true
       labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
       includedResourceTypes:

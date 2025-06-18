@@ -22,7 +22,7 @@ spec:
       labelSelector: foundationservices.cloudpak.ibm.com=cs-db-data
       name: cs-db-br-resources
       type: resource
-    - backupRef: cs-db-br-resources
+    - backupRef: csdb-child.cs-db-br-resources
       includeClusterResources: true
       labelSelector: foundationservices.cloudpak.ibm.com=cs-db-data
       includedResourceTypes:
@@ -32,7 +32,7 @@ spec:
         - configmaps
       name: cs-db-pre-deploy
       type: resource
-    - backupRef: cs-db-br-resources
+    - backupRef: csdb-child.cs-db-br-resources
       includeClusterResources: true
       labelSelector: foundationservices.cloudpak.ibm.com=cs-db-data
       includedResourceTypes:
