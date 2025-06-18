@@ -5,7 +5,7 @@ metadata:
     dp.isf.ibm.com/parent-recipe: cpfs-parent-recipe
     dp.isf.ibm.com/parent-recipe-namespace: ibm-fusion
   name: nss-child
-  namespace: ibm-fusion
+  namespace: cs-serv
 spec:
   appType: common-service
   groups:
