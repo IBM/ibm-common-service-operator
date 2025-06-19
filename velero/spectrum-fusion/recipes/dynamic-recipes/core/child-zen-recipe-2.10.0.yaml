@@ -3,9 +3,9 @@ kind: Recipe
 metadata:
   labels:
     dp.isf.ibm.com/parent-recipe: cpfs-parent-recipe
-    dp.isf.ibm.com/parent-recipe-namespace: ibm-fusion
+    dp.isf.ibm.com/parent-recipe-namespace: <parent recipe namespace>
   name: zen-child
-  namespace: cs-serv
+  namespace: <child recipe namespace>
 spec:
   appType: common-service
   groups:
@@ -42,7 +42,7 @@ spec:
           timeout: 1200
       labelSelector: 'k8s.enterprisedb.io/cluster=zen-metastore-edb,role=primary'
       name: zen-metastore-edb-check
-      namespace: cs-serv
+      namespace: <child recipe namespace>
       onError: fail
       selectResource: pod
       timeout: 1200
@@ -54,23 +54,23 @@ spec:
           timeout: 600
       labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
       name: zen5-deployment
-      namespace: cs-serv
+      namespace: <child recipe namespace>
       onError: fail
       selectResource: pod
       timeout: 600
       type: check
     - labelSelector: foundationservices.cloudpak.ibm.com=zen5-data
       name: zen5-data
-      namespace: cs-serv
+      namespace: <child recipe namespace>
       onError: fail
       ops:
         - command: |
-            ["/bin/bash", "-c", "rm -rf /zen5/zen-backup/database && rm -rf /zen5/zen-backup/objstorage && rm -rf /zen5/zen-backup/secrets && rm -rf /zen5/zen-backup/workspace; /zen5/backup_zen5.sh cs-serv"]
+            ["/bin/bash", "-c", "rm -rf /zen5/zen-backup/database && rm -rf /zen5/zen-backup/objstorage && rm -rf /zen5/zen-backup/secrets && rm -rf /zen5/zen-backup/workspace; /zen5/backup_zen5.sh <child recipe namespace>"]
           container: zen5-backup-job
           name: backup
           timeout: 600
         - command: |
-            ["/bin/bash", "-c", "/zen5/restore_zen5.sh cs-serv lite-cr"]
+            ["/bin/bash", "-c", "/zen5/restore_zen5.sh <child recipe namespace> <zenservice name>"]
           container: zen5-backup-job
           name: restore
           timeout: 3600
@@ -101,6 +101,4 @@ spec:
         - group: zen-deployment
         - hook: zen5-deployment/podReady
         - hook: zen5-data/restore
-
-    #TODO add priorities
     

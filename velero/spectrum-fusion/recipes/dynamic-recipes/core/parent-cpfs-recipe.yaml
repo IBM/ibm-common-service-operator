@@ -2,7 +2,7 @@ apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
 kind: Recipe
 metadata:
   name: cpfs-parent-recipe
-  namespace: ibm-fusion
+  namespace: <parent recipe namespace>
 spec:
   appType: common-service
   groups:
@@ -109,7 +109,7 @@ spec:
           timeout: 600
       labelSelector: app.kubernetes.io/name=operand-deployment-lifecycle-manager
       name: odlm-check
-      namespace: cs-op
+      namespace: <parent recipe namespace>
       onError: fail
       selectResource: pod
       timeout: 600
@@ -192,4 +192,3 @@ spec:
         - group: odlm-resources
         - group: operand-resources
         - workflow: data-restore
-    #TODO add priorities

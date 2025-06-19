@@ -3,9 +3,9 @@ kind: Recipe
 metadata:
   labels:
     dp.isf.ibm.com/parent-recipe: cpfs-parent-recipe
-    dp.isf.ibm.com/parent-recipe-namespace: ibm-fusion
+    dp.isf.ibm.com/parent-recipe-namespace: <parent recipe namespace>
   name: nss-child
-  namespace: cs-serv
+  namespace: <child recipe namespace>
 spec:
   appType: common-service
   groups:
@@ -42,6 +42,4 @@ spec:
         # nss
         - group: nss-resources
         - hook: nss-check/podReady
-
-    #TODO add priorities
     
