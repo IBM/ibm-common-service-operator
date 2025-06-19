@@ -238,7 +238,7 @@ func (r *CertificateRefreshReconciler) SetupWithManager(mgr ctrl.Manager) error 
 	}
 
 	// Watch for changes to Certificates in the cluster
-	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}

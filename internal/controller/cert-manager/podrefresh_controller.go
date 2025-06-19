@@ -357,7 +357,7 @@ func (r *PodRefreshReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	// Watch for changes to Certificates in the cluster
-	err = c.Watch(&source.Kind{Type: &certmanagerv1.Certificate{}}, &handler.EnqueueRequestForObject{}, isExpiredPredicate{})
+	err = c.Watch(source.Kind(mgr.GetCache(), &certmanagerv1.Certificate{}), &handler.EnqueueRequestForObject{}, isExpiredPredicate{})
 	if err != nil {
 		return err
 	}

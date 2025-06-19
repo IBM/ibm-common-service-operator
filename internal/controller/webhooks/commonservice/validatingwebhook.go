@@ -209,5 +209,11 @@ func (r *Defaulter) SetupWebhookWithManager(mgr ctrl.Manager) error {
 		Register("/validate-operator-ibm-com-v3-commonservice",
 			&webhook.Admission{Handler: r})
 
+	// Inject the decoder
+	decoder := admission.NewDecoder(mgr.GetScheme())
+	if err := r.InjectDecoder(decoder); err != nil {
+		return err
+	}
+
 	return nil
 }

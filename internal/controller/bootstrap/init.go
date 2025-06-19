@@ -1040,16 +1040,21 @@ func (b *Bootstrap) DeleteV3Resources(mutatingWebhooks, validatingWebhooks []str
 
 // deleteWebhookResources deletes resources related to ibm-common-service-webhook
 func (b *Bootstrap) deleteWebhookResources() error {
-	// Delete PodPreset (CR)
-	if err := b.deleteResource(&unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": "operator.ibm.com/v1alpha1",
-			"kind":       "PodPreset",
-		},
-	}, constant.WebhookServiceName, b.CSData.ServicesNs, "PodPreset"); err != nil {
+	exist, err := b.CheckCRD("operator.ibm.com/v1alpha1", "PodPreset")
+	if err != nil {
 		return err
 	}
-
+	if exist {
+		// Delete PodPreset (CR)
+		if err := b.deleteResource(&unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"apiVersion": "operator.ibm.com/v1alpha1",
+				"kind":       "PodPreset",
+			},
+		}, constant.WebhookServiceName, b.CSData.ServicesNs, "PodPreset"); err != nil {
+			return err
+		}
+	}
 	// Delete ServiceAccount
 	if err := b.deleteResource(&corev1.ServiceAccount{}, constant.WebhookServiceName, b.CSData.ServicesNs, "ServiceAccount"); err != nil {
 		return err
@@ -1095,9 +1100,15 @@ func (b *Bootstrap) deleteSecretShareResources() error {
 		return err
 	}
 
-	// Delete SecretShare Operator CR
-	if err := b.deleteResource(&ssv1.SecretShare{}, constant.MasterCR, b.CSData.ServicesNs, "SecretShare Operator CR"); err != nil {
+	exist, err := b.CheckCRD("ibmcpcs.ibm.com/v1", "SecretShare")
+	if err != nil {
 		return err
+	}
+	if exist {
+		// Delete SecretShare Operator CR
+		if err := b.deleteResource(&ssv1.SecretShare{}, constant.MasterCR, b.CSData.ServicesNs, "SecretShare Operator CR"); err != nil {
+			return err
+		}
 	}
 
 	// Delete SecretShare Operator Deployment
@@ -1108,6 +1119,18 @@ func (b *Bootstrap) deleteSecretShareResources() error {
 }
 
 func (b *Bootstrap) deleteResource(resource client.Object, name, namespace string, resourceType string) error {
+	// Check if CRD exists for the resource type
+	// gvk := resource.GetObjectKind().GroupVersionKind()
+	// APIGroupVersion := gvk.Group + "/" + gvk.Version
+	// exist, err := b.CheckCRD(APIGroupVersion, resourceType)
+	// if err != nil {
+	// 	klog.Errorf("Failed to check if CRD exists: %v", err)
+	// }
+	// if !exist {
+	// 	klog.V(2).Infof("%s %s/%s not found, skipping deletion", resourceType, namespace, name)
+	// 	return nil
+	// }
+
 	namespacedName := types.NamespacedName{Name: name}
 	if namespace != "" {
 		namespacedName.Namespace = namespace
