@@ -366,7 +366,7 @@ function label_subscription() {
         ${OC} label subscriptions.operators.coreos.com $lis_pm foundationservices.cloudpak.ibm.com=singleton-subscription -n $LICENSING_NAMESPACE --overwrite=true 2>/dev/null
     fi
     if [[ $ENABLE_LSR -eq 1 ]]; then
-        ${OC} label subscriptions.operators.coreos.com $lsr_pm foundationservices.cloudpak.ibm.com=lsr -n $LSR_NAMESPACE --overwrite=true 2>/dev/null
+        ${OC} label subscriptions.operators.coreos.com $lsr_pm foundationservices.cloudpak.ibm.com=singleton-subscription -n $LSR_NAMESPACE --overwrite=true 2>/dev/null
     fi
     echo ""
 }
