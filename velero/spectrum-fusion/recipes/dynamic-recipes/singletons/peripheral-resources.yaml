@@ -22,7 +22,7 @@ metadata:
   name: cs-singleton-backup-policy
   namespace: <fusion ns>
 spec:
-  backupStorageLocation: cutie
+  backupStorageLocation: <location name>
   provider: isf-backup-restore
   retention:
     number: 5
@@ -61,3 +61,23 @@ data:
   access-key-id: <base 64 encoded access key id>
   secret-access-key: <base 64 encoded secret access key>
 type: Opaque
+
+---
+
+apiVersion: data-protection.isf.ibm.com/v1alpha1
+kind: BackupStorageLocation
+metadata:
+  name: <location name>
+  namespace: <fusion ns>
+  finalizers:
+    - backupstoragelocation
+  labels:
+    dp.isf.ibm.com/backupstoragelocation-type: ibm
+    dp.isf.ibm.com/provider-name: isf-backup-restore
+spec:
+  credentialName: <location name>-secret-0
+  params:
+    bucket: <bucket name>
+    endpoint: <s3 url>
+  provider: isf-backup-restore
+  type: ibm
