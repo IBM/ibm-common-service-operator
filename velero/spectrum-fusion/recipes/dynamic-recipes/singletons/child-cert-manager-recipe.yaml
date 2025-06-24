@@ -2,10 +2,10 @@ apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
 kind: Recipe
 metadata:
   name: child-cert-manager-recipe
-  namespace: ibm-fusion
+  namespace: <fusion ns>
   labels:
-    dp.isf.ibm.com/parent-recipe: parent-cpfs-singleton-recipe
-    dp.isf.ibm.com/parent-recipe-namespace: ibm-fusion
+    dp.isf.ibm.com/parent-recipe: cpfs-singleton-parent-recipe
+    dp.isf.ibm.com/parent-recipe-namespace: <fusion ns>
 spec:
   appType: singleton
   groups:
@@ -61,7 +61,6 @@ spec:
     - failOn: essential-error
       name: singleton-resources-restore
       sequence:
-        - group: cert-manager-crds
-        - group: cert-manager-workload-resources
+        - group: cert-manager-resources
         - hook: cert-manager-operator-check/podReady
         - hook: cert-manager-webhook-check/podReady

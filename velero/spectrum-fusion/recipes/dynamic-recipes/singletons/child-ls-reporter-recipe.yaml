@@ -2,10 +2,10 @@ apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
 kind: Recipe
 metadata:
   name: child-license-reporter-recipe
-  namespace: ibm-fusion
+  namespace: <fusion ns>
   labels:
-    dp.isf.ibm.com/parent-recipe: parent-cpfs-singleton-recipe
-    dp.isf.ibm.com/parent-recipe-namespace: ibm-fusion
+    dp.isf.ibm.com/parent-recipe: cpfs-singleton-parent-recipe
+    dp.isf.ibm.com/parent-recipe-namespace: <fusion ns>
 spec:
   appType: common-service
   groups:
@@ -26,28 +26,20 @@ spec:
       type: resource
     - includeClusterResources: true
       includedResourceTypes:
-        - deployments
         - serviceaccount
         - role
         - rolebinding
         - configmaps
-      labelSelector: foundationservices.cloudpak.ibm.com=lsr-data
-      name: license-service-reporter-resources
-      type: resource
-    - backupRef: license-service-reporter-resources
-      includeClusterResources: true
-      includedResourceTypes:
-        - serviceaccount
-        - role
-        - rolebinding
-        - configmaps
+        - clusterrole
+        - clusterrolebinding
       name: lsr-pre-deploy
       type: resource
-    - backupRef: license-service-reporter-resources
-      includeClusterResources: true
+      labelSelector: foundationservices.cloudpak.ibm.com=lsr-data
+    - includeClusterResources: true
       includedResourceTypes:
         - deployments
       name: lsr-deployment
+      labelSelector: foundationservices.cloudpak.ibm.com=lsr-data
       type: resource
     - labelSelector: foundationservices.cloudpak.ibm.com=lsr-data
       name: lsr-volume
@@ -58,8 +50,20 @@ spec:
           name: podReady
           onError: fail
           timeout: 600
-      name: license-service-reporter-check
+      name: lsr-operator-check
       labelSelector: app.kubernetes.io/name=ibm-license-service-reporter
+      namespace: <lsr namespace>
+      onError: fail
+      selectResource: pod
+      timeout: 600
+      type: check
+    - chks:
+        - condition: '{$.status.phase} == {"Running"}'
+          name: podReady
+          onError: fail
+          timeout: 600
+      name: lsr-instance-check
+      labelSelector: app.kubernetes.io/name=ibm-license-service-reporter-instance
       namespace: <lsr namespace>
       onError: fail
       selectResource: pod
@@ -99,16 +103,18 @@ spec:
       name: singleton-resources-backup
       sequence:
         - hook: lsr-data/backup
-        - group: lsr-volume
-        - group: license-service-reporter-parent
-        - group: license-service-reporter-resources
-    - failOn: any-error
-      name: singleton-resources-restore
-      sequence:
-        - hook: license-service-reporter-check/podReady
         - group: license-service-reporter-parent
         - group: lsr-pre-deploy
         - group: lsr-volume
         - group: lsr-deployment
+    - failOn: any-error
+      name: singleton-resources-restore
+      sequence:
+        - group: license-service-reporter-parent
+        - hook: lsr-operator-check/podReady
+        - group: lsr-pre-deploy
+        - group: lsr-volume
+        - group: lsr-deployment
         - hook: lsr-deployment/podReady
+        - hook: lsr-instance-check/podReady
         - hook: lsr-data/restore

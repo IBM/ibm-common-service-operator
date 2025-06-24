@@ -2,10 +2,10 @@ apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
 kind: Recipe
 metadata:
   name: child-licensing-recipe
-  namespace: ibm-fusion
+  namespace: <fusion ns>
   labels:
-    dp.isf.ibm.com/parent-recipe: parent-cpfs-singleton-recipe
-    dp.isf.ibm.com/parent-recipe-namespace: ibm-fusion
+    dp.isf.ibm.com/parent-recipe: cpfs-singleton-parent-recipe
+    dp.isf.ibm.com/parent-recipe-namespace: <fusion ns> 
 spec:
   appType: singleton
   groups:

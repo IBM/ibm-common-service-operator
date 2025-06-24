@@ -1,8 +1,8 @@
 apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
 kind: Recipe
 metadata:
-  name: parent-cpfs-singleton-recipe
-  namespace: ibm-fusion
+  name: cpfs-singleton-parent-recipe
+  namespace: <fusion ns>
 spec:
   appType: singleton
   groups:
