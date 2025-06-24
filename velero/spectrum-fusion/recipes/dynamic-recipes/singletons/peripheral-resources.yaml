@@ -7,9 +7,12 @@ spec:
   enableDR: false
   includedNamespaces:
     #default namespaces for licensing, cert manager, and reporter operators
-    - ibm-cert-manager
-    - ibm-licensing
-    - ibm-ls-reporter
+    #- ibm-cert-manager
+    #- ibm-licensing
+    #- ibm-ls-reporter
+    - <cert manager namespace>
+    - <licensing namespace>
+    - <lsr namespace>
 
 ---
 
