@@ -14,6 +14,7 @@ spec:
     - <licensing namespace>
     - <lsr namespace>
     - openshift-marketplace
+    - openshift-config
 
 ---
 
