@@ -1119,18 +1119,6 @@ func (b *Bootstrap) deleteSecretShareResources() error {
 }
 
 func (b *Bootstrap) deleteResource(resource client.Object, name, namespace string, resourceType string) error {
-	// Check if CRD exists for the resource type
-	// gvk := resource.GetObjectKind().GroupVersionKind()
-	// APIGroupVersion := gvk.Group + "/" + gvk.Version
-	// exist, err := b.CheckCRD(APIGroupVersion, resourceType)
-	// if err != nil {
-	// 	klog.Errorf("Failed to check if CRD exists: %v", err)
-	// }
-	// if !exist {
-	// 	klog.V(2).Infof("%s %s/%s not found, skipping deletion", resourceType, namespace, name)
-	// 	return nil
-	// }
-
 	namespacedName := types.NamespacedName{Name: name}
 	if namespace != "" {
 		namespacedName.Namespace = namespace
