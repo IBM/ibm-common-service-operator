@@ -50,9 +50,6 @@ func NewCSCache(watchNamespaceList []string, opts ctrl.Options) ctrl.Options {
 		&corev1.Secret{}:       {Label: secretSelector.AsSelector()},
 		&corev1.ConfigMap{}:    {Label: configmapSelector.AsSelector()},
 		&apiv3.CommonService{}: {},
-		// Do NOT set Namespaces for cluster-scoped resources:
-		// &admissionregistrationv1.MutatingWebhookConfiguration{}:   {},
-		// &admissionregistrationv1.ValidatingWebhookConfiguration{}: {},
 	}
 
 	// set cache options

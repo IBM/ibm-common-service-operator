@@ -99,18 +99,6 @@ func main() {
 	}
 
 	watchNamespace := util.GetWatchNamespace()
-	// gvkLabelMap := map[schema.GroupVersionKind]filteredcache.Selector{
-	// 	corev1.SchemeGroupVersion.WithKind("ConfigMap"): {
-	// 		LabelSelector: constant.CsManagedLabel,
-	// 	},
-	// 	corev1.SchemeGroupVersion.WithKind("Secret"): {
-	// 		LabelSelector: constant.SecretWatchLabel,
-	// 	},
-	// }
-	// clusterGVKList := []schema.GroupVersionKind{
-	// 	{Group: "admissionregistration.k8s.io", Kind: "MutatingWebhookConfiguration", Version: "v1"},
-	// 	{Group: "admissionregistration.k8s.io", Kind: "ValidatingWebhookConfiguration", Version: "v1"},
-	// }
 
 	// var NewCache cache.NewCacheFunc
 	watchNamespaceList := strings.Split(watchNamespace, ",")
