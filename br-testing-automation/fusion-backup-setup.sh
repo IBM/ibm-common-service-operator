@@ -324,6 +324,11 @@ function create_sf_resources(){
             sed -i -E "s/<licensing namespace>/$LICENSING_NAMESPACE/" ./templates/peripheral-resources.yaml
             sed -i -E "s/<lsr namespace>/$LSR_NAMESPACE/" ./templates/peripheral-resources.yaml
             sed -i -E "s/<s3 url>/$S3_URL/" ./templates/peripheral-resources.yaml
+
+            encoded_access_key=$(echo $STORAGE_SECRET_ACCESS_KEY | tr -d '\n' | base64 -w 0)
+            sed -i -E "s/<base 64 encoded secret access key>/$encoded_access_key/" ./templates/peripheral-resources.yaml
+            encoded_access_key_id=$(echo $STORAGE_SECRET_ACCESS_KEY_ID | tr -d '\n' | base64 -w 0)
+            sed -i -E "s/<base 64 encoded access key id>/$encoded_access_key_id/" ./templates/peripheral-resources.yaml
             
             ${OC} apply -f ./templates/parent-singleton-recipe.yaml || error "Unable to create singleton parent recipe in namespace $SF_NAMESPACE."
             ${OC} apply -f ./templates/peripheral-resources.yaml || error "Unable to create singleton peripheral resources in namespace $SF_NAMESPACE."
