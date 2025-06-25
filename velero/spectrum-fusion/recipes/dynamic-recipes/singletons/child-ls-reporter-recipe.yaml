@@ -30,8 +30,6 @@ spec:
         - role
         - rolebinding
         - configmaps
-        - clusterrole
-        - clusterrolebinding
       name: lsr-pre-deploy
       type: resource
       labelSelector: foundationservices.cloudpak.ibm.com=lsr-data
