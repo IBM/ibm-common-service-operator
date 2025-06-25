@@ -313,6 +313,7 @@ function create_sf_resources(){
 
         #singleton recipes
         if [[ $ENABLE_CERT_MANAGER == 1 ]] || [[ $ENABLE_LICENSING == 1 ]] || [[ $ENABLE_LSR == 1 ]]; then
+            info "Editing singleton fusion resources..."
             cp ../velero/spectrum-fusion/recipes/dynamic-recipes/singletons/parent-singleton-recipe.yaml ./templates/parent-singleton-recipe.yaml
             cp ../velero/spectrum-fusion/recipes/dynamic-recipes/singletons/peripheral-resources.yaml ./templates/peripheral-resources.yaml
             #edit parent recipe
@@ -423,7 +424,7 @@ function create_sf_resources(){
     sed -i -E "s/<spectrum fusion ns>/$SF_NAMESPACE/" ./templates/policy_assignment.yaml
     sed -i -E "s/<recipe name>/$recipe_name/" ./templates/policy_assignment.yaml
     if [[ $DYNAMIC == "true" ]]; then
-        sed -i -E "s/<recipe namespace>/$SERVICES_NS/" ./templates/policy_assignment.yaml
+        sed -i -E "s/<recipe namespace>/$OPERATOR_NS/" ./templates/policy_assignment.yaml
     else
         sed -i -E "s/<recipe namespace>/$SF_NAMESPACE/" ./templates/policy_assignment.yaml
     fi
