@@ -38,7 +38,7 @@ spec:
 apiVersion: data-protection.isf.ibm.com/v1alpha1
 kind: PolicyAssignment
 metadata:
-  name: cs-policy-assignment
+  name: cs-singleton-policy-assignment
   namespace: <fusion ns>
 spec:
   application: cs-singleton
