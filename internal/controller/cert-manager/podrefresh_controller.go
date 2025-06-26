@@ -32,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	certmanagerv1 "github.com/ibm/ibm-cert-manager-operator/apis/cert-manager/v1"
@@ -357,7 +358,33 @@ func (r *PodRefreshReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	// Watch for changes to Certificates in the cluster
-	err = c.Watch(source.Kind(mgr.GetCache(), &certmanagerv1.Certificate{}), &handler.EnqueueRequestForObject{}, isExpiredPredicate{})
+	err = c.Watch(source.Kind(
+		mgr.GetCache(),
+		&certmanagerv1.Certificate{},
+		&handler.TypedEnqueueRequestForObject[*certmanagerv1.Certificate]{},
+		predicate.TypedFuncs[*certmanagerv1.Certificate]{
+			CreateFunc: func(e event.TypedCreateEvent[*certmanagerv1.Certificate]) bool {
+				return false
+			},
+			UpdateFunc: func(e event.TypedUpdateEvent[*certmanagerv1.Certificate]) bool {
+				oldCert := e.ObjectOld
+				updatedCert := e.ObjectNew
+				if oldCert.Status.NotAfter == nil && updatedCert.Status.NotAfter != nil {
+					return true
+				}
+				if updatedCert.Status.NotAfter != nil && oldCert.Status.NotAfter != nil &&
+					!oldCert.Status.NotAfter.Time.Equal(updatedCert.Status.NotAfter.Time) {
+					return true
+				}
+				return false
+			},
+			DeleteFunc: func(e event.TypedDeleteEvent[*certmanagerv1.Certificate]) bool {
+				return false
+			},
+			GenericFunc: func(e event.TypedGenericEvent[*certmanagerv1.Certificate]) bool {
+				return false
+			},
+		}))
 	if err != nil {
 		return err
 	}
@@ -365,29 +392,29 @@ func (r *PodRefreshReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return nil
 }
 
-type isExpiredPredicate struct{}
+// type isExpiredPredicate struct{}
 
-func (isExpiredPredicate) Create(e event.CreateEvent) bool {
-	return false
-}
+// func (isExpiredPredicate) Create(e event.CreateEvent) bool {
+// 	return false
+// }
 
-func (isExpiredPredicate) Delete(e event.DeleteEvent) bool {
-	return false
-}
+// func (isExpiredPredicate) Delete(e event.DeleteEvent) bool {
+// 	return false
+// }
 
-func (isExpiredPredicate) Update(e event.UpdateEvent) bool {
-	oldCert := (e.ObjectOld).(*certmanagerv1.Certificate)
-	updatedCert := (e.ObjectNew).(*certmanagerv1.Certificate)
-	if oldCert.Status.NotAfter == nil && updatedCert.Status.NotAfter != nil {
-		return true
-	}
-	if updatedCert.Status.NotAfter != nil && oldCert.Status.NotAfter != nil &&
-		!oldCert.Status.NotAfter.Time.Equal(updatedCert.Status.NotAfter.Time) {
-		return true
-	}
-	return false
-}
+// func (isExpiredPredicate) Update(e event.UpdateEvent) bool {
+// 	oldCert := (e.ObjectOld).(*certmanagerv1.Certificate)
+// 	updatedCert := (e.ObjectNew).(*certmanagerv1.Certificate)
+// 	if oldCert.Status.NotAfter == nil && updatedCert.Status.NotAfter != nil {
+// 		return true
+// 	}
+// 	if updatedCert.Status.NotAfter != nil && oldCert.Status.NotAfter != nil &&
+// 		!oldCert.Status.NotAfter.Time.Equal(updatedCert.Status.NotAfter.Time) {
+// 		return true
+// 	}
+// 	return false
+// }
 
-func (isExpiredPredicate) Generic(e event.GenericEvent) bool {
-	return false
-}
+// func (isExpiredPredicate) Generic(e event.GenericEvent) bool {
+// 	return false
+// }

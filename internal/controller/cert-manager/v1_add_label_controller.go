@@ -121,7 +121,7 @@ func (r *V1AddLabelReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	// Watch for changes to Certificates in the cluster
-	err = c.Watch(source.Kind(mgr.GetCache(), &certmanagerv1.Certificate{}), &handler.EnqueueRequestForObject{})
+	err = c.Watch(source.Kind(mgr.GetCache(), &certmanagerv1.Certificate{}, &handler.TypedEnqueueRequestForObject[*certmanagerv1.Certificate]{}))
 	if err != nil {
 		return err
 	}
