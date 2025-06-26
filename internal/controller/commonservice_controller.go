@@ -249,16 +249,6 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 		return ctrl.Result{}, statusErr
 	}
 
-	// Wait for Postgres Cluster image to be updated
-	if err := r.Bootstrap.WaitForPostgresClusterImageUpdate(ctx, instance); err != nil {
-		klog.Errorf("Failed to update Postgres Cluster image: %v", err)
-		if err := r.updatePhase(ctx, instance, apiv3.CRFailed); err != nil {
-			klog.Error(err)
-		}
-		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
-		return ctrl.Result{}, err
-	}
-
 	// Apply new configs to CommonService CR
 	cs := util.NewUnstructured("operator.ibm.com", "CommonService", "v3")
 	if statusErr = r.Bootstrap.Client.Get(ctx, types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}, cs); statusErr != nil {
@@ -270,13 +260,13 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 	instance.Status.Phase = apiv3.CRUpdating
 	newConfigs, serviceControllerMapping, statusErr := r.getNewConfigs(cs)
 	if statusErr != nil {
-		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
+		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
 		instance.SetErrorCondition(constant.MasterCR, apiv3.ConditionTypeError, corev1.ConditionTrue, apiv3.ConditionReasonError, statusErr.Error())
 		instance.Status.Phase = apiv3.CRFailed
 	}
 
 	if statusErr = r.Client.Status().Update(ctx, instance); statusErr != nil {
-		klog.Errorf("Fail to update %s/%s: %v", instance.Namespace, instance.Name, err)
+		klog.Errorf("Fail to update %s/%s: %v", instance.Namespace, instance.Name, statusErr)
 		return ctrl.Result{}, statusErr
 	}
 
@@ -310,6 +300,16 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 	}
 
 	if statusErr = configurationcollector.CreateUpdateConfig(r.Bootstrap); statusErr != nil {
+		if statusErr := r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
+			klog.Error(statusErr)
+		}
+		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
+		return ctrl.Result{}, statusErr
+	}
+
+	// Wait for Postgres Cluster image to be updated
+	if statusErr = r.Bootstrap.UpdatePostgresClusterImage(ctx, instance); statusErr != nil {
+		klog.Errorf("Failed to update Postgres Cluster image: %v", statusErr)
 		if statusErr := r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
 			klog.Error(statusErr)
 		}
@@ -395,16 +395,6 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(ctx context.Context, instan
 		return ctrl.Result{}, err
 	}
 
-	// Wait for Postgres Cluster image to be updated
-	if err := r.Bootstrap.WaitForPostgresClusterImageUpdate(ctx, instance); err != nil {
-		klog.Errorf("Failed to update Postgres Cluster image: %v", err)
-		if err := r.updatePhase(ctx, instance, apiv3.CRFailed); err != nil {
-			klog.Error(err)
-		}
-		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
-		return ctrl.Result{}, err
-	}
-
 	newConfigs, serviceControllerMapping, err := r.getNewConfigs(cs)
 	if err != nil {
 		if err := r.updatePhase(ctx, instance, apiv3.CRFailed); err != nil {
@@ -430,6 +420,16 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(ctx context.Context, instan
 
 	isEqual, err = r.updateOperatorConfig(ctx, instance.Spec.OperatorConfigs)
 	if err != nil {
+		if err := r.updatePhase(ctx, instance, apiv3.CRFailed); err != nil {
+			klog.Error(err)
+		}
+		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
+		return ctrl.Result{}, err
+	}
+
+	// Wait for Postgres Cluster image to be updated
+	if err := r.Bootstrap.UpdatePostgresClusterImage(ctx, instance); err != nil {
+		klog.Errorf("Failed to update Postgres Cluster image: %v", err)
 		if err := r.updatePhase(ctx, instance, apiv3.CRFailed); err != nil {
 			klog.Error(err)
 		}

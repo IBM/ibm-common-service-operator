@@ -280,3 +280,4 @@ rules:
   verbs:
   - get
   - list
+  - update
