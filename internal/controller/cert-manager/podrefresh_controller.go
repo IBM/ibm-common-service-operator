@@ -391,30 +391,3 @@ func (r *PodRefreshReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	return nil
 }
-
-// type isExpiredPredicate struct{}
-
-// func (isExpiredPredicate) Create(e event.CreateEvent) bool {
-// 	return false
-// }
-
-// func (isExpiredPredicate) Delete(e event.DeleteEvent) bool {
-// 	return false
-// }
-
-// func (isExpiredPredicate) Update(e event.UpdateEvent) bool {
-// 	oldCert := (e.ObjectOld).(*certmanagerv1.Certificate)
-// 	updatedCert := (e.ObjectNew).(*certmanagerv1.Certificate)
-// 	if oldCert.Status.NotAfter == nil && updatedCert.Status.NotAfter != nil {
-// 		return true
-// 	}
-// 	if updatedCert.Status.NotAfter != nil && oldCert.Status.NotAfter != nil &&
-// 		!oldCert.Status.NotAfter.Time.Equal(updatedCert.Status.NotAfter.Time) {
-// 		return true
-// 	}
-// 	return false
-// }
-
-// func (isExpiredPredicate) Generic(e event.GenericEvent) bool {
-// 	return false
-// }
