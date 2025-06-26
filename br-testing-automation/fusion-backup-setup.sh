@@ -457,7 +457,7 @@ function label_cs_resources() {
     cp env.properties ../velero/backup/common-service/env.properties
     export TETHERED_NS="$TETHERED_NAMESPACE1,$TETHERED_NAMESPACE2"
     info "Labeling remaining CPFS resources..."
-    ./../velero/backup/common-service/label-common-service.sh --operator-ns $OPERATOR_NS --services-ns $SERVICES_NS --tethered-ns $TETHERED_NS --cert-manager-ns $CERT_MANAGER_NAMESPACE --licensing-ns $LICENSING_NAMESPACE --lsr-ns $LSR_NAMESPACE --enable-default-catalog-ns --additional-catalog-sources $ADDITIONAL_SOURCES || error "Unable to complete labeling of CPFS resources."
+    ./../velero/backup/common-service/label-common-service.sh --operator-ns $OPERATOR_NS --services-ns $SERVICES_NS --tethered-ns $TETHERED_NS --cert-manager-ns $CERT_MANAGER_NAMESPACE --licensing-ns $LICENSING_NAMESPACE --lsr-ns $LSR_NAMESPACE --enable-default-catalog-ns --enable-private-catalog --additional-catalog-sources $ADDITIONAL_SOURCES || error "Unable to complete labeling of CPFS resources."
 
     success "CPFS resources labeled."
 }
