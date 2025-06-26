@@ -265,7 +265,7 @@ function create_br() {
         sed -i -E "s/<backup policy name>/$BACKUP_POLICY/" ./templates/sf-restore.yaml
         sed -i -E "s/<restore name>/$RESTORE_NAME/" ./templates/sf-restore.yaml
         sed -i -E "s/<backup name>/$BACKUP_NAME/" ./templates/sf-restore.yaml
-        sed -i -E "s/<fusion ns>/$SF_NAMESPACE/" ./templates/sf-backup.yaml
+        sed -i -E "s/<fusion ns>/$SF_NAMESPACE/" ./templates/sf-restore.yaml
 
         if [[ $clustertype == "spoke" ]]; then
             sed -i -E "s/<Cluster CR name only for restores to spoke cluster>/$TARGET_CLUSTER/" ./templates/sf-restore.yaml
