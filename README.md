@@ -20,7 +20,7 @@ Red Hat OpenShift Container Platform 4.3 or newer installed on one of the follow
 
 ## Operator versions
 
- - 4.6.15
+ - 4.6.16
 
 ## Prerequisites
 
