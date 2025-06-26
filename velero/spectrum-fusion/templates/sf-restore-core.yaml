@@ -2,7 +2,7 @@ apiVersion: data-protection.isf.ibm.com/v1alpha1
 kind: Restore
 metadata:
   name: <restore name>
-  namespace: ibm-spectrum-fusion-ns
+  namespace: <fusion ns>
   finalizers:
     - restore
   labels:
