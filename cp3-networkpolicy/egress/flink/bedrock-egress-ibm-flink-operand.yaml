@@ -27,12 +27,6 @@ spec:
         port: 8081
       - protocol: TCP
         port: 9081
-      - protocol: TCP
-        port: 6122
-      - protocol: TCP
-        port: 6123
-      - protocol: TCP
-        port: 6124
       to:
         - podSelector: {}
   policyTypes:

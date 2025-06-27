@@ -6,10 +6,16 @@ metadata:
   labels:
     component: cpfs3
 spec:
-  podSelector:
+  podSelector: 
     matchLabels:
       app.kubernetes.io/name: flink-kubernetes-operator
   ingress:
-    - {}
+    - ports:
+      - protocol: TCP
+        port: 443
+      - protocol: TCP
+        port: 6443
+      from:
+        - podSelector: {}
   policyTypes:
     - Ingress
