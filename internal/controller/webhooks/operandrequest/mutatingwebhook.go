@@ -42,7 +42,7 @@ type Defaulter struct {
 	Reader    client.Reader
 	Client    client.Client
 	IsDormant bool
-	decoder   *admission.Decoder
+	decoder   admission.Decoder
 }
 
 // podAnnotator adds an annotation to every incoming pods.
@@ -108,7 +108,7 @@ func (r *Defaulter) Default(instance *odlm.OperandRequest) {
 	}
 }
 
-func (r *Defaulter) InjectDecoder(decoder *admission.Decoder) error {
+func (r *Defaulter) InjectDecoder(decoder admission.Decoder) error {
 	r.decoder = decoder
 	return nil
 }

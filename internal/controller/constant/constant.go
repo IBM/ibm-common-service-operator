@@ -120,6 +120,8 @@ const (
 	CSMappingConfig = "ibm-cs-ns-mapping-webhook-configuration"
 	// RequeueDuration is the requeue time duration for request
 	RequeueDuration = 30 * time.Second
+	//DefaultSyncPeriod is the frequency at which watched resources are reconciled
+	DefaultSyncPeriod = 3 * time.Hour
 	// OpreqLabel is the label used to label the Subscription/CR/Configmap managed by ODLM
 	OpreqLabel string = "operator.ibm.com/opreq-control"
 	// CSPGCluster is the name of the common service postgresql cluster

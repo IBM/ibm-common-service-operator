@@ -192,22 +192,22 @@ func (r *CommonServiceReconciler) getNewConfigs(cs *unstructured.Unstructured) (
 
 	switch cs.Object["spec"].(map[string]interface{})["size"] {
 	case "starterset", "starter":
-		sizeConfigs, serviceControllerMapping, err = applySizeTemplate(cs, size.StarterSet, serviceControllerMapping, r.CSData.ServicesNs)
+		sizeConfigs, serviceControllerMapping, err = applySizeTemplate(cs, size.StarterSet, serviceControllerMapping, r.Bootstrap.CSData.ServicesNs)
 		if err != nil {
 			return sizeConfigs, serviceControllerMapping, err
 		}
 	case "small":
-		sizeConfigs, serviceControllerMapping, err = applySizeTemplate(cs, size.Small, serviceControllerMapping, r.CSData.ServicesNs)
+		sizeConfigs, serviceControllerMapping, err = applySizeTemplate(cs, size.Small, serviceControllerMapping, r.Bootstrap.CSData.ServicesNs)
 		if err != nil {
 			return sizeConfigs, serviceControllerMapping, err
 		}
 	case "medium":
-		sizeConfigs, serviceControllerMapping, err = applySizeTemplate(cs, size.Medium, serviceControllerMapping, r.CSData.ServicesNs)
+		sizeConfigs, serviceControllerMapping, err = applySizeTemplate(cs, size.Medium, serviceControllerMapping, r.Bootstrap.CSData.ServicesNs)
 		if err != nil {
 			return sizeConfigs, serviceControllerMapping, err
 		}
 	case "large", "production":
-		sizeConfigs, serviceControllerMapping, err = applySizeTemplate(cs, size.Large, serviceControllerMapping, r.CSData.ServicesNs)
+		sizeConfigs, serviceControllerMapping, err = applySizeTemplate(cs, size.Large, serviceControllerMapping, r.Bootstrap.CSData.ServicesNs)
 		if err != nil {
 			return sizeConfigs, serviceControllerMapping, err
 		}

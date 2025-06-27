@@ -503,7 +503,7 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 
 	opcon.Object["spec"].(map[string]interface{})["services"] = opconServices
 
-	if err := r.Update(ctx, opcon); err != nil {
+	if err := r.Client.Update(ctx, opcon); err != nil {
 		klog.Errorf("failed to update OperandConfig %s: %v", opconKey.String(), err)
 		return true, err
 	}
@@ -560,7 +560,7 @@ func (r *CommonServiceReconciler) getExtremeizes(ctx context.Context, opconServi
 		tmpConfigsSlice[len(tmpConfigsSlice)] = csConfigs
 	}
 	for _, csConfigs := range tmpConfigsSlice {
-		configSummary = mergeCSCRs(configSummary, csConfigs, ruleSlice, serviceControllerMappingSummary, r.CSData.ServicesNs)
+		configSummary = mergeCSCRs(configSummary, csConfigs, ruleSlice, serviceControllerMappingSummary, r.Bootstrap.CSData.ServicesNs)
 	}
 
 	for _, opService := range opconServices {
@@ -610,14 +610,14 @@ func (r *CommonServiceReconciler) getExtremeizes(ctx context.Context, opconServi
 					}
 					// check if namespace is set, if not, set it to OperandConfig namespace
 					if namespace == "" {
-						namespace = r.CSData.ServicesNs
+						namespace = r.Bootstrap.CSData.ServicesNs
 					}
 
 					if crSummary == nil || crSummary.(map[string]interface{})["resources"] == nil {
 						continue
 					}
 
-					summarizedRes := getItemByGVKNameNamespace(crSummary.(map[string]interface{})["resources"].([]interface{}), r.CSData.ServicesNs, apiVersion, kind, name, namespace)
+					summarizedRes := getItemByGVKNameNamespace(crSummary.(map[string]interface{})["resources"].([]interface{}), r.Bootstrap.CSData.ServicesNs, apiVersion, kind, name, namespace)
 					if summarizedRes != nil {
 						if _, ok := nonDefaultProfileController[serviceController]; ok {
 							if isOpResourceExists(summarizedRes) {
@@ -661,7 +661,7 @@ func (r *CommonServiceReconciler) handleDelete(ctx context.Context) error {
 
 	opcon.Object["spec"].(map[string]interface{})["services"] = opconServices
 
-	if err := r.Update(ctx, opcon); err != nil {
+	if err := r.Client.Update(ctx, opcon); err != nil {
 		klog.Errorf("failed to update OperandConfig %s: %v", opconKey.String(), err)
 		return err
 	}
