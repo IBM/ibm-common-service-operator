@@ -48,6 +48,8 @@ import (
 
 // CommonServiceReconciler reconciles a CommonService object
 type CommonServiceReconciler struct {
+	client.Reader
+	client.Client
 	*bootstrap.Bootstrap
 	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
