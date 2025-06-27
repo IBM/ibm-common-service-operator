@@ -4,7 +4,7 @@ metadata:
   name: access-to-ibm-usage-metering-instance
   namespace: "csNamespace"
   labels:
-    component: cpfs
+    component: cpfs3
 spec: 
   podSelector: 
     matchLabels: 
