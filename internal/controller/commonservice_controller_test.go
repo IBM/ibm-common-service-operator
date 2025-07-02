@@ -50,7 +50,7 @@ var _ = Describe("CommonService controller", func() {
 		ctx context.Context = context.Background()
 	)
 
-	Describe("Common service operator bootstrap", func() {
+	Context("Common service operator bootstrap", func() {
 		It("Should be ready", func() {
 			Expect(createNamespace(ctx, CloudPakNamespace)).Should(Succeed())
 			Expect(createOperatorGroup(CloudpakOgYamlObj)).Should(Succeed())
@@ -70,7 +70,7 @@ var _ = Describe("CommonService controller", func() {
 		})
 	})
 
-	Describe("Install Common Services", func() {
+	Context("Install Common Services", func() {
 		It("Should common services were installed", func() {
 			By("Create Common Service OperandRequest")
 			Expect(createOperandRequest(OpreqYamlObj)).Should(Succeed())
@@ -88,7 +88,7 @@ var _ = Describe("CommonService controller", func() {
 		})
 	})
 
-	Describe("Update Common Services Size to medium", func() {
+	Context("Update Common Services Size to medium", func() {
 		It("Should be applied into OperandConfig", func() {
 			By("Update CommonService operand commonservice")
 			cs := &apiv3.CommonService{}
@@ -104,7 +104,7 @@ var _ = Describe("CommonService controller", func() {
 		})
 	})
 
-	Describe("Uninstall Common Services and Cleanup environment", func() {
+	Context("Uninstall Common Services and Cleanup environment", func() {
 		It("Should be cleanup", func() {
 
 			By("Delete CommonService instance")
