@@ -19,15 +19,15 @@ package controllers
 import (
 	"context"
 
-	"k8s.io/klog"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/klog"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
 	util "github.com/IBM/ibm-common-service-operator/v4/internal/controller/common"
@@ -47,8 +47,12 @@ var _ = Describe("CommonService controller", func() {
 	)
 
 	var (
-		ctx context.Context = context.Background()
+		ctx context.Context
 	)
+
+	BeforeEach(func() {
+		ctx = context.Background()
+	})
 
 	Context("Common service operator bootstrap", func() {
 		It("Should be ready", func() {
