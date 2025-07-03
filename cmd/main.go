@@ -25,19 +25,15 @@ import (
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	operatorsv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/package-server/apis/operators/v1"
 	admv1 "k8s.io/api/admissionregistration/v1"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	"github.com/IBM/controller-filtered-cache/filteredcache"
 	nssv1 "github.com/IBM/ibm-namespace-scope-operator/v4/api/v1"
 	ssv1 "github.com/IBM/ibm-secretshare-operator/api/v1"
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/v4/api/v1alpha1"
@@ -87,6 +83,7 @@ func main() {
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+
 	opts := zap.Options{
 		Development: true,
 	}
@@ -95,33 +92,20 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	watchNamespace := util.GetWatchNamespace()
-	gvkLabelMap := map[schema.GroupVersionKind]filteredcache.Selector{
-		corev1.SchemeGroupVersion.WithKind("ConfigMap"): {
-			LabelSelector: constant.CsManagedLabel,
-		},
-		corev1.SchemeGroupVersion.WithKind("Secret"): {
-			LabelSelector: constant.SecretWatchLabel,
-		},
-	}
-	clusterGVKList := []schema.GroupVersionKind{
-		{Group: "admissionregistration.k8s.io", Kind: "MutatingWebhookConfiguration", Version: "v1"},
-		{Group: "admissionregistration.k8s.io", Kind: "ValidatingWebhookConfiguration", Version: "v1"},
-	}
-
-	var NewCache cache.NewCacheFunc
-	watchNamespaceList := strings.Split(watchNamespace, ",")
-	NewCache = util.NewCSCache(clusterGVKList, gvkLabelMap, watchNamespaceList)
-
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	options := ctrl.Options{
 		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
 		HealthProbeBindAddress: probeAddr,
-		Port:                   9443,
 		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "be598e12.ibm.com",
-		NewCache:               NewCache,
-	})
+		LeaderElectionID:       "ab89bbb1.ibm.com",
+	}
+
+	watchNamespace := util.GetWatchNamespace()
+
+	// var NewCache cache.NewCacheFunc
+	watchNamespaceList := strings.Split(watchNamespace, ",")
+	options = util.NewCSCache(watchNamespaceList, options)
+
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
 	if err != nil {
 		klog.Errorf("Unable to start manager: %v", err)
 		os.Exit(1)
