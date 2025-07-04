@@ -37,7 +37,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
 	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/bootstrap"
@@ -510,61 +509,56 @@ func (r *CommonServiceReconciler) ReconcileNonConfigurableCR(ctx context.Context
 	return ctrl.Result{}, nil
 }
 
-func (r *CommonServiceReconciler) mappingToCsRequestForConfigMaps() handler.MapFunc {
-	return func(object client.Object) []reconcile.Request {
-		configMap, ok := object.(*corev1.ConfigMap)
-		if !ok {
-			return nil
-		}
-
-		// Check two configmaps: common-service-maps and ibm-cpp-config
-		if (configMap.Name == constant.CsMapConfigMap && configMap.Namespace == constant.CsMapConfigMapNs) ||
-			(configMap.Name == constant.IBMCPPCONFIG && configMap.Namespace == r.Bootstrap.CSData.ServicesNs) {
-			return []reconcile.Request{
-				{NamespacedName: types.NamespacedName{
-					Name:      constant.MasterCR,
-					Namespace: r.Bootstrap.CSData.OperatorNs,
-				}},
-			}
-		}
+func (r *CommonServiceReconciler) mappingToCsRequestForConfigMaps(ctx context.Context, object client.Object) []reconcile.Request {
+	configMap, ok := object.(*corev1.ConfigMap)
+	if !ok {
 		return nil
 	}
+
+	// Check two configmaps: common-service-maps and ibm-cpp-config
+	if (configMap.Name == constant.CsMapConfigMap && configMap.Namespace == constant.CsMapConfigMapNs) ||
+		(configMap.Name == constant.IBMCPPCONFIG && configMap.Namespace == r.Bootstrap.CSData.ServicesNs) {
+		return []reconcile.Request{
+			{NamespacedName: types.NamespacedName{
+				Name:      constant.MasterCR,
+				Namespace: r.Bootstrap.CSData.OperatorNs,
+			}},
+		}
+	}
+	return nil
 }
 
-func (r *CommonServiceReconciler) mappingToCsRequestForOperandRegistry() handler.MapFunc {
-	return func(object client.Object) []reconcile.Request {
-		operandRegistry, ok := object.(*odlm.OperandRegistry)
-		if !ok {
-			// It's not an OperandRegistry, ignore
-			return nil
-		}
-		if operandRegistry.Name == constant.MasterCR && operandRegistry.Namespace == r.Bootstrap.CSData.ServicesNs {
-			if isNonNoopOperandReconcile(operandRegistry) {
-				// Enqueue a reconciliation request for the corresponding CommonService
-				return []reconcile.Request{
-					{NamespacedName: types.NamespacedName{Name: constant.MasterCR, Namespace: r.Bootstrap.CSData.OperatorNs}},
-				}
-			}
-		}
+func (r *CommonServiceReconciler) mappingToCsRequestForOperandRegistry(ctx context.Context, object client.Object) []reconcile.Request {
+	operandRegistry, ok := object.(*odlm.OperandRegistry)
+	if !ok {
+		// It's not an OperandRegistry, ignore
 		return nil
 	}
-}
-
-func (r *CommonServiceReconciler) isODLMManagedSubscription() handler.MapFunc {
-	return func(object client.Object) []reconcile.Request {
-		subscription, ok := object.(*olmv1alpha1.Subscription)
-		if !ok {
-			// It's not an Subscription, ignore
-			return nil
-		}
-		if subscription.GetLabels()[constant.OpreqLabel] == "true" {
+	if operandRegistry.Name == constant.MasterCR && operandRegistry.Namespace == r.Bootstrap.CSData.ServicesNs {
+		if isNonNoopOperandReconcile(operandRegistry) {
 			// Enqueue a reconciliation request for the corresponding CommonService
 			return []reconcile.Request{
 				{NamespacedName: types.NamespacedName{Name: constant.MasterCR, Namespace: r.Bootstrap.CSData.OperatorNs}},
 			}
 		}
+	}
+	return nil
+}
+
+func (r *CommonServiceReconciler) isODLMManagedSubscription(ctx context.Context, object client.Object) []reconcile.Request {
+	subscription, ok := object.(*olmv1alpha1.Subscription)
+	if !ok {
+		// It's not an Subscription, ignore
 		return nil
 	}
+	if subscription.GetLabels()[constant.OpreqLabel] == "true" {
+		// Enqueue a reconciliation request for the corresponding CommonService
+		return []reconcile.Request{
+			{NamespacedName: types.NamespacedName{Name: constant.MasterCR, Namespace: r.Bootstrap.CSData.OperatorNs}},
+		}
+	}
+	return nil
+
 }
 
 // isNonNoopOperandReconcile checks only no-op operators trigger the reconcile
@@ -595,8 +589,8 @@ func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				predicate.AnnotationChangedPredicate{},
 				predicate.LabelChangedPredicate{}))).
 		Watches(
-			&source.Kind{Type: &corev1.ConfigMap{}},
-			handler.EnqueueRequestsFromMapFunc(r.mappingToCsRequestForConfigMaps()),
+			&corev1.ConfigMap{},
+			handler.EnqueueRequestsFromMapFunc(r.mappingToCsRequestForConfigMaps),
 			builder.WithPredicates(predicate.Funcs{
 				CreateFunc: func(e event.CreateEvent) bool { return true },
 				UpdateFunc: func(e event.UpdateEvent) bool { return true },
@@ -607,8 +601,8 @@ func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return err
 	} else if isOpregAPI {
 		controller = controller.Watches(
-			&source.Kind{Type: &odlm.OperandRegistry{}},
-			handler.EnqueueRequestsFromMapFunc(r.mappingToCsRequestForOperandRegistry()),
+			&odlm.OperandRegistry{},
+			handler.EnqueueRequestsFromMapFunc(r.mappingToCsRequestForOperandRegistry),
 			builder.WithPredicates(predicate.Funcs{
 				UpdateFunc: func(e event.UpdateEvent) bool {
 					oldOperandRegistry, ok := e.ObjectOld.(*odlm.OperandRegistry)
@@ -633,8 +627,8 @@ func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	} else if isSubscriptionAPI {
 		klog.Infof("Subscription CRD exists, start watching Subscription")
 		controller = controller.Watches(
-			&source.Kind{Type: &olmv1alpha1.Subscription{}},
-			handler.EnqueueRequestsFromMapFunc(r.isODLMManagedSubscription()),
+			&olmv1alpha1.Subscription{},
+			handler.EnqueueRequestsFromMapFunc(r.isODLMManagedSubscription),
 			builder.WithPredicates(predicate.Funcs{
 				UpdateFunc: func(e event.UpdateEvent) bool {
 					oldObject := e.ObjectOld.(*olmv1alpha1.Subscription)
