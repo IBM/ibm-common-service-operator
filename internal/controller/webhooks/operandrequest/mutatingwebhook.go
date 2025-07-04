@@ -31,7 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	util "github.com/IBM/ibm-common-service-operator/internal/controller/common"
+	util "github.com/IBM/ibm-common-service-operator/v4/internal/controller/common"
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/v4/api/v1alpha1"
 )
 
@@ -108,8 +108,8 @@ func (r *Defaulter) Default(instance *odlm.OperandRequest) {
 	}
 }
 
-func (r *Defaulter) InjectDecoder(decoder *admission.Decoder) error {
-	r.decoder = decoder
+func (r *Defaulter) InjectDecoder(decoder admission.Decoder) error {
+	r.decoder = &decoder
 	return nil
 }
 
@@ -118,6 +118,12 @@ func (r *Defaulter) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	mgr.GetWebhookServer().
 		Register("/mutate-operator-ibm-com-v1alpha1-operandrequest",
 			&webhook.Admission{Handler: r})
+
+	// Inject the decoder
+	decoder := admission.NewDecoder(mgr.GetScheme())
+	if err := r.InjectDecoder(*decoder); err != nil {
+		return err
+	}
 
 	return nil
 }
