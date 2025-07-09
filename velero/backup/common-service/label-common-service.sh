@@ -466,7 +466,7 @@ function label_nss(){
 function label_mcsp(){
 
     title "Start to label mcsp resources"
-    ${OC} label secret user-mgmt-bootstrap foundationservices.cloudpak.ibm.com=user-mgmt -n $SERVICES_NS --overwrite=true 2>/dev/null
+    ${OC} label secret user-mgmt-bootstrap foundationservices.cloudpak.ibm.com=cert-manager -n $SERVICES_NS --overwrite=true 2>/dev/null
     echo ""
 }
 
