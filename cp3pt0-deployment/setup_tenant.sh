@@ -757,6 +757,14 @@ EOF
             fi
         fi
 
+        # Get the resource version of the CommonService CR from the cluster
+        # and update the resource version in the file
+        local resource_version=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o jsonpath='{.metadata.resourceVersion}' --ignore-not-found)
+        if [[ -n "${resource_version}" ]]; then
+            debug1 "Updating resourceVersion in commonservice.yaml to ${resource_version}\n"
+            ${YQ} -i eval '.metadata.resourceVersion = "'${resource_version}'"' ${PREVIEW_DIR}/commonservice.yaml    
+        fi
+
         cat "${PREVIEW_DIR}/commonservice.yaml" | ${OC_CMD} apply -f -
 
         # Check if the patch was successful

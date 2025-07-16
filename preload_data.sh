@@ -717,6 +717,9 @@ EOF
     if [[ $migration == "" ]]; then 
       ${OC} patch statefulSet icp-mongodb -n ${FROM_NAMESPACE}  -p '{"spec":{"template":{"metadata":{"labels":{"migrating": "'true'"}}}}}'
     fi
+    # add a label to the statefulSet to indicate the time it is being migrated
+    current_date_time="`date +%Y%m%d%H%M%S`"
+    ${OC} patch statefulSet icp-mongodb -n ${FROM_NAMESPACE}  -p '{"spec":{"template":{"metadata":{"labels":{"migrating-time": "'${current_date_time}'"}}}}}'
 
     # make sure icp-mongodb pod is running
     if [[ "$replicas" -eq 0 ]]; then
