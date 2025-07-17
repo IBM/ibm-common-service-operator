@@ -57,6 +57,7 @@ function main() {
     if [[ $NO_OLM == "false" ]]; then
         label_catalogsource
         label_subscription
+        label_ums
     else
         label_helm_cluster_scope
         label_helm_namespace_scope
@@ -412,6 +413,36 @@ function label_lsr() {
     done
 
     echo ""
+}
+
+function label_ums(){
+    ums_exists=$(${OC} get crd | grep ibmusagemeterings.operator.ibm.com)
+    if [[ -z $ums_exists ]]; then
+        info "No UMS CRD found on cluster, skipping..."
+    else
+        title "Start labeling Usage Metering Service resources..."
+        namespaces=$(${OC} get configmap namespace-scope -n $OPERATOR_NS -oyaml | awk '/^data:/ {flag=1; next} /^  namespaces:/ {print $2; next} flag && /^  [^ ]+: / {flag=0}')
+        namespaces=$(echo "$namespaces" | tr ',' '\n')
+
+        ${OC} label customresourcedefinition ibmservicemeterdefinitions.operator.ibm.com ibmusagemeterings.operator.ibm.com foundationservices.cloudpak.ibm.com=ums --overwrite=true 2>/dev/null
+
+        #UMS resources since its possible they are present in namespaces other than the services namespace
+        while IFS= read -r namespace; do 
+            ${OC} label configmap ibm-usage-metering-events -n $namespace foundationservices.cloudpak.ibm.com=ums --overwrite=true 2>/dev/null
+            service_meter_crs=$(${OC} get ibmservicemeterdefinitions.operator.ibm.com -n $namespace -o custom-columns=NAME:.metadata.name --no-headers)
+            while IFS= read -r servicemeterCR; do
+                ${OC} label ibmservicemeterdefinitions.operator.ibm.com $servicemeterCR -n $namespace foundationservices.cloudpak.ibm.com=ums --overwrite=true 2>/dev/null
+            done <<< "$service_meter_crs"
+            ums_cr=$(${OC} get ibmusagemeterings.operator.ibm.com -n $namespace -o custom-columns=NAME:.metadata.name --no-headers | awk '{print $1}')
+            if [[ ! -z $ums_cr ]]; then
+                ${OC} label ibmusagemeterings.operator.ibm.com $ums_cr -n $namespace foundationservices.cloudpak.ibm.com=ums --overwrite=true 2>/dev/null
+            fi
+            sub=$(${OC} get sub -n $namespace -o custom-columns=NAME:.spec.name --no-headers | grep ibm-usage-metering)
+            if [[ ! -z $sub ]]; then
+                ${OC} label sub $sub -n $namespace foundationservices.cloudpak.ibm.com=ums --overwrite=true 2>/dev/null
+            fi
+        done <<< "$namespaces"
+        success "UMS resources labeled successfully."
 }
 
 function label_cs(){
