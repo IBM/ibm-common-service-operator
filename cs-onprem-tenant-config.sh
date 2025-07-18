@@ -140,9 +140,6 @@ check_job_completion() {
   oc wait job iam-custom-hostname --for condition=complete --timeout=120s
 }
 
-oc delete pod -l app=platform-auth-service -n $map_to_common_service_namespace
-echo "Triggered restart of platform-auth-service pods"
-
 deployment_name="platform-auth-service"
 timeout_seconds=180  # assuming auth-service will come in 3 mins after restart
 
@@ -151,9 +148,13 @@ end_time=$((start_time + timeout_seconds))
 
 while true; do
   status=$(oc get deployment "$deployment_name" -n $map_to_common_service_namespace  -o jsonpath='{.status.conditions[?(@.type=="Available")].status}')
+  
+  echo "Triggered restart of platform-auth-service pod"
+  oc delete pod -l app=platform-auth-service -n "$map_to_common_service_namespace"
+  pod_phase=$(oc get pod -l app=platform-auth-service -n "$map_to_common_service_namespace" -o jsonpath='{.items[0].status.phase}' 2>/dev/null)
 
-  if [[ "$status" == "True" ]]; then
-    echo "$deployment_name is available."
+  if [[ "$status" == "True" &&  "$pod_phase" == "Running" ]]; then
+    echo "$deployment_name deployment is available and pod is running"
     break
   fi
 
