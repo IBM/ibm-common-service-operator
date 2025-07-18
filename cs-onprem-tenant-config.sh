@@ -140,6 +140,9 @@ check_job_completion() {
   oc wait job iam-custom-hostname --for condition=complete --timeout=120s
 }
 
+# Call the function to check job completion
+check_job_completion iam-custom-hostname $csNamespace
+
 deployment_name="platform-auth-service"
 timeout_seconds=180  # assuming auth-service will come in 3 mins after restart
 
@@ -166,9 +169,6 @@ while true; do
 
   sleep 5  # Wait for 5 seconds before checking again
 done
-
-# Call the function to check job completion
-check_job_completion iam-custom-hostname $csNamespace
 
 #sleep for 10s and compare existing custom_hostname with the current route
 sleep 15
