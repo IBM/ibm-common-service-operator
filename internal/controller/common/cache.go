@@ -29,8 +29,8 @@ import (
 
 // NewCSCache implements a customized cache with a for CS
 func NewCSCache(watchNamespaceList []string, opts ctrl.Options) ctrl.Options {
-	configmapSelector := labels.Set{constant.CsManagedLabel: ""}
-	secretSelector := labels.Set{constant.SecretWatchLabel: ""}
+	configmapSelector := labels.Set{constant.CsManagedLabel: "true"}
+	secretSelector := labels.Set{constant.SecretWatchLabel: "true"}
 	// set DefaultNamespaces based on watchNamespaces
 	// if watchNamespaces is empty, then cache resource in all namespaces
 	var cacheDefaultNamespaces map[string]cache.Config

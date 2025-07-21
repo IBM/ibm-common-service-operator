@@ -42,7 +42,7 @@ type Defaulter struct {
 	Reader    client.Reader
 	Client    client.Client
 	IsDormant bool
-	decoder   admission.Decoder
+	decoder   *admission.Decoder
 }
 
 // podAnnotator adds an annotation to every incoming pods.
@@ -109,7 +109,7 @@ func (r *Defaulter) Default(instance *odlm.OperandRequest) {
 }
 
 func (r *Defaulter) InjectDecoder(decoder admission.Decoder) error {
-	r.decoder = decoder
+	r.decoder = &decoder
 	return nil
 }
 
@@ -118,6 +118,12 @@ func (r *Defaulter) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	mgr.GetWebhookServer().
 		Register("/mutate-operator-ibm-com-v1alpha1-operandrequest",
 			&webhook.Admission{Handler: r})
+
+	// Inject the decoder
+	decoder := admission.NewDecoder(mgr.GetScheme())
+	if err := r.InjectDecoder(*decoder); err != nil {
+		return err
+	}
 
 	return nil
 }
