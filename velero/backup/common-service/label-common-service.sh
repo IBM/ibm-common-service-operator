@@ -443,6 +443,7 @@ function label_ums(){
             fi
         done <<< "$namespaces"
         success "UMS resources labeled successfully."
+    fi
 }
 
 function label_cs(){
