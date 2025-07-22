@@ -437,9 +437,9 @@ function label_ums(){
             if [[ ! -z $ums_cr ]]; then
                 ${OC} label ibmusagemeterings.operator.ibm.com $ums_cr -n $namespace foundationservices.cloudpak.ibm.com=ums --overwrite=true 2>/dev/null
             fi
-            sub=$(${OC} get sub -n $namespace -o custom-columns=NAME:.spec.name --no-headers | grep ibm-usage-metering)
+            sub=$(${OC} get subscriptions.operators.coreos.com -n $namespace -o custom-columns=NAME:.spec.name --no-headers | grep ibm-usage-metering)
             if [[ ! -z $sub ]]; then
-                ${OC} label sub $sub -n $namespace foundationservices.cloudpak.ibm.com=ums --overwrite=true 2>/dev/null
+                ${OC} label subscriptions.operators.coreos.com $sub -n $namespace foundationservices.cloudpak.ibm.com=ums --overwrite=true 2>/dev/null
             fi
         done <<< "$namespaces"
         success "UMS resources labeled successfully."
