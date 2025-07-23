@@ -30,7 +30,7 @@ ENABLE_PRIVATE_CATALOG=0
 ENABLE_CERT_MANAGER=0
 ENABLE_LICENSING=0
 ENABLE_LSR=0
-ENABLE_DEEFAULT_CS=0
+ENABLE_DEFAULT_CS=0
 CS_SOURCE_NS="openshift-marketplace"
 CM_SOURCE_NS="openshift-marketplace"
 LIS_SOURCE_NS="openshift-marketplace"
@@ -162,7 +162,7 @@ function parse_arguments() {
             ENABLE_PRIVATE_CATALOG=1
             ;;
         --enable-default-catalog-ns)
-            ENABLE_DEEFAULT_CS=1
+            ENABLE_DEFAULT_CS=1
             ;;
         --additional-catalog-sources)
             shift
@@ -235,7 +235,7 @@ function label_catalogsource() {
             label_ibm_catalogsources "$namespace"
         done <<< "$private_namespaces"
     fi
-    if [[ $ENABLE_DEEFAULT_CS -eq 1 ]]; then
+    if [[ $ENABLE_DEFAULT_CS -eq 1 ]]; then
         label_ibm_catalogsources "$DEFAULT_SOURCE_NS"
     fi
     echo ""
