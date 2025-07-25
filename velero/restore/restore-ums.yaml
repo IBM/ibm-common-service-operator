@@ -1,7 +1,7 @@
 apiVersion: velero.io/v1
 kind: Restore
 metadata:
-  name: restore-nss
+  name: restore-ums
   namespace: velero
 spec:
   backupName: __BACKUP_NAME__
@@ -12,15 +12,9 @@ spec:
   - backups.velero.io
   - restores.velero.io
   - resticrepositories.velero.io
-  - roles.authorization.openshift.io
-  - rolebindings.authorization.openshift.io
   hooks: {}
   includedNamespaces:
   - '*'
-  orLabelSelectors:
-  - matchExpressions:
-    - key: foundationservices.cloudpak.ibm.com
-      operator: In
-      values:
-      - nss-cluster
-      - nss
+  labelSelector:
+    matchLabels:
+      foundationservices.cloudpak.ibm.com: ums
