@@ -386,7 +386,10 @@ func (r *CommonService) SetPendingCondition(name string, ct ConditionType, cs co
 
 // SetReadyCondition creates a Condition to claim Ready.
 func (r *CommonService) SetReadyCondition(name string, ct ConditionType, cs corev1.ConditionStatus) {
-	r.UpdateConditionList(corev1.ConditionFalse)
+	r.RemoveCondition(ConditionTypePending)
+	r.RemoveCondition(ConditionTypeReconciling)
+	r.RemoveCondition(ConditionTypeBlocked)
+	r.RemoveCondition(ConditionTypeError)
 	c := newCondition(ConditionTypeReady, cs, ConditionReasonReady, ConditionMessageReady)
 	r.setCondition(*c)
 }
