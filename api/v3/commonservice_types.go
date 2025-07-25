@@ -303,11 +303,12 @@ const (
 )
 
 const (
-	ConditionMessageReconcile = "reconciling CommonService CR."
-	ConditionMessageInit      = "initializing/updating: waiting for OperandRegistry and OperandConfig to become ready."
-	ConditionMessageConfig    = "configuring CommonService CR."
-	ConditionMessageMissSC    = "warning: StorageClass is not configured in CommonService CR, if KeyCloak or IBM IM service will be deployed, please configure StorageClass in the CS CR. Refer to the documentation for more information: https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.6?topic=options-configuring-foundational-services#storage-class"
-	ConditionMessageReady     = "CommonService CR is ready."
+	ConditionMessageReconcile           = "reconciling CommonService CR."
+	ConditionMessageInit                = "initializing/updating: waiting for OperandRegistry and OperandConfig to become ready."
+	ConditionMessageConfig              = "configuring CommonService CR."
+	ConditionMessageMissSC              = "warning: StorageClass is not configured in CommonService CR, if KeyCloak or IBM IM service will be deployed, please configure StorageClass in the CS CR. Refer to the documentation for more information: https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.6?topic=options-configuring-foundational-services#storage-class"
+	ConditionMessageReady               = "CommonService CR is ready."
+	ConditionMessageCatalogNotSupported = "warning: CatalogSource configuration is not supported. Please remove .spec.CatalogName and .spec.CatalogNamespace from the CommonService CR."
 )
 
 // +kubebuilder:object:root=true
@@ -356,7 +357,6 @@ func (r *CommonService) UpdateConfigStatus(CSData *CSData, operatorDeployed, ser
 	}
 
 	r.Status.ConfigStatus.CatalogName = r.Spec.CatalogName
-
 	r.Status.ConfigStatus.CatalogNamespace = r.Spec.CatalogNamespace
 
 	r.Status.ConfigStatus.OperatorDeployed = true
@@ -410,6 +410,31 @@ func (r *CommonService) UpdateConditionList(ct corev1.ConditionStatus) {
 	for i := range r.Status.Conditions {
 		if r.Status.Conditions[i].Type == ConditionTypePending || r.Status.Conditions[i].Type == ConditionTypeReconciling {
 			r.Status.Conditions[i].Status = ct
+		}
+	}
+}
+
+// RemoveCondition removes a condition or multiple condition from the CommonService CR
+func (r *CommonService) RemoveCondition(condType ConditionType, msg ...string) {
+	if len(msg) == 0 {
+		// If no messages provided, remove all conditions of the specified type
+		newConditions := []CommonServiceCondition{}
+		for _, cond := range r.Status.Conditions {
+			if cond.Type != condType {
+				newConditions = append(newConditions, cond)
+			}
+		}
+		r.Status.Conditions = newConditions
+	} else {
+		// If messages provided, remove conditions that match the type and one of the messages
+		for _, message := range msg {
+			newConditions := []CommonServiceCondition{}
+			for _, cond := range r.Status.Conditions {
+				if cond.Type != condType || cond.Message != message {
+					newConditions = append(newConditions, cond)
+				}
+			}
+			r.Status.Conditions = newConditions
 		}
 	}
 }

@@ -126,21 +126,6 @@ func (r *Defaulter) Handle(ctx context.Context, req admission.Request) admission
 		if deniedServicesNs {
 			return admission.Denied(fmt.Sprintf("Services Namespace: %v is not allowed to be configured in namespace %v", servicesNamespace, req.AdmissionRequest.Namespace))
 		}
-
-		// // check CatalogName
-		// catalogName := cs.Spec.CatalogName
-		// deniedCatalog := r.CheckConfig(string(catalogName), catalogSourceName)
-		// if deniedCatalog {
-		// 	return admission.Denied(fmt.Sprintf("CatalogSource Name: %v is not allowed to be configured in namespace %v", catalogName, req.AdmissionRequest.Namespace))
-		// }
-
-		// // check CatalogNamespace
-		// catalogNamespace := cs.Spec.CatalogNamespace
-		// deniedCatalogNs := r.CheckConfig(string(catalogNamespace), catalogSourceNs)
-		// if deniedCatalogNs {
-		// 	return admission.Denied(fmt.Sprintf("CatalogSource Namespace: %v is not allowed to be configured in namespace %v", catalogNamespace, req.AdmissionRequest.Namespace))
-		// }
-
 	}
 
 	// check HugePageSetting

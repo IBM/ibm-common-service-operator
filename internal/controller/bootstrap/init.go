@@ -316,6 +316,16 @@ func (b *Bootstrap) CheckWarningCondition(instance *apiv3.CommonService) error {
 	// check if there is no storageClass declared under spec section and the default count is not 1
 	if instance.Spec.StorageClass == "" && defaultCount != 1 {
 		instance.SetWarningCondition(constant.MasterCR, apiv3.ConditionTypeWarning, corev1.ConditionTrue, apiv3.ConditionReasonWarning, apiv3.ConditionMessageMissSC)
+	} else {
+		// remove the warning condition if storageClass is configured
+		instance.RemoveCondition(apiv3.ConditionTypeWarning, apiv3.ConditionMessageMissSC)
+	}
+
+	if instance.Spec.CatalogName != "" || instance.Spec.CatalogNamespace != "" {
+		instance.SetWarningCondition(constant.MasterCR, apiv3.ConditionTypeWarning, corev1.ConditionTrue, apiv3.ConditionReasonWarning, apiv3.ConditionMessageCatalogNotSupported)
+	} else {
+		// remove the warning condition if catalogSource is not configured
+		instance.RemoveCondition(apiv3.ConditionTypeWarning, apiv3.ConditionMessageCatalogNotSupported)
 	}
 	return nil
 }
