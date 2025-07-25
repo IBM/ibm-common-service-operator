@@ -2662,7 +2662,7 @@ func (b *Bootstrap) getPostgresImageConfigMap(ctx context.Context) (*corev1.Conf
 	configMap := &corev1.ConfigMap{}
 	configMapName := constant.PostgreSQLImageConfigMap
 
-	if err := b.Client.Get(ctx, types.NamespacedName{
+	if err := b.Reader.Get(ctx, types.NamespacedName{
 		Name:      configMapName,
 		Namespace: b.CSData.OperatorNs,
 	}, configMap); err != nil && errors.IsNotFound(err) {
