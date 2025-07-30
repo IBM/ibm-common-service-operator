@@ -620,7 +620,6 @@ function get_catalogsource() {
         # If there are two catalog sources, 
         # case 1: "catalog_source_1" and "catalog_source_2", we return both of them
         # case 2: "certified-operators" and "catalog_source_2", we only return "catalog_source_2"
-
         # Split the result into lines
         IFS=$'\n' read -rd '' -a lines <<< "$result"
 
@@ -635,7 +634,6 @@ function get_catalogsource() {
                 catalog_namespace=$ns
             else
                 # If the catalog source is "certified-operators", we skip it
-                echo "Skipping catalog source: $name in namespace: $ns"
                 count=1
                 continue
             fi
