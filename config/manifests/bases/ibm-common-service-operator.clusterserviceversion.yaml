@@ -5,7 +5,7 @@ metadata:
     alm-examples: '[]'
     capabilities: Seamless Upgrades
     cloudPakThemesVersion: styles467.css
-    containerImage: icr.io/cpopen/common-service-operator:4.6.17
+    containerImage: icr.io/cpopen/common-service-operator:4.6.18
     createdAt: "2020-10-19T21:38:33Z"
     description: The IBM Cloud Pak foundational services operator is used to deploy
       IBM foundational services.
@@ -20,7 +20,7 @@ metadata:
     nss.operator.ibm.com/managed-webhooks: ""
     olm.skipRange: ""
     operatorChannel: v4.6
-    operatorVersion: 4.6.17
+    operatorVersion: 4.6.18
     operators.openshift.io/infrastructure-features: '["disconnected"]'
     operators.operatorframework.io/builder: operator-sdk-v1.2.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
@@ -195,7 +195,7 @@ spec:
 
     ## Operator versions
 
-     - 4.6.17
+     - 4.6.18
 
     ## Prerequisites
 
@@ -267,7 +267,7 @@ spec:
   provider:
     name: IBM
   relatedImages:
-  - image: icr.io/cpopen/common-service-operator:4.6.17
+  - image: icr.io/cpopen/common-service-operator:4.6.18
     name: COMMON_SERVICE_OPERATOR_IMAGE
   - image: icr.io/cpopen/cpfs/cpfs-utils:latest
     name: CPFS_UTILS_IMAGE
