@@ -165,9 +165,11 @@ function wait_for_restore() {
             if [[ $restore == "restore-zen5-data" ]]; then
                 #TODO write apply_zen_workaround
                 apply_zen_workaround $ZEN_NAMESPACE $ZENSERVICE_NAME
+                status="Completed"
             elif [[ $restore == "restore-cs-db-data" ]]; then
                 #TODO write apply_im_workaround
                 apply_im_workaround $SERVICES_NS
+                status="Completed"
             else
                 ${OC} get restores.velero.io $restore -n $OADP_NS $custom_columns_str
                 error "Restore $restore failed with status: $status. For more details, run \"velero restore describe --details $restore\"."
@@ -197,8 +199,8 @@ function validate_cs_odlm() {
 }
 
 function wait_for_im() {
-    info "Sleep for 5 minutes for IM operator to create authentication cr"
-    sleep 300
+    info "Sleep for 3 minutes for IM operator to create authentication cr"
+    sleep 180
     local auth_cr=$1
     local namespace=$2
     local condition="${OC} get authentications.operator.ibm.com ${auth_cr} -n ${namespace} -o jsonpath='{.status.service.status}' | egrep Ready"
@@ -207,7 +209,7 @@ function wait_for_im() {
     local total_time_mins=$(( sleep_time * retries / 60))
     local wait_message="Waiting on IM Service to be online. Checking status of authentication CR ${auth_CR} in namespace ${namespace}."
     local success_message="IM service ready in namespace ${namespace}."
-    local error_message "Timeout after ${total_time_mins} minutes waiting for IM service in namespace ${namespace} to become available"
+    local error_message="Timeout after ${total_time_mins} minutes waiting for IM service in namespace ${namespace} to become available"
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
@@ -268,11 +270,9 @@ function wait_for_job_complete() {
   local total_time_mins=$(( sleep_time * retries / 60))
   local wait_message="Waiting for job pod $job_name to complete"
   local success_message="Job $job_name completed in namespace $namespace"
-  local error_message="Timeout after ${total_time_mins} minutes waiting for pod $pod "
+  local error_message="Timeout after ${total_time_mins} minutes waiting for job $job_name"
   wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
-  dumplogs $job_name
-  info "Deleting job $job_name"
-  ${OC} delete job $job_name -n $namespace
+  info "For more details on ${job_name}, check its pod logs."
 }
 
 function wait_for_cert_manager() {
