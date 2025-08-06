@@ -276,7 +276,7 @@ function wait_for_job_complete() {
 function wait_for_cert_manager() {
     local cm_namespace=$1
     local test_namespace=$2
-    local condition="${OC} get pod -n $namespace --no-headers --ignore-not-found | grep webhook | grep 'Ready' || true"
+    local condition="${OC} get pod -n $namespace --no-headers --ignore-not-found | grep webhook | grep 'Running' || true"
     local retries=20
     local sleep_time=15
     local total_time_mins=$(( sleep_time * retries / 60))
