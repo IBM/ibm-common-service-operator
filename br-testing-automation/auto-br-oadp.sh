@@ -95,8 +95,8 @@ function restore_cpfs(){
         wait_for_restore restore-singleton-subscription
     fi
     ${OC} get restores.velero.io -n $OADP_NS $custom_columns_str
-    #from utils.sh, checks if cert manager exists and then runs smoke test
-    check_cert_manager cert-manager $SERVICES_NS
+    
+    wait_for_cert_manager $CERT_MANAGER_NAMESPACE $SERVICES_NS
     info "Restoring cert manager resources (secrets, certificates, issuers, etc.)..."
     ${OC} apply -f ${BASE_DIR}/templates/restore/restore-cert-manager.yaml
     wait_for_restore restore-cert-manager
@@ -271,6 +271,21 @@ function wait_for_job_complete() {
   dumplogs $job_name
   info "Deleting job $job_name"
   ${OC} delete job $job_name -n $namespace
+}
+
+function wait_for_cert_manager() {
+    local cm_namespace=$1
+    local test_namespace=$2
+    local condition="${OC} get pod -n $namespace --no-headers --ignore-not-found | grep webhook | grep 'Ready' || true"
+    local retries=20
+    local sleep_time=15
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for cert manager webhook pod to come ready"
+    local success_message="Cert Manager operator in namespace $cm_namespace ready."
+    local error_message="Timeout after ${total_time_mins} minutes waiting for cert manager webhook pod."
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+    #from utils.sh, checks if cert manager exists and then runs smoke test
+    check_cert_manager cert-manager $test_namespace
 }
 
 
