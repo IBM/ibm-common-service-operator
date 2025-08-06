@@ -197,12 +197,11 @@ function validate_cs_odlm() {
 }
 
 function wait_for_im() {
-    info "Sleep for 2 minutes for IM operator to create authentication cr"
-    sleep 120
+    info "Sleep for 5 minutes for IM operator to create authentication cr"
+    sleep 300
     local auth_cr=$1
     local namespace=$2
-    local auth_status="${OC} get authentications.operator.ibm.com ${auth_cr} -n ${namespace} -o jsonpath='{.status.service.status}'"
-    local condition="(${authStatus} == 'Ready')"
+    local condition="${OC} get authentications.operator.ibm.com ${auth_cr} -n ${namespace} -o jsonpath='{.status.service.status}' | egrep Ready"
     local retries=30
     local sleep_time=30
     local total_time_mins=$(( sleep_time * retries / 60))
