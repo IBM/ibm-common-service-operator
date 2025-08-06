@@ -40,38 +40,38 @@ function restore_cpfs(){
     fi
     mkdir templates
     info "Copying template files..."
-    cp ../velero/restore /${BASE_DIR}/templates/
+    cp ../velero/restore ${BASE_DIR}/templates/
 
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" /${BASE_DIR}/templates/restore-namespace.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" /${BASE_DIR}/templates/restore-entitlementkey.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" /${BASE_DIR}/templates/restore-configmap.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" /${BASE_DIR}/templates/restore-crd.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" /${BASE_DIR}/templates/restore-commonservice.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" /${BASE_DIR}/templates/restore-cert-manager.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" /${BASE_DIR}/templates/no-olm/restore-cluster-scope.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" /${BASE_DIR}/templates/no-olm/restore-namespace-scope.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" /${BASE_DIR}/templates/no-olm/restore-installer-ns-charts.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" /${BASE_DIR}/templates/no-olm/restore-im-ns-charts.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" /${BASE_DIR}/templates/no-olm/restore-zen-ns-chart.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" /${BASE_DIR}/templates/no-olm/restore-ibm-cm-chart.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" /${BASE_DIR}/templates/restore-operands.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" /${BASE_DIR}/templates/restore-cs-db.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" /${BASE_DIR}/templates/restore-zen5-data.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" /${BASE_DIR}/templates/restore-licensing.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" /${BASE_DIR}/templates/restore-nss.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" /${BASE_DIR}/templates/restore-operatorgroup.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" /${BASE_DIR}/templates/restore-pull-secret.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" /${BASE_DIR}/templates/restore-singleton-subscriptions.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" /${BASE_DIR}/templates/restore-catalog.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" /${BASE_DIR}/templates/restore-subscriptions.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" /${BASE_DIR}/templates/restore-zen.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" /${BASE_DIR}/templates/restore-ums.yaml
+    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore-namespace.yaml
+    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore-entitlementkey.yaml
+    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore-configmap.yaml
+    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore-crd.yaml
+    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore-commonservice.yaml
+    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore-cert-manager.yaml
+    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/no-olm/restore-cluster-scope.yaml
+    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/no-olm/restore-namespace-scope.yaml
+    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/no-olm/restore-installer-ns-charts.yaml
+    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/no-olm/restore-im-ns-charts.yaml
+    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/no-olm/restore-zen-ns-chart.yaml
+    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/no-olm/restore-ibm-cm-chart.yaml
+    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore-operands.yaml
+    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore-cs-db.yaml
+    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore-zen5-data.yaml
+    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore-licensing.yaml
+    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore-nss.yaml
+    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore-operatorgroup.yaml
+    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore-pull-secret.yaml
+    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore-singleton-subscriptions.yaml
+    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore-catalog.yaml
+    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore-subscriptions.yaml
+    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore-zen.yaml
+    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore-ums.yaml
     
     custom_columns_str="-o custom-columns=NAME:.metadata.name,STATUS:.status.phase,ITEMS_RESTORED:.status.progress.itemsRestored,TOTAL_ITEMS:.status.progress.totalItems,WARN:.status.warnings,ERR:.status.errors"
     info "Begin restore process..."
     #Initial restore objects, rarely fail, could theoretically be applied at once   
     info "Restoring namespaces, pull secret and entitlement keys..."
-    ${OC} apply -f /${BASE_DIR}/templates/restore-namespace.yaml -f /${BASE_DIR}/templates/restore-pull-secret.yaml -f /${BASE_DIR}/templates/restore-entitlementkey.yaml
+    ${OC} apply -f ${BASE_DIR}/templates/restore-namespace.yaml -f ${BASE_DIR}/templates/restore-pull-secret.yaml -f ${BASE_DIR}/templates/restore-entitlementkey.yaml
     ${OC} get restores.velero.io -n $OADP_NS $custom_columns_str
     wait_for_restore restore-namespace
     wait_for_restore restore-pull-secret
@@ -79,10 +79,10 @@ function restore_cpfs(){
     
     ${OC} get restores.velero.io -n $OADP_NS $custom_columns_str
     info "Restoring catalog sources..."
-    ${OC} apply -f /${BASE_DIR}/templates/restore-catalog.yaml
+    ${OC} apply -f ${BASE_DIR}/templates/restore-catalog.yaml
     wait_for_restore restore-catalog
     info "Restore operator groups, CRDs, and configmaps..."
-    ${OC} apply -f /${BASE_DIR}/templates/restore-operatorgroup.yaml -f /${BASE_DIR}/templates/restore-crd.yaml -f /${BASE_DIR}/templates/restore-configmap.yaml
+    ${OC} apply -f ${BASE_DIR}/templates/restore-operatorgroup.yaml -f ${BASE_DIR}/templates/restore-crd.yaml -f ${BASE_DIR}/templates/restore-configmap.yaml
     ${OC} get restores.velero.io -n $OADP_NS $custom_columns_str
     wait_for_restore restore-operatorgroup
     wait_for_restore restore-crd
@@ -91,23 +91,23 @@ function restore_cpfs(){
     #Singleton subscriptions (Cert manager, licensing, LSR)
     if [[ $RESTORE_SINGLETONS == "true" ]]; then
         info "Restoring Singleton subscriptions..."
-        ${OC} apply -f /${BASE_DIR}/templates/restore-singleton-subscriptions.yaml
+        ${OC} apply -f ${BASE_DIR}/templates/restore-singleton-subscriptions.yaml
         wait_for_restore restore-singleton-subscription
     fi
     ${OC} get restores.velero.io -n $OADP_NS $custom_columns_str
     #from utils.sh, checks if cert manager exists and then runs smoke test
     check_cert_manager cert-manager $SERVICES_NS
     info "Restoring cert manager resources (secrets, certificates, issuers, etc.)..."
-    ${OC} apply -f /${BASE_DIR}/templates/restore-cert-manager.yaml
+    ${OC} apply -f ${BASE_DIR}/templates/restore-cert-manager.yaml
     wait_for_restore restore-cert-manager
     
     #Restore the common service CR and the tenant scope via nss
     info "Restoring common service CR..."
-    ${OC} apply -f /${BASE_DIR}/templates/restore-commonservice.yaml
+    ${OC} apply -f ${BASE_DIR}/templates/restore-commonservice.yaml
     wait_for_restore restore-commonservice
     if [[ $NSS_ENABLED == "true" ]]; then 
         info "Restoring Namespace Scope resources..."
-        ${OC} apply -f /${BASE_DIR}/templates/restore-nss.yaml
+        ${OC} apply -f ${BASE_DIR}/templates/restore-nss.yaml
         wait_for_restore restore-nss
         ${OC} get restores.velero.io -n $OADP_NS $custom_columns_str
         validate_nss $OPERATOR_NS
@@ -115,33 +115,33 @@ function restore_cpfs(){
 
     #restore common service subscription and odlm operator
     info "Restore CS and ODLM Operators..."
-    ${OC} apply -f /${BASE_DIR}/templates/restore-subscriptions.yaml
+    ${OC} apply -f ${BASE_DIR}/templates/restore-subscriptions.yaml
     wait_for_restore restore-subscription
     validate_cs_odlm $OPERATOR_NS
     if [[ $UMS_ENABLED == "true" ]]; then
         info "Restoring UMS resources..."
-        ${OC} apply -f /${BASE_DIR}/templates/restore-ums.yaml
+        ${OC} apply -f ${BASE_DIR}/templates/restore-ums.yaml
         wait_for_restore restore-ums
     fi
     ${OC} get restores.velero.io -n $OADP_NS $custom_columns_str
     info "Restoring operands..."
-    ${OC} apply -f /${BASE_DIR}/templates/restore-operands.yaml
+    ${OC} apply -f ${BASE_DIR}/templates/restore-operands.yaml
     wait_for_restore restore-operands
     #TODO put into its own function to be called here (and so it can be called independently and multiple times for multiple tenants)
     if [[ $IM_ENABLED == "true" ]]; then
         info "Restoring IM Data..."
         wait_for_im example-authentication $SERVICES_NS
-        ${OC} apply -f /${BASE_DIR}/templates/restore-cs-db-data.yaml
+        ${OC} apply -f ${BASE_DIR}/templates/restore-cs-db-data.yaml
         wait_for_restore restore-cs-db-data
     fi
     #TODO put into its own function to be called here (and so it can be called independently and multiple times for multiple tenants)
     if [[ $ZEN_ENABLED == "true" ]]; then
         info "Restoring zenservice..."
-        ${OC} apply -f /${BASE_DIR}/templates/restore-zen.yaml
+        ${OC} apply -f ${BASE_DIR}/templates/restore-zen.yaml
         wait_for_restore restore-zen
         wait_for_zenservice
         info "Restoring zen data..."
-        ${OC} apply -f /${BASE_DIR}/templates/restore-zen5-data.yaml
+        ${OC} apply -f ${BASE_DIR}/templates/restore-zen5-data.yaml
         wait_for_restore restore-zen5-data
     fi
     success "CPFS Restore completed."
@@ -238,9 +238,9 @@ function apply_im_workaround() {
     local namespace=$1
     info "IM data restored failed, attempting workaround..."
     ${OC} delete deployment cs-db-backup -n $namespace
-    sed -i -E "s/<cs-db namespace>/$namespace/" /${BASE_DIR}/templates/templates/common-service-db/cs-db-restore-job.yaml
+    sed -i -E "s/<cs-db namespace>/$namespace/" ${BASE_DIR}/templates/templates/common-service-db/cs-db-restore-job.yaml
     info "Creating workaround job cs-db-restore-job"
-    ${OC} apply -f /${BASE_DIR}/templates/templates/common-service-db/cs-db-restore-job.yaml
+    ${OC} apply -f ${BASE_DIR}/templates/templates/common-service-db/cs-db-restore-job.yaml
     wait_for_job_complete cs-db-restore-job $namespace
 
 }
@@ -250,10 +250,10 @@ function apply_zen_workaround() {
     local zenservice=$2
     info "Zen data restored failed, attempting workaround..."
     ${OC} delete deployment zen5-backup -n $namespace
-    sed -i -E "s/<zenservice namespace>/$namespace/" /${BASE_DIR}/templates/templates/zen/zen5-restore-job.yaml
-    sed -i -E "s/<zenservice name>/$zenservice/" /${BASE_DIR}/templates/templates/zen/zen5-restore-job.yaml
+    sed -i -E "s/<zenservice namespace>/$namespace/" ${BASE_DIR}/templates/templates/zen/zen5-restore-job.yaml
+    sed -i -E "s/<zenservice name>/$zenservice/" ${BASE_DIR}/templates/templates/zen/zen5-restore-job.yaml
     info "Creating workaround job zen5-restore-job"
-    ${OC} apply -f /${BASE_DIR}/templates/templates/zen/zen5-restore-job.yaml
+    ${OC} apply -f ${BASE_DIR}/templates/templates/zen/zen5-restore-job.yaml
     wait_for_job_complete zen5-restore-job $namespace
 }
 
