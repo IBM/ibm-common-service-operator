@@ -277,9 +277,9 @@ function wait_for_cert_manager() {
     local cm_namespace=$1
     local name="cert-manager-webhook"
     local test_namespace=$2
-    local needReplicas=$(${OC} -n ${namespace} get deployment ${name} --no-headers --ignore-not-found -o jsonpath='{.spec.replicas}' | awk '{print $1}')
-    local readyReplicas="${OC} -n ${cm_namespace} get deployment ${name} --no-headers --ignore-not-found -o jsonpath='{.status.readyReplicas}' | grep '${needReplicas}'"
-    local replicas="${OC} -n ${namespace} get deployment ${name} --no-headers --ignore-not-found -o jsonpath='{.status.replicas}' | grep '${needReplicas}'"
+    local needReplicas=$(${OC} get deployment ${name} -n ${cm_namespace} --no-headers --ignore-not-found -o jsonpath='{.spec.replicas}' | awk '{print $1}')
+    local readyReplicas="${OC} get deployment ${name} -n ${cm_namespace} --no-headers --ignore-not-found -o jsonpath='{.status.readyReplicas}' | grep '${needReplicas}'"
+    local replicas="${OC} get deployment ${name} -n ${cm_namespace} --no-headers --ignore-not-found -o jsonpath='{.status.replicas}' | grep '${needReplicas}'"
     local condition="(${readyReplicas} && ${replicas})"
     local retries=20
     local sleep_time=30
