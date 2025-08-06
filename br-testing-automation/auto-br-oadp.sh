@@ -265,8 +265,8 @@ function wait_for_job_complete() {
   local job_name=$1
   local namespace=$2
   local condition="${OC} get pod -n $namespace --no-headers --ignore-not-found | grep ${job_name} | grep 'Completed' || true"
-  local retries=15
-  local sleep_time=15
+  local retries=50
+  local sleep_time=30
   local total_time_mins=$(( sleep_time * retries / 60))
   local wait_message="Waiting for job pod $job_name to complete"
   local success_message="Job $job_name completed in namespace $namespace"
