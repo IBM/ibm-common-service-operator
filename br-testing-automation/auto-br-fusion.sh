@@ -33,7 +33,7 @@ RECIPE_NAMESPACE=""
 
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 . ../cp3pt0-deployment/common/utils.sh
-source ${BASE_DIR}/env.properties
+source ${BASE_DIR}/env-fusion.properties
 
 function main(){
     parse_arguments "$@"
