@@ -131,7 +131,7 @@ function restore_cpfs(){
     if [[ $IM_ENABLED == "true" ]]; then
         info "Restoring IM Data..."
         wait_for_im example-authentication $SERVICES_NS
-        ${OC} apply -f ${BASE_DIR}/templates/restore/restore-cs-db-data.yaml
+        ${OC} apply -f ${BASE_DIR}/templates/restore/restore-cs-db.yaml
         wait_for_restore restore-cs-db-data
     fi
     #TODO put into its own function to be called here (and so it can be called independently and multiple times for multiple tenants)
@@ -197,9 +197,12 @@ function validate_cs_odlm() {
 }
 
 function wait_for_im() {
+    info "Sleep for 2 minutes for IM operator to create authentication cr"
+    sleep 120
     local auth_cr=$1
     local namespace=$2
-    local condition="${OC} get authentications.operator.ibm.com ${auth_cr} -n ${namespace} -o jsonpath='{.status.service.status}' | egrep Ready"
+    local auth_status="${OC} get authentications.operator.ibm.com ${auth_cr} -n ${namespace} -o jsonpath='{.status.service.status}'"
+    local condition="(${authStatus} == 'Ready')"
     local retries=30
     local sleep_time=30
     local total_time_mins=$(( sleep_time * retries / 60))
