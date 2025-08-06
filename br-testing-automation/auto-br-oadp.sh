@@ -275,10 +275,14 @@ function wait_for_job_complete() {
 
 function wait_for_cert_manager() {
     local cm_namespace=$1
+    local name="cert-manager-webhook"
     local test_namespace=$2
-    local condition="${OC} get pod -n $namespace --no-headers --ignore-not-found | grep webhook | grep 'Running' || true"
+    local needReplicas=$(${OC} -n ${namespace} get deployment ${name} --no-headers --ignore-not-found -o jsonpath='{.spec.replicas}' | awk '{print $1}')
+    local readyReplicas="${OC} -n ${cm_namespace} get deployment ${name} --no-headers --ignore-not-found -o jsonpath='{.status.readyReplicas}' | grep '${needReplicas}'"
+    local replicas="${OC} -n ${namespace} get deployment ${name} --no-headers --ignore-not-found -o jsonpath='{.status.replicas}' | grep '${needReplicas}'"
+    local condition="(${readyReplicas} && ${replicas})"
     local retries=20
-    local sleep_time=15
+    local sleep_time=30
     local total_time_mins=$(( sleep_time * retries / 60))
     local wait_message="Waiting for cert manager webhook pod to come ready"
     local success_message="Cert Manager operator in namespace $cm_namespace ready."
