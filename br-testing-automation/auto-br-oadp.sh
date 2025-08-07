@@ -125,7 +125,7 @@ function prereq() {
         #TODO add checks for namespace values
         if [[ $OPERATOR_NS == "" ]]; then
             error "OPERATOR_NS value not set. Make sure it is either set in the env-oadp.properties file or as an env variable."
-        else [[ $SERVICES_NS == "" ]]; then
+        elif [[ $SERVICES_NS == "" ]]; then
             warning "SERVICES_NS value not set. Setting value equal to OPERATOR_NS value $OPERATOR_NS."
             SERVICES_NS=$OPERATOR_NS
         fi
