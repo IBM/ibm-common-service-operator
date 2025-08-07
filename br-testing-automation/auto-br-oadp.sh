@@ -25,11 +25,180 @@ YQ="yq"
 
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 . ../cp3pt0-deployment/common/utils.sh
-source ${BASE_DIR}/env-oadp.properties
 
 function main() {
+    parse_arguments "$@"
     if [[ $RESTORE == "true" ]]; then
         restore_cpfs
+    fi
+}
+
+function print_usage(){
+    script_name=`basename ${0}`
+    echo "Usage: ${script_name} [OPTIONS]"
+    echo ""
+    echo "Automate running OADP/Velero Backup or Restore."
+    echo "One of --backup or --restore is required."
+    echo "This script assumes the following:"
+    echo "    * At least a Fusion Hub cluster setup with Fusion Backup and Restore Service and CPFS installed."
+    echo "    * If 'spoke' selected for --cluster-type, Fusion Backup and Restore Agent Service installed and matching Storageclass to Hub cluster."
+    echo "    * Fusion setup was completed with the fusion-backup-setup.sh script"
+    echo ""
+    echo "Options:"
+    echo "   --oc string                    Optional. File path to oc CLI. Default uses oc in your PATH. Can also be set in env.properties."
+    echo "   --yq string                    Optional. File path to yq CLI. Default uses yq in your PATH. Can also be set in env.properties."
+    echo "   --backup                       Optional. Enable backup mode, it will trigger a backup job."
+    echo "   --backup-name                  Necessary. Name of backup. A unique name is required when --backup is enabled. An existing name is required when --restore is enabled"
+    echo "   --restore                      Optional. Enable restore mode, it will trigger a restore job."
+    echo "   --use-prop-file                Optional. Enable use of the env-oadp.properties file for assigning necessary parameters."
+    echo "   -h, --help                     Print usage information"
+    echo ""
+}
+
+function parse_arguments() {
+    script_name=`basename ${0}`
+    echo "All arguments passed into the ${script_name}: $@"
+    echo ""
+
+    # process options
+    while [[ "$@" != "" ]]; do
+        case "$1" in
+        --oc)
+            shift
+            OC=$1
+            ;;
+        --yq)
+            shift
+            YQ=$1
+            ;;
+        --backup)
+            BACKUP="true"
+            ;;
+        --backup-name)
+            shift
+            BACKUP_NAME=$1
+            ;;
+        --restore)
+            RESTORE="true"
+            ;;
+        --use-prop-file)
+            source ${BASE_DIR}/env-oadp.properties
+            ;;
+        -h | --help)
+            print_usage
+            exit 1
+            ;;
+        *)
+            echo "Entered option $1 not supported. Run ./${script_name} -h for script usage info."
+            ;;
+        esac
+        shift
+    done
+    echo ""
+}
+
+function prereq() {
+    #check that oc yq and skopeo are available
+    check_command "${OC}"
+    check_command "${YQ}"
+    # Check yq version
+    check_yq
+
+    # Checking oc command logged in
+    user=$(${OC} whoami 2> /dev/null)
+    if [ $? -ne 0 ]; then
+        error "You must be logged into the OpenShift Cluster from the oc command line"
+    else
+        success "oc command logged in as ${user}"
+    fi
+
+    #check variables are present
+    # check backup/restore name
+    if [[ $BACKUP == "true" ]]; then
+        if [[ $BACKUP_NAME == "" ]]; then
+            error "Backup name is necessary if Backup is enabled"
+        fi
+    elif [[ $RESTORE == "true" ]]; then
+        if [[ $BACKUP_NAME == "" ]]; then
+            error "An existing backup's name must be specified with --backup-name if Restore is enabled."
+        fi
+        #TODO add checks for namespace values
+        if [[ $OPERATOR_NS == "" ]]; then
+            error "OPERATOR_NS value not set. Make sure it is either set in the env-oadp.properties file or as an env variable."
+        else [[ $SERVICES_NS == "" ]]; then
+            warning "SERVICES_NS value not set. Setting value equal to OPERATOR_NS value $OPERATOR_NS."
+            SERVICES_NS=$OPERATOR_NS
+        fi
+        
+        # check if any singleton is enabled individually and then check namespace values for each one
+        #if any singleton enabled, trigger singleton enabled var
+        if [[ $ENABLE_CERT_MANAGER == "true" ]]; then
+            RESTORE_SINGLETONS="true"
+            if [[ $CERT_MANAGER_NAMESPACE == "" ]]; then
+                warning "Cert manager namespace not specified, setting to default ibm-cert-manager"
+                CERT_MANAGER_NAMESPACE="ibm-cert-manager"
+            fi
+        fi
+        if [[ $ENABLE_LICENSING == "true" ]]; then
+            RESTORE_SINGLETONS="true"
+            if [[ $LICENSING_NAMESPACE == "" ]]; then
+                warning "Licensing namespace not specified, setting to default ibm-licensing"
+                LICENSING_NAMESPACE="ibm-licensing"
+            fi
+        fi
+        if [[ $ENABLE_LSR == "true" ]]; then
+            RESTORE_SINGLETONS="true"
+            if [[ $LSR_NAMESPACE == "" ]]; then
+                warning "License service reporter namespace not specified, setting to default ibm-ls-reporter"
+                LSR_NAMESPACE="ibm-licensing"
+            fi
+        fi
+
+        #if zen enabled, verify zen namespace and zenservice name are both present
+        if [[ $ZEN_ENABLED == "true" ]]; then
+            if [[ $ZEN_NAMESPACE == "" ]]; then
+                error "ZEN_NAMESPACE value not set. Make sure it is either set in the env-oadp.properties file or as an env variable."
+            fi
+            if [[ $ZENSERVICE_NAME == "" ]]; then
+                error "ZENSERVICE_NAME value not set. Make sure it is either set in the env-oadp.properties file or as an env variable."
+            fi
+        fi
+
+        check_cluster_credentials
+    else
+        error "Neither Backup nor Restore options were specified."
+    fi
+    
+    #OADP setup checks
+    # TODO check if OADP br service is installed on cluster
+    # TODO check OADP related variables
+    # if [[ $BACKUP_STORAGE_LOCATION_NAME == "" ]]; then
+    #     error "Backup Storage Location name not specified in env-oadp.properties."
+    # fi
+    #also need secret key and id and any other values necessary for creating dataprotectionapplication
+
+}
+
+
+#cluster credentials validation function (will be necessary for setup as well)
+#need some kind of validation for restoring to different cluster
+# if restore to or setup for different cluster enabled, need login creds for both clusters
+# test by logging in to the other cluster and then logging back into the base cluster
+function check_cluster_credentials() {
+    if [[ $TARGET_CLUSTER_TYPE == "" ]]; true
+        error "TARGET_CLUSTER_TYPE value not set. Make sure it is either set in the env-oadp.properties file or as an env variable."
+    else
+        if [[ $TARGET_CLUSTER_TYPE == "diff" ]]; then
+            if [[ $BACKUP_CLU_SERVER == "" ]] || [[ $BACKUP_CLU_TOKEN == "" ]] || [[ $RESTORE_CLU_SERVER == "" ]] || [[ $RESTORE_CLU_TOKEN == "" ]]; then
+                error "If interacting with a different cluster (either restore or setup), all of BACKUP_CLU_SERVER, BACKUP_CLU_TOKEN, RESTORE_CLU_SERVER, and RESTORE_CLU_TOKEN must be defined either in the env-oadp.properties file or as environment variables." 
+            else
+                info "Different cluster selected. Validating login credentials work..."
+                ${OC} login --token=$RESTORE_CLU_TOKEN--server=$RESTORE_CLU_SERVER --insecure-skip-tls-verify=true
+                info "Logging back into home cluster..."
+                ${OC} login --token=$BACKUP_CLU_TOKEN--server=$BACKUP_CLU_SERVER --insecure-skip-tls-verify=true
+            fi
+        fi
+        success "Backup and Restore cluster login credentials verified."
     fi
 }
 
@@ -101,6 +270,8 @@ function restore_cpfs(){
     ${OC} apply -f ${BASE_DIR}/templates/restore/restore-cert-manager.yaml
     wait_for_restore restore-cert-manager
     
+    #TODO restore LSR data
+    
     #Restore the common service CR and the tenant scope via nss
     info "Restoring common service CR..."
     ${OC} apply -f ${BASE_DIR}/templates/restore/restore-commonservice.yaml
@@ -127,23 +298,14 @@ function restore_cpfs(){
     info "Restoring operands..."
     ${OC} apply -f ${BASE_DIR}/templates/restore/restore-operands.yaml
     wait_for_restore restore-operands
-    #TODO put into its own function to be called here (and so it can be called independently and multiple times for multiple tenants)
+    
     if [[ $IM_ENABLED == "true" ]]; then
-        info "Restoring IM Data..."
-        wait_for_im example-authentication $SERVICES_NS
-        ${OC} apply -f ${BASE_DIR}/templates/restore/restore-cs-db.yaml
-        wait_for_restore restore-cs-db-data
+        restore_im
     fi
-    #TODO put into its own function to be called here (and so it can be called independently and multiple times for multiple tenants)
     if [[ $ZEN_ENABLED == "true" ]]; then
-        info "Restoring zenservice..."
-        ${OC} apply -f ${BASE_DIR}/templates/restore/restore-zen.yaml
-        wait_for_restore restore-zen
-        wait_for_zenservice
-        info "Restoring zen data..."
-        ${OC} apply -f ${BASE_DIR}/templates/restore/restore-zen5-data.yaml
-        wait_for_restore restore-zen5-data
+        restore_zen
     fi
+    
     success "CPFS Restore completed."
 }
 
@@ -163,11 +325,9 @@ function wait_for_restore() {
         retries=$((retries-1))
         if [[ $status == "Failed" ]] || [[ $status == "PartiallyFailed" ]]; then
             if [[ $restore == "restore-zen5-data" ]]; then
-                #TODO write apply_zen_workaround
                 apply_zen_workaround $ZEN_NAMESPACE $ZENSERVICE_NAME
                 status="Completed"
             elif [[ $restore == "restore-cs-db-data" ]]; then
-                #TODO write apply_im_workaround
                 apply_im_workaround $SERVICES_NS
                 status="Completed"
             else
@@ -198,6 +358,14 @@ function validate_cs_odlm() {
     wait_for_cscr_status "$namespace" "common-service"
 }
 
+function restore_im() {
+    info "Restoring IM Data..."
+    wait_for_im example-authentication $SERVICES_NS
+    ${OC} apply -f ${BASE_DIR}/templates/restore/restore-cs-db.yaml
+    wait_for_restore restore-cs-db-data
+    success "IM data restored successfully."
+}
+
 function wait_for_im() {
     info "Sleep for 3 minutes for IM operator to create authentication cr"
     sleep 180
@@ -211,6 +379,17 @@ function wait_for_im() {
     local success_message="IM service ready in namespace ${namespace}."
     local error_message="Timeout after ${total_time_mins} minutes waiting for IM service in namespace ${namespace} to become available"
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
+function restore_zen() {
+    info "Restoring zenservice..."
+    ${OC} apply -f ${BASE_DIR}/templates/restore/restore-zen.yaml
+    wait_for_restore restore-zen
+    wait_for_zenservice
+    info "Restoring zen data..."
+    ${OC} apply -f ${BASE_DIR}/templates/restore/restore-zen5-data.yaml
+    wait_for_restore restore-zen5-data
+    success "Zen data restored successfully"
 }
 
 function wait_for_zenservice {

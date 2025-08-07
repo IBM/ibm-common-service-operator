@@ -64,8 +64,8 @@ function print_usage(){
     echo "    * Fusion setup was completed with the fusion-backup-setup.sh script"
     echo ""
     echo "Options:"
-    echo "   --oc string                    Optional. File path to oc CLI. Default uses oc in your PATH. Can also be set in env.properties."
-    echo "   --yq string                    Optional. File path to yq CLI. Default uses yq in your PATH. Can also be set in env.properties."
+    echo "   --oc string                    Optional. File path to oc CLI. Default uses oc in your PATH. Can also be set in env-fusion.properties."
+    echo "   --yq string                    Optional. File path to yq CLI. Default uses yq in your PATH. Can also be set in env-fusion.properties."
     echo "   --backup                       Optional. Enable backup mode, it will trigger a backup job."
     echo "   --backup-name                  Necessary. Name of backup. A unique name is required when --backup is enabled. An existing name is required when --restore is enabled"
     echo "   --restore                      Optional. Enable restore mode, it will trigger a restore job."
@@ -202,15 +202,15 @@ function prereq() {
     #check fusion related variables
     #backup storage location name
     if [[ $BACKUP_STORAGE_LOCATION_NAME == "" ]]; then
-        error "Backup Storage Location name not specified in env.properties."
+        error "Backup Storage Location name not specified in env-fusion.properties."
     fi
     #application
     if [[ $APPLICATION == "" ]]; then
-        error "Application not specified in env.properties."
+        error "Application not specified in env-fusion.properties."
     fi
     #backup policy
     if [[ $BACKUP_POLICY == "" ]]; then
-        error "Backup Policy not specified in env.properties."
+        error "Backup Policy not specified in env-fusion.properties."
     fi
 
 }
