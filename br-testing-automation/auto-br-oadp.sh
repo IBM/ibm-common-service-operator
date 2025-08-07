@@ -185,7 +185,7 @@ function prereq() {
 # if restore to or setup for different cluster enabled, need login creds for both clusters
 # test by logging in to the other cluster and then logging back into the base cluster
 function check_cluster_credentials() {
-    if [[ $TARGET_CLUSTER_TYPE == "" ]]; true
+    if [[ $TARGET_CLUSTER_TYPE == "" ]]; then
         error "TARGET_CLUSTER_TYPE value not set. Make sure it is either set in the env-oadp.properties file or as an env variable."
     else
         if [[ $TARGET_CLUSTER_TYPE == "diff" ]]; then
