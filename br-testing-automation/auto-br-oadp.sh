@@ -228,6 +228,8 @@ function restore_cpfs(){
     sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-cs-db.yaml
     sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-zen5-data.yaml
     sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-licensing.yaml
+    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-lsr.yaml
+    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-lsr-data.yaml
     sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-nss.yaml
     sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-operatorgroup.yaml
     sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-pull-secret.yaml
@@ -260,6 +262,23 @@ function restore_cpfs(){
     
     #Singleton subscriptions (Cert manager, licensing, LSR)
     if [[ $RESTORE_SINGLETONS == "true" ]]; then
+        #we restore licensing before subs because the configmaps need to be there before licensing starts up
+        if [[ $ENABLE_LICENSING == "true" ]]; then
+            info "Restoring licensing configmaps..."
+            ${OC} apply -f ${BASE_DIR}/templates/restore/restore-licensing.yaml
+            wait_for_restore restore-licensing
+        fi
+        #lsr restores its own sub, we could put it before or after the singleton sub restore
+        if [[ $ENABLE_LSR == "true" ]]; then
+            info "Restoring License Service Reporter instance..."
+            ${OC} apply -f ${BASE_DIR}/templates/restore/restore-lsr.yaml
+            wait_for_restore restore-lsr
+            #don't need to wait, wait function built into restore-lsr-data
+            info "Restoring License Service Reporter data..."
+            ${OC} apply -f ${BASE_DIR}/templates/restore/restore-lsr-data.yaml
+            wait_for_restore restore-lsr-data
+        fi
+        #this step restores the cert manager and licensing subs
         info "Restoring Singleton subscriptions..."
         ${OC} apply -f ${BASE_DIR}/templates/restore/restore-singleton-subscriptions.yaml
         wait_for_restore restore-singleton-subscription
@@ -270,8 +289,6 @@ function restore_cpfs(){
     info "Restoring cert manager resources (secrets, certificates, issuers, etc.)..."
     ${OC} apply -f ${BASE_DIR}/templates/restore/restore-cert-manager.yaml
     wait_for_restore restore-cert-manager
-    
-    #TODO restore LSR data
     
     #Restore the common service CR and the tenant scope via nss
     info "Restoring common service CR..."
@@ -330,6 +347,9 @@ function wait_for_restore() {
                 status="Completed"
             elif [[ $restore == "restore-cs-db-data" ]]; then
                 apply_im_workaround $SERVICES_NS
+                status="Completed"
+            elif [[ $restore == "restore-lsr-data" ]]; then
+                apply_lsr_workaround $LSR_NAMESPACE
                 status="Completed"
             else
                 ${OC} get restores.velero.io $restore -n $OADP_NS $custom_columns_str
@@ -439,6 +459,16 @@ function apply_zen_workaround() {
     info "Creating workaround job zen5-restore-job"
     ${OC} apply -f ${BASE_DIR}/templates/restore/zen/zen5-restore-job.yaml
     wait_for_job_complete zen5-restore-job $namespace
+}
+
+function apply_lsr_workaround() {
+    local namespace=$1
+    info "License Service Reporter data restored failed, attempting workaround..."
+    ${OC} delete deployment lsr-backup -n $namespace
+    sed -i -E "s/<lsr namespace>/$namespace/" ${BASE_DIR}/templates/restore/lsr/lsr-data-restore-job.yaml
+    info "Creating workaround job lsr-restore-job"
+    ${OC} apply -f ${BASE_DIR}/templates/restore/lsr/lsr-data-restore-job.yaml
+    wait_for_job_complete lsr-restore-job $namespace
 }
 
 function wait_for_job_complete() {
