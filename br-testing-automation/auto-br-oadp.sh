@@ -337,6 +337,9 @@ function wait_for_restore() {
     if [[ $restore == "restore-zen5-data" ]]; then
         retries=120
         sleep_time=30
+    elif [[ $restore == "restore-lsr-data" ]]; then
+        retries=60
+        sleep_time=15
     fi
     while [[ $status != "Completed" ]] && [[ $retries -gt 0 ]]; do
         info "Wait for restore $restore to complete. Try again in $sleep_time seconds."
