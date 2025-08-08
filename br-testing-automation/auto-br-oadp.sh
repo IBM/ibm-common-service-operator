@@ -268,20 +268,22 @@ function restore_cpfs(){
             ${OC} apply -f ${BASE_DIR}/templates/restore/restore-licensing.yaml
             wait_for_restore restore-licensing
         fi
-        #lsr restores its own sub, we could put it before or after the singleton sub restore
+        # same principle for lsr here as for licensing above
         if [[ $ENABLE_LSR == "true" ]]; then
             info "Restoring License Service Reporter instance..."
             ${OC} apply -f ${BASE_DIR}/templates/restore/restore-lsr.yaml
             wait_for_restore restore-lsr
-            #don't need to wait, wait function built into restore-lsr-data
-            info "Restoring License Service Reporter data..."
-            ${OC} apply -f ${BASE_DIR}/templates/restore/restore-lsr-data.yaml
-            wait_for_restore restore-lsr-data
         fi
         #this step restores the cert manager and licensing subs
         info "Restoring Singleton subscriptions..."
         ${OC} apply -f ${BASE_DIR}/templates/restore/restore-singleton-subscriptions.yaml
         wait_for_restore restore-singleton-subscription
+
+        if [[ $ENABLE_LSR == "true" ]]; then
+            info "Restoring License Service Reporter data..."
+            ${OC} apply -f ${BASE_DIR}/templates/restore/restore-lsr-data.yaml
+            wait_for_restore restore-lsr-data
+        fi
     fi
     ${OC} get restores.velero.io -n $OADP_NS $custom_columns_str
     
