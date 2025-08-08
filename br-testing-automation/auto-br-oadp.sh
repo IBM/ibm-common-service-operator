@@ -28,6 +28,7 @@ BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 
 function main() {
     parse_arguments "$@"
+    prereq
     if [[ $RESTORE == "true" ]]; then
         restore_cpfs
     fi
