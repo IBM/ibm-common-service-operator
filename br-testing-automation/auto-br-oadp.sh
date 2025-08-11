@@ -18,10 +18,6 @@
 set -o pipefail
 set -o errtrace
 
-BACKUP="false"
-RESTORE="false"
-OC="oc"
-YQ="yq"
 OUTPUT_FILE="env-oadp.properties"
 WRITE="false"
 
