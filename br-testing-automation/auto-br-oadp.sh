@@ -539,7 +539,7 @@ function write_specific_env_vars_to_file() {
     
     # Write each specified variable
     local count=0
-    for var_name in "$vars"; do
+    for var_name in $vars; do
         echo "$var_name=${var_name}" >> "$output_file"
         ((count++))
     done
