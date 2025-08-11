@@ -22,6 +22,8 @@ BACKUP="false"
 RESTORE="false"
 OC="oc"
 YQ="yq"
+OUTPUT_FILE="env-oadp.properties"
+WRITE="false"
 
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 . ../cp3pt0-deployment/common/utils.sh
@@ -51,7 +53,8 @@ function print_usage(){
     echo "   --backup                       Optional. Enable backup mode, it will trigger a backup job."
     echo "   --backup-name                  Necessary. Name of backup. A unique name is required when --backup is enabled. An existing name is required when --restore is enabled"
     echo "   --restore                      Optional. Enable restore mode, it will trigger a restore job."
-    echo "   --use-prop-file                Optional. Enable use of the env-oadp.properties file for assigning necessary parameters."
+    echo "   --env-file                     Optional. Enter env var file to populate necessary parameters. Default file name is env-oadp.properties."
+    echo "   --write-env-file               Optional. Write set of env variables to specified output file. If --env-file not specified, defaults to env-oadp.properties."
     echo "   -h, --help                     Print usage information"
     echo ""
 }
@@ -82,8 +85,14 @@ function parse_arguments() {
         --restore)
             RESTORE="true"
             ;;
-        --use-prop-file)
-            source ${BASE_DIR}/env-oadp.properties
+        --env-file)
+            shift
+            OUTPUT_FILE=$1
+            source ${BASE_DIR}/$OUTPUT_FILE
+            ;;
+
+        --write-env-file)
+            WRITE="true"
             ;;
         -h | --help)
             print_usage
@@ -177,7 +186,9 @@ function prereq() {
     #     error "Backup Storage Location name not specified in env-oadp.properties."
     # fi
     #also need secret key and id and any other values necessary for creating dataprotectionapplication
-
+    if [[ $WRITE == "true" ]]; then
+        write_specific_env_vars_to_file $OUTPUT_FILE OC YQ OPERATOR_NS SERVICES_NS TETHERED_NS BACKUP RESTORE SETUP OADP_INSTALL OADP_RESOURCE_CREATION OADP_NS BACKUP_STORAGE_LOCATION_NAMESTORAGE_BUCKET_NAME S3_URL STORAGE_SECRET_ACCESS_KEY STORAGE_SECRET_ACCESS_KEY_ID IM_ENABLED ZEN_ENABLED NSS_ENABLED UMS_ENABLED CERT_MANAGER_NAMESPACE LICENSING_NAMESPACE LSR_NAMESPACE CPFS_VERSION ZENSERVICE_NAME ZEN_NAMESPACE ENABLE_CERT_MANAGER ENABLE_LICENSING ENABLE_LSR ENABLE_PRIVATE_CATALOG ENABLE_DEFAULT_CS ADDITIONAL_SOURCES CONTROL_NS BACKUP_CLU_SERVER BACKUP_CLU_TOKEN RESTORE_CLU_SERVER RESTORE_CLU_TOKEN TARGET_CLUSTER_TYPE BACKUP_NAME
+    fi
 }
 
 
@@ -507,6 +518,26 @@ function wait_for_cert_manager() {
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
     #from utils.sh, checks if cert manager exists and then runs smoke test
     check_cert_manager cert-manager $test_namespace
+}
+
+write_specific_env_vars_to_file() {
+    local output_file="$1"
+    shift  # Remove first argument, rest are variable names
+    
+    info "Writing specific environment variables to '$output_file'..."
+    
+    if ! touch "$output_file" 2>/dev/null; then
+        error "Error: Cannot write to file '$output_file'"
+    fi
+    
+    # Write each specified variable
+    local count=0
+    for var_name in "$@"; do
+        echo "$var_name=${var_name}" >> "$output_file"
+        ((count++))
+    done
+    
+    success "Successfully wrote $count environment variables to '$output_file'"
 }
 
 
