@@ -59,6 +59,7 @@ function parse_arguments() {
     script_name=`basename ${0}`
     echo "All arguments passed into the ${script_name}: $@"
     echo ""
+    echo break
 
     # process options
     while [[ "$@" != "" ]]; do
@@ -101,9 +102,11 @@ function parse_arguments() {
         shift
     done
     echo ""
+    echo break2
 }
 
 function prereq() {
+    echo break3
     #check that oc yq and skopeo are available
     check_command "${OC}"
     check_command "${YQ}"
@@ -184,9 +187,10 @@ function prereq() {
     #also need secret key and id and any other values necessary for creating dataprotectionapplication
     
     #write env variables to output file
-    # if [[ $WRITE == "true" ]]; then
-    #     write_specific_env_vars_to_file $OUTPUT_FILE OC YQ OPERATOR_NS SERVICES_NS TETHERED_NS BACKUP RESTORE SETUP OADP_INSTALL OADP_RESOURCE_CREATION OADP_NS BACKUP_STORAGE_LOCATION_NAMESTORAGE_BUCKET_NAME S3_URL STORAGE_SECRET_ACCESS_KEY STORAGE_SECRET_ACCESS_KEY_ID IM_ENABLED ZEN_ENABLED NSS_ENABLED UMS_ENABLED CERT_MANAGER_NAMESPACE LICENSING_NAMESPACE LSR_NAMESPACE CPFS_VERSION ZENSERVICE_NAME ZEN_NAMESPACE ENABLE_CERT_MANAGER ENABLE_LICENSING ENABLE_LSR ENABLE_PRIVATE_CATALOG ENABLE_DEFAULT_CS ADDITIONAL_SOURCES CONTROL_NS BACKUP_CLU_SERVER BACKUP_CLU_TOKEN RESTORE_CLU_SERVER RESTORE_CLU_TOKEN TARGET_CLUSTER_TYPE BACKUP_NAME
-    # fi
+    if [[ $WRITE == "true" ]]; then
+        write_specific_env_vars_to_file $OUTPUT_FILE OC YQ OPERATOR_NS SERVICES_NS TETHERED_NS BACKUP RESTORE SETUP OADP_INSTALL OADP_RESOURCE_CREATION OADP_NS BACKUP_STORAGE_LOCATION_NAMESTORAGE_BUCKET_NAME S3_URL STORAGE_SECRET_ACCESS_KEY STORAGE_SECRET_ACCESS_KEY_ID IM_ENABLED ZEN_ENABLED NSS_ENABLED UMS_ENABLED CERT_MANAGER_NAMESPACE LICENSING_NAMESPACE LSR_NAMESPACE CPFS_VERSION ZENSERVICE_NAME ZEN_NAMESPACE ENABLE_CERT_MANAGER ENABLE_LICENSING ENABLE_LSR ENABLE_PRIVATE_CATALOG ENABLE_DEFAULT_CS ADDITIONAL_SOURCES CONTROL_NS BACKUP_CLU_SERVER BACKUP_CLU_TOKEN RESTORE_CLU_SERVER RESTORE_CLU_TOKEN TARGET_CLUSTER_TYPE BACKUP_NAME
+    fi
+    echo break4
 }
 
 
@@ -213,6 +217,7 @@ function check_cluster_credentials() {
 }
 
 function restore_cpfs(){
+    echo break5
     title "Start CPFS restore."
     if [ -d "templates" ]; then
         rm -rf templates
