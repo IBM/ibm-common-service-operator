@@ -107,10 +107,10 @@ function parse_arguments() {
 
 function prereq() {
     echo break3
-    #check that oc yq and skopeo are available
-    check_command "${OC}"
+    #check that oc and yq are available
+    check_command $OC
     echo 3break
-    check_command "${YQ}"
+    check_command $YQ
     # Check yq version
     echo 3break2
     check_yq
