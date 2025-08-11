@@ -109,10 +109,12 @@ function prereq() {
     echo break3
     #check that oc yq and skopeo are available
     check_command "${OC}"
+    echo 3break
     check_command "${YQ}"
     # Check yq version
+    echo 3break2
     check_yq
-
+    echo 3break3
     # Checking oc command logged in
     user=$(${OC} whoami 2> /dev/null)
     if [ $? -ne 0 ]; then
@@ -120,7 +122,7 @@ function prereq() {
     else
         success "oc command logged in as ${user}"
     fi
-
+    echo 3break4
     #check variables are present
     # check backup/restore name
     if [[ $BACKUP == "true" ]]; then
