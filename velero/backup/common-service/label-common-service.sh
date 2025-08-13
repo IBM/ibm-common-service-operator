@@ -357,6 +357,7 @@ function label_subscription() {
     local cs_pm="ibm-common-service-operator"
     local cm_pm="ibm-cert-manager-operator"
     local lis_pm="ibm-licensing-operator-app"
+    local new_lis_pm="ibm-licensing-operator"
     local lsr_pm="ibm-license-service-reporter-operator"
     
     ${OC} label subscriptions.operators.coreos.com $cs_pm foundationservices.cloudpak.ibm.com=subscription -n $OPERATOR_NS --overwrite=true 2>/dev/null
@@ -365,6 +366,7 @@ function label_subscription() {
     fi
     if [[ $ENABLE_LICENSING -eq 1 ]]; then
         ${OC} label subscriptions.operators.coreos.com $lis_pm foundationservices.cloudpak.ibm.com=singleton-subscription -n $LICENSING_NAMESPACE --overwrite=true 2>/dev/null
+        ${OC} label subscriptions.operators.coreos.com $new_lis_pm foundationservices.cloudpak.ibm.com=singleton-subscription -n $LICENSING_NAMESPACE --overwrite=true 2>/dev/null
     fi
     if [[ $ENABLE_LSR -eq 1 ]]; then
         ${OC} label subscriptions.operators.coreos.com $lsr_pm foundationservices.cloudpak.ibm.com=singleton-subscription -n $LSR_NAMESPACE --overwrite=true 2>/dev/null
