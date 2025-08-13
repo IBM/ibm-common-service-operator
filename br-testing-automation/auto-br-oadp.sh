@@ -251,6 +251,8 @@ function restore_cpfs(){
     custom_columns_str="-o custom-columns=NAME:.metadata.name,STATUS:.status.phase,ITEMS_RESTORED:.status.progress.itemsRestored,TOTAL_ITEMS:.status.progress.totalItems,BACKUP:.spec.backupName,WARN:.status.warnings,ERR:.status.errors"
     info "Begin restore process..."
     #Initial restore objects, rarely fail, could theoretically be applied at once   
+    info "Cleanup existing pull secret..."
+    ${OC} delete secret pull-secret -n openshift-config --ignore-not-found
     info "Restoring namespaces, pull secret and entitlement keys..."
     ${OC} apply -f ${BASE_DIR}/templates/restore/restore-namespace.yaml -f ${BASE_DIR}/templates/restore/restore-pull-secret.yaml -f ${BASE_DIR}/templates/restore/restore-entitlementkey.yaml
     ${OC} get restores.velero.io -n $OADP_NS $custom_columns_str
