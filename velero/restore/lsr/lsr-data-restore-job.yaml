@@ -1,8 +1,8 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: zen5-restore-job
-  namespace: <zenservice namespace>
+  name: lsr-restore-job
+  namespace: <lsr namespace>
 spec:
   template:
     spec:
@@ -10,10 +10,10 @@ spec:
         - command:
           - sh
           - -c
-          - /zen5/restore_zen5.sh <zenservice namespace> <zenservice name>
+          - /lsr/br_lsr.sh <lsr namespace> restore 
           image: icr.io/cpopen/cpfs/cpfs-utils:4.6.0 #4.1.0 if using CS 4.1, 4.2.0 if using CS 4.2
           imagePullPolicy: Always
-          name: zen5-restore-job
+          name: lsr-restore-job
           resources:
             limits:
               cpu: 500m
@@ -32,23 +32,23 @@ spec:
           terminationMessagePath: /dev/termination-log
           terminationMessagePolicy: File
           volumeMounts:
-          - mountPath: /zen5/zen-backup
-            name: zen5-backup-mount
+          - mountPath: /lsr/lsr-backup
+            name: lsr-backup-mount
           - name: scripts
-            mountPath: "/zen5"
+            mountPath: "/lsr"
         dnsPolicy: ClusterFirst
         restartPolicy: OnFailure
         schedulerName: default-scheduler
         securityContext:
           runAsNonRoot: true
-        serviceAccount: zen5-backup-sa
-        serviceAccountName: zen5-backup-sa
+        serviceAccount: lsr-backup-sa
+        serviceAccountName: lsr-backup-sa
         terminationGracePeriodSeconds: 30
         volumes:
-        - name: zen5-backup-mount
+        - name: lsr-backup-mount
           persistentVolumeClaim:
-            claimName: zen5-backup-pvc
+            claimName: lsr-backup-pvc
         - name: scripts
           configMap:
-            name: zen5-br-configmap
+            name: lsr-br-configmap
             defaultMode: 0777
