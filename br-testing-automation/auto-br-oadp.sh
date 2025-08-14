@@ -449,22 +449,25 @@ function validate_cs_odlm() {
 
 function restore_im() {
     info "Restoring IM Data..."
-    wait_for_im example-authentication $SERVICES_NS
+    wait_for_im $SERVICES_NS
     ${OC} apply -f ${BASE_DIR}/templates/restore/restore-cs-db.yaml
     wait_for_restore restore-cs-db-data
     success "IM data restored successfully."
 }
 
 function wait_for_im() {
-    info "Sleep for 3 minutes for IM operator to create authentication cr"
-    sleep 180
-    local auth_cr=$1
-    local namespace=$2
-    local condition="${OC} get authentications.operator.ibm.com ${auth_cr} -n ${namespace} -o jsonpath='{.status.service.status}' | egrep Ready"
+    info "Sleep for 5 minutes for IM operator to create authentication cr"
+    sleep 300
+    local namespace=$1
+    local name="platform-identity-provider"
+    local needReplicas=$(${OC} get deployment ${name} -n ${namespace} --no-headers --ignore-not-found -o jsonpath='{.spec.replicas}' | awk '{print $1}')
+    local readyReplicas="${OC} get deployment ${name} -n ${namespace} --no-headers --ignore-not-found -o jsonpath='{.status.readyReplicas}' | grep '${needReplicas}'"
+    local replicas="${OC} get deployment ${name} -n ${namespace} --no-headers --ignore-not-found -o jsonpath='{.status.replicas}' | grep '${needReplicas}'"
+    local condition="(${readyReplicas} && ${replicas})"
     local retries=30
     local sleep_time=30
     local total_time_mins=$(( sleep_time * retries / 60))
-    local wait_message="Waiting on IM Service to be online. Checking status of authentication CR ${auth_CR} in namespace ${namespace}."
+    local wait_message="Waiting on IM Service to be online. Checking status of deployment ${name} in namespace ${namespace}."
     local success_message="IM service ready in namespace ${namespace}."
     local error_message="Timeout after ${total_time_mins} minutes waiting for IM service in namespace ${namespace} to become available"
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
