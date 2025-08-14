@@ -46,6 +46,10 @@ function main() {
     if [[ $RESTORE == "true" ]]; then
         if [[ $TARGET_CLUSTER_TYPE == "diff" ]]; then
             login $RESTORE_CLU_SERVER $RESTORE_CLU_TOKEN
+            if [[ $BACKUP == "true" ]]; then
+                #it takes a few minutes for the backup to be present on the new cluster once completed
+                wait_for_backup
+            fi
         fi
         restore_cpfs
         if [[ $TARGET_CLUSTER_TYPE == "diff" ]]; then
@@ -813,6 +817,17 @@ spec:
 EOF
 
     success "OADP successfully installed and configured."
+}
+
+function wait_for_backup() {
+    local condition="${OC} get backup.velero.io -n $OADP_NS --no-headers --ignore-not-found | grep $BACKUP_NAME"
+    local retries=20
+    local sleep_time=30
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for backup $BACKUP_NAME to be available on Restore cluster."
+    local success_message="Backup $BACKUP_NAME accessible from Restore cluster."
+    local error_message="Timeout after ${total_time_mins} minutes waiting for backup $BACKUP_NAME to be accessible on Restore cluster."
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
 function login() {
