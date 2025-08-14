@@ -27,8 +27,28 @@ BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 function main() {
     parse_arguments "$@"
     prereq
+    if [[ $SETUP_BACKUP == "true" ]]; then
+        install_oadp
+    fi
+    if [[ $SETUP_RESTORE == "true" ]]; then
+        #TODO write login function
+        login restore
+        install_oadp
+        login backup
+    fi
+    if [[ $BACKUP == "true" ]]; then
+       backup_setup
+       create_backup
+       verify_backup_complete 
+    fi
     if [[ $RESTORE == "true" ]]; then
+        if [[ $TARGET_CLUSTER_TYPE == "diff" ]]; then
+            login restore
+        fi
         restore_cpfs
+        if [[ $TARGET_CLUSTER_TYPE == "diff" ]]; then
+            login backup
+        fi
     fi
 }
 
@@ -221,33 +241,40 @@ function restore_cpfs(){
     info "Copying template files..."
     cp -r ../velero/restore ${BASE_DIR}/templates/
 
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-namespace.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-entitlementkey.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-configmap.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-crd.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-commonservice.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-cert-manager.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/no-olm/restore-cluster-scope.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/no-olm/restore-namespace-scope.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/no-olm/restore-installer-ns-charts.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/no-olm/restore-im-ns-charts.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/no-olm/restore-zen-ns-chart.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/no-olm/restore-ibm-cm-chart.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-operands.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-cs-db.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-zen5-data.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-licensing.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-lsr.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-lsr-data.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-nss.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-operatorgroup.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-pull-secret.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-singleton-subscriptions.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-catalog.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-subscriptions.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-zen.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-ums.yaml
-    
+    for file in "${BASE_DIR}/templates/restore"/*; do
+        sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" $file
+        if [[ $OADP_NS != "velero" ]]; then
+            set_oadp_namespace $file
+        fi
+    done
+
+    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-namespace.yaml
+    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-entitlementkey.yaml
+    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-configmap.yaml
+    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-crd.yaml
+    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-commonservice.yaml
+    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-cert-manager.yaml
+    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/no-olm/restore-cluster-scope.yaml
+    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/no-olm/restore-namespace-scope.yaml
+    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/no-olm/restore-installer-ns-charts.yaml
+    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/no-olm/restore-im-ns-charts.yaml
+    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/no-olm/restore-zen-ns-chart.yaml
+    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/no-olm/restore-ibm-cm-chart.yaml
+    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-operands.yaml
+    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-cs-db.yaml
+    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-zen5-data.yaml
+    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-licensing.yaml
+    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-lsr.yaml
+    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-lsr-data.yaml
+    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-nss.yaml
+    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-operatorgroup.yaml
+    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-pull-secret.yaml
+    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-singleton-subscriptions.yaml
+    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-catalog.yaml
+    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-subscriptions.yaml
+    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-zen.yaml
+    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-ums.yaml
+
     custom_columns_str="-o custom-columns=NAME:.metadata.name,STATUS:.status.phase,ITEMS_RESTORED:.status.progress.itemsRestored,TOTAL_ITEMS:.status.progress.totalItems,BACKUP:.spec.backupName,WARN:.status.warnings,ERR:.status.errors"
     info "Begin restore process..."
     #Initial restore objects, rarely fail, could theoretically be applied at once   
@@ -539,6 +566,214 @@ function write_specific_env_vars_to_file() {
     done
     
     success "Successfully wrote $count environment variables to '$output_file'"
+}
+
+function set_oadp_namespace() {
+        local file=$1
+        ${YQ} eval ".metadata.namespace = \"$OADP_NS\"" -i $file
+}
+
+function backup_setup() {
+    title "Prepping CPFS instance with Operator NS $OPERATOR_NS for backup."
+    local namespaces="$OPERATOR_NS,$SERVICES_NS,$TETHERED_NS"
+    info "Labeling cert manager resources in namespaces: ${namespaces//,/ }"
+    ./../velero/backup/cert-manager/label-cert-manager.sh --namespaces $namespaces || error "Cert Manager resource labeling script did not complete successfully."
+    info "Labeling CPFS instance and Singleton resources..."
+    label_arg_str="--operator-ns $OPERATOR_NS"
+    deploy_arg_str=""
+    if [[ $SERVICES_NS != $OPERATOR_NS ]]; then
+        label_arg_str="$label_arg_str --services-ns $SERVICES_NS"
+        deploy_arg_str="--services-ns $SERVICES_NS"
+    else
+        deploy_arg_str="--operator-ns $OPERATOR_NS"
+    fi
+    if [[ $TETHERED_NS != "" ]]; then
+        label_arg_str="$label_arg_str --tethered-ns $TETHERED_NS"
+    fi
+    if [[ $ENABLE_CERT_MANAGER == "true" ]]; then
+        label_arg_str="$label_arg_str --cert-manager-ns $CERT_MANAGER_NAMESPACE"
+    fi
+    if [[ $ENABLE_LICENSING == "true" ]]; then
+        label_arg_str="$label_arg_str --licensing-ns $LICENSING_NAMESPACE"
+        info "Labeling licensing resources in namespace $LICENSING_NAMESPACE..."
+        ./../velero/backup/licensing/label-licensing-configmaps.sh $LICENSING_NAMESPACE || error "Licensing labeling script did not complete successfully."
+    fi
+    if [[ $ENABLE_LSR == "true" ]]; then
+        label_arg_str="$label_arg_str --lsr-ns $LSR_NAMESPACE"
+        deploy_arg_str="$deploy_arg_str --lsr-ns $LSR_NAMESPACE --lsr"
+    fi
+    if [[ $ENABLE_PRIVATE_CATALOG == "true" ]]; then
+        label_arg_str="$label_arg_str --enable-private-catalog"
+    fi
+    if [[ $ENABLE_DEFAULT_CS == "true" ]]; then
+        label_arg_str="$label_arg_str --enable-default-catalog-ns"
+    fi
+    if [[ $ADDITIONAL_SOURCES != "" ]]; then
+        label_arg_str="$label_arg_str --additional-catalog-sources $ADDITIONAL_SOURCES"
+    fi
+    if [[ $NO_OLM == "true" ]]; then
+        label_arg_str="$label_arg_str --no-olm"
+    fi
+    
+    info "Labeling script parameters: $label_arg_str"
+    ./../velero/backup/common-service/label-common-service.sh $label_arg_str || error "Script label-common-service.sh failed to complete."
+    if [[ $IM_ENABLED == "true" ]] || [[ $ZEN_ENABLED == "true" ]] || [[ $ENABLE_LSR == "true" ]]; then
+        if [[ $IM_ENABLED == "true" ]]; then
+            deploy_arg_str="$deploy_arg_str --im"
+        fi
+        if [[ $ZEN_ENABLED == "true" ]]; then
+            deploy_arg_str="$deploy_arg_str --zen"
+        fi
+        if [[ $STORAGE_CLASS != "" ]]; then
+            deploy_arg_str="$deploy_arg_str --storage-class $STORAGE_CLASS"
+        fi
+        info "Deploying necessary backup resources for tenant $OPERATOR_NS..."
+        info "Backup resource deployment script parameters: $deploy_arg_str"
+        ./../velero/schedule/deploy-br-resources.sh $deploy_arg_str || error "Script deploy-br-resources.sh failed to deploy BR resources."
+    fi
+
+    success "CPFS instance with operator namespace $OPERATOR_NS labeled for backup."
+}
+
+function create_backup() {
+    title "Starting backup..."
+    if [ -d "templates" ]; then
+        rm -rf templates
+    fi
+    mkdir templates
+    info "Copying backup template..."
+    cp ../velero/backup/backup.yaml ${BASE_DIR}/templates/
+
+    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/backup.yaml
+    sed -i -E "s/<storage location name>/$BACKUP_STORAGE_LOCATION_NAME/" ${BASE_DIR}/templates/backup.yaml
+
+    if [[ $OADP_NS != "velero" ]]; then
+        set_oadp_namespace ${BASE_DIR}/templates/backup.yaml
+    fi
+
+    ${OC} apply -f ${BASE_DIR}/templates/backup.yaml
+    info "Backup resource created, backup in progress"
+}
+
+function verify_backup_complete() {
+    title "Waiting for backup to complete..."
+    status=$(${OC} get backups.velero.io $BACKUP_NAME -n $OADP_NS -o jsonpath='{.status.phase}')
+    retries=30
+    sleep_time=20
+    while [[ $status != "Completed" ]] && [[ $retries -gt 0 ]]; do
+        info "Wait for backup $BACKUP_NAME to complete. Try again in $sleep_time seconds."
+        sleep $sleep_time
+        status=$(${OC} get backups.velero.io $BACKUP_NAME -n $OADP_NS -o jsonpath='{.status.phase}')
+        retries=$((retries-1))
+        if [[ $status == "Failed" ]] || [[ $status == "PartiallyFailed" ]] || [[ $status == "FailedValidation" ]]; then
+            ${OC} get backups.velero.io $BACKUP_NAME -n $OADP_NS $custom_columns_str
+            error "Backup $BACKUP_NAME failed with status: $status. For more details, run \"velero backup describe --details $BACKUP_NAME\"."
+        fi
+    done
+    if [[ $status == "Completed" ]]; then
+        success "Backup $BACKUP_NAME completed successfully. For more details, run \"velero backup describe --details $BACKUP_NAME\"."
+    else
+        error "Timed out waiting for backup $BACKUP_NAME to complete successfully. For more details, run  \"velero backup describe --details $BACKUP_NAME\"."
+    fi
+}
+
+function install_oadp(){
+    title "Installing and configuring OADP/Velero..."
+    
+    #check for ns and operator group to already exist
+    if ${OC} get ns "$OADP_NS" >/dev/null 2>&1; then
+        info "Namespace $OADP_NS exists, continuing..."
+    else
+        info "Namespace $OADP_NS does not exist, creating..."
+        ${OC} create namespace $OADP_NS
+    fi
+    
+    opgroup_exists=$(${OC} get operatorgroup -n $OADP_NS --ignore-not-found --no-headers)
+    if [[ -z $opgroup_exists ]]; then
+        info "No operatorgroup found, creating..."
+        cat << EOF | ${OC} apply -n $OADP_NS -f -
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  annotations:
+    olm.providedAPIs: Backup.v1.velero.io,BackupRepository.v1.velero.io,BackupStorageLocation.v1.velero.io,CloudStorage.v1alpha1.oadp.openshift.io,DataDownload.v2alpha1.velero.io,DataProtectionApplication.v1alpha1.oadp.openshift.io,DataUpload.v2alpha1.velero.io,DeleteBackupRequest.v1.velero.io,DownloadRequest.v1.velero.io,PodVolumeBackup.v1.velero.io,PodVolumeRestore.v1.velero.io,Restore.v1.velero.io,Schedule.v1.velero.io,ServerStatusRequest.v1.velero.io,VolumeSnapshotLocation.v1.velero.io
+  name: $OADP_NS-operatorgroup
+spec:
+  targetNamespaces:
+  - $OADP_NS
+  upgradeStrategy: Default
+EOF
+    fi
+
+    info "Creating operator subscription..."
+    #create sub
+    cat << EOF | ${OC} apply -n $OADP_NS -f -
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  labels:
+    operators.coreos.com/redhat-oadp-operator.velero: ""
+  name: redhat-oadp-operator
+spec:
+  installPlanApproval: Automatic
+  name: redhat-oadp-operator
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+EOF
+
+    wait_for_operator $OADP_NS oadp-operator
+    
+    #create secret for oadp resources
+    info "Preparing storage location credentials file..."
+    rm -f credentials-velero
+    echo "[default]" >>credentials-velero
+    echo "aws_access_key_id="$STORAGE_SECRET_ACCESS_KEY_ID >>credentials-velero
+    echo "aws_secret_access_key="$STORAGE_SECRET_ACCESS_KEY >>credentials-velero
+    info "Creating secret for OADP/Velero..."
+    ${OC} create secret generic cloud-credentials -n $OADP_NS --from-file cloud=credentials-velero
+    
+    #create backup storage location
+    cat << EOF | ${OC} apply -f -
+apiVersion: oadp.openshift.io/v1alpha1
+kind: DataProtectionApplication
+metadata:
+  name: $DPA_NAME
+  namespace: $OADP_NS
+spec:
+  backupLocations:
+    - velero:
+        config:
+          profile: default
+          region: $BUCKET_REGION
+          s3ForcePathStyle: 'true'
+          s3Url: '$S3_URL'
+        credential:
+          key: cloud
+          name: cloud-credentials
+        default: true
+        objectStorage:
+          bucket: $STORAGE_BUCKET_NAME
+          prefix: tmp/
+        provider: aws
+  configuration:
+    nodeAgent:
+      enable: true
+      uploaderType: kopia
+    velero:
+      defaultPlugins:
+        - openshift
+        - aws
+      podConfig:
+        resourceAllocations:
+          limits:
+            cpu: '1'
+            memory: 1Gi
+          requests:
+            cpu: 500m
+            memory: 512Mi
+EOF
+
+    success "OADP successfully installed and configured."
 }
 
 
