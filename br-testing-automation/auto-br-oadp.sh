@@ -248,9 +248,9 @@ function check_cluster_credentials() {
                 error "If interacting with a different cluster (either restore or setup), all of BACKUP_CLU_SERVER, BACKUP_CLU_TOKEN, RESTORE_CLU_SERVER, and RESTORE_CLU_TOKEN must be defined either in the parameters file or as an env variable." 
             else
                 info "Different cluster selected. Validating login credentials work..."
-                ${OC} login --token=$RESTORE_CLU_TOKEN--server=$RESTORE_CLU_SERVER --insecure-skip-tls-verify=true
+                ${OC} login --token=$RESTORE_CLU_TOKEN --server=$RESTORE_CLU_SERVER --insecure-skip-tls-verify=true
                 info "Logging back into home cluster..."
-                ${OC} login --token=$BACKUP_CLU_TOKEN--server=$BACKUP_CLU_SERVER --insecure-skip-tls-verify=true
+                ${OC} login --token=$BACKUP_CLU_TOKEN --server=$BACKUP_CLU_SERVER --insecure-skip-tls-verify=true
             fi
         fi
         success "Backup and Restore cluster login credentials verified."
