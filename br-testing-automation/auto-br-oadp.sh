@@ -28,13 +28,15 @@ function main() {
     parse_arguments "$@"
     prereq
     if [[ $SETUP_BACKUP == "true" ]]; then
-        install_oadp
+        #checks for an existing oadp on the cluster then installs if cannot find one
+        check_for_oadp
     fi
-    if [[ $SETUP_RESTORE == "true" ]]; then
-        #TODO write login function
-        login restore
-        install_oadp
-        login backup
+    if [[ $SETUP_RESTORE == "true" ]] && [[ $TARGET_CLUSTER_TYPE == "diff" ]]; then
+        login $RESTORE_CLU_SERVER $RESTORE_CLU_TOKEN
+        check_for_oadp
+        login $BACKUP_CLU_SERVER $BACKUP_CLU_TOKEN
+    else
+        check_for_oadp
     fi
     if [[ $BACKUP == "true" ]]; then
        backup_setup
@@ -43,11 +45,11 @@ function main() {
     fi
     if [[ $RESTORE == "true" ]]; then
         if [[ $TARGET_CLUSTER_TYPE == "diff" ]]; then
-            login restore
+            login $RESTORE_CLU_SERVER $RESTORE_CLU_TOKEN
         fi
         restore_cpfs
         if [[ $TARGET_CLUSTER_TYPE == "diff" ]]; then
-            login backup
+            login $BACKUP_CLU_SERVER $BACKUP_CLU_TOKEN
         fi
     fi
 }
@@ -137,6 +139,11 @@ function prereq() {
     else
         success "oc command logged in as ${user}"
     fi
+    
+    #this value always needs to be present so always going to check it
+    if [[ $OADP_NS == "" ]]; then
+        error "OADP_NS name not specified. Make sure it is either set in the parameters file or as an env variable."
+    fi
 
     #check variables are present
     # check backup/restore name
@@ -148,9 +155,8 @@ function prereq() {
         if [[ $BACKUP_NAME == "" ]]; then
             error "An existing backup's name must be specified with --backup-name if Restore is enabled."
         fi
-        #TODO add checks for namespace values
         if [[ $OPERATOR_NS == "" ]]; then
-            error "OPERATOR_NS value not set. Make sure it is either set in the env-oadp.properties file or as an env variable."
+            error "OPERATOR_NS value not set. Make sure it is either set in the parameters file or as an env variable."
         elif [[ $SERVICES_NS == "" ]]; then
             warning "SERVICES_NS value not set. Setting value equal to OPERATOR_NS value $OPERATOR_NS."
             SERVICES_NS=$OPERATOR_NS
@@ -183,25 +189,44 @@ function prereq() {
         #if zen enabled, verify zen namespace and zenservice name are both present
         if [[ $ZEN_ENABLED == "true" ]]; then
             if [[ $ZEN_NAMESPACE == "" ]]; then
-                error "ZEN_NAMESPACE value not set. Make sure it is either set in the env-oadp.properties file or as an env variable."
+                error "ZEN_NAMESPACE value not set. Make sure it is either set in the parameters file or as an env variable."
             fi
             if [[ $ZENSERVICE_NAME == "" ]]; then
-                error "ZENSERVICE_NAME value not set. Make sure it is either set in the env-oadp.properties file or as an env variable."
+                error "ZENSERVICE_NAME value not set. Make sure it is either set in the parameters file or as an env variable."
             fi
         fi
 
-        check_cluster_credentials
     else
         error "Neither Backup nor Restore options were specified."
     fi
     
     #OADP setup checks
-    # TODO check if OADP br service is installed on cluster
-    # TODO check OADP related variables
-    # if [[ $BACKUP_STORAGE_LOCATION_NAME == "" ]]; then
-    #     error "Backup Storage Location name not specified in env-oadp.properties."
-    # fi
-    #also need secret key and id and any other values necessary for creating dataprotectionapplication
+    if [[ $BACKUP_SETUP == "true" ]] || [[ $RESTORE_SETUP == "true" ]]; then
+        if [[ $BACKUP_STORAGE_LOCATION_NAME == "" ]]; then
+            error "Backup Storage Location name not specified. It should be in the format \"<DPA_NAME>-1\". Make sure it is either set in the parameters file or as an env variable."
+        fi
+        if [[ $DPA_NAME == "" ]]; then
+            error "DPA_NAME (dataprotectionapplication name) not specified. Make sure it is either set in the parameters file or as an env variable."
+        fi
+        if [[ $BUCKET_REGION == "" ]]; then
+            error "BUCKET_REGION not specified. Make sure it is either set in the parameters file or as an env variable."
+        fi
+        if [[ $STORAGE_BUCKET_NAME == "" ]]; then
+            error "STORAGE_BUCKET_NAME not specified. Make sure it is either set in the parameters file or as an env variable."
+        fi
+        if [[ $S3_URL == "" ]]; then
+            error "S3_URL not specified. Make sure it is either set in the parameters file or as an env variable."
+        fi
+        if [[ $STORAGE_SECRET_ACCESS_KEY == "" ]]; then
+            error "STORAGE_SECRET_ACCESS_KEY not specified. Make sure it is either set in the parameters file or as an env variable."
+        fi
+        if [[ $S3_URL == "" ]]; then
+            error "STORAGE_SECRET_ACCESS_KEY_ID not specified. Make sure it is either set in the parameters file or as an env variable."
+        fi
+    fi
+
+    #check that Server and Token info parameters are filled in target cluster type is diff
+    check_cluster_credentials
     
     #write env variables to output file
     if [[ $WRITE == "true" ]]; then
@@ -216,11 +241,11 @@ function prereq() {
 # test by logging in to the other cluster and then logging back into the base cluster
 function check_cluster_credentials() {
     if [[ $TARGET_CLUSTER_TYPE == "" ]]; then
-        error "TARGET_CLUSTER_TYPE value not set. Make sure it is either set in the env-oadp.properties file or as an env variable."
+        error "TARGET_CLUSTER_TYPE value not set. Make sure it is either set in the parameters file or as an env variable."
     else
         if [[ $TARGET_CLUSTER_TYPE == "diff" ]]; then
             if [[ $BACKUP_CLU_SERVER == "" ]] || [[ $BACKUP_CLU_TOKEN == "" ]] || [[ $RESTORE_CLU_SERVER == "" ]] || [[ $RESTORE_CLU_TOKEN == "" ]]; then
-                error "If interacting with a different cluster (either restore or setup), all of BACKUP_CLU_SERVER, BACKUP_CLU_TOKEN, RESTORE_CLU_SERVER, and RESTORE_CLU_TOKEN must be defined either in the env-oadp.properties file or as environment variables." 
+                error "If interacting with a different cluster (either restore or setup), all of BACKUP_CLU_SERVER, BACKUP_CLU_TOKEN, RESTORE_CLU_SERVER, and RESTORE_CLU_TOKEN must be defined either in the parameters file or as an env variable." 
             else
                 info "Different cluster selected. Validating login credentials work..."
                 ${OC} login --token=$RESTORE_CLU_TOKEN--server=$RESTORE_CLU_SERVER --insecure-skip-tls-verify=true
@@ -677,6 +702,17 @@ function verify_backup_complete() {
     fi
 }
 
+function check_for_oadp() {
+    info "checking cluster for existing OADP install..."
+    oadp_exists=$(${OC} get csv -A | grep oadp-operator)
+    if [[ $oadp_exists == "" ]]; then
+        info "No OADP found on cluster, continuing with install..."
+        install_oadp
+    else
+        info "OADP already installed on cluster, skipping setup."
+    fi
+}
+
 function install_oadp(){
     title "Installing and configuring OADP/Velero..."
     
@@ -774,6 +810,14 @@ spec:
 EOF
 
     success "OADP successfully installed and configured."
+}
+
+function login() {
+    server=$1
+    token=$2
+    title "Logging in to server $server"
+    #oc login to spoke cluster
+    ${OC} login --token=$token --server=$server --insecure-skip-tls-verify=true
 }
 
 
