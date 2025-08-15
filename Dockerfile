@@ -24,14 +24,12 @@ RUN CGO_ENABLED=0 GOOS=linux GO111MODULE=on go build -a -o manager cmd/main.go
 FROM docker-na-public.artifactory.swg-devops.com/hyc-cloud-private-edge-docker-local/build-images/ubi9-minimal:latest
 
 ARG VCS_REF
-ARG VCS_URL
 ARG RELEASE_VERSION
 
 LABEL org.label-schema.vendor="IBM" \
   org.label-schema.name="ibm common service operator" \
   org.label-schema.description="Deploy ODLM and IBM Common Services" \
   org.label-schema.vcs-ref=$VCS_REF \
-  org.label-schema.vcs-url=$VCS_URL \
   org.label-schema.license="Licensed Materials - Property of IBM" \
   org.label-schema.schema-version="1.0" \
   name="common-service-operator" \
