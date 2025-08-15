@@ -157,7 +157,8 @@ function prereq() {
         if [[ $BACKUP_NAME == "" ]]; then
             error "Backup name is necessary if Backup is enabled"
         fi
-    elif [[ $RESTORE == "true" ]]; then
+    fi
+    if [[ $RESTORE == "true" ]]; then
         if [[ $BACKUP_NAME == "" ]]; then
             error "An existing backup's name must be specified with --backup-name if Restore is enabled."
         fi
@@ -171,9 +172,7 @@ function prereq() {
         # check if any singleton is enabled individually and then check namespace values for each one
         #if any singleton enabled, trigger singleton enabled var
         if [[ $ENABLE_CERT_MANAGER == "true" ]]; then
-            echo "reach"
             RESTORE_SINGLETONS="true"
-            echo "restore sin: $RESTORE_SINGLETONS"
             if [[ $CERT_MANAGER_NAMESPACE == "" ]]; then
                 warning "Cert manager namespace not specified, setting to default ibm-cert-manager"
                 CERT_MANAGER_NAMESPACE="ibm-cert-manager"
@@ -240,8 +239,6 @@ function prereq() {
     if [[ $WRITE == "true" ]]; then
         write_specific_env_vars_to_file $OUTPUT_FILE "OC YQ OPERATOR_NS SERVICES_NS TETHERED_NS BACKUP RESTORE SETUP OADP_INSTALL OADP_RESOURCE_CREATION OADP_NS BACKUP_STORAGE_LOCATION_NAMESTORAGE_BUCKET_NAME S3_URL STORAGE_SECRET_ACCESS_KEY STORAGE_SECRET_ACCESS_KEY_ID IM_ENABLED ZEN_ENABLED NSS_ENABLED UMS_ENABLED CERT_MANAGER_NAMESPACE LICENSING_NAMESPACE LSR_NAMESPACE CPFS_VERSION ZENSERVICE_NAME ZEN_NAMESPACE ENABLE_CERT_MANAGER ENABLE_LICENSING ENABLE_LSR ENABLE_PRIVATE_CATALOG ENABLE_DEFAULT_CS ADDITIONAL_SOURCES CONTROL_NS BACKUP_CLU_SERVER BACKUP_CLU_TOKEN RESTORE_CLU_SERVER RESTORE_CLU_TOKEN TARGET_CLUSTER_TYPE BACKUP_NAME"
     fi
-    echo "Restore singletons: $RESTORE_SINGLETONS"
-    echo "ENABLE_CERT_MANAGER: $ENABLE_CERT_MANAGER"
 }
 
 
@@ -334,7 +331,6 @@ function restore_cpfs(){
     wait_for_restore restore-configmap
     
     #Singleton subscriptions (Cert manager, licensing, LSR)
-    echo "Restore singletons: $RESTORE_SINGLETONS"
     if [[ $RESTORE_SINGLETONS == "true" ]]; then
         #we restore licensing before subs because the configmaps need to be there before licensing starts up
         if [[ $ENABLE_LICENSING == "true" ]]; then
