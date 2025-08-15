@@ -171,7 +171,9 @@ function prereq() {
         # check if any singleton is enabled individually and then check namespace values for each one
         #if any singleton enabled, trigger singleton enabled var
         if [[ $ENABLE_CERT_MANAGER == "true" ]]; then
+            echo "reach"
             RESTORE_SINGLETONS="true"
+            echo "restore sin: $RESTORE_SINGLETONS"
             if [[ $CERT_MANAGER_NAMESPACE == "" ]]; then
                 warning "Cert manager namespace not specified, setting to default ibm-cert-manager"
                 CERT_MANAGER_NAMESPACE="ibm-cert-manager"
