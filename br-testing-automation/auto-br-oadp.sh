@@ -20,6 +20,7 @@ set -o errtrace
 
 OUTPUT_FILE="env-oadp.properties"
 WRITE="false"
+RESTORE_SINGLETONS="false"
 
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 . ../cp3pt0-deployment/common/utils.sh
@@ -47,6 +48,7 @@ function main() {
         if [[ $TARGET_CLUSTER_TYPE == "diff" ]]; then
             login $RESTORE_CLU_SERVER $RESTORE_CLU_TOKEN
             if [[ $BACKUP == "true" ]]; then
+                #in full e2e BR scenarios where we are restoring to a different cluster
                 #it takes a few minutes for the backup to be present on the new cluster once completed
                 wait_for_backup
             fi
@@ -236,6 +238,7 @@ function prereq() {
     if [[ $WRITE == "true" ]]; then
         write_specific_env_vars_to_file $OUTPUT_FILE "OC YQ OPERATOR_NS SERVICES_NS TETHERED_NS BACKUP RESTORE SETUP OADP_INSTALL OADP_RESOURCE_CREATION OADP_NS BACKUP_STORAGE_LOCATION_NAMESTORAGE_BUCKET_NAME S3_URL STORAGE_SECRET_ACCESS_KEY STORAGE_SECRET_ACCESS_KEY_ID IM_ENABLED ZEN_ENABLED NSS_ENABLED UMS_ENABLED CERT_MANAGER_NAMESPACE LICENSING_NAMESPACE LSR_NAMESPACE CPFS_VERSION ZENSERVICE_NAME ZEN_NAMESPACE ENABLE_CERT_MANAGER ENABLE_LICENSING ENABLE_LSR ENABLE_PRIVATE_CATALOG ENABLE_DEFAULT_CS ADDITIONAL_SOURCES CONTROL_NS BACKUP_CLU_SERVER BACKUP_CLU_TOKEN RESTORE_CLU_SERVER RESTORE_CLU_TOKEN TARGET_CLUSTER_TYPE BACKUP_NAME"
     fi
+    echo "Restore singletons: $RESTORE_SINGLETONS"
 }
 
 
@@ -328,6 +331,7 @@ function restore_cpfs(){
     wait_for_restore restore-configmap
     
     #Singleton subscriptions (Cert manager, licensing, LSR)
+    echo "Restore singletons: $RESTORE_SINGLETONS"
     if [[ $RESTORE_SINGLETONS == "true" ]]; then
         #we restore licensing before subs because the configmaps need to be there before licensing starts up
         if [[ $ENABLE_LICENSING == "true" ]]; then
