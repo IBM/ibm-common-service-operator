@@ -32,7 +32,6 @@ CSV_PATH=bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
 # environment variables before build the repo.
 BUILD_LOCALLY ?= 1
 
-VCS_URL ?= https://github.com/IBM/ibm-common-service-operator
 VCS_REF ?= $(shell git rev-parse HEAD)
 VERSION ?= $(shell git describe --exact-match 2> /dev/null || \
                 git describe --match=$(git rev-parse --short=8 HEAD) --always --dirty --abbrev=8)
@@ -188,7 +187,7 @@ deploy: manifests ## Deploy controller in the configured Kubernetes cluster in ~
 build-dev-image: cloudpak-theme.jar
 	@echo "Building the $(OPERATOR_IMAGE_NAME) docker dev image for $(LOCAL_ARCH)..."
 	@docker build -t $(REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):dev \
-	--build-arg VCS_REF=$(VCS_REF) --build-arg VCS_URL=$(VCS_URL) --build-arg RELEASE_VERSION=$(RELEASE_VERSION) \
+	--build-arg VCS_REF=$(VCS_REF) --build-arg RELEASE_VERSION=$(RELEASE_VERSION) \
 	--build-arg GOARCH=$(LOCAL_ARCH) -f Dockerfile .
 	@docker push $(REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):dev
 
@@ -295,7 +294,7 @@ e2e-test: ## Run e2e test
 build-operator-image: $(CONFIG_DOCKER_TARGET) cloudpak-theme.jar ## Build the operator image.
 	@echo "Building the $(OPERATOR_IMAGE_NAME) docker image for $(LOCAL_ARCH)..."
 	@docker build -t $(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(VERSION) \
-	--build-arg VCS_REF=$(VCS_REF) --build-arg VCS_URL=$(VCS_URL) --build-arg RELEASE_VERSION=$(RELEASE_VERSION) \
+	--build-arg VCS_REF=$(VCS_REF) --build-arg RELEASE_VERSION=$(RELEASE_VERSION) \
 	--build-arg GOARCH=$(LOCAL_ARCH) -f Dockerfile .
 
 ##@ Release
