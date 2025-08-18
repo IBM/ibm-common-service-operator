@@ -388,7 +388,7 @@ function restore_cpfs(){
     info "Restoring operands..."
     ${OC} apply -f ${BASE_DIR}/templates/restore/restore-operands.yaml
     wait_for_restore restore-operands
-    
+    #TODO may need a check for UM to be ready after restore as it takes longer
     if [[ $IM_ENABLED == "true" ]]; then
         restore_im
     fi
@@ -665,6 +665,15 @@ function backup_setup() {
         info "Deploying necessary backup resources for tenant $OPERATOR_NS..."
         info "Backup resource deployment script parameters: $deploy_arg_str"
         ./../velero/schedule/deploy-br-resources.sh $deploy_arg_str || error "Script deploy-br-resources.sh failed to deploy BR resources."
+        if [[ $IM_ENABLED == "true" ]]; then
+            wait_for_br_resources "cs-db-backup" $SERVICES_NS
+        fi
+        if [[ $ZEN_ENABLED == "true" ]]; then
+            wait_for_br_resources "zen5-backup" $ZEN_NAMESPACE
+        fi
+        if [[ $ENABLE_LSR =="true" ]]; then
+            wait_for_br_resources "lsr-backup" $LSR_NAMESPACE
+        fi
     fi
 
     success "CPFS instance with operator namespace $OPERATOR_NS labeled for backup."
@@ -830,6 +839,22 @@ function wait_for_backup() {
     local wait_message="Waiting for backup $BACKUP_NAME to be available on Restore cluster."
     local success_message="Backup $BACKUP_NAME accessible from Restore cluster."
     local error_message="Timeout after ${total_time_mins} minutes waiting for backup $BACKUP_NAME to be accessible on Restore cluster."
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
+function wait_for_br_resources() {
+    local name=$1
+    local namespace=$2
+    local needReplicas=$(${OC} get deployment ${name} -n ${namespace} --no-headers --ignore-not-found -o jsonpath='{.spec.replicas}' | awk '{print $1}')
+    local readyReplicas="${OC} get deployment ${name} -n ${namespace} --no-headers --ignore-not-found -o jsonpath='{.status.readyReplicas}' | grep '${needReplicas}'"
+    local replicas="${OC} get deployment ${name} -n ${namespace} --no-headers --ignore-not-found -o jsonpath='{.status.replicas}' | grep '${needReplicas}'"
+    local condition="(${readyReplicas} && ${replicas})"
+    local retries=30
+    local sleep_time=30
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting on backup resources to come online. Checking status of deployment ${name} in namespace ${namespace}."
+    local success_message="Backup resource $name ready in namespace ${namespace}."
+    local error_message="Timeout after ${total_time_mins} minutes waiting for backup resource $name in namespace ${namespace} to become available"
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
