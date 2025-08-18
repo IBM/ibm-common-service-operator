@@ -467,17 +467,7 @@ function wait_for_im() {
     sleep 300
     local namespace=$1
     local name="platform-identity-provider"
-    local needReplicas=$(${OC} get deployment ${name} -n ${namespace} --no-headers --ignore-not-found -o jsonpath='{.spec.replicas}' | awk '{print $1}')
-    local readyReplicas="${OC} get deployment ${name} -n ${namespace} --no-headers --ignore-not-found -o jsonpath='{.status.readyReplicas}' | grep '${needReplicas}'"
-    local replicas="${OC} get deployment ${name} -n ${namespace} --no-headers --ignore-not-found -o jsonpath='{.status.replicas}' | grep '${needReplicas}'"
-    local condition="(${readyReplicas} && ${replicas})"
-    local retries=30
-    local sleep_time=30
-    local total_time_mins=$(( sleep_time * retries / 60))
-    local wait_message="Waiting on IM Service to be online. Checking status of deployment ${name} in namespace ${namespace}."
-    local success_message="IM service ready in namespace ${namespace}."
-    local error_message="Timeout after ${total_time_mins} minutes waiting for IM service in namespace ${namespace} to become available"
-    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+    wait_for_deploy $name $namespace
 }
 
 function restore_zen() {
@@ -567,17 +557,7 @@ function wait_for_cert_manager() {
     local cm_namespace=$1
     local name="cert-manager-webhook"
     local test_namespace=$2
-    local needReplicas=$(${OC} get deployment ${name} -n ${cm_namespace} --no-headers --ignore-not-found -o jsonpath='{.spec.replicas}' | awk '{print $1}')
-    local readyReplicas="${OC} get deployment ${name} -n ${cm_namespace} --no-headers --ignore-not-found -o jsonpath='{.status.readyReplicas}' | grep '${needReplicas}'"
-    local replicas="${OC} get deployment ${name} -n ${cm_namespace} --no-headers --ignore-not-found -o jsonpath='{.status.replicas}' | grep '${needReplicas}'"
-    local condition="(${readyReplicas} && ${replicas})"
-    local retries=20
-    local sleep_time=30
-    local total_time_mins=$(( sleep_time * retries / 60))
-    local wait_message="Waiting for cert manager webhook pod to come ready"
-    local success_message="Cert Manager operator in namespace $cm_namespace ready."
-    local error_message="Timeout after ${total_time_mins} minutes waiting for cert manager webhook pod."
-    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+    wait_for_deploy $name $cm_namespace
     #from utils.sh, checks if cert manager exists and then runs smoke test
     check_cert_manager cert-manager $test_namespace
 }
@@ -666,13 +646,13 @@ function backup_setup() {
         info "Backup resource deployment script parameters: $deploy_arg_str"
         ./../velero/schedule/deploy-br-resources.sh $deploy_arg_str || error "Script deploy-br-resources.sh failed to deploy BR resources."
         if [[ $IM_ENABLED == "true" ]]; then
-            wait_for_br_resources "cs-db-backup" $SERVICES_NS
+            wait_for_deploy "cs-db-backup" $SERVICES_NS
         fi
         if [[ $ZEN_ENABLED == "true" ]]; then
-            wait_for_br_resources "zen5-backup" $ZEN_NAMESPACE
+            wait_for_deploy "zen5-backup" $ZEN_NAMESPACE
         fi
         if [[ $ENABLE_LSR =="true" ]]; then
-            wait_for_br_resources "lsr-backup" $LSR_NAMESPACE
+            wait_for_deploy "lsr-backup" $LSR_NAMESPACE
         fi
     fi
 
@@ -842,7 +822,7 @@ function wait_for_backup() {
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
-function wait_for_br_resources() {
+function wait_for_deploy() {
     local name=$1
     local namespace=$2
     local needReplicas=$(${OC} get deployment ${name} -n ${namespace} --no-headers --ignore-not-found -o jsonpath='{.spec.replicas}' | awk '{print $1}')
@@ -852,9 +832,9 @@ function wait_for_br_resources() {
     local retries=30
     local sleep_time=30
     local total_time_mins=$(( sleep_time * retries / 60))
-    local wait_message="Waiting on backup resources to come online. Checking status of deployment ${name} in namespace ${namespace}."
-    local success_message="Backup resource $name ready in namespace ${namespace}."
-    local error_message="Timeout after ${total_time_mins} minutes waiting for backup resource $name in namespace ${namespace} to become available"
+    local wait_message="Waiting on deployment $name to come online in namespace ${namespace}."
+    local success_message="Deployment $name ready in namespace ${namespace}."
+    local error_message="Timeout after ${total_time_mins} minutes waiting for deployment $name in namespace ${namespace} to become ready."
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
