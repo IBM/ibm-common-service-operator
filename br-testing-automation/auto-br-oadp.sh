@@ -324,6 +324,7 @@ function restore_cpfs(){
 
         if [[ $ENABLE_LSR == "true" ]]; then
             info "Restoring License Service Reporter data..."
+            wait_for_deployment $LSR_NAMESPACE "ibm-license-service-reporter-instance"
             ${OC} apply -f ${BASE_DIR}/templates/restore/restore-lsr-data.yaml
             wait_for_restore restore-lsr-data
         fi
@@ -431,7 +432,7 @@ function restore_im() {
     info "Restoring IM Data..."
     wait_for_im $SERVICES_NS
     if [[ $MCSP_ENABLED == "true" ]]; then
-        wait_for_deploy "account-iam-ui-account-deployment" $SERVICES_NS
+        wait_for_deployment $SERVICES_NS "account-iam-ui-account-deployment" 
     fi
     ${OC} apply -f ${BASE_DIR}/templates/restore/restore-cs-db.yaml
     wait_for_restore restore-cs-db-data
@@ -443,7 +444,7 @@ function wait_for_im() {
     sleep 300
     local namespace=$1
     local name="platform-identity-provider"
-    wait_for_deploy $name $namespace
+    wait_for_deployment $name $namespace
 }
 
 function restore_zen() {
@@ -533,7 +534,7 @@ function wait_for_cert_manager() {
     local cm_namespace=$1
     local name="cert-manager-webhook"
     local test_namespace=$2
-    wait_for_deploy $name $cm_namespace
+    wait_for_deployment $cm_namespace $name 
     #from utils.sh, checks if cert manager exists and then runs smoke test
     check_cert_manager cert-manager $test_namespace
 }
@@ -622,13 +623,13 @@ function backup_setup() {
         info "Backup resource deployment script parameters: $deploy_arg_str"
         ./../velero/schedule/deploy-br-resources.sh $deploy_arg_str || error "Script deploy-br-resources.sh failed to deploy BR resources."
         if [[ $IM_ENABLED == "true" ]]; then
-            wait_for_deploy "cs-db-backup" $SERVICES_NS
+            wait_for_deployment $SERVICES_NS "cs-db-backup" 
         fi
         if [[ $ZEN_ENABLED == "true" ]]; then
-            wait_for_deploy "zen5-backup" $ZEN_NAMESPACE
+            wait_for_deployment $ZEN_NAMESPACE "zen5-backup" 
         fi
         if [[ $ENABLE_LSR == "true" ]]; then
-            wait_for_deploy "lsr-backup" $LSR_NAMESPACE
+            wait_for_deployment $LSR_NAMESPACE "lsr-backup" 
         fi
     fi
 
@@ -807,22 +808,6 @@ function wait_for_backup() {
     local wait_message="Waiting for backup $BACKUP_NAME to be available on Restore cluster."
     local success_message="Backup $BACKUP_NAME accessible from Restore cluster."
     local error_message="Timeout after ${total_time_mins} minutes waiting for backup $BACKUP_NAME to be accessible on Restore cluster."
-    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
-}
-
-function wait_for_deploy() {
-    local name=$1
-    local namespace=$2
-    local needReplicas=$(${OC} get deployment ${name} -n ${namespace} --no-headers --ignore-not-found -o jsonpath='{.spec.replicas}' | awk '{print $1}')
-    local readyReplicas="${OC} get deployment ${name} -n ${namespace} --no-headers --ignore-not-found -o jsonpath='{.status.readyReplicas}' | grep '${needReplicas}'"
-    local replicas="${OC} get deployment ${name} -n ${namespace} --no-headers --ignore-not-found -o jsonpath='{.status.replicas}' | grep '${needReplicas}'"
-    local condition="(${readyReplicas} && ${replicas})"
-    local retries=30
-    local sleep_time=30
-    local total_time_mins=$(( sleep_time * retries / 60))
-    local wait_message="Waiting on deployment $name to come online in namespace ${namespace}."
-    local success_message="Deployment $name ready in namespace ${namespace}."
-    local error_message="Timeout after ${total_time_mins} minutes waiting for deployment $name in namespace ${namespace} to become ready."
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
