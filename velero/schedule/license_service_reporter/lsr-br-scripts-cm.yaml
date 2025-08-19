@@ -68,6 +68,7 @@ data:
 
     function wait_for_ls_reporter() {
         CNPG_PRIMARY_POD=$1
+        echo $CNPG_PRIMARY_POD
         ready=$(oc get pod $CNPG_PRIMARY_POD -n $LSR_NAMESPACE -o jsonpath="{.status.conditions[?(@.type=='ContainersReady')].status}")
         if [[ $ready != "True" ]]; then
             retry_count=60
