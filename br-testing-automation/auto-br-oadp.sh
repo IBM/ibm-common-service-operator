@@ -388,7 +388,7 @@ function restore_cpfs(){
     info "Restoring operands..."
     ${OC} apply -f ${BASE_DIR}/templates/restore/restore-operands.yaml
     wait_for_restore restore-operands
-    #TODO may need a check for UM to be ready after restore as it takes longer
+
     if [[ $IM_ENABLED == "true" ]]; then
         restore_im
     fi
@@ -457,6 +457,9 @@ function validate_cs_odlm() {
 function restore_im() {
     info "Restoring IM Data..."
     wait_for_im $SERVICES_NS
+    if [[ $MCSP_ENABLED == "true" ]]; then
+        wait_for_deploy "account-iam-ui-account-deployment" $SERVICES_NS
+    fi
     ${OC} apply -f ${BASE_DIR}/templates/restore/restore-cs-db.yaml
     wait_for_restore restore-cs-db-data
     success "IM data restored successfully."
