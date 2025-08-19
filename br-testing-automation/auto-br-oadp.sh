@@ -280,33 +280,6 @@ function restore_cpfs(){
         fi
     done
 
-    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-namespace.yaml
-    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-entitlementkey.yaml
-    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-configmap.yaml
-    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-crd.yaml
-    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-commonservice.yaml
-    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-cert-manager.yaml
-    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/no-olm/restore-cluster-scope.yaml
-    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/no-olm/restore-namespace-scope.yaml
-    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/no-olm/restore-installer-ns-charts.yaml
-    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/no-olm/restore-im-ns-charts.yaml
-    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/no-olm/restore-zen-ns-chart.yaml
-    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/no-olm/restore-ibm-cm-chart.yaml
-    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-operands.yaml
-    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-cs-db.yaml
-    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-zen5-data.yaml
-    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-licensing.yaml
-    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-lsr.yaml
-    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-lsr-data.yaml
-    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-nss.yaml
-    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-operatorgroup.yaml
-    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-pull-secret.yaml
-    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-singleton-subscriptions.yaml
-    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-catalog.yaml
-    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-subscriptions.yaml
-    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-zen.yaml
-    # sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-ums.yaml
-
     custom_columns_str="-o custom-columns=NAME:.metadata.name,STATUS:.status.phase,ITEMS_RESTORED:.status.progress.itemsRestored,TOTAL_ITEMS:.status.progress.totalItems,BACKUP:.spec.backupName,WARN:.status.warnings,ERR:.status.errors"
     info "Begin restore process..."
     #Initial restore objects, rarely fail, could theoretically be applied at once   
@@ -654,7 +627,7 @@ function backup_setup() {
         if [[ $ZEN_ENABLED == "true" ]]; then
             wait_for_deploy "zen5-backup" $ZEN_NAMESPACE
         fi
-        if [[ $ENABLE_LSR =="true" ]]; then
+        if [[ $ENABLE_LSR == "true" ]]; then
             wait_for_deploy "lsr-backup" $LSR_NAMESPACE
         fi
     fi
