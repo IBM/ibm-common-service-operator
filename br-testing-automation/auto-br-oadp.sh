@@ -797,7 +797,6 @@ spec:
             cpu: 500m
             memory: 512Mi
 EOF
-
 }
 
 function wait_for_backup() {
