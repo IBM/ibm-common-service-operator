@@ -684,7 +684,15 @@ function check_for_oadp() {
         info "No OADP found on cluster, continuing with install..."
         install_oadp
     else
-        info "OADP already installed on cluster, skipping setup."
+        info "OADP already installed on cluster, skipping oeprator setup."
+        dpa_exists=$(${OC} get dataprotectionapplication $DPA_NAME -n $OADP_NS --ignore-not-found --no-headers)
+        if [[ $dpa_exists == "" ]]; then
+            info "DataProtectionApplication matching parameter DPA_NAME ($DPA_NAME) not found in namespace $OADP_NS. Creating..."
+            create_dpa
+        else
+            info "DataProtectionApplication matching parameter DPA_NAME ($DPA_NAME) found in namespace $OADP_NS. Skipping creation..."
+        fi
+        
     fi
 }
 
@@ -733,7 +741,13 @@ spec:
 EOF
 
     wait_for_operator $OADP_NS oadp-operator
-    
+
+    create_dpa
+
+    success "OADP successfully installed and configured."
+}
+
+function create_dpa() {
     #create secret for oadp resources
     info "Preparing storage location credentials file..."
     rm -f credentials-velero
@@ -784,7 +798,6 @@ spec:
             memory: 512Mi
 EOF
 
-    success "OADP successfully installed and configured."
 }
 
 function wait_for_backup() {
