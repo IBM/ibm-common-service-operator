@@ -959,7 +959,7 @@ spec:
                       drop:
                       - ALL
                     privileged: false
-                    readOnlyRootFilesystem: false
+                    readOnlyRootFilesystem: true
                 containers:
                 - command: ["bash", "-c"]
                   args:
@@ -992,7 +992,7 @@ spec:
                       drop:
                       - ALL
                     privileged: false
-                    readOnlyRootFilesystem: false
+                    readOnlyRootFilesystem: true
                 hostIPC: false
                 hostNetwork: false
                 hostPID: false
@@ -1821,7 +1821,7 @@ spec:
                       drop:
                       - ALL
                     privileged: false
-                    readOnlyRootFilesystem: false
+                    readOnlyRootFilesystem: true
                 containers:
                 - command: ["bash", "-c"]
                   args:
@@ -1854,7 +1854,7 @@ spec:
                       drop:
                       - ALL
                     privileged: false
-                    readOnlyRootFilesystem: false
+                    readOnlyRootFilesystem: true
                 hostIPC: false
                 hostNetwork: false
                 hostPID: false
