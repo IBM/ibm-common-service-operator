@@ -33,32 +33,41 @@ oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres 
     ORDER BY modified_ts DESC;
 "
 
-echo "Getting cluster domain..."
-CLUSTER_DOMAIN=$(oc get route console -n openshift-console -o jsonpath='{.spec.host}' | sed 's/^console-openshift-console\.//')
+echo "Getting cluster domain from ibmcloud-cluster-info configmap..."
+CLUSTER_DOMAIN=$(oc get cm ibmcloud-cluster-info -n $CSDB_NAMESPACE -o jsonpath='{.data.cluster_address}' 2>/dev/null || echo "")
 
 if [[ -z $CLUSTER_DOMAIN ]]; then
-    echo "Warning: Could not determine cluster domain from console route, trying alternative method..."
-    CLUSTER_DOMAIN=$(oc get ingress.config.openshift.io cluster -o jsonpath='{.spec.domain}')
-fi
-
-if [[ -z $CLUSTER_DOMAIN ]]; then
-    echo "Error: Could not determine cluster domain. Using example.com for testing."
-    CLUSTER_DOMAIN="example.com"
+    echo "Error: Could not determine cluster domain from ibmcloud-cluster-info configmap."
+    echo "Please ensure the ibmcloud-cluster-info configmap exists in namespace $CSDB_NAMESPACE"
+    exit 1
 fi
 
 echo "Detected cluster domain: $CLUSTER_DOMAIN"
 
-NEW_IDP_URL="https://cp-console.${CSDB_NAMESPACE}.${CLUSTER_DOMAIN}/idprovider/v1/auth"
-echo "New IDP URL will be: $NEW_IDP_URL"
+NEW_IDP_URL="https://${CLUSTER_DOMAIN}/idprovider/v1/auth"
+echo "Target IDP URL: $NEW_IDP_URL"
 
-# Perform the update
-echo "Updating IDP configuration..."
-oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -d account_iam -c "
-    UPDATE accountiam.idp_config 
-    SET idp = '$NEW_IDP_URL', 
-        modified_ts = NOW()
-    WHERE idp LIKE '%/idprovider/v1/%';
-"
+# Check current IDP configuration first
+echo "Checking current IDP configuration..."
+CURRENT_IDP=$(oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -d account_iam -t -c "SELECT DISTINCT idp FROM accountiam.idp_config WHERE idp LIKE '%/idprovider/v1/%' LIMIT 1;" | xargs || echo "")
+
+if [[ -n $CURRENT_IDP ]] && [[ $CURRENT_IDP != $NEW_IDP_URL ]]; then
+    echo "Current IDP URL: $CURRENT_IDP"
+    echo "Updating IDP configuration..."
+    
+    # Perform the update
+    oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -d account_iam -c "
+        UPDATE accountiam.idp_config 
+        SET idp = '$NEW_IDP_URL', 
+            modified_ts = NOW()
+        WHERE idp LIKE '%/idprovider/v1/%';
+    "
+elif [[ $CURRENT_IDP == $NEW_IDP_URL ]]; then
+    echo "IDP configuration already matches target URL, no update needed."
+    echo "Current IDP URL: $CURRENT_IDP"
+else
+    echo "No IDP configuration found in database, skipping update."
+fi
 
 echo "IDP configuration AFTER update:"
 oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -d account_iam -c "

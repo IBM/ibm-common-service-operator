@@ -121,41 +121,53 @@ data:
     function update_idp_config {
         info "Updating IDP configuration with actual cluster domain..."
         
-        # Get the cluster domain from the management ingress
-        CLUSTER_DOMAIN=$(oc get route console -n openshift-console -o jsonpath='{.spec.host}' | sed 's/^console-openshift-console\.//')
+        # Get the cluster domain from ibmcloud-cluster-info configmap
+        CLUSTER_DOMAIN=$(oc get cm ibmcloud-cluster-info -n $CSDB_NAMESPACE -o jsonpath='{.data.cluster_address}' 2>/dev/null || echo "")
         
         if [[ -z $CLUSTER_DOMAIN ]]; then
-            error "Could not determine cluster domain. Please update IDP configuration manually."
+            error "Could not determine cluster domain from ibmcloud-cluster-info configmap. Please update IDP configuration manually."
             return 1
         fi
         
         info "Detected cluster domain: $CLUSTER_DOMAIN"
         
-        NEW_IDP_URL="https://cp-console.${CSDB_NAMESPACE}.${CLUSTER_DOMAIN}/idprovider/v1/auth"
+        NEW_IDP_URL="https://${CLUSTER_DOMAIN}/idprovider/v1/auth"
         
-        info "Updating IDP URLs to: $NEW_IDP_URL"
+        info "Target IDP URL: $NEW_IDP_URL"
         
         # Check if account_iam database exists
         ACCOUNT_IAM_EXISTS=$(oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" | grep "account_iam" || echo False)
         
         if [[ $ACCOUNT_IAM_EXISTS != "False" ]]; then
-            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -d account_iam -c "
-                UPDATE accountiam.idp_config 
-                SET idp = '$NEW_IDP_URL', 
-                    modified_ts = NOW()
-                WHERE idp LIKE '%/idprovider/v1/%';
-            "
+            # Check current IDP configuration
+            CURRENT_IDP=$(oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -d account_iam -t -c "SELECT DISTINCT idp FROM accountiam.idp_config WHERE idp LIKE '%/idprovider/v1/%' LIMIT 1;" | xargs || echo "")
             
-            info "Verifying IDP configuration update..."
-            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -d account_iam -c "
-                SELECT uid, realm, idp, modified_ts 
-                FROM accountiam.idp_config 
-                ORDER BY modified_ts DESC;
-            "
-            
-            success "IDP configuration updated successfully."
+            if [[ -n $CURRENT_IDP ]] && [[ $CURRENT_IDP != $NEW_IDP_URL ]]; then
+                info "Current IDP URL: $CURRENT_IDP"
+                info "Updating IDP configuration..."
+                
+                oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -d account_iam -c "
+                    UPDATE accountiam.idp_config 
+                    SET idp = '$NEW_IDP_URL', 
+                        modified_ts = NOW()
+                    WHERE idp LIKE '%/idprovider/v1/%';
+                "
+                echo ""
+                info "Verifying IDP configuration update..."
+                oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -d account_iam -c "
+                    SELECT uid, realm, idp, modified_ts 
+                    FROM accountiam.idp_config 
+                    ORDER BY modified_ts DESC;
+                "
+                
+                success "IDP configuration updated successfully in account_iam database."
+            elif [[ $CURRENT_IDP == $NEW_IDP_URL ]]; then
+                info "IDP configuration already matches target URL, no update needed."
+            else
+                info "No IDP configuration found in database, skipping update."
+            fi
         else
-            warning "account_iam database not found, skipping IDP configuration update."
+            info "account_iam database not found, IDP configuration update not applicable."
         fi
     }
 
