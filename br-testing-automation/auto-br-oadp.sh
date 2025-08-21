@@ -21,9 +21,12 @@ set -o errtrace
 OUTPUT_FILE="env-oadp.properties"
 WRITE="false"
 RESTORE_SINGLETONS="false"
+DEBUG=1
 
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 . ../cp3pt0-deployment/common/utils.sh
+PREVIEW_DIR=${BASE_DIR}
+
 
 function main() {
     parse_arguments "$@"
