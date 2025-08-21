@@ -887,147 +887,13 @@ metadata:
 spec:
   services:
   {{- range .ServiceNames.PostgreSQL }}
-  - name: {{ . }}
-    resources:
-      - apiVersion: batch/v1
-        kind: Job
-        name: create-postgres-license-config
-        namespace: "{{ $.OperatorNs }}"
-        labels:
-          operator.ibm.com/opreq-control: 'true'
-        data:
-          spec:
-            activeDeadlineSeconds: 600
-            backoffLimit: 5
-            template:
-              metadata:
-                annotations:
-                  productID: 068a62892a1e4db39641342e592daa25
-                  productMetric: FREE
-                  productName: IBM Cloud Platform Common Services
-              spec:
-                imagePullSecrets:
-                  - name: ibm-entitlement-key
-                affinity:
-                  nodeAffinity:
-                    requiredDuringSchedulingIgnoredDuringExecution:
-                      nodeSelectorTerms:
-                      - matchExpressions:
-                        - key: kubernetes.io/arch
-                          operator: In
-                          values:
-                          - amd64
-                          - ppc64le
-                          - s390x
-                initContainers:
-                - command:
-                  - bash
-                  - -c
-                  - |
-                    cat << EOF | kubectl apply -f -
-                    apiVersion: v1
-                    kind: Secret
-                    type: Opaque
-                    metadata:
-                      name: postgresql-operator-controller-manager-config
-                    data:
-                      EDB_LICENSE_KEY: $(base64 /license_keys/edb/EDB_LICENSE_KEY | tr -d '\n')
-                    EOF
-                  image:
-                    templatingValueFrom:
-                      default:
-                        required: true
-                        configMapKeyRef:
-                          name: cloud-native-postgresql-image-list
-                          key: edb-postgres-license-provider-image
-                          namespace: {{ $.OperatorNs }}
-                      configMapKeyRef:
-                        name: cloud-native-postgresql-operand-images-config
-                        key: edb-postgres-license-provider-image
-                        namespace: {{ $.OperatorNs }}
-                  name: edb-license
-                  resources:
-                    limits:
-                      cpu: 500m
-                      memory: 512Mi
-                    requests:
-                      cpu: 100m
-                      memory: 50Mi
-                  securityContext:
-                    allowPrivilegeEscalation: false
-                    capabilities:
-                      drop:
-                      - ALL
-                    privileged: false
-                    readOnlyRootFilesystem: false
-                containers:
-                - command: ["bash", "-c"]
-                  args:
-                  - |
-                    kubectl delete pods -l app.kubernetes.io/name=cloud-native-postgresql
-                    kubectl annotate secret postgresql-operator-controller-manager-config ibm-license-key-applied="EDB Database with IBM License Key"
-                  image:
-                    templatingValueFrom:
-                      default:
-                        required: true
-                        configMapKeyRef:
-                          name: cloud-native-postgresql-image-list
-                          key: edb-postgres-license-provider-image
-                          namespace: {{ $.OperatorNs }}
-                      configMapKeyRef:
-                        name: cloud-native-postgresql-operand-images-config
-                        key: edb-postgres-license-provider-image
-                        namespace: {{ $.OperatorNs }}
-                  name: restart-edb-pod
-                  resources:
-                    limits:
-                      cpu: 500m
-                      memory: 512Mi
-                    requests:
-                      cpu: 100m
-                      memory: 50Mi
-                  securityContext:
-                    allowPrivilegeEscalation: false
-                    capabilities:
-                      drop:
-                      - ALL
-                    privileged: false
-                    readOnlyRootFilesystem: false
-                hostIPC: false
-                hostNetwork: false
-                hostPID: false
-                restartPolicy: OnFailure
-                securityContext:
-                  runAsNonRoot: true
-                serviceAccountName: edb-license-sa
-      - apiVersion: v1
-        kind: ServiceAccount
-        name: edb-license-sa
-        namespace: "{{ $.OperatorNs }}"
-      - apiVersion: rbac.authorization.k8s.io/v1
-        kind: Role
-        name: edb-license-role
-        namespace: "{{ $.OperatorNs }}"
-        data:
-          rules:
-          - apiGroups: [""]
-            resources: ["pods", "secrets"]
-            verbs: ["create", "update", "patch", "get", "list", "delete", "watch"]
-      - apiVersion: rbac.authorization.k8s.io/v1
-        kind: RoleBinding
-        name: edb-license-rolebinding
-        namespace: "{{ $.OperatorNs }}"
-        data:
-          subjects:
-          - kind: ServiceAccount
-            name: edb-license-sa
-          roleRef:
-            kind: Role
-            name: edb-license-role
-            apiGroup: rbac.authorization.k8s.io
+
   {{- end }}
 `
 
+//For the above, I essentially deleted all the resources associated with the licensing job from the configmap
+
+// I left all the keycloak stuff alone, it is not used in IM and Zen edb deployments
 const (
 	KeyCloakOpCon = `
 apiVersion: operator.ibm.com/v1alpha1
@@ -1968,7 +1834,7 @@ spec:
             requests:
               - operands:
                   - name: cloud-native-postgresql-v1.25
-                registry: common-service
+                registry: $newOperandConfigName
                 registryNamespace: {{ .ServicesNs }}
         force: true
         kind: OperandRequest
@@ -2080,7 +1946,7 @@ spec:
         force: true
         kind: OperandBindInfo
         name: common-service-postgresql-bindinfo
-      - apiVersion: postgresql.k8s.enterprisedb.io/v1
+      - apiVersion: cnpg.operator.ibm.com/v1
         kind: Cluster
         name: common-service-db          
         force: true
@@ -2095,15 +1961,6 @@ spec:
             inheritedMetadata:
               labels:
                 foundationservices.cloudpak.ibm.com: cs-db
-            description:
-              templatingValueFrom:
-                objectRef:
-                  apiVersion: v1
-                  kind: Secret
-                  name: postgresql-operator-controller-manager-config
-                  path: .metadata.annotations.ibm-license-key-applied
-                  namespace: {{ .OperatorNs }}
-                required: true
             bootstrap:
               initdb:
                 database: im
@@ -2158,12 +2015,6 @@ spec:
                       - common-service-db
             imageName:
               templatingValueFrom:
-                default:
-                  required: true
-                  configMapKeyRef:
-                    name: cloud-native-postgresql-image-list
-                    key: ibm-postgresql-16-operand-image
-                    namespace: {{ .OperatorNs }}
                 configMapKeyRef:
                   name: cloud-native-postgresql-operand-images-config
                   key: ibm-postgresql-16-operand-image
