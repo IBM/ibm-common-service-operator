@@ -20,15 +20,45 @@ set -o errtrace
 
 OUTPUT_FILE="env-oadp.properties"
 WRITE="false"
+RESTORE_SINGLETONS="false"
+DEBUG=1
 
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 . ../cp3pt0-deployment/common/utils.sh
+PREVIEW_DIR=${BASE_DIR}
 
 function main() {
     parse_arguments "$@"
     prereq
+    if [[ $SETUP_BACKUP == "true" ]]; then
+        #checks for an existing oadp on the cluster then installs if cannot find one
+        check_for_oadp
+    fi
+    if [[ $SETUP_RESTORE == "true" ]] && [[ $TARGET_CLUSTER_TYPE == "diff" ]]; then
+        login $RESTORE_CLU_SERVER $RESTORE_CLU_TOKEN
+        check_for_oadp
+        login $BACKUP_CLU_SERVER $BACKUP_CLU_TOKEN
+    else
+        check_for_oadp
+    fi
+    if [[ $BACKUP == "true" ]]; then
+       backup_setup
+       create_backup
+       verify_backup_complete 
+    fi
     if [[ $RESTORE == "true" ]]; then
+        if [[ $TARGET_CLUSTER_TYPE == "diff" ]]; then
+            login $RESTORE_CLU_SERVER $RESTORE_CLU_TOKEN
+            if [[ $BACKUP == "true" ]]; then
+                #in full e2e BR scenarios where we are restoring to a different cluster
+                #it takes a few minutes for the backup to be present on the new cluster once completed
+                wait_for_backup
+            fi
+        fi
         restore_cpfs
+        if [[ $TARGET_CLUSTER_TYPE == "diff" ]]; then
+            login $BACKUP_CLU_SERVER $BACKUP_CLU_TOKEN
+        fi
     fi
 }
 
@@ -117,6 +147,11 @@ function prereq() {
     else
         success "oc command logged in as ${user}"
     fi
+    
+    #this value always needs to be present so always going to check it
+    if [[ $OADP_NS == "" ]]; then
+        error "OADP_NS name not specified. Make sure it is either set in the parameters file or as an env variable."
+    fi
 
     #check variables are present
     # check backup/restore name
@@ -124,13 +159,13 @@ function prereq() {
         if [[ $BACKUP_NAME == "" ]]; then
             error "Backup name is necessary if Backup is enabled"
         fi
-    elif [[ $RESTORE == "true" ]]; then
+    fi
+    if [[ $RESTORE == "true" ]]; then
         if [[ $BACKUP_NAME == "" ]]; then
             error "An existing backup's name must be specified with --backup-name if Restore is enabled."
         fi
-        #TODO add checks for namespace values
         if [[ $OPERATOR_NS == "" ]]; then
-            error "OPERATOR_NS value not set. Make sure it is either set in the env-oadp.properties file or as an env variable."
+            error "OPERATOR_NS value not set. Make sure it is either set in the parameters file or as an env variable."
         elif [[ $SERVICES_NS == "" ]]; then
             warning "SERVICES_NS value not set. Setting value equal to OPERATOR_NS value $OPERATOR_NS."
             SERVICES_NS=$OPERATOR_NS
@@ -163,29 +198,48 @@ function prereq() {
         #if zen enabled, verify zen namespace and zenservice name are both present
         if [[ $ZEN_ENABLED == "true" ]]; then
             if [[ $ZEN_NAMESPACE == "" ]]; then
-                error "ZEN_NAMESPACE value not set. Make sure it is either set in the env-oadp.properties file or as an env variable."
+                error "ZEN_NAMESPACE value not set. Make sure it is either set in the parameters file or as an env variable."
             fi
             if [[ $ZENSERVICE_NAME == "" ]]; then
-                error "ZENSERVICE_NAME value not set. Make sure it is either set in the env-oadp.properties file or as an env variable."
+                error "ZENSERVICE_NAME value not set. Make sure it is either set in the parameters file or as an env variable."
             fi
         fi
 
-        check_cluster_credentials
     else
         error "Neither Backup nor Restore options were specified."
     fi
     
     #OADP setup checks
-    # TODO check if OADP br service is installed on cluster
-    # TODO check OADP related variables
-    # if [[ $BACKUP_STORAGE_LOCATION_NAME == "" ]]; then
-    #     error "Backup Storage Location name not specified in env-oadp.properties."
-    # fi
-    #also need secret key and id and any other values necessary for creating dataprotectionapplication
+    if [[ $BACKUP_SETUP == "true" ]] || [[ $RESTORE_SETUP == "true" ]]; then
+        if [[ $BACKUP_STORAGE_LOCATION_NAME == "" ]]; then
+            error "Backup Storage Location name not specified. It should be in the format \"<DPA_NAME>-1\". Make sure it is either set in the parameters file or as an env variable."
+        fi
+        if [[ $DPA_NAME == "" ]]; then
+            error "DPA_NAME (dataprotectionapplication name) not specified. Make sure it is either set in the parameters file or as an env variable."
+        fi
+        if [[ $BUCKET_REGION == "" ]]; then
+            error "BUCKET_REGION not specified. Make sure it is either set in the parameters file or as an env variable."
+        fi
+        if [[ $STORAGE_BUCKET_NAME == "" ]]; then
+            error "STORAGE_BUCKET_NAME not specified. Make sure it is either set in the parameters file or as an env variable."
+        fi
+        if [[ $S3_URL == "" ]]; then
+            error "S3_URL not specified. Make sure it is either set in the parameters file or as an env variable."
+        fi
+        if [[ $STORAGE_SECRET_ACCESS_KEY == "" ]]; then
+            error "STORAGE_SECRET_ACCESS_KEY not specified. Make sure it is either set in the parameters file or as an env variable."
+        fi
+        if [[ $S3_URL == "" ]]; then
+            error "STORAGE_SECRET_ACCESS_KEY_ID not specified. Make sure it is either set in the parameters file or as an env variable."
+        fi
+    fi
+
+    #check that Server and Token info parameters are filled in target cluster type is diff
+    check_cluster_credentials
     
     #write env variables to output file
     if [[ $WRITE == "true" ]]; then
-        write_specific_env_vars_to_file $OUTPUT_FILE "OC YQ OPERATOR_NS SERVICES_NS TETHERED_NS BACKUP RESTORE SETUP OADP_INSTALL OADP_RESOURCE_CREATION OADP_NS BACKUP_STORAGE_LOCATION_NAMESTORAGE_BUCKET_NAME S3_URL STORAGE_SECRET_ACCESS_KEY STORAGE_SECRET_ACCESS_KEY_ID IM_ENABLED ZEN_ENABLED NSS_ENABLED UMS_ENABLED CERT_MANAGER_NAMESPACE LICENSING_NAMESPACE LSR_NAMESPACE CPFS_VERSION ZENSERVICE_NAME ZEN_NAMESPACE ENABLE_CERT_MANAGER ENABLE_LICENSING ENABLE_LSR ENABLE_PRIVATE_CATALOG ENABLE_DEFAULT_CS ADDITIONAL_SOURCES CONTROL_NS BACKUP_CLU_SERVER BACKUP_CLU_TOKEN RESTORE_CLU_SERVER RESTORE_CLU_TOKEN TARGET_CLUSTER_TYPE BACKUP_NAME"
+        write_specific_env_vars_to_file $OUTPUT_FILE "OC YQ OPERATOR_NS SERVICES_NS TETHERED_NS BACKUP RESTORE SETUP OADP_INSTALL OADP_RESOURCE_CREATION OADP_NS BACKUP_STORAGE_LOCATION_NAMESTORAGE_BUCKET_NAME S3_URL STORAGE_SECRET_ACCESS_KEY STORAGE_SECRET_ACCESS_KEY_ID IM_ENABLED ZEN_ENABLED NSS_ENABLED UMS_ENABLED MCSP_ENABLED CERT_MANAGER_NAMESPACE LICENSING_NAMESPACE LSR_NAMESPACE CPFS_VERSION ZENSERVICE_NAME ZEN_NAMESPACE ENABLE_CERT_MANAGER ENABLE_LICENSING ENABLE_LSR ENABLE_PRIVATE_CATALOG ENABLE_DEFAULT_CS ADDITIONAL_SOURCES CONTROL_NS BACKUP_CLU_SERVER BACKUP_CLU_TOKEN RESTORE_CLU_SERVER RESTORE_CLU_TOKEN TARGET_CLUSTER_TYPE BACKUP_NAME"
     fi
 }
 
@@ -196,16 +250,16 @@ function prereq() {
 # test by logging in to the other cluster and then logging back into the base cluster
 function check_cluster_credentials() {
     if [[ $TARGET_CLUSTER_TYPE == "" ]]; then
-        error "TARGET_CLUSTER_TYPE value not set. Make sure it is either set in the env-oadp.properties file or as an env variable."
+        error "TARGET_CLUSTER_TYPE value not set. Make sure it is either set in the parameters file or as an env variable."
     else
         if [[ $TARGET_CLUSTER_TYPE == "diff" ]]; then
             if [[ $BACKUP_CLU_SERVER == "" ]] || [[ $BACKUP_CLU_TOKEN == "" ]] || [[ $RESTORE_CLU_SERVER == "" ]] || [[ $RESTORE_CLU_TOKEN == "" ]]; then
-                error "If interacting with a different cluster (either restore or setup), all of BACKUP_CLU_SERVER, BACKUP_CLU_TOKEN, RESTORE_CLU_SERVER, and RESTORE_CLU_TOKEN must be defined either in the env-oadp.properties file or as environment variables." 
+                error "If interacting with a different cluster (either restore or setup), all of BACKUP_CLU_SERVER, BACKUP_CLU_TOKEN, RESTORE_CLU_SERVER, and RESTORE_CLU_TOKEN must be defined either in the parameters file or as an env variable." 
             else
                 info "Different cluster selected. Validating login credentials work..."
-                ${OC} login --token=$RESTORE_CLU_TOKEN--server=$RESTORE_CLU_SERVER --insecure-skip-tls-verify=true
+                ${OC} login --token=$RESTORE_CLU_TOKEN --server=$RESTORE_CLU_SERVER --insecure-skip-tls-verify=true
                 info "Logging back into home cluster..."
-                ${OC} login --token=$BACKUP_CLU_TOKEN--server=$BACKUP_CLU_SERVER --insecure-skip-tls-verify=true
+                ${OC} login --token=$BACKUP_CLU_TOKEN --server=$BACKUP_CLU_SERVER --insecure-skip-tls-verify=true
             fi
         fi
         success "Backup and Restore cluster login credentials verified."
@@ -221,33 +275,13 @@ function restore_cpfs(){
     info "Copying template files..."
     cp -r ../velero/restore ${BASE_DIR}/templates/
 
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-namespace.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-entitlementkey.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-configmap.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-crd.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-commonservice.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-cert-manager.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/no-olm/restore-cluster-scope.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/no-olm/restore-namespace-scope.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/no-olm/restore-installer-ns-charts.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/no-olm/restore-im-ns-charts.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/no-olm/restore-zen-ns-chart.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/no-olm/restore-ibm-cm-chart.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-operands.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-cs-db.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-zen5-data.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-licensing.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-lsr.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-lsr-data.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-nss.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-operatorgroup.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-pull-secret.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-singleton-subscriptions.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-catalog.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-subscriptions.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-zen.yaml
-    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/restore/restore-ums.yaml
-    
+    for file in "${BASE_DIR}/templates/restore"/*; do
+        sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" $file
+        if [[ $OADP_NS != "velero" ]]; then
+            set_oadp_namespace $file
+        fi
+    done
+
     custom_columns_str="-o custom-columns=NAME:.metadata.name,STATUS:.status.phase,ITEMS_RESTORED:.status.progress.itemsRestored,TOTAL_ITEMS:.status.progress.totalItems,BACKUP:.spec.backupName,WARN:.status.warnings,ERR:.status.errors"
     info "Begin restore process..."
     #Initial restore objects, rarely fail, could theoretically be applied at once   
@@ -292,6 +326,7 @@ function restore_cpfs(){
 
         if [[ $ENABLE_LSR == "true" ]]; then
             info "Restoring License Service Reporter data..."
+            wait_for_deployment $LSR_NAMESPACE "ibm-license-service-reporter-instance"
             ${OC} apply -f ${BASE_DIR}/templates/restore/restore-lsr-data.yaml
             wait_for_restore restore-lsr-data
         fi
@@ -329,7 +364,7 @@ function restore_cpfs(){
     info "Restoring operands..."
     ${OC} apply -f ${BASE_DIR}/templates/restore/restore-operands.yaml
     wait_for_restore restore-operands
-    
+
     if [[ $IM_ENABLED == "true" ]]; then
         restore_im
     fi
@@ -397,25 +432,21 @@ function validate_cs_odlm() {
 
 function restore_im() {
     info "Restoring IM Data..."
-    wait_for_im example-authentication $SERVICES_NS
+    wait_for_im $SERVICES_NS
+    if [[ $MCSP_ENABLED == "true" ]]; then
+        wait_for_deployment $SERVICES_NS "account-iam-ui-account-deployment" 
+    fi
     ${OC} apply -f ${BASE_DIR}/templates/restore/restore-cs-db.yaml
     wait_for_restore restore-cs-db-data
     success "IM data restored successfully."
 }
 
 function wait_for_im() {
-    info "Sleep for 3 minutes for IM operator to create authentication cr"
-    sleep 180
-    local auth_cr=$1
-    local namespace=$2
-    local condition="${OC} get authentications.operator.ibm.com ${auth_cr} -n ${namespace} -o jsonpath='{.status.service.status}' | egrep Ready"
-    local retries=30
-    local sleep_time=30
-    local total_time_mins=$(( sleep_time * retries / 60))
-    local wait_message="Waiting on IM Service to be online. Checking status of authentication CR ${auth_CR} in namespace ${namespace}."
-    local success_message="IM service ready in namespace ${namespace}."
-    local error_message="Timeout after ${total_time_mins} minutes waiting for IM service in namespace ${namespace} to become available"
-    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+    info "Sleep for 5 minutes for IM operator to create authentication cr"
+    sleep 300
+    local namespace=$1
+    local name="platform-identity-provider"
+    wait_for_deployment $name $namespace
 }
 
 function restore_zen() {
@@ -505,17 +536,7 @@ function wait_for_cert_manager() {
     local cm_namespace=$1
     local name="cert-manager-webhook"
     local test_namespace=$2
-    local needReplicas=$(${OC} get deployment ${name} -n ${cm_namespace} --no-headers --ignore-not-found -o jsonpath='{.spec.replicas}' | awk '{print $1}')
-    local readyReplicas="${OC} get deployment ${name} -n ${cm_namespace} --no-headers --ignore-not-found -o jsonpath='{.status.readyReplicas}' | grep '${needReplicas}'"
-    local replicas="${OC} get deployment ${name} -n ${cm_namespace} --no-headers --ignore-not-found -o jsonpath='{.status.replicas}' | grep '${needReplicas}'"
-    local condition="(${readyReplicas} && ${replicas})"
-    local retries=20
-    local sleep_time=30
-    local total_time_mins=$(( sleep_time * retries / 60))
-    local wait_message="Waiting for cert manager webhook pod to come ready"
-    local success_message="Cert Manager operator in namespace $cm_namespace ready."
-    local error_message="Timeout after ${total_time_mins} minutes waiting for cert manager webhook pod."
-    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+    wait_for_deployment $cm_namespace $name 
     #from utils.sh, checks if cert manager exists and then runs smoke test
     check_cert_manager cert-manager $test_namespace
 }
@@ -539,6 +560,265 @@ function write_specific_env_vars_to_file() {
     done
     
     success "Successfully wrote $count environment variables to '$output_file'"
+}
+
+function set_oadp_namespace() {
+        local file=$1
+        ${YQ} eval ".metadata.namespace = \"$OADP_NS\"" -i $file
+}
+
+function backup_setup() {
+    title "Prepping CPFS instance with Operator NS $OPERATOR_NS for backup."
+    local namespaces="$OPERATOR_NS,$SERVICES_NS,$TETHERED_NS"
+    info "Labeling cert manager resources in namespaces: ${namespaces//,/ }"
+    ./../velero/backup/cert-manager/label-cert-manager.sh --namespaces $namespaces || error "Cert Manager resource labeling script did not complete successfully."
+    info "Labeling CPFS instance and Singleton resources..."
+    label_arg_str="--operator-ns $OPERATOR_NS"
+    deploy_arg_str=""
+    if [[ $SERVICES_NS != $OPERATOR_NS ]]; then
+        label_arg_str="$label_arg_str --services-ns $SERVICES_NS"
+        deploy_arg_str="--services-ns $SERVICES_NS"
+    else
+        deploy_arg_str="--operator-ns $OPERATOR_NS"
+    fi
+    if [[ $TETHERED_NS != "" ]]; then
+        label_arg_str="$label_arg_str --tethered-ns $TETHERED_NS"
+    fi
+    if [[ $ENABLE_CERT_MANAGER == "true" ]]; then
+        label_arg_str="$label_arg_str --cert-manager-ns $CERT_MANAGER_NAMESPACE"
+    fi
+    if [[ $ENABLE_LICENSING == "true" ]]; then
+        label_arg_str="$label_arg_str --licensing-ns $LICENSING_NAMESPACE"
+        info "Labeling licensing resources in namespace $LICENSING_NAMESPACE..."
+        ./../velero/backup/licensing/label-licensing-configmaps.sh $LICENSING_NAMESPACE || error "Licensing labeling script did not complete successfully."
+    fi
+    if [[ $ENABLE_LSR == "true" ]]; then
+        label_arg_str="$label_arg_str --lsr-ns $LSR_NAMESPACE"
+        deploy_arg_str="$deploy_arg_str --lsr-ns $LSR_NAMESPACE --lsr"
+    fi
+    if [[ $ENABLE_PRIVATE_CATALOG == "true" ]]; then
+        label_arg_str="$label_arg_str --enable-private-catalog"
+    fi
+    if [[ $ENABLE_DEFAULT_CS == "true" ]]; then
+        label_arg_str="$label_arg_str --enable-default-catalog-ns"
+    fi
+    if [[ $ADDITIONAL_SOURCES != "" ]]; then
+        label_arg_str="$label_arg_str --additional-catalog-sources $ADDITIONAL_SOURCES"
+    fi
+    if [[ $NO_OLM == "true" ]]; then
+        label_arg_str="$label_arg_str --no-olm"
+    fi
+    
+    info "Labeling script parameters: $label_arg_str"
+    ./../velero/backup/common-service/label-common-service.sh $label_arg_str || error "Script label-common-service.sh failed to complete."
+    if [[ $IM_ENABLED == "true" ]] || [[ $ZEN_ENABLED == "true" ]] || [[ $ENABLE_LSR == "true" ]]; then
+        if [[ $IM_ENABLED == "true" ]]; then
+            deploy_arg_str="$deploy_arg_str --im"
+        fi
+        if [[ $ZEN_ENABLED == "true" ]]; then
+            deploy_arg_str="$deploy_arg_str --zen"
+        fi
+        if [[ $STORAGE_CLASS != "" ]]; then
+            deploy_arg_str="$deploy_arg_str --storage-class $STORAGE_CLASS"
+        fi
+        info "Deploying necessary backup resources for tenant $OPERATOR_NS..."
+        info "Backup resource deployment script parameters: $deploy_arg_str"
+        ./../velero/schedule/deploy-br-resources.sh $deploy_arg_str || error "Script deploy-br-resources.sh failed to deploy BR resources."
+        if [[ $IM_ENABLED == "true" ]]; then
+            wait_for_deployment $SERVICES_NS "cs-db-backup" 
+        fi
+        if [[ $ZEN_ENABLED == "true" ]]; then
+            wait_for_deployment $ZEN_NAMESPACE "zen5-backup" 
+        fi
+        if [[ $ENABLE_LSR == "true" ]]; then
+            wait_for_deployment $LSR_NAMESPACE "lsr-backup" 
+        fi
+    fi
+
+    success "CPFS instance with operator namespace $OPERATOR_NS labeled for backup."
+}
+
+function create_backup() {
+    title "Starting backup..."
+    if [ -d "templates" ]; then
+        rm -rf templates
+    fi
+    mkdir templates
+    info "Copying backup template..."
+    cp ../velero/backup/backup.yaml ${BASE_DIR}/templates/
+
+    sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" ${BASE_DIR}/templates/backup.yaml
+    sed -i -E "s/<storage location name>/$BACKUP_STORAGE_LOCATION_NAME/" ${BASE_DIR}/templates/backup.yaml
+
+    if [[ $OADP_NS != "velero" ]]; then
+        set_oadp_namespace ${BASE_DIR}/templates/backup.yaml
+    fi
+
+    ${OC} apply -f ${BASE_DIR}/templates/backup.yaml
+    info "Backup resource created, backup in progress"
+}
+
+function verify_backup_complete() {
+    title "Waiting for backup to complete..."
+    status=$(${OC} get backups.velero.io $BACKUP_NAME -n $OADP_NS -o jsonpath='{.status.phase}')
+    retries=30
+    sleep_time=20
+    while [[ $status != "Completed" ]] && [[ $retries -gt 0 ]]; do
+        info "Wait for backup $BACKUP_NAME to complete. Try again in $sleep_time seconds."
+        sleep $sleep_time
+        status=$(${OC} get backups.velero.io $BACKUP_NAME -n $OADP_NS -o jsonpath='{.status.phase}')
+        retries=$((retries-1))
+        if [[ $status == "Failed" ]] || [[ $status == "PartiallyFailed" ]] || [[ $status == "FailedValidation" ]]; then
+            ${OC} get backups.velero.io $BACKUP_NAME -n $OADP_NS $custom_columns_str
+            error "Backup $BACKUP_NAME failed with status: $status. For more details, run \"velero backup describe --details $BACKUP_NAME\"."
+        fi
+    done
+    if [[ $status == "Completed" ]]; then
+        success "Backup $BACKUP_NAME completed successfully. For more details, run \"velero backup describe --details $BACKUP_NAME\"."
+    else
+        error "Timed out waiting for backup $BACKUP_NAME to complete successfully. For more details, run  \"velero backup describe --details $BACKUP_NAME\"."
+    fi
+}
+
+function check_for_oadp() {
+    info "checking cluster for existing OADP install..."
+    oadp_exists=$(${OC} get csv -A | grep oadp-operator)
+    if [[ $oadp_exists == "" ]]; then
+        info "No OADP found on cluster, continuing with install..."
+        install_oadp
+    else
+        info "OADP already installed on cluster, skipping oeprator setup."
+        dpa_exists=$(${OC} get dataprotectionapplication $DPA_NAME -n $OADP_NS --ignore-not-found --no-headers)
+        if [[ $dpa_exists == "" ]]; then
+            info "DataProtectionApplication matching parameter DPA_NAME ($DPA_NAME) not found in namespace $OADP_NS. Creating..."
+            create_dpa
+        else
+            info "DataProtectionApplication matching parameter DPA_NAME ($DPA_NAME) found in namespace $OADP_NS. Skipping creation..."
+        fi
+        
+    fi
+}
+
+function install_oadp(){
+    title "Installing and configuring OADP/Velero..."
+    
+    #check for ns and operator group to already exist
+    if ${OC} get ns "$OADP_NS" >/dev/null 2>&1; then
+        info "Namespace $OADP_NS exists, continuing..."
+    else
+        info "Namespace $OADP_NS does not exist, creating..."
+        ${OC} create namespace $OADP_NS
+    fi
+    
+    opgroup_exists=$(${OC} get operatorgroup -n $OADP_NS --ignore-not-found --no-headers)
+    if [[ -z $opgroup_exists ]]; then
+        info "No operatorgroup found, creating..."
+        cat << EOF | ${OC} apply -n $OADP_NS -f -
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  annotations:
+    olm.providedAPIs: Backup.v1.velero.io,BackupRepository.v1.velero.io,BackupStorageLocation.v1.velero.io,CloudStorage.v1alpha1.oadp.openshift.io,DataDownload.v2alpha1.velero.io,DataProtectionApplication.v1alpha1.oadp.openshift.io,DataUpload.v2alpha1.velero.io,DeleteBackupRequest.v1.velero.io,DownloadRequest.v1.velero.io,PodVolumeBackup.v1.velero.io,PodVolumeRestore.v1.velero.io,Restore.v1.velero.io,Schedule.v1.velero.io,ServerStatusRequest.v1.velero.io,VolumeSnapshotLocation.v1.velero.io
+  name: $OADP_NS-operatorgroup
+spec:
+  targetNamespaces:
+  - $OADP_NS
+  upgradeStrategy: Default
+EOF
+    fi
+
+    info "Creating operator subscription..."
+    #create sub
+    cat << EOF | ${OC} apply -n $OADP_NS -f -
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  labels:
+    operators.coreos.com/redhat-oadp-operator.velero: ""
+  name: redhat-oadp-operator
+spec:
+  installPlanApproval: Automatic
+  name: redhat-oadp-operator
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+EOF
+
+    wait_for_operator $OADP_NS oadp-operator
+
+    create_dpa
+
+    success "OADP successfully installed and configured."
+}
+
+function create_dpa() {
+    #create secret for oadp resources
+    info "Preparing storage location credentials file..."
+    rm -f credentials-velero
+    echo "[default]" >>credentials-velero
+    echo "aws_access_key_id="$STORAGE_SECRET_ACCESS_KEY_ID >>credentials-velero
+    echo "aws_secret_access_key="$STORAGE_SECRET_ACCESS_KEY >>credentials-velero
+    info "Creating secret for OADP/Velero..."
+    ${OC} create secret generic cloud-credentials -n $OADP_NS --from-file cloud=credentials-velero
+    
+    #create backup storage location
+    cat << EOF | ${OC} apply -f -
+apiVersion: oadp.openshift.io/v1alpha1
+kind: DataProtectionApplication
+metadata:
+  name: $DPA_NAME
+  namespace: $OADP_NS
+spec:
+  backupLocations:
+    - velero:
+        config:
+          profile: default
+          region: $BUCKET_REGION
+          s3ForcePathStyle: 'true'
+          s3Url: '$S3_URL'
+        credential:
+          key: cloud
+          name: cloud-credentials
+        default: true
+        objectStorage:
+          bucket: $STORAGE_BUCKET_NAME
+          prefix: tmp/
+        provider: aws
+  configuration:
+    nodeAgent:
+      enable: true
+      uploaderType: kopia
+    velero:
+      defaultPlugins:
+        - openshift
+        - aws
+      podConfig:
+        resourceAllocations:
+          limits:
+            cpu: '1'
+            memory: 1Gi
+          requests:
+            cpu: 500m
+            memory: 512Mi
+EOF
+}
+
+function wait_for_backup() {
+    local condition="${OC} get backup.velero.io -n $OADP_NS --no-headers --ignore-not-found | grep $BACKUP_NAME"
+    local retries=20
+    local sleep_time=30
+    local total_time_mins=$(( sleep_time * retries / 60))
+    local wait_message="Waiting for backup $BACKUP_NAME to be available on Restore cluster."
+    local success_message="Backup $BACKUP_NAME accessible from Restore cluster."
+    local error_message="Timeout after ${total_time_mins} minutes waiting for backup $BACKUP_NAME to be accessible on Restore cluster."
+    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+}
+
+function login() {
+    server=$1
+    token=$2
+    title "Logging in to server $server"
+    #oc login to spoke cluster
+    ${OC} login --token=$token --server=$server --insecure-skip-tls-verify=true
 }
 
 
