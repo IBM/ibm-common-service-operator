@@ -204,8 +204,8 @@ function prereq() {
                 error "ZENSERVICE_NAME value not set. Make sure it is either set in the parameters file or as an env variable."
             fi
         fi
-
-    else
+    fi
+    if [[ $BACKUP != "true" ]] && [[ $RESTORE != "true" ]]
         error "Neither Backup nor Restore options were specified."
     fi
     
