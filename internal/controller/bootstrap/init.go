@@ -498,7 +498,7 @@ func (b *Bootstrap) DeleteFromYaml(objectTemplate string, data interface{}) erro
 		}
 
 		// waiting for the object be deleted
-		if err := utilwait.PollImmediate(time.Second*10, time.Minute*5, func() (done bool, err error) {
+		if err := utilwait.PollUntilContextTimeout(ctx, time.Second*10, time.Minute*5, true, func(ctx context.Context) (done bool, err error) {
 			_, errNotFound := b.GetObject(obj)
 			if errors.IsNotFound(errNotFound) {
 				return true, nil
@@ -642,7 +642,7 @@ func (b *Bootstrap) ListIssuer(ctx context.Context, opts ...client.ListOption) *
 
 func (b *Bootstrap) CheckOperatorCatalog(ns string) error {
 
-	err := utilwait.PollImmediate(time.Second*10, time.Minute*3, func() (done bool, err error) {
+	err := utilwait.PollUntilContextTimeout(ctx, time.Second*10, time.Minute*3, true, func(ctx context.Context) (done bool, err error) {
 		subList := &olmv1alpha1.SubscriptionList{}
 
 		if err := b.Reader.List(context.TODO(), subList, &client.ListOptions{Namespace: ns}); err != nil {
@@ -691,7 +691,7 @@ func (b *Bootstrap) CheckCRD(apiGroupVersion string, kind string) (bool, error) 
 // WaitResourceReady returns true only when the specific resource CRD is created and wait for infinite time
 func (b *Bootstrap) WaitResourceReady(apiGroupVersion string, kind string) error {
 	dc := discovery.NewDiscoveryClientForConfigOrDie(b.Config)
-	if err := utilwait.PollImmediateInfinite(time.Second*10, func() (done bool, err error) {
+	if err := utilwait.PollUntilContextCancel(ctx, time.Second*10, true, func(ctx context.Context) (done bool, err error) {
 		exist, err := b.ResourceExists(dc, apiGroupVersion, kind)
 		if err != nil {
 			return exist, err
@@ -708,7 +708,7 @@ func (b *Bootstrap) WaitResourceReady(apiGroupVersion string, kind string) error
 
 func (b *Bootstrap) waitResourceReady(apiGroupVersion, kind string) error {
 	dc := discovery.NewDiscoveryClientForConfigOrDie(b.Config)
-	if err := utilwait.PollImmediate(time.Second*10, time.Minute*2, func() (done bool, err error) {
+	if err := utilwait.PollUntilContextTimeout(ctx, time.Second*10, time.Minute*2, true, func(ctx context.Context) (done bool, err error) {
 		exist, err := b.ResourceExists(dc, apiGroupVersion, kind)
 		if err != nil {
 			return exist, err
@@ -913,16 +913,21 @@ func (b *Bootstrap) DeleteV3Resources(mutatingWebhooks, validatingWebhooks []str
 
 // deleteWebhookResources deletes resources related to ibm-common-service-webhook
 func (b *Bootstrap) deleteWebhookResources() error {
-	// Delete PodPreset (CR)
-	if err := b.deleteResource(&unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": "operator.ibm.com/v1alpha1",
-			"kind":       "PodPreset",
-		},
-	}, constant.WebhookServiceName, b.CSData.ServicesNs, "PodPreset"); err != nil {
+	exist, err := b.CheckCRD("operator.ibm.com/v1alpha1", "PodPreset")
+	if err != nil {
 		return err
 	}
-
+	if exist {
+		// Delete PodPreset (CR)
+		if err := b.deleteResource(&unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"apiVersion": "operator.ibm.com/v1alpha1",
+				"kind":       "PodPreset",
+			},
+		}, constant.WebhookServiceName, b.CSData.ServicesNs, "PodPreset"); err != nil {
+			return err
+		}
+	}
 	// Delete ServiceAccount
 	if err := b.deleteResource(&corev1.ServiceAccount{}, constant.WebhookServiceName, b.CSData.ServicesNs, "ServiceAccount"); err != nil {
 		return err
@@ -968,9 +973,15 @@ func (b *Bootstrap) deleteSecretShareResources() error {
 		return err
 	}
 
-	// Delete SecretShare Operator CR
-	if err := b.deleteResource(&ssv1.SecretShare{}, constant.MasterCR, b.CSData.ServicesNs, "SecretShare Operator CR"); err != nil {
+	exist, err := b.CheckCRD("ibmcpcs.ibm.com/v1", "SecretShare")
+	if err != nil {
 		return err
+	}
+	if exist {
+		// Delete SecretShare Operator CR
+		if err := b.deleteResource(&ssv1.SecretShare{}, constant.MasterCR, b.CSData.ServicesNs, "SecretShare Operator CR"); err != nil {
+			return err
+		}
 	}
 
 	// Delete SecretShare Operator Deployment
@@ -1206,7 +1217,7 @@ func (b *Bootstrap) updateApprovalMode() error {
 
 // deployResource deploys the given resource CR
 func (b *Bootstrap) DeployResource(cr, placeholder string) bool {
-	if err := utilwait.PollImmediateInfinite(time.Second*10, func() (done bool, err error) {
+	if err := utilwait.PollUntilContextCancel(ctx, time.Second*10, true, func(ctx context.Context) (done bool, err error) {
 		err = b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.ServicesNs)))
 		if err != nil {
 			return false, err
@@ -1550,7 +1561,7 @@ func (b *Bootstrap) CleanNamespaceScopeResources() error {
 		}
 
 		klog.Infof("Waiting for the NamespaceScope CRs to be deleted in the %s namespace", b.CSData.ServicesNs)
-		if err := utilwait.PollImmediate(time.Second*5, time.Second*30, func() (done bool, err error) {
+		if err := utilwait.PollUntilContextTimeout(ctx, time.Second*5, time.Second*30, true, func(ctx context.Context) (done bool, err error) {
 			nssCRsList, err := b.ListNssCRs(ctx, b.CSData.ServicesNs)
 			if err != nil {
 				return false, err
@@ -2062,7 +2073,7 @@ func (b *Bootstrap) waitOperatorCSV(subName, packageManifest, operatorNs string)
 	var isWaiting bool
 	// Wait for the operator CSV to be installed
 	klog.Infof("Waiting for the operator CSV with packageManifest %s in namespace %s to be installed", packageManifest, operatorNs)
-	if err := utilwait.PollImmediate(time.Second*5, time.Minute*5, func() (done bool, err error) {
+	if err := utilwait.PollUntilContextTimeout(ctx, time.Second*5, time.Minute*5, true, func(ctx context.Context) (done bool, err error) {
 		installed, err := b.checkOperatorCSV(subName, packageManifest, operatorNs)
 		if err != nil {
 			return false, err
@@ -2352,7 +2363,7 @@ func (b *Bootstrap) UpdatePostgresClusterImage(ctx context.Context, instance *ap
 
 	// Wait for the image to be updated
 	// If timeout occurs, controller will update the image in the Postgres Cluster CR
-	if err := utilwait.PollImmediate(time.Second*10, time.Minute*1, func() (done bool, err error) {
+	if err := utilwait.PollUntilContextTimeout(ctx, time.Second*10, time.Minute*2, true, func(ctx context.Context) (done bool, err error) {
 		// Fetch the latest Postgres Cluster CR
 		err = b.Client.Get(ctx, types.NamespacedName{
 			Name:      constant.CSPGCluster,
@@ -2415,7 +2426,7 @@ func (b *Bootstrap) getPostgresImageConfigMap(ctx context.Context) (*corev1.Conf
 	configMap := &corev1.ConfigMap{}
 	configMapName := constant.PostgreSQLImageConfigMap
 
-	if err := b.Client.Get(ctx, types.NamespacedName{
+	if err := b.Reader.Get(ctx, types.NamespacedName{
 		Name:      configMapName,
 		Namespace: b.CSData.OperatorNs,
 	}, configMap); err != nil && errors.IsNotFound(err) {

@@ -148,7 +148,8 @@ func (d *Manager) GetDeployment() (*appsv1.Deployment, error) {
 	}
 
 	// Retrieve operator deployment, retry 3 times
-	if err := utilwait.PollImmediate(time.Minute, time.Minute*3, func() (done bool, err error) {
+	ctx := context.TODO()
+	if err := utilwait.PollUntilContextTimeout(ctx, time.Minute, time.Minute*3, true, func(ctx context.Context) (done bool, err error) {
 		err = d.Reader.Get(context.TODO(), types.NamespacedName{Name: deployName, Namespace: deployNs}, deploy)
 		if err != nil {
 			if errors.IsNotFound(err) {
