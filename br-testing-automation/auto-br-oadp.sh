@@ -205,8 +205,8 @@ function prereq() {
             fi
         fi
     fi
-    if [[ $BACKUP != "true" ]] && [[ $RESTORE != "true" ]]; then
-        error "Neither Backup nor Restore options were specified."
+    if [[ $BACKUP != "true" ]] && [[ $RESTORE != "true" ]] && [[ $SETUP_BACKUP != "true" ]] && [[ $SETUP_RESTORE != "true" ]]; then
+        error "Neither Backup, Restore, or setup options were specified. Please select at least one before rerunning."
     fi
     
     #OADP setup checks
