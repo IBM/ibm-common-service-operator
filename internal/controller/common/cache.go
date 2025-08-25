@@ -17,8 +17,8 @@
 package common
 
 import (
+	"github.com/IBM/ibm-common-service-operator/internal/controller/constant"
 	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
-	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/constant"
 	"k8s.io/apimachinery/pkg/labels"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
