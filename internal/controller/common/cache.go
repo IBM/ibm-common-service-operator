@@ -17,14 +17,14 @@
 package common
 
 import (
-	"github.com/IBM/ibm-common-service-operator/internal/controller/constant"
-	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	corev1 "k8s.io/api/core/v1"
+	"github.com/IBM/ibm-common-service-operator/internal/controller/constant"
+	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
 )
 
 // NewCSCache implements a customized cache with a for CS
