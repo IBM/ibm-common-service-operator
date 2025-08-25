@@ -204,9 +204,9 @@ function prereq() {
                 error "ZENSERVICE_NAME value not set. Make sure it is either set in the parameters file or as an env variable."
             fi
         fi
-
-    else
-        error "Neither Backup nor Restore options were specified."
+    fi
+    if [[ $BACKUP != "true" ]] && [[ $RESTORE != "true" ]] && [[ $SETUP_BACKUP != "true" ]] && [[ $SETUP_RESTORE != "true" ]]; then
+        error "Neither Backup, Restore, or setup options were specified. Please select at least one before rerunning."
     fi
     
     #OADP setup checks
@@ -434,7 +434,7 @@ function restore_im() {
     info "Restoring IM Data..."
     wait_for_im $SERVICES_NS
     if [[ $MCSP_ENABLED == "true" ]]; then
-        wait_for_deployment $SERVICES_NS "account-iam-ui-account-deployment" 
+        wait_for_deployment $SERVICES_NS "account-iam-ui-account-deployment"
     fi
     ${OC} apply -f ${BASE_DIR}/templates/restore/restore-cs-db.yaml
     wait_for_restore restore-cs-db-data
@@ -446,7 +446,7 @@ function wait_for_im() {
     sleep 300
     local namespace=$1
     local name="platform-identity-provider"
-    wait_for_deployment $name $namespace
+    wait_for_deployment $namespace $name
 }
 
 function restore_zen() {
