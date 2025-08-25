@@ -205,7 +205,7 @@ function prereq() {
             fi
         fi
     fi
-    if [[ $BACKUP != "true" ]] && [[ $RESTORE != "true" ]]
+    if [[ $BACKUP != "true" ]] && [[ $RESTORE != "true" ]]; then
         error "Neither Backup nor Restore options were specified."
     fi
     
