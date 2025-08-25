@@ -434,7 +434,7 @@ function restore_im() {
     info "Restoring IM Data..."
     wait_for_im $SERVICES_NS
     if [[ $MCSP_ENABLED == "true" ]]; then
-        wait_for_deployment $SERVICES_NS "account-iam-ui-account-deployment" 
+        wait_for_deployment "account-iam-ui-account-deployment" $SERVICES_NS 
     fi
     ${OC} apply -f ${BASE_DIR}/templates/restore/restore-cs-db.yaml
     wait_for_restore restore-cs-db-data
