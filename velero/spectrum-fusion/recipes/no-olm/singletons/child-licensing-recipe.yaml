@@ -1,0 +1,67 @@
+apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
+kind: Recipe
+metadata:
+  name: child-licensing-recipe
+  namespace: <licensing namespace>
+  labels:
+    dp.isf.ibm.com/parent-recipe: cpfs-singleton-parent-recipe
+    dp.isf.ibm.com/parent-recipe-namespace: <fusion ns> 
+spec:
+  appType: singleton
+  groups:
+    - includeClusterResources: true
+      includedResourceTypes:
+        - ibmlicensings.operator.ibm.com
+        - customresourcedefinitions.apiextensions.k8s.io
+        - clusterrole
+        - clusterrolebinding
+        - role
+        - rolebinding
+        - serviceaccount
+        - deployments
+        - secrets
+      labelSelector: foundationservices.cloudpak.ibm.com=ls-chart
+      name: licensing-resources
+      type: resource
+    - backupRef: licensing-resources
+      includeClusterResources: true
+      includedResourceTypes:
+        - customresourcedefinitions.apiextensions.k8s.io
+      name: licensing-crd
+      type: resource
+    - backupRef: licensing-resources
+      includeClusterResources: true
+      includedResourceTypes:
+        - serviceaccount
+        - clusterrole
+        - clusterrolebinding
+        - role
+        - rolebinding
+      name: licensing-rbac-resources
+      type: resource
+    - backupRef: licensing-resources
+      includeClusterResources: true
+      includedResourceTypes:
+        - ibmlicensings.operator.ibm.com
+        - secrets
+      name: licensing-workload-resources
+      type: resource
+    - backupRef: licensing-resources
+      includeClusterResources: true
+      includedResourceTypes:
+        - deployments
+      name: licensing-deployment
+      type: resource
+  workflows:
+    - failOn: any-error
+      name: singleton-resources-backup
+      sequence:
+        - group: licensing-resources
+    - failOn: any-error
+      name: singleton-resources-restore
+      sequence:
+        - group: licensing-crd
+        - group: licensing-rbac-resources
+        - group: licensing-workload-resources
+        - group: licensing-deployment
+    
