@@ -183,8 +183,8 @@ func (r *Defaulter) HugePageSettingDenied(cs *unstructured.Unstructured) (bool, 
 	return false, nil
 }
 
-func (r *Defaulter) InjectDecoder(decoder *admission.Decoder) error {
-	r.decoder = decoder
+func (r *Defaulter) InjectDecoder(decoder admission.Decoder) error {
+	r.decoder = &decoder
 	return nil
 }
 
@@ -193,6 +193,12 @@ func (r *Defaulter) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	mgr.GetWebhookServer().
 		Register("/validate-operator-ibm-com-v3-commonservice",
 			&webhook.Admission{Handler: r})
+
+	// Inject the decoder
+	decoder := admission.NewDecoder(mgr.GetScheme())
+	if err := r.InjectDecoder(*decoder); err != nil {
+		return err
+	}
 
 	return nil
 }

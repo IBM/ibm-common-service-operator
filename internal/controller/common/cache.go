@@ -23,8 +23,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	apiv3 "github.com/IBM/ibm-common-service-operator/api/v3"
 	"github.com/IBM/ibm-common-service-operator/internal/controller/constant"
-	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
 )
 
 // NewCSCache implements a customized cache with a for CS

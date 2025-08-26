@@ -5,17 +5,16 @@ go 1.23.0
 toolchain go1.23.4
 
 require (
-	github.com/IBM/ibm-common-service-operator/v4 v4.14.0
 	github.com/IBM/ibm-namespace-scope-operator/v4 v4.2.4-0.20240501132320-6675f97bc34f
 	github.com/IBM/ibm-secretshare-operator v1.20.3
-	github.com/IBM/operand-deployment-lifecycle-manager/v4 v4.3.11-alpha
+	github.com/IBM/operand-deployment-lifecycle-manager/v4 v4.3.15
 	github.com/ghodss/yaml v1.0.0
 	github.com/ibm/ibm-cert-manager-operator v0.0.0-20230705134954-f3b9b344298a
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.27.10
-	github.com/operator-framework/api v0.6.2
-	github.com/operator-framework/operator-lifecycle-manager v0.17.0
+	github.com/operator-framework/api v0.17.1
+	github.com/operator-framework/operator-lifecycle-manager v0.22.0
 	github.com/stretchr/testify v1.9.0
 	k8s.io/api v0.28.1
 	k8s.io/apimachinery v0.28.1
@@ -31,11 +30,15 @@ require (
 )
 
 require (
+	github.com/bugsnag/bugsnag-go/v2 v2.6.1 // indirect
+	github.com/bugsnag/panicwrap v1.3.4 // indirect
 	github.com/deckarep/golang-set v1.7.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.10.0 // indirect
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
 	github.com/go-openapi/swag v0.22.3 // indirect
+	github.com/h2non/filetype v1.1.1 // indirect
+	github.com/h2non/go-is-svg v0.0.0-20160927212452-35e8c4b0612c // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
@@ -57,14 +60,14 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
-	github.com/google/uuid v1.3.1 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/nxadm/tail v1.4.8 // indirect
-	github.com/operator-framework/operator-registry v1.13.6 // indirect
+	github.com/operator-framework/operator-registry v1.17.5 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.16.0 // indirect
