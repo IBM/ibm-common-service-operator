@@ -74,15 +74,17 @@ function main() {
     label_ns_and_related 
     label_configmap
     label_subscription
-    if [[ $ENABLE_CERT_MANAGER -eq 1 ]]; then
-        label_cert_manager
-    fi
-    if [[ $ENABLE_LSR -eq 1 ]]; then
-        label_lsr
-    fi
-    label_cs
-    if [[ $SERVICES_NS != "" ]]; then
-        label_nss
+    if [[ $NO_OLM == "false" ]]; then
+        if [[ $ENABLE_CERT_MANAGER -eq 1 ]]; then
+            label_cert_manager
+        fi
+        if [[ $ENABLE_LSR -eq 1 ]]; then
+            label_lsr
+        fi
+        label_cs
+        if [[ $SERVICES_NS != "" ]]; then
+            label_nss
+        fi
     fi
     label_mcsp
     success "Successfully labeled all the resources"
