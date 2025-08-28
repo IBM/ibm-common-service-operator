@@ -61,7 +61,7 @@ spec:
       includedResourceTypes:
         - deployments
       labelSelector: foundationservices.cloudpak.ibm.com=lsr-data
-      name: lsr-deployment
+      name: lsr-data-deployment
       type: resource
     - labelSelector: foundationservices.cloudpak.ibm.com=lsr-data
       name: lsr-volume
@@ -129,7 +129,7 @@ spec:
         - group: lsr-parent-cluster-resources
         - group: lsr-pre-deploy
         - group: lsr-volume
-        - group: lsr-deployment
+        - group: lsr-data-deployment
     - failOn: any-error
       name: singleton-resources-restore
       sequence:
@@ -140,7 +140,7 @@ spec:
         - hook: lsr-operator-check/podReady
         - group: lsr-pre-deploy
         - group: lsr-volume
-        - group: lsr-deployment
+        - group: lsr-data-deployment
         - hook: lsr-deployment/podReady
         - hook: lsr-instance-check/podReady
         - hook: lsr-data/restore
