@@ -145,7 +145,7 @@ data:
             return 1
         fi
         
-        info "🔄 Updating IDP configuration..."
+        info "✅ Detected cluster domain: $CLUSTER_DOMAIN"
         
         NEW_IDP_URL="https://${CLUSTER_DOMAIN}/idprovider/v1/auth"
         
