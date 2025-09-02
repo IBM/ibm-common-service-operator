@@ -73,7 +73,6 @@ function main() {
     fi
     label_ns_and_related 
     label_configmap
-    label_subscription
     if [[ $NO_OLM == "false" ]]; then
         if [[ $ENABLE_CERT_MANAGER -eq 1 ]]; then
             label_cert_manager
