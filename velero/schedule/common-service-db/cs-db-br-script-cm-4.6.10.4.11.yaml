@@ -222,6 +222,31 @@ data:
         fi
     }
 
+    function wait_for_job {
+        local job_name=$1
+        info "⏳ Waiting for job $job_name to complete in namespace $CSDB_NAMESPACE..."
+        job_exists=$(oc get job $job_name -n $CSDB_NAMESPACE --no-headers || echo fail)
+        if [[ $job_exists != "fail" ]]; then
+            completed=$(oc get job/$job_name -n $CSDB_NAMESPACE -o jsonpath="{.status.conditions[?(@.type=='Complete')].type}")
+            retry_count=20
+            while [[ $completed != "Complete" ]] && [[ $retry_count > 0 ]]
+            do
+                info "⏰ Wait for job $job_name to complete. Try again in 15s..."
+                sleep 15
+                completed=$(oc get job/$job_name -n $CSDB_NAMESPACE -o jsonpath="{.status.conditions[?(@.type=='Complete')].type}")
+                retry_count=$((retry_count-1))
+            done
+
+            if [[ $retry_count == 0 ]] && [[ $completed != "Complete" ]]; then
+                error "⏱️ Timed out waiting for job $job_name."
+            else
+                info "✅ Job $job_name completed."
+            fi
+        else
+            error "❌ Job $job_name not present."
+        fi
+    }
+
     function wait_for_cluster_cr {
         info "Waiting for EDB Cluster CR $CLUSTER_CR to complete in namespace $CSDB_NAMESPACE."
         cluster_cr_exists=$(oc get clusters.postgresql.k8s.enterprisedb.io $CLUSTER_CR -n $CSDB_NAMESPACE --no-headers || echo fail)
