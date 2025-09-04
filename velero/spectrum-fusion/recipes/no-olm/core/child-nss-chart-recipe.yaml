@@ -42,4 +42,3 @@ spec:
         # nss
         - group: nss-resources
         - hook: nss-check/podReady
-    

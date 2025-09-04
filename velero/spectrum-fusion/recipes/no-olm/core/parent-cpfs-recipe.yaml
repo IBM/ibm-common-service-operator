@@ -11,89 +11,25 @@ spec:
         - secrets
         - certificates.cert-manager.io
         - issuers.cert-manager.io
-        # - clusterissuers.cert-manager.io
-        # - certmanagerconfigs.operator.ibm.com
-        - customresourcedefinitions.apiextensions.k8s.io
       labelSelector: foundationservices.cloudpak.ibm.com=cert-manager
       name: cert-manager-resources
       type: resource
-    - backupRef: cert-manager-resources
-      includeClusterResources: true
-      includedResourceTypes:
-        - customresourcedefinitions.apiextensions.k8s.io
-      name: cert-manager-crd
-      type: resource
-    - includedResourceTypes:
-        - catalogsources.operators.coreos.com
-      labelSelector: foundationservices.cloudpak.ibm.com=catalog
-      name: common-services-catalogs
-      type: resource
-    - includedNamespaces:
-        - openshift-config
+    - includeClusterResources: false
       includedResourceTypes:
         - secrets
-      labelSelector: foundationservices.cloudpak.ibm.com=pull-secret
-      name: pull-secret
-      type: resource
-    - backupRef: pull-secret
-      includedNamespaces:
-        - openshift-config
-      includedResourceTypes:
-        - secrets
-      labelSelector: foundationservices.cloudpak.ibm.com=pull-secret
-      name: ow-pull-secret
-      restoreOverwriteResources: true
+      labelSelector: foundationservices.cloudpak.ibm.com=entitlementkey
+      name: entitlementkey
       type: resource
     - includedResourceTypes:
         - configmaps
       labelSelector: foundationservices.cloudpak.ibm.com=configmap
       name: common-services-configmaps
       type: resource
-    - includedResourceTypes:
-        - roles
-        - rolebindings
-        - serviceaccounts
-      labelSelector: foundationservices.cloudpak.ibm.com=permissions
-      name: cs-operator-permissions
-      type: resource
     - includeClusterResources: true
       labelSelector: foundationservices.cloudpak.ibm.com=namespace
       name: common-services-namespace
       type: resource
-    - includedResourceTypes:
-        - operatorgroups.operators.coreos.com
-      labelSelector: foundationservices.cloudpak.ibm.com=operatorgroup
-      name: common-services-operatorgroups
-      type: resource
-    - includedResourceTypes:
-        - subscriptions.operators.coreos.com
-      labelSelector: foundationservices.cloudpak.ibm.com=subscription
-      name: common-services-subscriptions
-      type: resource
-    - includeClusterResources: true
-      includedResourceTypes:
-        - customresourcedefinitions.apiextensions.k8s.io
-      labelSelector: foundationservices.cloudpak.ibm.com=crd
-      name: commonservices-crd
-      type: resource
-    - includedResourceTypes:
-        - commonservices.operator.ibm.com
-      labelSelector: foundationservices.cloudpak.ibm.com=commonservice
-      name: commonservice-cr
-      type: resource
-    - includedResourceTypes:
-        - roles
-        - rolebindings
-        - serviceaccounts
-        - namespacescopes.operator.ibm.com
-      labelSelector: foundationservices.cloudpak.ibm.com=nss
-      name: nss-resources
-      type: resource
-    - includedResourceTypes:
-        - operandrequests.operator.ibm.com
-      labelSelector: foundationservices.cloudpak.ibm.com=operand
-      name: odlm-resources
-      type: resource
+    ### ODLM resources
     - backupRef: odlm-resources
       includedResourceTypes:
         - operandrequests.operator.ibm.com
@@ -102,30 +38,6 @@ spec:
       restoreOverwriteResources: true
       type: resource
   hooks:
-    - chks:
-        - condition: '{$.status.phase} == {"Running"}'
-          name: podReady
-          onError: fail
-          timeout: 600
-      labelSelector: app.kubernetes.io/name=operand-deployment-lifecycle-manager
-      name: odlm-check
-      namespace: <parent recipe namespace>
-      onError: fail
-      selectResource: pod
-      timeout: 600
-      type: check
-    - chks:
-        - condition: '{$.status.phase} == {"Running"}'
-          name: podReady
-          onError: fail
-          timeout: 600
-      labelSelector: app.kubernetes.io/name=cert-manager
-      name: cert-manager-operator-check
-      namespace: ibm-cert-manager
-      onError: fail
-      selectResource: pod
-      timeout: 600
-      type: check
     - chks:
         - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
           name: podReady
@@ -139,6 +51,12 @@ spec:
       timeout: 600
       type: check
   workflows:
+    - name: chart-backup #where helm chart resources are backed up (see child recipes)
+      priority: 0
+      sequence: []
+    - name: chart-restore #where helm chart resources are restored (see child recipes)
+      priority: 0
+      sequence: []
     - name: pre-backup #where zen and cs db backup hooks are executed (see child recipes)
       priority: 0
       sequence: []
@@ -148,47 +66,26 @@ spec:
     - name: data-restore #where zen and csdb restores take place (see child recipes)
       priority: 0
       sequence: []
-    - name: restore-nss #where nss resources are restored (see child recipe)
-      priority: 0
-      sequence: []
     - name: backup
       sequence:
         #pre CPFS
         - workflow: pre-backup
         - group: common-services-namespace
-        - group: pull-secret
-        - group: common-services-catalogs
-        - group: common-services-operatorgroups 
-        #cpfs backup
-        - group: common-services-configmaps
+        - group: entitlementkey
         - group: cert-manager-resources
-        - group: commonservices-crd
-        - group: commonservice-cr
-        - group: common-services-subscriptions
-        - group: operand-resources
+        - group: common-services-configmaps
+        - workflow: chart-backup
         - group: odlm-resources
         - workflow: post-backup 
     - name: restore
       sequence:
         #CPFS setup resources
         - group: common-services-namespace
-        - group: pull-secret
-        - group: ow-pull-secret
-        - group: common-services-catalogs
-        - group: common-services-operatorgroups
+        - group: entitlementkey
         #cert manager resources
-        - group: cert-manager-crd
-        - hook: cert-manager-operator-check/podReady
         - hook: cert-manager-webhook-check/podReady
         - group: cert-manager-resources
         # general common services
         - group: common-services-configmaps
-        - group: commonservices-crd
-        - group: commonservice-cr
-        #cs and odlm operators
-        - group: common-services-subscriptions
-        - workflow: restore-nss
-        - hook: odlm-check/podReady
-        - group: odlm-resources
-        - group: operand-resources
+        - workflow: chart-restore
         - workflow: data-restore
