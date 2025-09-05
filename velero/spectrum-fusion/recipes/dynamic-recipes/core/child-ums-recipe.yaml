@@ -31,7 +31,7 @@ spec:
           timeout: 600
       labelSelector: app.kubernetes.io/name=ibm-usage-metering
       name: ums-operator-check
-      namespace: <child recipe namespace>
+      namespace: <ums operator namespace>
       onError: fail
       selectResource: pod
       timeout: 600
