@@ -29,13 +29,6 @@ spec:
       labelSelector: foundationservices.cloudpak.ibm.com=namespace
       name: common-services-namespace
       type: resource
-    - backupRef: odlm-resources
-      includedResourceTypes:
-        - operandrequests.operator.ibm.com
-      labelSelector: foundationservices.cloudpak.ibm.com=operand
-      name: operand-resources
-      restoreOverwriteResources: true
-      type: resource
   hooks:
     - chks:
         - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
@@ -74,7 +67,6 @@ spec:
         - group: cert-manager-resources
         - group: common-services-configmaps
         - workflow: chart-backup
-        - group: odlm-resources
         - workflow: post-backup 
     - name: restore
       sequence:

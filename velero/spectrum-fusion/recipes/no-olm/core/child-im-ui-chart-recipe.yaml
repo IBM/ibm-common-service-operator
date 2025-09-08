@@ -82,6 +82,7 @@ spec:
     - includedResourceTypes:
         - operandrequests.operator.ibm.com
       labelSelector: foundationservices.cloudpak.ibm.com=operand
+      restoreOverwriteResources: true
       name: operandrequest
       type: resource
   hooks:
@@ -125,9 +126,9 @@ spec:
         - group: im-rbac-resources
         - group: im-cr
         - group: im-deployment
-        - group: operandrequest
         - hook: im-check/podReady
         - group: ui-cluster-resources
         - group: ui-rbac-resources
         - group: ui-deployment
         - hook: ui-check/podReady
+        - group: operandrequest
