@@ -29,7 +29,6 @@ spec:
       labelSelector: foundationservices.cloudpak.ibm.com=namespace
       name: common-services-namespace
       type: resource
-    ### ODLM resources
     - backupRef: odlm-resources
       includedResourceTypes:
         - operandrequests.operator.ibm.com

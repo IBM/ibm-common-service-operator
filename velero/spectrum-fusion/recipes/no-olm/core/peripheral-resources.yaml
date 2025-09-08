@@ -45,10 +45,9 @@ spec:
     #- ibm-cert-manager
     #- ibm-licensing
     #- ibm-ls-reporter
-    - <cert manager namespace>
-    - <licensing namespace>
-    - <lsr namespace>
-    - openshift-marketplace
+    - <operator namespace>
+    - <service namespace>
+    - <tenant namespace>
     - openshift-config
 
 ---

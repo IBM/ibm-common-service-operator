@@ -4,19 +4,47 @@ metadata:
   labels:
     dp.isf.ibm.com/parent-recipe: cpfs-parent-recipe
     dp.isf.ibm.com/parent-recipe-namespace: <parent recipe namespace>
-  name: nss-child
+  name: nss-child-recipe
   namespace: <child recipe namespace>
 spec:
   appType: common-service
   groups:
-    - includedResourceTypes:
-        - roles
-        - rolebindings
-        - serviceaccounts
+    - includeClusterResources: true
+      includedResourceTypes:
+        - clusterrole
+        - clusterrolebinding
+        - customresourcedefinitions.apiextensions.k8s.io
+      labelSelector: foundationservices.cloudpak.ibm.com=nss-cluster
+      name: nss-cluster-resources
+      type: resource
+    - includeClusterResources: true
+      includedResourceTypes:
+        - role
+        - rolebinding
+        - serviceaccount
+        - deployments
+        - secrets
         - namespacescopes.operator.ibm.com
-        - subscriptions.operators.coreos.com #TODO change labeling script to label nss sub as nss, verify matches manual labeling instructions
       labelSelector: foundationservices.cloudpak.ibm.com=nss
       name: nss-resources
+      type: resource
+    - backupRef: nss-resources
+      includedResourceTypes:
+        - serviceaccount
+        - role
+        - rolebinding
+        - secrets
+      name: nss-rbac-resources
+      type: resource
+    - backupRef: nss-resources
+      includedResourceTypes:
+        - namespacescopes.operator.ibm.com
+      name: nss-cr
+      type: resource
+    - backupRef: nss-resources
+      includedResourceTypes:
+        - deployments
+      name: nss-deployment
       type: resource
   hooks:
     - chks:
@@ -32,13 +60,16 @@ spec:
       timeout: 600
       type: check
   workflows:
-    - name: post-backup
+    - name: chart-backup
       priority: 0
       sequence:
-        #nss
+        - group: nss-cluster-resources
         - group: nss-resources
-    - name: restore-nss
+    - name: chart-restore
+      priority: 10
       sequence:
-        # nss
-        - group: nss-resources
+        - group: nss-cluster-resources
+        - group: nss-rbac-resources
+        - group: nss-cr
+        - group: nss-deployment
         - hook: nss-check/podReady

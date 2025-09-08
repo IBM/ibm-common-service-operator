@@ -515,6 +515,7 @@ function label_helm_cluster_scope(){
     ${OC} label secret sh.helm.release.v1.$odlm_release_name.v1 -n $odlm_release_namespace foundationservices.cloudpak.ibm.com=odlm-cluster  --overwrite=true 2>/dev/null
 
     #cs operator cluster resources (crds, clusterrole, clusterrolebinding), crd covered elsewhere in script
+    ${OC} label customresourcedefinition commonservices.operator.ibm.com foundationservices.cloudpak.ibm.com=cs-cluster --overwrite=true 2>/dev/null
     ${OC} label clusterrole ibm-common-service-operator-$OPERATOR_NS foundationservices.cloudpak.ibm.com=cs-cluster  --overwrite=true 2>/dev/null
     ${OC} label clusterrolebinding ibm-common-service-operator-$OPERATOR_NS foundationservices.cloudpak.ibm.com=cs-cluster  --overwrite=true 2>/dev/null
     cs_release_name=$(${OC} get crd commonservices.operator.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
@@ -571,7 +572,7 @@ function label_helm_namespace_scope(){
     ${OC} label rolebinding operand-deployment-lifecycle-manager foundationservices.cloudpak.ibm.com=odlm-chart -n $SERVICES_NS --overwrite=true 2>/dev/null
     
     #cs operator
-    #cs CR handled in label_cs
+    ${OC} label commonservices common-service foundationservices.cloudpak.ibm.com=cs-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
     ${OC} label deployment ibm-common-service-operator foundationservices.cloudpak.ibm.com=cs-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
     ${OC} label serviceaccount ibm-common-service-operator foundationservices.cloudpak.ibm.com=cs-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
     ${OC} label role ibm-common-service-operator foundationservices.cloudpak.ibm.com=cs-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
