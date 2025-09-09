@@ -395,6 +395,7 @@ function restore_cpfs(){
         info "Restore CS and ODLM Operators..."
         ${OC} apply -f ${BASE_DIR}/templates/restore/restore-subscriptions.yaml
         wait_for_restore restore-subscription
+        validate_cs_odlm $OPERATOR_NS
     fi
     #end olm specific
     #start no olm specific
@@ -418,6 +419,8 @@ function restore_cpfs(){
         info "Restoring CS Operator and ODLM charts..."
         ${OC} apply -f ${BASE_DIR}/templates/restore/no-olm/restore-installer-ns-charts.yaml
         wait_for_restore restore-installer-charts
+        wait_for_deployment $OPERATOR_NS ibm-common-service-operator
+        wait_for_deployment $OPERATOR_NS operand-deployment-lifecycle-manager
         #restore im ns chart no-olm/restore-im-ns-charts.yaml
         #This restore resource is how we restore the EDB chart. 
         #Technically, zen could be enabled and set IM to false but we would still need to restore the edb chart so we would still need to apply this resource
@@ -425,10 +428,14 @@ function restore_cpfs(){
             info "Restoring IM, Common UI, and EDB charts..."
             ${OC} apply -f ${BASE_DIR}/templates/restore/no-olm/restore-im-ns-charts.yaml
             wait_for_restore restore-im-charts
+            #TODO implement check for im so we don't wait for im and ui deployments in case where zen does not enable im since this is where we need to restore and check edb
+            wait_for_deployment $OPERATOR_NS ibm-iam-operator
+            wait_for_deployment $OPERATOR_NS ibm-commonui-operator
+            wait_for_deployment $OPERATOR_NS postgresql-operator-controller-manager-1-25-1
         fi
     fi
     #end no olm specific
-    validate_cs_odlm $OPERATOR_NS
+    
 
     #restore ums has to happen before operand requests are restored so ODLM does not create default values for restore resources
     if [[ $UMS_ENABLED == "true" ]]; then
