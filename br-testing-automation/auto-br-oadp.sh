@@ -362,7 +362,7 @@ function restore_cpfs(){
 
         if [[ $ENABLE_LSR == "true" ]]; then
             info "Restoring License Service Reporter data..."
-            wait_for_deployment $LSR_NAMESPACE "ibm-license-service-reporter-instance"
+            wait_for_deployment $LSR_NAMESPACE "ibm-license-service-reporter-instance" 30
             ${OC} apply -f ${BASE_DIR}/templates/restore/restore-lsr-data.yaml
             wait_for_restore restore-lsr-data
         fi
