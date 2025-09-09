@@ -14,7 +14,7 @@ spec:
         - clusterrole
         - clusterrolebinding
         - customresourcedefinitions.apiextensions.k8s.io
-      labelSelector: foundationservices.cloudpak.ibm.com=im-cluster
+      labelSelector: foundationservices.cloudpak.ibm.com=iam-cluster
       name: im-cluster-resources
       type: resource
     - includeClusterResources: true
@@ -33,7 +33,7 @@ spec:
         - deployments
         - secrets
         - commonservices.operator.ibm.com
-      labelSelector: foundationservices.cloudpak.ibm.com=im-chart
+      labelSelector: foundationservices.cloudpak.ibm.com=iam-chart
       name: im-resources
       type: resource
     - includeClusterResources: true
