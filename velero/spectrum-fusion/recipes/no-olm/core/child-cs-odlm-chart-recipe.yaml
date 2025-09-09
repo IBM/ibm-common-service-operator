@@ -11,8 +11,8 @@ spec:
   groups:
     - includeClusterResources: true
       includedResourceTypes:
-        # - clusterrole
-        # - clusterrolebinding
+        - clusterrole
+        - clusterrolebinding
         - customresourcedefinitions.apiextensions.k8s.io
       labelSelector: foundationservices.cloudpak.ibm.com=cs-cluster
       name: cs-cluster-resources
