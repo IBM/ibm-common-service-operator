@@ -313,14 +313,16 @@ function restore_cpfs(){
         info "Restoring catalog sources..."
         ${OC} apply -f ${BASE_DIR}/templates/restore/restore-catalog.yaml
         wait_for_restore restore-catalog
-        info "Restore operator groups, and CRDs..."
-        ${OC} apply -f ${BASE_DIR}/templates/restore/restore-operatorgroup.yaml -f ${BASE_DIR}/templates/restore/restore-crd.yaml 
+        info "Restore operator groups..."
+        ${OC} apply -f ${BASE_DIR}/templates/restore/restore-operatorgroup.yaml 
         ${OC} get restores.velero.io -n $OADP_NS $custom_columns_str
         wait_for_restore restore-operatorgroup
         wait_for_restore restore-crd
     fi
     #end olm specific
-    
+    info "Restore CRDs..."
+    ${OC} apply -f ${BASE_DIR}/templates/restore/restore-crd.yaml 
+    wait_for_restore restore-crd
     info "Restore configmaps..."
     ${OC} apply -f ${BASE_DIR}/templates/restore/restore-configmap.yaml
     wait_for_restore restore-configmap
