@@ -380,16 +380,17 @@ function restore_cpfs(){
     info "Restoring common service CR..."
     ${OC} apply -f ${BASE_DIR}/templates/restore/restore-commonservice.yaml
     wait_for_restore restore-commonservice
-    if [[ $NSS_ENABLED == "true" ]]; then 
-        info "Restoring Namespace Scope resources..."
-        #this will restore nss cluster and chart resources as well in no olm
-        ${OC} apply -f ${BASE_DIR}/templates/restore/restore-nss.yaml
-        wait_for_restore restore-nss
-        ${OC} get restores.velero.io -n $OADP_NS $custom_columns_str
-        validate_nss $OPERATOR_NS
-    fi
+
     #start olm specific
     if [[ $NO_OLM == "false" ]]; then
+        if [[ $NSS_ENABLED == "true" ]]; then 
+            info "Restoring Namespace Scope resources..."
+            #this will restore nss cluster and chart resources as well in no olm
+            ${OC} apply -f ${BASE_DIR}/templates/restore/restore-nss.yaml
+            wait_for_restore restore-nss
+            ${OC} get restores.velero.io -n $OADP_NS $custom_columns_str
+            validate_nss $OPERATOR_NS
+        fi
         #restore common service subscription and odlm operator
         info "Restore CS and ODLM Operators..."
         ${OC} apply -f ${BASE_DIR}/templates/restore/restore-subscriptions.yaml
@@ -402,6 +403,17 @@ function restore_cpfs(){
         info "Restoring cluster wide operator resources..."
         ${OC} apply -f ${BASE_DIR}/templates/restore/no-olm/restore-cluster-scope.yaml
         wait_for_restore restore-cluster-charts
+        
+        #restore namespace scope operator chart
+        if [[ $NSS_ENABLED == "true" ]]; then 
+            info "Restoring Namespace Scope resources..."
+            #this will restore nss chart resources as well in no olm
+            ${OC} apply -f ${BASE_DIR}/templates/restore/restore-nss.yaml
+            wait_for_restore restore-nss
+            ${OC} get restores.velero.io -n $OADP_NS $custom_columns_str
+            wait_for_deployment $OPERATOR_NS ibm-namespace-scope-operator
+        fi
+
         #restore cs op/odlm chart no-olm/restore-installer-ns-charts.yaml
         info "Restoring CS Operator and ODLM charts..."
         ${OC} apply -f ${BASE_DIR}/templates/restore/no-olm/restore-installer-ns-charts.yaml
