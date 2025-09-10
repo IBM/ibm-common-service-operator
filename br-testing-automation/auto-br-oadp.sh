@@ -539,11 +539,11 @@ function restore_im() {
 }
 
 function wait_for_im() {
-    info "Sleep for 7 minutes for IM operator to create authentication cr"
-    sleep 420
+    info "Sleep for 5 minutes for IM operator to create authentication cr"
+    sleep 300
     local namespace=$1
     local name="platform-identity-provider"
-    wait_for_deployment $namespace $name
+    wait_for_deployment $namespace $name 40
 }
 
 function restore_zen() {
