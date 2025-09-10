@@ -53,6 +53,10 @@ function main() {
                 #in full e2e BR scenarios where we are restoring to a different cluster
                 #it takes a few minutes for the backup to be present on the new cluster once completed
                 wait_for_backup
+            elif [[ $SETUP_RESTORE == "true" ]]; then
+                #in scenario where backup was already run but the restore needs to be setup and then the restore needs to run
+                #the restore runs before the setup completes and the backup is not present so we need to wait until we can see the backup on the restore cluster
+                wait_for_backup
             fi
         fi
         restore_cpfs
