@@ -79,12 +79,6 @@ spec:
         - deployments
       name: ui-deployment
       type: resource
-    - includedResourceTypes:
-        - operandrequests.operator.ibm.com
-      labelSelector: foundationservices.cloudpak.ibm.com=operand
-      restoreOverwriteResources: true
-      name: operandrequest
-      type: resource
   hooks:
     - chks:
         - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
@@ -93,7 +87,7 @@ spec:
           timeout: 600
       name: im-check
       nameSelector: ibm-iam-operator
-      namespace: <child recipe namespace>
+      namespace: <operator namespace>
       onError: fail
       selectResource: deployment
       timeout: 600
@@ -105,7 +99,7 @@ spec:
           timeout: 600
       name: ui-check
       nameSelector: ibm-commonui-operator
-      namespace: <child recipe namespace>
+      namespace: <operator namespace>
       onError: fail
       selectResource: deployment
       timeout: 600
@@ -118,7 +112,6 @@ spec:
         - group: im-resources
         - group: ui-cluster-resources
         - group: ui-resources
-        - group: operandrequest
     - name: chart-restore
       priority: 4
       sequence:
@@ -131,4 +124,3 @@ spec:
         - group: ui-rbac-resources
         - group: ui-deployment
         - hook: ui-check/podReady
-        - group: operandrequest

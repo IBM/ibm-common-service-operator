@@ -51,8 +51,8 @@ spec:
           onError: fail
           timeout: 600
       name: edb-check
-      labelSelector: app.kubernetes.io/name=cloud-native-postgresql #foundationservices.cloudpak.ibm.com=edb-chart
-      namespace: <child recipe namespace>
+      labelSelector: foundationservices.cloudpak.ibm.com=edb-chart
+      namespace: <operator namespace>
       onError: fail
       selectResource: deployment
       timeout: 600

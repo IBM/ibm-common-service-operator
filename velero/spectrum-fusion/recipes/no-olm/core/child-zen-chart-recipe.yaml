@@ -47,8 +47,8 @@ spec:
           onError: fail
           timeout: 600
       name: zen-check
-      labelSelector: app.kubernetes.io/name=cloud-native-postgresql #foundationservices.cloudpak.ibm.com=zen-chart
-      namespace: <child recipe namespace>
+      nameSelector: ibm-zen-operator
+      namespace: <operator namespace>
       onError: fail
       selectResource: deployment
       timeout: 600

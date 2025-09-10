@@ -29,6 +29,18 @@ spec:
       labelSelector: foundationservices.cloudpak.ibm.com=namespace
       name: common-services-namespace
       type: resource
+    - includedResourceTypes:
+        - operandrequests.operator.ibm.com
+      labelSelector: foundationservices.cloudpak.ibm.com=operand
+      name: operandrequest-backup
+      type: resource
+    - backupRef: operandrequest-backup
+      includedResourceTypes:
+        - operandrequests.operator.ibm.com
+      labelSelector: foundationservices.cloudpak.ibm.com=operand
+      name: operandrequest-restore
+      restoreOverwriteResources: true
+      type: resource
   hooks:
     - chks:
         - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
@@ -37,7 +49,7 @@ spec:
           timeout: 600
       name: cert-manager-webhook-check
       nameSelector: cert-manager-webhook
-      namespace: ibm-cert-manager
+      namespace: <cert-manager namespace>
       onError: fail
       selectResource: deployment
       timeout: 600
@@ -67,6 +79,7 @@ spec:
         - group: cert-manager-resources
         - group: common-services-configmaps
         - workflow: chart-backup
+        - group: operandrequest-backup
         - workflow: post-backup 
     - name: restore
       sequence:
@@ -79,4 +92,5 @@ spec:
         # general common services
         - group: common-services-configmaps
         - workflow: chart-restore
+        - group: operandrequest-restore
         - workflow: data-restore
