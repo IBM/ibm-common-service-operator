@@ -37,7 +37,7 @@ VERSION ?= $(shell git describe --exact-match 2> /dev/null || \
                 git describe --match=$(git rev-parse --short=8 HEAD) --always --dirty --abbrev=8)
 RELEASE_VERSION ?= $(shell cat ./version/version.go | grep "Version =" | awk '{ print $$3}' | tr -d '"')
 PREVIOUS_VERSION := 3.23.0
-LATEST_VERSION ?= 4.6.18
+LATEST_VERSION ?= 4.6.19
 
 LOCAL_OS := $(shell uname)
 ifeq ($(LOCAL_OS),Linux)
