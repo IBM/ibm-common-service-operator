@@ -41,19 +41,6 @@ spec:
       name: operandrequest-restore
       restoreOverwriteResources: true
       type: resource
-  hooks:
-    - chks:
-        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
-          name: podReady
-          onError: fail
-          timeout: 600
-      name: cert-manager-webhook-check
-      nameSelector: cert-manager-webhook
-      namespace: <cert-manager namespace>
-      onError: fail
-      selectResource: deployment
-      timeout: 600
-      type: check
   workflows:
     - name: chart-backup #where helm chart resources are backed up (see child recipes)
       priority: 0
@@ -87,7 +74,6 @@ spec:
         - group: common-services-namespace
         - group: entitlementkey
         #cert manager resources
-        - hook: cert-manager-webhook-check/podReady
         - group: cert-manager-resources
         # general common services
         - group: common-services-configmaps
