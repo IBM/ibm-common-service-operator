@@ -2005,7 +2005,7 @@ spec:
             imageName:
               templatingValueFrom:
                 configMapKeyRef:
-                  name: cloud-native-postgresql-operand-images-config
+                  name: cnpg-ibm-operand-images-config
                   key: ibm-postgresql-16-operand-image
                   namespace: {{ .OperatorNs }}
             imagePullSecrets:
