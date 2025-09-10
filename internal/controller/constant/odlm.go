@@ -1946,7 +1946,7 @@ spec:
         force: true
         kind: OperandBindInfo
         name: common-service-postgresql-bindinfo
-      - apiVersion: cnpg.operator.ibm.com/v1
+      - apiVersion: postgresql.cnpg.ibm.com/v1
         kind: Cluster
         name: common-service-db          
         force: true
