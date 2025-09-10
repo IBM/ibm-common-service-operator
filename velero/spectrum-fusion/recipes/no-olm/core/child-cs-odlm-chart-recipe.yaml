@@ -85,7 +85,7 @@ spec:
           timeout: 600
       name: cs-check
       nameSelector: ibm-common-service-operator
-      namespace: <operator namespace>
+      namespace: <operator_ns>
       onError: fail
       selectResource: deployment
       timeout: 600
@@ -97,7 +97,7 @@ spec:
           timeout: 600
       name: odlm-check
       nameSelector: operand-deployment-lifecycle-manager
-      namespace: <operator namespace>
+      namespace: <operator_ns>
       onError: fail
       selectResource: deployment
       timeout: 600

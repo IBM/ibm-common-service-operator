@@ -48,7 +48,7 @@ spec:
           timeout: 600
       name: zen-check
       nameSelector: ibm-zen-operator
-      namespace: <operator namespace>
+      namespace: <operator_ns>
       onError: fail
       selectResource: deployment
       timeout: 600

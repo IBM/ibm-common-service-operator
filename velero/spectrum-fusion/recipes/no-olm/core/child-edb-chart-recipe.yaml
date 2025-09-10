@@ -58,7 +58,7 @@ spec:
           timeout: 600
       name: edb-check
       labelSelector: foundationservices.cloudpak.ibm.com=edb-chart
-      namespace: <operator namespace>
+      namespace: <operator_ns>
       onError: fail
       selectResource: deployment
       timeout: 600

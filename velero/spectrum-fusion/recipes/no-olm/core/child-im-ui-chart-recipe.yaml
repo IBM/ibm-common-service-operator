@@ -87,7 +87,7 @@ spec:
           timeout: 600
       name: im-check
       nameSelector: ibm-iam-operator
-      namespace: <operator namespace>
+      namespace: <operator_ns>
       onError: fail
       selectResource: deployment
       timeout: 600
@@ -99,7 +99,7 @@ spec:
           timeout: 600
       name: ui-check
       nameSelector: ibm-commonui-operator
-      namespace: <operator namespace>
+      namespace: <operator_ns>
       onError: fail
       selectResource: deployment
       timeout: 600
