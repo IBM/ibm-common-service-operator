@@ -27,16 +27,22 @@ spec:
         - deployments
         - secrets
         - configmaps
+        - services
       labelSelector: foundationservices.cloudpak.ibm.com=edb-chart
       name: edb-resources
+      type: resource
+    - backupRef: edb-resources
+      includedResourceTypes:
+        - secrets
+        - configmaps
+        - services
+      name: edb-workload-resources
       type: resource
     - backupRef: edb-resources
       includedResourceTypes:
         - serviceaccount
         - role
         - rolebinding
-        - secrets
-        - configmaps
       name: edb-rbac-resources
       type: resource
     - backupRef: edb-resources
@@ -66,6 +72,7 @@ spec:
     - name: chart-restore
       priority: 6
       sequence:
+        - group: edb-workload-resources
         - group: edb-cluster-resources
         - group: edb-rbac-resources
         - group: edb-deployment
