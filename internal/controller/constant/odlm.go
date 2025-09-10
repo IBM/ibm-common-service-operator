@@ -1834,7 +1834,7 @@ spec:
             requests:
               - operands:
                   - name: cloud-native-postgresql-v1.25
-                registry: $newOperandConfigName
+                registry: common-service
                 registryNamespace: {{ .ServicesNs }}
         force: true
         kind: OperandRequest
@@ -1981,17 +1981,6 @@ spec:
                             - amd64
                             - ppc64le
                             - s390x
-              additionalPodAntiAffinity:
-                preferredDuringSchedulingIgnoredDuringExecution:
-                  - podAffinityTerm:
-                      labelSelector:
-                        matchExpressions:
-                          - key: k8s.enterprisedb.io/cluster
-                            operator: In
-                            values:
-                              - common-service-db
-                      topologyKey: kubernetes.io/hostname
-                    weight: 50
               podAntiAffinityType: preferred
               topologyKey: topology.kubernetes.io/zone
             topologySpreadConstraints:
