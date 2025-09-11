@@ -901,6 +901,7 @@ func (b *Bootstrap) InstallOrUpdateOpreg(installPlanApproval olmv1alpha1.Approva
 		constant.PlatformUIOpReg,
 		constant.KeyCloakOpReg,
 		constant.CommonServicePGOpReg,
+		constant.CommonServiceCNPGOpReg,
 	}
 	if b.SaasEnable {
 		baseReg = constant.CSV3SaasOpReg

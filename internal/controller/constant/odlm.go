@@ -495,6 +495,37 @@ spec:
 `
 )
 
+// TODO update below with approapriate values once known
+const (
+	CommonServiceCNPGOpReg = `
+apiVersion: operator.ibm.com/v1alpha1
+kind: OperandRegistry
+metadata:
+  name: common-service
+  namespace: "{{ .ServicesNs }}"
+  labels:
+    operator.ibm.com/managedByCsOperator: "true"
+  annotations:
+    version: {{ .Version }}
+    excluded-catalogsource: {{ .ExcludedCatalog }}
+    status-monitored-services: {{ .StatusMonitoredServices }}
+spec:
+  operators:
+  - channel: stable-v1.25
+    fallbackChannels:
+      - stable-v1.22
+      - stable
+    installPlanApproval: {{ .ApprovalMode }}
+    name: ibm-cnpg-postgres-operator
+    namespace: "{{ .CPFSNs }}"
+    packageName: ibm-cnpg-postgres-operator
+    scope: public
+    operatorConfig: cloud-native-postgresql-operator-config
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+`
+)
+
 const (
 	MongoDBOpCon = `
 apiVersion: operator.ibm.com/v1alpha1
