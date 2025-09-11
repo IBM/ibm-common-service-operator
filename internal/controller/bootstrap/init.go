@@ -933,6 +933,7 @@ func (b *Bootstrap) InstallOrUpdateOpcon(forceUpdateODLMCRs bool) error {
 		constant.EDBOpCon,
 		constant.KeyCloakOpCon,
 		constant.CommonServicePGOpCon,
+		constant.CommonServiceCNPGOpCon,
 	}
 
 	baseCon = constant.CSV4OpCon
