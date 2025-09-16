@@ -267,7 +267,9 @@ function label_ibm_catalogsources() {
 function label_ns_and_related() {
 
     title "Start to label the namespaces, operatorgroups and secrets... "
-    namespaces=$(${OC} get configmap namespace-scope -n $OPERATOR_NS -oyaml | awk '/^data:/ {flag=1; next} /^  namespaces:/ {print $2; next} flag && /^  [^ ]+: / {flag=0}')
+    # namespaces=$(${OC} get configmap namespace-scope -n $OPERATOR_NS -oyaml | awk '/^data:/ {flag=1; next} /^  namespaces:/ {print $2; next} flag && /^  [^ ]+: / {flag=0}')
+    namespaces=$(${OC} get configmap common-service-maps -n kube-public -o jsonpath='{.data.common-service-maps\.yaml}' | awk -v ns="$OPERATOR_NS" 'BEGIN {found=0}/requested-from-namespace:/ {found=0} $0 ~ ns {found=1} found && /^ *-/ {print $2}' | tr '\n' ',' | sed 's/,$/\n/')
+    echo "Namespaces from common-service-maps configmap: $namespaces"
     # add cert-manager namespace and licensing namespace and lsr namespace into the list with comma separated
     if [[ $CONTROL_NS != "" ]]; then
         namespaces+=",$CONTROL_NS"
