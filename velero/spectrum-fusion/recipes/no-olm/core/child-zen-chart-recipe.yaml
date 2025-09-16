@@ -24,6 +24,7 @@ spec:
         - serviceaccount
         - deployments
         - secrets
+        - zenservices.zen.cpd.ibm.com
       labelSelector: foundationservices.cloudpak.ibm.com=zen-chart
       name: zen-resources
       type: resource
@@ -34,6 +35,11 @@ spec:
         - rolebinding
         - secrets
       name: zen-rbac-resources
+      type: resource
+    - backupRef: zen-resources
+      includedResourceTypes:
+        - zenservices.zen.cpd.ibm.com
+      name: zenservice
       type: resource
     - backupRef: zen-resources
       includedResourceTypes:
@@ -65,4 +71,5 @@ spec:
         - group: zen-cluster-resources
         - group: zen-rbac-resources
         - group: zen-deployment
+        - group: zenservice
         - hook: zen-check/podReady

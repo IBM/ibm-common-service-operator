@@ -40,7 +40,6 @@ spec:
         - rolebinding
         - serviceaccount
         - deployments
-        - secrets
       labelSelector: foundationservices.cloudpak.ibm.com=odlm-chart
       name: odlm-resources
       type: resource

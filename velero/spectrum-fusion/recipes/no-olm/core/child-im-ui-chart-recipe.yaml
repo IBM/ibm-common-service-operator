@@ -32,7 +32,6 @@ spec:
         - serviceaccount
         - deployments
         - secrets
-        - commonservices.operator.ibm.com
       labelSelector: foundationservices.cloudpak.ibm.com=iam-chart
       name: im-resources
       type: resource
@@ -42,7 +41,6 @@ spec:
         - rolebinding
         - serviceaccount
         - deployments
-        - secrets
       labelSelector: foundationservices.cloudpak.ibm.com=ui-chart
       name: ui-resources
       type: resource
