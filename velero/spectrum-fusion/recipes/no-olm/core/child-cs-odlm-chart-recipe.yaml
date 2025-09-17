@@ -19,6 +19,12 @@ spec:
       type: resource
     - includeClusterResources: true
       includedResourceTypes:
+        - customresourcedefinitions.apiextensions.k8s.io
+      labelSelector: foundationservices.cloudpak.ibm.com=crd
+      name: cs-crd
+      type: resource
+    - includeClusterResources: true
+      includedResourceTypes:
         # - clusterrole
         # - clusterrolebinding
         - customresourcedefinitions.apiextensions.k8s.io
@@ -34,6 +40,11 @@ spec:
         - commonservices.operator.ibm.com
       labelSelector: foundationservices.cloudpak.ibm.com=cs-chart
       name: cs-resources
+      type: resource
+    - includedResourceTypes:
+        - commonservices.operator.ibm.com
+      labelSelector: foundationservices.cloudpak.ibm.com=commonservice
+      name: cs-cr
       type: resource
     - includedResourceTypes:
         - role
@@ -58,11 +69,6 @@ spec:
         - rolebinding
         - secrets
       name: odlm-rbac-resources
-      type: resource
-    - backupRef: cs-resources
-      includedResourceTypes:
-        - commonservices.operator.ibm.com
-      name: cs-cr
       type: resource
     - backupRef: cs-resources
       includeClusterResources: true
@@ -106,6 +112,8 @@ spec:
       priority: 0
       sequence:
         - group: cs-cluster-resources
+        - group: cs-crd
+        - group: cs-cr
         - group: cs-resources
         - group: odlm-cluster-resources
         - group: odlm-resources
@@ -113,6 +121,7 @@ spec:
       priority: 8
       sequence:
         - group: cs-cluster-resources
+        - group: cs-crd
         - group: cs-rbac-resources
         - group: cs-cr
         - group: cs-deployment
