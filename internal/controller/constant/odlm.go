@@ -495,6 +495,37 @@ spec:
 `
 )
 
+// TODO update below with approapriate values once known
+const (
+	CommonServiceCNPGOpReg = `
+apiVersion: operator.ibm.com/v1alpha1
+kind: OperandRegistry
+metadata:
+  name: common-service
+  namespace: "{{ .ServicesNs }}"
+  labels:
+    operator.ibm.com/managedByCsOperator: "true"
+  annotations:
+    version: {{ .Version }}
+    excluded-catalogsource: {{ .ExcludedCatalog }}
+    status-monitored-services: {{ .StatusMonitoredServices }}
+spec:
+  operators:
+  - channel: stable-v1.25
+    fallbackChannels:
+      - stable-v1.22
+      - stable
+    installPlanApproval: {{ .ApprovalMode }}
+    name: ibm-cnpg-postgres-operator
+    namespace: "{{ .CPFSNs }}"
+    packageName: ibm-cnpg-postgres-operator
+    scope: public
+    operatorConfig: cloud-native-postgresql-operator-config
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+`
+)
+
 const (
 	MongoDBOpCon = `
 apiVersion: operator.ibm.com/v1alpha1
@@ -2166,6 +2197,294 @@ spec:
                     namespace: {{ .OperatorNs }}
                 configMapKeyRef:
                   name: cloud-native-postgresql-operand-images-config
+                  key: ibm-postgresql-16-operand-image
+                  namespace: {{ .OperatorNs }}
+            imagePullSecrets:
+              - name: ibm-entitlement-key
+            logLevel: info
+            primaryUpdateStrategy: unsupervised
+            primaryUpdateMethod: switchover
+            enableSuperuserAccess: true
+            replicationSlots:
+              highAvailability:
+                enabled: true
+            certificates:
+              clientCASecret: cs-ca-certificate-secret
+              replicationTLSSecret: common-service-db-replica-tls-secret
+              serverCASecret: cs-ca-certificate-secret
+              serverTLSSecret: common-service-db-tls-secret
+            startDelay: 120
+            stopDelay: 90
+            storage:
+              resizeInUseVolumes: true
+              size: 10Gi
+            walStorage:
+              resizeInUseVolumes: true
+              size: 10Gi
+            postgresql:
+              parameters:
+                track_activities: "on"
+                track_counts: "on"
+                track_io_timing: "on"
+                pg_stat_statements.track: all
+                pg_stat_statements.max: "10000"
+                max_slot_wal_keep_size: "8GB"
+              pg_hba:
+                - hostssl im im_user all cert
+                - hostssl zen zen_user all cert
+                - host zen instana_user all scram-sha-256
+                - host im instana_user all scram-sha-256
+      - apiVersion: v1
+        kind: ConfigMap
+        force: true
+        name: common-service-db-zen
+        data:
+          data:
+            IS_EMBEDDED: 'true'
+            DATABASE_PORT:
+              templatingValueFrom:
+                objectRef:
+                  apiVersion: v1
+                  kind: Service
+                  name: common-service-db-rw
+                  path: .spec.ports[0].port
+                required: true
+            DATABASE_R_ENDPOINT:
+              templatingValueFrom:
+                objectRef:
+                  apiVersion: v1
+                  kind: Service
+                  name: common-service-db-r
+                  path: .metadata.name+.+.metadata.namespace+.+svc
+                required: true
+            DATABASE_RW_ENDPOINT:
+              templatingValueFrom:
+                objectRef:
+                  apiVersion: v1
+                  kind: Service
+                  name: common-service-db-rw
+                  path: .metadata.name+.+.metadata.namespace+.+svc
+                required: true
+            DATABASE_NAME: zen
+            DATABASE_USER: zen_user
+            DATABASE_CA_CERT: ca.crt
+            DATABASE_CLIENT_KEY: tls.key
+            DATABASE_CLIENT_CERT: tls.crt
+      - apiVersion: v1
+        kind: ConfigMap
+        force: true
+        name: common-service-db-im
+        data:
+          data:
+            IS_EMBEDDED: 'true'
+            DATABASE_PORT:
+              templatingValueFrom:
+                objectRef:
+                  apiVersion: v1
+                  kind: Service
+                  name: common-service-db-rw
+                  path: .spec.ports[0].port
+                required: true
+            DATABASE_R_ENDPOINT:
+              templatingValueFrom:
+                objectRef:
+                  apiVersion: v1
+                  kind: Service
+                  name: common-service-db-r
+                  path: .metadata.name+.+.metadata.namespace+.+svc
+                required: true
+            DATABASE_RW_ENDPOINT:
+              templatingValueFrom:
+                objectRef:
+                  apiVersion: v1
+                  kind: Service
+                  name: common-service-db-rw
+                  path: .metadata.name+.+.metadata.namespace+.+svc
+                required: true
+            DATABASE_NAME: im
+            DATABASE_USER: im_user
+            DATABASE_CA_CERT: ca.crt
+            DATABASE_CLIENT_KEY: tls.key
+            DATABASE_CLIENT_CERT: tls.crt
+`
+)
+
+const (
+	CommonServiceCNPGOpCon = `
+apiVersion: operator.ibm.com/v1alpha1
+kind: OperandConfig
+metadata:
+  name: common-service
+  namespace: "{{ .ServicesNs }}"
+  labels:
+    operator.ibm.com/managedByCsOperator: "true"
+  annotations:
+    version: {{ .Version }}
+spec:
+  services:
+  - name: ibm-cnpg-postgres-operator
+    resources:
+      - apiVersion: cert-manager.io/v1
+        kind: Certificate
+        name: common-service-db-replica-tls-cert
+        labels:
+            app.kubernetes.io/component: common-service-db-replica-tls-cert
+            component: common-service-db-replica-tls-cert
+        data:
+          spec:
+            commonName: streaming_replica
+            duration: 2160h0m0s
+            issuerRef:
+              kind: Issuer
+              name: cs-ca-issuer
+            renewBefore: 720h0m0s
+            secretName: common-service-db-replica-tls-secret
+            secretTemplate:
+              labels:
+                k8s.enterprisedb.io/reload: ''
+            usages:
+              - client auth
+      - apiVersion: cert-manager.io/v1
+        kind: Certificate
+        labels:
+            app.kubernetes.io/component: common-service-db-tls-cert
+            component: common-service-db-tls-cert
+        name: common-service-db-tls-cert
+        data:  
+          spec:
+            dnsNames:
+              - common-service-db
+              - common-service-db.{{ .ServicesNs }}
+              - common-service-db.{{ .ServicesNs }}.svc
+              - common-service-db-r
+              - common-service-db-r.{{ .ServicesNs }}
+              - common-service-db-r.{{ .ServicesNs }}.svc
+              - common-service-db-ro
+              - common-service-db-ro.{{ .ServicesNs }}
+              - common-service-db-ro.{{ .ServicesNs }}.svc
+              - common-service-db-rw
+              - common-service-db-rw.{{ .ServicesNs }}
+              - common-service-db-rw.{{ .ServicesNs }}.svc
+            duration: 8760h0m0s
+            issuerRef:
+              kind: Issuer
+              name: cs-ca-issuer
+            renewBefore: 720h0m0s
+            secretName: common-service-db-tls-secret
+            secretTemplate:
+              labels:
+                k8s.enterprisedb.io/reload: ''
+            usages:
+              - server auth
+      - apiVersion: cert-manager.io/v1
+        kind: Certificate
+        name: common-service-db-im-tls-cert
+        data:
+          spec:
+            commonName: im_user
+            duration: 2160h0m0s
+            issuerRef:
+              kind: Issuer
+              name: cs-ca-issuer
+            renewBefore: 720h0m0s
+            secretName: common-service-db-im-tls-secret
+            secretTemplate:
+              labels:
+                app.kubernetes.io/instance: common-service-db-im-tls-secret
+                app.kubernetes.io/name: common-service-db-im-tls-secret
+            usages:
+              - client auth
+      - apiVersion: cert-manager.io/v1
+        kind: Certificate
+        name: common-service-db-zen-tls-cert
+        data:
+          spec:
+            commonName: zen_user
+            duration: 2160h0m0s
+            issuerRef:
+              kind: Issuer
+              name: cs-ca-issuer
+            renewBefore: 720h0m0s
+            secretName: common-service-db-zen-tls-secret
+            secretTemplate:
+              labels:
+                app.kubernetes.io/instance: common-service-db-zen-tls-secret
+                app.kubernetes.io/name: common-service-db-zen-tls-secret
+            usages:
+              - client auth
+      - apiVersion: operator.ibm.com/v1alpha1
+        data:
+          spec:
+            bindings:
+              protected-zen-db:
+                configmap: common-service-db-zen
+                secret: common-service-db-zen-tls-secret
+              protected-im-db:
+                configmap: common-service-db-im
+                secret: common-service-db-im-tls-secret
+              private-superuser-db:
+                secret: common-service-db-superuser
+            description: Binding information that should be accessible to Common Service Postgresql Adopters
+            operand: common-service-postgresql
+            registry: common-service
+            registryNamespace: {{ .ServicesNs }}
+        force: true
+        kind: OperandBindInfo
+        name: common-service-postgresql-bindinfo
+      - apiVersion: postgresql.cnpg.ibm.com/v1
+        kind: Cluster
+        name: common-service-db          
+        force: true
+        annotations:
+          productID: 068a62892a1e4db39641342e592daa25
+          productMetric: FREE
+          productName: IBM Cloud Platform Common Services
+        labels:
+          foundationservices.cloudpak.ibm.com: cs-db
+        data:
+          spec:
+            inheritedMetadata:
+              labels:
+                foundationservices.cloudpak.ibm.com: cs-db
+            bootstrap:
+              initdb:
+                database: im
+                owner: im_user
+                dataChecksums: true
+                postInitApplicationSQL:
+                  - CREATE USER zen_user
+                  - CREATE DATABASE zen OWNER zen_user
+                  - GRANT ALL PRIVILEGES ON DATABASE zen TO zen_user
+            affinity:
+              nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                    - matchExpressions:
+                        - key: kubernetes.io/arch
+                          operator: In
+                          values:
+                            - amd64
+                            - ppc64le
+                            - s390x
+              podAntiAffinityType: preferred
+              topologyKey: topology.kubernetes.io/zone
+            topologySpreadConstraints:
+            - maxSkew: 1
+              topologyKey: topology.kubernetes.io/zone
+              whenUnsatisfiable: ScheduleAnyway
+              labelSelector:
+                matchExpressions:
+                  - key: k8s.enterprisedb.io/cluster
+                    operator: In
+                    values:
+                      - common-service-db
+            - maxSkew: 1
+              topologyKey: topology.kubernetes.io/region
+              whenUnsatisfiable: ScheduleAnyway
+            imageName:
+              templatingValueFrom:
+                configMapKeyRef:
+                  name: cnpg-ibm-operand-images-config
                   key: ibm-postgresql-16-operand-image
                   namespace: {{ .OperatorNs }}
             imagePullSecrets:
