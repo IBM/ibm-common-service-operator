@@ -9,6 +9,12 @@ metadata:
     app.kubernetes.io/name: ibm-common-service-operator
     foundationservices.cloudpak.ibm.com: crd
     component-id: {{ .Chart.Name }}
+    {{- with .Values.cpfs.labels }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with .Values.cpfs.clusterLabels }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
   name: commonservices.operator.ibm.com
 spec:
   group: operator.ibm.com
