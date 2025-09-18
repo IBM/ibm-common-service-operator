@@ -477,7 +477,11 @@ function wait_for_deployment() {
     local readyReplicas="${OC} -n ${namespace} get deployment ${name} --no-headers --ignore-not-found -o jsonpath='{.status.readyReplicas}' | grep '${needReplicas}'"
     local replicas="${OC} -n ${namespace} get deployment ${name} --no-headers --ignore-not-found -o jsonpath='{.status.replicas}' | grep '${needReplicas}'"
     local condition="(${readyReplicas} && ${replicas})"
-    local retries=10
+    if [[ $3 != "" ]]; then
+        local retries=$3
+    else
+        local retries=10
+    fi
     local sleep_time=30
     local total_time_mins=$(( sleep_time * retries / 60))
     local wait_message="Waiting for Deployment ${name} to be ready"
