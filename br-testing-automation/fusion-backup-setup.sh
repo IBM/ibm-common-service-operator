@@ -18,6 +18,7 @@
 set -o pipefail
 set -o errtrace
 
+HUB_SETUP="false"
 BACKUP_SETUP="false"
 RESTORE_SETUP="false"
 
@@ -31,19 +32,22 @@ function main(){
     prereq
     echo $BASE_DIR
     validate_sc
-    if [[ $BACKUP_SETUP == "true" ]]; then
+    if [[ $HUB_SETUP == "true" ]]; then
         save_log "logs" "hub_setup_log"
         trap cleanup_log EXIT
         install_sf_br "hub"
+        success "Fusion installed on Hub Cluster."
+    if [[ $BACKUP_SETUP == "true" ]]; then
         create_sf_resources
         deploy_cs_br_resources
         label_cs_resources
-        success "Hub cluster prepped for BR."
-    elif [[ $RESTORE_SETUP == "true" ]]; then
+        success "Fusion resources configured on Hub Cluster, ready for Backup."
+    fi
+    if [[ $RESTORE_SETUP == "true" ]]; then
         save_log "logs" "spoke_setup_log"
         trap cleanup_log EXIT
         install_sf_br "spoke"
-        success "Spoke cluster prepped for BR."
+        success "Spoke cluster prepped for Restore."
     fi
 }
 
@@ -60,7 +64,8 @@ function print_usage(){
     echo "Options:"
     echo "   --oc string                    Optional. File path to oc CLI. Default uses oc in your PATH. Can also be set in env.properties."
     echo "   --yq string                    Optional. File path to yq CLI. Default uses yq in your PATH. Can also be set in env.properties."
-    echo "   --hub-setup                    Optional. Set up Spectrum Fusion Backup and Restore Hub cluster, create necessary SF resources, and label CPFS resources on cluster."
+    echo "   --backup-setup                 Optional. Create Fusion recipes and application resources for specified instance. Label CPFS resources to prep for Backup."
+    echo "   --hub-setup                    Optional. Set up Spectrum Fusion Backup and Restore Hub cluster."
     echo "   --spoke-setup                  Optional. Set up Spectrum Fusion Backup and Restore Spoke cluster. Must have an existing Hub cluster to connect to."
     echo "   -h, --help                     Print usage information"
     echo ""
@@ -82,8 +87,11 @@ function parse_arguments() {
             shift
             YQ=$1
             ;;
-        --hub-setup)
+        --backup-setup)
             BACKUP_SETUP="true"
+            ;;
+        --hub-setup)
+            HUB_SETUP="true"
             ;;
         --spoke-setup)
             RESTORE_SETUP="true"
@@ -342,7 +350,7 @@ function create_sf_resources(){
         sed -i -E "s/<child recipe namespace>/$SERVICES_NS/" ./templates/child-csdb-recipe.yaml
         #nss
         sed -i -E "s/<parent recipe namespace>/$OPERATOR_NS/" ./templates/child-nss-recipe.yaml
-        sed -i -E "s/<child recipe namespace>/$SERVICES_NS/" ./templates/child-nss-recipe.yaml
+        sed -i -E "s/<child recipe namespace>/$OPERATOR_NS/" ./templates/child-nss-recipe.yaml
         #zen
         sed -i -E "s/<parent recipe namespace>/$OPERATOR_NS/" ./templates/child-zen-recipe.yaml
         sed -i -E "s/<zenservice name>/$ZENSERVICE_NAME/" ./templates/child-zen-recipe.yaml
