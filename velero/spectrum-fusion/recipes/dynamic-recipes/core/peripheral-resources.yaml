@@ -36,7 +36,7 @@
 apiVersion: application.isf.ibm.com/v1alpha1
 kind: Application
 metadata:
-  name: cs-core-no-olm
+  name: cs-core
   namespace: <fusion ns>
 spec:
   enableDR: false
@@ -55,7 +55,7 @@ spec:
 apiVersion: data-protection.isf.ibm.com/v1alpha1
 kind: BackupPolicy
 metadata:
-  name: cs-core-backup-policy-no-olm
+  name: cs-core-backup-policy
   namespace: <fusion ns>
 spec:
   backupStorageLocation: <location name>
@@ -72,11 +72,11 @@ spec:
 apiVersion: data-protection.isf.ibm.com/v1alpha1
 kind: PolicyAssignment
 metadata:
-  name: cs-core-policy-assignment-no-olm
+  name: cs-core-policy-assignment
   namespace: <fusion ns>
 spec:
-  application: cs-core-no-olm
-  backupPolicy: cs-core-backup-policy-no-olm
+  application: cs-core
+  backupPolicy: cs-core-backup-policy
   recipe:
     apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
     name: parent-cpfs-recipe
