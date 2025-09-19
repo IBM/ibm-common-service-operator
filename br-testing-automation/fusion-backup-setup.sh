@@ -380,12 +380,11 @@ function create_sf_resources(){
         if [[ $NO_OLM == "true" ]]; then
             cp ../velero/spectrum-fusion/recipes/no-olm/core/child-csdb-recipe-2.10.0.yaml ./templates/child-csdb-recipe.yaml
             cp ../velero/spectrum-fusion/recipes/no-olm/core/child-zen-recipe-2.10.0.yaml ./templates/child-zen-recipe.yaml
-            cp ../velero/spectrum-fusion/recipes/no-olm/core/child-nss-recipe.yaml ./templates/child-nss-recipe.yaml
             cp ../velero/spectrum-fusion/recipes/no-olm/core/parent-cpfs-recipe.yaml ./templates/parent-cpfs-recipe.yaml
-            cp ../velero/spectrum-fusion/recipes/no-olm/core/child-cs-odlm-cart-recipe.yaml ./templates/child-cs-odlm-chart-recipe.yaml
+            cp ../velero/spectrum-fusion/recipes/no-olm/core/child-cs-odlm-chart-recipe.yaml ./templates/child-cs-odlm-chart-recipe.yaml
             cp ../velero/spectrum-fusion/recipes/no-olm/core/child-edb-chart-recipe.yaml ./templates/child-edb-chart-recipe.yaml
             cp ../velero/spectrum-fusion/recipes/no-olm/core/child-im-ui-chart-recipe.yaml ./templates/child-im-ui-chart-recipe.yaml
-            cp ../velero/spectrum-fusion/recipes/no-olm/core/child-nss-chart-recipe.yaml ./templates/child-nss-chart-recipe.yaml
+            cp ../velero/spectrum-fusion/recipes/no-olm/core/child-nss-chart-recipe.yaml ./templates/child-nss-recipe.yaml
             cp ../velero/spectrum-fusion/recipes/no-olm/core/child-zen-chart-recipe.yaml ./templates/child-zen-chart-recipe.yaml
             cp ../velero/spectrum-fusion/recipes/no-olm/core/peripheral-resources.yaml ./templates/peripheral-resources.yaml
         else
@@ -403,7 +402,7 @@ function create_sf_resources(){
         
         info "Editing Policy Assignment Resource..."
         recipe_name="cs-core"
-        sed -i -E "s/<fusion ns>/$SF_NAMESPACE/" ./templates/policy_assignment.yaml
+        sed -i -E "s/<fusion ns>/$SF_NAMESPACE/" ./templates/peripheral-resources.yaml
         sed -i -E "s/<parent recipe namespace>/$OPERATOR_NS/" ./templates/peripheral-resources.yaml
         sed -i -E "s/<recipe name>/$recipe_name/" ./templates/peripheral-resources.yaml
 
@@ -426,19 +425,16 @@ function create_sf_resources(){
             sed -i -E "s/<parent recipe namespace>/$OPERATOR_NS/" ./templates/child-cs-odlm-chart-recipe.yaml
             sed -i -E "s/<parent recipe namespace>/$OPERATOR_NS/" ./templates/child-edb-chart-recipe.yaml
             sed -i -E "s/<parent recipe namespace>/$OPERATOR_NS/" ./templates/child-im-ui-chart-recipe.yaml
-            sed -i -E "s/<parent recipe namespace>/$OPERATOR_NS/" ./templates/child-nss-chart-recipe.yaml
             sed -i -E "s/<parent recipe namespace>/$OPERATOR_NS/" ./templates/child-zen-chart-recipe.yaml
 
             sed -i -E "s/<child recipe namespace>/$OPERATOR_NS/" ./templates/child-cs-odlm-chart-recipe.yaml
             sed -i -E "s/<child recipe namespace>/$OPERATOR_NS/" ./templates/child-edb-chart-recipe.yaml
             sed -i -E "s/<child recipe namespace>/$OPERATOR_NS/" ./templates/child-im-ui-chart-recipe.yaml
-            sed -i -E "s/<child recipe namespace>/$OPERATOR_NS/" ./templates/child-nss-chart-recipe.yaml
             sed -i -E "s/<child recipe namespace>/$OPERATOR_NS/" ./templates/child-zen-chart-recipe.yaml
             
             sed -i -E "s/<operator_ns>/$OPERATOR_NS/" ./templates/child-cs-odlm-chart-recipe.yaml
             sed -i -E "s/<operator_ns>/$OPERATOR_NS/" ./templates/child-edb-chart-recipe.yaml
             sed -i -E "s/<operator_ns>/$OPERATOR_NS/" ./templates/child-im-ui-chart-recipe.yaml
-            sed -i -E "s/<operator_ns>/$OPERATOR_NS/" ./templates/child-nss-chart-recipe.yaml
             sed -i -E "s/<operator_ns>/$OPERATOR_NS/" ./templates/child-zen-chart-recipe.yaml
         fi
 
@@ -591,7 +587,8 @@ function update_application_namespaces() {
         fi
         yq_expr+="\"${new_namespaces[$i]}\""
     done
-
+    yq_expr+=']'
+    info "YQ expression: $yq_expr"
     ${YQ} eval "$yq_expr" -i "$file"
 }
 
