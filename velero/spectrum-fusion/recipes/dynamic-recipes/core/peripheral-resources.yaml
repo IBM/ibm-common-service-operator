@@ -79,6 +79,6 @@ spec:
   backupPolicy: cs-core-backup-policy-<parent recipe namespace>
   recipe:
     apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
-    name: parent-cpfs-recipe
+    name: cpfs-parent-recipe
     namespace: <parent recipe namespace>
   runNow: false
