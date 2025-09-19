@@ -316,7 +316,7 @@ function create_sf_resources(){
     fi
     
     if [[ $TETHERED_NS != "" ]]; then
-        local space_delimited="${$TETHERED_NS//,/ }"
+        local space_delimited="${TETHERED_NS//,/ }"
         tethered_array=($space_delimited)
     fi
     
