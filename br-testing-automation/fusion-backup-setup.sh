@@ -331,7 +331,7 @@ function create_sf_resources(){
     fi
     
     all_namespaces=("${namespaces[@]}" "${tethered_array[@]}" "${extra_namespaces[@]}" "${singleton_namespaces[@]}")
-    info "All namespaces $all_namespaces"
+    info "All namespaces ${all_namespaces[*]}"
     if [[ $DYNAMIC == "false" ]]; then
         #application
         info "Editing application resource..."
@@ -405,7 +405,7 @@ function create_sf_resources(){
         fi    
         info "Editing Application Resource..."
         local dynamic_namespaces=("${namespaces[@]}" "${tethered_array[@]}" "${extra_namespaces[@]}")
-        info "namespaces: $dynamic_namespaces"
+        info "namespaces: ${dynamic_namespaces[*]}"
         update_application_namespaces ./templates/peripheral-resources.yaml $dynamic_namespaces
         
         info "Editing Backup Policy Resource..."
@@ -488,7 +488,7 @@ function create_sf_resources(){
             sed -i -E "s/<fusion ns>/$SF_NAMESPACE/" ./templates/parent-singleton-recipe.yaml
             #edit peripheral resources
             local dynamic_singleton_namespaces=("${extra_namespaces[@]}" "${singleton_namespaces[@]}")
-            info "dynamic singleton namespaces $dynamic_singleton_namespaces"
+            info "dynamic singleton namespaces ${dynamic_singleton_namespaces[*]}"
             update_application_namespaces ./templates/application.yaml $dynamic_singleton_namespaces
             sed -i -E "s/<fusion ns>/$SF_NAMESPACE/" ./templates/peripheral-resources.yaml
             sed -i -E "s/<location name>/$BACKUP_STORAGE_LOCATION_NAME/" ./templates/peripheral-resources.yaml
