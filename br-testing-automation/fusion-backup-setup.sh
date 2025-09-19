@@ -428,6 +428,7 @@ function create_sf_resources(){
                 ${OC} apply -f ./templates/child-im-ui-chart-recipe.yaml || error "Unable to create IM chart child recipe in namespace $OPERATOR_NS."
                 ${OC} apply -f ./templates/child-edb-chart-recipe.yaml || error "Unable to create EDB chart child recipe in namespace $OPERATOR_NS."
             fi
+        fi
         if [[ $ZEN_ENABLED == "true" ]]; then
             ${OC} apply -f ./templates/child-zen-recipe.yaml || error "Unable to create Zen child recipe in namespace $SERVICES_NS."
             if [[ $NO_OLM == "true" ]]; then
