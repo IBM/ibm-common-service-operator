@@ -587,7 +587,7 @@ function update_application_namespaces() {
         fi
         yq_expr+="\"${new_namespaces[$i]}\""
     done
-    yq_expr+=']'
+    yq_expr+='])'
     info "YQ expression: $yq_expr"
     ${YQ} eval "$yq_expr" -i "$file"
 }
