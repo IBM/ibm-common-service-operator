@@ -641,23 +641,11 @@ function update_application_namespaces() {
     info "Updating application in file $file with namespaces $namespaces..."
 
     #clear existing values
-    ${YQ} eval-all '
-        if .kind == "Application" then
-            .spec.includedNamespaces = []
-        else
-            .
-        end
-    ' -i "$file"
+    ${YQ} eval-all 'if .kind == \"Application\" then .spec.includedNamespaces = [] else . end' -i "$file"
     
     for ns in "${namespaces[@]}"; do
         if [ -n "$ns" ]; then
-            ${YQ} eval-all '
-                if .kind == "Application" then
-                    .spec.includedNamespaces += ["'"$ns"'"]
-                else
-                    .
-                end
-            ' -i "$file" 
+            ${YQ} eval-all 'if .kind == \"Application\" then .spec.includedNamespaces += ["'"$ns"'"] else . end' -i "$file" 
         fi
     done
     # info "YQ expression: $yq_expr"
