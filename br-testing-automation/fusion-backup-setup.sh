@@ -548,10 +548,38 @@ function create_sf_resources(){
 function deploy_cs_br_resources() {
     title "Deploying necessary BR resources for persistent CPFS components."
     # cd ../velero/schedule
-    tethered_namespaces="$TETHERED_NAMESPACE1,$TETHERED_NAMESPACE2"
-    info "Parameters:  --services-ns $SERVICES_NS --operator-ns $OPERATOR_NS --lsr-ns $LSR_NAMESPACE --im --zen --tethered-ns $tethered_namespaces --util --storage-class $STORAGE_CLASS"
-    ./../velero/schedule/deploy-br-resources.sh --services-ns $SERVICES_NS --operator-ns $OPERATOR_NS --lsr-ns $LSR_NAMESPACE --im --zen --lsr --tethered-ns $tethered_namespaces --util --storage-class $STORAGE_CLASS || error "Script deploy-br-resources.sh failed to deploy BR resources."
-    # cd $BASE_DIR
+    deploy_arg_str=""
+    if [[ $SERVICES_NS != $OPERATOR_NS ]]; then
+        deploy_arg_str="--services-ns $SERVICES_NS"
+    else
+        deploy_arg_str="--operator-ns $OPERATOR_NS"
+    fi
+    if [[ $ENABLE_LSR == "true" ]]; then
+        deploy_arg_str="$deploy_arg_str --lsr-ns $LSR_NAMESPACE --lsr"
+    fi
+    if [[ $IM_ENABLED == "true" ]] || [[ $ZEN_ENABLED == "true" ]] || [[ $ENABLE_LSR == "true" ]]; then
+        if [[ $IM_ENABLED == "true" ]]; then
+            deploy_arg_str="$deploy_arg_str --im"
+        fi
+        if [[ $ZEN_ENABLED == "true" ]]; then
+            deploy_arg_str="$deploy_arg_str --zen"
+        fi
+        if [[ $STORAGE_CLASS != "" ]]; then
+            deploy_arg_str="$deploy_arg_str --storage-class $STORAGE_CLASS"
+        fi
+        info "Deploying necessary backup resources for tenant $OPERATOR_NS..."
+        info "Backup resource deployment script parameters: $deploy_arg_str"
+        ./../velero/schedule/deploy-br-resources.sh $deploy_arg_str || error "Script deploy-br-resources.sh failed to deploy BR resources."
+        if [[ $IM_ENABLED == "true" ]]; then
+            wait_for_deployment $SERVICES_NS "cs-db-backup" 
+        fi
+        if [[ $ZEN_ENABLED == "true" ]]; then
+            wait_for_deployment $ZEN_NAMESPACE "zen5-backup" 
+        fi
+        if [[ $ENABLE_LSR == "true" ]]; then
+            wait_for_deployment $LSR_NAMESPACE "lsr-backup" 
+        fi
+    fi
     success "BR resources for persistent CPFS components deployed."
 }
 
@@ -560,19 +588,40 @@ function label_cs_resources() {
 
     info "Labeling cert manager resources..."
     ./../velero/backup/cert-manager/label-cert-manager.sh || error "Unable to complete labeling of cert manager resources."
-
-    info "Labeling licensing resources..."
-    ./../velero/backup/licensing/label-licensing-configmaps.sh $LICENSING_NAMESPACE || error "Unable to complete labeling of licensing resources."
-
-    mv ../velero/backup/common-service/env.properties ../velero/backup/common-service/og-env.properties
-    cp env.properties ../velero/backup/common-service/env.properties
-    export TETHERED_NS="$TETHERED_NAMESPACE1,$TETHERED_NAMESPACE2"
-    info "Labeling remaining CPFS resources..."
-    if [[ $NO_OLM == "true" ]]; then
-        ./../velero/backup/common-service/label-common-service.sh --no-olm --operator-ns $OPERATOR_NS --services-ns $SERVICES_NS --tethered-ns $TETHERED_NS --cert-manager-ns $CERT_MANAGER_NAMESPACE --licensing-ns $LICENSING_NAMESPACE --lsr-ns $LSR_NAMESPACE --enable-default-catalog-ns --enable-private-catalog --additional-catalog-sources $ADDITIONAL_SOURCES || error "Unable to complete labeling of No OLM CPFS resources."
-    else
-        ./../velero/backup/common-service/label-common-service.sh --operator-ns $OPERATOR_NS --services-ns $SERVICES_NS --tethered-ns $TETHERED_NS --cert-manager-ns $CERT_MANAGER_NAMESPACE --licensing-ns $LICENSING_NAMESPACE --lsr-ns $LSR_NAMESPACE --enable-default-catalog-ns --enable-private-catalog --additional-catalog-sources $ADDITIONAL_SOURCES || error "Unable to complete labeling of CPFS resources."
+    
+    label_arg_str="--operator-ns $OPERATOR_NS"
+    if [[ $SERVICES_NS != $OPERATOR_NS ]]; then
+        label_arg_str="$label_arg_str --services-ns $SERVICES_NS"
     fi
+    if [[ $TETHERED_NS != "" ]]; then
+        label_arg_str="$label_arg_str --tethered-ns $TETHERED_NS"
+    fi
+    if [[ $ENABLE_CERT_MANAGER == "true" ]]; then
+        label_arg_str="$label_arg_str --cert-manager-ns $CERT_MANAGER_NAMESPACE"
+    fi
+    if [[ $ENABLE_LICENSING == "true" ]]; then
+        label_arg_str="$label_arg_str --licensing-ns $LICENSING_NAMESPACE"
+        info "Labeling licensing resources in namespace $LICENSING_NAMESPACE..."
+        ./../velero/backup/licensing/label-licensing-configmaps.sh $LICENSING_NAMESPACE || error "Licensing labeling script did not complete successfully."
+    fi
+    if [[ $ENABLE_LSR == "true" ]]; then
+        label_arg_str="$label_arg_str --lsr-ns $LSR_NAMESPACE"
+    fi
+    if [[ $ENABLE_PRIVATE_CATALOG == "true" ]]; then
+        label_arg_str="$label_arg_str --enable-private-catalog"
+    fi
+    if [[ $ENABLE_DEFAULT_CS == "true" ]]; then
+        label_arg_str="$label_arg_str --enable-default-catalog-ns"
+    fi
+    if [[ $ADDITIONAL_SOURCES != "" ]]; then
+        label_arg_str="$label_arg_str --additional-catalog-sources $ADDITIONAL_SOURCES"
+    fi
+    if [[ $NO_OLM == "true" ]]; then
+        label_arg_str="$label_arg_str --no-olm"
+    fi
+
+    info "Labeling script parameters: $label_arg_str"
+    ./../velero/backup/common-service/label-common-service.sh $label_arg_str || error "Script label-common-service.sh failed to complete."
     success "CPFS resources labeled."
 }
 
