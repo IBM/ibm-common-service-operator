@@ -320,13 +320,13 @@ function create_sf_resources(){
         tethered_array=($space_delimited)
     fi
     
-    if [[ $ENABLE_CERT_MANAGER == 1 ]]; then
+    if [[ $ENABLE_CERT_MANAGER == "true" ]]; then
         singleton_namespaces+=("$CERT_MANAGER_NAMESPACE")
     fi
-    if [[ $ENABLE_LICENSING == 1 ]]; then
+    if [[ $ENABLE_LICENSING == "true" ]]; then
         singleton_namespaces+=("$LICENSING_NAMESPACE")
     fi
-    if [[ $ENABLE_LSR == 1 ]]; then
+    if [[ $ENABLE_LSR == "true" ]]; then
         singleton_namespaces+=("$LSR_NAMESPACE")
     fi
     
@@ -475,7 +475,7 @@ function create_sf_resources(){
         fi
 
         #singleton recipes
-        if [[ $ENABLE_CERT_MANAGER == 1 ]] || [[ $ENABLE_LICENSING == 1 ]] || [[ $ENABLE_LSR == 1 ]]; then
+        if [[ $ENABLE_CERT_MANAGER == "true" ]] || [[ $ENABLE_LICENSING == "true" ]] || [[ $ENABLE_LSR == "true" ]]; then
             info "Editing singleton fusion resources..."
             if [[ $NO_OLM == "true" ]]; then
                 cp ../velero/spectrum-fusion/recipes/no-olm/singletons/parent-singleton-recipe.yaml ./templates/parent-singleton-recipe.yaml
@@ -505,7 +505,7 @@ function create_sf_resources(){
             ${OC} apply -f ./templates/parent-singleton-recipe.yaml || error "Unable to create singleton parent recipe in namespace $SF_NAMESPACE."
             ${OC} apply -f ./templates/peripheral-resources.yaml || error "Unable to create singleton peripheral resources in namespace $SF_NAMESPACE."
             
-            if [[ $ENABLE_CERT_MANAGER == 1 ]]; then
+            if [[ $ENABLE_CERT_MANAGER == "true" ]]; then
                 if [[ $NO_OLM == "true" ]]; then
                     cp ../velero/spectrum-fusion/recipes/no-olm/singletons/child-cert-manager-recipe.yaml ./templates/child-cert-manager-recipe.yaml
                 else
@@ -516,7 +516,7 @@ function create_sf_resources(){
                 sed -i -E "s/<fusion ns>/$SF_NAMESPACE/" ./templates/child-cert-manager-recipe.yaml
                 ${OC} apply -f ./templates/child-cert-manager-recipe.yaml || error "Unable to create cert manager child recipe in namespace $CERT_MANAGER_NAMESPACE."
             fi
-            if [[ $ENABLE_LICENSING == 1 ]]; then
+            if [[ $ENABLE_LICENSING == "true" ]]; then
                 if [[ $NO_OLM == "true" ]]; then
                     cp ../velero/spectrum-fusion/recipes/no-olm/singletons/child-licensing-recipe.yaml ./templates/child-licensing-recipe.yaml
                 else
@@ -527,7 +527,7 @@ function create_sf_resources(){
                 sed -i -E "s/<fusion ns>/$SF_NAMESPACE/" ./templates/child-licensing-recipe.yaml
                 ${OC} apply -f ./templates/child-licensing-recipe.yaml || error "Unable to create licensing child recipe in namespace $LICENSING_NAMESPACE."
             fi
-            if [[ $ENABLE_LSR == 1 ]]; then
+            if [[ $ENABLE_LSR == "true" ]]; then
                 if [[ $NO_OLM == "true" ]]; then
                     cp ../velero/spectrum-fusion/recipes/no-olm/singletons/child-ls-reporter-recipe.yaml ./templates/child-ls-reporter-recipe.yaml
                 else
@@ -574,7 +574,7 @@ function deploy_cs_br_resources() {
             wait_for_deployment $SERVICES_NS "cs-db-backup" 
         fi
         if [[ $ZEN_ENABLED == "true" ]]; then
-            wait_for_deployment $ZEN_NAMESPACE "zen5-backup" 
+            wait_for_deployment $SERVICES_NS "zen5-backup" 
         fi
         if [[ $ENABLE_LSR == "true" ]]; then
             wait_for_deployment $LSR_NAMESPACE "lsr-backup" 
