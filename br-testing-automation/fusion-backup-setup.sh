@@ -639,16 +639,29 @@ function update_application_namespaces() {
     shift
     local namespaces=("$@")
     info "Updating application in file $file with namespaces $namespaces..."
-    local yq_expr='(select(.kind == "Application") | .spec.includedNamespaces = ['
-    for i in "${!namespaces[@]}"; do
-        if [ $i -gt 0 ]; then
-            yq_expr+=', '  
+
+    #clear existing values
+    ${YQ} eval-all '
+        if .kind == "Application" then
+            .spec.includedNamespaces = []
+        else
+            .
+        end
+    ' -i "$yaml_file"
+    
+    for ns in "${namespaces[@]}"; do
+        if [ -n "$ns" ]; then
+            ${YQ} eval-all '
+                if .kind == "Application" then
+                    .spec.includedNamespaces += ["'"$ns"'"]
+                else
+                    .
+                end
+            ' -i "$file" 
         fi
-        yq_expr+="\"${namespaces[$i]}\""
     done
-    yq_expr+='])'
-    info "YQ expression: $yq_expr"
-    ${YQ} eval "$yq_expr" -i "$file"
+    # info "YQ expression: $yq_expr"
+    # ${YQ} eval "$yq_expr" -i "$file"
 }
 
 function msg() {
