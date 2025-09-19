@@ -647,7 +647,7 @@ function update_application_namespaces() {
         else
             .
         end
-    ' -i "$yaml_file"
+    ' -i "$file"
     
     for ns in "${namespaces[@]}"; do
         if [ -n "$ns" ]; then
