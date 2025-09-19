@@ -27,7 +27,7 @@ BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 . ../cp3pt0-deployment/common/utils.sh
 source ${BASE_DIR}/env-fusion.properties
 
-function main(){
+function main() {
     parse_arguments "$@"
     prereq
     echo $BASE_DIR
@@ -37,6 +37,7 @@ function main(){
         validate_sc
         install_sf_br "hub"
         success "Fusion installed on Hub Cluster."
+    fi
     if [[ $BACKUP_SETUP == "true" ]]; then
         create_sf_resources
         deploy_cs_br_resources
