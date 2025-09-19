@@ -591,7 +591,7 @@ function update_application_namespaces() {
     local namespaces=("$@")
     info "Updating application in file $file with namespaces $namespaces..."
     local yq_expr='(select(.kind == "Application") | .spec.includedNamespaces = ['
-    for i in "${namespaces[@]}"; do
+    for i in "${!namespaces[@]}"; do
         if [ $i -gt 0 ]; then
             yq_expr+=', '  
         fi
