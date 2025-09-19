@@ -640,16 +640,35 @@ function update_application_namespaces() {
     local namespaces=("$@")
     info "Updating application in file $file with namespaces $namespaces..."
 
-    #clear existing values
-    ${YQ} eval-all 'if .kind == "Application" then .spec.includedNamespaces = [] else . end' -i "$file"
+    # Create temp files
+    local temp_dir=$(mktemp -d)
+    local app_file="$temp_dir/app.yaml"
+    local others_file="$temp_dir/others.yaml"
     
-    for ns in "${namespaces[@]}"; do
-        if [ -n "$ns" ]; then
-            ${YQ} eval-all 'if .kind == "Application" then .spec.includedNamespaces += ["'"$ns"'"] else . end' -i "$file" 
-        fi
+    # Extract documents
+    ${YQ} eval 'select(.kind == "Application")' "$file" > "$app_file"
+    ${YQ} eval 'select(.kind != "Application")' "$file" > "$others_file"
+    
+    # Build namespace array
+    local json_array="["
+    for i in "${!namespaces[@]}"; do
+        [ $i -gt 0 ] && json_array+=","
+        json_array+="\"${namespaces[$i]}\""
     done
-    # info "YQ expression: $yq_expr"
-    # ${YQ} eval "$yq_expr" -i "$file"
+    json_array+="]"
+    
+    # Update Application file
+    ${YQ} eval ".spec.includedNamespaces = $json_array" -i "$app_file"
+    
+    # Reconstruct file
+    cat "$app_file" > "$file"
+    if [ -s "$others_file" ]; then
+        echo "---" >> "$file"
+        cat "$others_file" >> "$file"
+    fi
+    
+    # Cleanup
+    rm -rf "$temp_dir"
 }
 
 function msg() {
