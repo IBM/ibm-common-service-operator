@@ -489,7 +489,7 @@ function create_sf_resources(){
             #edit peripheral resources
             local dynamic_singleton_namespaces=("${extra_namespaces[@]}" "${singleton_namespaces[@]}")
             info "dynamic singleton namespaces ${dynamic_singleton_namespaces[*]}"
-            update_application_namespaces ./templates/application.yaml "${dynamic_singleton_namespaces[@]}"
+            update_application_namespaces ./templates/peripheral-resources.yaml "${dynamic_singleton_namespaces[@]}"
             sed -i -E "s/<fusion ns>/$SF_NAMESPACE/" ./templates/peripheral-resources.yaml
             sed -i -E "s/<location name>/$BACKUP_STORAGE_LOCATION_NAME/" ./templates/peripheral-resources.yaml
             # sed -i -E "s/<cert manager namespace>/$CERT_MANAGER_NAMESPACE/" ./templates/peripheral-resources.yaml

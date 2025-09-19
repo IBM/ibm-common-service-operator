@@ -33,25 +33,6 @@
 #   provider: isf-backup-restore
 #   type: ibm
 # ---
-apiVersion: application.isf.ibm.com/v1alpha1
-kind: Application
-metadata:
-  name: cs-singleton
-  namespace: <fusion ns>
-spec:
-  enableDR: false
-  includedNamespaces:
-    #default namespaces for licensing, cert manager, and reporter operators
-    #- ibm-cert-manager
-    #- ibm-licensing
-    #- ibm-ls-reporter
-    - <cert manager namespace>
-    - <licensing namespace>
-    - <lsr namespace>
-    - openshift-marketplace
-    - openshift-config
-
----
 
 apiVersion: data-protection.isf.ibm.com/v1alpha1
 kind: BackupPolicy
@@ -83,3 +64,23 @@ spec:
     name: cpfs-singleton-parent-recipe
     namespace: <fusion ns>
   runNow: false
+
+---
+apiVersion: application.isf.ibm.com/v1alpha1
+kind: Application
+metadata:
+  name: cs-singleton
+  namespace: <fusion ns>
+spec:
+  enableDR: false
+  includedNamespaces:
+    #default namespaces for licensing, cert manager, and reporter operators
+    #- ibm-cert-manager
+    #- ibm-licensing
+    #- ibm-ls-reporter
+    - <cert manager namespace>
+    - <licensing namespace>
+    - <lsr namespace>
+    - openshift-marketplace
+    - openshift-config
+
