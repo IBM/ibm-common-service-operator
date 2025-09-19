@@ -307,26 +307,35 @@ function create_sf_resources(){
     
     #application
     info "Editing application resource..."
-    namespaces="$OPERATOR_NS"
+    local all_namespaces=()
+    local namespaces=("$OPERATOR_NS")
+    local tethered_array=()
+    local singleton_namespaces=()
+    local extra_namespaces=("openshift-marketplace" "openshift-config" "kube-public")
+
     if [[ $SERVICES_NS != "$OPERATOR_NS" ]]; then
-        namespaces+=" $SERVICES_NS"
+        namespaces+=("$SERVICES_NS")
     fi
+    
     if [[ $TETHERED_NS != "" ]]; then
-        namespaces+=" ${TETHERED_NS//,/ }"
+        local space_delimited="${$TETHERED_NS//,/ }"
+        tethered_array=($space_delimited)
     fi
-    singleton_namespaces=""
+    
     if [[ $ENABLE_CERT_MANAGER == 1 ]]; then
-        singleton_namespaces+="$CERT_MANAGER_NAMESPACE"
+        singleton_namespaces+=("$CERT_MANAGER_NAMESPACE")
     fi
     if [[ $ENABLE_LICENSING == 1 ]]; then
-        singleton_namespaces+=" $LICENSING_NAMESPACE"
+        singleton_namespaces+=("$LICENSING_NAMESPACE")
     fi
     if [[ $ENABLE_LSR == 1 ]]; then
-        singleton_namespaces+=" $LSR_NAMESPACE"
+        singleton_namespaces+=("$LSR_NAMESPACE")
     fi
+    
+    all_namespaces=("${namespaces[@]}" "${tethered_array[@]}" "${extra_namespaces[@]}" "${singleton_namespaces[@]}")
 
     if [[ $DYNAMIC == "false" ]]; then
-        update_application_namespaces ./templates/application.yaml $namespaces $singleton_namespaces openshift-marketplace openshift-config kube-public
+        update_application_namespaces ./templates/application.yaml $all_namespaces
         # sed -i -E "s/<operator namespace>/$OPERATOR_NS/" ./templates/application.yaml
         # sed -i -E "s/<service namespace>/$SERVICES_NS/" ./templates/application.yaml
         # sed -i -E "s/<tenant namespace 1>/$TETHERED_NAMESPACE1/" ./templates/application.yaml
@@ -395,7 +404,8 @@ function create_sf_resources(){
             cp ../velero/spectrum-fusion/recipes/dynamic-recipes/core/peripheral-resources.yaml ./templates/peripheral-resources.yaml
         fi    
         info "Editing Application Resource..."
-        update_application_namespaces ./templates/peripheral-resources.yaml $namespaces openshift-marketplace openshift-config kube-public
+        local dynamic_namespaces=("${namespaces[@]}" "${tethered_array[@]}" "${extra_namespaces[@]}")
+        update_application_namespaces ./templates/peripheral-resources.yaml $dynamic_namespaces
         
         info "Editing Backup Policy Resource..."
         sed -i -E "s/<location name>/$BACKUP_STORAGE_LOCATION_NAME/" ./templates/peripheral-resources.yaml
@@ -461,9 +471,6 @@ function create_sf_resources(){
         fi
         if [[ $NSS_ENABLED == "true" ]]; then
             ${OC} apply -f ./templates/child-nss-recipe.yaml || error "Unable to create NSS child recipe in namespace $OPERATOR_NS."
-            if [[ $NO_OLM == "true" ]]; then
-                ${OC} apply -f ./templates/child-nss-chart-recipe.yaml || error "Unable to create NSS chart child recipe in namespace $OPERATOR_NS."
-            fi
         fi
 
         #singleton recipes
@@ -479,7 +486,8 @@ function create_sf_resources(){
             #edit parent recipe
             sed -i -E "s/<fusion ns>/$SF_NAMESPACE/" ./templates/parent-singleton-recipe.yaml
             #edit peripheral resources
-            update_application_namespaces ./templates/application.yaml $singleton_namespaces openshift-marketplace openshift-config
+            local dynamic_singleton_namespaces=("${extra_namespaces[@]}" "${singleton_namespaces[@]}")
+            update_application_namespaces ./templates/application.yaml $dynamic_singleton_namespaces
             sed -i -E "s/<fusion ns>/$SF_NAMESPACE/" ./templates/peripheral-resources.yaml
             sed -i -E "s/<location name>/$BACKUP_STORAGE_LOCATION_NAME/" ./templates/peripheral-resources.yaml
             # sed -i -E "s/<cert manager namespace>/$CERT_MANAGER_NAMESPACE/" ./templates/peripheral-resources.yaml
