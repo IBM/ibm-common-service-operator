@@ -398,7 +398,7 @@ function create_sf_resources(){
         update_application_namespaces ./templates/peripheral-resources.yaml $namespaces openshift-marketplace openshift-config kube-public
         
         info "Editing Backup Policy Resource..."
-        sed -i -E "s/<storage_location>/$BACKUP_STORAGE_LOCATION_NAME/" ./templates/peripheral-resources.yaml
+        sed -i -E "s/<location name>/$BACKUP_STORAGE_LOCATION_NAME/" ./templates/peripheral-resources.yaml
         
         info "Editing Policy Assignment Resource..."
         recipe_name="cs-core"
@@ -577,10 +577,10 @@ function check_yq() {
 
 function update_application_namespaces() {
     local file="$1"
-    local namespaces=("$@")
     shift
+    local namespaces=("$@")
     info "Updating application in file $file with namespaces $namespaces..."
-    local yq_expr='.spec.includedNamespaces = ['
+    local yq_expr='(select(.kind == "Application") | .spec.includedNamespaces = ['
     for i in "${!namespaces[@]}"; do
         if [ $i -gt 0 ]; then
             yq_expr+=', '  
