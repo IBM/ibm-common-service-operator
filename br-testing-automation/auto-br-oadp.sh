@@ -354,7 +354,6 @@ function restore_cpfs(){
         ${OC} apply -f ${BASE_DIR}/templates/restore/restore-operatorgroup.yaml 
         ${OC} get restores.velero.io -n $OADP_NS $custom_columns_str
         wait_for_restore restore-operatorgroup
-        wait_for_restore restore-crd
     fi
     #end olm specific
     info "Restore CRDs..."
