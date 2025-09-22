@@ -21,16 +21,17 @@ set -o errtrace
 HUB_SETUP="false"
 BACKUP_SETUP="false"
 RESTORE_SETUP="false"
+OUTPUT_FILE="${BASE_DIR}/env-fusion.properties"
 
 
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
 . ../cp3pt0-deployment/common/utils.sh
-source ${BASE_DIR}/env-fusion.properties
 
 function main() {
     parse_arguments "$@"
+    source $OUTPUT_FILE
     prereq
-    echo $BASE_DIR
+    info "Base Directory: $BASE_DIR"
     if [[ $HUB_SETUP == "true" ]]; then
         save_log "logs" "hub_setup_log"
         trap cleanup_log EXIT
@@ -68,6 +69,7 @@ function print_usage(){
     echo "   --backup-setup                 Optional. Create Fusion recipes and application resources for specified instance. Label CPFS resources to prep for Backup."
     echo "   --hub-setup                    Optional. Set up Spectrum Fusion Backup and Restore Hub cluster."
     echo "   --spoke-setup                  Optional. Set up Spectrum Fusion Backup and Restore Spoke cluster. Must have an existing Hub cluster to connect to."
+    echo "   --env-file                     Optional. Enter env var file to populate necessary parameters. Default file name is env-oadp.properties."
     echo "   -h, --help                     Print usage information"
     echo ""
 }
@@ -96,6 +98,10 @@ function parse_arguments() {
             ;;
         --spoke-setup)
             RESTORE_SETUP="true"
+            ;;
+        --env-file)
+            shift
+            OUTPUT_FILE=$1
             ;;
         -h | --help)
             print_usage
