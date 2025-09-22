@@ -278,12 +278,41 @@ function restore_cpfs(){
     mkdir templates
     info "Copying template files..."
     cp -r ../velero/restore ${BASE_DIR}/templates/
+        
+    local all_namespaces=()
+    local namespaces=("$OPERATOR_NS")
+    local tethered_array=()
+    local singleton_namespaces=()
+    local extra_namespaces=("openshift-marketplace" "openshift-config" "kube-public")
+
+    if [[ $SERVICES_NS != "$OPERATOR_NS" ]]; then
+        namespaces+=("$SERVICES_NS")
+    fi
+    
+    if [[ $TETHERED_NS != "" ]]; then
+        local space_delimited="${TETHERED_NS//,/ }"
+        tethered_array=($space_delimited)
+    fi
+    
+    if [[ $ENABLE_CERT_MANAGER == "true" ]]; then
+        singleton_namespaces+=("$CERT_MANAGER_NAMESPACE")
+    fi
+    if [[ $ENABLE_LICENSING == "true" ]]; then
+        singleton_namespaces+=("$LICENSING_NAMESPACE")
+    fi
+    if [[ $ENABLE_LSR == "true" ]]; then
+        singleton_namespaces+=("$LSR_NAMESPACE")
+    fi
+    
+    all_namespaces=("${namespaces[@]}" "${tethered_array[@]}" "${extra_namespaces[@]}" "${singleton_namespaces[@]}")
+    info "All namespaces in scope ${all_namespaces[*]}"
 
     for file in "${BASE_DIR}/templates/restore"/*; do
         sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" $file
         if [[ $OADP_NS != "velero" ]]; then
             set_oadp_namespace $file
         fi
+        update_restore_namespaces $file $all_namespaces
     done
     #start no olm specific
     if [[ $NO_OLM == "true" ]]; then
@@ -926,6 +955,24 @@ function check_yq() {
   if [ "$(printf '%s\n' "$yq_minimum_version" "$yq_version" | sort -V | head -n1)" != "$yq_minimum_version" ]; then 
     error "yq version $yq_version must be at least $yq_minimum_version or higher.\nInstructions for installing/upgrading yq are available here: https://github.com/marketplace/actions/yq-portable-yaml-processor"
   fi
+}
+
+function update_restore_namespaces() {
+    local file="$1"
+    shift
+    local namespaces=("$@")
+    info "Updating restore resource in file $file to specify namespaces $namespaces..."
+    
+    # Build namespace array
+    local json_array="["
+    for i in "${!namespaces[@]}"; do
+        [ $i -gt 0 ] && json_array+=","
+        json_array+="\"${namespaces[$i]}\""
+    done
+    json_array+="]"
+    
+    # Update Restore file
+    ${YQ} eval ".spec.includedNamespaces = $json_array" -i "$app_file"
 }
 
 function msg() {
