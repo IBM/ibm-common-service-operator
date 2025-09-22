@@ -19,8 +19,32 @@ spec:
         - configmaps
         - ibmservicemeterdefinitions.operator.ibm.com
         - ibmusagemeterings.operator.ibm.com
+        - serviceaccount
+        - role
+        - rolebinding
+        - deployments
+        - secrets
       labelSelector: foundationservices.cloudpak.ibm.com=ums
       name: ums-resources
+      type: resource
+    - backupRef: ums-resources
+      includedResourceTypes:
+        - serviceaccount
+        - role
+        - rolebinding
+        - secrets
+      name: ums-rbac-resources
+      type: resource
+    - backupRef: ums-resources
+      includedResourceTypes:
+        - ibmservicemeterdefinitions.operator.ibm.com
+        - ibmusagemeterings.operator.ibm.com
+      name: ums-cr
+      type: resource
+    - backupRef: ums-resources
+      includedResourceTypes:
+        - deployments
+      name: ums-deployment
       type: resource
   hooks:
     - chks:
@@ -45,5 +69,7 @@ spec:
       priority: 6
       sequence:
         - group: ums-crd
-        - group: ums-resources
+        - group: ums-rbac-resources
+        - group: ums-cr
+        - group: ums-deployment
         - hook: ums-operator-check/podReady

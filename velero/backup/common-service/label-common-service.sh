@@ -622,17 +622,18 @@ function label_helm_namespace_scope(){
     for ns in "$OPERATOR_NS" "$SERVICES_NS"; do
         # UMS operator deployment and serviceaccounts
         ${OC} label deployment ibm-usage-metering-operator foundationservices.cloudpak.ibm.com=ums -n $ns --overwrite=true 2>/dev/null || true
+        ${OC} label deployment ibm-usage-metering-instance foundationservices.cloudpak.ibm.com=ums -n $ns --overwrite=true 2>/dev/null || true
         for sa in ibm-usage-metering-operator ibm-usage-metering-instance; do
             ${OC} label serviceaccount $sa foundationservices.cloudpak.ibm.com=ums -n $ns --overwrite=true 2>/dev/null || true
         done
 
-        # UMS roles (any role name containing 'metering')
+        # UMS roles (role name containing 'metering')
         metering_roles=$(${OC} get role -n $ns -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | tr ' ' '\n' | grep metering || true)
         for role in $metering_roles; do
             ${OC} label role "$role" foundationservices.cloudpak.ibm.com=ums -n $ns --overwrite=true 2>/dev/null || true
         done
 
-        # UMS rolebindings (any rolebinding name containing 'metering')
+        # UMS rolebindings (rolebinding name containing 'metering')
         metering_rbs=$(${OC} get rolebinding -n $ns -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | tr ' ' '\n' | grep metering || true)
         for rb in $metering_rbs; do
             ${OC} label rolebinding "$rb" foundationservices.cloudpak.ibm.com=ums -n $ns --overwrite=true 2>/dev/null || true
@@ -698,6 +699,7 @@ function label_helm_namespace_scope(){
 
             # UMS (add deployment, serviceaccounts, roles, rolebindings, configmap, CRs)
             ${OC} label deployment ibm-usage-metering-operator foundationservices.cloudpak.ibm.com=ums -n $namespace --overwrite=true 2>/dev/null || true
+            ${OC} label deployment ibm-usage-metering-instance foundationservices.cloudpak.ibm.com=ums -n $namespace --overwrite=true 2>/dev/null || true
             for sa in ibm-usage-metering-operator ibm-usage-metering-instance; do
                 ${OC} label serviceaccount $sa foundationservices.cloudpak.ibm.com=ums -n $namespace --overwrite=true 2>/dev/null || true
             done
