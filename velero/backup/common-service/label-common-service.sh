@@ -696,7 +696,19 @@ function label_helm_namespace_scope(){
             ${OC} label role ibm-commonui-operator foundationservices.cloudpak.ibm.com=ui-chart -n $namespace --overwrite=true 2>/dev/null
             ${OC} label rolebinding ibm-commonui-operator foundationservices.cloudpak.ibm.com=ui-chart -n $namespace --overwrite=true 2>/dev/null
 
-            # UMS
+            # UMS (add deployment, serviceaccounts, roles, rolebindings, configmap, CRs)
+            ${OC} label deployment ibm-usage-metering-operator foundationservices.cloudpak.ibm.com=ums -n $namespace --overwrite=true 2>/dev/null || true
+            for sa in ibm-usage-metering-operator ibm-usage-metering-instance; do
+                ${OC} label serviceaccount $sa foundationservices.cloudpak.ibm.com=ums -n $namespace --overwrite=true 2>/dev/null || true
+            done
+            metering_roles=$(${OC} get role -n $namespace -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | tr ' ' '\n' | grep metering || true)
+            for role in $metering_roles; do
+                ${OC} label role "$role" foundationservices.cloudpak.ibm.com=ums -n $namespace --overwrite=true 2>/dev/null || true
+            done
+            metering_rbs=$(${OC} get rolebinding -n $namespace -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | tr ' ' '\n' | grep metering || true)
+            for rb in $metering_rbs; do
+                ${OC} label rolebinding "$rb" foundationservices.cloudpak.ibm.com=ums -n $namespace --overwrite=true 2>/dev/null || true
+            done
             ${OC} label configmap ibm-usage-metering-events foundationservices.cloudpak.ibm.com=ums -n $namespace --overwrite=true 2>/dev/null || true
             service_meter_crs=$(${OC} get ibmservicemeterdefinitions.operator.ibm.com -n $namespace -o custom-columns=NAME:.metadata.name --no-headers 2>/dev/null || true)
             while IFS= read -r servicemeterCR; do
