@@ -1,7 +1,7 @@
 apiVersion: velero.io/v1
 kind: Restore
 metadata:
-  name: restore-nss-crd
+  name: restore-helm-crd
   namespace: velero
 spec:
   backupName: __BACKUP_NAME__
@@ -14,11 +14,16 @@ spec:
   - resticrepositories.velero.io
   - roles.authorization.openshift.io
   - rolebindings.authorization.openshift.io
+  - role.rbac.authorization.k8s.io
+  - rolebindings.rbac.authorization.k8s.io
+  - serviceaccount
+  - subscription.operators.coreos.com
+  - namespacescopes.operator.ibm.com
+  includeResources:
+  - customresourcedefinitions.apiextensions.k8s.io
   hooks: {}
   includedNamespaces:
   - '*'
-  includeResources:
-  - customresourcedefinitions.apiextensions.k8s.io
   includeClusterResources: true
   orLabelSelectors:
   - matchExpressions:
@@ -27,3 +32,10 @@ spec:
       values:
       - nss-cluster
       - nss
+      - crd
+      - ui-chart
+      - edb-chart
+      - iam-chart
+      - cs-chart
+      - odlm-chart
+      - zen-chart

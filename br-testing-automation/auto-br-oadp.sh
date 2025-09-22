@@ -324,9 +324,16 @@ function restore_cpfs(){
     if [[ $NO_OLM == "true" ]]; then
     #update values in no-olm directory for no olm specific restore resources
         for file in "${BASE_DIR}/templates/restore/no-olm"/*; do
-            sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" $file
-            if [[ $OADP_NS != "velero" ]]; then
-                set_oadp_namespace $file
+            if [[ "${file}" == *.yaml ]]; then
+                sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" $file
+                if [[ $OADP_NS != "velero" ]]; then
+                    set_oadp_namespace $file
+                fi
+                if [[ "${file}" != *restore-helm-crd.yaml ]]; then
+                    update_restore_namespaces $file "${all_namespaces[@]}"
+                fi
+            else
+                info "File $file does not end in \".yaml\", skipping..."
             fi
         done
     fi
