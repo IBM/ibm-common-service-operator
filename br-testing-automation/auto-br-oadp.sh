@@ -313,7 +313,7 @@ function restore_cpfs(){
             if [[ $OADP_NS != "velero" ]]; then
                 set_oadp_namespace $file
             fi
-            if [[ "${file}" != *restore-crd.yaml ]] || [[ "${file}" != *restore-crd-auto.yaml ]]; then
+            if [[ "${file}" != *restore-crd.yaml ]] && [[ "${file}" != *restore-crd-auto.yaml ]]; then
                 update_restore_namespaces $file "${all_namespaces[@]}"
             fi
         else

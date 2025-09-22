@@ -16,6 +16,8 @@ spec:
   - serviceaccounts
   - role.rbac.authorization.k8s.io
   - rolebindings.rbac.authorization.k8s.io
+  - roles.authorization.openshift.io
+  - rolebindings.authorization.openshift.io
   - namespacescopes.operator.ibm.com
   - zenservices.zen.cpd.ibm.com 
   - subscription.operators.coreos.com
