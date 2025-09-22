@@ -308,12 +308,14 @@ function restore_cpfs(){
     info "All namespaces in scope ${all_namespaces[*]}"
 
     for file in "${BASE_DIR}/templates/restore"/*; do
-        if [[ "${file}" == *.yaml ]] && [[ "${file}" != *restore-crd.yaml ]]; then
+        if [[ "${file}" == *.yaml ]]; then
             sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" $file
             if [[ $OADP_NS != "velero" ]]; then
                 set_oadp_namespace $file
             fi
-            update_restore_namespaces $file "${all_namespaces[@]}"
+            if [[ "${file}" != *restore-crd.yaml ]];
+                update_restore_namespaces $file "${all_namespaces[@]}"
+            fi
         else
             info "File $file does not end in \".yaml\", skipping..."
         fi
