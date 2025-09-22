@@ -312,7 +312,7 @@ function restore_cpfs(){
         if [[ $OADP_NS != "velero" ]]; then
             set_oadp_namespace $file
         fi
-        update_restore_namespaces $file $all_namespaces
+        update_restore_namespaces $file "${all_namespaces[@]}"
     done
     #start no olm specific
     if [[ $NO_OLM == "true" ]]; then
@@ -961,7 +961,7 @@ function update_restore_namespaces() {
     local file="$1"
     shift
     local namespaces=("$@")
-    info "Updating restore resource in file $file to specify namespaces $namespaces..."
+    info "Updating restore resource in file $file to specify namespaces ${namespaces[*]}..."
     
     # Build namespace array
     local json_array="["
