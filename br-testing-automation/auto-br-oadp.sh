@@ -972,7 +972,7 @@ function update_restore_namespaces() {
     json_array+="]"
     
     # Update Restore file
-    ${YQ} eval ".spec.includedNamespaces = $json_array" -i "$app_file"
+    ${YQ} eval ".spec.includedNamespaces = $json_array" -i "$file"
 }
 
 function msg() {
