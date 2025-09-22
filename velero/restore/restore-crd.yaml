@@ -12,9 +12,23 @@ spec:
   - backups.velero.io
   - restores.velero.io
   - resticrepositories.velero.io
+  includeResources:
+  - customresourcedefinitions.apiextensions.k8s.io
   hooks: {}
   includedNamespaces:
   - '*'
-  labelSelector:
-    matchLabels:
-      foundationservices.cloudpak.ibm.com: crd
+  orLabelSelectors:
+  - matchExpressions:
+    - key: foundationservices.cloudpak.ibm.com
+      operator: In
+      values:
+      - nss-cluster
+      - nss
+      - crd
+      - ui-chart
+      - edb-chart
+      - iam-chart
+      - cs-chart
+      - odlm-chart
+      - zen-chart
+      - zen

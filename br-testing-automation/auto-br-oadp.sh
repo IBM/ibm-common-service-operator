@@ -329,9 +329,6 @@ function restore_cpfs(){
                 if [[ $OADP_NS != "velero" ]]; then
                     set_oadp_namespace $file
                 fi
-                if [[ "${file}" != *restore-helm-crd.yaml ]]; then
-                    update_restore_namespaces $file "${all_namespaces[@]}"
-                fi
             else
                 info "File $file does not end in \".yaml\", skipping..."
             fi
@@ -366,9 +363,9 @@ function restore_cpfs(){
     fi
     #end olm specific
     info "Restore CRDs..."
-    ${OC} apply -f ${BASE_DIR}/templates/restore/restore-crd.yaml && ${OC} apply -f ${BASE_DIR}/templates/restore/restore-nss-crd.yaml
+    ${OC} apply -f ${BASE_DIR}/templates/restore/restore-crd.yaml # && ${OC} apply -f ${BASE_DIR}/templates/restore/restore-nss-crd.yaml
     wait_for_restore restore-crd
-    wait_for_restore restore-nss-crd
+    # wait_for_restore restore-nss-crd
     info "Restore configmaps..."
     ${OC} apply -f ${BASE_DIR}/templates/restore/restore-configmap.yaml
     wait_for_restore restore-configmap
