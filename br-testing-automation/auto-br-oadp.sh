@@ -456,8 +456,6 @@ function restore_cpfs(){
         #restore namespace scope operator chart
         if [[ $NSS_ENABLED == "true" ]]; then 
             info "Restoring Namespace Scope resources..."
-            ${OC} apply -f ${BASE_DIR}/templates/restore/restore-nss-crd.yaml
-            wait_for_restore restore-nss-crd-$OPERATOR_NS
             #this will restore nss chart resources as well in no olm
             ${OC} apply -f ${BASE_DIR}/templates/restore/restore-nss.yaml
             wait_for_restore restore-nss-$OPERATOR_NS
