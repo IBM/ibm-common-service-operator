@@ -580,7 +580,7 @@ function restore_im() {
         wait_for_deployment $SERVICES_NS "account-iam-ui-account-deployment"
     fi
     ${OC} apply -f ${BASE_DIR}/templates/restore/restore-cs-db.yaml
-    wait_for_restore restore-cs-db-data
+    wait_for_restore restore-cs-db-data-$OPERATOR_NS
     success "IM data restored successfully."
 }
 
@@ -595,11 +595,11 @@ function wait_for_im() {
 function restore_zen() {
     info "Restoring zenservice..."
     ${OC} apply -f ${BASE_DIR}/templates/restore/restore-zen.yaml
-    wait_for_restore restore-zen
+    wait_for_restore restore-zen-$OPERATOR_NS
     wait_for_zenservice
     info "Restoring zen data..."
     ${OC} apply -f ${BASE_DIR}/templates/restore/restore-zen5-data.yaml
-    wait_for_restore restore-zen5-data
+    wait_for_restore restore-zen5-data-$OPERATOR_NS
     success "Zen data restored successfully"
 }
 
