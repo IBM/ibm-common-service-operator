@@ -640,6 +640,14 @@ function label_helm_namespace_scope(){
         done
 
         ${OC} label configmap ibm-usage-metering-events foundationservices.cloudpak.ibm.com=ums -n $ns --overwrite=true 2>/dev/null || true
+        metering_cms=$(${OC} get configmap -n $ns -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | tr ' ' '\n' | grep metering || true)
+        for cm in $metering_cms; do
+            ${OC} label configmap $cm foundationservices.cloudpak.ibm.com=ums -n $ns --overwrite=true 2>/dev/null || true
+        done
+        metering_secrets=$(${OC} get secret -n $ns -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | tr ' ' '\n' | grep metering || true)
+        for s in $metering_secrets; do
+            ${OC} label secret $s foundationservices.cloudpak.ibm.com=ums -n $ns --overwrite=true 2>/dev/null || true
+        done
         service_meter_crs=$(${OC} get ibmservicemeterdefinitions.operator.ibm.com -n $ns -o custom-columns=NAME:.metadata.name --no-headers 2>/dev/null || true)
         while IFS= read -r servicemeterCR; do
             [[ -z "$servicemeterCR" ]] && continue
@@ -712,6 +720,14 @@ function label_helm_namespace_scope(){
                 ${OC} label rolebinding "$rb" foundationservices.cloudpak.ibm.com=ums -n $namespace --overwrite=true 2>/dev/null || true
             done
             ${OC} label configmap ibm-usage-metering-events foundationservices.cloudpak.ibm.com=ums -n $namespace --overwrite=true 2>/dev/null || true
+            metering_cms=$(${OC} get configmap -n $namespace -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | tr ' ' '\n' | grep metering || true)
+            for cm in $metering_cms; do
+                ${OC} label configmap $cm foundationservices.cloudpak.ibm.com=ums -n $namespace --overwrite=true 2>/dev/null || true
+            done
+            metering_secrets=$(${OC} get secret -n $namespace -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | tr ' ' '\n' | grep metering || true)
+            for s in $metering_secrets; do
+                ${OC} label secret $s foundationservices.cloudpak.ibm.com=ums -n $namespace --overwrite=true 2>/dev/null || true
+            done
             service_meter_crs=$(${OC} get ibmservicemeterdefinitions.operator.ibm.com -n $namespace -o custom-columns=NAME:.metadata.name --no-headers 2>/dev/null || true)
             while IFS= read -r servicemeterCR; do
                 [[ -z "$servicemeterCR" ]] && continue
@@ -721,14 +737,6 @@ function label_helm_namespace_scope(){
             if [[ ! -z "$ums_cr" ]]; then
                 ${OC} label ibmusagemeterings.operator.ibm.com "$ums_cr" -n $namespace foundationservices.cloudpak.ibm.com=ums --overwrite=true 2>/dev/null || true
             fi
-
-            #edb
-            ${OC} label role postgresql-operator-controller-manager foundationservices.cloudpak.ibm.com=edb-chart -n $namespace --overwrite=true 2>/dev/null
-            ${OC} label rolebinding postgresql-operator-controller-manager foundationservices.cloudpak.ibm.com=edb-chart -n $namespace --overwrite=true 2>/dev/null
-            
-            #zen
-            ${OC} label role ibm-zen-operator-role foundationservices.cloudpak.ibm.com=zen-chart -n $namespace --overwrite=true 2>/dev/null
-            ${OC} label rolebinding ibm-zen-operator-rolebinding foundationservices.cloudpak.ibm.com=zen-chart -n $namespace --overwrite=true 2>/dev/null
         done
     fi
 
