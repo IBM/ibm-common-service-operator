@@ -347,8 +347,8 @@ function restore_cpfs(){
     info "Restoring namespaces and entitlement keys..."
     ${OC} apply -f ${BASE_DIR}/templates/restore/restore-namespace.yaml -f ${BASE_DIR}/templates/restore/restore-pull-secret.yaml -f ${BASE_DIR}/templates/restore/restore-entitlementkey.yaml
     ${OC} get restores.velero.io -n $OADP_NS $custom_columns_str
-    wait_for_restore restore-namespace
-    wait_for_restore restore-entitlementkey
+    wait_for_restore restore-namespace-$OPERATOR_NS
+    wait_for_restore restore-entitlementkey-$OPERATOR_NS
     
     #start olm specific
     if [[ $NO_OLM == "false" ]]; then
@@ -356,24 +356,24 @@ function restore_cpfs(){
         ${OC} delete secret pull-secret -n openshift-config --ignore-not-found
         info "Restoring pull secret..."
         ${OC} apply -f ${BASE_DIR}/templates/restore/restore-pull-secret.yaml
-        wait_for_restore restore-pull-secret
+        wait_for_restore restore-pull-secret-$OPERATOR_NS
         ${OC} get restores.velero.io -n $OADP_NS $custom_columns_str
         info "Restoring catalog sources..."
         ${OC} apply -f ${BASE_DIR}/templates/restore/restore-catalog.yaml
-        wait_for_restore restore-catalog
+        wait_for_restore restore-catalog-$OPERATOR_NS
         info "Restore operator groups..."
         ${OC} apply -f ${BASE_DIR}/templates/restore/restore-operatorgroup.yaml 
         ${OC} get restores.velero.io -n $OADP_NS $custom_columns_str
-        wait_for_restore restore-operatorgroup
+        wait_for_restore restore-operatorgroup-$OPERATOR_NS
     fi
     #end olm specific
     info "Restore CRDs..."
     ${OC} apply -f ${BASE_DIR}/templates/restore/restore-crd.yaml && ${OC} apply -f ${BASE_DIR}/templates/restore/restore-crd-auto.yaml
-    wait_for_restore restore-crd
-    wait_for_restore restore-crd-auto
+    wait_for_restore restore-crd-$OPERATOR_NS
+    wait_for_restore restore-crd-auto-$OPERATOR_NS
     info "Restore configmaps..."
     ${OC} apply -f ${BASE_DIR}/templates/restore/restore-configmap.yaml
-    wait_for_restore restore-configmap
+    wait_for_restore restore-configmap-$OPERATOR_NS
     
     #Singleton subscriptions (Cert manager, licensing, LSR)
     if [[ $RESTORE_SINGLETONS == "true" ]]; then
@@ -382,14 +382,14 @@ function restore_cpfs(){
             info "Restoring licensing configmaps..."
             #this will restore the licensing chart in no olm
             ${OC} apply -f ${BASE_DIR}/templates/restore/restore-licensing.yaml
-            wait_for_restore restore-licensing
+            wait_for_restore restore-licensing-$OPERATOR_NS
         fi
         # same principle for lsr here as for licensing above
         if [[ $ENABLE_LSR == "true" ]]; then
             info "Restoring License Service Reporter instance..."
             #this will restore the LSR chart in no olm
             ${OC} apply -f ${BASE_DIR}/templates/restore/restore-lsr.yaml
-            wait_for_restore restore-lsr
+            wait_for_restore restore-lsr-$OPERATOR_NS
         fi
         
         #start olm specific
@@ -397,7 +397,7 @@ function restore_cpfs(){
             #this step restores the cert manager and licensing subs
             info "Restoring Singleton subscriptions..."
             ${OC} apply -f ${BASE_DIR}/templates/restore/restore-singleton-subscriptions.yaml
-            wait_for_restore restore-singleton-subscription
+            wait_for_restore restore-singleton-subscription-$OPERATOR_NS
         fi
         #end olm specific
 
@@ -406,7 +406,7 @@ function restore_cpfs(){
             #restore cert manager chart
             info "Restoring Cert Manager Operator Chart..."
             ${OC} apply -f ${BASE_DIR}/templates/restore/no-olm/restore-ibm-cm-chart.yaml
-            wait_for_restore restore-ibm-cm-chart
+            wait_for_restore restore-ibm-cm-chart-$OPERATOR_NS
         fi
         #end no olm specific
 
@@ -414,7 +414,7 @@ function restore_cpfs(){
             info "Restoring License Service Reporter data..."
             wait_for_deployment $LSR_NAMESPACE "ibm-license-service-reporter-instance" 30
             ${OC} apply -f ${BASE_DIR}/templates/restore/restore-lsr-data.yaml
-            wait_for_restore restore-lsr-data
+            wait_for_restore restore-lsr-data-$OPERATOR_NS
         fi
     fi
     ${OC} get restores.velero.io -n $OADP_NS $custom_columns_str
@@ -422,12 +422,12 @@ function restore_cpfs(){
     wait_for_cert_manager $CERT_MANAGER_NAMESPACE $SERVICES_NS
     info "Restoring cert manager resources (secrets, certificates, issuers, etc.)..."
     ${OC} apply -f ${BASE_DIR}/templates/restore/restore-cert-manager.yaml
-    wait_for_restore restore-cert-manager
+    wait_for_restore restore-cert-manager-$OPERATOR_NS
     
     #Restore the common service CR and the tenant scope via nss
     info "Restoring common service CR..."
     ${OC} apply -f ${BASE_DIR}/templates/restore/restore-commonservice.yaml
-    wait_for_restore restore-commonservice
+    wait_for_restore restore-commonservice-$OPERATOR_NS
 
     #start olm specific
     if [[ $NO_OLM == "false" ]]; then
@@ -435,14 +435,14 @@ function restore_cpfs(){
             info "Restoring Namespace Scope resources..."
             #this will restore nss cluster and chart resources as well in no olm
             ${OC} apply -f ${BASE_DIR}/templates/restore/restore-nss.yaml
-            wait_for_restore restore-nss
+            wait_for_restore restore-nss-$OPERATOR_NS
             ${OC} get restores.velero.io -n $OADP_NS $custom_columns_str
             validate_nss $OPERATOR_NS
         fi
         #restore common service subscription and odlm operator
         info "Restore CS and ODLM Operators..."
         ${OC} apply -f ${BASE_DIR}/templates/restore/restore-subscriptions.yaml
-        wait_for_restore restore-subscription
+        wait_for_restore restore-subscription-$OPERATOR_NS
         validate_cs_odlm $OPERATOR_NS
     fi
     #end olm specific
@@ -451,16 +451,16 @@ function restore_cpfs(){
         #restore cluster charts no-olm/restore-cluster-scope.yaml
         info "Restoring cluster wide operator resources..."
         ${OC} apply -f ${BASE_DIR}/templates/restore/no-olm/restore-cluster-scope.yaml
-        wait_for_restore restore-cluster-charts
+        wait_for_restore restore-cluster-charts-$OPERATOR_NS
         
         #restore namespace scope operator chart
         if [[ $NSS_ENABLED == "true" ]]; then 
             info "Restoring Namespace Scope resources..."
             ${OC} apply -f ${BASE_DIR}/templates/restore/restore-nss-crd.yaml
-            wait_for_restore restore-nss-crd
+            wait_for_restore restore-nss-crd-$OPERATOR_NS
             #this will restore nss chart resources as well in no olm
             ${OC} apply -f ${BASE_DIR}/templates/restore/restore-nss.yaml
-            wait_for_restore restore-nss
+            wait_for_restore restore-nss-$OPERATOR_NS
             ${OC} get restores.velero.io -n $OADP_NS $custom_columns_str
             wait_for_deployment $OPERATOR_NS ibm-namespace-scope-operator
         fi
@@ -468,7 +468,7 @@ function restore_cpfs(){
         #restore cs op/odlm chart no-olm/restore-installer-ns-charts.yaml
         info "Restoring CS Operator and ODLM charts..."
         ${OC} apply -f ${BASE_DIR}/templates/restore/no-olm/restore-installer-ns-charts.yaml
-        wait_for_restore restore-installer-charts
+        wait_for_restore restore-installer-charts-$OPERATOR_NS
         wait_for_deployment $OPERATOR_NS ibm-common-service-operator
         wait_for_deployment $OPERATOR_NS operand-deployment-lifecycle-manager
         #restore im ns chart no-olm/restore-im-ns-charts.yaml
@@ -477,7 +477,7 @@ function restore_cpfs(){
         if [[ $IM_ENABLED == "true" ]] || [[ $ZEN_ENABLED == "true" ]]; then
             info "Restoring IM, Common UI, and EDB charts..."
             ${OC} apply -f ${BASE_DIR}/templates/restore/no-olm/restore-im-ns-charts.yaml
-            wait_for_restore restore-im-charts
+            wait_for_restore restore-im-charts-$OPERATOR_NS
             #TODO implement check for im so we don't wait for im and ui deployments in case where zen does not enable im since this is where we need to restore and check edb
             wait_for_deployment $OPERATOR_NS ibm-iam-operator
             wait_for_deployment $OPERATOR_NS ibm-commonui-operator
@@ -491,20 +491,20 @@ function restore_cpfs(){
     if [[ $UMS_ENABLED == "true" ]]; then
         info "Restoring UMS resources..."
         ${OC} apply -f ${BASE_DIR}/templates/restore/restore-ums.yaml
-        wait_for_restore restore-ums
+        wait_for_restore restore-ums-$OPERATOR_NS
     fi
     
     ${OC} get restores.velero.io -n $OADP_NS $custom_columns_str
     info "Restoring operands..."
     ${OC} apply -f ${BASE_DIR}/templates/restore/restore-operands.yaml
-    wait_for_restore restore-operands
+    wait_for_restore restore-operands-$OPERATOR_NS
     
     #start no olm specific
     if [[ $NO_OLM == "true" ]]; then
         #restore zen ns chart no-olm/restore-zen-ns-charts.yaml 
         info "Restoring Zen chart..."
         ${OC} apply -f ${BASE_DIR}/templates/restore/no-olm/restore-zen-ns-chart.yaml
-        wait_for_restore restore-zen-chart
+        wait_for_restore restore-zen-chart-$OPERATOR_NS
     fi
     #end no olm specific
 
