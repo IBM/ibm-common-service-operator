@@ -314,7 +314,7 @@ function restore_cpfs(){
                 set_oadp_namespace $file
             fi
             update_restore_name $file
-            if [[ "${file}" != *restore-crd.yaml ]] && [[ "${file}" != *restore-crd-auto.yaml ]]; then
+            if [[ "${file}" != *restore-crd.yaml ]] && [[ "${file}" != *restore-cluster-auto.yaml ]]; then
                 update_restore_namespaces $file "${all_namespaces[@]}"
             fi
         else
@@ -331,7 +331,7 @@ function restore_cpfs(){
                     set_oadp_namespace $file
                 fi
                 update_restore_name $file
-                if [[ "${file}" != *restore-crd.yaml ]] && [[ "${file}" != *restore-crd-auto.yaml ]]; then
+                if [[ "${file}" != *restore-crd.yaml ]] && [[ "${file}" != *restore-cluster-auto.yaml ]]; then
                     update_restore_namespaces $file "${all_namespaces[@]}"
                 fi
             else
@@ -368,9 +368,9 @@ function restore_cpfs(){
     fi
     #end olm specific
     info "Restore CRDs..."
-    ${OC} apply -f ${BASE_DIR}/templates/restore/restore-crd.yaml && ${OC} apply -f ${BASE_DIR}/templates/restore/restore-crd-auto.yaml
+    ${OC} apply -f ${BASE_DIR}/templates/restore/restore-crd.yaml && ${OC} apply -f ${BASE_DIR}/templates/restore/restore-cluster-auto.yaml
     wait_for_restore restore-crd-$OPERATOR_NS
-    wait_for_restore restore-crd-auto-$OPERATOR_NS
+    wait_for_restore restore-cluster-auto-$OPERATOR_NS
     info "Restore configmaps..."
     ${OC} apply -f ${BASE_DIR}/templates/restore/restore-configmap.yaml
     wait_for_restore restore-configmap-$OPERATOR_NS

@@ -1,7 +1,7 @@
 apiVersion: velero.io/v1
 kind: Restore
 metadata:
-  name: restore-crd-auto
+  name: restore-cluster-auto
   namespace: velero
 spec:
   backupName: __BACKUP_NAME__
@@ -32,6 +32,8 @@ spec:
   - ibmlicenseservicereporters.operator.ibm.com
   includeResources:
   - customresourcedefinitions.apiextensions.k8s.io
+  - clusterrole.rbac.authorization.k8s.io
+  - clusterrolebinding.rbac.authorization.k8s.io
   hooks: {}
   includedNamespaces:
   - '*'
