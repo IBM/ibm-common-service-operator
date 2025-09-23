@@ -313,6 +313,7 @@ function restore_cpfs(){
             if [[ $OADP_NS != "velero" ]]; then
                 set_oadp_namespace $file
             fi
+            update_restore_name $file
             if [[ "${file}" != *restore-crd.yaml ]] && [[ "${file}" != *restore-crd-auto.yaml ]]; then
                 update_restore_namespaces $file "${all_namespaces[@]}"
             fi
@@ -328,6 +329,10 @@ function restore_cpfs(){
                 sed -i -E "s/__BACKUP_NAME__/$BACKUP_NAME/" $file
                 if [[ $OADP_NS != "velero" ]]; then
                     set_oadp_namespace $file
+                fi
+                update_restore_name $file
+                if [[ "${file}" != *restore-crd.yaml ]] && [[ "${file}" != *restore-crd-auto.yaml ]]; then
+                    update_restore_namespaces $file "${all_namespaces[@]}"
                 fi
             else
                 info "File $file does not end in \".yaml\", skipping..."
@@ -986,6 +991,13 @@ function update_restore_namespaces() {
     # Update Restore file
     ${YQ} eval ".spec.includedNamespaces = $json_array" -i "$file"
 
+}
+
+function update_restore_name() {
+    local file="$1"
+    cur_name=$(${YQ} '.metadata.name' $file)
+    cur_name+="-${OPERATOR_NS}"
+    ${YQ} -i '.metadata.name = "'"$cur_name"'"' $file
 }
 
 function msg() {
