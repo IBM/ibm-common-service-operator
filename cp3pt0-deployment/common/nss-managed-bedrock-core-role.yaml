@@ -182,6 +182,7 @@ rules:
       - patch
       - update
       - watch
+      - list
     apiGroups:
       - postgresql.k8s.enterprisedb.io
     resources:
@@ -1670,3 +1671,11 @@ rules:
       - db2uengines
     apiGroups:
       - db2u.databases.ibm.com
+  - verbs:
+      - get
+      - list
+      - watch
+    resources:
+      - secretproviderclasses
+    apiGroups:
+      - secrets-store.csi.x-k8s.io
