@@ -13,7 +13,6 @@ spec:
   - restores.velero.io
   - resticrepositories.velero.io
   hooks: {}
-  includeClusterResources: true
   includedNamespaces:
   - '*'
   labelSelector:
