@@ -70,7 +70,7 @@ const Small = `
             memory: 350Mi
 - name: common-service-postgresql
   resources:
-  - apiVersion: postgresql.k8s.enterprisedb.io/v1
+  - apiVersion: postgresql.cnpg.ibm.com/v1
     kind: Cluster
     name: common-service-db
     data:
