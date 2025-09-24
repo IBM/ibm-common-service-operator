@@ -44,6 +44,7 @@ spec:
     - backupRef: ums-resources
       includedResourceTypes:
         - deployments
+        - configmaps
       name: ums-deployment
       type: resource
   hooks:
