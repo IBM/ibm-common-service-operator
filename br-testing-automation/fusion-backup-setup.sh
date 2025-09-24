@@ -21,17 +21,16 @@ set -o errtrace
 HUB_SETUP="false"
 BACKUP_SETUP="false"
 RESTORE_SETUP="false"
-OUTPUT_FILE="${BASE_DIR}/env-fusion.properties"
-
 
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
+OUTPUT_FILE="${BASE_DIR}/env-fusion.properties"
 . ../cp3pt0-deployment/common/utils.sh
 
 function main() {
     parse_arguments "$@"
-    source $OUTPUT_FILE
     prereq
     info "Base Directory: $BASE_DIR"
+    source $OUTPUT_FILE
     if [[ $HUB_SETUP == "true" ]]; then
         save_log "logs" "hub_setup_log"
         trap cleanup_log EXIT
