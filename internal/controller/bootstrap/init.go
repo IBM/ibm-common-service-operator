@@ -310,7 +310,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 			return err
 		}
 	} else {
-		b.EventRecorder.Event(instance, corev1.EventTypeWarning, "ODLMCatalogSourceWarning", fmt.Sprintf("The catalogsource %s in namespace %s does not contain the correct version of ODLM, skip the installation of ODLM Operator", b.CSData.ODLMCatalogSourceName, b.CSData.ODLMCatalogSourceNs))
+		b.EventRecorder.Event(instance, corev1.EventTypeWarning, "ODLMCatalogSourceWarning", fmt.Sprintf("The catalogsource %s in namespace %s does not contain the correct version of ODLM, skip the installation/update of ODLM Operator", b.CSData.ODLMCatalogSourceName, b.CSData.ODLMCatalogSourceNs))
 	}
 
 	klog.Info("Waiting for ODLM Operator to be ready")
