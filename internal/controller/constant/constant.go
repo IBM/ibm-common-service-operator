@@ -46,6 +46,8 @@ const (
 	CsMapConfigMapNs = "kube-public"
 	// CS Saas configMap
 	SaasConfigMap = "saas-config"
+	// ODLM Channel
+	ODLMChannel = "v4.5"
 	// Namespace Scope Operator resource name
 	NsSubResourceName = "nsSubscription"
 	// Namespace Scope Operator sub name

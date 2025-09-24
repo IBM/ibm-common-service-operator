@@ -115,6 +115,7 @@ func NewNonOLMBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		CatalogSourceName:       "",
 		CatalogSourceNs:         "",
 		ApprovalMode:            "",
+		ODLMChannel:             constant.ODLMChannel,
 		WatchNamespaces:         util.GetWatchNamespace(),
 		OnPremMultiEnable:       strconv.FormatBool(util.CheckMultiInstances(mgr.GetAPIReader())),
 		ExcludedCatalog:         constant.ExcludedCatalog,
@@ -295,9 +296,21 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		}
 	}
 
-	klog.Info("Installing ODLM Operator")
-	if err := b.renderTemplate(constant.ODLMSubscription, b.CSData); err != nil {
+	// Install ODLM Operator
+	// Check if CatalogSource contains the correct version of ODLM
+	// if contains, install ODLM Operator
+	// if not, skip the installation of ODLM Operator, and show warning event
+	installODLM, err := util.CheckODLMCatalogSource(b.Reader, b.CSData.ODLMCatalogSourceName, b.CSData.ODLMCatalogSourceNs)
+	if err != nil {
 		return err
+	}
+	if installODLM {
+		klog.Info("Installing ODLM Operator")
+		if err := b.renderTemplate(constant.ODLMSubscription, b.CSData); err != nil {
+			return err
+		}
+	} else {
+		b.EventRecorder.Event(instance, corev1.EventTypeWarning, "ODLMCatalogSourceWarning", fmt.Sprintf("The catalogsource %s in namespace %s does not contain the correct version of ODLM, skip the installation of ODLM Operator", b.CSData.ODLMCatalogSourceName, b.CSData.ODLMCatalogSourceNs))
 	}
 
 	klog.Info("Waiting for ODLM Operator to be ready")
