@@ -637,17 +637,6 @@ function label_helm_namespace_scope(){
         for rb in $metering_rbs; do
             ${OC} label rolebinding "$rb" foundationservices.cloudpak.ibm.com=ums -n $ns --overwrite=true 2>/dev/null || true
         done
-
-        # UMS CRs
-        service_meter_crs=$(${OC} get ibmservicemeterdefinitions.operator.ibm.com -n $ns -o custom-columns=NAME:.metadata.name --no-headers 2>/dev/null || true)
-        while IFS= read -r servicemeterCR; do
-            [[ -z "$servicemeterCR" ]] && continue
-            ${OC} label ibmservicemeterdefinitions.operator.ibm.com "$servicemeterCR" -n $ns foundationservices.cloudpak.ibm.com=ums --overwrite=true 2>/dev/null || true
-        done <<< "$service_meter_crs"
-        ums_cr=$(${OC} get ibmusagemeterings.operator.ibm.com -n $ns -o custom-columns=NAME:.metadata.name --no-headers 2>/dev/null | awk '{print $1}')
-        if [[ ! -z "$ums_cr" ]]; then
-            ${OC} label ibmusagemeterings.operator.ibm.com "$ums_cr" -n $ns foundationservices.cloudpak.ibm.com=ums --overwrite=true 2>/dev/null || true
-        fi
     done
         
     #edb
@@ -709,15 +698,6 @@ function label_helm_namespace_scope(){
             for rb in $metering_rbs; do
                 ${OC} label rolebinding "$rb" foundationservices.cloudpak.ibm.com=ums -n $namespace --overwrite=true 2>/dev/null || true
             done
-            service_meter_crs=$(${OC} get ibmservicemeterdefinitions.operator.ibm.com -n $namespace -o custom-columns=NAME:.metadata.name --no-headers 2>/dev/null || true)
-            while IFS= read -r servicemeterCR; do
-                [[ -z "$servicemeterCR" ]] && continue
-                ${OC} label ibmservicemeterdefinitions.operator.ibm.com "$servicemeterCR" -n $namespace foundationservices.cloudpak.ibm.com=ums --overwrite=true 2>/dev/null || true
-            done <<< "$service_meter_crs"
-            ums_cr=$(${OC} get ibmusagemeterings.operator.ibm.com -n $namespace -o custom-columns=NAME:.metadata.name --no-headers 2>/dev/null | awk '{print $1}')
-            if [[ ! -z "$ums_cr" ]]; then
-                ${OC} label ibmusagemeterings.operator.ibm.com "$ums_cr" -n $namespace foundationservices.cloudpak.ibm.com=ums --overwrite=true 2>/dev/null || true
-            fi
         done
     fi
 

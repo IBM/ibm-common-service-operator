@@ -16,8 +16,6 @@ spec:
       name: ums-crd
       type: resource
     - includedResourceTypes:
-        - ibmservicemeterdefinitions.operator.ibm.com
-        - ibmusagemeterings.operator.ibm.com
         - serviceaccount
         - role
         - rolebinding
@@ -31,12 +29,6 @@ spec:
         - role
         - rolebinding
       name: ums-rbac-resources
-      type: resource
-    - backupRef: ums-resources
-      includedResourceTypes:
-        - ibmservicemeterdefinitions.operator.ibm.com
-        - ibmusagemeterings.operator.ibm.com
-      name: ums-cr
       type: resource
     - backupRef: ums-resources
       includedResourceTypes:
@@ -67,6 +59,5 @@ spec:
       sequence:
         - group: ums-crd
         - group: ums-rbac-resources
-        - group: ums-cr
         - group: ums-deployment
         - hook: ums-instance-check/podReady
