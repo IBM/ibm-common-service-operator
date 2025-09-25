@@ -16,14 +16,12 @@ spec:
       name: ums-crd
       type: resource
     - includedResourceTypes:
-        - configmaps
         - ibmservicemeterdefinitions.operator.ibm.com
         - ibmusagemeterings.operator.ibm.com
         - serviceaccount
         - role
         - rolebinding
         - deployments
-        - secrets
       labelSelector: foundationservices.cloudpak.ibm.com=ums
       name: ums-resources
       type: resource
@@ -32,7 +30,6 @@ spec:
         - serviceaccount
         - role
         - rolebinding
-        - secrets
       name: ums-rbac-resources
       type: resource
     - backupRef: ums-resources
@@ -44,7 +41,6 @@ spec:
     - backupRef: ums-resources
       includedResourceTypes:
         - deployments
-        - configmaps
       name: ums-deployment
       type: resource
   hooks:
@@ -54,7 +50,7 @@ spec:
           onError: fail
           timeout: 600
       labelSelector: app.kubernetes.io/name=ibm-usage-metering
-      name: ums-operator-check
+      name: ums-instance-check
       namespace: <operator_ns>
       onError: fail
       selectResource: pod
@@ -73,4 +69,4 @@ spec:
         - group: ums-rbac-resources
         - group: ums-cr
         - group: ums-deployment
-        - hook: ums-operator-check/podReady
+        - hook: ums-instance-check/podReady
