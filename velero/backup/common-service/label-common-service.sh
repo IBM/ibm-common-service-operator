@@ -622,7 +622,6 @@ function label_helm_namespace_scope(){
     for ns in "$OPERATOR_NS" "$SERVICES_NS"; do
         # UMS operator deployment and serviceaccounts
         ${OC} label deployment ibm-usage-metering-operator foundationservices.cloudpak.ibm.com=ums -n $ns --overwrite=true 2>/dev/null || true
-        ${OC} label deployment ibm-usage-metering-instance foundationservices.cloudpak.ibm.com=ums -n $ns --overwrite=true 2>/dev/null || true
         for sa in ibm-usage-metering-operator ibm-usage-metering-instance; do
             ${OC} label serviceaccount $sa foundationservices.cloudpak.ibm.com=ums -n $ns --overwrite=true 2>/dev/null || true
         done
@@ -639,15 +638,7 @@ function label_helm_namespace_scope(){
             ${OC} label rolebinding "$rb" foundationservices.cloudpak.ibm.com=ums -n $ns --overwrite=true 2>/dev/null || true
         done
 
-        ${OC} label configmap ibm-usage-metering-events foundationservices.cloudpak.ibm.com=ums -n $ns --overwrite=true 2>/dev/null || true
-        metering_cms=$(${OC} get configmap -n $ns -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | tr ' ' '\n' | grep metering || true)
-        for cm in $metering_cms; do
-            ${OC} label configmap $cm foundationservices.cloudpak.ibm.com=ums -n $ns --overwrite=true 2>/dev/null || true
-        done
-        metering_secrets=$(${OC} get secret -n $ns -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | tr ' ' '\n' | grep metering || true)
-        for s in $metering_secrets; do
-            ${OC} label secret $s foundationservices.cloudpak.ibm.com=ums -n $ns --overwrite=true 2>/dev/null || true
-        done
+        # UMS CRs
         service_meter_crs=$(${OC} get ibmservicemeterdefinitions.operator.ibm.com -n $ns -o custom-columns=NAME:.metadata.name --no-headers 2>/dev/null || true)
         while IFS= read -r servicemeterCR; do
             [[ -z "$servicemeterCR" ]] && continue
@@ -707,7 +698,6 @@ function label_helm_namespace_scope(){
 
             # UMS (add deployment, serviceaccounts, roles, rolebindings, configmap, CRs)
             ${OC} label deployment ibm-usage-metering-operator foundationservices.cloudpak.ibm.com=ums -n $namespace --overwrite=true 2>/dev/null || true
-            ${OC} label deployment ibm-usage-metering-instance foundationservices.cloudpak.ibm.com=ums -n $namespace --overwrite=true 2>/dev/null || true
             for sa in ibm-usage-metering-operator ibm-usage-metering-instance; do
                 ${OC} label serviceaccount $sa foundationservices.cloudpak.ibm.com=ums -n $namespace --overwrite=true 2>/dev/null || true
             done
@@ -718,15 +708,6 @@ function label_helm_namespace_scope(){
             metering_rbs=$(${OC} get rolebinding -n $namespace -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | tr ' ' '\n' | grep metering || true)
             for rb in $metering_rbs; do
                 ${OC} label rolebinding "$rb" foundationservices.cloudpak.ibm.com=ums -n $namespace --overwrite=true 2>/dev/null || true
-            done
-            ${OC} label configmap ibm-usage-metering-events foundationservices.cloudpak.ibm.com=ums -n $namespace --overwrite=true 2>/dev/null || true
-            metering_cms=$(${OC} get configmap -n $namespace -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | tr ' ' '\n' | grep metering || true)
-            for cm in $metering_cms; do
-                ${OC} label configmap $cm foundationservices.cloudpak.ibm.com=ums -n $namespace --overwrite=true 2>/dev/null || true
-            done
-            metering_secrets=$(${OC} get secret -n $namespace -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | tr ' ' '\n' | grep metering || true)
-            for s in $metering_secrets; do
-                ${OC} label secret $s foundationservices.cloudpak.ibm.com=ums -n $namespace --overwrite=true 2>/dev/null || true
             done
             service_meter_crs=$(${OC} get ibmservicemeterdefinitions.operator.ibm.com -n $namespace -o custom-columns=NAME:.metadata.name --no-headers 2>/dev/null || true)
             while IFS= read -r servicemeterCR; do
