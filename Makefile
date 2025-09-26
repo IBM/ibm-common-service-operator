@@ -186,10 +186,10 @@ deploy: manifests ## Deploy controller in the configured Kubernetes cluster in ~
 
 build-dev-image: cloudpak-theme.jar
 	@echo "Building the $(OPERATOR_IMAGE_NAME) docker dev image for $(LOCAL_ARCH)..."
-	@docker build -t $(REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):dev \
+	@docker build -t $(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):dev \
 	--build-arg VCS_REF=$(VCS_REF) --build-arg RELEASE_VERSION=$(RELEASE_VERSION) \
 	--build-arg GOARCH=$(LOCAL_ARCH) -f Dockerfile .
-	@docker push $(REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(VERSION)
+	@docker push $(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(VERSION)
 
 build-bundle-image: yq
 	@cp -f bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml /tmp/ibm-common-service-operator.clusterserviceversion.yaml
