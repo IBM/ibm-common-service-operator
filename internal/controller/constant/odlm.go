@@ -490,7 +490,7 @@ spec:
     packageName: cloud-native-postgresql
     scope: public
     operatorConfig: cloud-native-postgresql-operator-config
-    sourceName: {{ .CatalogSourceName }}
+    sourceName: ibm-cnpg-postgresql-operator-catalog
     sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 )
