@@ -2394,7 +2394,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     operatorConfig: cloud-native-postgresql-operator-config
     configName: cloud-native-postgresql
-    sourceName: {{ .CatalogSourceName }}
+    sourceName: ibm-cnpg-postgresql-operator-catalog
     sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: alpha
     name: ibm-user-data-services-operator
