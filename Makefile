@@ -65,7 +65,7 @@ else
 endif
 
 # Default image repo
-QUAY_REGISTRY ?= quay.io/opencloudio
+QUAY_REGISTRY ?= quay.io/luzarragaben
 
 ifeq ($(BUILD_LOCALLY),0)
 ARTIFACTORYA_REGISTRY ?= "docker-na-public.artifactory.swg-devops.com/hyc-cloud-private-integration-docker-local/ibmcom"
