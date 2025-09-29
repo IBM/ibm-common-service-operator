@@ -19,6 +19,7 @@ OPERATOR_NS_LIST=""
 CONTROL_NS=""
 FORCE_DELETE=0
 DEBUG=0
+RETAIN="false"
 
 # ---------- Command variables ----------
 
@@ -46,7 +47,9 @@ function main() {
     delete_rbac_resource
     delete_webhook
     delete_unavailable_apiservice
-    delete_tenant_ns
+    if [[ $RETAIN == "false" ]]; then
+        delete_tenant_ns
+    fi
 }
 
 function parse_arguments() {
@@ -68,6 +71,10 @@ function parse_arguments() {
         --operator-namespace)
             shift
             OPERATOR_NS=$1
+            ;;
+        --retain-ns)
+            shift
+            RETAIN="true"
             ;;
         -f)
             shift
@@ -102,6 +109,7 @@ function print_usage() {
     echo "   --yq string                    Optional. File path to yq CLI. Default uses yq in your PATH"
     echo "   --operator-namespace string    Required. Namespace to uninstall Foundational services operators and the whole tenant."
     echo "   -f                             Optional. Enable force delete. It will take much more time if you add this label, we suggest run this script without -f label first"
+    echo "   --retain-ns                    Optional. Prevents script from deleting tenant namespaces during uninstall."
     echo "   -v, --debug integer            Optional. Verbosity of logs. Default is 0. Set to 1 for debug logs"
     echo "   -h, --help                     Print usage information"
     echo ""
