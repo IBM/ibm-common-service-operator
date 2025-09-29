@@ -487,7 +487,7 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     name: common-service-postgresql
     namespace: "{{ .CPFSNs }}"
-    packageName: cloud-native-postgresql
+    packageName: cnpg-ibm
     scope: public
     operatorConfig: cloud-native-postgresql-operator-config
     sourceName: ibm-cnpg-postgresql-operator-catalog
@@ -2389,7 +2389,7 @@ spec:
       - stable
     name: cloud-native-postgresql-v1.25
     namespace: "{{ .CPFSNs }}"
-    packageName: cloud-native-postgresql
+    packageName: cnpg-ibm
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
     operatorConfig: cloud-native-postgresql-operator-config
