@@ -518,10 +518,10 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     name: ibm-cnpg-postgres-operator
     namespace: "{{ .CPFSNs }}"
-    packageName: ibm-cnpg-postgres-operator
+    packageName: cnpg-ibm
     scope: public
     operatorConfig: cloud-native-postgresql-operator-config
-    sourceName: {{ .CatalogSourceName }}
+    sourceName: ibm-cnpg-postgresql-operator-catalog
     sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 )
@@ -2874,6 +2874,19 @@ spec:
     operatorConfig: cloud-native-postgresql-operator-config
     configName: cloud-native-postgresql
     sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+  - channel: stable-v1.25
+    fallbackChannels:
+      - stable-v1.22
+      - stable
+    name: ibm-cnpg-postgres-operator
+    namespace: "{{ .CPFSNs }}"
+    packageName: cnpg-ibm
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    operatorConfig: cloud-native-postgresql-operator-config
+    configName: cloud-native-postgresql
+    sourceName: ibm-cnpg-postgresql-operator-catalog
     sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: alpha
     name: ibm-user-data-services-operator
