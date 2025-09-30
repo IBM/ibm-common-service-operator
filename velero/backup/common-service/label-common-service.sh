@@ -622,6 +622,9 @@ function label_helm_namespace_scope(){
     for ns in "$OPERATOR_NS" "$SERVICES_NS"; do
         # UMS operator deployment and serviceaccounts
         ${OC} label deployment ibm-usage-metering-operator foundationservices.cloudpak.ibm.com=ums -n $ns --overwrite=true 2>/dev/null || true
+        # UMS CR named ibmusagemetering-sample
+        ${OC} label ibmusagemeterings.operator.ibm.com ibmusagemetering-sample foundationservices.cloudpak.ibm.com=ums -n $ns --overwrite=true 2>/dev/null || true
+        
         for sa in ibm-usage-metering-operator ibm-usage-metering-instance; do
             ${OC} label serviceaccount $sa foundationservices.cloudpak.ibm.com=ums -n $ns --overwrite=true 2>/dev/null || true
         done
@@ -687,6 +690,8 @@ function label_helm_namespace_scope(){
 
             # UMS (add deployment, serviceaccounts, roles, rolebindings, configmap, CRs)
             ${OC} label deployment ibm-usage-metering-operator foundationservices.cloudpak.ibm.com=ums -n $namespace --overwrite=true 2>/dev/null || true
+             # UMS CR named ibmusagemetering-sample
+            ${OC} label ibmusagemeterings.operator.ibm.com ibmusagemetering-sample foundationservices.cloudpak.ibm.com=ums -n $ns --overwrite=true 2>/dev/null || true
             for sa in ibm-usage-metering-operator ibm-usage-metering-instance; do
                 ${OC} label serviceaccount $sa foundationservices.cloudpak.ibm.com=ums -n $namespace --overwrite=true 2>/dev/null || true
             done
