@@ -49,6 +49,8 @@ function main() {
     delete_unavailable_apiservice
     if [[ $RETAIN == "false" ]]; then
         delete_tenant_ns
+    else
+        cleanup_extra_resources
     fi
 }
 
@@ -402,6 +404,20 @@ function cleanup_cs_control() {
         fi
     fi
 
+}
+
+function cleanup_extra_resources() {
+    info "Deleting excess resources while retaining tenant namespaces..."
+    for ns in ${TENANT_NAMESPACES//,/ }; do
+        ${OC} delete issuer cs-ss-issuer cs-ca-issuer -n $ns --ignore-not-found
+        ${OC} delete certificate cs-ca-certificate -n $ns --ignore-not-found
+        ${OC} delete configmap cloud-native-postgresql-image-list ibm-cpp-config -n $ns --ignore-not-found
+        ${OC} delete secret common-service-db-im-tls-secret postgresql-operator-controller-manager-config cs-ca-certificate-secret common-service-db-tls-secret common-service-db-replica-tls-secret common-service-db-zen-tls-secret -n $ns --ignore-not-found
+        ${OC} delete commonservice common-service -n $ns --ignore-not-found
+        ${OC} delete operandconfig common-service -n $ns --ignore-not-found
+        ${OC} delete operandregistry common-service -n $ns --ignore-not-found
+    done
+    success "Excess resources cleaned up in retained tenant namespaces."
 }
 
 
