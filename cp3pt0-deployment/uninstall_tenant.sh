@@ -416,6 +416,8 @@ function cleanup_extra_resources() {
         ${OC} delete commonservice common-service -n $ns --ignore-not-found
         ${OC} delete operandconfig common-service -n $ns --ignore-not-found
         ${OC} delete operandregistry common-service -n $ns --ignore-not-found
+        info "Remaining resources (minus package manifests and events) in namespace $ns:"
+        ${OC} get "$(${OC} api-resources --namespaced=true --verbs=list -o name | awk '{printf "%s%s",sep,$0;sep=","}')"  --ignore-not-found -n $ns -o=custom-columns=KIND:.kind,NAME:.metadata.name --sort-by='kind' | grep -v PackageManifest | grep -v Event
     done
     success "Excess resources cleaned up in retained tenant namespaces."
 }
