@@ -30,6 +30,7 @@ import (
 
 	utilyaml "github.com/ghodss/yaml"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+	operatorsv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/package-server/apis/operators/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -544,6 +545,26 @@ func GetCatalogSource(packageName, ns string, r client.Reader) (CatalogSourceNam
 	}
 
 	return subscriptions[0].Spec.CatalogSource, subscriptions[0].Spec.CatalogSourceNamespace
+}
+
+func CheckODLMCatalogSource(r client.Reader, packageName, ns string) (bool, error) {
+	found := false
+	// Get CatalogSource from PackageManifest
+	pmList := &operatorsv1.PackageManifestList{}
+	if err := r.List(context.TODO(), pmList, &client.ListOptions{Namespace: ns}); err != nil {
+		return found, fmt.Errorf("failed to list PackageManifest: %v", err)
+	}
+
+	for _, pm := range pmList.Items {
+		if pm.Status.PackageName == packageName {
+			for _, channel := range pm.Status.Channels {
+				if channel.Name == constant.ODLMChannel {
+					found = true
+				}
+			}
+		}
+	}
+	return found, nil
 }
 
 // UpdateCsMaps will update namespaceMapping in common-service-maps
