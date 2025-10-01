@@ -2425,12 +2425,12 @@ spec:
               private-superuser-db:
                 secret: common-service-db-superuser
             description: Binding information that should be accessible to Common Service Postgresql Adopters
-            operand: common-service-postgresql
+            operand: ibm-cnpg-postgres-operator
             registry: common-service
             registryNamespace: {{ .ServicesNs }}
         force: true
         kind: OperandBindInfo
-        name: common-service-postgresql-bindinfo
+        name: ibm-cnpg-postgres-operator-bindinfo
       - apiVersion: postgresql.cnpg.ibm.com/v1
         kind: Cluster
         name: common-service-db          
