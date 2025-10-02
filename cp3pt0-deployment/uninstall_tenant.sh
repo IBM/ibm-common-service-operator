@@ -75,11 +75,9 @@ function parse_arguments() {
             OPERATOR_NS=$1
             ;;
         --retain-ns)
-            shift
             RETAIN="true"
             ;;
         -f)
-            shift
             FORCE_DELETE=1
             ;;
         -v | --debug)
