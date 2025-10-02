@@ -637,10 +637,11 @@ function verify_cert_manager(){
     info "Checking cert manager readiness."
     #check webhook pod runnning
     local name="cert-manager-webhook"
+    local f5_exclude_name="f5-cert-manager-webhook"
     local retries=20
     local sleep_time=15
     local total_time_mins=$(( sleep_time * retries / 60))
-    local condition="${OC} get pod -A --no-headers --ignore-not-found | egrep '1/1' | grep ${name} || true"
+    local condition="${OC} get pod -A --no-headers --ignore-not-found | egrep '1/1' | grep -v  ${f5_exclude_name} | grep ${name} || true"
     local wait_message="Waiting for pod ${name} to be running ..."
     local success_message="Pod ${name} is running."
     local error_message="Timeout after ${total_time_mins} minutes waiting for pod ${name} to be running."
@@ -651,7 +652,7 @@ function verify_cert_manager(){
     if [[ $webhook_deployments != "1" ]]; then
     error "More than one cert-manager-webhook deployment exists on the cluster."
     fi
-    local webhook_ns=$("$OC" get deployments -A | grep cert-manager-webhook | cut -d ' ' -f1)
+    local webhook_ns=$("$OC" get deployments -A | grep -v  ${f5_exclude_name} | grep ${name} | cut -d ' ' -f1)
     
     cm_smoke_test "test-issuer" "test-certificate" "test-certificate-secret" $webhook_ns
     success "Cert manager is ready."
