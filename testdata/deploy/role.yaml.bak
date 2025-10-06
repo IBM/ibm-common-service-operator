@@ -120,7 +120,8 @@ rules:
   - mutatingwebhookconfigurations
   - validatingwebhookconfigurations
   verbs:
-  - '*'
+  - get
+  - delete
 - apiGroups:
   - ""
   resources:

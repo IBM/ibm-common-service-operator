@@ -61,8 +61,13 @@ rules:
     resources: 
       - configmaps
     verbs: 
+      - create
       - delete
+      - get
+      - list
       - patch
+      - update
+      - watch
   - apiGroups: 
       - operator.ibm.com
     resources: 

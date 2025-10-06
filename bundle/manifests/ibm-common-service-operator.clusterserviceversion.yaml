@@ -23,7 +23,7 @@ metadata:
     capabilities: Seamless Upgrades
     cloudPakThemesVersion: styles4100.css
     containerImage: icr.io/cpopen/common-service-operator:4.15.0
-    createdAt: "2025-05-16T03:15:01Z"
+    createdAt: "2025-10-06T18:52:18Z"
     description: The IBM Cloud Pak foundational services operator is used to deploy IBM foundational services.
     features.operators.openshift.io/disconnected: "true"
     features.operators.openshift.io/fips-compliant: "true"
@@ -267,14 +267,6 @@ spec:
                 - update
             - apiGroups:
                 - ""
-              resourceNames:
-                - cloud-native-postgresql-image-list
-              resources:
-                - configmaps
-              verbs:
-                - delete
-            - apiGroups:
-                - ""
               resources:
                 - configmaps
               verbs:
@@ -296,20 +288,14 @@ spec:
               verbs:
                 - get
                 - list
-                - watch
             - apiGroups:
                 - admissionregistration.k8s.io
               resources:
                 - mutatingwebhookconfigurations
                 - validatingwebhookconfigurations
               verbs:
-                - create
-                - delete
                 - get
-                - list
-                - patch
-                - update
-                - watch
+                - delete
             - apiGroups:
                 - config.openshift.io
               resources:
@@ -322,13 +308,8 @@ spec:
                 - clusterrolebindings
                 - clusterroles
               verbs:
-                - create
-                - delete
                 - get
-                - list
-                - patch
-                - update
-                - watch
+                - delete
           serviceAccountName: ibm-common-service-operator
       deployments:
         - label:
@@ -431,8 +412,13 @@ spec:
               resources:
                 - configmaps
               verbs:
+                - create
                 - delete
+                - get
+                - list
                 - patch
+                - update
+                - watch
             - apiGroups:
                 - operator.ibm.com
               resources:
