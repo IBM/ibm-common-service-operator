@@ -14,14 +14,6 @@ rules:
   resourceNames:
   - common-service-maps
 - verbs:
-  - delete
-  apiGroups:
-  - ""
-  resources:
-  - configmaps
-  resourceNames:
-  - cloud-native-postgresql-image-list
-- verbs:
   - create
   - get
   - list
@@ -45,7 +37,6 @@ rules:
   verbs:
   - get
   - list
-  - watch
 # manage mutation webhook configuration
 - apiGroups:
   - admissionregistration.k8s.io
@@ -53,13 +44,8 @@ rules:
   - mutatingwebhookconfigurations
   - validatingwebhookconfigurations
   verbs:
-  - create
-  - delete
   - get
-  - list
-  - patch
-  - update
-  - watch
+  - delete
 - verbs:
   - get
   apiGroups:
@@ -72,13 +58,8 @@ rules:
   - clusterrolebindings
   - clusterroles
   verbs:
-  - create
-  - delete
   - get
-  - list
-  - patch
-  - update
-  - watch
+  - delete
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -88,8 +69,13 @@ rules:
 - apiGroups:
   - ""
   verbs:
+  - create
   - delete
+  - get
+  - list
   - patch
+  - update
+  - watch
   resources:
   - configmaps
 - apiGroups:
