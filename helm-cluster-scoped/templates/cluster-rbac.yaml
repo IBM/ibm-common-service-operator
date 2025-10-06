@@ -22,14 +22,6 @@ rules:
       - update
   - apiGroups: 
       - ""
-    resourceNames: 
-      - cloud-native-postgresql-image-list
-    resources: 
-      - configmaps
-    verbs: 
-      - delete
-  - apiGroups: 
-      - ""
     resources: 
       - configmaps
     verbs: 
@@ -51,20 +43,14 @@ rules:
     verbs: 
       - get
       - list
-      - watch
   - apiGroups: 
       - admissionregistration.k8s.io
     resources: 
       - mutatingwebhookconfigurations
       - validatingwebhookconfigurations
     verbs: 
-      - create
-      - delete
       - get
-      - list
-      - patch
-      - update
-      - watch
+      - delete
   - apiGroups: 
       - config.openshift.io
     resources: 
@@ -77,13 +63,8 @@ rules:
       - clusterrolebindings
       - clusterroles
     verbs: 
-      - create
-      - delete
       - get
-      - list
-      - patch
-      - update
-      - watch
+      - delete
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
