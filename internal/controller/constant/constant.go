@@ -48,6 +48,8 @@ const (
 	SaasConfigMap = "saas-config"
 	// ODLM Channel
 	ODLMChannel = "v4.3"
+	// ODLM PackageName
+	ODLMPackageName = "ibm-odlm"
 	// Namespace Scope Operator resource name
 	NsSubResourceName = "nsSubscription"
 	// Namespace Scope Operator sub name
