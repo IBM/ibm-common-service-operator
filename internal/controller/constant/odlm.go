@@ -520,7 +520,6 @@ spec:
     namespace: "{{ .CPFSNs }}"
     packageName: cnpg-ibm
     scope: public
-    operatorConfig: cloud-native-postgresql-operator-config
     sourceName: ibm-cnpg-postgresql-operator-catalog
     sourceNamespace: "{{ .CatalogSourceNs }}"
 `
@@ -2884,7 +2883,6 @@ spec:
     packageName: cnpg-ibm
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
-    operatorConfig: cloud-native-postgresql-operator-config
     configName: ibm-cnpg-postgres-operator
     sourceName: ibm-cnpg-postgresql-operator-catalog
     sourceNamespace: "{{ .CatalogSourceNs }}"
