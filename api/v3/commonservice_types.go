@@ -40,6 +40,7 @@ type CSData struct {
 	CatalogSourceNs         string
 	ODLMCatalogSourceName   string
 	ODLMCatalogSourceNs     string
+	ODLMChannel             string
 	IsolatedModeEnable      string
 	ApprovalMode            string
 	OnPremMultiEnable       string
