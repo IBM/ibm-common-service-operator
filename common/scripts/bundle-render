@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+set -e -u -o pipefail
+
+REPO_ROOT=""
+if command -v realpath &>/dev/null
+then
+  REPO_ROOT="$(realpath $(dirname $0)/../..)"
+else
+  REPO_ROOT="$(dirname $0/../..)"
+fi
+
+export bundle_name="${1}"
+export bundle_img="${2}"
+
+rc=0
+yq -e \
+  'select(.schema == "olm.bundle" and .name == env(bundle_name))' \
+  ${REPO_ROOT}/catalog/index.yml &>/dev/null ||
+  rc=$?
+# If the bundle is already present in the index, update the image reference used; otherwise, render from the image in
+# the registry
+if [[ $rc == 0 ]]; then
+  yq -i \
+    'with(select(.schema == "olm.bundle" and .name == env(bundle_name)); .image = env(bundle_img))' \
+    ${REPO_ROOT}/catalog/index.yml ||
+    rc=$?
+else
+  opm render ${bundle_img} \
+    --output=yaml \
+    >> ${REPO_ROOT}/catalog/index.yml
+fi
+
