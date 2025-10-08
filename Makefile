@@ -33,8 +33,9 @@ CSV_PATH=bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
 BUILD_LOCALLY ?= 1
 
 VCS_REF ?= $(shell git rev-parse HEAD)
-VERSION ?= $(shell git describe --exact-match 2> /dev/null || \
+GIT_COMMIT_ID := $(shell git describe --exact-match 2> /dev/null || \
                 git describe --match=$(git rev-parse --short=8 HEAD) --always --dirty --abbrev=8)
+VERSION ?= $(GIT_COMMIT_ID)
 RELEASE_VERSION ?= $(shell cat ./version/version.go | grep "Version =" | awk '{ print $$3}' | tr -d '"')
 PREVIOUS_VERSION := 3.23.0
 LATEST_VERSION ?= 4.15.0
@@ -52,7 +53,7 @@ else
     $(error "This system's OS $(LOCAL_OS) isn't recognized/supported")
 endif
 
-ARCH := $(shell uname -m)
+ARCH ?= $(shell uname -m)
 LOCAL_ARCH := "amd64"
 ifeq ($(ARCH),x86_64)
     LOCAL_ARCH="amd64"
@@ -78,7 +79,7 @@ REGISTRY ?= "docker-na-public.artifactory.swg-devops.com/hyc-cloud-private-scrat
 # Current Operator image name
 OPERATOR_IMAGE_NAME ?= common-service-operator
 # Current Operator bundle image name
-BUNDLE_IMAGE_NAME ?= common-service-operator-bundle
+BUNDLE_IMAGE_NAME ?= ibm-common-service-operator-bundle
 # Current Operator image with registry
 IMG ?= icr.io/cpopen/common-service-operator:$(LATEST_VERSION)
 
@@ -216,6 +217,34 @@ update-csv-image: # updates operator image in currently deployed Common Service 
 		'[{"op": "replace", "path": "/spec/install/spec/deployments/0/spec/template/spec/containers/0/image", "value": "$(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME):dev"}]'
 
 build-catalog: build-bundle-image build-catalog-source
+
+.PHONY: catalog-render
+catalog-render: ## Render an FBC locally from CATALOG_BASE_IMG.
+	mkdir -p catalog
+	opm render $(CATALOG_BASE_IMG) -o yaml > catalog/index.yml
+
+.PHONY: bundle-render
+bundle-render: ## Render the bundle contents into the local FBC index.
+	./common/scripts/bundle-render ibm-common-service-operator.v$(VERSION) $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(VERSION)
+
+.PHONY: bundle-push
+bundle-push:
+	docker push $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(VERSION)
+
+.PHONY: catalog-validate
+catalog-validate: ## Validate the FBC.
+	opm validate catalog
+
+.PHONY: catalog-build
+catalog-build: catalog-validate ## Build a catalog image.
+	test -s catalog.Dockerfile || opm generate dockerfile catalog
+	docker build . --platform linux/amd64 -f catalog.Dockerfile -t $(QUAY_REGISTRY)/$(IMG)-catalog-amd64:$(GIT_COMMIT_ID)
+	docker build . --platform linux/ppc64le -f catalog.Dockerfile -t $(QUAY_REGISTRY)/$(IMG)-catalog-ppc64le:$(GIT_COMMIT_ID) 
+	docker build . --platform linux/s390x -f catalog.Dockerfile -t $(QUAY_REGISTRY)/$(IMG)-catalog-s390x:$(GIT_COMMIT_ID) 
+
+.PHONY: catalog-push
+catalog-push:  ## Push the catalog image to the registry.
+	@DOCKER_BUILDKIT=1 MAX_PULLING_RETRY=20 RETRY_INTERVAL=30 common/scripts/multiarch_image.sh $(REGISTRY) $(IMG)-catalog $(GIT_COMMIT_ID) $(VERSION) "false"
 
 deploy-catalog: build-catalog
 	./common/scripts/update_catalogsource.sh $(OPERATOR_IMAGE_NAME) $(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME)-catalog:$(VERSION)
