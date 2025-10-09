@@ -2282,6 +2282,10 @@ func (b *Bootstrap) CheckSubOperatorStatus(instance *apiv3.CommonService) (bool,
 			klog.Infof("The operator %s is in no-op mode, skipping it", opt)
 			continue
 		}
+		if operator.UserManaged {
+			klog.Infof("The operator %s is user-managed, skipping status checks", operator.Name)
+			continue
+		}
 		optStatus, err := b.setOperatorStatus(instance, operator.Name, operator.PackageName, operator.Namespace)
 		if err != nil {
 			klog.Errorf("Failed to get operator status: %v", err)
