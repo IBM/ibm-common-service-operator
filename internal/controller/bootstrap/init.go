@@ -209,6 +209,7 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 // InitResources initialize resources at the bootstrap of operator
 func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLMCRs bool) error {
 	installPlanApproval := instance.Spec.InstallPlanApproval
+	userManagedOption := WithUserManagedOverridesFromConfigs(instance.Spec.OperatorConfigs)
 
 	if installPlanApproval != "" {
 		if installPlanApproval != olmv1alpha1.ApprovalAutomatic && installPlanApproval != olmv1alpha1.ApprovalManual {
@@ -285,7 +286,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		}
 
 		klog.Info("Installing/Updating OperandRegistry")
-		if err := b.InstallOrUpdateOpreg(installPlanApproval); err != nil {
+		if err := b.InstallOrUpdateOpreg(ctx, installPlanApproval, userManagedOption); err != nil {
 			return err
 		}
 
@@ -324,7 +325,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		}
 
 		klog.Info("Installing/Updating OperandRegistry")
-		if err := b.InstallOrUpdateOpreg(installPlanApproval); err != nil {
+		if err := b.InstallOrUpdateOpreg(ctx, installPlanApproval, userManagedOption); err != nil {
 			return err
 		}
 
@@ -869,55 +870,12 @@ func (b *Bootstrap) ResourceExists(dc discovery.DiscoveryInterface, apiGroupVers
 }
 
 // InstallOrUpdateOpreg will install or update OperandRegistry when Opreg CRD is existent
-func (b *Bootstrap) InstallOrUpdateOpreg(installPlanApproval olmv1alpha1.Approval) error {
-
-	if installPlanApproval != "" || b.CSData.ApprovalMode == string(olmv1alpha1.ApprovalManual) {
-		if err := b.updateApprovalMode(); err != nil {
-			return err
-		}
-	}
-
-	// Read channel list from cpp configmap
-	configMap := &corev1.ConfigMap{}
-	err := b.Client.Get(context.TODO(), types.NamespacedName{
-		Name:      constant.IBMCPPCONFIG,
-		Namespace: b.CSData.ServicesNs,
-	}, configMap)
-
+func (b *Bootstrap) InstallOrUpdateOpreg(ctx context.Context, installPlanApproval olmv1alpha1.Approval, options ...OperandRegistryOption) error {
+	desired, err := b.buildOperandRegistry(ctx, installPlanApproval, options...)
 	if err != nil {
-		if !errors.IsNotFound(err) {
-			return err
-		}
-		klog.Infof("ConfigMap %s not found in namespace %s, using default values", constant.IBMCPPCONFIG, b.CSData.ServicesNs)
-		configMap.Data = make(map[string]string)
-	}
-
-	var baseReg string
-	registries := []string{
-		constant.CSV4OpReg,
-		constant.MongoDBOpReg,
-		constant.IMOpReg,
-		constant.IdpConfigUIOpReg,
-		constant.PlatformUIOpReg,
-		constant.KeyCloakOpReg,
-		constant.CommonServicePGOpReg,
-	}
-	if b.SaasEnable {
-		baseReg = constant.CSV3SaasOpReg
-	} else {
-		baseReg = constant.CSV3OpReg
-	}
-
-	concatenatedReg, err := constant.ConcatenateRegistries(baseReg, registries, b.CSData, configMap.Data)
-	if err != nil {
-		klog.Errorf("failed to concatenate OperandRegistry: %v", err)
 		return err
 	}
-
-	if err := b.renderTemplate(concatenatedReg, b.CSData, true); err != nil {
-		return err
-	}
-	return nil
+	return b.ReconcileOperandRegistry(ctx, desired)
 }
 
 // InstallOrUpdateOpcon will install or update OperandConfig when Opcon CRD is existent
@@ -2242,67 +2200,6 @@ func (b *Bootstrap) UpdateManageCertRotationLabel(instance *apiv3.CommonService)
 		return err
 	}
 	return nil
-}
-
-func (b *Bootstrap) UpdateEDBUserManaged() error {
-	operatorNamespace, err := util.GetOperatorNamespace()
-	if err != nil {
-		return err
-	}
-	defaultCsCR := &apiv3.CommonService{}
-	csName := "common-service"
-	if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: csName, Namespace: operatorNamespace}, defaultCsCR); err != nil {
-		return err
-	}
-	servicesNamespace := string(defaultCsCR.Spec.ServicesNamespace)
-
-	config := &corev1.ConfigMap{}
-	if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: constant.IBMCPPCONFIG, Namespace: servicesNamespace}, config); err != nil {
-		if errors.IsNotFound(err) {
-			return nil
-		}
-		return err
-	}
-	userManaged := config.Data["EDB_USER_MANAGED_OPERATOR_ENABLED"]
-	if userManaged != "true" {
-		unsetEDBUserManaged(defaultCsCR)
-	} else {
-		setEDBUserManaged(defaultCsCR)
-	}
-
-	if err := b.Client.Update(context.TODO(), defaultCsCR); err != nil {
-		return err
-	}
-	return nil
-}
-
-func unsetEDBUserManaged(instance *apiv3.CommonService) {
-	if instance.Spec.OperatorConfigs == nil {
-		return
-	}
-	for i := range instance.Spec.OperatorConfigs {
-		i := i
-		if instance.Spec.OperatorConfigs[i].Name == "internal-use-only-edb" {
-			instance.Spec.OperatorConfigs[i].UserManaged = false
-		}
-	}
-}
-
-func setEDBUserManaged(instance *apiv3.CommonService) {
-	if instance.Spec.OperatorConfigs == nil {
-		instance.Spec.OperatorConfigs = []apiv3.OperatorConfig{}
-	}
-	isExist := false
-	for i := range instance.Spec.OperatorConfigs {
-		i := i
-		if instance.Spec.OperatorConfigs[i].Name == "internal-use-only-edb" {
-			instance.Spec.OperatorConfigs[i].UserManaged = true
-			isExist = true
-		}
-	}
-	if !isExist {
-		instance.Spec.OperatorConfigs = append(instance.Spec.OperatorConfigs, apiv3.OperatorConfig{Name: "internal-use-only-edb", UserManaged: true})
-	}
 }
 
 func (b *Bootstrap) waitOperatorCSV(subName, packageManifest, operatorNs string) (bool, error) {
