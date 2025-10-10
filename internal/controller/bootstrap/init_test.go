@@ -34,11 +34,14 @@ import (
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
 	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/constant"
+	odlm "github.com/IBM/operand-deployment-lifecycle-manager/v4/api/v1alpha1"
 )
 
 func init() {
 	// Add the v1alpha1 version of the operators.coreos.com API to the scheme
 	_ = olmv1alpha1.AddToScheme(scheme.Scheme)
+	_ = odlm.AddToScheme(scheme.Scheme)
+	_ = apiv3.AddToScheme(scheme.Scheme)
 }
 
 func TestCheckOperatorCSV(t *testing.T) {
@@ -701,4 +704,47 @@ func TestSetOperatorStatus(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCheckSubOperatorStatusSkipsUserManaged(t *testing.T) {
+	fakeClient := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithRuntimeObjects(
+		&odlm.OperandRegistry{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      constant.MasterCR,
+				Namespace: "test",
+			},
+			Spec: odlm.OperandRegistrySpec{
+				Operators: []odlm.Operator{
+					{
+						Name:        "cloud-native-postgresql",
+						PackageName: "cloud-native-postgresql",
+						Namespace:   "test",
+						UserManaged: true,
+					},
+				},
+			},
+			Status: odlm.OperandRegistryStatus{
+				Phase: odlm.RegistryRunning,
+				OperatorsStatus: map[string]odlm.OperatorStatus{
+					"cloud-native-postgresql": {},
+				},
+			},
+		},
+	).Build()
+
+	bootstrap := &Bootstrap{
+		Client: fakeClient,
+		Reader: fakeClient,
+		CSData: apiv3.CSData{
+			ServicesNs: "test",
+		},
+	}
+
+	instance := &apiv3.CommonService{}
+
+	ready, err := bootstrap.CheckSubOperatorStatus(instance)
+	assert.NoError(t, err)
+	assert.True(t, ready)
+	assert.Empty(t, instance.Status.BedrockOperators)
+	assert.Equal(t, apiv3.CRSucceeded, instance.Status.OverallStatus)
 }
