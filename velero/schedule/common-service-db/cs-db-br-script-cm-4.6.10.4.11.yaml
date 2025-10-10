@@ -107,15 +107,31 @@ data:
             info "External Postgres DB in use, skipping data restore."
         fi
         
-        info "Rerunning OIDC registration job..."
+        info "🔄 Rerunning OIDC registration job..."
         oc -n $CSDB_NAMESPACE get job oidc-client-registration -o yaml > /tmp/oidc-client-registration.yaml
         oc -n $CSDB_NAMESPACE delete job oidc-client-registration
         yq -i 'del(.metadata.creationTimestamp) | del(.metadata.managedFields) | del(.metadata.resourceVersion) | del(.metadata.uid) | del(.spec.selector) | del(.spec.template.metadata.labels) | del(.status)' /tmp/oidc-client-registration.yaml || error "Failed to remove metadata fields from temp oidc client registration yaml for namespace ${CSDB_NAMESPACE}."
-        info "Wait for previous job to delete..."
+        info "⏸️ Wait for previous job to delete..."
         sleep 30
         oc apply -f /tmp/oidc-client-registration.yaml
         rm -f /tmp/oidc-client-registration.yaml
-        wait_for_oidc
+        wait_for_job "oidc-client-registration"
+
+        info "🔄 Rerunning MCSP IM config job..."
+        oc -n $CSDB_NAMESPACE get job mcsp-im-config-job -o yaml > /tmp/mcsp-im-config-job.yaml 2>/dev/null || {
+            info "🔍 MCSP IM config job not found, skipping..."
+        }
+        if [[ -f /tmp/mcsp-im-config-job.yaml ]]; then
+            oc -n $CSDB_NAMESPACE delete job mcsp-im-config-job
+            yq -i 'del(.metadata.creationTimestamp) | del(.metadata.managedFields) | del(.metadata.resourceVersion) | del(.metadata.uid) | del(.spec.selector) | del(.spec.template.metadata.labels) | del(.status)' /tmp/mcsp-im-config-job.yaml || error "Failed to remove metadata fields from temp mcsp-im-config-job yaml for namespace ${CSDB_NAMESPACE}."
+            info "⏸️ Wait for previous MCSP IM config job to delete..."
+            sleep 10
+            oc apply -f /tmp/mcsp-im-config-job.yaml
+            rm -f /tmp/mcsp-im-config-job.yaml
+            wait_for_job "mcsp-im-config-job"
+        fi
+
+        
     }
 
     function update_idp_config {
@@ -206,28 +222,28 @@ data:
         fi
     }
 
-    function wait_for_oidc {
-        job_name="oidc-client-registration"
-        info "Waiting for job $job_name to complete in namespace $CSDB_NAMESPACE."
+    function wait_for_job {
+        local job_name=$1
+        info "⏳ Waiting for job $job_name to complete in namespace $CSDB_NAMESPACE..."
         job_exists=$(oc get job $job_name -n $CSDB_NAMESPACE --no-headers || echo fail)
         if [[ $job_exists != "fail" ]]; then
             completed=$(oc get job/$job_name -n $CSDB_NAMESPACE -o jsonpath="{.status.conditions[?(@.type=='Complete')].type}")
             retry_count=20
             while [[ $completed != "Complete" ]] && [[ $retry_count > 0 ]]
             do
-                info "Wait for job $job_name to complete. Try again in 15s."
+                info "⏰ Wait for job $job_name to complete. Try again in 15s..."
                 sleep 15
                 completed=$(oc get job/$job_name -n $CSDB_NAMESPACE -o jsonpath="{.status.conditions[?(@.type=='Complete')].type}")
                 retry_count=$((retry_count-1))
             done
 
             if [[ $retry_count == 0 ]] && [[ $completed != "Complete" ]]; then
-                error "Timed out waiting for job $job_name."
+                error "⏱️ Timed out waiting for job $job_name."
             else
-                info "Job $job_name completed."
+                info "✅ Job $job_name completed."
             fi
         else
-            error "Job $job_name not present."
+            error "❌ Job $job_name not present."
         fi
     }
 
