@@ -2321,9 +2321,20 @@ metadata:
     version: {{ .Version }}
 spec:
   services:
-  - name: ibm-cnpg-postgres-operator
+  - name: common-service-cnpg
     resources:
-      - apiVersion: cert-manager.io/v1
+    - apiVersion: operator.ibm.com/v1alpha1
+        data:
+          spec:
+            requests:
+              - operands:
+                  - name: ibm-cnpg-postgres-operator
+                registry: common-service
+                registryNamespace: {{ .ServicesNs }}
+        force: true
+        kind: OperandRequest
+        name: cnpg-postgresql-operator-request  
+    - apiVersion: cert-manager.io/v1
         kind: Certificate
         name: common-service-db-replica-tls-cert
         labels:
@@ -2370,9 +2381,6 @@ spec:
               name: cs-ca-issuer
             renewBefore: 720h0m0s
             secretName: common-service-db-tls-secret
-            secretTemplate:
-              labels:
-                k8s.enterprisedb.io/reload: ''
             usages:
               - server auth
       - apiVersion: cert-manager.io/v1
@@ -2424,7 +2432,7 @@ spec:
               private-superuser-db:
                 secret: common-service-db-superuser
             description: Binding information that should be accessible to Common Service Postgresql Adopters
-            operand: ibm-cnpg-postgres-operator
+            operand: common-service-cnpg
             registry: common-service
             registryNamespace: {{ .ServicesNs }}
         force: true
