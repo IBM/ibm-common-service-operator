@@ -54,51 +54,80 @@ type CommonServiceReconciler struct {
 }
 
 func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	// Create performance monitoring timer
+	timer := util.NewDetailedTimer(ctx, fmt.Sprintf("Reconcile_%s_%s", req.Namespace, req.Name))
+	defer timer.Stop()
 
 	klog.Infof("Reconciling CommonService: %s", req.NamespacedName)
 
-	// Fetch the CommonService instance
+	// Step 1: Fetch CommonService instance
+	timer.StartStep("FetchCommonServiceInstance")
 	instance := &apiv3.CommonService{}
 	if req.Name == constant.MasterCR && util.Contains(strings.Split(r.Bootstrap.CSData.WatchNamespaces, ","), req.Namespace) && req.Namespace != r.Bootstrap.CSData.OperatorNs {
 		if err := r.Bootstrap.Client.Get(ctx, req.NamespacedName, instance); err != nil {
+			timer.EndStep()
 			if errors.IsNotFound(err) {
 				klog.Infof("Finished reconciling to delete CommonService: %s/%s", req.NamespacedName.Namespace, req.NamespacedName.Name)
 			}
 			return ctrl.Result{}, client.IgnoreNotFound(err)
 		}
+		timer.EndStep()
 		return r.ReconcileNonConfigurableCR(ctx, instance)
 	}
 
 	if err := r.Reader.Get(ctx, req.NamespacedName, instance); err != nil {
+		timer.EndStep()
 		if errors.IsNotFound(err) {
+			// Step: Handle deletion
+			timer.StartStep("HandleDelete")
 			if err := r.handleDelete(ctx); err != nil {
+				timer.EndStep()
 				return ctrl.Result{}, err
 			}
-			// Generate Issuer and Certificate CR
+			timer.EndStep()
+
+			// Step: Deploy CertManager CR
+			timer.StartStep("DeployCertManagerCR")
 			if err := r.Bootstrap.DeployCertManagerCR(); err != nil {
+				timer.EndStep()
 				return ctrl.Result{}, err
 			}
+			timer.EndStep()
 			klog.Infof("Finished reconciling to delete CommonService: %s/%s", req.NamespacedName.Namespace, req.NamespacedName.Name)
 		}
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+	timer.EndStep()
 
+	// Step: Validate license
+	timer.StartStep("ValidateLicense")
 	if !instance.Spec.License.Accept {
+		timer.EndStep()
 		klog.Error("Accept license by changing .spec.license.accept to true in the CommonService CR. Operator will not proceed until then")
 	}
+	timer.EndStep()
 
+	// Step: Check environment
+	timer.StartStep("CheckEnvironment")
 	if os.Getenv("NO_OLM") == "true" {
+		timer.EndStep()
 		klog.Infof("Reconciling CommonService: %s in No OLM environment", req.NamespacedName)
 		return r.NoOLMReconcile(ctx, req, instance)
 	}
+	timer.EndStep()
 
+	// Step: Check pause status and execute reconciliation
+	timer.StartStep("CheckPauseAndReconcile")
 	// If the CommonService CR is not paused, continue to reconcile
 	if !r.reconcilePauseRequest(instance) {
 		if r.checkNamespace(req.NamespacedName.String()) {
+			timer.EndStep()
 			return r.ReconcileMasterCR(ctx, instance)
 		}
+		timer.EndStep()
 		return r.ReconcileGeneralCR(ctx, instance)
 	}
+	timer.EndStep()
 	// If the CommonService CR is paused, update the status to pending
 	if err := r.updatePhase(ctx, instance, apiv3.CRPending); err != nil {
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
@@ -109,6 +138,9 @@ func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 }
 
 func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instance *apiv3.CommonService) (ctrl.Result, error) {
+	// Create performance monitoring timer
+	timer := util.NewDetailedTimer(ctx, fmt.Sprintf("ReconcileMasterCR_%s_%s", instance.Namespace, instance.Name))
+	defer timer.Stop()
 
 	var statusErr error
 	// Defer to Set error/ready/warning condition
@@ -351,7 +383,12 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 
 // ReconcileGeneralCR is for setting the OperandConfig
 func (r *CommonServiceReconciler) ReconcileGeneralCR(ctx context.Context, instance *apiv3.CommonService) (ctrl.Result, error) {
+	// Create performance monitoring timer
+	timer := util.NewDetailedTimer(ctx, fmt.Sprintf("ReconcileGeneralCR_%s_%s", instance.Namespace, instance.Name))
+	defer timer.Stop()
 
+	// Step: Update phase status
+	timer.StartStep("UpdatePhase")
 	if instance.Status.Phase == "" {
 		if err := r.updatePhase(ctx, instance, apiv3.CRInitializing); err != nil {
 			klog.Error(err)
