@@ -22,7 +22,7 @@ KUSTOMIZE ?= $(shell which kustomize)
 YQ_VERSION=v4.27.3
 KUSTOMIZE_VERSION=v5.0.0
 OPERATOR_SDK_VERSION=v1.38.0
-CONTROLLER_TOOLS_VERSION ?= v0.14.0
+CONTROLLER_TOOLS_VERSION ?= v0.18.0
 OPENSHIFT_VERSIONS ?= v4.12-v4.17
 
 CSV_PATH=bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml

@@ -259,7 +259,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 	// Check if CatalogSource contains the correct version of ODLM
 	// if contains, install ODLM Operator
 	// if not, skip the installation of ODLM Operator, and show warning event
-	if installODLM, err := util.CheckODLMCatalogSource(b.Reader, constant.ODLMPackageName, b.CSData.ODLMCatalogSourceName, b.CSData.ODLMCatalogSourceNs); err != nil {
+	if installODLM, err := util.CheckODLMCatalogSource(b.Reader, constant.ODLMPackageName, b.CSData.ODLMCatalogSourceName, b.CSData.ODLMCatalogSourceNs, b.CSData.OperatorNs); err != nil {
 		return err
 	} else if installODLM {
 		klog.Info("Installing ODLM Operator")
