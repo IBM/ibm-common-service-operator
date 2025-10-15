@@ -5,7 +5,7 @@ metadata:
   namespace: "certNamespace"
   labels:
     component: cpfs3
-    service: ibm-cert-manager
+    service: cert-manager
 spec:
   podSelector:
     matchLabels:
