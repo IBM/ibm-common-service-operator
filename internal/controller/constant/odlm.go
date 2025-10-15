@@ -2323,7 +2323,7 @@ spec:
   services:
   - name: common-service-cnpg
     resources:
-    - apiVersion: operator.ibm.com/v1alpha1
+      - apiVersion: operator.ibm.com/v1alpha1
         data:
           spec:
             requests:
@@ -2334,7 +2334,7 @@ spec:
         force: true
         kind: OperandRequest
         name: cnpg-postgresql-operator-request  
-    - apiVersion: cert-manager.io/v1
+      - apiVersion: cert-manager.io/v1
         kind: Certificate
         name: common-service-db-replica-tls-cert
         labels:
