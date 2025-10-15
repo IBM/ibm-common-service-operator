@@ -547,11 +547,11 @@ func GetCatalogSource(packageName, ns string, r client.Reader) (CatalogSourceNam
 	return subscriptions[0].Spec.CatalogSource, subscriptions[0].Spec.CatalogSourceNamespace
 }
 
-func CheckODLMCatalogSource(r client.Reader, packageName, catalogSourceName, catalogSourceNamespace string) (bool, error) {
+func CheckODLMCatalogSource(r client.Reader, packageName, catalogSourceName, catalogSourceNamespace, operatorNamespace string) (bool, error) {
 	found := false
 	// Get CatalogSource from PackageManifest
 	pmList := &operatorsv1.PackageManifestList{}
-	if err := r.List(context.TODO(), pmList, &client.ListOptions{Namespace: catalogSourceNamespace}); err != nil {
+	if err := r.List(context.TODO(), pmList, &client.ListOptions{Namespace: operatorNamespace}); err != nil {
 		return found, fmt.Errorf("failed to list PackageManifest: %v", err)
 	}
 
