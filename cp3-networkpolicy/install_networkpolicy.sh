@@ -306,11 +306,11 @@ function install_networkpolicy() {
     info "Using opensearch namespace: ${OPENSEARCH_NAMESPACE}"
     
     if [[ ${SKIP_IAM} == "true" ]]; then
-        info "Skipping network policies with 'service: iam' label"
+        info "Skipping networkpolicies for IAM services"
     fi
     
     if [[ ${SKIP_ZEN} == "true" ]]; then
-        info "Skipping network policies with 'service: zen' label"
+        info "Skipping networkpolicies for Zen services"
     fi
 
     if [[ ${EGRESS} == "true" ]]; then
