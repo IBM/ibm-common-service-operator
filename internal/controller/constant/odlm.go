@@ -522,6 +522,17 @@ spec:
     scope: public
     sourceName: ibm-cnpg-postgresql-operator-catalog
     sourceNamespace: "{{ .CatalogSourceNs }}"
+  - channel: stable-v1.25
+    fallbackChannels:
+      - stable-v1.22
+      - stable
+    installPlanApproval: {{ .ApprovalMode }}
+    name: common-service-cnpg
+    namespace: "{{ .CPFSNs }}"
+    packageName: cnpg-ibm
+    scope: public
+    sourceName: ibm-cnpg-postgresql-operator-catalog
+    sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 )
 
