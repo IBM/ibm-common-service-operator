@@ -94,11 +94,6 @@ BUNDLE_DEFAULT_CHANNEL := --default-channel=$(DEFAULT_CHANNEL)
 endif
 BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 
-ifeq ($(BUILD_LOCALLY),0)
-    export CONFIG_DOCKER_TARGET = config-docker
-    export CONFIG_DOCKER_TARGET_QUAY = config-docker-quay
-endif
-
 include common/Makefile.common.mk
 include hack/keycloak-themes/Makefile
 
@@ -291,7 +286,7 @@ e2e-test: ## Run e2e test
 
 ##@ Build
 
-build-operator-image: $(CONFIG_DOCKER_TARGET) cloudpak-theme.jar ## Build the operator image.
+build-operator-image: config-docker cloudpak-theme.jar ## Build the operator image.
 	@echo "Building the $(OPERATOR_IMAGE_NAME) docker image for $(LOCAL_ARCH)..."
 	@docker build -t $(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(BUILD_VERSION) \
 	--build-arg VCS_REF=$(VCS_REF) --build-arg RELEASE_VERSION=$(RELEASE_VERSION) \
@@ -299,12 +294,12 @@ build-operator-image: $(CONFIG_DOCKER_TARGET) cloudpak-theme.jar ## Build the op
 
 ##@ Release
 
-build-push-image: $(CONFIG_DOCKER_TARGET) build-operator-image  ## Build and push the operator images.
+build-push-image: config-docker build-operator-image  ## Build and push the operator images.
 	@echo "Pushing the $(OPERATOR_IMAGE_NAME) docker image for $(LOCAL_ARCH)..."
 	@docker tag $(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(BUILD_VERSION) $(DOCKER_REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(BUILD_VERSION)
 	@docker push $(DOCKER_REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(BUILD_VERSION)
 
-multiarch-image: $(CONFIG_DOCKER_TARGET) ## Generate multiarch images for operator image.
+multiarch-image: config-docker ## Generate multiarch images for operator image.
 	@MAX_PULLING_RETRY=20 RETRY_INTERVAL=30 common/scripts/multiarch_image.sh $(DOCKER_REGISTRY) $(OPERATOR_IMAGE_NAME) $(BUILD_VERSION) $(RELEASE_VERSION)
 
 ##@ Help
