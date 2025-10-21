@@ -253,5 +253,12 @@ rules:
       - get
       - list
       - update
+  - apiGroups:
+    - packages.operators.coreos.com
+    resources:
+    - packagemanifests
+    verbs:
+    - get
+    - list
 ---
 {{- end }}

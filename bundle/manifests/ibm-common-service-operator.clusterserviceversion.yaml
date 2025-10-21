@@ -522,6 +522,13 @@ spec:
                 - patch
                 - update
             - apiGroups:
+                - packages.operators.coreos.com
+              resources:
+                - packagemanifests
+              verbs:
+                - get
+                - list
+            - apiGroups:
                 - certmanager.k8s.io
               resources:
                 - certificates

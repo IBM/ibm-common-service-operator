@@ -162,6 +162,7 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		OperatorNs:              operatorNs,
 		CatalogSourceName:       "",
 		CatalogSourceNs:         "",
+		ODLMChannel:             constant.ODLMChannel,
 		ODLMCatalogSourceName:   odlmCatalogSourceName,
 		ODLMCatalogSourceNs:     odlmcatalogSourceNs,
 		ApprovalMode:            approvalMode,
@@ -295,9 +296,20 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		}
 	}
 
-	klog.Info("Installing ODLM Operator")
-	if err := b.renderTemplate(constant.ODLMSubscription, b.CSData); err != nil {
+	// Install ODLM Operator
+	// Check if CatalogSource contains the correct version of ODLM
+	// if contains, install ODLM Operator
+	// if not, skip the installation of ODLM Operator, and show warning event
+	if installODLM, err := util.CheckODLMCatalogSource(b.Reader, constant.ODLMPackageName, b.CSData.ODLMCatalogSourceName, b.CSData.ODLMCatalogSourceNs, b.CSData.OperatorNs); err != nil {
 		return err
+	} else if installODLM {
+		klog.Info("Installing ODLM Operator")
+		if err := b.renderTemplate(constant.ODLMSubscription, b.CSData); err != nil {
+			return err
+		}
+	} else {
+		b.EventRecorder.Event(instance, corev1.EventTypeWarning, "ODLMCatalogSourceWarning", fmt.Sprintf("The catalogsource %s in namespace %s does not contain the correct version of ODLM, skip the installation/update of ODLM Operator", b.CSData.ODLMCatalogSourceName, b.CSData.ODLMCatalogSourceNs))
+		return fmt.Errorf("the catalogsource %s in namespace %s does not contain the correct version of ODLM, skip the installation/update of ODLM Operator", b.CSData.ODLMCatalogSourceName, b.CSData.ODLMCatalogSourceNs)
 	}
 
 	klog.Info("Waiting for ODLM Operator to be ready")

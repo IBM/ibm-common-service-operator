@@ -180,6 +180,13 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - packages.operators.coreos.com
+  resources:
+  - packagemanifests
+  verbs:
+  - get
+  - list
 
 
 # handle clean up of deprecated objects
