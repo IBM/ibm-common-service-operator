@@ -18,7 +18,7 @@ tasks:
           - docker-socket
           - dind
         image: icr.io/continuous-delivery/base-images/base:v1.21.0
-        displayName: Unit test for user mgmt operator
+        displayName: Unit test for commonservice operator
         script: |
           #!/usr/bin/env bash
           if [[ "$PIPELINE_DEBUG" == 1 ]]; then
@@ -51,7 +51,7 @@ tasks:
           - docker-socket
           - dind
         image: icr.io/continuous-delivery/base-images/base:v1.21.0
-        displayName: Build amd64 user mgmt operator image
+        displayName: Build amd64 commonservice operator image
         script: |
           #!/usr/bin/env bash
           if [[ "$PIPELINE_DEBUG" == 1 ]]; then
@@ -68,8 +68,7 @@ tasks:
           export LOCAL_ARCH=amd64
           echo "Installing Go dependencies"
           yum install -y golang
-          make config-docker
-          make docker-build-push-prod
+          make build-push-image
       - name: compliance-checks
         when: 'false'
 
@@ -88,7 +87,7 @@ tasks:
           - docker-socket
           - dind
         image: icr.io/continuous-delivery/base-images/base:v1.21.0
-        displayName: Build ppc user mgmt operator image
+        displayName: Build ppc commonservice operator image
         script: |
           #!/usr/bin/env bash
           if [[ "$PIPELINE_DEBUG" == 1 ]]; then
@@ -105,8 +104,7 @@ tasks:
           export LOCAL_ARCH=ppc64le
           echo "Installing Go dependencies"
           yum install -y golang
-          make config-docker
-          make docker-build-push-prod
+          make build-push-image
       - name: compliance-checks
         when: 'false'
 
@@ -125,7 +123,7 @@ tasks:
           - docker-socket
           - dind
         image: icr.io/continuous-delivery/base-images/base:v1.21.0
-        displayName: Build s390 user mgmt operator image
+        displayName: Build s390 commonservice operator image
         script: |
           #!/usr/bin/env bash
           if [[ "$PIPELINE_DEBUG" == 1 ]]; then
@@ -142,8 +140,7 @@ tasks:
           export LOCAL_ARCH=s390x
           echo "Installing Go dependencies"
           yum install -y golang
-          make config-docker
-          make docker-build-push-prod
+          make build-push-image
       - name: compliance-checks
         when: 'false'
 
@@ -169,7 +166,7 @@ tasks:
           - docker-socket
           - dind
         image: icr.io/continuous-delivery/base-images/base:v1.21.0
-        displayName: Build multiarch user mgmt operator image
+        displayName: Build multiarch commonservice operator image
         script: |
           #!/usr/bin/env bash
           if [[ "$PIPELINE_DEBUG" == 1 ]]; then
