@@ -4,12 +4,16 @@ metadata:
   name: ibm-common-service-operator-{{ .Values.global.operatorNamespace }}
   labels:
     component-id: {{ .Chart.Name }}
-    {{- with .Values.cpfs.labels }}
-      {{- toYaml . | nindent 4 }}
-    {{- end }}
-    {{- with .Values.cpfs.clusterLabels }}
-      {{- toYaml . | nindent 4 }}
-    {{- end }}
+    {{- if .Values.cpfs.labels }}
+      {{- with .Values.cpfs.labels }}
+        {{- toYaml . | nindent 4 }}
+      {{- end }}
+    {{- end}}
+    {{- if .Values.cpfs.clusterLabels }}
+      {{- with .Values.cpfs.clusterLabels }}
+        {{- toYaml . | nindent 4 }}
+      {{- end }}
+    {{- end}}
 rules:   
   - apiGroups: 
       - ""
@@ -20,14 +24,6 @@ rules:
     verbs: 
       - delete
       - update
-  - apiGroups: 
-      - ""
-    resourceNames: 
-      - cloud-native-postgresql-image-list
-    resources: 
-      - configmaps
-    verbs: 
-      - delete
   - apiGroups: 
       - ""
     resources: 
@@ -51,20 +47,14 @@ rules:
     verbs: 
       - get
       - list
-      - watch
   - apiGroups: 
       - admissionregistration.k8s.io
     resources: 
       - mutatingwebhookconfigurations
       - validatingwebhookconfigurations
     verbs: 
-      - create
-      - delete
       - get
-      - list
-      - patch
-      - update
-      - watch
+      - delete
   - apiGroups: 
       - config.openshift.io
     resources: 
@@ -77,13 +67,8 @@ rules:
       - clusterrolebindings
       - clusterroles
     verbs: 
-      - create
-      - delete
       - get
-      - list
-      - patch
-      - update
-      - watch
+      - delete
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
