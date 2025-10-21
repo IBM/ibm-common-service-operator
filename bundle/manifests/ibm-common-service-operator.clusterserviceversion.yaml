@@ -267,14 +267,6 @@ spec:
                 - update
             - apiGroups:
                 - ""
-              resourceNames:
-                - cloud-native-postgresql-image-list
-              resources:
-                - configmaps
-              verbs:
-                - delete
-            - apiGroups:
-                - ""
               resources:
                 - configmaps
               verbs:
@@ -296,20 +288,14 @@ spec:
               verbs:
                 - get
                 - list
-                - watch
             - apiGroups:
                 - admissionregistration.k8s.io
               resources:
                 - mutatingwebhookconfigurations
                 - validatingwebhookconfigurations
               verbs:
-                - create
-                - delete
                 - get
-                - list
-                - patch
-                - update
-                - watch
+                - delete
             - apiGroups:
                 - config.openshift.io
               resources:
@@ -322,13 +308,8 @@ spec:
                 - clusterrolebindings
                 - clusterroles
               verbs:
-                - create
-                - delete
                 - get
-                - list
-                - patch
-                - update
-                - watch
+                - delete
           serviceAccountName: ibm-common-service-operator
       deployments:
         - label:
@@ -431,8 +412,13 @@ spec:
               resources:
                 - configmaps
               verbs:
+                - create
                 - delete
+                - get
+                - list
                 - patch
+                - update
+                - watch
             - apiGroups:
                 - operator.ibm.com
               resources:
