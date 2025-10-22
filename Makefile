@@ -24,6 +24,11 @@ KUSTOMIZE_VERSION=v5.0.0
 OPERATOR_SDK_VERSION=v1.38.0
 CONTROLLER_TOOLS_VERSION ?= v0.14.0
 OPENSHIFT_VERSIONS ?= v4.12-v4.17
+# CONTAINER_TOOL defines the container tool to be used for building images.
+# Be aware that the target commands are only tested with Docker which is
+# scaffolded by default. However, you might want to replace it to use other
+# tools. (i.e. podman)
+CONTAINER_TOOL ?= docker
 
 CSV_PATH=bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
 
@@ -81,6 +86,10 @@ OPERATOR_IMAGE_NAME ?= common-service-operator
 BUNDLE_IMAGE_NAME ?= common-service-operator-bundle
 # Current Operator image with registry
 IMG ?= icr.io/cpopen/common-service-operator:$(LATEST_VERSION)
+
+RELEASE_IMAGE ?= $(DOCKER_REGISTRY)/$(OPERATOR_IMAGE_NAME):$(BUILD_VERSION)
+RELEASE_IMAGE_ARCH ?= $(DOCKER_REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(BUILD_VERSION)
+LOCAL_ARCH_IMAGE ?= $(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(BUILD_VERSION)
 
 CHANNELS := v4.16
 DEFAULT_CHANNEL := v4.16
@@ -288,16 +297,22 @@ e2e-test: ## Run e2e test
 
 build-operator-image: config-docker cloudpak-theme.jar ## Build the operator image.
 	@echo "Building the $(OPERATOR_IMAGE_NAME) docker image for $(LOCAL_ARCH)..."
-	@docker build -t $(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(BUILD_VERSION) \
-	--build-arg VCS_REF=$(VCS_REF) --build-arg RELEASE_VERSION=$(RELEASE_VERSION) \
-	--build-arg GOARCH=$(LOCAL_ARCH) -f Dockerfile .
+	@docker build \
+		-t $(RELEASE_IMAGE) \
+		-t $(LOCAL_ARCH_IMAGE) \
+		--build-arg VCS_REF=$(VCS_REF) --build-arg RELEASE_VERSION=$(RELEASE_VERSION) \
+		--build-arg GOARCH=$(LOCAL_ARCH) -f Dockerfile .
 
 ##@ Release
 
 build-push-image: config-docker build-operator-image  ## Build and push the operator images.
-	@echo "Pushing the $(OPERATOR_IMAGE_NAME) docker image for $(LOCAL_ARCH)..."
-	@docker tag $(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(BUILD_VERSION) $(DOCKER_REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(BUILD_VERSION)
-	@docker push $(DOCKER_REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(BUILD_VERSION)
+	@echo "Preparing $(OPERATOR_IMAGE_NAME) release tags for $(LOCAL_ARCH)..."
+	docker tag $(RELEASE_IMAGE) $(RELEASE_IMAGE_ARCH)
+	$(MAKE) docker-push IMG=$(RELEASE_IMAGE_ARCH)
+
+.PHONY: docker-push
+docker-push:
+	docker push $(IMG)
 
 multiarch-image: config-docker ## Generate multiarch images for operator image.
 	@MAX_PULLING_RETRY=20 RETRY_INTERVAL=30 common/scripts/multiarch_image.sh $(DOCKER_REGISTRY) $(OPERATOR_IMAGE_NAME) $(BUILD_VERSION) $(RELEASE_VERSION)
