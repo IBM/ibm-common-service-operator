@@ -69,6 +69,8 @@ else
     $(error "This system's ARCH $(ARCH) isn't recognized/supported")
 endif
 
+TARGET_ARCH := $(patsubst ",,$(LOCAL_ARCH))
+
 # Default image repo
 QUAY_REGISTRY ?= quay.io/opencloudio
 
@@ -79,6 +81,7 @@ DOCKER_REGISTRY ?= "docker-na-public.artifactory.swg-devops.com/hyc-cloud-privat
 endif
 
 REGISTRY ?= "docker-na-public.artifactory.swg-devops.com/hyc-cloud-private-scratch-docker-local/ibmcom"
+BUILDX_BUILDER ?= ibm-common-service-operator-builder
 
 # Current Operator image name
 OPERATOR_IMAGE_NAME ?= common-service-operator
@@ -88,8 +91,8 @@ BUNDLE_IMAGE_NAME ?= common-service-operator-bundle
 IMG ?= icr.io/cpopen/common-service-operator:$(LATEST_VERSION)
 
 RELEASE_IMAGE ?= $(DOCKER_REGISTRY)/$(OPERATOR_IMAGE_NAME):$(BUILD_VERSION)
-RELEASE_IMAGE_ARCH ?= $(DOCKER_REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(BUILD_VERSION)
-LOCAL_ARCH_IMAGE ?= $(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(BUILD_VERSION)
+RELEASE_IMAGE_ARCH ?= $(DOCKER_REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(TARGET_ARCH):$(BUILD_VERSION)
+LOCAL_ARCH_IMAGE ?= $(OPERATOR_IMAGE_NAME)-$(TARGET_ARCH):$(BUILD_VERSION)
 
 CHANNELS := v4.16
 DEFAULT_CHANNEL := v4.16
@@ -189,11 +192,11 @@ deploy: manifests ## Deploy controller in the configured Kubernetes cluster in ~
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
 build-dev-image: cloudpak-theme.jar
-	@echo "Building the $(OPERATOR_IMAGE_NAME) docker dev image for $(LOCAL_ARCH)..."
-	@docker build -t $(REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):dev \
+	@echo "Building the $(OPERATOR_IMAGE_NAME) docker dev image for $(TARGET_ARCH)..."
+	@docker build -t $(REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(TARGET_ARCH):dev \
 	--build-arg VCS_REF=$(VCS_REF) --build-arg RELEASE_VERSION=$(RELEASE_VERSION) \
-	--build-arg GOARCH=$(LOCAL_ARCH) -f Dockerfile .
-	@docker push $(REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):dev
+	--build-arg GOARCH=$(TARGET_ARCH) -f Dockerfile .
+	@docker push $(REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(TARGET_ARCH):dev
 
 build-bundle-image: yq
 	@cp -f bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml /tmp/ibm-common-service-operator.clusterserviceversion.yaml
@@ -295,18 +298,38 @@ e2e-test: ## Run e2e test
 
 ##@ Build
 
-build-operator-image: config-docker cloudpak-theme.jar ## Build the operator image.
-	@echo "Building the $(OPERATOR_IMAGE_NAME) docker image for $(LOCAL_ARCH)..."
-	@docker build \
-		-t $(RELEASE_IMAGE) \
+.PHONY: prepare-buildx
+prepare-buildx:
+	@docker buildx inspect $(BUILDX_BUILDER) >/dev/null 2>&1 || docker buildx create --name $(BUILDX_BUILDER) --driver docker-container --use
+	@docker buildx use $(BUILDX_BUILDER)
+	@docker run --privileged --rm tonistiigi/binfmt --install all >/dev/null
+
+build-operator-image: config-docker cloudpak-theme.jar prepare-buildx ## Build the operator image.
+	@echo "Building the $(OPERATOR_IMAGE_NAME) docker image for $(TARGET_ARCH)..."
+	@docker buildx build \
+		--builder $(BUILDX_BUILDER) \
+		--platform linux/$(TARGET_ARCH) \
+		--build-arg VCS_REF=$(VCS_REF) \
+		--build-arg RELEASE_VERSION=$(RELEASE_VERSION) \
+		--build-arg GOARCH=$(TARGET_ARCH) \
+		-t $(DOCKER_REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(TARGET_ARCH):$(BUILD_VERSION) \
+		--push \
+		-f Dockerfile .
+	@docker buildx build \
+		--builder $(BUILDX_BUILDER) \
+		--platform linux/$(TARGET_ARCH) \
+		--build-arg VCS_REF=$(VCS_REF) \
+		--build-arg RELEASE_VERSION=$(RELEASE_VERSION) \
+		--build-arg GOARCH=$(TARGET_ARCH) \
 		-t $(LOCAL_ARCH_IMAGE) \
-		--build-arg VCS_REF=$(VCS_REF) --build-arg RELEASE_VERSION=$(RELEASE_VERSION) \
-		--build-arg GOARCH=$(LOCAL_ARCH) -f Dockerfile .
+		-t $(RELEASE_IMAGE) \
+		--load \
+		-f Dockerfile .
 
 ##@ Release
 
 build-push-image: config-docker build-operator-image  ## Build and push the operator images.
-	@echo "Preparing $(OPERATOR_IMAGE_NAME) release tags for $(LOCAL_ARCH)..."
+	@echo "Preparing $(OPERATOR_IMAGE_NAME) release tags for $(TARGET_ARCH)..."
 	docker tag $(RELEASE_IMAGE) $(RELEASE_IMAGE_ARCH)
 	$(MAKE) docker-push IMG=$(RELEASE_IMAGE_ARCH)
 
