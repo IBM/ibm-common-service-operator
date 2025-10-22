@@ -58,18 +58,22 @@ else
 endif
 
 ARCH := $(shell uname -m)
-LOCAL_ARCH := "amd64"
-ifeq ($(ARCH),x86_64)
-    LOCAL_ARCH="amd64"
-else ifeq ($(ARCH),ppc64le)
-    LOCAL_ARCH="ppc64le"
-else ifeq ($(ARCH),s390x)
-    LOCAL_ARCH="s390x"
-else
-    $(error "This system's ARCH $(ARCH) isn't recognized/supported")
-endif
 
-TARGET_ARCH := $(patsubst ",,$(LOCAL_ARCH))
+# Auto-detect LOCAL_ARCH only when the caller hasn't provided one.
+ifeq ($(origin LOCAL_ARCH), undefined)
+LOCAL_ARCH := amd64
+ifeq ($(ARCH),x86_64)
+	LOCAL_ARCH := amd64
+else ifeq ($(ARCH),ppc64le)
+	LOCAL_ARCH := ppc64le
+else ifeq ($(ARCH),s390x)
+	LOCAL_ARCH := s390x
+else ifeq ($(ARCH),arm64)
+	LOCAL_ARCH := arm64
+else
+	$(error "This system's ARCH $(ARCH) isn't recognized/supported")
+endif
+endif
 
 # Default image repo
 QUAY_REGISTRY ?= quay.io/opencloudio
@@ -91,8 +95,8 @@ BUNDLE_IMAGE_NAME ?= common-service-operator-bundle
 IMG ?= icr.io/cpopen/common-service-operator:$(LATEST_VERSION)
 
 RELEASE_IMAGE ?= $(DOCKER_REGISTRY)/$(OPERATOR_IMAGE_NAME):$(BUILD_VERSION)
-RELEASE_IMAGE_ARCH ?= $(DOCKER_REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(TARGET_ARCH):$(BUILD_VERSION)
-LOCAL_ARCH_IMAGE ?= $(OPERATOR_IMAGE_NAME)-$(TARGET_ARCH):$(BUILD_VERSION)
+RELEASE_IMAGE_ARCH ?= $(DOCKER_REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(BUILD_VERSION)
+LOCAL_ARCH_IMAGE ?= $(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(BUILD_VERSION)
 
 CHANNELS := v4.16
 DEFAULT_CHANNEL := v4.16
@@ -192,11 +196,11 @@ deploy: manifests ## Deploy controller in the configured Kubernetes cluster in ~
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
 build-dev-image: cloudpak-theme.jar
-	@echo "Building the $(OPERATOR_IMAGE_NAME) docker dev image for $(TARGET_ARCH)..."
-	@docker build -t $(REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(TARGET_ARCH):dev \
+	@echo "Building the $(OPERATOR_IMAGE_NAME) docker dev image for $(LOCAL_ARCH)..."
+	@docker build -t $(REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):dev \
 	--build-arg VCS_REF=$(VCS_REF) --build-arg RELEASE_VERSION=$(RELEASE_VERSION) \
-	--build-arg GOARCH=$(TARGET_ARCH) -f Dockerfile .
-	@docker push $(REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(TARGET_ARCH):dev
+	--build-arg GOARCH=$(LOCAL_ARCH) -f Dockerfile .
+	@docker push $(REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):dev
 
 build-bundle-image: yq
 	@cp -f bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml /tmp/ibm-common-service-operator.clusterserviceversion.yaml
@@ -305,22 +309,22 @@ prepare-buildx:
 	@docker run --privileged --rm tonistiigi/binfmt --install all >/dev/null
 
 build-operator-image: config-docker cloudpak-theme.jar prepare-buildx ## Build the operator image.
-	@echo "Building the $(OPERATOR_IMAGE_NAME) docker image for $(TARGET_ARCH)..."
+	@echo "Building the $(OPERATOR_IMAGE_NAME) docker image for $(LOCAL_ARCH)..."
 	@docker buildx build \
 		--builder $(BUILDX_BUILDER) \
-		--platform linux/$(TARGET_ARCH) \
+		--platform linux/$(LOCAL_ARCH) \
 		--build-arg VCS_REF=$(VCS_REF) \
 		--build-arg RELEASE_VERSION=$(RELEASE_VERSION) \
-		--build-arg GOARCH=$(TARGET_ARCH) \
-		-t $(DOCKER_REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(TARGET_ARCH):$(BUILD_VERSION) \
+		--build-arg GOARCH=$(LOCAL_ARCH) \
+		-t $(DOCKER_REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(BUILD_VERSION) \
 		--push \
 		-f Dockerfile .
 	@docker buildx build \
 		--builder $(BUILDX_BUILDER) \
-		--platform linux/$(TARGET_ARCH) \
+		--platform linux/$(LOCAL_ARCH) \
 		--build-arg VCS_REF=$(VCS_REF) \
 		--build-arg RELEASE_VERSION=$(RELEASE_VERSION) \
-		--build-arg GOARCH=$(TARGET_ARCH) \
+		--build-arg GOARCH=$(LOCAL_ARCH) \
 		-t $(LOCAL_ARCH_IMAGE) \
 		-t $(RELEASE_IMAGE) \
 		--load \
@@ -329,7 +333,7 @@ build-operator-image: config-docker cloudpak-theme.jar prepare-buildx ## Build t
 ##@ Release
 
 build-push-image: config-docker build-operator-image  ## Build and push the operator images.
-	@echo "Preparing $(OPERATOR_IMAGE_NAME) release tags for $(TARGET_ARCH)..."
+	@echo "Preparing $(OPERATOR_IMAGE_NAME) release tags for $(LOCAL_ARCH)..."
 	docker tag $(RELEASE_IMAGE) $(RELEASE_IMAGE_ARCH)
 	$(MAKE) docker-push IMG=$(RELEASE_IMAGE_ARCH)
 
