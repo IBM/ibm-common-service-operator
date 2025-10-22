@@ -194,7 +194,7 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 	// Install/update Opreg and Opcon resources before installing ODLM if CRDs exist
 	if existOpreg && existOpcon {
 		klog.Info("Installing/Updating OperandRegistry")
-		if err := r.Bootstrap.InstallOrUpdateOpreg(""); err != nil {
+		if err := r.Bootstrap.InstallOrUpdateOpreg(ctx, ""); err != nil {
 			klog.Errorf("Fail to Installing/Updating OperandConfig: %v", err)
 			return ctrl.Result{}, err
 		}
@@ -259,14 +259,6 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 		return ctrl.Result{}, statusErr
 	} else if isEqual {
 		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.OperatorNs, "common-service", instance.Namespace, instance.Name))
-	}
-
-	if statusErr = r.Bootstrap.UpdateEDBUserManaged(); statusErr != nil {
-		if statusErr := r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
-			klog.Error(statusErr)
-		}
-		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
-		return ctrl.Result{}, statusErr
 	}
 
 	if isEqual, statusErr = r.updateOperatorConfig(ctx, instance.Spec.OperatorConfigs); statusErr != nil {
@@ -380,15 +372,6 @@ func (r *CommonServiceReconciler) ReconcileNoOLMGeneralCR(ctx context.Context, i
 		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.OperatorNs, "common-service", instance.Namespace, instance.Name))
 	}
 
-	isEqual, err = r.updateOperatorConfig(ctx, instance.Spec.OperatorConfigs)
-	if err != nil {
-		if err := r.updatePhase(ctx, instance, apiv3.CRFailed); err != nil {
-			klog.Error(err)
-		}
-		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
-		return ctrl.Result{}, err
-	}
-
 	if err := r.Bootstrap.UpdateResourceLabel(instance); err != nil {
 		klog.Error(err)
 		return ctrl.Result{}, err
@@ -397,11 +380,6 @@ func (r *CommonServiceReconciler) ReconcileNoOLMGeneralCR(ctx context.Context, i
 	if err = r.Bootstrap.UpdateManageCertRotationLabel(instance); err != nil {
 		klog.Error(err)
 		return ctrl.Result{}, err
-	}
-
-	// Create Event if there is no update in OperatorConfig after applying current CR
-	if isEqual {
-		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update to, replica sizings in the OperatorConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.OperatorNs, "test-operator-config", instance.Namespace, instance.Name))
 	}
 
 	// Set Ready condition
