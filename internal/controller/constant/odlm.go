@@ -342,6 +342,14 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+  - name: ibm-idp-config-ui-operator-v4.12
+    namespace: "{{ .CPFSNs }}"
+    channel: v4.12
+    packageName: ibm-commonui-operator-app
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
 	PlatformUIOpReg = `
@@ -835,6 +843,11 @@ spec:
       switcheritem: {}
       navconfiguration: {}
   - name: ibm-idp-config-ui-operator-v4.11
+    spec:
+      commonWebUI: {}
+      switcheritem: {}
+      navconfiguration: {}
+  - name: ibm-idp-config-ui-operator-v4.12
     spec:
       commonWebUI: {}
       switcheritem: {}
@@ -2852,7 +2865,7 @@ spec:
     sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-idp-config-ui-operator
     namespace: "{{ .CPFSNs }}"
-    channel: v4.11
+    channel: v4.12
     packageName: ibm-commonui-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
