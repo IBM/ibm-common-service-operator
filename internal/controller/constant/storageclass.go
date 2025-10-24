@@ -60,4 +60,15 @@ const StorageClassTemplate = `
             storageClass: placeholder
       kind: Cluster
       name: common-service-db
+- name: common-service-cnpg
+  resources:
+    - apiVersion: postgresql.cnpg.ibm.com/v1
+      data:
+        spec:
+          storage:
+            storageClass: placeholder
+          walStorage:
+            storageClass: placeholder
+      kind: Cluster
+      name: common-service-db
 `

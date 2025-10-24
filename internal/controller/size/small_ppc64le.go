@@ -89,7 +89,7 @@ const Small = `
           parameters:
             max_connections: "600"
             shared_buffers: 64MB
-- name: ibm-cnpg-postgres-operator
+- name: common-service-cnpg
   resources:
   - apiVersion: postgresql.cnpg.ibm.com/v1
     kind: Cluster
