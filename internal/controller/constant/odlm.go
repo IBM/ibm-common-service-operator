@@ -542,10 +542,20 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     name: ibm-cnpg-postgres-operator
     namespace: "{{ .CPFSNs }}"
-    packageName: ibm-cnpg-postgres-operator
+    packageName: cnpg-ibm
     scope: public
-    operatorConfig: cloud-native-postgresql-operator-config
-    sourceName: {{ .CatalogSourceName }}
+    sourceName: ibm-cnpg-postgresql-operator-catalog
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+  - channel: stable-v1.25
+    fallbackChannels:
+      - stable-v1.22
+      - stable
+    installPlanApproval: {{ .ApprovalMode }}
+    name: common-service-cnpg
+    namespace: "{{ .CPFSNs }}"
+    packageName: cnpg-ibm
+    scope: public
+    sourceName: ibm-cnpg-postgresql-operator-catalog
     sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 )
@@ -2361,8 +2371,19 @@ metadata:
     version: {{ .Version }}
 spec:
   services:
-  - name: ibm-cnpg-postgres-operator
+  - name: common-service-cnpg
     resources:
+      - apiVersion: operator.ibm.com/v1alpha1
+        data:
+          spec:
+            requests:
+              - operands:
+                  - name: ibm-cnpg-postgres-operator
+                registry: common-service
+                registryNamespace: {{ .ServicesNs }}
+        force: true
+        kind: OperandRequest
+        name: cnpg-postgresql-operator-request  
       - apiVersion: cert-manager.io/v1
         kind: Certificate
         name: common-service-db-replica-tls-cert
@@ -2410,9 +2431,6 @@ spec:
               name: cs-ca-issuer
             renewBefore: 720h0m0s
             secretName: common-service-db-tls-secret
-            secretTemplate:
-              labels:
-                k8s.enterprisedb.io/reload: ''
             usages:
               - server auth
       - apiVersion: cert-manager.io/v1
@@ -2464,12 +2482,12 @@ spec:
               private-superuser-db:
                 secret: common-service-db-superuser
             description: Binding information that should be accessible to Common Service Postgresql Adopters
-            operand: common-service-postgresql
+            operand: common-service-cnpg
             registry: common-service
             registryNamespace: {{ .ServicesNs }}
         force: true
         kind: OperandBindInfo
-        name: common-service-postgresql-bindinfo
+        name: common-service-cnpg-bindinfo
       - apiVersion: postgresql.cnpg.ibm.com/v1
         kind: Cluster
         name: common-service-db          
@@ -2913,6 +2931,18 @@ spec:
     operatorConfig: cloud-native-postgresql-operator-config
     configName: cloud-native-postgresql
     sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+  - channel: stable-v1.25
+    fallbackChannels:
+      - stable-v1.22
+      - stable
+    name: ibm-cnpg-postgres-operator
+    namespace: "{{ .CPFSNs }}"
+    packageName: cnpg-ibm
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    configName: ibm-cnpg-postgres-operator
+    sourceName: ibm-cnpg-postgresql-operator-catalog
     sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: alpha
     name: ibm-user-data-services-operator

@@ -95,6 +95,27 @@ const ConfigurationRules = `
           parameters:
             max_connections: LARGEST_VALUE
             shared_buffers: LARGEST_VALUE
+- name: common-service-cnpg
+  resources:
+  - apiVersion: postgresql.cnpg.ibm.com/v1
+    kind: Cluster
+    name: common-service-db
+    data:
+      spec:
+        instances: LARGEST_VALUE
+        resources:
+          limits:
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE
+            ephemeral-storage: LARGEST_VALUE
+          requests:
+            ephemeral-storage: LARGEST_VALUE
+            cpu: LARGEST_VALUE
+            memory: LARGEST_VALUE    
+        postgresql:
+          parameters:
+            max_connections: LARGEST_VALUE
+            shared_buffers: LARGEST_VALUE
 - name: ibm-im-mongodb-operator
   spec:
     mongoDB:

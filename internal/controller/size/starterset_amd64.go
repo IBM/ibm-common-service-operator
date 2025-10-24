@@ -89,6 +89,27 @@ const StarterSet = `
           parameters:
             max_connections: "400"
             shared_buffers: 64MB
+- name: common-service-cnpg
+  resources:
+  - apiVersion: postgresql.cnpg.ibm.com/v1
+    kind: Cluster
+    name: common-service-db
+    data:
+      spec:
+        instances: 1
+        resources:
+          limits:
+            cpu: 200m
+            memory: 512Mi
+            ephemeral-storage: 512Mi
+          requests:
+            ephemeral-storage: 128Mi
+            cpu: 75m
+            memory: 256Mi
+        postgresql:
+          parameters:
+            max_connections: "400"
+            shared_buffers: 64MB
 - name: ibm-im-mongodb-operator
   spec:
     mongoDB:
