@@ -615,12 +615,9 @@ rules:
   - clusterrolebindings
   - clusterroles
   verbs:
-  - create
   - delete
   - get
   - list
-  - patch
-  - update
   - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -732,7 +729,7 @@ spec:
           value: "false"
         - name: OPERATOR_NAME
           value: ibm-common-service-operator
-        image: icr.io/cpopen/common-service-operator:4.15.0
+        image: icr.io/cpopen/common-service-operator:4.16.0
         imagePullPolicy: IfNotPresent
         livenessProbe:
           failureThreshold: 10
