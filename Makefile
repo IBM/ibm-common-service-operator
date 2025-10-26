@@ -310,32 +310,27 @@ prepare-buildx:
 
 build-operator-image: config-docker cloudpak-theme.jar prepare-buildx ## Build the operator image.
 	@echo "Building the $(OPERATOR_IMAGE_NAME) docker image for $(LOCAL_ARCH)..."
-	@docker buildx build \
+	@$(CONTAINER_TOOL) buildx build \
 		--builder $(BUILDX_BUILDER) \
 		--platform linux/$(LOCAL_ARCH) \
 		--build-arg VCS_REF=$(VCS_REF) \
 		--build-arg RELEASE_VERSION=$(RELEASE_VERSION) \
-		--build-arg GOARCH=$(LOCAL_ARCH) \
-		-t $(DOCKER_REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(BUILD_VERSION) \
-		--push \
-		-f Dockerfile .
-	@docker buildx build \
-		--builder $(BUILDX_BUILDER) \
-		--platform linux/$(LOCAL_ARCH) \
-		--build-arg VCS_REF=$(VCS_REF) \
-		--build-arg RELEASE_VERSION=$(RELEASE_VERSION) \
-		--build-arg GOARCH=$(LOCAL_ARCH) \
+		--build-arg TARGETOS=linux \
+		--build-arg TARGETARCH=$(LOCAL_ARCH) \
 		-t $(LOCAL_ARCH_IMAGE) \
-		-t $(RELEASE_IMAGE) \
 		--load \
 		-f Dockerfile .
+	@$(CONTAINER_TOOL) tag $(LOCAL_ARCH_IMAGE) $(RELEASE_IMAGE)
+	@$(CONTAINER_TOOL) tag $(LOCAL_ARCH_IMAGE) $(RELEASE_IMAGE_ARCH)
+	@printf 'Built image artifacts:\n  local -> %s\n  release -> %s\n  release-arch -> %s\n' \
+		"$(LOCAL_ARCH_IMAGE)" "$(RELEASE_IMAGE)" "$(RELEASE_IMAGE_ARCH)"
 
 ##@ Release
 
 build-push-image: config-docker build-operator-image  ## Build and push the operator images.
-	@echo "Preparing $(OPERATOR_IMAGE_NAME) release tags for $(LOCAL_ARCH)..."
-	docker tag $(RELEASE_IMAGE) $(RELEASE_IMAGE_ARCH)
+	@echo "Pushing $(OPERATOR_IMAGE_NAME) docker image for $(LOCAL_ARCH)..."
 	$(MAKE) docker-push IMG=$(RELEASE_IMAGE_ARCH)
+	$(MAKE) docker-push IMG=$(RELEASE_IMAGE)
 
 .PHONY: docker-push
 docker-push:
