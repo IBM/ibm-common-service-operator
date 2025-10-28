@@ -233,7 +233,7 @@ function deploy_resources(){
       ZENSERVICE=$(oc get zenservice -n $ZEN_NAMESPACE --no-headers | awk '{print $1}')
     fi
     if [[ $ZENSERVICE != "" ]]; then
-      exists=$(oc get zenservice $ZENSERVICE -n $TZEN_NAMESPACE --no-headers --ignore-not-found)
+      exists=$(oc get zenservice $ZENSERVICE -n $ZEN_NAMESPACE --no-headers --ignore-not-found)
       if [[ $exists == "" ]]; then
         warning "Zenservice $ZENSERVICE not found in namespace $ZEN_NAMESPACE. Make sure the zenservice is deployed to the target namespace $ZEN_NAMESPACE or change the namespace used."
       else
