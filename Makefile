@@ -320,17 +320,13 @@ build-operator-image: config-docker cloudpak-theme.jar prepare-buildx ## Build t
 		-t $(LOCAL_ARCH_IMAGE) \
 		--load \
 		-f Dockerfile .
-	@$(CONTAINER_TOOL) tag $(LOCAL_ARCH_IMAGE) $(RELEASE_IMAGE)
 	@$(CONTAINER_TOOL) tag $(LOCAL_ARCH_IMAGE) $(RELEASE_IMAGE_ARCH)
-	@printf 'Built image artifacts:\n  local -> %s\n  release -> %s\n  release-arch -> %s\n' \
-		"$(LOCAL_ARCH_IMAGE)" "$(RELEASE_IMAGE)" "$(RELEASE_IMAGE_ARCH)"
 
 ##@ Release
 
 build-push-image: config-docker build-operator-image  ## Build and push the operator images.
 	@echo "Pushing $(OPERATOR_IMAGE_NAME) docker image for $(LOCAL_ARCH)..."
 	$(MAKE) docker-push IMG=$(RELEASE_IMAGE_ARCH)
-	$(MAKE) docker-push IMG=$(RELEASE_IMAGE)
 
 .PHONY: docker-push
 docker-push:
