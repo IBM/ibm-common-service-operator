@@ -89,6 +89,27 @@ const Medium = `
           parameters:
             max_connections: "750"
             shared_buffers: 96MB
+- name: common-service-cnpg
+  resources:
+  - apiVersion: postgresql.cnpg.ibm.com/v1
+    kind: Cluster
+    name: common-service-db
+    data:
+      spec:
+        instances: 2
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1024Mi
+            ephemeral-storage: 512Mi
+          requests:
+            ephemeral-storage: 128Mi
+            cpu: 150m
+            memory: 384Mi
+        postgresql:
+          parameters:
+            max_connections: "750"
+            shared_buffers: 96MB
 - name: ibm-im-mongodb-operator-v4.0
   spec:
     mongoDB:
