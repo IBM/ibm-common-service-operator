@@ -24,6 +24,11 @@ KUSTOMIZE_VERSION=v5.6.0
 OPERATOR_SDK_VERSION=v1.38.0
 CONTROLLER_TOOLS_VERSION ?= v0.18.0
 OPENSHIFT_VERSIONS ?= v4.12-v4.17
+# CONTAINER_TOOL defines the container tool to be used for building images.
+# Be aware that the target commands are only tested with Docker which is
+# scaffolded by default. However, you might want to replace it to use other
+# tools. (i.e. podman)
+CONTAINER_TOOL ?= docker
 
 CSV_PATH=bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
 
@@ -33,7 +38,7 @@ CSV_PATH=bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
 BUILD_LOCALLY ?= 1
 
 VCS_REF ?= $(shell git rev-parse HEAD)
-VERSION ?= $(shell git describe --exact-match 2> /dev/null || \
+BUILD_VERSION ?= $(shell git describe --exact-match 2> /dev/null || \
                 git describe --match=$(git rev-parse --short=8 HEAD) --always --dirty --abbrev=8)
 RELEASE_VERSION ?= $(shell cat ./version/version.go | grep "Version =" | awk '{ print $$3}' | tr -d '"')
 PREVIOUS_VERSION := 3.23.0
@@ -53,27 +58,34 @@ else
 endif
 
 ARCH := $(shell uname -m)
-LOCAL_ARCH := "amd64"
+
+# Auto-detect LOCAL_ARCH only when the caller hasn't provided one.
+ifeq ($(origin LOCAL_ARCH), undefined)
+LOCAL_ARCH := amd64
 ifeq ($(ARCH),x86_64)
-    LOCAL_ARCH="amd64"
+	LOCAL_ARCH := amd64
 else ifeq ($(ARCH),ppc64le)
-    LOCAL_ARCH="ppc64le"
+	LOCAL_ARCH := ppc64le
 else ifeq ($(ARCH),s390x)
-    LOCAL_ARCH="s390x"
+	LOCAL_ARCH := s390x
+else ifeq ($(ARCH),arm64)
+	LOCAL_ARCH := arm64
 else
-    $(error "This system's ARCH $(ARCH) isn't recognized/supported")
+	$(error "This system's ARCH $(ARCH) isn't recognized/supported")
+endif
 endif
 
 # Default image repo
 QUAY_REGISTRY ?= quay.io/opencloudio
 
 ifeq ($(BUILD_LOCALLY),0)
-ARTIFACTORYA_REGISTRY ?= "docker-na-public.artifactory.swg-devops.com/hyc-cloud-private-integration-docker-local/ibmcom"
+DOCKER_REGISTRY ?= "docker-na-public.artifactory.swg-devops.com/hyc-cloud-private-integration-docker-local/ibmcom"
 else
-ARTIFACTORYA_REGISTRY ?= "docker-na-public.artifactory.swg-devops.com/hyc-cloud-private-scratch-docker-local/ibmcom"
+DOCKER_REGISTRY ?= "docker-na-public.artifactory.swg-devops.com/hyc-cloud-private-scratch-docker-local/ibmcom"
 endif
 
 REGISTRY ?= "docker-na-public.artifactory.swg-devops.com/hyc-cloud-private-scratch-docker-local/ibmcom"
+BUILDX_BUILDER ?= ibm-common-service-operator-builder
 
 # Current Operator image name
 OPERATOR_IMAGE_NAME ?= common-service-operator
@@ -81,6 +93,10 @@ OPERATOR_IMAGE_NAME ?= common-service-operator
 BUNDLE_IMAGE_NAME ?= common-service-operator-bundle
 # Current Operator image with registry
 IMG ?= icr.io/cpopen/common-service-operator:$(LATEST_VERSION)
+
+RELEASE_IMAGE ?= $(DOCKER_REGISTRY)/$(OPERATOR_IMAGE_NAME):$(BUILD_VERSION)
+RELEASE_IMAGE_ARCH ?= $(DOCKER_REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(BUILD_VERSION)
+LOCAL_ARCH_IMAGE ?= $(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(BUILD_VERSION)
 
 CHANNELS := v4.16
 DEFAULT_CHANNEL := v4.16
@@ -93,11 +109,6 @@ ifneq ($(origin DEFAULT_CHANNEL), undefined)
 BUNDLE_DEFAULT_CHANNEL := --default-channel=$(DEFAULT_CHANNEL)
 endif
 BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
-
-ifeq ($(BUILD_LOCALLY),0)
-    export CONFIG_DOCKER_TARGET = config-docker
-    export CONFIG_DOCKER_TARGET_QUAY = config-docker-quay
-endif
 
 include common/Makefile.common.mk
 include hack/keycloak-themes/Makefile
@@ -194,22 +205,22 @@ build-dev-image: cloudpak-theme.jar
 build-bundle-image: yq
 	@cp -f bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml /tmp/ibm-common-service-operator.clusterserviceversion.yaml
 	$(YQ) eval -i 'del(.spec.replaces)' bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
-	docker build -f bundle.Dockerfile -t $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(VERSION) .
-	docker push $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(VERSION)
+	docker build -f bundle.Dockerfile -t $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(BUILD_VERSION) .
+	docker push $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(BUILD_VERSION)
 	@mv /tmp/ibm-common-service-operator.clusterserviceversion.yaml bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
 
 run-bundle:
-	$(OPERATOR_SDK) run bundle $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(VERSION) --install-mode OwnNamespace
+	$(OPERATOR_SDK) run bundle $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(BUILD_VERSION) --install-mode OwnNamespace
 
 upgrade-bundle:
-	$(OPERATOR_SDK) run bundle-upgrade $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(VERSION)
+	$(OPERATOR_SDK) run bundle-upgrade $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(BUILD_VERSION)
 
 cleanup-bundle:
 	$(OPERATOR_SDK) cleanup ibm-common-service-operator
 
 build-catalog-source:
-	opm -u docker index add --bundles $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(VERSION) --tag $(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME)-catalog:$(VERSION)
-	docker push $(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME)-catalog:$(VERSION)
+	opm -u docker index add --bundles $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(BUILD_VERSION) --tag $(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME)-catalog:$(BUILD_VERSION)
+	docker push $(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME)-catalog:$(BUILD_VERSION)
 
 update-csv-image: # updates operator image in currently deployed Common Service Operator
 	oc patch csv -n ibm-common-services ibm-common-service-operator.v$(RELEASE_VERSION) --type json -p \
@@ -218,7 +229,7 @@ update-csv-image: # updates operator image in currently deployed Common Service 
 build-catalog: build-bundle-image build-catalog-source
 
 deploy-catalog: build-catalog
-	./common/scripts/update_catalogsource.sh $(OPERATOR_IMAGE_NAME) $(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME)-catalog:$(VERSION)
+	./common/scripts/update_catalogsource.sh $(OPERATOR_IMAGE_NAME) $(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME)-catalog:$(BUILD_VERSION)
 
 undeploy-catalog:
 	kubectl -n openshift-marketplace delete catalogsource $(OPERATOR_IMAGE_NAME)
@@ -291,21 +302,38 @@ e2e-test: ## Run e2e test
 
 ##@ Build
 
-build-operator-image: $(CONFIG_DOCKER_TARGET) cloudpak-theme.jar ## Build the operator image.
+.PHONY: prepare-buildx
+prepare-buildx:
+	@docker buildx inspect $(BUILDX_BUILDER) >/dev/null 2>&1 || docker buildx create --name $(BUILDX_BUILDER) --driver docker-container --use
+	@docker buildx use $(BUILDX_BUILDER)
+	@docker run --privileged --rm tonistiigi/binfmt --install all >/dev/null
+
+build-operator-image: config-docker cloudpak-theme.jar prepare-buildx ## Build the operator image.
 	@echo "Building the $(OPERATOR_IMAGE_NAME) docker image for $(LOCAL_ARCH)..."
-	@docker build -t $(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(VERSION) \
-	--build-arg VCS_REF=$(VCS_REF) --build-arg RELEASE_VERSION=$(RELEASE_VERSION) \
-	--build-arg GOARCH=$(LOCAL_ARCH) -f Dockerfile .
+	@$(CONTAINER_TOOL) buildx build \
+		--builder $(BUILDX_BUILDER) \
+		--platform linux/$(LOCAL_ARCH) \
+		--build-arg VCS_REF=$(VCS_REF) \
+		--build-arg RELEASE_VERSION=$(RELEASE_VERSION) \
+		--build-arg TARGETOS=linux \
+		--build-arg TARGETARCH=$(LOCAL_ARCH) \
+		-t $(LOCAL_ARCH_IMAGE) \
+		--load \
+		-f Dockerfile .
+	@$(CONTAINER_TOOL) tag $(LOCAL_ARCH_IMAGE) $(RELEASE_IMAGE_ARCH)
 
 ##@ Release
 
-build-push-image: $(CONFIG_DOCKER_TARGET) build-operator-image  ## Build and push the operator images.
-	@echo "Pushing the $(OPERATOR_IMAGE_NAME) docker image for $(LOCAL_ARCH)..."
-	@docker tag $(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(VERSION) $(ARTIFACTORYA_REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(VERSION)
-	@docker push $(ARTIFACTORYA_REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(VERSION)
+build-push-image: config-docker build-operator-image  ## Build and push the operator images.
+	@echo "Pushing $(OPERATOR_IMAGE_NAME) docker image for $(LOCAL_ARCH)..."
+	$(MAKE) docker-push IMG=$(RELEASE_IMAGE_ARCH)
 
-multiarch-image: $(CONFIG_DOCKER_TARGET) ## Generate multiarch images for operator image.
-	@MAX_PULLING_RETRY=20 RETRY_INTERVAL=30 common/scripts/multiarch_image.sh $(ARTIFACTORYA_REGISTRY) $(OPERATOR_IMAGE_NAME) $(VERSION) $(RELEASE_VERSION)
+.PHONY: docker-push
+docker-push:
+	docker push $(IMG)
+
+multiarch-image: config-docker ## Generate multiarch images for operator image.
+	@MAX_PULLING_RETRY=20 RETRY_INTERVAL=30 common/scripts/multiarch_image.sh $(DOCKER_REGISTRY) $(OPERATOR_IMAGE_NAME) $(BUILD_VERSION) $(RELEASE_VERSION)
 
 ##@ Help
 help: ## Display this help
