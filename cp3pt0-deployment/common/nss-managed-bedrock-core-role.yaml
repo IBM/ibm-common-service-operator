@@ -1738,32 +1738,32 @@ rules:
     resources:
       - storageclasses
   - verbs:
-    - get
-    - list
-    - watch
-    - update
-    - patch
-    - create
-    - delete
+      - get
+      - list
+      - watch
+      - update
+      - patch
+      - create
+      - delete
     apiGroups:
-    - cluster.ibm-cpd-mcscheduler.ibm.com
+      - cluster.ibm-cpd-mcscheduler.ibm.com
     resources:
-    - distributionrule
-    - distributionrules
-    - distributionruledecision
-    - distributionruledecisions
-    - physicallocation
-    - physicallocations
+      - distributionrule
+      - distributionrules
+      - distributionruledecision
+      - distributionruledecisions
+      - physicallocation
+      - physicallocations
   - verbs:
-    - get
-    - list
-    - watch
-    - update
-    - patch
-    - create
-    - delete
+      - get
+      - list
+      - watch
+      - update
+      - patch
+      - create
+      - delete
     apiGroups:
-    - work.ibm-cpd-mcscheduler.ibm.com
+      - work.ibm-cpd-mcscheduler.ibm.com
     resources:
-    - remotekuberestemplate
-    - remotekuberestemplates
+      - remotekuberestemplate
+      - remotekuberestemplates
