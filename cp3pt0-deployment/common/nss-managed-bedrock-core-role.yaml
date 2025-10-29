@@ -1473,6 +1473,7 @@ rules:
       - watch
     apiGroups:
       - postgresql.k8s.enterprisedb.io
+      - postgresql.cnpg.ibm.com
     resources:
       - clusters
   - verbs:
