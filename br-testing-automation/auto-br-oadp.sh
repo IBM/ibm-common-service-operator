@@ -759,7 +759,7 @@ function backup_setup() {
             deploy_arg_str="$deploy_arg_str --im"
         fi
         if [[ $ZEN_ENABLED == "true" ]]; then
-            deploy_arg_str="$deploy_arg_str --zen"
+            deploy_arg_str="$deploy_arg_str --zen --zen-ns $ZEN_NAMESPACE"
         fi
         if [[ $STORAGE_CLASS != "" ]]; then
             deploy_arg_str="$deploy_arg_str --storage-class $STORAGE_CLASS"
