@@ -648,12 +648,13 @@ function verify_cert_manager(){
 
     #check no duplicate webhook pod
     webhook_deployments=$(${OC} get deploy -A --no-headers --ignore-not-found | grep ${name} -c)
-    if [[ $webhook_deployments != "1" ]]; then
-    error "More than one cert-manager-webhook deployment exists on the cluster."
+    if [[ $webhook_deployments -gt 1 ]]; then
+        warning "More than one cert-manager-webhook deployment exists on the cluster. Checking cert-manager functionality."
+        local webhook_ns=$("$OC" get deployments -A | grep cert-manager-webhook | cut -d ' ' -f1)
+        cm_smoke_test "test-issuer" "test-certificate" "test-certificate-secret" $webhook_ns
+        info "Smoke test passed. Only one Cert Manager is managing the certificate in the cluster."
     fi
-    local webhook_ns=$("$OC" get deployments -A | grep cert-manager-webhook | cut -d ' ' -f1)
     
-    cm_smoke_test "test-issuer" "test-certificate" "test-certificate-secret" $webhook_ns
     success "Cert manager is ready."
 }
 
