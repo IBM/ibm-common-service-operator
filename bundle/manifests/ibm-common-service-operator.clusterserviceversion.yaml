@@ -22,7 +22,7 @@ metadata:
       ]
     capabilities: Seamless Upgrades
     cloudPakThemesVersion: styles467.css
-    containerImage: icr.io/cpopen/common-service-operator:4.6.19
+    containerImage: icr.io/cpopen/common-service-operator:4.6.20
     createdAt: "2025-10-15T21:55:18Z"
     description: The IBM Cloud Pak foundational services operator is used to deploy IBM foundational services.
     features.operators.openshift.io/disconnected: "true"
@@ -34,9 +34,9 @@ metadata:
     features.operators.openshift.io/token-auth-gcp: "false"
     nss.operator.ibm.com/managed-operators: ibm-common-service-operator
     nss.operator.ibm.com/managed-webhooks: ""
-    olm.skipRange: ">=3.3.0 <4.6.19"
+    olm.skipRange: ">=3.3.0 <4.6.20"
     operatorChannel: v4.6
-    operatorVersion: 4.6.19
+    operatorVersion: 4.6.20
     operators.openshift.io/infrastructure-features: '["disconnected"]'
     operators.operatorframework.io/builder: operator-sdk-v1.38.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
@@ -47,7 +47,7 @@ metadata:
     operatorframework.io/arch.ppc64le: supported
     operatorframework.io/arch.s390x: supported
     operatorframework.io/os.linux: supported
-  name: ibm-common-service-operator.v4.6.19
+  name: ibm-common-service-operator.v4.6.20
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -207,7 +207,7 @@ spec:
 
     ## Operator versions
 
-     - 4.6.19
+     - 4.6.20
 
     ## Prerequisites
 
@@ -377,7 +377,7 @@ spec:
                         value: ibm-common-service-operator
                       - name: CPFS_UTILS_IMAGE
                         value: icr.io/cpopen/cpfs/cpfs-utils:latest
-                    image: icr.io/cpopen/common-service-operator:4.6.19
+                    image: icr.io/cpopen/common-service-operator:4.6.20
                     imagePullPolicy: IfNotPresent
                     livenessProbe:
                       failureThreshold: 10
@@ -654,7 +654,7 @@ spec:
   minKubeVersion: 1.19.0
   provider:
     name: IBM
-  version: 4.6.19
+  version: 4.6.20
   webhookdefinitions:
     - admissionReviewVersions:
         - v1
@@ -697,7 +697,7 @@ spec:
       type: ValidatingAdmissionWebhook
       webhookPath: /validate-operator-ibm-com-v3-commonservice
   relatedImages:
-    - image: icr.io/cpopen/common-service-operator:4.6.19
+    - image: icr.io/cpopen/common-service-operator:4.6.20
       name: COMMON_SERVICE_OPERATOR_IMAGE
     - image: icr.io/cpopen/cpfs/cpfs-utils:latest
       name: CPFS_UTILS_IMAGE
