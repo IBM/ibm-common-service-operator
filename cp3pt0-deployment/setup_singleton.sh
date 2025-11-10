@@ -297,7 +297,8 @@ function cert_manager_deployment_check(){
     fi
 
     title "Chekcing cert-manager type"
-    local webhook_ns=$("$OC" get deployments -A | grep cert-manager-webhook | cut -d ' ' -f1 | head -n1) 
+    local webhook_ns=$("$OC" get deployments -A | grep cert-manager-webhook | cut -d ' ' -f1 ) 
+    
     for ns in $webhook_ns; do # loop through all namespaces if multiple cert-manager-webhook found
         local api_version=$("$OC" get deployments -n "$ns" cert-manager-webhook -o jsonpath='{.metadata.ownerReferences[*].apiVersion}' --ignore-not-found)
         local cm_namespace=$ns
@@ -308,6 +309,7 @@ function cert_manager_deployment_check(){
             fi
         fi
     done
+
     if [ ! -z "$cm_namespace" ]; then 
         # Check if the cert-manager is functional
         if cm_smoke_test "test-issuer" "test-certificate" "test-certificate-secret" $cm_namespace; then
