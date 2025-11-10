@@ -66,26 +66,26 @@ function main() {
     trap cleanup_log EXIT
     pre_req
     prepare_preview_mode
-    # cert_manager_deployment_check
+    cert_manager_deployment_check
 
-    # is_migrate_licensing
-    # is_migrate_cert_manager
-    # if [ $MIGRATE_SINGLETON -eq 1 ]; then
-    #     if [ $ENABLE_LICENSING -eq 1 ]; then
-    #         if [ $ENABLE_LICENSE_SERVICE_REPORTER -eq 1 ]; then
-    #             ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" "--control-namespace" "$CONTROL_NS" "--enable-licensing" "--licensing-namespace" "$LICENSING_NAMESPACE" "--enable-license-service-reporter" "--lsr-namespace" "$LSR_NAMESPACE" "-v" "$DEBUG" "--yq" "$YQ" "--oc" "$OC"
-    #         else
-    #             ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" "--control-namespace" "$CONTROL_NS" "--enable-licensing" "--licensing-namespace" "$LICENSING_NAMESPACE" "-v" "$DEBUG" "--yq" "$YQ" "--oc" "$OC"
-    #         fi
-    #     else
-    #         ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" "--control-namespace" "$CONTROL_NS" "-v" "$DEBUG" "--yq" "$YQ" "--oc" "$OC"
-    #     fi
-    # fi
+    is_migrate_licensing
+    is_migrate_cert_manager
+    if [ $MIGRATE_SINGLETON -eq 1 ]; then
+        if [ $ENABLE_LICENSING -eq 1 ]; then
+            if [ $ENABLE_LICENSE_SERVICE_REPORTER -eq 1 ]; then
+                ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" "--control-namespace" "$CONTROL_NS" "--enable-licensing" "--licensing-namespace" "$LICENSING_NAMESPACE" "--enable-license-service-reporter" "--lsr-namespace" "$LSR_NAMESPACE" "-v" "$DEBUG" "--yq" "$YQ" "--oc" "$OC"
+            else
+                ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" "--control-namespace" "$CONTROL_NS" "--enable-licensing" "--licensing-namespace" "$LICENSING_NAMESPACE" "-v" "$DEBUG" "--yq" "$YQ" "--oc" "$OC"
+            fi
+        else
+            ${BASE_DIR}/common/migrate_singleton.sh "--operator-namespace" "$OPERATOR_NS" "--control-namespace" "$CONTROL_NS" "-v" "$DEBUG" "--yq" "$YQ" "--oc" "$OC"
+        fi
+    fi
 
     install_cert_manager
-    # install_licensing
+    install_licensing
     verify_cert_manager
-    # install_license_service_reporter
+    install_license_service_reporter
 }
 
 function parse_arguments() {
@@ -297,17 +297,24 @@ function cert_manager_deployment_check(){
     fi
 
     title "Chekcing cert-manager type"
-    local webhook_ns=$("$OC" get deployments -A | grep cert-manager-webhook | cut -d ' ' -f1) | head -n1 
-    if [ ! -z "$webhook_ns" ]; then 
+    local webhook_ns=$("$OC" get deployments -A | grep cert-manager-webhook | cut -d ' ' -f1 | head -n1) 
+    for ns in $webhook_ns; do # loop through all namespaces if multiple cert-manager-webhook found
+        local api_version=$("$OC" get deployments -n "$ns" cert-manager-webhook -o jsonpath='{.metadata.ownerReferences[*].apiVersion}' --ignore-not-found)
+        local cm_namespace=$ns
+        if [ ! -z "$api_version" ]; then
+            if [ "$api_version" == "$CERT_MANAGER_V1_OWNER" ] || [ "$api_version" == "$CERT_MANAGER_V1ALPHA1_OWNER" ]; then
+                echo "Found ibm-cert-manager-operator owned cert-manager-webhook in namespace: $ns"
+                break
+            fi
+        fi
+    done
+    if [ ! -z "$cm_namespace" ]; then 
         # Check if the cert-manager is functional
-        if cm_smoke_test "test-issuer" "test-certificate" "test-certificate-secret" $webhook_ns; then
+        if cm_smoke_test "test-issuer" "test-certificate" "test-certificate-secret" $cm_namespace; then
             # Check if the cert-manager-webhook is owned by ibm-cert-manager-operator
-            local api_version=$("$OC" get deployments -n "$webhook_ns" cert-manager-webhook -o jsonpath='{.metadata.ownerReferences[*].apiVersion}' --ignore-not-found)
-            if [ ! -z "$api_version" ]; then
-                if [ "$api_version" == "$CERT_MANAGER_V1_OWNER" ] || [ "$api_version" == "$CERT_MANAGER_V1ALPHA1_OWNER" ]; then
-                    info "Cluster has a ibm-cert-manager-operator already installed."
-                    exit 1
-                fi
+            if [ "$api_version" == "$CERT_MANAGER_V1_OWNER" ] || [ "$api_version" == "$CERT_MANAGER_V1ALPHA1_OWNER" ]; then
+                info "Cluster has a ibm-cert-manager-operator already installed."
+                exit 1
             fi
             info "Cluster has a third party cert-manager already installed."
             exit 2
@@ -327,15 +334,24 @@ function install_cert_manager() {
         warning "There is a cert-manager Subscription already\n"
     fi
 
-    local webhook_ns=$("$OC" get deployments -A | grep cert-manager-webhook | cut -d ' ' -f1 | head -n1 )
+    local webhook_ns=$("$OC" get deployments -A | grep cert-manager-webhook | cut -d ' ' -f1 | tr '\n' ' ')
     local webhook_count=$("$OC" get deployments -A | grep cert-manager-webhook | wc -l)
     if [ ! -z "$webhook_ns" ]; then
         warning "There is a cert-manager-webhook pod Running, so most likely another cert-manager is already installed\n"
         info "Continue to upgrade check\n"
         # Check if the cert-manager is functional
-        if cm_smoke_test "test-issuer" "test-certificate" "test-certificate-secret" $webhook_ns; then # passed the smoke test
+        for ns in $webhook_ns; do # loop through all namespaces if multiple cert-manager-webhook found
+            local api_version=$("$OC" get deployments -n "$ns" cert-manager-webhook -o jsonpath='{.metadata.ownerReferences[*].apiVersion}' --ignore-not-found)
+            local cm_namespace=$ns
+            if [ ! -z "$api_version" ]; then
+                if [ "$api_version" == "$CERT_MANAGER_V1_OWNER" ] || [ "$api_version" == "$CERT_MANAGER_V1ALPHA1_OWNER" ]; then
+                    echo "Found ibm-cert-manager-operator owned cert-manager-webhook in namespace: $ns"
+                    break
+                fi
+            fi
+        done
+        if cm_smoke_test "test-issuer" "test-certificate" "test-certificate-secret" $ns; then # passed the smoke test
             # Check if the cert-manager-webhook is owned by ibm-cert-manager-operator
-            local api_version=$("$OC" get deployments -n "$webhook_ns" cert-manager-webhook -o jsonpath='{.metadata.ownerReferences[*].apiVersion}' --ignore-not-found)
             if [ ! -z "$api_version" ]; then
                 if [ "$api_version" == "$CERT_MANAGER_V1ALPHA1_OWNER" ]; then
                     error "Cluster has not deactivated LTSR ibm-cert-manager-operator yet, please re-run this script"
@@ -347,12 +363,12 @@ function install_cert_manager() {
                 fi
 
                 info "Upgrading ibm-cert-manager-operator to channel: $CHANNEL\n"
-                if [[ "$webhook_ns" != "$CERT_MANAGER_NAMESPACE" ]] && [[ "$CUSTOMIZED_CM_NAMESPACE" -eq 1 ]]; then
-                    error "An ibm-cert-manager-operator already installed in namespace: $webhook_ns, please do not set parameter '-cmNs $CERT_MANAGER_NAMESPACE"
+                if [[ "$cm_namespace" != "$CERT_MANAGER_NAMESPACE" ]] && [[ "$CUSTOMIZED_CM_NAMESPACE" -eq 1 ]]; then
+                    error "An ibm-cert-manager-operator already installed in namespace: $cm_namespace, please do not set parameter '-cmNs $CERT_MANAGER_NAMESPACE"
                 fi
-                CERT_MANAGER_NAMESPACE="$webhook_ns"
+                CERT_MANAGER_NAMESPACE="$cm_namespace"
                 if [[ $ENABLE_PRIVATE_CATALOG -eq 1 ]]; then
-                    CM_SOURCE_NS="$webhook_ns" 
+                    CM_SOURCE_NS="$cm_namespace" 
                 fi
             else
                 warning "Cluster has a RedHat cert-manager or Helm cert-manager, skipping"
