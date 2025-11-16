@@ -298,10 +298,15 @@ function cert_manager_deployment_check(){
 
     title "Chekcing cert-manager type"
     local webhook_ns=$("$OC" get deployments -A | grep cert-manager-webhook | cut -d ' ' -f1 ) 
+
+    local api_version=""
+    local cm_namespace=""
     
-    for ns in $webhook_ns; do # loop through all namespaces if multiple cert-manager-webhook found
-        local api_version=$("$OC" get deployments -n "$ns" cert-manager-webhook -o jsonpath='{.metadata.ownerReferences[*].apiVersion}' --ignore-not-found)
-        local cm_namespace=$ns
+    # loop through all namespaces if multiple cert-manager-webhook found
+    # Detect owner and namespace (only need to find one owned by IBM)
+    for ns in $webhook_ns; do 
+        api_version=$("$OC" get deployments -n "$ns" cert-manager-webhook -o jsonpath='{.metadata.ownerReferences[*].apiVersion}' --ignore-not-found)
+        cm_namespace="$ns"
         if [ ! -z "$api_version" ]; then
             if [ "$api_version" == "$CERT_MANAGER_V1_OWNER" ] || [ "$api_version" == "$CERT_MANAGER_V1ALPHA1_OWNER" ]; then
                 echo "Found ibm-cert-manager-operator owned cert-manager-webhook in namespace: $ns"
@@ -310,15 +315,18 @@ function cert_manager_deployment_check(){
         fi
     done
 
-    if [ ! -z "$cm_namespace" ]; then 
-        # Check if the cert-manager is functional
-        if cm_smoke_test "test-issuer" "test-certificate" "test-certificate-secret" $cm_namespace; then
-            # Check if the cert-manager-webhook is owned by ibm-cert-manager-operator
-            if [ "$api_version" == "$CERT_MANAGER_V1_OWNER" ] || [ "$api_version" == "$CERT_MANAGER_V1ALPHA1_OWNER" ]; then
-                info "Cluster has a ibm-cert-manager-operator already installed."
+    # If we found a cert-manager-webhook namespace
+    if [[ ! -z "$cm_namespace" ]]; then
+
+        # Run smoke test
+        if cm_smoke_test "test-issuer" "test-certificate" "test-certificate-secret" "$cm_namespace"; then
+
+            if [[ -n "$api_version" ]]; then
+                info "Cluster has an ibm-cert-manager-operator already installed."
                 exit 1
             fi
-            info "Cluster has a third party cert-manager already installed."
+
+            info "Cluster has a third-party cert-manager already installed."
             exit 2
         fi
     fi
@@ -338,13 +346,24 @@ function install_cert_manager() {
 
     local webhook_ns=$("$OC" get deployments -A | grep cert-manager-webhook | cut -d ' ' -f1 | tr '\n' ' ')
     local webhook_count=$("$OC" get deployments -A | grep cert-manager-webhook | wc -l)
-    if [ ! -z "$webhook_ns" ]; then
-        warning "There is a cert-manager-webhook pod Running, so most likely another cert-manager is already installed\n"
-        info "Continue to upgrade check\n"
-        # Check if the cert-manager is functional
-        for ns in $webhook_ns; do # loop through all namespaces if multiple cert-manager-webhook found
-            local api_version=$("$OC" get deployments -n "$ns" cert-manager-webhook -o jsonpath='{.metadata.ownerReferences[*].apiVersion}' --ignore-not-found)
-            local cm_namespace=$ns
+    
+    if [ -z "$webhook_ns" ]; then
+
+        info "There is no cert-manager-webhook pod running; proceeding with installation"
+    
+    else
+
+        warning "There is a cert-manager-webhook pod running; another cert-manager is likely installed"
+        info "Continue to upgrade check"
+
+        local api_version=""
+        local cm_namespace=""
+
+        # Try to detect owner apiVersion
+        # Loop through all namespaces if multiple cert-manager-webhook found, and look for ibm-cert-manager-operator
+        for ns in $webhook_ns; do
+            api_version=$("$OC" get deployment -n "$ns" cert-manager-webhook -o jsonpath='{.metadata.ownerReferences[*].apiVersion}' --ignore-not-found)
+            cm_namespace="$ns"
             if [ ! -z "$api_version" ]; then
                 if [ "$api_version" == "$CERT_MANAGER_V1_OWNER" ] || [ "$api_version" == "$CERT_MANAGER_V1ALPHA1_OWNER" ]; then
                     echo "Found ibm-cert-manager-operator owned cert-manager-webhook in namespace: $ns"
@@ -352,41 +371,50 @@ function install_cert_manager() {
                 fi
             fi
         done
-        if cm_smoke_test "test-issuer" "test-certificate" "test-certificate-secret" $ns; then # passed the smoke test
-            # Check if the cert-manager-webhook is owned by ibm-cert-manager-operator
-            if [ ! -z "$api_version" ]; then
-                if [ "$api_version" == "$CERT_MANAGER_V1ALPHA1_OWNER" ]; then
-                    error "Cluster has not deactivated LTSR ibm-cert-manager-operator yet, please re-run this script"
-                fi
 
-                if [ "$api_version" != "$CERT_MANAGER_V1_OWNER" ]; then
-                    warning "Cluster has a non ibm-cert-manager-operator already installed, skipping"
-                    return 0
-                fi
+        # Run smoke test
+        if cm_smoke_test "test-issuer" "test-certificate" "test-certificate-secret" $cm_namespace; then
 
-                info "Upgrading ibm-cert-manager-operator to channel: $CHANNEL\n"
-                if [[ "$cm_namespace" != "$CERT_MANAGER_NAMESPACE" ]] && [[ "$CUSTOMIZED_CM_NAMESPACE" -eq 1 ]]; then
-                    error "An ibm-cert-manager-operator already installed in namespace: $cm_namespace, please do not set parameter '-cmNs $CERT_MANAGER_NAMESPACE"
-                fi
-                CERT_MANAGER_NAMESPACE="$cm_namespace"
-                if [[ $ENABLE_PRIVATE_CATALOG -eq 1 ]]; then
-                    CM_SOURCE_NS="$cm_namespace" 
-                fi
-            else
-                warning "Cluster has a RedHat cert-manager or Helm cert-manager, skipping"
+            # Check owner type
+            if [ -z "$api_version" ]; then
+                warning "Cluster has a RedHat or Helm cert-manager, skipping"
                 return 0
             fi
-        else # not passed the smoke test
+
+            # LTSR operator case
+            if [ "$api_version" == "$CERT_MANAGER_V1ALPHA1_OWNER" ]; then
+                error "Cluster has not deactivated LTSR ibm-cert-manager-operator yet, please re-run this script"
+            fi
+
+            # Non-IBM cert-manager
+            if [ "$api_version" != "$CERT_MANAGER_V1_OWNER" ]; then
+                warning "Cluster has a non ibm-cert-manager-operator already installed, skipping"
+                return 0
+            fi
+
+            # IBM cert-manager upgrade logic
+            info "Upgrading ibm-cert-manager-operator to channel: $CHANNEL"
+
+            if [[ "$cm_namespace" != "$CERT_MANAGER_NAMESPACE" ]] && [[ "$CUSTOMIZED_CM_NAMESPACE" -eq 1 ]];; then
+                error "An ibm-cert-manager-operator is already installed in namespace: $cm_namespace; do not set -cmNs $CERT_MANAGER_NAMESPACE"
+            fi
+
+            CERT_MANAGER_NAMESPACE="$cm_namespace"
+
+            if [[ $ENABLE_PRIVATE_CATALOG -eq 1 ]]; then
+                CM_SOURCE_NS="$cm_namespace"
+            fi
+
+        else
+            # Smoke test failed
             if [ "$webhook_count" -eq 1 ]; then
-                info "The existing cert-manager-webhook pod is not functional, proceeding with the installation\n"
+                info "The existing cert-manager-webhook pod is not functional, proceeding with installation"
             else
-                error "Multiple cert-manager-webhook pods found, and all are functional, cannot proceed with installation"
+                error "Multiple cert-manager-webhook pods found and all are functional; cannot proceed"
             fi
         fi
-    else
-        info "There is no cert-manager-webhook pod running\n"
     fi
-    
+
     # Validate the CatalogSource of IBM Cert Manager before proceeding with the installation or upgrade
     validate_operator_catalogsource ibm-cert-manager-operator $CERT_MANAGER_NAMESPACE $CERT_MANAGER_SOURCE $CM_SOURCE_NS $CHANNEL CERT_MANAGER_SOURCE CM_SOURCE_NS 
 
