@@ -395,7 +395,7 @@ function install_cert_manager() {
             # IBM cert-manager upgrade logic
             info "Upgrading ibm-cert-manager-operator to channel: $CHANNEL"
 
-            if [[ "$cm_namespace" != "$CERT_MANAGER_NAMESPACE" ]] && [[ "$CUSTOMIZED_CM_NAMESPACE" -eq 1 ]];; then
+            if [[ "$cm_namespace" != "$CERT_MANAGER_NAMESPACE" && "$CUSTOMIZED_CM_NAMESPACE" -eq 1 ]]; then
                 error "An ibm-cert-manager-operator is already installed in namespace: $cm_namespace; do not set -cmNs $CERT_MANAGER_NAMESPACE"
             fi
 
