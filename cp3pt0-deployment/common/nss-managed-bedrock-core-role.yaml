@@ -1489,9 +1489,16 @@ rules:
       - ''
     resources:
       - configmaps
-      - namespaces
       - secrets
       - services
+  - verbs:
+      - get
+      - list
+      - watch
+    apiGroups:
+      - ""
+    resources:
+      - namespaces
   - verbs:
       - create
       - delete
