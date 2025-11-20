@@ -279,6 +279,16 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 		return ctrl.Result{}, statusErr
 	}
 
+	// Wait for Postgres Cluster image to be updated
+	if statusErr = r.Bootstrap.UpdatePostgresClusterImage(ctx, instance); statusErr != nil {
+		klog.Errorf("Failed to update Postgres Cluster image: %v", statusErr)
+		if statusErr := r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
+			klog.Error(statusErr)
+		}
+		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
+		return ctrl.Result{}, statusErr
+	}
+
 	if statusErr = r.Bootstrap.PropagateDefaultCR(instance); statusErr != nil {
 		klog.Error(statusErr)
 		return ctrl.Result{}, statusErr
@@ -370,6 +380,16 @@ func (r *CommonServiceReconciler) ReconcileNoOLMGeneralCR(ctx context.Context, i
 	// Create Event if there is no update in OperandConfig after applying current CR
 	if isEqual {
 		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.OperatorNs, "common-service", instance.Namespace, instance.Name))
+	}
+
+	// Wait for Postgres Cluster image to be updated
+	if err := r.Bootstrap.UpdatePostgresClusterImage(ctx, instance); err != nil {
+		klog.Errorf("Failed to update Postgres Cluster image: %v", err)
+		if err := r.updatePhase(ctx, instance, apiv3.CRFailed); err != nil {
+			klog.Error(err)
+		}
+		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
+		return ctrl.Result{}, err
 	}
 
 	if err := r.Bootstrap.UpdateResourceLabel(instance); err != nil {
