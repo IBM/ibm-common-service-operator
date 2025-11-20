@@ -480,6 +480,13 @@ rules:
     resources:
       - daemonsets
   - verbs:
+      - get
+      - create
+    apiGroups:
+      - monitoring.coreos.com
+    resources:
+      - servicemonitors
+  - verbs:
       - update
     apiGroups:
       - apps
@@ -1482,16 +1489,9 @@ rules:
       - ''
     resources:
       - configmaps
+      - namespaces
       - secrets
       - services
-  - verbs:
-      - get
-      - list
-      - watch
-    apiGroups:
-      - ""
-    resources:
-      - namespaces
   - verbs:
       - create
       - delete
