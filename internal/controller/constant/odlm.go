@@ -1200,7 +1200,7 @@ spec:
                 keytool -importcert -file ${CA_DIR}/${cert} -keystore ${TRUSTSTORE_DIR}/keycloak-truststore.jks -storepass changeit -alias ${cert} -noprompt
               done
               echo "Truststore file built, starting Keycloak ..."
-              "/opt/keycloak/bin/kc.sh" "$@" --spi-truststore-file-file=${TRUSTSTORE_DIR}/keycloak-truststore.jks --spi-truststore-file-password=changeit --spi-truststore-file-hostname-verification-policy=WILDCARD --spi-user-profile-declarative-user-profile-config-file=${USERPROFILE_DIR}/cs-keycloak-user-profile.json
+              "/opt/keycloak/bin/kc.sh" "$@" --spi-truststore-file-file=${TRUSTSTORE_DIR}/keycloak-truststore.jks --spi-truststore-file-password=changeit --spi-truststore-file-hostname-verification-policy=WILDCARD --spi-user-profile-declarative-user-profile-config-file=${USERPROFILE_DIR}/cs-keycloak-user-profile.json --spi-events-listener--jboss-logging--success-level=info
       - apiVersion: v1
         data:
           data:
