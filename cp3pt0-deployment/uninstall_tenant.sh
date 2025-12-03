@@ -20,6 +20,7 @@ CONTROL_NS=""
 FORCE_DELETE=0
 DEBUG=0
 RETAIN="false"
+NO_OLM="false"
 
 # ---------- Command variables ----------
 
@@ -39,12 +40,18 @@ function main() {
     trap cleanup_log EXIT
     pre_req
     set_tenant_namespaces
-    if [ $FORCE_DELETE -eq 0 ]; then
+    uninstall_odlm_resource
+    uninstall_nss_resource
+    delete_rbac_resource
+
+    if [[ "$NO_OLM" == "true" ]]; then
+        uninstall_helm_resources
+    else
         uninstall_odlm
         uninstall_cs_operator
         uninstall_nss
     fi
-    delete_rbac_resource
+
     delete_webhook
     delete_unavailable_apiservice
     if [[ $RETAIN == "false" ]]; then
@@ -52,6 +59,8 @@ function main() {
     else
         cleanup_extra_resources
     fi
+
+    success "Tenant uninstall process completed."
 }
 
 function parse_arguments() {
@@ -76,6 +85,9 @@ function parse_arguments() {
             ;;
         --retain-ns)
             RETAIN="true"
+            ;;
+        --no-olm | --helm)
+            NO_OLM="true"
             ;;
         -f)
             FORCE_DELETE=1
@@ -108,6 +120,7 @@ function print_usage() {
     echo "   --oc string                    Optional. File path to oc CLI. Default uses oc in your PATH"
     echo "   --yq string                    Optional. File path to yq CLI. Default uses yq in your PATH"
     echo "   --operator-namespace string    Required. Namespace to uninstall Foundational services operators and the whole tenant."
+    echo "   --no-olm or --helm             Optional. Uninstall Foundational services operators and resources installed via Helm."
     echo "   -f                             Optional. Enable force delete. It will take much more time if you add this label, we suggest run this script without -f label first"
     echo "   --retain-ns                    Optional. Prevents script from deleting tenant namespaces during uninstall."
     echo "   -v, --debug integer            Optional. Verbosity of logs. Default is 0. Set to 1 for debug logs"
@@ -123,6 +136,7 @@ function pre_req() {
 
     check_command "${OC}"
     check_command "${YQ}"
+    check_command "helm"
     check_yq_version
 
     # Checking oc command logged in
@@ -142,55 +156,94 @@ function pre_req() {
     fi
 }
 
-function set_tenant_namespaces() {
-    # check if user want to cleanup operatorNamespace
-    for ns in ${OPERATOR_NS//,/ }; do
-        # if this namespace is operatorNamespace
-        temp_namespace=$(${OC} get -n "$ns" configmap namespace-scope -o jsonpath='{.data.namespaces}' --ignore-not-found)
-        if [ "$temp_namespace" != "" ]; then
-            if [ "$TENANT_NAMESPACES" == "" ]; then
-                TENANT_NAMESPACES=$temp_namespace
-                OPERATOR_NS_LIST=$ns
-            else
-                TENANT_NAMESPACES="${TENANT_NAMESPACES},${temp_namespace}"
-                OPERATOR_NS_LIST="${OPERATOR_NS_LIST},${ns}"
-            fi
-            continue
-        fi
 
-        # if this namespace is servicesNamespace
+function set_tenant_namespaces() {
+    for ns in ${OPERATOR_NS//,/ }; do
+        # Get operatorNamespace and servicesNamespace from CommonService CR
         operator_ns=$(${OC} get -n "$ns" commonservice common-service -o jsonpath='{.spec.operatorNamespace}' --ignore-not-found)
         services_ns=$(${OC} get -n "$ns" commonservice common-service -o jsonpath='{.spec.servicesNamespace}' --ignore-not-found)
-        if [ "$services_ns" == "$ns" ]; then
-            temp_namespace=$(${OC} get -n "$operator_ns" configmap namespace-scope -o jsonpath='{.data.namespaces}' --ignore-not-found)
-            if [ "$TENANT_NAMESPACES" == "" ]; then
+
+        # Get tenant namespaces from namespace-scope ConfigMap
+        temp_namespace=$(${OC} get -n "$operator_ns" configmap namespace-scope -o jsonpath='{.data.namespaces}' --ignore-not-found)
+
+        # Append temp_namespace if not empty
+        if [[ -n "$temp_namespace" ]]; then
+            if [[ -z "$TENANT_NAMESPACES" ]]; then
                 TENANT_NAMESPACES=$temp_namespace
                 OPERATOR_NS_LIST=$operator_ns
             else
                 TENANT_NAMESPACES="${TENANT_NAMESPACES},${temp_namespace}"
                 OPERATOR_NS_LIST="${OPERATOR_NS_LIST},${operator_ns}"
             fi
-            continue
         fi
 
-        # if this namespace neither operatorNamespace nor serviceNamsespace
-        if [ "$TENANT_NAMESPACES" == "" ]; then
+        # In NO_OLM mode, and no namespace-scope configmap, get WATCH_NAMESPACE from cs-operator deployment
+        if [[ -z "$temp_namespace" && "$NO_OLM" == "true" ]]; then
+            watch_ns=$(${OC} get deployment ibm-common-service-operator -n "$operator_ns" \
+                -o jsonpath='{.spec.template.spec.containers[?(@.name=="ibm-common-service-operator")].env[?(@.name=="WATCH_NAMESPACE")].value}' --ignore-not-found)
+            if [[ -n "$watch_ns" ]]; then
+                if [[ -z "$TENANT_NAMESPACES" ]]; then
+                    TENANT_NAMESPACES=$watch_ns
+                    OPERATOR_NS_LIST=$operator_ns
+                else
+                    TENANT_NAMESPACES="${TENANT_NAMESPACES},${watch_ns}"
+                    OPERATOR_NS_LIST="${OPERATOR_NS_LIST},${operator_ns}"
+                fi
+            fi
+        fi
+
+        # If still empty, fallback to ns
+        if [[ -z "$TENANT_NAMESPACES" ]]; then
             TENANT_NAMESPACES=$ns
         else
             TENANT_NAMESPACES="${TENANT_NAMESPACES},${ns}"
         fi
     done
 
-    # delete duplicate namespace in TENANT_NAMESPACES and OPERATOR_NS_LIST
-    TENANT_NAMESPACES=$(echo "$TENANT_NAMESPACES" | sed -e 's/,/\n/g' | sort -u | tr "\r\n" "," | sed '$ s/,$//')
-    OPERATOR_NS_LIST=$(echo "$OPERATOR_NS_LIST" | sed -e 's/,/\n/g' | sort -u | tr "\r\n" "," | sed '$ s/,$//')
+    # Remove empty entries and duplicates
+    TENANT_NAMESPACES=$(echo "$TENANT_NAMESPACES" | sed 's/^,*//;s/,*$//' | sed 's/,,*/,/g' | sed -e 's/,/\n/g' | sort -u | tr "\r\n" "," | sed '$ s/,$//')
+    OPERATOR_NS_LIST=$(echo "$OPERATOR_NS_LIST" | sed 's/^,*//;s/,*$//' | sed 's/,,*/,/g' | sed -e 's/,/\n/g' | sort -u | tr "\r\n" "," | sed '$ s/,$//')
+
     info "Tenant namespaces are: $TENANT_NAMESPACES"
 }
 
-function uninstall_odlm() {
-    title "Uninstalling OperandRequests and ODLM"
+
+function uninstall_odlm_resource() {
+    title "Uninstalling odlm resoource"
 
     local grep_args=""
+    for ns in ${TENANT_NAMESPACES//,/ }; do
+        local opreq=$(${OC} get -n "$ns" operandregistry --no-headers | cut -d ' ' -f1)
+        if [ "$opreq" != "" ]; then
+            ${OC} delete -n "$ns" operandregistry ${opreq//$'\n'/ } --timeout=60s
+        fi
+        grep_args="${grep_args}-e $ns "
+    done
+
+    for ns in ${TENANT_NAMESPACES//,/ }; do
+        local opreq=$(${OC} get -n "$ns" operandconfig --no-headers | cut -d ' ' -f1)
+        if [ "$opreq" != "" ]; then
+            ${OC} delete -n "$ns" operandconfig ${opreq//$'\n'/ } --timeout=60s
+        fi
+        grep_args="${grep_args}-e $ns "
+    done
+
+    for ns in ${TENANT_NAMESPACES//,/ }; do
+        local opreq=$(${OC} get -n "$ns" operandbindinfo --no-headers | cut -d ' ' -f1)
+        if [ "$opreq" != "" ]; then
+            ${OC} delete -n "$ns" operandbindinfo ${opreq//$'\n'/ } --timeout=60s
+        fi
+        grep_args="${grep_args}-e $ns "
+    done
+
+    for ns in ${TENANT_NAMESPACES//,/ }; do
+        local opreq=$(${OC} get -n "$ns" operatorconfig --no-headers | cut -d ' ' -f1)
+        if [ "$opreq" != "" ]; then
+            ${OC} delete -n "$ns" operatorconfig ${opreq//$'\n'/ } --timeout=60s
+        fi
+        grep_args="${grep_args}-e $ns "
+    done
+
     for ns in ${TENANT_NAMESPACES//,/ }; do
         local opreq=$(${OC} get -n "$ns" operandrequests --no-headers | cut -d ' ' -f1)
         if [ "$opreq" != "" ]; then
@@ -215,8 +268,13 @@ function uninstall_odlm() {
         # ideally ODLM will ensure OperandRequests are cleaned up neatly
         wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
     done
+}
 
-        for ns in ${TENANT_NAMESPACES//,/ }; do
+function uninstall_odlm() {
+    title "Uninstalling ODLM"
+
+    local grep_args=""
+    for ns in ${TENANT_NAMESPACES//,/ }; do
         local sub=$(fetch_sub_from_package ibm-odlm $ns)
         if [ "$sub" != "" ]; then
             ${OC} delete --ignore-not-found -n "$ns" sub "$sub"
@@ -245,18 +303,26 @@ function uninstall_cs_operator() {
     done
 }
 
-function uninstall_nss() {
+function uninstall_nss_resource() {
     title "Uninstall ibm-namespace-scope-operator"
 
     for ns in ${TENANT_NAMESPACES//,/ }; do
-        ${OC} delete --ignore-not-found nss -n "$ns" common-service --timeout=30s
+        ${OC} delete --ignore-not-found namespacescope -n "$ns" common-service --timeout=30s
+        ${OC} delete --ignore-not-found configmap -n "$ns" namespace-scope --timeout=30s
         for op_ns in ${OPERATOR_NS_LIST//,/ }; do
             ${OC} delete --ignore-not-found rolebinding -n "$ns" "nss-managed-role-from-$op_ns"
             ${OC} delete --ignore-not-found role -n "$ns" "nss-managed-role-from-$op_ns"
             ${OC} delete --ignore-not-found rolebinding -n "$ns" "nss-runtime-managed-role-from-$op_ns"
             ${OC} delete --ignore-not-found role -n "$ns" "nss-runtime-managed-role-from-$op_ns"
         done
+    done
+}
 
+
+function uninstall_nss() {
+    title "Uninstall ibm-namespace-scope-operator"
+
+    for ns in ${TENANT_NAMESPACES//,/ }; do
         sub=$(fetch_sub_from_package ibm-namespace-scope-operator "$ns")
         if [ "$sub" != "" ]; then
             ${OC} delete --ignore-not-found -n "$ns" sub "$sub"
@@ -420,6 +486,23 @@ function cleanup_extra_resources() {
     done
     success "Excess resources cleaned up in retained tenant namespaces."
 }
+
+
+function uninstall_helm_resources() {
+    title "Uninstalling Helm releases in tenant namespaces"
+    for ns in ${TENANT_NAMESPACES//,/ }; do
+        local releases=$(helm list -n "$ns" --short)
+        if [[ "$releases" != "" ]]; then
+            for release in $releases; do
+                msg "Uninstalling Helm release: $release from namespace: $ns"
+                helm uninstall "$release" -n "$ns"
+            done
+        else
+            info "No Helm releases found in namespace: $ns"
+        fi
+    done
+}
+
 
 
 main $*
