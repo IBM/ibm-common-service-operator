@@ -2270,6 +2270,10 @@ spec:
             walStorage:
               resizeInUseVolumes: true
               size: 10Gi
+			  pvcTemplate:
+			      metadata:
+			        labels:
+			          velero.io/exclude-from-backup: true
             postgresql:
               parameters:
                 track_activities: "on"
