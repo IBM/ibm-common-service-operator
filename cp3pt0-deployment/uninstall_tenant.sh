@@ -141,7 +141,9 @@ function pre_req() {
 
     check_command "${OC}"
     check_command "${YQ}"
-    check_command "${HELM}"
+    if [[ "$NO_OLM" == "true" ]]; then
+        check_command "${HELM}"
+    fi
     check_yq_version
 
     # Checking oc command logged in
@@ -216,37 +218,6 @@ function uninstall_odlm_resource() {
     title "Uninstalling odlm resoource"
 
     local grep_args=""
-    for ns in ${TENANT_NAMESPACES//,/ }; do
-        local opreq=$(${OC} get -n "$ns" operandregistry --no-headers | cut -d ' ' -f1)
-        if [ "$opreq" != "" ]; then
-            ${OC} delete -n "$ns" operandregistry ${opreq//$'\n'/ } --timeout=60s
-        fi
-        grep_args="${grep_args}-e $ns "
-    done
-
-    for ns in ${TENANT_NAMESPACES//,/ }; do
-        local opreq=$(${OC} get -n "$ns" operandconfig --no-headers | cut -d ' ' -f1)
-        if [ "$opreq" != "" ]; then
-            ${OC} delete -n "$ns" operandconfig ${opreq//$'\n'/ } --timeout=60s
-        fi
-        grep_args="${grep_args}-e $ns "
-    done
-
-    for ns in ${TENANT_NAMESPACES//,/ }; do
-        local opreq=$(${OC} get -n "$ns" operandbindinfo --no-headers | cut -d ' ' -f1)
-        if [ "$opreq" != "" ]; then
-            ${OC} delete -n "$ns" operandbindinfo ${opreq//$'\n'/ } --timeout=60s
-        fi
-        grep_args="${grep_args}-e $ns "
-    done
-
-    for ns in ${TENANT_NAMESPACES//,/ }; do
-        local opreq=$(${OC} get -n "$ns" operatorconfig --no-headers | cut -d ' ' -f1)
-        if [ "$opreq" != "" ]; then
-            ${OC} delete -n "$ns" operatorconfig ${opreq//$'\n'/ } --timeout=60s
-        fi
-        grep_args="${grep_args}-e $ns "
-    done
 
     for ns in ${TENANT_NAMESPACES//,/ }; do
         local opreq=$(${OC} get -n "$ns" operandrequests --no-headers | cut -d ' ' -f1)
@@ -262,7 +233,7 @@ function uninstall_odlm_resource() {
 
     for ns in ${TENANT_NAMESPACES//,/ }; do
         local condition="${OC} get operandrequests -n ${ns} --no-headers | cut -d ' ' -f1 | grep -w ${grep_args} || echo Success"
-        local retries=20
+        local retries=30
         local sleep_time=10
         local total_time_mins=$(( sleep_time * retries / 60))
         local wait_message="Waiting for all OperandRequests in tenant namespaces:${ns} to be deleted"
@@ -271,6 +242,34 @@ function uninstall_odlm_resource() {
 
         # ideally ODLM will ensure OperandRequests are cleaned up neatly
         wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+    done
+
+    for ns in ${TENANT_NAMESPACES//,/ }; do
+        local opreq=$(${OC} get -n "$ns" operandregistry --no-headers | cut -d ' ' -f1)
+        if [ "$opreq" != "" ]; then
+            ${OC} delete -n "$ns" operandregistry ${opreq//$'\n'/ } --timeout=60s
+        fi
+    done
+
+    for ns in ${TENANT_NAMESPACES//,/ }; do
+        local opreq=$(${OC} get -n "$ns" operandconfig --no-headers | cut -d ' ' -f1)
+        if [ "$opreq" != "" ]; then
+            ${OC} delete -n "$ns" operandconfig ${opreq//$'\n'/ } --timeout=60s
+        fi
+    done
+
+    for ns in ${TENANT_NAMESPACES//,/ }; do
+        local opreq=$(${OC} get -n "$ns" operandbindinfo --no-headers | cut -d ' ' -f1)
+        if [ "$opreq" != "" ]; then
+            ${OC} delete -n "$ns" operandbindinfo ${opreq//$'\n'/ } --timeout=60s
+        fi
+    done
+
+    for ns in ${TENANT_NAMESPACES//,/ }; do
+        local opreq=$(${OC} get -n "$ns" operatorconfig --no-headers | cut -d ' ' -f1)
+        if [ "$opreq" != "" ]; then
+            ${OC} delete -n "$ns" operatorconfig ${opreq//$'\n'/ } --timeout=60s
+        fi
     done
 }
 
