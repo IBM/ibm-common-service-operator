@@ -79,6 +79,10 @@ function parse_arguments() {
             shift
             YQ=$1
             ;;
+        --helm)
+            shift
+            HELM=$1
+            ;;
         --operator-namespace)
             shift
             OPERATOR_NS=$1
@@ -86,7 +90,7 @@ function parse_arguments() {
         --retain-ns)
             RETAIN="true"
             ;;
-        --no-olm | --helm)
+        --no-olm)
             NO_OLM="true"
             ;;
         -f)
@@ -119,8 +123,9 @@ function print_usage() {
     echo "Options:"
     echo "   --oc string                    Optional. File path to oc CLI. Default uses oc in your PATH"
     echo "   --yq string                    Optional. File path to yq CLI. Default uses yq in your PATH"
+    echo "   --helm string                  Optional. File path to helm CLI. Default uses helm in your PATH"
     echo "   --operator-namespace string    Required. Namespace to uninstall Foundational services operators and the whole tenant."
-    echo "   --no-olm or --helm             Optional. Uninstall Foundational services operators and resources installed via Helm."
+    echo "   --no-olm                       Optional. Uninstall Foundational services operators and resources installed via Helm."
     echo "   -f                             Optional. Enable force delete. It will take much more time if you add this label, we suggest run this script without -f label first"
     echo "   --retain-ns                    Optional. Prevents script from deleting tenant namespaces during uninstall."
     echo "   -v, --debug integer            Optional. Verbosity of logs. Default is 0. Set to 1 for debug logs"
@@ -136,7 +141,7 @@ function pre_req() {
 
     check_command "${OC}"
     check_command "${YQ}"
-    check_command "helm"
+    check_command "${HELM}"
     check_yq_version
 
     # Checking oc command logged in
@@ -165,7 +170,6 @@ function set_tenant_namespaces() {
 
         # Get tenant namespaces from namespace-scope ConfigMap
         temp_namespace=$(${OC} get -n "$operator_ns" configmap namespace-scope -o jsonpath='{.data.namespaces}' --ignore-not-found)
-
         # Append temp_namespace if not empty
         if [[ -n "$temp_namespace" ]]; then
             if [[ -z "$TENANT_NAMESPACES" ]]; then
@@ -491,11 +495,11 @@ function cleanup_extra_resources() {
 function uninstall_helm_resources() {
     title "Uninstalling Helm releases in tenant namespaces"
     for ns in ${TENANT_NAMESPACES//,/ }; do
-        local releases=$(helm list -n "$ns" --short)
+        local releases=$(${HELM} list -n "$ns" --short)
         if [[ "$releases" != "" ]]; then
             for release in $releases; do
                 msg "Uninstalling Helm release: $release from namespace: $ns"
-                helm uninstall "$release" -n "$ns"
+                ${HELM} uninstall "$release" -n "$ns"
             done
         else
             info "No Helm releases found in namespace: $ns"
