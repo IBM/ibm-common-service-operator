@@ -14,6 +14,7 @@ set -o nounset
 
 OC=oc
 YQ=yq
+HELM=helm
 TENANT_NAMESPACES=""
 OPERATOR_NS_LIST=""
 CONTROL_NS=""
@@ -218,13 +219,13 @@ function uninstall_odlm_resource() {
     title "Uninstalling odlm resoource"
 
     local grep_args=""
-
+    info "Cleaning up OperandRequests in tenant namespaces"
     for ns in ${TENANT_NAMESPACES//,/ }; do
         local opreq=$(${OC} get -n "$ns" operandrequests --no-headers | cut -d ' ' -f1)
         if [ "$opreq" != "" ]; then
+            echo "Deleting OperandRequests ${opreq//$'\n'/ } in namespace: $ns"
             ${OC} delete -n "$ns" operandrequests ${opreq//$'\n'/ } --timeout=60s
         fi
-        grep_args="${grep_args}-e $ns "
     done
 
     if [ "$grep_args" == "" ]; then
@@ -232,7 +233,7 @@ function uninstall_odlm_resource() {
     fi
 
     for ns in ${TENANT_NAMESPACES//,/ }; do
-        local condition="${OC} get operandrequests -n ${ns} --no-headers | cut -d ' ' -f1 | grep -w ${grep_args} || echo Success"
+        local condition="${OC} get operandrequests -n ${ns} --no-headers 2>/dev/null | wc -l | grep '0'"
         local retries=30
         local sleep_time=10
         local total_time_mins=$(( sleep_time * retries / 60))
@@ -243,6 +244,8 @@ function uninstall_odlm_resource() {
         # ideally ODLM will ensure OperandRequests are cleaned up neatly
         wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
     done
+
+    info "Cleaning up remaining ODLM resources in tenant namespaces"
 
     for ns in ${TENANT_NAMESPACES//,/ }; do
         local opreq=$(${OC} get -n "$ns" operandregistry --no-headers | cut -d ' ' -f1)
@@ -342,6 +345,11 @@ function delete_webhook() {
     for ns in ${TENANT_NAMESPACES//,/ }; do
         ${OC} delete ValidatingWebhookConfiguration ibm-common-service-validating-webhook-${ns} --ignore-not-found
         ${OC} delete MutatingWebhookConfiguration ibm-common-service-webhook-configuration ibm-operandrequest-webhook-configuration namespace-admission-config ibm-operandrequest-webhook-configuration-${ns} --ignore-not-found
+        if [[ "$NO_OLM" == "true" ]]; then
+            ${OC} delete mutatingwebhookconfiguration postgresql-operator-mutating-webhook-configuration-${ns} --ignore-not-found
+            ${OC} delete validatingwebhookconfiguration postgresql-operator-validating-webhook-configuration-${ns} --ignore-not-found
+            ${OC} delete service postgresql-operator-webhook-service -n $ns --ignore-not-found
+        fi
     done
 }
 
