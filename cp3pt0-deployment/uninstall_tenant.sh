@@ -41,8 +41,12 @@ function main() {
     trap cleanup_log EXIT
     pre_req
     set_tenant_namespaces
-    uninstall_odlm_resource
-    uninstall_nss_resource
+    # only waiting for OperandRequests to be deleted when not retaining namespaces
+    if [[ $RETAIN == "true" ]]; then
+        uninstall_odlm_resource
+        uninstall_nss_resource
+    fi
+    
     delete_rbac_resource
 
     if [[ "$NO_OLM" == "true" ]]; then
