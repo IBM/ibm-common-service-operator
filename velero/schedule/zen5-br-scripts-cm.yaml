@@ -297,9 +297,9 @@ data:
         oc patch secret -n $ZEN_NAMESPACE admin-user-details --patch="{\"data\": { \"initial_admin_password\": \"$(base64 -w0 $BACKUP_DIR/secrets/initial_admin_password)\" }}"
 
         #Update zen extensions
-        if [[ $ZEN_CORE_RC == "0" ]]; then
-            info "zen-core deployment not scaled up before rerunning, setting replica value to 2"
-            ZEN_CORE_RC=2
+        if [[ $ZEN_CORE_API_RC == "0" ]]; then
+            info "zen-core-api deployment not scaled up before rerunning, setting replica value to 2"
+            ZEN_CORE_API_RC=2
         fi
         if [[ $USERMGMT_RC == "0" ]]; then
             info "usermgmt deployment not scaled up before rerunning, setting replica value to 2"
@@ -324,6 +324,10 @@ data:
         if [[ $ZEN_CORE_API_RC == "0" ]]; then
             info "zen-core-api deployment not scaled up before rerunning, setting replica value to 2"
             ZEN_CORE_API_RC=2
+        fi
+        if [[ $ZEN_CORE_RC == "0" ]]; then
+            info "zen-core deployment not scaled up before rerunning, setting replica value to 2"
+            ZEN_CORE_RC=2
         fi
         if [[ $ZEN_WATCHER_RC == "0" ]]; then
             info "zen-watcher deployment not scaled up before rerunning, setting replica value to 1"
