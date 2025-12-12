@@ -111,7 +111,10 @@ func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instance *apiv3.CommonService) (ctrl.Result, error) {
 
 	var statusErr error
-	// Defer to Set error/ready/warning condition
+	// capture original copy early to compare status changes later and avoid unnecessary Status().Update calls
+	originalInstance := instance.DeepCopy()
+	originalStatus := originalInstance.Status
+	// Defer to Set error/ready/warning condition and update status only if changed
 	defer func() {
 		if err := r.Bootstrap.CheckWarningCondition(instance); err != nil {
 			klog.Warning(err)
@@ -122,13 +125,13 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 		} else {
 			instance.SetReadyCondition(constant.KindCR, apiv3.ConditionTypeReady, corev1.ConditionTrue)
 		}
-		if err := r.Client.Status().Update(ctx, instance); err != nil {
-			klog.Warning(err)
-			return
+		// update status only when it actually changed
+		if !reflect.DeepEqual(originalStatus, instance.Status) {
+			if err := r.Client.Status().Update(ctx, instance); err != nil {
+				klog.Warning(err)
+			}
 		}
 	}()
-
-	originalInstance := instance.DeepCopy()
 
 	operatorDeployed, servicesDeployed := r.Bootstrap.CheckDeployStatus(ctx)
 	instance.UpdateConfigStatus(&r.Bootstrap.CSData, operatorDeployed, servicesDeployed)
