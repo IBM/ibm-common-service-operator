@@ -130,6 +130,8 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 			if err := r.Client.Status().Update(ctx, instance); err != nil {
 				klog.Warning(err)
 			}
+		} else {
+			klog.V(2).Infof("No status change for CommonService: %s/%s, skipping update", instance.Namespace, instance.Name)
 		}
 	}()
 
