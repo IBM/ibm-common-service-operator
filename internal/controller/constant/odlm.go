@@ -749,7 +749,7 @@ spec:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       operandBindInfo: 
         operand: ibm-im-operator
-  - name: ibm-im-operator-v4.15
+  - name: ibm-im-operator-v4.16
     spec:
       authentication:
         config:
