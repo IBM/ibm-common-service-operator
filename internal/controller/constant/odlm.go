@@ -230,6 +230,14 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+  - name: ibm-im-operator-v4.16
+    namespace: "{{ .CPFSNs }}"
+    channel: v4.16
+    packageName: ibm-iam-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
 	IdpConfigUIOpReg = `
@@ -728,6 +736,13 @@ spec:
       operandBindInfo: 
         operand: ibm-im-operator
   - name: ibm-im-operator-v4.14
+    spec:
+      authentication:
+        config:
+          onPremMultipleDeploy: {{ .OnPremMultiEnable }}
+      operandBindInfo: 
+        operand: ibm-im-operator
+  - name: ibm-im-operator-v4.15
     spec:
       authentication:
         config:
