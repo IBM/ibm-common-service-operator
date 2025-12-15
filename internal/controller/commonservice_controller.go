@@ -121,12 +121,15 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 			return
 		}
 		if statusErr != nil {
+			klog.V(2).Infof("CommonService CR: %s/%s in error status", instance.Namespace, instance.Name)
 			instance.SetErrorCondition(constant.MasterCR, apiv3.ConditionTypeError, corev1.ConditionTrue, apiv3.ConditionReasonError, statusErr.Error())
 		} else {
+			klog.V(2).Infof("CommonService CR: %s/%s in ready status", instance.Namespace, instance.Name)
 			instance.SetReadyCondition(constant.KindCR, apiv3.ConditionTypeReady, corev1.ConditionTrue)
 		}
 		// update status only when it actually changed
 		if !reflect.DeepEqual(originalStatus, instance.Status) {
+			klog.V(2).Infof("Updating status in CommonService CR: %s/%s", instance.Namespace, instance.Name)
 			if err := r.Client.Status().Update(ctx, instance); err != nil {
 				klog.Warning(err)
 			}
