@@ -2850,7 +2850,7 @@ spec:
     sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-im-operator
     namespace: "{{ .CPFSNs }}"
-    channel: v4.15
+    channel: v4.16
     packageName: ibm-iam-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
