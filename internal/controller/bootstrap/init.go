@@ -1070,12 +1070,29 @@ func (b *Bootstrap) deleteWebhookResources() error {
 		return err
 	}
 
-	if err := b.deleteResource(&rbacv1.ClusterRole{}, constant.WebhookServiceName, "", "ClusterRole"); err != nil {
-		return err
+	// Cluster-scoped RBAC cleanup is optional. Gate it via SSAR so the operator can run with a
+	// minimized default ClusterRole (i.e. without clusterroles/clusterrolebindings delete).
+	allowedCR, err := b.canI(ctx, "rbac.authorization.k8s.io", "clusterroles", "delete", constant.WebhookServiceName)
+	if err != nil {
+		klog.V(2).Infof("Skipping legacy ClusterRole cleanup for %q: SSAR failed: %v", constant.WebhookServiceName, err)
+	} else if !allowedCR {
+		klog.V(2).Infof("Skipping legacy ClusterRole cleanup for %q: not permitted", constant.WebhookServiceName)
+	} else {
+		if err := b.deleteResource(&rbacv1.ClusterRole{}, constant.WebhookServiceName, "", "ClusterRole"); err != nil {
+			return err
+		}
 	}
 
-	if err := b.deleteResource(&rbacv1.ClusterRoleBinding{}, "ibm-common-service-webhook-"+b.CSData.ServicesNs, "", "ClusterRoleBinding"); err != nil {
-		return err
+	crbName := "ibm-common-service-webhook-" + b.CSData.ServicesNs
+	allowedCRB, err := b.canI(ctx, "rbac.authorization.k8s.io", "clusterrolebindings", "delete", crbName)
+	if err != nil {
+		klog.V(2).Infof("Skipping legacy ClusterRoleBinding cleanup for %q: SSAR failed: %v", crbName, err)
+	} else if !allowedCRB {
+		klog.V(2).Infof("Skipping legacy ClusterRoleBinding cleanup for %q: not permitted", crbName)
+	} else {
+		if err := b.deleteResource(&rbacv1.ClusterRoleBinding{}, crbName, "", "ClusterRoleBinding"); err != nil {
+			return err
+		}
 	}
 
 	// Delete Deployment
