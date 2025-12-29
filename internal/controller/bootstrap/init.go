@@ -1109,13 +1109,27 @@ func (b *Bootstrap) deleteSecretShareResources() error {
 		return err
 	}
 
-	// Delete SecretShare ClusterRole and ClusterRoleBinding
-	if err := b.deleteResource(&rbacv1.ClusterRole{}, constant.Secretshare, "", "ClusterRole"); err != nil {
-		return err
+	allowedCR, err := b.canI(ctx, "rbac.authorization.k8s.io", "clusterroles", "delete", constant.Secretshare)
+	if err != nil {
+		klog.V(2).Infof("Skipping SecretShare ClusterRole cleanup for %q: SSAR failed: %v", constant.Secretshare, err)
+	} else if !allowedCR {
+		klog.V(2).Infof("Skipping SecretShare ClusterRole cleanup for %q: not permitted", constant.Secretshare)
+	} else {
+		if err := b.deleteResource(&rbacv1.ClusterRole{}, constant.Secretshare, "", "ClusterRole"); err != nil {
+			return err
+		}
 	}
 
-	if err := b.deleteResource(&rbacv1.ClusterRoleBinding{}, "secretshare-"+b.CSData.ServicesNs, "", "ClusterRoleBinding"); err != nil {
-		return err
+	crbName := "secretshare-" + b.CSData.ServicesNs
+	allowedCRB, err := b.canI(ctx, "rbac.authorization.k8s.io", "clusterrolebindings", "delete", crbName)
+	if err != nil {
+		klog.V(2).Infof("Skipping SecretShare ClusterRoleBinding cleanup for %q: SSAR failed: %v", crbName, err)
+	} else if !allowedCRB {
+		klog.V(2).Infof("Skipping SecretShare ClusterRoleBinding cleanup for %q: not permitted", crbName)
+	} else {
+		if err := b.deleteResource(&rbacv1.ClusterRoleBinding{}, crbName, "", "ClusterRoleBinding"); err != nil {
+			return err
+		}
 	}
 
 	exist, err := b.CheckCRD("ibmcpcs.ibm.com/v1", "SecretShare")
