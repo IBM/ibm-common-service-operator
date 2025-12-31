@@ -107,8 +107,8 @@ func (b *Bootstrap) canI(ctx context.Context, group, resource, verb, name string
 		return false, err
 	}
 
-	// print some status for debug
-	klog.Infof("SSAR for verb=%s, resource=%s.%s, name=%s: allowed=%v, reason=%s", verb, resource, group, name, ssar.Status.Allowed, ssar.Status.Reason)
+	// Note: log at a low verbosity since this can be called frequently.
+	klog.V(4).Infof("SSAR verb=%s resource=%s.%s name=%s => allowed=%v reason=%q", verb, resource, group, name, ssar.Status.Allowed, ssar.Status.Reason)
 
 	return ssar.Status.Allowed, nil
 }
@@ -1015,15 +1015,36 @@ func (b *Bootstrap) CreateKeycloakThemesConfigMap() error {
 
 func (b *Bootstrap) DeleteV3Resources(mutatingWebhooks, validatingWebhooks []string) error {
 
-	// Delete the list of MutatingWebhookConfigurations
+	// Cluster-scoped webhook cleanup is optional. Gate it via SSAR so the operator can run with a
+	// minimized default ClusterRole (i.e. without mutatingwebhookconfigurations/validatingwebhookconfigurations delete).
+	//
+	// MutatingWebhookConfigurations
 	for _, webhook := range mutatingWebhooks {
+		allowed, err := b.canI(ctx, "admissionregistration.k8s.io", "mutatingwebhookconfigurations", "delete", webhook)
+		if err != nil {
+			klog.V(2).Infof("Skipping MutatingWebhookConfiguration cleanup for %q: SSAR failed: %v", webhook, err)
+			continue
+		}
+		if !allowed {
+			klog.V(2).Infof("Skipping MutatingWebhookConfiguration cleanup for %q: not permitted", webhook)
+			continue
+		}
 		if err := b.deleteResource(&admv1.MutatingWebhookConfiguration{}, webhook, "", "MutatingWebhookConfiguration"); err != nil {
 			return err
 		}
 	}
 
-	// Delete the list of ValidatingWebhookConfiguration
+	// ValidatingWebhookConfigurations
 	for _, webhook := range validatingWebhooks {
+		allowed, err := b.canI(ctx, "admissionregistration.k8s.io", "validatingwebhookconfigurations", "delete", webhook)
+		if err != nil {
+			klog.V(2).Infof("Skipping ValidatingWebhookConfiguration cleanup for %q: SSAR failed: %v", webhook, err)
+			continue
+		}
+		if !allowed {
+			klog.V(2).Infof("Skipping ValidatingWebhookConfiguration cleanup for %q: not permitted", webhook)
+			continue
+		}
 		if err := b.deleteResource(&admv1.ValidatingWebhookConfiguration{}, webhook, "", "ValidatingWebhookConfiguration"); err != nil {
 			return err
 		}
@@ -1109,6 +1130,8 @@ func (b *Bootstrap) deleteSecretShareResources() error {
 		return err
 	}
 
+	// Cluster-scoped RBAC cleanup is optional. Gate it via SSAR so the operator can run with a
+	// minimized default ClusterRole (i.e. without clusterroles/clusterrolebindings delete).
 	allowedCR, err := b.canI(ctx, "rbac.authorization.k8s.io", "clusterroles", "delete", constant.Secretshare)
 	if err != nil {
 		klog.V(2).Infof("Skipping SecretShare ClusterRole cleanup for %q: SSAR failed: %v", constant.Secretshare, err)
