@@ -296,22 +296,20 @@ spec:
               verbs:
                 - get
                 - delete
+            # Allow the operator to dynamically check whether it has optional/privileged
+            # permissions (e.g., cluster-scoped RBAC cleanup) via SelfSubjectAccessReview.
+            - apiGroups:
+                - authorization.k8s.io
+              resources:
+                - selfsubjectaccessreviews
+              verbs:
+                - create
             - apiGroups:
                 - config.openshift.io
               resources:
                 - infrastructures
               verbs:
                 - get
-            - apiGroups:
-                - rbac.authorization.k8s.io
-              resources:
-                - clusterrolebindings
-                - clusterroles
-              verbs:
-                - get
-                - delete
-                - list
-                - watch
           serviceAccountName: ibm-common-service-operator
       deployments:
         - label:
