@@ -288,14 +288,6 @@ spec:
               verbs:
                 - get
                 - list
-            - apiGroups:
-                - admissionregistration.k8s.io
-              resources:
-                - mutatingwebhookconfigurations
-                - validatingwebhookconfigurations
-              verbs:
-                - get
-                - delete
             # Allow the operator to dynamically check whether it has optional/privileged
             # permissions (e.g., cluster-scoped RBAC cleanup) via SelfSubjectAccessReview.
             - apiGroups:
