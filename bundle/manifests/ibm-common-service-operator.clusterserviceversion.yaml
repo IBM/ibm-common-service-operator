@@ -281,13 +281,6 @@ spec:
                 - secrets
               verbs:
                 - get
-            - apiGroups:
-                - storage.k8s.io
-              resources:
-                - storageclasses
-              verbs:
-                - get
-                - list
             # Allow the operator to dynamically check whether it has optional/privileged
             # permissions (e.g., cluster-scoped RBAC cleanup) via SelfSubjectAccessReview.
             - apiGroups:
