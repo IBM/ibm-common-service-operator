@@ -289,12 +289,6 @@ spec:
                 - selfsubjectaccessreviews
               verbs:
                 - create
-            - apiGroups:
-                - config.openshift.io
-              resources:
-                - infrastructures
-              verbs:
-                - get
           serviceAccountName: ibm-common-service-operator
       deployments:
         - label:
