@@ -275,12 +275,6 @@ spec:
                 - list
                 - watch
                 - update
-            - apiGroups:
-                - ""
-              resources:
-                - secrets
-              verbs:
-                - get
             # Allow the operator to dynamically check whether it has optional/privileged
             # permissions (e.g., cluster-scoped RBAC cleanup) via SelfSubjectAccessReview.
             - apiGroups:
