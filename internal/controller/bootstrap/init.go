@@ -269,7 +269,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 	}
 
 	// Check storageClass
-	if err := util.CheckStorageClass(b.Reader); err != nil {
+	if err := util.CheckStorageClass(ctx, b); err != nil {
 		return err
 	}
 
