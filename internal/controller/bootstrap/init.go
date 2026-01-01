@@ -394,6 +394,15 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 
 // CheckWarningCondition
 func (b *Bootstrap) CheckWarningCondition(instance *apiv3.CommonService) error {
+	allowed, err := b.canI(ctx, "storage.k8s.io", "storageclasses", "list", "")
+	if err != nil {
+		return err
+	}
+	if !allowed {
+		klog.V(4).Info("Skipping StorageClass warning checks; not authorized to list storageclasses")
+		return nil
+	}
+
 	csStorageClass := &storagev1.StorageClassList{}
 	err = b.Reader.List(context.TODO(), csStorageClass)
 	if err != nil {
