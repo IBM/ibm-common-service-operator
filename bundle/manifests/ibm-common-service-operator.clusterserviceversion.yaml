@@ -267,51 +267,14 @@ spec:
                 - update
             - apiGroups:
                 - ""
+            # Allow the operator to dynamically check whether it has optional/privileged
+            # permissions (e.g., cluster-scoped RBAC cleanup) via SelfSubjectAccessReview.
+            - apiGroups:
+                - authorization.k8s.io
               resources:
-                - configmaps
+                - selfsubjectaccessreviews
               verbs:
                 - create
-                - get
-                - list
-                - watch
-                - update
-            - apiGroups:
-                - ""
-              resources:
-                - secrets
-              verbs:
-                - get
-            - apiGroups:
-                - storage.k8s.io
-              resources:
-                - storageclasses
-              verbs:
-                - get
-                - list
-            - apiGroups:
-                - admissionregistration.k8s.io
-              resources:
-                - mutatingwebhookconfigurations
-                - validatingwebhookconfigurations
-              verbs:
-                - get
-                - delete
-            - apiGroups:
-                - config.openshift.io
-              resources:
-                - infrastructures
-              verbs:
-                - get
-            - apiGroups:
-                - rbac.authorization.k8s.io
-              resources:
-                - clusterrolebindings
-                - clusterroles
-              verbs:
-                - get
-                - delete
-                - list
-                - watch
           serviceAccountName: ibm-common-service-operator
       deployments:
         - label:
