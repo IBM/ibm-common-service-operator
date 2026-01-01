@@ -1453,6 +1453,15 @@ func (b *Bootstrap) CheckClusterType(ns string) (bool, error) {
 		if apiList.GroupVersion == "config.openshift.io/v1" {
 			for _, r := range apiList.APIResources {
 				if r.Kind == "Infrastructure" {
+					allowed, err := b.canI(ctx, "config.openshift.io", "infrastructures", "get", "cluster")
+					if err != nil {
+						return false, err
+					}
+					if !allowed {
+						klog.V(4).Info("Skipping OpenShift Infrastructure detection; not authorized to get config.openshift.io/infrastructures")
+						continue
+					}
+
 					infraObj := &unstructured.Unstructured{}
 					infraObj.SetGroupVersionKind(schema.GroupVersionKind{
 						Group:   "config.openshift.io",
