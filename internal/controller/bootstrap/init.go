@@ -113,6 +113,19 @@ func (b *Bootstrap) canI(ctx context.Context, group, resource, verb, name string
 	return ssar.Status.Allowed, nil
 }
 
+// CanI performs a SelfSubjectAccessReview (SSAR) to check whether the operator service account
+// is authorized for the given verb/resource.
+//
+// This is an exported wrapper so other packages can reuse the same SSAR logic.
+func (b *Bootstrap) CanI(ctx context.Context, group, resource, verb, name string) (bool, error) {
+	return b.canI(ctx, group, resource, verb, name)
+}
+
+// GetReader exposes the controller-runtime Reader for helper packages that need read-only access.
+func (b *Bootstrap) GetReader() client.Reader {
+	return b.Reader
+}
+
 type CSOperator struct {
 	Name       string
 	CRD        string
@@ -382,7 +395,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 // CheckWarningCondition
 func (b *Bootstrap) CheckWarningCondition(instance *apiv3.CommonService) error {
 	csStorageClass := &storagev1.StorageClassList{}
-	err := b.Reader.List(context.TODO(), csStorageClass)
+	err = b.Reader.List(context.TODO(), csStorageClass)
 	if err != nil {
 		return err
 	}
