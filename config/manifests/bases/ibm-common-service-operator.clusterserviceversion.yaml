@@ -263,6 +263,14 @@ spec:
   - email: support@ibm.com
     name: IBM Support
   maturity: alpha
+          # Allow the operator to dynamically check whether it has optional/privileged
+          # permissions (e.g., cluster-scoped RBAC cleanup) via SelfSubjectAccessReview.
+          - apiGroups:
+              - authorization.k8s.io
+            resources:
+              - selfsubjectaccessreviews
+            verbs:
+              - create
   minKubeVersion: 1.19.0
   provider:
     name: IBM

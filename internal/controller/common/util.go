@@ -348,10 +348,25 @@ func GetCmOfMapCs(r client.Reader) (*corev1.ConfigMap, error) {
 	return csConfigmap, nil
 }
 
-// CheckStorageClass gets StorageClassList in current cluster, then validates whether StorageClass created
-func CheckStorageClass(r client.Reader) error {
+// CheckStorageClass gets StorageClassList in current cluster, then validates whether StorageClass created.
+//
+// Note: This is now best-effort and may be skipped when the operator is not authorized to list
+// StorageClasses.
+func CheckStorageClass(ctx context.Context, bs interface {
+	CanI(context.Context, string, string, string, string) (bool, error)
+	GetReader() client.Reader
+}) error {
+	allowed, err := bs.CanI(ctx, "storage.k8s.io", "storageclasses", "list", "")
+	if err != nil {
+		return err
+	}
+	if !allowed {
+		klog.V(4).Info("Skipping StorageClass validation; not authorized to list storageclasses")
+		return nil
+	}
+
 	csStorageClass := &storagev1.StorageClassList{}
-	err := r.List(context.TODO(), csStorageClass)
+	err = bs.GetReader().List(ctx, csStorageClass)
 	if err != nil {
 		return fmt.Errorf("fail to list storageClass: %v", err)
 	}
