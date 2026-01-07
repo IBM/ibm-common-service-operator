@@ -12,7 +12,7 @@ spec:
     spec:
       containers:
       - name: bedrock-migration-job
-        image: {{ .Values.cpfs.imagePullPrefix | default .Values.global.imagePullPrefix }}/{{ .Values.cpfs.imageRegistryNamespaceOperand }}/cpfs-utils:latest
+        image: {{ .Values.global.installConfigImagePullPrefix | default (.Values.cpfs.imagePullPrefix | default .Values.global.imagePullPrefix) }}/{{ .Values.cpfs.imageRegistryNamespaceOperand }}/cpfs-utils:latest
         command:
           - bash
           - -c
