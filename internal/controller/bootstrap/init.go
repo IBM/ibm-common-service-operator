@@ -1014,8 +1014,20 @@ func (b *Bootstrap) CreateKeycloakThemesConfigMap() error {
 
 func (b *Bootstrap) DeleteV3Resources(mutatingWebhooks, validatingWebhooks []string) error {
 
-	// Delete the list of MutatingWebhookConfigurations
+	// Cluster-scoped webhook cleanup is optional. Gate it via SSAR so the operator can run with a
+	// minimized default ClusterRole (i.e. without mutatingwebhookconfigurations/validatingwebhookconfigurations delete).
+	//
+	// MutatingWebhookConfigurations
 	for _, webhook := range mutatingWebhooks {
+		allowed, err := b.CanI(ctx, "admissionregistration.k8s.io", "mutatingwebhookconfigurations", "delete", webhook)
+		if err != nil {
+			klog.Infof("2222 Skipping MutatingWebhookConfiguration cleanup for %q: SSAR failed: %v", webhook, err)
+			continue
+		}
+		if !allowed {
+			klog.Infof("2222 Skipping MutatingWebhookConfiguration cleanup for %q: not permitted", webhook)
+			continue
+		}
 		if err := b.deleteResource(&admv1.MutatingWebhookConfiguration{}, webhook, "", "MutatingWebhookConfiguration"); err != nil {
 			return err
 		}
