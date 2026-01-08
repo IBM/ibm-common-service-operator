@@ -288,14 +288,16 @@ spec:
               verbs:
                 - get
                 - list
-            - apiGroups:
-                - admissionregistration.k8s.io
-              resources:
-                - mutatingwebhookconfigurations
-                - validatingwebhookconfigurations
-              verbs:
-                - get
-                - delete
+            # Optional: enable legacy webhook cleanup (cluster-scoped).
+            # If you add this rule back to your installation RBAC, the operator will
+            # detect it via SSAR and delete old webhook configurations during bootstrap.
+            # - apiGroups:
+            #     - admissionregistration.k8s.io
+            #   resources:
+            #     - mutatingwebhookconfigurations
+            #     - validatingwebhookconfigurations
+            #   verbs:
+            #     - delete
             - apiGroups:
                 - config.openshift.io
               resources:
