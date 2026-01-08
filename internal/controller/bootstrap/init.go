@@ -33,6 +33,7 @@ import (
 	"golang.org/x/mod/semver"
 	admv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
+	authzv1 "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -81,6 +82,34 @@ type Bootstrap struct {
 	MultiInstancesEnable bool
 	CSOperators          []CSOperator
 	CSData               apiv3.CSData
+}
+
+// CanI performs a SelfSubjectAccessReview (SSAR) to check whether the operator service account
+// is allowed to perform the given verb on the given resource.
+//
+// Notes:
+//   - This allows us to keep the default ClusterRole minimal and still do optional cleanup
+//   - If the SSAR itself cannot be created (RBAC missing / API not served), we default to "not allowed"
+//     and return the error so callers can log it.
+func (b *Bootstrap) CanI(ctx context.Context, group, resource, verb, name string) (bool, error) {
+	ssar := &authzv1.SelfSubjectAccessReview{
+		Spec: authzv1.SelfSubjectAccessReviewSpec{
+			ResourceAttributes: &authzv1.ResourceAttributes{
+				Group:    group,
+				Resource: resource,
+				Verb:     verb,
+				Name:     name,
+			},
+		},
+	}
+
+	if err := b.Client.Create(ctx, ssar); err != nil {
+		return false, err
+	}
+
+	klog.Infof("1111 SSAR verb=%s resource=%s.%s name=%s => allowed=%v reason=%q", verb, resource, group, name, ssar.Status.Allowed, ssar.Status.Reason)
+
+	return ssar.Status.Allowed, nil
 }
 
 type CSOperator struct {
