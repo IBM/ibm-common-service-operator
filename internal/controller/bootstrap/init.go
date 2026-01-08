@@ -107,7 +107,7 @@ func (b *Bootstrap) CanI(ctx context.Context, group, resource, verb, name string
 		return false, err
 	}
 
-	klog.Infof("1111 SSAR verb=%s resource=%s.%s name=%s => allowed=%v reason=%q", verb, resource, group, name, ssar.Status.Allowed, ssar.Status.Reason)
+	klog.V(2).Infof("SSAR verb=%s resource=%s.%s name=%s => allowed=%v reason=%q", verb, resource, group, name, ssar.Status.Allowed, ssar.Status.Reason)
 
 	return ssar.Status.Allowed, nil
 }
@@ -1021,11 +1021,11 @@ func (b *Bootstrap) DeleteV3Resources(mutatingWebhooks, validatingWebhooks []str
 	for _, webhook := range mutatingWebhooks {
 		allowed, err := b.CanI(ctx, "admissionregistration.k8s.io", "mutatingwebhookconfigurations", "delete", webhook)
 		if err != nil {
-			klog.Infof("2222 Skipping MutatingWebhookConfiguration cleanup for %q: SSAR failed: %v", webhook, err)
+			klog.Warningf("Skipping MutatingWebhookConfiguration cleanup for %q: SSAR failed: %v", webhook, err)
 			continue
 		}
 		if !allowed {
-			klog.Infof("2222 Skipping MutatingWebhookConfiguration cleanup for %q: not permitted", webhook)
+			klog.Warningf("Skipping MutatingWebhookConfiguration cleanup for %q: not permitted", webhook)
 			continue
 		}
 		if err := b.deleteResource(&admv1.MutatingWebhookConfiguration{}, webhook, "", "MutatingWebhookConfiguration"); err != nil {
@@ -1037,11 +1037,11 @@ func (b *Bootstrap) DeleteV3Resources(mutatingWebhooks, validatingWebhooks []str
 	for _, webhook := range validatingWebhooks {
 		allowed, err := b.CanI(ctx, "admissionregistration.k8s.io", "validatingwebhookconfigurations", "delete", webhook)
 		if err != nil {
-			klog.Infof("3333 Skipping ValidatingWebhookConfiguration cleanup for %q: SSAR failed: %v", webhook, err)
+			klog.Warningf("Skipping ValidatingWebhookConfiguration cleanup for %q: SSAR failed: %v", webhook, err)
 			continue
 		}
 		if !allowed {
-			klog.Infof("3333 Skipping ValidatingWebhookConfiguration cleanup for %q: not permitted", webhook)
+			klog.Warningf("Skipping ValidatingWebhookConfiguration cleanup for %q: not permitted", webhook)
 			continue
 		}
 		if err := b.deleteResource(&admv1.ValidatingWebhookConfiguration{}, webhook, "", "ValidatingWebhookConfiguration"); err != nil {
@@ -2060,10 +2060,10 @@ func (b *Bootstrap) CleanupWebhookResources() error {
 		validatingWebhookConfiguration.Name)
 
 	if err != nil {
-		klog.Infof("Skipping ValidatingWebhookConfiguration cleanup for %q: SSAR failed: %v",
+		klog.Warningf("Skipping ValidatingWebhookConfiguration cleanup for %q: SSAR failed: %v",
 			validatingWebhookConfiguration.Name, err)
 	} else if !allowed {
-		klog.Infof("Skipping ValidatingWebhookConfiguration cleanup for %q: not permitted",
+		klog.Warningf("Skipping ValidatingWebhookConfiguration cleanup for %q: not permitted",
 			validatingWebhookConfiguration.Name)
 	} else {
 		// cleanup old webhookconfigurations and services
@@ -2078,10 +2078,10 @@ func (b *Bootstrap) CleanupWebhookResources() error {
 		mutatingWebhookConfiguration.Name)
 
 	if err != nil {
-		klog.Infof("Skipping MutatingWebhookConfiguration cleanup for %q: SSAR failed: %v",
+		klog.Warningf("Skipping MutatingWebhookConfiguration cleanup for %q: SSAR failed: %v",
 			mutatingWebhookConfiguration.Name, err)
 	} else if !allowed {
-		klog.Infof("Skipping MutatingWebhookConfiguration cleanup for %q: not permitted",
+		klog.Warningf("Skipping MutatingWebhookConfiguration cleanup for %q: not permitted",
 			mutatingWebhookConfiguration.Name)
 	} else {
 		if err := b.Cleanup(b.CSData.OperatorNs, &mutatingWebhookConfiguration); err != nil {
