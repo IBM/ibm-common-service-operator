@@ -1033,8 +1033,17 @@ func (b *Bootstrap) DeleteV3Resources(mutatingWebhooks, validatingWebhooks []str
 		}
 	}
 
-	// Delete the list of ValidatingWebhookConfiguration
+	// ValidatingWebhookConfigurations
 	for _, webhook := range validatingWebhooks {
+		allowed, err := b.CanI(ctx, "admissionregistration.k8s.io", "validatingwebhookconfigurations", "delete", webhook)
+		if err != nil {
+			klog.Infof("3333 Skipping ValidatingWebhookConfiguration cleanup for %q: SSAR failed: %v", webhook, err)
+			continue
+		}
+		if !allowed {
+			klog.Infof("3333 Skipping ValidatingWebhookConfiguration cleanup for %q: not permitted", webhook)
+			continue
+		}
 		if err := b.deleteResource(&admv1.ValidatingWebhookConfiguration{}, webhook, "", "ValidatingWebhookConfiguration"); err != nil {
 			return err
 		}
