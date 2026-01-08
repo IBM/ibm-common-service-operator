@@ -113,15 +113,6 @@ rules:
   - patch
   - update
   - watch
-# used for webhook operator
-- apiGroups:
-  - admissionregistration.k8s.io
-  resources:
-  - mutatingwebhookconfigurations
-  - validatingwebhookconfigurations
-  verbs:
-  - get
-  - delete
 - apiGroups:
   - ""
   resources:

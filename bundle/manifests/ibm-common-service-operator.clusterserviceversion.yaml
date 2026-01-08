@@ -23,7 +23,7 @@ metadata:
     capabilities: Seamless Upgrades
     cloudPakThemesVersion: styles4100.css
     containerImage: icr.io/cpopen/common-service-operator:4.17.0
-    createdAt: "2025-10-22T16:14:35Z"
+    createdAt: "2026-01-08T21:38:48Z"
     description: The IBM Cloud Pak foundational services operator is used to deploy IBM foundational services.
     features.operators.openshift.io/disconnected: "true"
     features.operators.openshift.io/fips-compliant: "true"
@@ -39,7 +39,7 @@ metadata:
     operatorVersion: 4.17.0
     operators.openshift.io/infrastructure-features: '["disconnected"]'
     operators.operatorframework.io/builder: operator-sdk-v1.38.0
-    operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v4-alpha
     repository: https://github.com/IBM/ibm-common-service-operator
     support: IBM
   labels:
@@ -288,16 +288,6 @@ spec:
               verbs:
                 - get
                 - list
-            # Optional: enable legacy webhook cleanup (cluster-scoped).
-            # If you add this rule back to your installation RBAC, the operator will
-            # detect it via SSAR and delete old webhook configurations during bootstrap.
-            # - apiGroups:
-            #     - admissionregistration.k8s.io
-            #   resources:
-            #     - mutatingwebhookconfigurations
-            #     - validatingwebhookconfigurations
-            #   verbs:
-            #     - delete
             - apiGroups:
                 - config.openshift.io
               resources:
