@@ -9,7 +9,7 @@ LABEL operators.operatorframework.io.bundle.channels.v1=v4.17
 LABEL operators.operatorframework.io.bundle.channel.default.v1=v4.17
 LABEL operators.operatorframework.io.metrics.builder=operator-sdk-v1.38.0
 LABEL operators.operatorframework.io.metrics.mediatype.v1=metrics+v1
-LABEL operators.operatorframework.io.metrics.project_layout=go.kubebuilder.io/v4
+LABEL operators.operatorframework.io.metrics.project_layout=go.kubebuilder.io/v4-alpha
 
 # Labels for testing.
 LABEL operators.operatorframework.io.test.mediatype.v1=scorecard+v1
