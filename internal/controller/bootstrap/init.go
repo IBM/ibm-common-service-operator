@@ -33,6 +33,7 @@ import (
 	"golang.org/x/mod/semver"
 	admv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
+	authzv1 "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -81,6 +82,34 @@ type Bootstrap struct {
 	MultiInstancesEnable bool
 	CSOperators          []CSOperator
 	CSData               apiv3.CSData
+}
+
+// CanI performs a SelfSubjectAccessReview (SSAR) to check whether the operator service account
+// is allowed to perform the given verb on the given resource.
+//
+// Notes:
+//   - This allows us to keep the default ClusterRole minimal and still do optional cleanup
+//   - If the SSAR itself cannot be created (RBAC missing / API not served), we default to "not allowed"
+//     and return the error so callers can log it.
+func (b *Bootstrap) CanI(ctx context.Context, group, resource, verb, name string) (bool, error) {
+	ssar := &authzv1.SelfSubjectAccessReview{
+		Spec: authzv1.SelfSubjectAccessReviewSpec{
+			ResourceAttributes: &authzv1.ResourceAttributes{
+				Group:    group,
+				Resource: resource,
+				Verb:     verb,
+				Name:     name,
+			},
+		},
+	}
+
+	if err := b.Client.Create(ctx, ssar); err != nil {
+		return false, err
+	}
+
+	klog.V(2).Infof("SSAR verb=%s resource=%s.%s name=%s => allowed=%v reason=%q", verb, resource, group, name, ssar.Status.Allowed, ssar.Status.Reason)
+
+	return ssar.Status.Allowed, nil
 }
 
 type CSOperator struct {
@@ -985,15 +1014,36 @@ func (b *Bootstrap) CreateKeycloakThemesConfigMap() error {
 
 func (b *Bootstrap) DeleteV3Resources(mutatingWebhooks, validatingWebhooks []string) error {
 
-	// Delete the list of MutatingWebhookConfigurations
+	// Cluster-scoped webhook cleanup is optional. Gate it via SSAR so the operator can run with a
+	// minimized default ClusterRole (i.e. without mutatingwebhookconfigurations/validatingwebhookconfigurations delete).
+	//
+	// MutatingWebhookConfigurations
 	for _, webhook := range mutatingWebhooks {
+		allowed, err := b.CanI(ctx, "admissionregistration.k8s.io", "mutatingwebhookconfigurations", "delete", webhook)
+		if err != nil {
+			klog.Warningf("Skipping MutatingWebhookConfiguration cleanup for %q: SSAR failed: %v", webhook, err)
+			continue
+		}
+		if !allowed {
+			klog.Warningf("Skipping MutatingWebhookConfiguration cleanup for %q: not permitted", webhook)
+			continue
+		}
 		if err := b.deleteResource(&admv1.MutatingWebhookConfiguration{}, webhook, "", "MutatingWebhookConfiguration"); err != nil {
 			return err
 		}
 	}
 
-	// Delete the list of ValidatingWebhookConfiguration
+	// ValidatingWebhookConfigurations
 	for _, webhook := range validatingWebhooks {
+		allowed, err := b.CanI(ctx, "admissionregistration.k8s.io", "validatingwebhookconfigurations", "delete", webhook)
+		if err != nil {
+			klog.Warningf("Skipping ValidatingWebhookConfiguration cleanup for %q: SSAR failed: %v", webhook, err)
+			continue
+		}
+		if !allowed {
+			klog.Warningf("Skipping ValidatingWebhookConfiguration cleanup for %q: not permitted", webhook)
+			continue
+		}
 		if err := b.deleteResource(&admv1.ValidatingWebhookConfiguration{}, webhook, "", "ValidatingWebhookConfiguration"); err != nil {
 			return err
 		}
@@ -2004,15 +2054,40 @@ func (b *Bootstrap) CleanupWebhookResources() error {
 		Kind:    "Service",
 		Scope:   "namespaceScope",
 	}
-	// cleanup old webhookconfigurations and services
-	if err := b.Cleanup(b.CSData.OperatorNs, &validatingWebhookConfiguration); err != nil {
-		klog.Errorf("Failed to cleanup validatingWebhookConfig: %v", err)
-		return err
+
+	allowed, err := b.CanI(ctx, "admissionregistration.k8s.io",
+		"validatingwebhookconfigurations", "delete",
+		validatingWebhookConfiguration.Name)
+
+	if err != nil {
+		klog.Warningf("Skipping ValidatingWebhookConfiguration cleanup for %q: SSAR failed: %v",
+			validatingWebhookConfiguration.Name, err)
+	} else if !allowed {
+		klog.Warningf("Skipping ValidatingWebhookConfiguration cleanup for %q: not permitted",
+			validatingWebhookConfiguration.Name)
+	} else {
+		// cleanup old webhookconfigurations and services
+		if err := b.Cleanup(b.CSData.OperatorNs, &validatingWebhookConfiguration); err != nil {
+			klog.Errorf("Failed to cleanup validatingWebhookConfiguration: %v", err)
+			return err
+		}
 	}
 
-	if err := b.Cleanup(b.CSData.OperatorNs, &mutatingWebhookConfiguration); err != nil {
-		klog.Errorf("Failed to cleanup mutatingWebhookConfiguration: %v", err)
-		return err
+	allowed, err = b.CanI(ctx, "admissionregistration.k8s.io",
+		"mutatingwebhookconfigurations", "delete",
+		mutatingWebhookConfiguration.Name)
+
+	if err != nil {
+		klog.Warningf("Skipping MutatingWebhookConfiguration cleanup for %q: SSAR failed: %v",
+			mutatingWebhookConfiguration.Name, err)
+	} else if !allowed {
+		klog.Warningf("Skipping MutatingWebhookConfiguration cleanup for %q: not permitted",
+			mutatingWebhookConfiguration.Name)
+	} else {
+		if err := b.Cleanup(b.CSData.OperatorNs, &mutatingWebhookConfiguration); err != nil {
+			klog.Errorf("Failed to cleanup mutatingWebhookConfiguration: %v", err)
+			return err
+		}
 	}
 
 	if err := b.Cleanup(b.CSData.OperatorNs, &webhookService); err != nil {

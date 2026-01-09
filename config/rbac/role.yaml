@@ -37,15 +37,6 @@ rules:
   verbs:
   - get
   - list
-# manage mutation webhook configuration
-- apiGroups:
-  - admissionregistration.k8s.io
-  resources:
-  - mutatingwebhookconfigurations
-  - validatingwebhookconfigurations
-  verbs:
-  - get
-  - delete
 - verbs:
   - get
   apiGroups:
