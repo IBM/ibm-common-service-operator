@@ -48,14 +48,6 @@ rules:
       - get
       - list
   - apiGroups: 
-      - admissionregistration.k8s.io
-    resources: 
-      - mutatingwebhookconfigurations
-      - validatingwebhookconfigurations
-    verbs: 
-      - get
-      - delete
-  - apiGroups: 
       - config.openshift.io
     resources: 
       - infrastructures
