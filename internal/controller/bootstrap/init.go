@@ -33,6 +33,7 @@ import (
 	"golang.org/x/mod/semver"
 	admv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
+	authzv1 "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -81,6 +82,48 @@ type Bootstrap struct {
 	MultiInstancesEnable bool
 	CSOperators          []CSOperator
 	CSData               apiv3.CSData
+}
+
+// canI performs a SelfSubjectAccessReview (SSAR) to check whether the operator service account
+// is allowed to perform the given verb on the given resource.
+//
+// Notes:
+//   - This allows us to keep the default ClusterRole minimal and still do optional cleanup
+//   - If the SSAR itself cannot be created (RBAC missing / API not served), we default to "not allowed"
+//     and return the error so callers can log it.
+func (b *Bootstrap) canI(ctx context.Context, group, resource, verb, name string) (bool, error) {
+	ssar := &authzv1.SelfSubjectAccessReview{
+		Spec: authzv1.SelfSubjectAccessReviewSpec{
+			ResourceAttributes: &authzv1.ResourceAttributes{
+				Group:    group,
+				Resource: resource,
+				Verb:     verb,
+				Name:     name,
+			},
+		},
+	}
+
+	if err := b.Client.Create(ctx, ssar); err != nil {
+		return false, err
+	}
+
+	// Note: log at a low verbosity since this can be called frequently.
+	klog.V(4).Infof("SSAR verb=%s resource=%s.%s name=%s => allowed=%v reason=%q", verb, resource, group, name, ssar.Status.Allowed, ssar.Status.Reason)
+
+	return ssar.Status.Allowed, nil
+}
+
+// CanI performs a SelfSubjectAccessReview (SSAR) to check whether the operator service account
+// is authorized for the given verb/resource.
+//
+// This is an exported wrapper so other packages can reuse the same SSAR logic.
+func (b *Bootstrap) CanI(ctx context.Context, group, resource, verb, name string) (bool, error) {
+	return b.canI(ctx, group, resource, verb, name)
+}
+
+// GetReader exposes the controller-runtime Reader for helper packages that need read-only access.
+func (b *Bootstrap) GetReader() client.Reader {
+	return b.Reader
 }
 
 type CSOperator struct {
@@ -226,7 +269,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 	}
 
 	// Check storageClass
-	if err := util.CheckStorageClass(b.Reader); err != nil {
+	if err := util.CheckStorageClass(ctx, b); err != nil {
 		return err
 	}
 
@@ -351,8 +394,17 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 
 // CheckWarningCondition
 func (b *Bootstrap) CheckWarningCondition(instance *apiv3.CommonService) error {
+	allowed, err := b.canI(ctx, "storage.k8s.io", "storageclasses", "list", "")
+	if err != nil {
+		return err
+	}
+	if !allowed {
+		klog.V(4).Info("Skipping StorageClass warning checks; not authorized to list storageclasses")
+		return nil
+	}
+
 	csStorageClass := &storagev1.StorageClassList{}
-	err := b.Reader.List(context.TODO(), csStorageClass)
+	err = b.Reader.List(context.TODO(), csStorageClass)
 	if err != nil {
 		return err
 	}
@@ -985,15 +1037,36 @@ func (b *Bootstrap) CreateKeycloakThemesConfigMap() error {
 
 func (b *Bootstrap) DeleteV3Resources(mutatingWebhooks, validatingWebhooks []string) error {
 
-	// Delete the list of MutatingWebhookConfigurations
+	// Cluster-scoped webhook cleanup is optional. Gate it via SSAR so the operator can run with a
+	// minimized default ClusterRole (i.e. without mutatingwebhookconfigurations/validatingwebhookconfigurations delete).
+	//
+	// MutatingWebhookConfigurations
 	for _, webhook := range mutatingWebhooks {
+		allowed, err := b.canI(ctx, "admissionregistration.k8s.io", "mutatingwebhookconfigurations", "delete", webhook)
+		if err != nil {
+			klog.V(2).Infof("Skipping MutatingWebhookConfiguration cleanup for %q: SSAR failed: %v", webhook, err)
+			continue
+		}
+		if !allowed {
+			klog.V(2).Infof("Skipping MutatingWebhookConfiguration cleanup for %q: not permitted", webhook)
+			continue
+		}
 		if err := b.deleteResource(&admv1.MutatingWebhookConfiguration{}, webhook, "", "MutatingWebhookConfiguration"); err != nil {
 			return err
 		}
 	}
 
-	// Delete the list of ValidatingWebhookConfiguration
+	// ValidatingWebhookConfigurations
 	for _, webhook := range validatingWebhooks {
+		allowed, err := b.canI(ctx, "admissionregistration.k8s.io", "validatingwebhookconfigurations", "delete", webhook)
+		if err != nil {
+			klog.V(2).Infof("Skipping ValidatingWebhookConfiguration cleanup for %q: SSAR failed: %v", webhook, err)
+			continue
+		}
+		if !allowed {
+			klog.V(2).Infof("Skipping ValidatingWebhookConfiguration cleanup for %q: not permitted", webhook)
+			continue
+		}
 		if err := b.deleteResource(&admv1.ValidatingWebhookConfiguration{}, webhook, "", "ValidatingWebhookConfiguration"); err != nil {
 			return err
 		}
@@ -1040,12 +1113,29 @@ func (b *Bootstrap) deleteWebhookResources() error {
 		return err
 	}
 
-	if err := b.deleteResource(&rbacv1.ClusterRole{}, constant.WebhookServiceName, "", "ClusterRole"); err != nil {
-		return err
+	// Cluster-scoped RBAC cleanup is optional. Gate it via SSAR so the operator can run with a
+	// minimized default ClusterRole (i.e. without clusterroles/clusterrolebindings delete).
+	allowedCR, err := b.canI(ctx, "rbac.authorization.k8s.io", "clusterroles", "delete", constant.WebhookServiceName)
+	if err != nil {
+		klog.V(2).Infof("Skipping legacy ClusterRole cleanup for %q: SSAR failed: %v", constant.WebhookServiceName, err)
+	} else if !allowedCR {
+		klog.V(2).Infof("Skipping legacy ClusterRole cleanup for %q: not permitted", constant.WebhookServiceName)
+	} else {
+		if err := b.deleteResource(&rbacv1.ClusterRole{}, constant.WebhookServiceName, "", "ClusterRole"); err != nil {
+			return err
+		}
 	}
 
-	if err := b.deleteResource(&rbacv1.ClusterRoleBinding{}, "ibm-common-service-webhook-"+b.CSData.ServicesNs, "", "ClusterRoleBinding"); err != nil {
-		return err
+	crbName := "ibm-common-service-webhook-" + b.CSData.ServicesNs
+	allowedCRB, err := b.canI(ctx, "rbac.authorization.k8s.io", "clusterrolebindings", "delete", crbName)
+	if err != nil {
+		klog.V(2).Infof("Skipping legacy ClusterRoleBinding cleanup for %q: SSAR failed: %v", crbName, err)
+	} else if !allowedCRB {
+		klog.V(2).Infof("Skipping legacy ClusterRoleBinding cleanup for %q: not permitted", crbName)
+	} else {
+		if err := b.deleteResource(&rbacv1.ClusterRoleBinding{}, crbName, "", "ClusterRoleBinding"); err != nil {
+			return err
+		}
 	}
 
 	// Delete Deployment
@@ -1062,13 +1152,29 @@ func (b *Bootstrap) deleteSecretShareResources() error {
 		return err
 	}
 
-	// Delete SecretShare ClusterRole and ClusterRoleBinding
-	if err := b.deleteResource(&rbacv1.ClusterRole{}, constant.Secretshare, "", "ClusterRole"); err != nil {
-		return err
+	// Cluster-scoped RBAC cleanup is optional. Gate it via SSAR so the operator can run with a
+	// minimized default ClusterRole (i.e. without clusterroles/clusterrolebindings delete).
+	allowedCR, err := b.canI(ctx, "rbac.authorization.k8s.io", "clusterroles", "delete", constant.Secretshare)
+	if err != nil {
+		klog.V(2).Infof("Skipping SecretShare ClusterRole cleanup for %q: SSAR failed: %v", constant.Secretshare, err)
+	} else if !allowedCR {
+		klog.V(2).Infof("Skipping SecretShare ClusterRole cleanup for %q: not permitted", constant.Secretshare)
+	} else {
+		if err := b.deleteResource(&rbacv1.ClusterRole{}, constant.Secretshare, "", "ClusterRole"); err != nil {
+			return err
+		}
 	}
 
-	if err := b.deleteResource(&rbacv1.ClusterRoleBinding{}, "secretshare-"+b.CSData.ServicesNs, "", "ClusterRoleBinding"); err != nil {
-		return err
+	crbName := "secretshare-" + b.CSData.ServicesNs
+	allowedCRB, err := b.canI(ctx, "rbac.authorization.k8s.io", "clusterrolebindings", "delete", crbName)
+	if err != nil {
+		klog.V(2).Infof("Skipping SecretShare ClusterRoleBinding cleanup for %q: SSAR failed: %v", crbName, err)
+	} else if !allowedCRB {
+		klog.V(2).Infof("Skipping SecretShare ClusterRoleBinding cleanup for %q: not permitted", crbName)
+	} else {
+		if err := b.deleteResource(&rbacv1.ClusterRoleBinding{}, crbName, "", "ClusterRoleBinding"); err != nil {
+			return err
+		}
 	}
 
 	exist, err := b.CheckCRD("ibmcpcs.ibm.com/v1", "SecretShare")
@@ -1347,6 +1453,15 @@ func (b *Bootstrap) CheckClusterType(ns string) (bool, error) {
 		if apiList.GroupVersion == "config.openshift.io/v1" {
 			for _, r := range apiList.APIResources {
 				if r.Kind == "Infrastructure" {
+					allowed, err := b.canI(ctx, "config.openshift.io", "infrastructures", "get", "cluster")
+					if err != nil {
+						return false, err
+					}
+					if !allowed {
+						klog.V(4).Info("Skipping OpenShift Infrastructure detection; not authorized to get config.openshift.io/infrastructures")
+						continue
+					}
+
 					infraObj := &unstructured.Unstructured{}
 					infraObj.SetGroupVersionKind(schema.GroupVersionKind{
 						Group:   "config.openshift.io",
