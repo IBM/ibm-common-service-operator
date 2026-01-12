@@ -1130,9 +1130,9 @@ func (b *Bootstrap) deleteSecretShareResources() error {
 
 	allowedCR, err := b.CanI(ctx, "rbac.authorization.k8s.io", "clusterroles", "delete", constant.Secretshare)
 	if err != nil {
-		klog.Infof("Skipping SecretShare ClusterRole cleanup for %q: SSAR failed: %v", constant.Secretshare, err)
+		klog.Warningf("Skipping SecretShare ClusterRole cleanup for %q: SSAR failed: %v", constant.Secretshare, err)
 	} else if !allowedCR {
-		klog.Infof("Skipping SecretShare ClusterRole cleanup for %q: not permitted", constant.Secretshare)
+		klog.Warningf("Skipping SecretShare ClusterRole cleanup for %q: not permitted", constant.Secretshare)
 	} else {
 		if err := b.deleteResource(&rbacv1.ClusterRole{}, constant.Secretshare, "", "ClusterRole"); err != nil {
 			return err
@@ -1142,9 +1142,9 @@ func (b *Bootstrap) deleteSecretShareResources() error {
 	crbName := "secretshare-" + b.CSData.ServicesNs
 	allowedCRB, err := b.CanI(ctx, "rbac.authorization.k8s.io", "clusterrolebindings", "delete", crbName)
 	if err != nil {
-		klog.Infof("7777 Skipping SecretShare ClusterRoleBinding cleanup for %q: SSAR failed: %v", crbName, err)
+		klog.Warningf("Skipping SecretShare ClusterRoleBinding cleanup for %q: SSAR failed: %v", crbName, err)
 	} else if !allowedCRB {
-		klog.Infof("7777 Skipping SecretShare ClusterRoleBinding cleanup for %q: not permitted", crbName)
+		klog.Warningf("Skipping SecretShare ClusterRoleBinding cleanup for %q: not permitted", crbName)
 	} else {
 		if err := b.deleteResource(&rbacv1.ClusterRoleBinding{}, crbName, "", "ClusterRoleBinding"); err != nil {
 			return err
