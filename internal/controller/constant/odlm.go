@@ -1443,9 +1443,6 @@ spec:
         data:
           spec:
             internalTrafficPolicy: Cluster
-            ipFamilies:
-              - IPv4
-            ipFamilyPolicy: SingleStack
             ports:
               - name: https
                 port: 8443
