@@ -93,7 +93,6 @@ rules:
   resources:
     - events
     - configmaps
-    - secrets
     - pods
 # manage its own CR
 - verbs:

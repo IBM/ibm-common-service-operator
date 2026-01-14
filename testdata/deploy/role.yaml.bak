@@ -108,7 +108,6 @@ rules:
   - persistentvolumeclaims
   - events
   - configmaps
-  - secrets
   verbs:
   - create
   - delete
