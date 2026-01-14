@@ -1923,6 +1923,15 @@ func (b *Bootstrap) ConfigCertManagerOperandManagedByOperator(ctx context.Contex
 				continue
 			} else {
 				if watchNamespace != b.CSData.ServicesNs {
+					allowed, aerr := b.CanI(ctx, "", "secrets", "delete", secretName)
+					if aerr != nil {
+						return aerr
+					}
+					if !allowed {
+						klog.V(2).Infof("Skipping delete of Secret %s/%s; not authorized", watchNamespace, secretName)
+						continue
+					}
+
 					if err := b.Client.Delete(ctx, secret); err != nil {
 						klog.Errorf("Failed to delete cs ca certificate secret %s/%s not in ServicesNamespace %s", secret.GetNamespace(), secret.GetName(), b.CSData.ServicesNs)
 						return err
