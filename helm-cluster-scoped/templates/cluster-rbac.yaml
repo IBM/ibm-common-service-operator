@@ -35,12 +35,6 @@ rules:
       - watch
       - update
   - apiGroups: 
-      - ""
-    resources: 
-      - secrets
-    verbs: 
-      - get
-  - apiGroups: 
       - storage.k8s.io
     resources: 
       - storageclasses
