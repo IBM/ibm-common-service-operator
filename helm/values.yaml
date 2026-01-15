@@ -5,6 +5,8 @@ cpfs:
   labels:
   # CR configurations
   size: starterset
+  # Red Hat OCP authentication configuration
+  roksEnabled: true
 
 # Commented out values are handled by a global values file
 # imagePullPrefix: icr.io
