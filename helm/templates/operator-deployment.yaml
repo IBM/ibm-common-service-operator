@@ -39,7 +39,7 @@ metadata:
             "servicesNamespace": "{{ .Values.global.instanceNamespace }}",
             "size": "{{ .Values.cpfs.size }}",
             "storageClass": "{{ .Values.global.blockStorageClass }}",
-            {{- if eq .values.cpfs.roksEnabled "false"}}
+            {{- if not .Values.cpfs.roksEnabled }},
               "services": [
                 {
                   "name": "ibm-im-operator",
