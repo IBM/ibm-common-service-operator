@@ -1258,6 +1258,32 @@ func (b *Bootstrap) GetCmOfMapCs(ctx context.Context) (*corev1.ConfigMap, error)
 	return cm, nil
 }
 
+// UpdateCsMaps updates the common-service-maps ConfigMap guarded by SSAR.
+func (b *Bootstrap) UpdateCsMaps(cm *corev1.ConfigMap) error {
+	allowed, err := b.CanI(context.Background(), "", "configmaps", "update", constant.CsMapConfigMap)
+	if err != nil {
+		klog.Warningf("SSAR failed for updating common-service-maps: %v", err)
+		return fmt.Errorf("no permission to update %s: %v", constant.CsMapConfigMap, err)
+	}
+	if !allowed {
+		klog.Infof("Skipping update of kube-public/%s: not permitted", constant.CsMapConfigMap)
+		return nil
+	}
+
+	// use util.UpdateCsMaps with current CSData
+	if err := util.UpdateCsMaps(cm, b.CSData.WatchNamespaces, b.CSData.ServicesNs, b.CSData.OperatorNs); err != nil {
+		return err
+	}
+	// Validate the updated ConfigMap data before writing it back to the cluster
+	if err := util.ValidateCsMaps(cm); err != nil {
+		return fmt.Errorf("validation failed for common-service-maps: %v", err)
+	}
+	if err := b.Client.Update(context.TODO(), cm); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (b *Bootstrap) deleteSubscription(name, namespace string) error {
 	key := types.NamespacedName{Name: name, Namespace: namespace}
 	sub := &olmv1alpha1.Subscription{}
