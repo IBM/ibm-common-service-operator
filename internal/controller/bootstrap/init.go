@@ -1025,7 +1025,7 @@ func (b *Bootstrap) DeleteV3Resources(mutatingWebhooks, validatingWebhooks []str
 			continue
 		}
 		if !allowed {
-			klog.Warningf("Skipping MutatingWebhookConfiguration cleanup for %q: not permitted", webhook)
+			klog.V(2).Infof("Skipping MutatingWebhookConfiguration cleanup for %q: not permitted", webhook)
 			continue
 		}
 		if err := b.deleteResource(&admv1.MutatingWebhookConfiguration{}, webhook, "", "MutatingWebhookConfiguration"); err != nil {
@@ -1041,7 +1041,7 @@ func (b *Bootstrap) DeleteV3Resources(mutatingWebhooks, validatingWebhooks []str
 			continue
 		}
 		if !allowed {
-			klog.Warningf("Skipping ValidatingWebhookConfiguration cleanup for %q: not permitted", webhook)
+			klog.V(2).Infof("Skipping ValidatingWebhookConfiguration cleanup for %q: not permitted", webhook)
 			continue
 		}
 		if err := b.deleteResource(&admv1.ValidatingWebhookConfiguration{}, webhook, "", "ValidatingWebhookConfiguration"); err != nil {
@@ -1093,9 +1093,9 @@ func (b *Bootstrap) deleteWebhookResources() error {
 	// Cluster-scoped RBAC cleanup is optional. Gate it via SSAR so the operator can run with a minimized default ClusterRole
 	allowedCR, err := b.CanI(ctx, "rbac.authorization.k8s.io", "clusterroles", "delete", constant.WebhookServiceName)
 	if err != nil {
-		klog.Warningf("Skipping legacy ClusterRole cleanup for %q: SSAR failed: %v", constant.WebhookServiceName, err)
+		klog.Errorf("Skipping legacy ClusterRole cleanup for %q: SSAR failed: %v", constant.WebhookServiceName, err)
 	} else if !allowedCR {
-		klog.Warningf("Skipping legacy ClusterRole cleanup for %q: not permitted", constant.WebhookServiceName)
+		klog.V(2).Infof("Skipping legacy ClusterRole cleanup for %q: not permitted", constant.WebhookServiceName)
 	} else {
 		if err := b.deleteResource(&rbacv1.ClusterRole{}, constant.WebhookServiceName, "", "ClusterRole"); err != nil {
 			return err
@@ -1105,9 +1105,9 @@ func (b *Bootstrap) deleteWebhookResources() error {
 	crbName := "ibm-common-service-webhook-" + b.CSData.ServicesNs
 	allowedCRB, err := b.CanI(ctx, "rbac.authorization.k8s.io", "clusterrolebindings", "delete", crbName)
 	if err != nil {
-		klog.Warningf("Skipping legacy ClusterRoleBinding cleanup for %q: SSAR failed: %v", crbName, err)
+		klog.Errorf("Skipping legacy ClusterRoleBinding cleanup for %q: SSAR failed: %v", crbName, err)
 	} else if !allowedCRB {
-		klog.Warningf("Skipping legacy ClusterRoleBinding cleanup for %q: not permitted", crbName)
+		klog.V(2).Infof("Skipping legacy ClusterRoleBinding cleanup for %q: not permitted", crbName)
 	} else {
 		if err := b.deleteResource(&rbacv1.ClusterRoleBinding{}, crbName, "", "ClusterRoleBinding"); err != nil {
 			return err
@@ -1130,9 +1130,9 @@ func (b *Bootstrap) deleteSecretShareResources() error {
 
 	allowedCR, err := b.CanI(ctx, "rbac.authorization.k8s.io", "clusterroles", "delete", constant.Secretshare)
 	if err != nil {
-		klog.Warningf("Skipping SecretShare ClusterRole cleanup for %q: SSAR failed: %v", constant.Secretshare, err)
+		klog.Errorf("Skipping SecretShare ClusterRole cleanup for %q: SSAR failed: %v", constant.Secretshare, err)
 	} else if !allowedCR {
-		klog.Warningf("Skipping SecretShare ClusterRole cleanup for %q: not permitted", constant.Secretshare)
+		klog.V(2).Infof("Skipping SecretShare ClusterRole cleanup for %q: not permitted", constant.Secretshare)
 	} else {
 		if err := b.deleteResource(&rbacv1.ClusterRole{}, constant.Secretshare, "", "ClusterRole"); err != nil {
 			return err
@@ -1142,9 +1142,9 @@ func (b *Bootstrap) deleteSecretShareResources() error {
 	crbName := "secretshare-" + b.CSData.ServicesNs
 	allowedCRB, err := b.CanI(ctx, "rbac.authorization.k8s.io", "clusterrolebindings", "delete", crbName)
 	if err != nil {
-		klog.Warningf("Skipping SecretShare ClusterRoleBinding cleanup for %q: SSAR failed: %v", crbName, err)
+		klog.Errorf("Skipping SecretShare ClusterRoleBinding cleanup for %q: SSAR failed: %v", crbName, err)
 	} else if !allowedCRB {
-		klog.Warningf("Skipping SecretShare ClusterRoleBinding cleanup for %q: not permitted", crbName)
+		klog.V(2).Infof("Skipping SecretShare ClusterRoleBinding cleanup for %q: not permitted", crbName)
 	} else {
 		if err := b.deleteResource(&rbacv1.ClusterRoleBinding{}, crbName, "", "ClusterRoleBinding"); err != nil {
 			return err
@@ -1230,7 +1230,7 @@ func (b *Bootstrap) CreateCsMaps() error {
 		allowedCreate = false
 	}
 	if !allowedCreate {
-		klog.Infof("Skipping creation of kube-public/%s: not permitted", cm.ObjectMeta.Name)
+		klog.V(2).Infof("Skipping creation of kube-public/%s: not permitted", cm.ObjectMeta.Name)
 		return nil
 	}
 	if err := b.Client.Create(ctx, cm); err != nil {
@@ -1243,7 +1243,6 @@ func (b *Bootstrap) CreateCsMaps() error {
 func (b *Bootstrap) GetCmOfMapCs(ctx context.Context) (*corev1.ConfigMap, error) {
 	allowed, err := b.CanI(ctx, "", "configmaps", "get", constant.CsMapConfigMap)
 	if err != nil {
-		klog.Warningf("SSAR failed for getting common-service-maps: %v", err)
 		return nil, fmt.Errorf("no permission to get %s: %v", constant.CsMapConfigMap, err)
 	}
 	if !allowed {
@@ -1262,11 +1261,10 @@ func (b *Bootstrap) GetCmOfMapCs(ctx context.Context) (*corev1.ConfigMap, error)
 func (b *Bootstrap) UpdateCsMaps(cm *corev1.ConfigMap) error {
 	allowed, err := b.CanI(context.Background(), "", "configmaps", "update", constant.CsMapConfigMap)
 	if err != nil {
-		klog.Warningf("SSAR failed for updating common-service-maps: %v", err)
 		return fmt.Errorf("no permission to update %s: %v", constant.CsMapConfigMap, err)
 	}
 	if !allowed {
-		klog.Infof("Skipping update of kube-public/%s: not permitted", constant.CsMapConfigMap)
+		klog.V(2).Infof("Skipping update of kube-public/%s: not permitted", constant.CsMapConfigMap)
 		return nil
 	}
 
@@ -2145,10 +2143,10 @@ func (b *Bootstrap) CleanupWebhookResources() error {
 		validatingWebhookConfiguration.Name)
 
 	if err != nil {
-		klog.Warningf("Skipping ValidatingWebhookConfiguration cleanup for %q: SSAR failed: %v",
+		klog.Errorf("Skipping ValidatingWebhookConfiguration cleanup for %q: SSAR failed: %v",
 			validatingWebhookConfiguration.Name, err)
 	} else if !allowed {
-		klog.Warningf("Skipping ValidatingWebhookConfiguration cleanup for %q: not permitted",
+		klog.V(2).Infof("Skipping ValidatingWebhookConfiguration cleanup for %q: not permitted",
 			validatingWebhookConfiguration.Name)
 	} else {
 		// cleanup old webhookconfigurations and services
@@ -2163,10 +2161,10 @@ func (b *Bootstrap) CleanupWebhookResources() error {
 		mutatingWebhookConfiguration.Name)
 
 	if err != nil {
-		klog.Warningf("Skipping MutatingWebhookConfiguration cleanup for %q: SSAR failed: %v",
+		klog.Errorf("Skipping MutatingWebhookConfiguration cleanup for %q: SSAR failed: %v",
 			mutatingWebhookConfiguration.Name, err)
 	} else if !allowed {
-		klog.Warningf("Skipping MutatingWebhookConfiguration cleanup for %q: not permitted",
+		klog.V(2).Infof("Skipping MutatingWebhookConfiguration cleanup for %q: not permitted",
 			mutatingWebhookConfiguration.Name)
 	} else {
 		if err := b.Cleanup(b.CSData.OperatorNs, &mutatingWebhookConfiguration); err != nil {
