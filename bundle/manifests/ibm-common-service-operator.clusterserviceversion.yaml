@@ -23,7 +23,7 @@ metadata:
     capabilities: Seamless Upgrades
     cloudPakThemesVersion: styles4100.css
     containerImage: icr.io/cpopen/common-service-operator:4.17.0
-    createdAt: "2026-01-14T03:19:51Z"
+    createdAt: "2026-01-18T04:41:21Z"
     description: The IBM Cloud Pak foundational services operator is used to deploy IBM foundational services.
     features.operators.openshift.io/disconnected: "true"
     features.operators.openshift.io/fips-compliant: "true"
@@ -256,25 +256,6 @@ spec:
     spec:
       clusterPermissions:
         - rules:
-            - apiGroups:
-                - ""
-              resourceNames:
-                - common-service-maps
-              resources:
-                - configmaps
-              verbs:
-                - delete
-                - update
-            - apiGroups:
-                - ""
-              resources:
-                - configmaps
-              verbs:
-                - create
-                - get
-                - list
-                - watch
-                - update
             - apiGroups:
                 - storage.k8s.io
               resources:

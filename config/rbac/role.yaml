@@ -3,26 +3,6 @@ kind: ClusterRole
 metadata:
   name: ibm-common-service-operator
 rules:
-# Manipulate ConfigMap in kube-public namespace
-- verbs:
-  - delete
-  - update
-  apiGroups:
-  - ''
-  resources:
-  - configmaps
-  resourceNames:
-  - common-service-maps
-- verbs:
-  - create
-  - get
-  - list
-  - watch
-  - update
-  apiGroups:
-  - ''
-  resources:
-  - configmaps
 # Get StorageClass from cluster
 - apiGroups:
   - storage.k8s.io
