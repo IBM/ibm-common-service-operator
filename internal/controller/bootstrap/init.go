@@ -1239,6 +1239,25 @@ func (b *Bootstrap) CreateCsMaps() error {
 	return nil
 }
 
+// GetCmOfMapCs returns the common-service-maps ConfigMap from kube-public guarded by SSAR.
+func (b *Bootstrap) GetCmOfMapCs(ctx context.Context) (*corev1.ConfigMap, error) {
+	allowed, err := b.CanI(ctx, "", "configmaps", "get", constant.CsMapConfigMap)
+	if err != nil {
+		klog.Warningf("SSAR failed for getting common-service-maps: %v", err)
+		return nil, fmt.Errorf("no permission to get %s: %v", constant.CsMapConfigMap, err)
+	}
+	if !allowed {
+		return nil, fmt.Errorf("not permitted to get %s", constant.CsMapConfigMap)
+	}
+
+	// reuse util helper
+	cm, err := util.GetCmOfMapCs(b.Reader)
+	if err != nil {
+		return nil, err
+	}
+	return cm, nil
+}
+
 func (b *Bootstrap) deleteSubscription(name, namespace string) error {
 	key := types.NamespacedName{Name: name, Namespace: namespace}
 	sub := &olmv1alpha1.Subscription{}
