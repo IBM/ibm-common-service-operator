@@ -550,33 +550,6 @@ metadata:
   name: ibm-common-service-operator
 rules:
 - apiGroups:
-  - ""
-  resourceNames:
-  - common-service-maps
-  resources:
-  - configmaps
-  verbs:
-  - delete
-  - update
-- apiGroups:
-  - ""
-  resourceNames:
-  - cloud-native-postgresql-image-list
-  resources:
-  - configmaps
-  verbs:
-  - delete
-- apiGroups:
-  - ""
-  resources:
-  - configmaps
-  verbs:
-  - create
-  - get
-  - list
-  - watch
-  - update
-- apiGroups:
   - storage.k8s.io
   resources:
   - storageclasses
