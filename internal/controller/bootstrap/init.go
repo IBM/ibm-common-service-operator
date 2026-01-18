@@ -1223,6 +1223,16 @@ func (b *Bootstrap) CreateCsMaps() error {
 		})
 	}
 
+	// Check create permission before creating common-service-maps in kube-public
+	allowedCreate, err := b.CanI(ctx, "", "configmaps", "create", cm.ObjectMeta.Name)
+	if err != nil {
+		klog.Warningf("Unable to perform SSAR for creating common-service-maps: %v", err)
+		allowedCreate = false
+	}
+	if !allowedCreate {
+		klog.Infof("Skipping creation of kube-public/%s: not permitted", cm.ObjectMeta.Name)
+		return nil
+	}
 	if err := b.Client.Create(ctx, cm); err != nil {
 		klog.Errorf("could not create common-service-map in kube-public: %v", err)
 	}
