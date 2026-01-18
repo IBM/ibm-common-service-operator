@@ -14,26 +14,7 @@ metadata:
         {{- toYaml . | nindent 4 }}
       {{- end }}
     {{- end}}
-rules:   
-  - apiGroups: 
-      - ""
-    resourceNames: 
-      - common-service-maps
-    resources: 
-      - configmaps
-    verbs: 
-      - delete
-      - update
-  - apiGroups: 
-      - ""
-    resources: 
-      - configmaps
-    verbs: 
-      - create
-      - get
-      - list
-      - watch
-      - update
+rules:
   - apiGroups: 
       - storage.k8s.io
     resources: 
