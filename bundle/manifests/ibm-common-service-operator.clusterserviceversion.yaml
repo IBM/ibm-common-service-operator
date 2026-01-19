@@ -263,12 +263,6 @@ spec:
               verbs:
                 - get
                 - list
-            - apiGroups:
-                - config.openshift.io
-              resources:
-                - infrastructures
-              verbs:
-                - get
           serviceAccountName: ibm-common-service-operator
       deployments:
         - label:
