@@ -82,6 +82,8 @@ metadata:
   name: cs-ca-certificate
   namespace: "placeholder"
 spec:
+  privateKey:
+    rotationPolicy: Always
   secretName: cs-ca-certificate-secret
   secretTemplate:
     labels:
