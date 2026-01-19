@@ -703,8 +703,6 @@ rules:
       - kafkamirrormaker2s/status
       - kafkarebalances/status
   - verbs:
-      - get
-      - patch
       - update
     apiGroups:
       - ibmevents.ibm.com
@@ -713,12 +711,9 @@ rules:
       - kafkanodepools/finalizers
       - kafkaconnects/finalizers
       - kafkaconnectors/finalizers
-      - kafkamirrormakers/finalizers
       - kafkabridges/finalizers
       - kafkamirrormaker2s/finalizers
       - kafkarebalances/finalizers
-      - kafkatopics/finalizers
-      - kafkausers/finalizers
   - verbs:
       - get
       - list
