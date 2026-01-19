@@ -740,8 +740,6 @@ rules:
     resources:
       - strimzipodsets/status
   - verbs:
-      - get
-      - patch
       - update
     apiGroups:
       - core.ibmevents.ibm.com
