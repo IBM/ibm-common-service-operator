@@ -1461,40 +1461,29 @@ func (b *Bootstrap) DeployResource(cr, placeholder string) bool {
 	return true
 }
 
-func (b *Bootstrap) CheckClusterType(ns string) (bool, error) {
-	var isOCP bool
-	dc := discovery.NewDiscoveryClientForConfigOrDie(b.Config)
-	_, apiLists, err := dc.ServerGroupsAndResources()
+// isOpenShiftCluster checks if the cluster is OpenShift by looking for route.openshift.io API group.
+func (b *Bootstrap) isOpenShiftCluster() bool {
+	dc, err := discovery.NewDiscoveryClientForConfig(b.Config)
 	if err != nil {
-		return false, err
+		klog.Warningf("Failed to create discovery client: %v", err)
+		return false
 	}
-	for _, apiList := range apiLists {
-		if apiList.GroupVersion == "machineconfiguration.openshift.io/v1" {
-			for _, r := range apiList.APIResources {
-				if r.Kind == "MachineConfig" {
-					isOCP = true
-				}
-			}
-		}
-		// check if the cluster is OCP by checking if the cluster has Infrastructure CR
-		if apiList.GroupVersion == "config.openshift.io/v1" {
-			for _, r := range apiList.APIResources {
-				if r.Kind == "Infrastructure" {
-					infraObj := &unstructured.Unstructured{}
-					infraObj.SetGroupVersionKind(schema.GroupVersionKind{
-						Group:   "config.openshift.io",
-						Version: "v1",
-						Kind:    "Infrastructure",
-					})
-					if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: "cluster"}, infraObj); err == nil {
-						isOCP = true
-					} else {
-						klog.Errorf("Fail to get Infrastructure resource named cluster: %v", err)
-					}
-				}
-			}
+	apiGroups, err := dc.ServerGroups()
+	if err != nil {
+		klog.Warningf("Failed to get server API groups, cannot determine if cluster is OCP: %v", err)
+		return false
+	}
+	for _, group := range apiGroups.Groups {
+		if group.Name == constant.RouteAPIGroup {
+			return true
 		}
 	}
+	return false
+}
+
+func (b *Bootstrap) CheckClusterType(ns string) (bool, error) {
+	// Detect OCP by checking if route.openshift.io API group exists
+	isOCP := b.isOpenShiftCluster()
 	klog.Infof("Cluster type is OCP: %v", isOCP)
 
 	config := &corev1.ConfigMap{}
