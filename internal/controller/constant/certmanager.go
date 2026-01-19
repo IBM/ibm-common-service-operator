@@ -86,7 +86,7 @@ metadata:
 spec:
   secretName: cs-ca-certificate-secret
   privateKey:
-    rotationPolicy: Never
+    rotationPolicy: Always
   secretTemplate:
     labels:
       ibm-cert-manager-operator/refresh-ca-chain: 'true'
