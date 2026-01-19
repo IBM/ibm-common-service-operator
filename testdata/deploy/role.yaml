@@ -56,19 +56,6 @@ rules:
   - create
   - get
   - update
-# create common-service-maps configmap in kube-public
-- apiGroups:
-  - ""
-  resources:
-  - configmaps
-  verbs:
-  - create
-  - get
-  - list
-  - patch
-  - update
-  - watch
-# cluster role from secretshare
 # create namespace it it doesn't exist
 - verbs:
     - create
@@ -92,7 +79,6 @@ rules:
     - ''
   resources:
     - events
-    - configmaps
     - pods
 # manage its own CR
 - verbs:
