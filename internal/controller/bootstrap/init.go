@@ -158,7 +158,7 @@ func NewNonOLMBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		Config:               mgr.GetConfig(),
 		EventRecorder:        mgr.GetEventRecorderFor("ibm-common-service-operator"),
 		Manager:              deploy.NewDeployManager(mgr),
-		SaasEnable:           util.CheckSaas(mgr.GetAPIReader()),
+		SaasEnable:           false,
 		MultiInstancesEnable: util.CheckMultiInstances(mgr.GetAPIReader()),
 		CSData:               csData,
 	}
@@ -209,7 +209,7 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		Config:               mgr.GetConfig(),
 		EventRecorder:        mgr.GetEventRecorderFor("ibm-common-service-operator"),
 		Manager:              deploy.NewDeployManager(mgr),
-		SaasEnable:           util.CheckSaas(mgr.GetAPIReader()),
+		SaasEnable:           false,
 		MultiInstancesEnable: util.CheckMultiInstances(mgr.GetAPIReader()),
 		CSData:               csData,
 	}

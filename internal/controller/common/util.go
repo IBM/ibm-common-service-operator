@@ -464,31 +464,6 @@ func UpdateAllNSList(r client.Reader, c client.Client, cm *corev1.ConfigMap, nss
 	return nil
 }
 
-// CheckSaas checks whether it is a SaaS deployment for Common Services
-func CheckSaas(r client.Reader) (enable bool) {
-	cmName := constant.SaasConfigMap
-	cmNs := "kube-public"
-	saasConfigmap := &corev1.ConfigMap{}
-	err := r.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: cmNs}, saasConfigmap)
-	if errors.IsNotFound(err) {
-		klog.V(2).Infof("There is no configmap %v/%v in the cluster: Running Common Service Operator in On-Prem mode", cmNs, cmName)
-		return false
-	} else if err != nil {
-		klog.Errorf("Failed to fetch configmap %v/%v: %v", cmNs, cmName, err)
-		return false
-	}
-	v, ok := saasConfigmap.Data["ibm_cloud_saas"]
-	if !ok {
-		klog.V(2).Infof("There is no ibm_cloud_saas in configmap %v/%v: Running Common Service Operator in On-Prem mode", cmNs, cmName)
-		return false
-	}
-	if v != "true" {
-		return false
-	}
-	klog.V(2).Infof("Running Common Service Operator in SaaS mode")
-	return true
-}
-
 // CheckMultiInstance checks whether it is a MultiInstances including SaaS and on-prem MultiInstances
 func CheckMultiInstances(r client.Reader) (enable bool) {
 	return true
