@@ -376,29 +376,45 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 	return nil
 }
 
-// CheckWarningCondition
+// CheckWarningCondition checks various warning conditions for the CommonService instance.
+// Currently validates StorageClass configuration.
 func (b *Bootstrap) CheckWarningCondition(instance *apiv3.CommonService) error {
-	csStorageClass := &storagev1.StorageClassList{}
-	err := b.Reader.List(context.TODO(), csStorageClass)
+	b.checkStorageClassWarning(instance)
+	return nil
+}
+
+// checkStorageClassWarning validates StorageClass configuration and sets warning if needed.
+// Uses SSAR to check permission first; skips if not permitted.
+func (b *Bootstrap) checkStorageClassWarning(instance *apiv3.CommonService) {
+	// SSAR guard: skip StorageClass check if no cluster permission
+	allowed, err := b.CanI(context.TODO(), "storage.k8s.io", "storageclasses", "list", "")
 	if err != nil {
-		return err
+		klog.Warningf("SSAR check for storageclasses list failed: %v, skipping StorageClass warning check", err)
+		return
+	}
+	if !allowed {
+		klog.Warningf("No permission to list storageclasses, skipping StorageClass warning check")
+		return
+	}
+
+	csStorageClass := &storagev1.StorageClassList{}
+	if err := b.Reader.List(context.TODO(), csStorageClass); err != nil {
+		klog.V(2).Infof("Failed to list StorageClasses: %v", err)
+		return
 	}
 
 	defaultCount := 0
-	if len(csStorageClass.Items) > 0 {
-		for _, sc := range csStorageClass.Items {
-			if sc.Annotations != nil && sc.Annotations["storageclass.kubernetes.io/is-default-class"] == "true" {
-				klog.V(2).Infof("Default StorageClass found: %s\n", sc.Name)
-				defaultCount++
-			}
+	for _, sc := range csStorageClass.Items {
+		if sc.Annotations != nil && sc.Annotations["storageclass.kubernetes.io/is-default-class"] == "true" {
+			klog.V(2).Infof("Default StorageClass found: %s", sc.Name)
+			defaultCount++
 		}
 	}
 
-	// check if there is no storageClass declared under spec section and the default count is not 1
+	// Set warning if no storageClass declared in spec and default count is not exactly 1
 	if instance.Spec.StorageClass == "" && defaultCount != 1 {
 		instance.SetWarningCondition(constant.MasterCR, apiv3.ConditionTypeWarning, corev1.ConditionTrue, apiv3.ConditionReasonWarning, apiv3.ConditionMessageMissSC)
 	}
-	return nil
 }
 
 // CheckStorageClass validates whether StorageClass exists in the cluster.
