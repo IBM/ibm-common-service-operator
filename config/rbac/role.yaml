@@ -1,18 +1,4 @@
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: ibm-common-service-operator
-rules:
-# Get StorageClass from cluster
-- apiGroups:
-  - storage.k8s.io
-  resources:
-  - storageclasses
-  verbs:
-  - get
-  - list
----
-apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: ibm-common-service-operator
@@ -138,8 +124,6 @@ rules:
   verbs:
   - get
   - list
-
-
 # handle clean up of deprecated objects
 - apiGroups:
   - certmanager.k8s.io
