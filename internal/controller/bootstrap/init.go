@@ -255,9 +255,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 	}
 
 	// Check storageClass
-	if err := util.CheckStorageClass(b.Reader); err != nil {
-		return err
-	}
+	b.CheckStorageClass()
 
 	// Backward compatible upgrade from version 3.x.x
 	if err := b.CreateNsScopeConfigmap(); err != nil {
@@ -401,6 +399,33 @@ func (b *Bootstrap) CheckWarningCondition(instance *apiv3.CommonService) error {
 		instance.SetWarningCondition(constant.MasterCR, apiv3.ConditionTypeWarning, corev1.ConditionTrue, apiv3.ConditionReasonWarning, apiv3.ConditionMessageMissSC)
 	}
 	return nil
+}
+
+// CheckStorageClass validates whether StorageClass exists in the cluster.
+// Uses SSAR to check permission first; skips if not permitted.
+func (b *Bootstrap) CheckStorageClass() {
+	allowed, err := b.CanI(context.TODO(), "storage.k8s.io", "storageclasses", "list", "")
+	if err != nil {
+		klog.Warningf("SSAR check for storageclasses list failed: %v, skipping StorageClass check", err)
+		return
+	}
+	if !allowed {
+		klog.Warningf("No permission to list storageclasses, skipping StorageClass check")
+		return
+	}
+
+	csStorageClass := &storagev1.StorageClassList{}
+	if err := b.Reader.List(context.TODO(), csStorageClass); err != nil {
+		klog.V(2).Infof("Failed to list StorageClasses: %v", err)
+		return
+	}
+
+	size := len(csStorageClass.Items)
+	klog.Info("StorageClass Number: ", size)
+
+	if size <= 0 {
+		klog.Warning("StorageClass is not found, which might be required by CloudPak services, please refer to CloudPak's documentation for prerequisites.")
+	}
 }
 
 func (b *Bootstrap) CreateNamespace(name string) error {
