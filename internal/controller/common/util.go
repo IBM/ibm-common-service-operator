@@ -32,7 +32,6 @@ import (
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	operatorsv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/package-server/apis/operators/v1"
 	corev1 "k8s.io/api/core/v1"
-	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -346,23 +345,6 @@ func GetCmOfMapCs(r client.Reader) (*corev1.ConfigMap, error) {
 		return nil, err
 	}
 	return csConfigmap, nil
-}
-
-// CheckStorageClass gets StorageClassList in current cluster, then validates whether StorageClass created
-func CheckStorageClass(r client.Reader) error {
-	csStorageClass := &storagev1.StorageClassList{}
-	err := r.List(context.TODO(), csStorageClass)
-	if err != nil {
-		return fmt.Errorf("fail to list storageClass: %v", err)
-	}
-
-	size := len(csStorageClass.Items)
-	klog.Info("StorageClass Number: ", size)
-
-	if size <= 0 {
-		klog.Warning("StorageClass is not found, which might be required by CloudPak services, please refer to CloudPak's documentation for prerequisites.")
-	}
-	return nil
 }
 
 // UpdateNSList updates adopter namespaces of Common Services
