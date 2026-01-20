@@ -386,7 +386,6 @@ func (b *Bootstrap) CheckWarningCondition(instance *apiv3.CommonService) error {
 // checkStorageClassWarning validates StorageClass configuration and sets warning if needed.
 // Uses SSAR to check permission first; skips if not permitted.
 func (b *Bootstrap) checkStorageClassWarning(instance *apiv3.CommonService) {
-	// SSAR guard: skip StorageClass check if no cluster permission
 	allowed, err := b.CanI(context.TODO(), "storage.k8s.io", "storageclasses", "list", "")
 	if err != nil {
 		klog.Warningf("SSAR check for storageclasses list failed: %v, skipping StorageClass warning check", err)
