@@ -121,7 +121,7 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 					os.Exit(1)
 				}
 			} else if strings.Contains(err.Error(), "not permitted") || strings.Contains(err.Error(), "no permission") {
-				klog.Infof("Skipping common-service-maps operations: %v", err)
+				klog.V(2).Infof("Skipping common-service-maps operations: %v", err)
 			} else {
 				klog.Errorf("Failed to get common-service-maps: %v", err)
 				os.Exit(1)
