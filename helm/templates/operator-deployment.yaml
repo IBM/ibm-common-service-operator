@@ -39,6 +39,20 @@ metadata:
             "servicesNamespace": "{{ .Values.global.instanceNamespace }}",
             "size": "{{ .Values.cpfs.size }}",
             "storageClass": "{{ .Values.global.blockStorageClass }}"
+            {{- if not .Values.cpfs.roksEnabled }},
+            "services": [
+              {
+                "name": "ibm-im-operator",
+                "spec": {
+                  "authentication": {
+                    "config": {
+                      "roksEnabled": "false"
+                    }
+                  }
+                }
+              }
+            ]
+            {{- end }}
           }
         }
       ]
