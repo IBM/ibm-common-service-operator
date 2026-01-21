@@ -2039,6 +2039,9 @@ spec:
             imagePullSecrets:
               - name: ibm-entitlement-key
             logLevel: info
+            ephemeralVolumesSizeLimit:
+              shm: 500Mi
+              temporaryData: 500Mi
             primaryUpdateStrategy: unsupervised
             primaryUpdateMethod: switchover
             enableSuperuserAccess: true
@@ -2287,6 +2290,9 @@ spec:
             imagePullSecrets:
               - name: ibm-entitlement-key
             logLevel: info
+            ephemeralVolumesSizeLimit:
+              shm: 500Mi
+              temporaryData: 500Mi
             primaryUpdateStrategy: unsupervised
             primaryUpdateMethod: switchover
             enableSuperuserAccess: true
