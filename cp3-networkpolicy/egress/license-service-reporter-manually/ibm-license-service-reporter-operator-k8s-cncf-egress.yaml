@@ -13,11 +13,11 @@ spec:
     matchLabels:
       name: ibm-license-service-reporter-operator
   egress:
-    - ports:
-        - protocol: TCP
-          port: <$TargetPort> # TargetPort from the DEFAULT KUBERNETES SERVICE
+    - ports:S
+      - protocol: TCP
+        port: ${K8-API-SERVER-PORT} # TargetPort from the DEFAULT KUBERNETES SERVICE
       to:
         - ipBlock:
-            cidr: <IPs>/32 # IPs from the DEFAULT KUBERNETES SERVICE
+            cidr: ${K8-API-SERVER-CIRD} # IP from the DEFAULT KUBERNETES SERVICE
   policyTypes:
     - Egress
