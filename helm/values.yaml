@@ -21,4 +21,5 @@ global:
   imagePullPrefix: icr.io
   tetheredNamespaces: []
   operatorNamespace: operator-ns
+  imagePullSecret: ibm-entitlement-key
   instanceNamespace:
