@@ -5,6 +5,7 @@ global:
   operatorNamespace: "cs-op"
   instanceNamespace: "cs-serv"
   tetheredNamespaces: [""]
+  installConfigImagePullPrefix: ""  # Optional, CPD requested: Override image pull prefix for installation config
   imagePullPrefix: icr.io
   imagePullSecret: ibm-entitlement-key
 
