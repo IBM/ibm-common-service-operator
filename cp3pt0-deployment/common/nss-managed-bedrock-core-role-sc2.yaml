@@ -709,6 +709,8 @@ rules:
       - kafkabridges/status
       - kafkamirrormaker2s/status
       - kafkarebalances/status
+      - kafkatopics/status
+      - kafkausers/status
   - verbs:
       - update
     apiGroups:
@@ -721,6 +723,8 @@ rules:
       - kafkabridges/finalizers
       - kafkamirrormaker2s/finalizers
       - kafkarebalances/finalizers
+      - kafkatopics/finalizers
+      - kafkausers/finalizers
   - verbs:
       - get
       - list
