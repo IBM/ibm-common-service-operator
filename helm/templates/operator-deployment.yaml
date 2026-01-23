@@ -46,7 +46,7 @@ metadata:
                 "spec": {
                   "authentication": {
                     "config": {
-                      "roksEnabled": false
+                      "roksEnabled": {{ .Values.cpfs.roksEnabled }}
                     }
                   }
                 }
