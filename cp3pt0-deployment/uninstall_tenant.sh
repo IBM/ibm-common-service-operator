@@ -232,6 +232,10 @@ function uninstall_odlm_resource() {
         fi
     done
 
+    # Add a temp workaround for CPD 5.3.1 
+    # We manually delete the finalizer on zen-ca-operandrequest and manually cleanup the resources it created
+    
+
     if [ "$grep_args" == "" ]; then
         grep_args='no-operand-requests'
     fi
