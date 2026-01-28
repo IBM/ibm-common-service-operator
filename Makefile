@@ -197,16 +197,16 @@ deploy: manifests ## Deploy controller in the configured Kubernetes cluster in ~
 
 build-dev-image: cloudpak-theme.jar
 	@echo "Building the $(OPERATOR_IMAGE_NAME) docker dev image for $(LOCAL_ARCH)..."
-	@docker build -t $(REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):dev \
+	@$(CONTAINER_TOOL) build -t $(REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):dev \
 	--build-arg VCS_REF=$(VCS_REF) --build-arg RELEASE_VERSION=$(RELEASE_VERSION) \
 	--build-arg GOARCH=$(LOCAL_ARCH) -f Dockerfile .
-	@docker push $(REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):dev
+	@$(CONTAINER_TOOL) push $(REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):dev
 
 build-bundle-image: yq
 	@cp -f bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml /tmp/ibm-common-service-operator.clusterserviceversion.yaml
 	$(YQ) eval -i 'del(.spec.replaces)' bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
-	docker build -f bundle.Dockerfile -t $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(BUILD_VERSION) .
-	docker push $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(BUILD_VERSION)
+	$(CONTAINER_TOOL) build -f bundle.Dockerfile -t $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(BUILD_VERSION) .
+	$(CONTAINER_TOOL) push $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(BUILD_VERSION)
 	@mv /tmp/ibm-common-service-operator.clusterserviceversion.yaml bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
 
 run-bundle:
@@ -219,8 +219,8 @@ cleanup-bundle:
 	$(OPERATOR_SDK) cleanup ibm-common-service-operator
 
 build-catalog-source:
-	opm -u docker index add --bundles $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(BUILD_VERSION) --tag $(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME)-catalog:$(BUILD_VERSION)
-	docker push $(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME)-catalog:$(BUILD_VERSION)
+	opm -u $(CONTAINER_TOOL) index add --bundles $(QUAY_REGISTRY)/$(BUNDLE_IMAGE_NAME):$(BUILD_VERSION) --tag $(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME)-catalog:$(BUILD_VERSION)
+	$(CONTAINER_TOOL) push $(QUAY_REGISTRY)/$(OPERATOR_IMAGE_NAME)-catalog:$(BUILD_VERSION)
 
 update-csv-image: # updates operator image in currently deployed Common Service Operator
 	oc patch csv -n ibm-common-services ibm-common-service-operator.v$(RELEASE_VERSION) --type json -p \
@@ -329,7 +329,7 @@ build-push-image: config-docker build-operator-image  ## Build and push the oper
 
 .PHONY: docker-push
 docker-push:
-	docker push $(IMG)
+	$(CONTAINER_TOOL) push $(IMG)
 
 multiarch-image: config-docker ## Generate multiarch images for operator image.
 	@MAX_PULLING_RETRY=20 RETRY_INTERVAL=30 common/scripts/multiarch_image.sh $(DOCKER_REGISTRY) $(OPERATOR_IMAGE_NAME) $(BUILD_VERSION) $(RELEASE_VERSION)
