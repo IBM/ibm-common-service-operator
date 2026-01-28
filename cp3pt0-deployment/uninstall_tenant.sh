@@ -232,9 +232,19 @@ function uninstall_odlm_resource() {
         fi
     done
 
-    # Add a temp workaround for CPD 5.3.1 
-    # We manually delete the finalizer on zen-ca-operandrequest and manually cleanup the resources it created
-    
+    # Add a temp workaround for CPD 5.3.1/Zen 6.4.0
+    # We manually delete the finalizer on zen-ca-operandrequest
+    # this field will be removed in next release, and zen will not create this operandrequest in operator namespace
+    info "Removing finalizers from zen-ca-operand-request in operator namespaces"
+    for ns in ${OPERATOR_NS_LIST//,/ }; do
+        # Check if zen-ca-operand-request exists in the namespace
+        zen_ca_opreq=$(${OC} get operandrequest zen-ca-operand-request -n "$ns" --no-headers --ignore-not-found 2>/dev/null | awk '{print $1}')
+        if [ "$zen_ca_opreq" != "" ]; then
+            info "Found zen-ca-operand-request in namespace: $ns, removing finalizers"
+            ${OC} patch operandrequest zen-ca-operand-request -n "$ns" --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]' 2>/dev/null || warning "Failed to remove finalizers from zen-ca-operand-request in $ns"
+            ${OC} delete operandrequest zen-ca-operand-request -n "$ns" --ignore-not-found --timeout=30s || warning "Failed to delete zen-ca-operand-request in $ns"
+        fi
+    done
 
     if [ "$grep_args" == "" ]; then
         grep_args='no-operand-requests'
