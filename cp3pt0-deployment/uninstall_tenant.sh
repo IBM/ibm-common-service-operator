@@ -232,6 +232,20 @@ function uninstall_odlm_resource() {
         fi
     done
 
+    # Add a temp workaround for CPD 5.3.1/Zen 6.4.0
+    # We manually delete the finalizer on zen-ca-operandrequest and cleanup the resources it created
+    # this field will be removed in next release, and zen will not create this operandrequest in operator namespace
+    info "Removing finalizers from zen-ca-operand-request in operator namespaces"
+    for ns in ${OPERATOR_NS_LIST//,/ }; do
+        # Check if zen-ca-operand-request exists in the namespace
+        zen_ca_opreq=$(${OC} get operandrequest zen-ca-operand-request -n "$ns" --no-headers --ignore-not-found 2>/dev/null | awk '{print $1}')
+        if [ "$zen_ca_opreq" != "" ]; then
+            info "Found zen-ca-operand-request in namespace: $ns, removing finalizers"
+            ${OC} patch operandrequest zen-ca-operand-request -n "$ns" --type="json" -p '[{"op": "remove", "path":"/metadata/finalizers"}]' 2>/dev/null || warning "Failed to remove finalizers from zen-ca-operand-request in $ns"
+            ${OC} delete operandrequest zen-ca-operand-request -n "$ns" --ignore-not-found --timeout=30s || warning "Failed to delete zen-ca-operand-request in $ns"           
+        fi
+    done
+    ### workaround end here
     if [ "$grep_args" == "" ]; then
         grep_args='no-operand-requests'
     fi
@@ -497,6 +511,15 @@ function cleanup_extra_resources() {
         ${OC} delete operandregistry common-service -n $ns --ignore-not-found
         ${OC} delete catalogsource opencloud-operators ibm-cs-install-catalog ibm-cs-iam-catalog -n $ns --ignore-not-found
         ${OC} delete secret ibm-entitlement-key -n $ns --ignore-not-found
+        ${OC} delete issuer zen-tls-issuer -n $ns --ignore-not-found
+        # Cleanup internal-tls certificates for zen
+        internal_tls_certs=$(${OC} get certificate -n "$ns" --no-headers 2>/dev/null | grep '^internal-tls' | awk '{print $1}')
+        if [ "$internal_tls_certs" != "" ]; then
+            for cert in $internal_tls_certs; do
+                info "Deleting certificate: $cert"
+                ${OC} delete certificate "$cert" -n "$ns" --ignore-not-found --timeout=30s
+            done
+        fi
         info "Remaining resources (minus package manifests and events) in namespace $ns:"
         ${OC} get "$(${OC} api-resources --namespaced=true --verbs=list -o name | awk '{printf "%s%s",sep,$0;sep=","}')"  --ignore-not-found -n $ns -o=custom-columns=KIND:.kind,NAME:.metadata.name --sort-by='kind' | grep -v PackageManifest | grep -v Event
     done
