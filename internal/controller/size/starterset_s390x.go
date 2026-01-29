@@ -214,8 +214,9 @@ const StarterSet = `
           limits:
             cpu: 1000m
             memory: 650Mi
+            ephemeral-storage: 400Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 300Mi
             cpu: 140m
             memory: 525Mi
       clientRegistration:
@@ -224,7 +225,7 @@ const StarterSet = `
             cpu: 1000m
             memory: 50Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 100Mi
             cpu: 20m
             memory: 50Mi
       identityManager:
@@ -232,8 +233,9 @@ const StarterSet = `
           limits:
             cpu: 1000m
             memory: 220Mi
+            ephemeral-storage: 150Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 50Mi
             cpu: 50m
             memory: 120Mi
       identityProvider:
@@ -241,8 +243,9 @@ const StarterSet = `
           limits:
             cpu: 1000m
             memory: 230Mi
+            ephemeral-storage: 200Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 100Mi
             cpu: 80m
             memory: 130Mi
     oidcclientwatcher:
@@ -342,8 +345,9 @@ const StarterSet = `
           limits:
             cpu: 1000m
             memory: 650Mi
+            ephemeral-storage: 400Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 300Mi
             cpu: 140m
             memory: 525Mi
       clientRegistration:
@@ -352,7 +356,7 @@ const StarterSet = `
             cpu: 1000m
             memory: 50Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 100Mi
             cpu: 20m
             memory: 50Mi
       identityManager:
@@ -360,8 +364,9 @@ const StarterSet = `
           limits:
             cpu: 1000m
             memory: 220Mi
+            ephemeral-storage: 150Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 50Mi
             cpu: 50m
             memory: 120Mi
       identityProvider:
@@ -369,8 +374,9 @@ const StarterSet = `
           limits:
             cpu: 1000m
             memory: 230Mi
+            ephemeral-storage: 200Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 100Mi
             cpu: 80m
             memory: 130Mi
 - name: ibm-im-operator-v4.0
@@ -382,8 +388,9 @@ const StarterSet = `
           limits:
             cpu: 1000m
             memory: 650Mi
+            ephemeral-storage: 400Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 300Mi
             cpu: 140m
             memory: 525Mi
       clientRegistration:
@@ -392,7 +399,7 @@ const StarterSet = `
             cpu: 1000m
             memory: 50Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 100Mi
             cpu: 20m
             memory: 50Mi
       identityManager:
@@ -400,8 +407,9 @@ const StarterSet = `
           limits:
             cpu: 1000m
             memory: 220Mi
+            ephemeral-storage: 150Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 50Mi
             cpu: 50m
             memory: 120Mi
       identityProvider:
@@ -409,8 +417,9 @@ const StarterSet = `
           limits:
             cpu: 1000m
             memory: 230Mi
+            ephemeral-storage: 200Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 100Mi
             cpu: 80m
             memory: 130Mi
 - name: ibm-im-operator-v4.1
@@ -422,8 +431,9 @@ const StarterSet = `
           limits:
             cpu: 1000m
             memory: 650Mi
+            ephemeral-storage: 400Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 300Mi
             cpu: 140m
             memory: 525Mi
       clientRegistration:
@@ -432,7 +442,7 @@ const StarterSet = `
             cpu: 1000m
             memory: 50Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 100Mi
             cpu: 20m
             memory: 50Mi
       identityManager:
@@ -440,8 +450,9 @@ const StarterSet = `
           limits:
             cpu: 1000m
             memory: 220Mi
+            ephemeral-storage: 150Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 50Mi
             cpu: 50m
             memory: 120Mi
       identityProvider:
@@ -449,8 +460,9 @@ const StarterSet = `
           limits:
             cpu: 1000m
             memory: 230Mi
+            ephemeral-storage: 200Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 100Mi
             cpu: 80m
             memory: 130Mi
 - name: ibm-im-operator-v4.2
@@ -462,8 +474,9 @@ const StarterSet = `
           limits:
             cpu: 1000m
             memory: 650Mi
+            ephemeral-storage: 400Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 300Mi
             cpu: 140m
             memory: 525Mi
       clientRegistration:
@@ -472,7 +485,7 @@ const StarterSet = `
             cpu: 1000m
             memory: 50Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 100Mi
             cpu: 20m
             memory: 50Mi
       identityManager:
@@ -480,8 +493,9 @@ const StarterSet = `
           limits:
             cpu: 1000m
             memory: 220Mi
+            ephemeral-storage: 150Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 50Mi
             cpu: 50m
             memory: 120Mi
       identityProvider:
@@ -489,8 +503,9 @@ const StarterSet = `
           limits:
             cpu: 1000m
             memory: 230Mi
+            ephemeral-storage: 200Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 100Mi
             cpu: 80m
             memory: 130Mi
 - name: ibm-im-operator-v4.3
@@ -502,8 +517,9 @@ const StarterSet = `
           limits:
             cpu: 1000m
             memory: 650Mi
+            ephemeral-storage: 400Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 300Mi
             cpu: 140m
             memory: 525Mi
       clientRegistration:
@@ -512,7 +528,7 @@ const StarterSet = `
             cpu: 1000m
             memory: 50Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 100Mi
             cpu: 20m
             memory: 50Mi
       identityManager:
@@ -520,8 +536,9 @@ const StarterSet = `
           limits:
             cpu: 1000m
             memory: 220Mi
+            ephemeral-storage: 150Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 50Mi
             cpu: 50m
             memory: 120Mi
       identityProvider:
@@ -529,8 +546,9 @@ const StarterSet = `
           limits:
             cpu: 1000m
             memory: 230Mi
+            ephemeral-storage: 200Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 100Mi
             cpu: 80m
             memory: 130Mi
 - name: ibm-im-operator-v4.4
@@ -542,8 +560,9 @@ const StarterSet = `
           limits:
             cpu: 1000m
             memory: 650Mi
+            ephemeral-storage: 400Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 300Mi
             cpu: 140m
             memory: 525Mi
       clientRegistration:
@@ -552,7 +571,7 @@ const StarterSet = `
             cpu: 1000m
             memory: 50Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 100Mi
             cpu: 20m
             memory: 50Mi
       identityManager:
@@ -560,8 +579,9 @@ const StarterSet = `
           limits:
             cpu: 1000m
             memory: 220Mi
+            ephemeral-storage: 150Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 50Mi
             cpu: 50m
             memory: 120Mi
       identityProvider:
@@ -569,8 +589,9 @@ const StarterSet = `
           limits:
             cpu: 1000m
             memory: 230Mi
+            ephemeral-storage: 200Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 100Mi
             cpu: 80m
             memory: 130Mi
 - name: ibm-im-operator-v4.5
@@ -582,8 +603,9 @@ const StarterSet = `
           limits:
             cpu: 1000m
             memory: 650Mi
+            ephemeral-storage: 400Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 300Mi
             cpu: 140m
             memory: 525Mi
       clientRegistration:
@@ -592,7 +614,7 @@ const StarterSet = `
             cpu: 1000m
             memory: 50Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 100Mi
             cpu: 20m
             memory: 50Mi
       identityManager:
@@ -600,8 +622,9 @@ const StarterSet = `
           limits:
             cpu: 1000m
             memory: 220Mi
+            ephemeral-storage: 150Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 50Mi
             cpu: 50m
             memory: 120Mi
       identityProvider:
@@ -609,8 +632,9 @@ const StarterSet = `
           limits:
             cpu: 1000m
             memory: 230Mi
+            ephemeral-storage: 200Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 100Mi
             cpu: 80m
             memory: 130Mi
 - name: ibm-im-operator-v4.6
@@ -622,8 +646,9 @@ const StarterSet = `
           limits:
             cpu: 1000m
             memory: 650Mi
+            ephemeral-storage: 400Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 300Mi
             cpu: 140m
             memory: 525Mi
       clientRegistration:
@@ -632,7 +657,7 @@ const StarterSet = `
             cpu: 1000m
             memory: 50Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 100Mi
             cpu: 20m
             memory: 50Mi
       identityManager:
@@ -640,8 +665,9 @@ const StarterSet = `
           limits:
             cpu: 1000m
             memory: 220Mi
+            ephemeral-storage: 150Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 50Mi
             cpu: 50m
             memory: 120Mi
       identityProvider:
@@ -649,8 +675,9 @@ const StarterSet = `
           limits:
             cpu: 1000m
             memory: 230Mi
+            ephemeral-storage: 200Mi
           requests:
-            ephemeral-storage: 256Mi
+            ephemeral-storage: 100Mi
             cpu: 80m
             memory: 130Mi
 - name: ibm-management-ingress-operator
