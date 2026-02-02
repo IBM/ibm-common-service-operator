@@ -211,9 +211,9 @@ const Large = `
           limits:
             cpu: 3000m
             memory: 1201Mi
-            ephemeral-storage: 550Mi
+            ephemeral-storage: 650Mi
           requests:
-            ephemeral-storage: 450Mi
+            ephemeral-storage: 500Mi
             cpu: 725m
             memory: 695Mi
       clientRegistration:
@@ -230,9 +230,9 @@ const Large = `
           limits:
             cpu: 1000m
             memory: 645Mi
-            ephemeral-storage: 300Mi
+            ephemeral-storage: 400Mi
           requests:
-            ephemeral-storage: 200Mi
+            ephemeral-storage: 100Mi
             cpu: 340m
             memory: 385Mi
       identityProvider:
@@ -240,9 +240,9 @@ const Large = `
           limits:
             cpu: 1000m
             memory: 480Mi
-            ephemeral-storage: 350Mi
+            ephemeral-storage: 500Mi
           requests:
-            ephemeral-storage: 250Mi
+            ephemeral-storage: 200Mi
             cpu: 410m
             memory: 335Mi
       replicas: 3
@@ -342,9 +342,9 @@ const Large = `
           limits:
             cpu: 3000m
             memory: 1201Mi
-            ephemeral-storage: 550Mi
+            ephemeral-storage: 650Mi
           requests:
-            ephemeral-storage: 450Mi
+            ephemeral-storage: 500Mi
             cpu: 725m
             memory: 695Mi
       clientRegistration:
@@ -361,9 +361,9 @@ const Large = `
           limits:
             cpu: 1000m
             memory: 645Mi
-            ephemeral-storage: 300Mi
+            ephemeral-storage: 400Mi
           requests:
-            ephemeral-storage: 200Mi
+            ephemeral-storage: 100Mi
             cpu: 340m
             memory: 385Mi
       identityProvider:
@@ -371,9 +371,9 @@ const Large = `
           limits:
             cpu: 1000m
             memory: 480Mi
-            ephemeral-storage: 350Mi
+            ephemeral-storage: 500Mi
           requests:
-            ephemeral-storage: 250Mi
+            ephemeral-storage: 200Mi
             cpu: 410m
             memory: 335Mi
       replicas: 3
@@ -385,9 +385,9 @@ const Large = `
           limits:
             cpu: 3000m
             memory: 1201Mi
-            ephemeral-storage: 550Mi
+            ephemeral-storage: 650Mi
           requests:
-            ephemeral-storage: 450Mi
+            ephemeral-storage: 500Mi
             cpu: 725m
             memory: 695Mi
       clientRegistration:
@@ -404,9 +404,9 @@ const Large = `
           limits:
             cpu: 1000m
             memory: 645Mi
-            ephemeral-storage: 300Mi
+            ephemeral-storage: 400Mi
           requests:
-            ephemeral-storage: 200Mi
+            ephemeral-storage: 100Mi
             cpu: 340m
             memory: 385Mi
       identityProvider:
@@ -414,9 +414,9 @@ const Large = `
           limits:
             cpu: 1000m
             memory: 480Mi
-            ephemeral-storage: 350Mi
+            ephemeral-storage: 500Mi
           requests:
-            ephemeral-storage: 250Mi
+            ephemeral-storage: 200Mi
             cpu: 410m
             memory: 335Mi
       replicas: 3
@@ -428,9 +428,9 @@ const Large = `
           limits:
             cpu: 3000m
             memory: 1201Mi
-            ephemeral-storage: 550Mi
+            ephemeral-storage: 650Mi
           requests:
-            ephemeral-storage: 450Mi
+            ephemeral-storage: 500Mi
             cpu: 725m
             memory: 695Mi
       clientRegistration:
@@ -447,9 +447,9 @@ const Large = `
           limits:
             cpu: 1000m
             memory: 645Mi
-            ephemeral-storage: 300Mi
+            ephemeral-storage: 400Mi
           requests:
-            ephemeral-storage: 200Mi
+            ephemeral-storage: 100Mi
             cpu: 340m
             memory: 385Mi
       identityProvider:
@@ -457,9 +457,9 @@ const Large = `
           limits:
             cpu: 1000m
             memory: 480Mi
-            ephemeral-storage: 350Mi
+            ephemeral-storage: 500Mi
           requests:
-            ephemeral-storage: 250Mi
+            ephemeral-storage: 200Mi
             cpu: 410m
             memory: 335Mi
       replicas: 3
@@ -471,9 +471,9 @@ const Large = `
           limits:
             cpu: 3000m
             memory: 1201Mi
-            ephemeral-storage: 550Mi
+            ephemeral-storage: 650Mi
           requests:
-            ephemeral-storage: 450Mi
+            ephemeral-storage: 500Mi
             cpu: 725m
             memory: 695Mi
       clientRegistration:
@@ -490,9 +490,9 @@ const Large = `
           limits:
             cpu: 1000m
             memory: 645Mi
-            ephemeral-storage: 300Mi
+            ephemeral-storage: 400Mi
           requests:
-            ephemeral-storage: 200Mi
+            ephemeral-storage: 100Mi
             cpu: 340m
             memory: 385Mi
       identityProvider:
@@ -500,9 +500,9 @@ const Large = `
           limits:
             cpu: 1000m
             memory: 480Mi
-            ephemeral-storage: 350Mi
+            ephemeral-storage: 500Mi
           requests:
-            ephemeral-storage: 250Mi
+            ephemeral-storage: 200Mi
             cpu: 410m
             memory: 335Mi
       replicas: 3
@@ -514,9 +514,9 @@ const Large = `
           limits:
             cpu: 3000m
             memory: 1201Mi
-            ephemeral-storage: 550Mi
+            ephemeral-storage: 650Mi
           requests:
-            ephemeral-storage: 450Mi
+            ephemeral-storage: 500Mi
             cpu: 725m
             memory: 695Mi
       clientRegistration:
@@ -533,9 +533,9 @@ const Large = `
           limits:
             cpu: 1000m
             memory: 645Mi
-            ephemeral-storage: 300Mi
+            ephemeral-storage: 400Mi
           requests:
-            ephemeral-storage: 200Mi
+            ephemeral-storage: 100Mi
             cpu: 340m
             memory: 385Mi
       identityProvider:
@@ -543,9 +543,9 @@ const Large = `
           limits:
             cpu: 1000m
             memory: 480Mi
-            ephemeral-storage: 350Mi
+            ephemeral-storage: 500Mi
           requests:
-            ephemeral-storage: 250Mi
+            ephemeral-storage: 200Mi
             cpu: 410m
             memory: 335Mi
       replicas: 3
@@ -557,9 +557,9 @@ const Large = `
           limits:
             cpu: 3000m
             memory: 1201Mi
-            ephemeral-storage: 550Mi
+            ephemeral-storage: 650Mi
           requests:
-            ephemeral-storage: 450Mi
+            ephemeral-storage: 500Mi
             cpu: 725m
             memory: 695Mi
       clientRegistration:
@@ -576,9 +576,9 @@ const Large = `
           limits:
             cpu: 1000m
             memory: 645Mi
-            ephemeral-storage: 300Mi
+            ephemeral-storage: 400Mi
           requests:
-            ephemeral-storage: 200Mi
+            ephemeral-storage: 100Mi
             cpu: 340m
             memory: 385Mi
       identityProvider:
@@ -586,9 +586,9 @@ const Large = `
           limits:
             cpu: 1000m
             memory: 480Mi
-            ephemeral-storage: 350Mi
+            ephemeral-storage: 500Mi
           requests:
-            ephemeral-storage: 250Mi
+            ephemeral-storage: 200Mi
             cpu: 410m
             memory: 335Mi
       replicas: 3
@@ -600,9 +600,9 @@ const Large = `
           limits:
             cpu: 3000m
             memory: 1201Mi
-            ephemeral-storage: 550Mi
+            ephemeral-storage: 650Mi
           requests:
-            ephemeral-storage: 450Mi
+            ephemeral-storage: 500Mi
             cpu: 725m
             memory: 695Mi
       clientRegistration:
@@ -619,9 +619,9 @@ const Large = `
           limits:
             cpu: 1000m
             memory: 645Mi
-            ephemeral-storage: 300Mi
+            ephemeral-storage: 400Mi
           requests:
-            ephemeral-storage: 200Mi
+            ephemeral-storage: 100Mi
             cpu: 340m
             memory: 385Mi
       identityProvider:
@@ -629,9 +629,9 @@ const Large = `
           limits:
             cpu: 1000m
             memory: 480Mi
-            ephemeral-storage: 350Mi
+            ephemeral-storage: 500Mi
           requests:
-            ephemeral-storage: 250Mi
+            ephemeral-storage: 200Mi
             cpu: 410m
             memory: 335Mi
       replicas: 3
@@ -643,9 +643,9 @@ const Large = `
           limits:
             cpu: 3000m
             memory: 1201Mi
-            ephemeral-storage: 550Mi
+            ephemeral-storage: 650Mi
           requests:
-            ephemeral-storage: 450Mi
+            ephemeral-storage: 500Mi
             cpu: 725m
             memory: 695Mi
       clientRegistration:
@@ -662,9 +662,9 @@ const Large = `
           limits:
             cpu: 1000m
             memory: 645Mi
-            ephemeral-storage: 300Mi
+            ephemeral-storage: 400Mi
           requests:
-            ephemeral-storage: 200Mi
+            ephemeral-storage: 100Mi
             cpu: 340m
             memory: 385Mi
       identityProvider:
@@ -672,9 +672,9 @@ const Large = `
           limits:
             cpu: 1000m
             memory: 480Mi
-            ephemeral-storage: 350Mi
+            ephemeral-storage: 500Mi
           requests:
-            ephemeral-storage: 250Mi
+            ephemeral-storage: 200Mi
             cpu: 410m
             memory: 335Mi
       replicas: 3
