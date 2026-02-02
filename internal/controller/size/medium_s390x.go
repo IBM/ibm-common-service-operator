@@ -211,9 +211,9 @@ const Medium = `
           limits:
             cpu: 1000m
             memory: 745Mi
-            ephemeral-storage: 500Mi
+            ephemeral-storage: 650Mi
           requests:
-            ephemeral-storage: 400Mi
+            ephemeral-storage: 500Mi
             cpu: 230m
             memory: 695Mi
       clientRegistration:
@@ -230,9 +230,9 @@ const Medium = `
           limits:
             cpu: 1000m
             memory: 525Mi
-            ephemeral-storage: 250Mi
+            ephemeral-storage: 400Mi
           requests:
-            ephemeral-storage: 150Mi
+            ephemeral-storage: 100Mi
             cpu: 100m
             memory: 140Mi
       identityProvider:
@@ -240,7 +240,7 @@ const Medium = `
           limits:
             cpu: 1000m
             memory: 355Mi
-            ephemeral-storage: 300Mi
+            ephemeral-storage: 500Mi
           requests:
             ephemeral-storage: 200Mi
             cpu: 320m
@@ -342,9 +342,9 @@ const Medium = `
           limits:
             cpu: 1000m
             memory: 745Mi
-            ephemeral-storage: 500Mi
+            ephemeral-storage: 650Mi
           requests:
-            ephemeral-storage: 400Mi
+            ephemeral-storage: 500Mi
             cpu: 230m
             memory: 695Mi
       clientRegistration:
@@ -361,9 +361,9 @@ const Medium = `
           limits:
             cpu: 1000m
             memory: 525Mi
-            ephemeral-storage: 250Mi
+            ephemeral-storage: 400Mi
           requests:
-            ephemeral-storage: 150Mi
+            ephemeral-storage: 100Mi
             cpu: 100m
             memory: 140Mi
       identityProvider:
@@ -371,7 +371,7 @@ const Medium = `
           limits:
             cpu: 1000m
             memory: 355Mi
-            ephemeral-storage: 300Mi
+            ephemeral-storage: 500Mi
           requests:
             ephemeral-storage: 200Mi
             cpu: 320m
@@ -385,9 +385,9 @@ const Medium = `
           limits:
             cpu: 1000m
             memory: 745Mi
-            ephemeral-storage: 500Mi
+            ephemeral-storage: 650Mi
           requests:
-            ephemeral-storage: 400Mi
+            ephemeral-storage: 500Mi
             cpu: 230m
             memory: 695Mi
       clientRegistration:
@@ -404,9 +404,9 @@ const Medium = `
           limits:
             cpu: 1000m
             memory: 525Mi
-            ephemeral-storage: 250Mi
+            ephemeral-storage: 400Mi
           requests:
-            ephemeral-storage: 150Mi
+            ephemeral-storage: 100Mi
             cpu: 100m
             memory: 140Mi
       identityProvider:
@@ -414,7 +414,7 @@ const Medium = `
           limits:
             cpu: 1000m
             memory: 355Mi
-            ephemeral-storage: 300Mi
+            ephemeral-storage: 500Mi
           requests:
             ephemeral-storage: 200Mi
             cpu: 320m
@@ -428,9 +428,9 @@ const Medium = `
           limits:
             cpu: 1000m
             memory: 745Mi
-            ephemeral-storage: 500Mi
+            ephemeral-storage: 650Mi
           requests:
-            ephemeral-storage: 400Mi
+            ephemeral-storage: 500Mi
             cpu: 230m
             memory: 695Mi
       clientRegistration:
@@ -447,9 +447,9 @@ const Medium = `
           limits:
             cpu: 1000m
             memory: 525Mi
-            ephemeral-storage: 250Mi
+            ephemeral-storage: 400Mi
           requests:
-            ephemeral-storage: 150Mi
+            ephemeral-storage: 100Mi
             cpu: 100m
             memory: 140Mi
       identityProvider:
@@ -457,7 +457,7 @@ const Medium = `
           limits:
             cpu: 1000m
             memory: 355Mi
-            ephemeral-storage: 300Mi
+            ephemeral-storage: 500Mi
           requests:
             ephemeral-storage: 200Mi
             cpu: 320m
@@ -471,9 +471,9 @@ const Medium = `
           limits:
             cpu: 1000m
             memory: 745Mi
-            ephemeral-storage: 500Mi
+            ephemeral-storage: 650Mi
           requests:
-            ephemeral-storage: 400Mi
+            ephemeral-storage: 500Mi
             cpu: 230m
             memory: 695Mi
       clientRegistration:
@@ -490,9 +490,9 @@ const Medium = `
           limits:
             cpu: 1000m
             memory: 525Mi
-            ephemeral-storage: 250Mi
+            ephemeral-storage: 400Mi
           requests:
-            ephemeral-storage: 150Mi
+            ephemeral-storage: 100Mi
             cpu: 100m
             memory: 140Mi
       identityProvider:
@@ -500,7 +500,7 @@ const Medium = `
           limits:
             cpu: 1000m
             memory: 355Mi
-            ephemeral-storage: 300Mi
+            ephemeral-storage: 500Mi
           requests:
             ephemeral-storage: 200Mi
             cpu: 320m
@@ -514,9 +514,9 @@ const Medium = `
           limits:
             cpu: 1000m
             memory: 745Mi
-            ephemeral-storage: 500Mi
+            ephemeral-storage: 650Mi
           requests:
-            ephemeral-storage: 400Mi
+            ephemeral-storage: 500Mi
             cpu: 230m
             memory: 695Mi
       clientRegistration:
@@ -533,9 +533,9 @@ const Medium = `
           limits:
             cpu: 1000m
             memory: 525Mi
-            ephemeral-storage: 250Mi
+            ephemeral-storage: 400Mi
           requests:
-            ephemeral-storage: 150Mi
+            ephemeral-storage: 100Mi
             cpu: 100m
             memory: 140Mi
       identityProvider:
@@ -543,7 +543,7 @@ const Medium = `
           limits:
             cpu: 1000m
             memory: 355Mi
-            ephemeral-storage: 300Mi
+            ephemeral-storage: 500Mi
           requests:
             ephemeral-storage: 200Mi
             cpu: 320m
@@ -557,9 +557,9 @@ const Medium = `
           limits:
             cpu: 1000m
             memory: 745Mi
-            ephemeral-storage: 500Mi
+            ephemeral-storage: 650Mi
           requests:
-            ephemeral-storage: 400Mi
+            ephemeral-storage: 500Mi
             cpu: 230m
             memory: 695Mi
       clientRegistration:
@@ -576,9 +576,9 @@ const Medium = `
           limits:
             cpu: 1000m
             memory: 525Mi
-            ephemeral-storage: 250Mi
+            ephemeral-storage: 400Mi
           requests:
-            ephemeral-storage: 150Mi
+            ephemeral-storage: 100Mi
             cpu: 100m
             memory: 140Mi
       identityProvider:
@@ -586,7 +586,7 @@ const Medium = `
           limits:
             cpu: 1000m
             memory: 355Mi
-            ephemeral-storage: 300Mi
+            ephemeral-storage: 500Mi
           requests:
             ephemeral-storage: 200Mi
             cpu: 320m
@@ -600,9 +600,9 @@ const Medium = `
           limits:
             cpu: 1000m
             memory: 745Mi
-            ephemeral-storage: 500Mi
+            ephemeral-storage: 650Mi
           requests:
-            ephemeral-storage: 400Mi
+            ephemeral-storage: 500Mi
             cpu: 230m
             memory: 695Mi
       clientRegistration:
@@ -619,9 +619,9 @@ const Medium = `
           limits:
             cpu: 1000m
             memory: 525Mi
-            ephemeral-storage: 250Mi
+            ephemeral-storage: 400Mi
           requests:
-            ephemeral-storage: 150Mi
+            ephemeral-storage: 100Mi
             cpu: 100m
             memory: 140Mi
       identityProvider:
@@ -629,7 +629,7 @@ const Medium = `
           limits:
             cpu: 1000m
             memory: 355Mi
-            ephemeral-storage: 300Mi
+            ephemeral-storage: 500Mi
           requests:
             ephemeral-storage: 200Mi
             cpu: 320m
@@ -643,9 +643,9 @@ const Medium = `
           limits:
             cpu: 1000m
             memory: 745Mi
-            ephemeral-storage: 500Mi
+            ephemeral-storage: 650Mi
           requests:
-            ephemeral-storage: 400Mi
+            ephemeral-storage: 500Mi
             cpu: 230m
             memory: 695Mi
       clientRegistration:
@@ -662,9 +662,9 @@ const Medium = `
           limits:
             cpu: 1000m
             memory: 525Mi
-            ephemeral-storage: 250Mi
+            ephemeral-storage: 400Mi
           requests:
-            ephemeral-storage: 150Mi
+            ephemeral-storage: 100Mi
             cpu: 100m
             memory: 140Mi
       identityProvider:
@@ -672,7 +672,7 @@ const Medium = `
           limits:
             cpu: 1000m
             memory: 355Mi
-            ephemeral-storage: 300Mi
+            ephemeral-storage: 500Mi
           requests:
             ephemeral-storage: 200Mi
             cpu: 320m

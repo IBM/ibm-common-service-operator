@@ -212,9 +212,9 @@ const Small = `
           limits:
             cpu: 1000m
             memory: 1090Mi
-            ephemeral-storage: 450Mi
+            ephemeral-storage: 650Mi
           requests:
-            ephemeral-storage: 350Mi
+            ephemeral-storage: 500Mi
             cpu: 600m
             memory: 650Mi
       clientRegistration:
@@ -231,7 +231,7 @@ const Small = `
           limits:
             cpu: 1000m
             memory: 410Mi
-            ephemeral-storage: 200Mi
+            ephemeral-storage: 400Mi
           requests:
             ephemeral-storage: 100Mi
             cpu: 260m
@@ -241,9 +241,9 @@ const Small = `
           limits:
             cpu: 1000m
             memory: 420Mi
-            ephemeral-storage: 250Mi
+            ephemeral-storage: 500Mi
           requests:
-            ephemeral-storage: 150Mi
+            ephemeral-storage: 200Mi
             cpu: 570m
             memory: 250Mi
     oidcclientwatcher:
@@ -343,9 +343,9 @@ const Small = `
           limits:
             cpu: 1000m
             memory: 1090Mi
-            ephemeral-storage: 450Mi
+            ephemeral-storage: 650Mi
           requests:
-            ephemeral-storage: 350Mi
+            ephemeral-storage: 500Mi
             cpu: 600m
             memory: 650Mi
       clientRegistration:
@@ -362,7 +362,7 @@ const Small = `
           limits:
             cpu: 1000m
             memory: 410Mi
-            ephemeral-storage: 200Mi
+            ephemeral-storage: 400Mi
           requests:
             ephemeral-storage: 100Mi
             cpu: 260m
@@ -372,9 +372,9 @@ const Small = `
           limits:
             cpu: 1000m
             memory: 420Mi
-            ephemeral-storage: 250Mi
+            ephemeral-storage: 500Mi
           requests:
-            ephemeral-storage: 150Mi
+            ephemeral-storage: 200Mi
             cpu: 570m
             memory: 250Mi
 - name: ibm-im-operator-v4.0
@@ -386,9 +386,9 @@ const Small = `
           limits:
             cpu: 1000m
             memory: 1090Mi
-            ephemeral-storage: 450Mi
+            ephemeral-storage: 650Mi
           requests:
-            ephemeral-storage: 350Mi
+            ephemeral-storage: 500Mi
             cpu: 600m
             memory: 650Mi
       clientRegistration:
@@ -405,7 +405,7 @@ const Small = `
           limits:
             cpu: 1000m
             memory: 410Mi
-            ephemeral-storage: 200Mi
+            ephemeral-storage: 400Mi
           requests:
             ephemeral-storage: 100Mi
             cpu: 260m
@@ -415,9 +415,9 @@ const Small = `
           limits:
             cpu: 1000m
             memory: 420Mi
-            ephemeral-storage: 250Mi
+            ephemeral-storage: 500Mi
           requests:
-            ephemeral-storage: 150Mi
+            ephemeral-storage: 200Mi
             cpu: 570m
             memory: 250Mi
 - name: ibm-im-operator-v4.1
@@ -429,9 +429,9 @@ const Small = `
           limits:
             cpu: 1000m
             memory: 1090Mi
-            ephemeral-storage: 450Mi
+            ephemeral-storage: 650Mi
           requests:
-            ephemeral-storage: 350Mi
+            ephemeral-storage: 500Mi
             cpu: 600m
             memory: 650Mi
       clientRegistration:
@@ -448,7 +448,7 @@ const Small = `
           limits:
             cpu: 1000m
             memory: 410Mi
-            ephemeral-storage: 200Mi
+            ephemeral-storage: 400Mi
           requests:
             ephemeral-storage: 100Mi
             cpu: 260m
@@ -458,9 +458,9 @@ const Small = `
           limits:
             cpu: 1000m
             memory: 420Mi
-            ephemeral-storage: 250Mi
+            ephemeral-storage: 500Mi
           requests:
-            ephemeral-storage: 150Mi
+            ephemeral-storage: 200Mi
             cpu: 570m
             memory: 250Mi
 - name: ibm-im-operator-v4.2
@@ -472,9 +472,9 @@ const Small = `
           limits:
             cpu: 1000m
             memory: 1090Mi
-            ephemeral-storage: 450Mi
+            ephemeral-storage: 650Mi
           requests:
-            ephemeral-storage: 350Mi
+            ephemeral-storage: 500Mi
             cpu: 600m
             memory: 650Mi
       clientRegistration:
@@ -491,7 +491,7 @@ const Small = `
           limits:
             cpu: 1000m
             memory: 410Mi
-            ephemeral-storage: 200Mi
+            ephemeral-storage: 400Mi
           requests:
             ephemeral-storage: 100Mi
             cpu: 260m
@@ -501,9 +501,9 @@ const Small = `
           limits:
             cpu: 1000m
             memory: 420Mi
-            ephemeral-storage: 250Mi
+            ephemeral-storage: 500Mi
           requests:
-            ephemeral-storage: 150Mi
+            ephemeral-storage: 200Mi
             cpu: 570m
             memory: 250Mi
 - name: ibm-im-operator-v4.3
@@ -515,9 +515,9 @@ const Small = `
           limits:
             cpu: 1000m
             memory: 1090Mi
-            ephemeral-storage: 450Mi
+            ephemeral-storage: 650Mi
           requests:
-            ephemeral-storage: 350Mi
+            ephemeral-storage: 500Mi
             cpu: 600m
             memory: 650Mi
       clientRegistration:
@@ -534,7 +534,7 @@ const Small = `
           limits:
             cpu: 1000m
             memory: 410Mi
-            ephemeral-storage: 200Mi
+            ephemeral-storage: 400Mi
           requests:
             ephemeral-storage: 100Mi
             cpu: 260m
@@ -544,9 +544,9 @@ const Small = `
           limits:
             cpu: 1000m
             memory: 420Mi
-            ephemeral-storage: 250Mi
+            ephemeral-storage: 500Mi
           requests:
-            ephemeral-storage: 150Mi
+            ephemeral-storage: 200Mi
             cpu: 570m
             memory: 250Mi
 - name: ibm-im-operator-v4.4
@@ -558,9 +558,9 @@ const Small = `
           limits:
             cpu: 1000m
             memory: 1090Mi
-            ephemeral-storage: 450Mi
+            ephemeral-storage: 650Mi
           requests:
-            ephemeral-storage: 350Mi
+            ephemeral-storage: 500Mi
             cpu: 600m
             memory: 650Mi
       clientRegistration:
@@ -577,7 +577,7 @@ const Small = `
           limits:
             cpu: 1000m
             memory: 410Mi
-            ephemeral-storage: 200Mi
+            ephemeral-storage: 400Mi
           requests:
             ephemeral-storage: 100Mi
             cpu: 260m
@@ -587,9 +587,9 @@ const Small = `
           limits:
             cpu: 1000m
             memory: 420Mi
-            ephemeral-storage: 250Mi
+            ephemeral-storage: 500Mi
           requests:
-            ephemeral-storage: 150Mi
+            ephemeral-storage: 200Mi
             cpu: 570m
             memory: 250Mi
 - name: ibm-im-operator-v4.5
@@ -601,9 +601,9 @@ const Small = `
           limits:
             cpu: 1000m
             memory: 1090Mi
-            ephemeral-storage: 450Mi
+            ephemeral-storage: 650Mi
           requests:
-            ephemeral-storage: 350Mi
+            ephemeral-storage: 500Mi
             cpu: 600m
             memory: 650Mi
       clientRegistration:
@@ -620,7 +620,7 @@ const Small = `
           limits:
             cpu: 1000m
             memory: 410Mi
-            ephemeral-storage: 200Mi
+            ephemeral-storage: 400Mi
           requests:
             ephemeral-storage: 100Mi
             cpu: 260m
@@ -630,9 +630,9 @@ const Small = `
           limits:
             cpu: 1000m
             memory: 420Mi
-            ephemeral-storage: 250Mi
+            ephemeral-storage: 500Mi
           requests:
-            ephemeral-storage: 150Mi
+            ephemeral-storage: 200Mi
             cpu: 570m
             memory: 250Mi
 - name: ibm-im-operator-v4.6
@@ -644,9 +644,9 @@ const Small = `
           limits:
             cpu: 1000m
             memory: 1090Mi
-            ephemeral-storage: 450Mi
+            ephemeral-storage: 650Mi
           requests:
-            ephemeral-storage: 350Mi
+            ephemeral-storage: 500Mi
             cpu: 600m
             memory: 650Mi
       clientRegistration:
@@ -663,7 +663,7 @@ const Small = `
           limits:
             cpu: 1000m
             memory: 410Mi
-            ephemeral-storage: 200Mi
+            ephemeral-storage: 400Mi
           requests:
             ephemeral-storage: 100Mi
             cpu: 260m
@@ -673,9 +673,9 @@ const Small = `
           limits:
             cpu: 1000m
             memory: 420Mi
-            ephemeral-storage: 250Mi
+            ephemeral-storage: 500Mi
           requests:
-            ephemeral-storage: 150Mi
+            ephemeral-storage: 200Mi
             cpu: 570m
             memory: 250Mi
 - name: ibm-management-ingress-operator
