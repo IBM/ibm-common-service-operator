@@ -246,6 +246,19 @@ function uninstall_odlm_resource() {
         fi
     done
     ### workaround end here
+
+    # Remove finalizers from any remaining OperandRequests blocking deletion
+    info "Removing finalizers from remaining OperandRequests in tenant namespaces"
+    for ns in ${TENANT_NAMESPACES//,/ }; do
+        opreqs=$(${OC} get operandrequests -n "$ns" -o jsonpath='{.items[*].metadata.name}' --ignore-not-found 2>/dev/null)
+        if [ -n "$opreqs" ]; then
+            for req in ${opreqs}; do
+                info "Removing finalizers from OperandRequest $req in namespace: $ns"
+                ${OC} patch operandrequest "$req" -n "$ns" --type="json" -p '[{"op":"remove","path":"/metadata/finalizers"}]' 2>/dev/null || warning "Failed to remove finalizers from $req in $ns"
+            done
+        fi
+    done
+
     if [ "$grep_args" == "" ]; then
         grep_args='no-operand-requests'
     fi
