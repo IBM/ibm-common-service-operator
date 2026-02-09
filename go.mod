@@ -1,8 +1,6 @@
 module github.com/IBM/ibm-common-service-operator/v4
 
-go 1.23.0
-
-toolchain go1.23.4
+go 1.25.6
 
 require (
 	github.com/IBM/ibm-namespace-scope-operator/v4 v4.2.4-0.20240501132320-6675f97bc34f
