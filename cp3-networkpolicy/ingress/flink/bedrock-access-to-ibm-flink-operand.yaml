@@ -24,7 +24,5 @@ spec:
         port: 6123
       - protocol: TCP
         port: 6124
-      from:
-        - podSelector: {}
   policyTypes:
     - Ingress
