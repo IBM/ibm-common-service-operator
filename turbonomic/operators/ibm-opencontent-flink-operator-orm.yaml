@@ -1,0 +1,30 @@
+apiVersion: devops.turbonomic.io/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: flink-operator-orm
+  namespace: $namespace
+spec:
+  mappings:
+    patterns:
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          path: .spec.template.spec.containers[?(@.name=="flink-kubernetes-operator")].resources
+          name: flink-kubernetes-operator
+        ownerPath: .spec.install.spec.deployments[?(@.name=="flink-kubernetes-operator")].spec.template.spec.containers[?(@.name=="flink-kubernetes-operator")].resources
+        selector: flink_operator
+      - owned:
+          apiVersion: apps/v1
+          kind: Deployment
+          path: .spec.template.spec.containers[?(@.name=="flink-webhook")].resources
+          name: flink-kubernetes-operator
+        ownerPath: .spec.install.spec.deployments[?(@.name=="flink-kubernetes-operator")].spec.template.spec.containers[?(@.name=="flink-webhook")].resources
+        selector: flink_operator
+    selectors:
+      flink_operator:
+        matchLabels:
+          app.kubernetes.io/name: flink-kubernetes-operator
+  owner:
+    apiVersion: operators.coreos.com/v1alpha1
+    kind: ClusterServiceVersion
+    name: ibm-opencontent-flink.v2.0.6
