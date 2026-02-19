@@ -68,4 +68,39 @@ var _ = Describe("Resource Comparison", func() {
 			Expect(result).Should(Equal(expectedResult))
 		})
 	})
+
+	Context("Compare Mixed Types", func() {
+		It("Should compare string vs int64 using k8s resource quantities", func() {
+			A := "1000m"  // 1000 millicores from size profile
+			B := int64(2) // 2 cores from user CR = 2000m
+
+			large, small := ResourceComparison(A, B)
+
+			// 2 cores (2000m) > 1000m, so B should be larger
+			Expect(large).Should(Equal(B))
+			Expect(small).Should(Equal(A))
+		})
+
+		It("Should compare int64 vs string using k8s resource quantities", func() {
+			A := int64(1) // 1 core from user CR = 1000m
+			B := "2000m"  // 2000 millicores from size profile
+
+			large, small := ResourceComparison(A, B)
+
+			// 2000m > 1 core (1000m), so B should be larger
+			Expect(large).Should(Equal(B))
+			Expect(small).Should(Equal(A))
+		})
+
+		It("Should handle memory comparison with mixed types", func() {
+			A := "512Mi"  // string from size profile
+			B := int64(1) // int from user CR (treated as 1 byte)
+
+			large, small := ResourceComparison(A, B)
+
+			// 512Mi >> 1 byte, so A should be larger
+			Expect(large).Should(Equal(A))
+			Expect(small).Should(Equal(B))
+		})
+	})
 })

@@ -91,7 +91,36 @@ func ResourceComparison(resourceA, resourceB interface{}) (interface{}, interfac
 
 	switch resourceA.(type) {
 	case string:
-		large, small, err := resourceStringComparison(resourceA.(string), resourceB.(string))
+		// Check if resourceB is also a string to avoid panic
+		if resourceBStr, ok := resourceB.(string); ok {
+			large, small, err := resourceStringComparison(resourceA.(string), resourceBStr)
+			if err != nil {
+				klog.Error(err)
+			}
+			return large, small
+		}
+
+		// Type mismatch - convert resourceB to string and use k8s resource comparison
+		// e.g., int64(2) becomes "2" which equals "2000m" in CPU terms
+		resourceBStr := fmt.Sprintf("%v", resourceB)
+
+		// Try to parse both as k8s resource quantities
+		normalizedA := normalizeResourceQuantity(resourceA.(string))
+		normalizedB := normalizeResourceQuantity(resourceBStr)
+
+		quantityA, errA := resource.ParseQuantity(normalizedA)
+		quantityB, errB := resource.ParseQuantity(normalizedB)
+
+		if errA == nil && errB == nil {
+			// Both parsed successfully - compare as quantities
+			if quantityA.Cmp(quantityB) > 0 {
+				return resourceA, resourceB
+			}
+			return resourceB, resourceA
+		}
+
+		// Fallback to string comparison if parsing fails
+		large, small, err := resourceStringComparison(resourceA.(string), resourceBStr)
 		if err != nil {
 			klog.Error(err)
 		}
@@ -100,6 +129,22 @@ func ResourceComparison(resourceA, resourceB interface{}) (interface{}, interfac
 		strA := fmt.Sprintf("%v", resourceA)
 		strB := fmt.Sprintf("%v", resourceB)
 
+		// Try k8s resource quantity comparison first
+		normalizedA := normalizeResourceQuantity(strA)
+		normalizedB := normalizeResourceQuantity(strB)
+
+		quantityA, errA := resource.ParseQuantity(normalizedA)
+		quantityB, errB := resource.ParseQuantity(normalizedB)
+
+		if errA == nil && errB == nil {
+			// Both parsed successfully - compare as k8s quantities
+			if quantityA.Cmp(quantityB) > 0 {
+				return resourceA, resourceB
+			}
+			return resourceB, resourceA
+		}
+
+		// Fallback to numeric comparison
 		floatA, _ := strconv.ParseFloat(strA, 64)
 		floatB, _ := strconv.ParseFloat(strB, 64)
 		if floatA > floatB {
