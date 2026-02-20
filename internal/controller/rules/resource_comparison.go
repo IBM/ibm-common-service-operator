@@ -70,14 +70,27 @@ func resourceStringComparison(resourceA, resourceB string) (string, string, erro
 	normalizedA := normalizeResourceQuantity(resourceA)
 	normalizedB := normalizeResourceQuantity(resourceB)
 
-	quantityA, err := resource.ParseQuantity(normalizedA)
-	if err != nil {
-		return "", "", err
+	quantityA, errA := resource.ParseQuantity(normalizedA)
+	quantityB, errB := resource.ParseQuantity(normalizedB)
+
+	// If only one failed to parse, prefer the valid one
+	if errA != nil && errB == nil {
+		// A is invalid, B is valid - prefer B
+		klog.Warningf("Resource '%s' is invalid (%v), using valid resource '%s' instead", resourceA, errA, resourceB)
+		return resourceB, resourceA, nil
 	}
-	quantityB, err := resource.ParseQuantity(normalizedB)
-	if err != nil {
-		return "", "", err
+	if errA == nil && errB != nil {
+		// A is valid, B is invalid - prefer A
+		klog.Warningf("Resource '%s' is invalid (%v), using valid resource '%s' instead", resourceB, errB, resourceA)
+		return resourceA, resourceB, nil
 	}
+
+	// Both failed to parse
+	if errA != nil && errB != nil {
+		return "", "", fmt.Errorf("both resources are invalid: %v, %v", errA, errB)
+	}
+
+	// Both are valid - compare them
 	if quantityA.Cmp(quantityB) > 0 {
 		return resourceA, resourceB, nil
 	}
@@ -95,7 +108,9 @@ func ResourceComparison(resourceA, resourceB interface{}) (interface{}, interfac
 		if resourceBStr, ok := resourceB.(string); ok {
 			large, small, err := resourceStringComparison(resourceA.(string), resourceBStr)
 			if err != nil {
-				klog.Error(err)
+				klog.Warningf("Failed to compare string resources: %v, defaulting to user value", err)
+				// Prefer resourceB (user's value) when comparison fails
+				return resourceB, resourceA
 			}
 			return large, small
 		}
@@ -119,10 +134,22 @@ func ResourceComparison(resourceA, resourceB interface{}) (interface{}, interfac
 			return resourceB, resourceA
 		}
 
-		// Fallback to string comparison if parsing fails
+		// If only one failed to parse, prefer the valid one
+		if errA != nil && errB == nil {
+			klog.Warningf("Resource '%v' is invalid (%v), using valid resource '%v' instead", resourceA, errA, resourceB)
+			return resourceB, resourceA
+		}
+		if errA == nil && errB != nil {
+			klog.Warningf("Resource '%v' is invalid (%v), using valid resource '%v' instead", resourceB, errB, resourceA)
+			return resourceA, resourceB
+		}
+
+		// Both failed to parse - try string comparison
 		large, small, err := resourceStringComparison(resourceA.(string), resourceBStr)
 		if err != nil {
-			klog.Error(err)
+			// String comparison also failed - prefer resourceB (user's value)
+			klog.Warningf("Failed to compare resources: %v, defaulting to user value", err)
+			return resourceB, resourceA
 		}
 		return large, small
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
