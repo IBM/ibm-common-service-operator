@@ -42,7 +42,7 @@ BUILD_VERSION ?= $(shell git describe --exact-match 2> /dev/null || \
                 git describe --match=$(git rev-parse --short=8 HEAD) --always --dirty --abbrev=8)
 RELEASE_VERSION ?= $(shell cat ./version/version.go | grep "Version =" | awk '{ print $$3}' | tr -d '"')
 PREVIOUS_VERSION := 3.23.0
-LATEST_VERSION ?= 4.17.0
+LATEST_VERSION ?= 4.18.0
 
 LOCAL_OS := $(shell uname)
 ifeq ($(LOCAL_OS),Linux)
@@ -98,8 +98,8 @@ RELEASE_IMAGE ?= $(DOCKER_REGISTRY)/$(OPERATOR_IMAGE_NAME):$(BUILD_VERSION)
 RELEASE_IMAGE_ARCH ?= $(DOCKER_REGISTRY)/$(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(BUILD_VERSION)
 LOCAL_ARCH_IMAGE ?= $(OPERATOR_IMAGE_NAME)-$(LOCAL_ARCH):$(BUILD_VERSION)
 
-CHANNELS := v4.17
-DEFAULT_CHANNEL := v4.17
+CHANNELS := v4.18
+DEFAULT_CHANNEL := v4.18
 
 # Options for 'bundle-build'
 ifneq ($(origin CHANNELS), undefined)
@@ -258,7 +258,7 @@ bundle-manifests: clis
 
 generate-all: yq kustomize operator-sdk generate manifests cloudpak-theme-version ## Generate bundle manifests, metadata and package manifests
 	$(OPERATOR_SDK) generate kustomize manifests -q
-	- make bundle-manifests CHANNELS=v4.17 DEFAULT_CHANNEL=v4.17
+	- make bundle-manifests CHANNELS=v4.18 DEFAULT_CHANNEL=v4.18
 
 ##@ Helm Chart Generation
 
