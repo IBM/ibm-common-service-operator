@@ -238,6 +238,14 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+  - name: ibm-im-operator-v4.17
+    namespace: "{{ .CPFSNs }}"
+    channel: v4.17
+    packageName: ibm-iam-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
 	IdpConfigUIOpReg = `
@@ -366,6 +374,14 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+  - name: ibm-idp-config-ui-operator-v4.14
+    namespace: "{{ .CPFSNs }}"
+    channel: v4.14
+    packageName: ibm-commonui-operator-app
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
 	PlatformUIOpReg = `
@@ -457,6 +473,14 @@ spec:
   - name: ibm-platformui-operator-v6.4
     namespace: "{{ .CPFSNs }}"
     channel: v6.4
+    packageName: ibm-zen-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+  - name: ibm-platformui-operator-v6.5
+    namespace: "{{ .CPFSNs }}"
+    channel: v6.5
     packageName: ibm-zen-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -772,6 +796,13 @@ spec:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       operandBindInfo: 
         operand: ibm-im-operator
+  - name: ibm-im-operator-v4.17
+    spec:
+      authentication:
+        config:
+          onPremMultipleDeploy: {{ .OnPremMultiEnable }}
+      operandBindInfo: 
+        operand: ibm-im-operator
 `
 
 	UserMgmtOpCon = `
@@ -898,6 +929,11 @@ spec:
       commonWebUI: {}
       switcheritem: {}
       navconfiguration: {}
+  - name: ibm-idp-config-ui-operator-v4.14
+    spec:
+      commonWebUI: {}
+      switcheritem: {}
+      navconfiguration: {}
 `
 
 	PlatformUIOpCon = `
@@ -988,6 +1024,9 @@ spec:
     spec:
       operandBindInfo: {}
   - name: ibm-platformui-operator-v6.4
+    spec:
+      operandBindInfo: {}
+  - name: ibm-platformui-operator-v6.5
     spec:
       operandBindInfo: {}
 `
@@ -2877,7 +2916,7 @@ spec:
     sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-im-operator
     namespace: "{{ .CPFSNs }}"
-    channel: v4.16
+    channel: v4.17
     packageName: ibm-iam-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -2933,7 +2972,7 @@ spec:
     sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-idp-config-ui-operator
     namespace: "{{ .CPFSNs }}"
-    channel: v4.13
+    channel: v4.14
     packageName: ibm-commonui-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
