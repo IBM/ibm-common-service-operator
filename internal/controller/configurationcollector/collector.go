@@ -44,9 +44,14 @@ type configbuilder struct {
 }
 
 func (b *configbuilder) setDefaultStorageClass() *configbuilder {
+	allowed, err := b.bs.CanI(context.TODO(), "storage.k8s.io", "storageclasses", "list", "")
+	if err != nil || !allowed {
+		klog.Warningf("Skipping StorageClass population in CPP configmap due to insufficient permissions: %v", err)
+		return b
+	}
+
 	scList := &storagev1.StorageClassList{}
-	err := b.bs.Reader.List(context.TODO(), scList)
-	if err != nil {
+	if err := b.bs.Reader.List(context.TODO(), scList); err != nil {
 		return b
 	}
 	if len(scList.Items) == 0 {

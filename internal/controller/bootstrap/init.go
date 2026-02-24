@@ -33,6 +33,7 @@ import (
 	"golang.org/x/mod/semver"
 	admv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
+	authzv1 "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -83,6 +84,34 @@ type Bootstrap struct {
 	CSData               apiv3.CSData
 }
 
+// CanI performs a SelfSubjectAccessReview (SSAR) to check whether the operator service account
+// is allowed to perform the given verb on the given resource.
+//
+// Notes:
+//   - This allows us to keep the default ClusterRole minimal and still do optional cleanup
+//   - If the SSAR itself cannot be created (RBAC missing / API not served), we default to "not allowed"
+//     and return the error so callers can log it.
+func (b *Bootstrap) CanI(ctx context.Context, group, resource, verb, name string) (bool, error) {
+	ssar := &authzv1.SelfSubjectAccessReview{
+		Spec: authzv1.SelfSubjectAccessReviewSpec{
+			ResourceAttributes: &authzv1.ResourceAttributes{
+				Group:    group,
+				Resource: resource,
+				Verb:     verb,
+				Name:     name,
+			},
+		},
+	}
+
+	if err := b.Client.Create(ctx, ssar); err != nil {
+		return false, err
+	}
+
+	klog.V(2).Infof("SSAR verb=%s resource=%s.%s name=%s => allowed=%v reason=%q", verb, resource, group, name, ssar.Status.Allowed, ssar.Status.Reason)
+
+	return ssar.Status.Allowed, nil
+}
+
 type CSOperator struct {
 	Name       string
 	CRD        string
@@ -129,7 +158,7 @@ func NewNonOLMBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		Config:               mgr.GetConfig(),
 		EventRecorder:        mgr.GetEventRecorderFor("ibm-common-service-operator"),
 		Manager:              deploy.NewDeployManager(mgr),
-		SaasEnable:           util.CheckSaas(mgr.GetAPIReader()),
+		SaasEnable:           false,
 		MultiInstancesEnable: util.CheckMultiInstances(mgr.GetAPIReader()),
 		CSData:               csData,
 	}
@@ -162,6 +191,7 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		OperatorNs:              operatorNs,
 		CatalogSourceName:       "",
 		CatalogSourceNs:         "",
+		ODLMChannel:             constant.ODLMChannel,
 		ODLMCatalogSourceName:   odlmCatalogSourceName,
 		ODLMCatalogSourceNs:     odlmcatalogSourceNs,
 		ApprovalMode:            approvalMode,
@@ -179,7 +209,7 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		Config:               mgr.GetConfig(),
 		EventRecorder:        mgr.GetEventRecorderFor("ibm-common-service-operator"),
 		Manager:              deploy.NewDeployManager(mgr),
-		SaasEnable:           util.CheckSaas(mgr.GetAPIReader()),
+		SaasEnable:           false,
 		MultiInstancesEnable: util.CheckMultiInstances(mgr.GetAPIReader()),
 		CSData:               csData,
 	}
@@ -215,6 +245,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 	// Step: Validate install plan approval
 	timer.StartStep("ValidateInstallPlanApproval")
 	installPlanApproval := instance.Spec.InstallPlanApproval
+	userManagedOption := WithUserManagedOverridesFromConfigs(instance.Spec.OperatorConfigs)
 
 	if installPlanApproval != "" {
 		if installPlanApproval != olmv1alpha1.ApprovalAutomatic && installPlanApproval != olmv1alpha1.ApprovalManual {
@@ -230,9 +261,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 	}
 
 	// Check storageClass
-	if err := util.CheckStorageClass(b.Reader); err != nil {
-		return err
-	}
+	b.CheckStorageClass()
 
 	// Backward compatible upgrade from version 3.x.x
 	if err := b.CreateNsScopeConfigmap(); err != nil {
@@ -291,7 +320,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		}
 
 		klog.Info("Installing/Updating OperandRegistry")
-		if err := b.InstallOrUpdateOpreg(installPlanApproval); err != nil {
+		if err := b.InstallOrUpdateOpreg(ctx, installPlanApproval, userManagedOption); err != nil {
 			return err
 		}
 
@@ -301,9 +330,20 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		}
 	}
 
-	klog.Info("Installing ODLM Operator")
-	if err := b.renderTemplate(constant.ODLMSubscription, b.CSData); err != nil {
+	// Install ODLM Operator
+	// Check if CatalogSource contains the correct version of ODLM
+	// if contains, install ODLM Operator
+	// if not, skip the installation of ODLM Operator, and show warning event
+	if installODLM, err := util.CheckODLMCatalogSource(b.Reader, constant.ODLMPackageName, b.CSData.ODLMCatalogSourceName, b.CSData.ODLMCatalogSourceNs, b.CSData.OperatorNs); err != nil {
 		return err
+	} else if installODLM {
+		klog.Info("Installing ODLM Operator")
+		if err := b.renderTemplate(constant.ODLMSubscription, b.CSData); err != nil {
+			return err
+		}
+	} else {
+		b.EventRecorder.Event(instance, corev1.EventTypeWarning, "ODLMCatalogSourceWarning", fmt.Sprintf("The catalogsource %s in namespace %s does not contain the correct version of ODLM, skip the installation/update of ODLM Operator", b.CSData.ODLMCatalogSourceName, b.CSData.ODLMCatalogSourceNs))
+		return fmt.Errorf("the catalogsource %s in namespace %s does not contain the correct version of ODLM, skip the installation/update of ODLM Operator", b.CSData.ODLMCatalogSourceName, b.CSData.ODLMCatalogSourceNs)
 	}
 
 	klog.Info("Waiting for ODLM Operator to be ready")
@@ -330,7 +370,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		}
 
 		klog.Info("Installing/Updating OperandRegistry")
-		if err := b.InstallOrUpdateOpreg(installPlanApproval); err != nil {
+		if err := b.InstallOrUpdateOpreg(ctx, installPlanApproval, userManagedOption); err != nil {
 			return err
 		}
 
@@ -342,29 +382,71 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 	return nil
 }
 
-// CheckWarningCondition
+// CheckWarningCondition checks various warning conditions for the CommonService instance.
+// Currently validates StorageClass configuration.
 func (b *Bootstrap) CheckWarningCondition(instance *apiv3.CommonService) error {
-	csStorageClass := &storagev1.StorageClassList{}
-	err := b.Reader.List(context.TODO(), csStorageClass)
+	b.checkStorageClassWarning(instance)
+	return nil
+}
+
+// checkStorageClassWarning validates StorageClass configuration and sets warning if needed.
+// Uses SSAR to check permission first; skips if not permitted.
+func (b *Bootstrap) checkStorageClassWarning(instance *apiv3.CommonService) {
+	allowed, err := b.CanI(context.TODO(), "storage.k8s.io", "storageclasses", "list", "")
 	if err != nil {
-		return err
+		klog.Warningf("SSAR check for storageclasses list failed: %v, skipping StorageClass warning check", err)
+		return
+	}
+	if !allowed {
+		klog.Warningf("No permission to list storageclasses, skipping StorageClass warning check")
+		return
+	}
+
+	csStorageClass := &storagev1.StorageClassList{}
+	if err := b.Reader.List(context.TODO(), csStorageClass); err != nil {
+		klog.V(2).Infof("Failed to list StorageClasses: %v", err)
+		return
 	}
 
 	defaultCount := 0
-	if len(csStorageClass.Items) > 0 {
-		for _, sc := range csStorageClass.Items {
-			if sc.Annotations != nil && sc.Annotations["storageclass.kubernetes.io/is-default-class"] == "true" {
-				klog.V(2).Infof("Default StorageClass found: %s\n", sc.Name)
-				defaultCount++
-			}
+	for _, sc := range csStorageClass.Items {
+		if sc.Annotations != nil && sc.Annotations["storageclass.kubernetes.io/is-default-class"] == "true" {
+			klog.V(2).Infof("Default StorageClass found: %s", sc.Name)
+			defaultCount++
 		}
 	}
 
-	// check if there is no storageClass declared under spec section and the default count is not 1
+	// Set warning if no storageClass declared in spec and default count is not exactly 1
 	if instance.Spec.StorageClass == "" && defaultCount != 1 {
 		instance.SetWarningCondition(constant.MasterCR, apiv3.ConditionTypeWarning, corev1.ConditionTrue, apiv3.ConditionReasonWarning, apiv3.ConditionMessageMissSC)
 	}
-	return nil
+}
+
+// CheckStorageClass validates whether StorageClass exists in the cluster.
+// Uses SSAR to check permission first; skips if not permitted.
+func (b *Bootstrap) CheckStorageClass() {
+	allowed, err := b.CanI(context.TODO(), "storage.k8s.io", "storageclasses", "list", "")
+	if err != nil {
+		klog.Warningf("SSAR check for storageclasses list failed: %v, skipping StorageClass check", err)
+		return
+	}
+	if !allowed {
+		klog.Warningf("No permission to list storageclasses, skipping StorageClass check")
+		return
+	}
+
+	csStorageClass := &storagev1.StorageClassList{}
+	if err := b.Reader.List(context.TODO(), csStorageClass); err != nil {
+		klog.V(2).Infof("Failed to list StorageClasses: %v", err)
+		return
+	}
+
+	size := len(csStorageClass.Items)
+	klog.Info("StorageClass Number: ", size)
+
+	if size <= 0 {
+		klog.Warning("StorageClass is not found, which might be required by CloudPak services, please refer to CloudPak's documentation for prerequisites.")
+	}
 }
 
 func (b *Bootstrap) CreateNamespace(name string) error {
@@ -875,56 +957,12 @@ func (b *Bootstrap) ResourceExists(dc discovery.DiscoveryInterface, apiGroupVers
 }
 
 // InstallOrUpdateOpreg will install or update OperandRegistry when Opreg CRD is existent
-func (b *Bootstrap) InstallOrUpdateOpreg(installPlanApproval olmv1alpha1.Approval) error {
-
-	if installPlanApproval != "" || b.CSData.ApprovalMode == string(olmv1alpha1.ApprovalManual) {
-		if err := b.updateApprovalMode(); err != nil {
-			return err
-		}
-	}
-
-	// Read channel list from cpp configmap
-	configMap := &corev1.ConfigMap{}
-	err := b.Client.Get(context.TODO(), types.NamespacedName{
-		Name:      constant.IBMCPPCONFIG,
-		Namespace: b.CSData.ServicesNs,
-	}, configMap)
-
+func (b *Bootstrap) InstallOrUpdateOpreg(ctx context.Context, installPlanApproval olmv1alpha1.Approval, options ...OperandRegistryOption) error {
+	desired, err := b.buildOperandRegistry(ctx, installPlanApproval, options...)
 	if err != nil {
-		if !errors.IsNotFound(err) {
-			return err
-		}
-		klog.Infof("ConfigMap %s not found in namespace %s, using default values", constant.IBMCPPCONFIG, b.CSData.ServicesNs)
-		configMap.Data = make(map[string]string)
-	}
-
-	var baseReg string
-	registries := []string{
-		constant.CSV4OpReg,
-		constant.MongoDBOpReg,
-		constant.IMOpReg,
-		constant.IdpConfigUIOpReg,
-		constant.PlatformUIOpReg,
-		constant.KeyCloakOpReg,
-		constant.CommonServicePGOpReg,
-		constant.CommonServiceCNPGOpReg,
-	}
-	if b.SaasEnable {
-		baseReg = constant.CSV3SaasOpReg
-	} else {
-		baseReg = constant.CSV3OpReg
-	}
-
-	concatenatedReg, err := constant.ConcatenateRegistries(baseReg, registries, b.CSData, configMap.Data)
-	if err != nil {
-		klog.Errorf("failed to concatenate OperandRegistry: %v", err)
 		return err
 	}
-
-	if err := b.renderTemplate(concatenatedReg, b.CSData, true); err != nil {
-		return err
-	}
-	return nil
+	return b.ReconcileOperandRegistry(ctx, desired)
 }
 
 // InstallOrUpdateOpcon will install or update OperandConfig when Opcon CRD is existent
@@ -1022,15 +1060,36 @@ func (b *Bootstrap) CreateKeycloakThemesConfigMap() error {
 
 func (b *Bootstrap) DeleteV3Resources(mutatingWebhooks, validatingWebhooks []string) error {
 
-	// Delete the list of MutatingWebhookConfigurations
+	// Cluster-scoped webhook cleanup is optional. Gate it via SSAR so the operator can run with a
+	// minimized default ClusterRole (i.e. without mutatingwebhookconfigurations/validatingwebhookconfigurations delete).
+	//
+	// MutatingWebhookConfigurations
 	for _, webhook := range mutatingWebhooks {
+		allowed, err := b.CanI(ctx, "admissionregistration.k8s.io", "mutatingwebhookconfigurations", "delete", webhook)
+		if err != nil {
+			klog.Warningf("Skipping MutatingWebhookConfiguration cleanup for %q: SSAR failed: %v", webhook, err)
+			continue
+		}
+		if !allowed {
+			klog.V(2).Infof("Skipping MutatingWebhookConfiguration cleanup for %q: not permitted", webhook)
+			continue
+		}
 		if err := b.deleteResource(&admv1.MutatingWebhookConfiguration{}, webhook, "", "MutatingWebhookConfiguration"); err != nil {
 			return err
 		}
 	}
 
-	// Delete the list of ValidatingWebhookConfiguration
+	// ValidatingWebhookConfigurations
 	for _, webhook := range validatingWebhooks {
+		allowed, err := b.CanI(ctx, "admissionregistration.k8s.io", "validatingwebhookconfigurations", "delete", webhook)
+		if err != nil {
+			klog.Warningf("Skipping ValidatingWebhookConfiguration cleanup for %q: SSAR failed: %v", webhook, err)
+			continue
+		}
+		if !allowed {
+			klog.V(2).Infof("Skipping ValidatingWebhookConfiguration cleanup for %q: not permitted", webhook)
+			continue
+		}
 		if err := b.deleteResource(&admv1.ValidatingWebhookConfiguration{}, webhook, "", "ValidatingWebhookConfiguration"); err != nil {
 			return err
 		}
@@ -1077,12 +1136,28 @@ func (b *Bootstrap) deleteWebhookResources() error {
 		return err
 	}
 
-	if err := b.deleteResource(&rbacv1.ClusterRole{}, constant.WebhookServiceName, "", "ClusterRole"); err != nil {
-		return err
+	// Cluster-scoped RBAC cleanup is optional. Gate it via SSAR so the operator can run with a minimized default ClusterRole
+	allowedCR, err := b.CanI(ctx, "rbac.authorization.k8s.io", "clusterroles", "delete", constant.WebhookServiceName)
+	if err != nil {
+		klog.Errorf("Skipping legacy ClusterRole cleanup for %q: SSAR failed: %v", constant.WebhookServiceName, err)
+	} else if !allowedCR {
+		klog.V(2).Infof("Skipping legacy ClusterRole cleanup for %q: not permitted", constant.WebhookServiceName)
+	} else {
+		if err := b.deleteResource(&rbacv1.ClusterRole{}, constant.WebhookServiceName, "", "ClusterRole"); err != nil {
+			return err
+		}
 	}
 
-	if err := b.deleteResource(&rbacv1.ClusterRoleBinding{}, "ibm-common-service-webhook-"+b.CSData.ServicesNs, "", "ClusterRoleBinding"); err != nil {
-		return err
+	crbName := "ibm-common-service-webhook-" + b.CSData.ServicesNs
+	allowedCRB, err := b.CanI(ctx, "rbac.authorization.k8s.io", "clusterrolebindings", "delete", crbName)
+	if err != nil {
+		klog.Errorf("Skipping legacy ClusterRoleBinding cleanup for %q: SSAR failed: %v", crbName, err)
+	} else if !allowedCRB {
+		klog.V(2).Infof("Skipping legacy ClusterRoleBinding cleanup for %q: not permitted", crbName)
+	} else {
+		if err := b.deleteResource(&rbacv1.ClusterRoleBinding{}, crbName, "", "ClusterRoleBinding"); err != nil {
+			return err
+		}
 	}
 
 	// Delete Deployment
@@ -1099,13 +1174,27 @@ func (b *Bootstrap) deleteSecretShareResources() error {
 		return err
 	}
 
-	// Delete SecretShare ClusterRole and ClusterRoleBinding
-	if err := b.deleteResource(&rbacv1.ClusterRole{}, constant.Secretshare, "", "ClusterRole"); err != nil {
-		return err
+	allowedCR, err := b.CanI(ctx, "rbac.authorization.k8s.io", "clusterroles", "delete", constant.Secretshare)
+	if err != nil {
+		klog.Errorf("Skipping SecretShare ClusterRole cleanup for %q: SSAR failed: %v", constant.Secretshare, err)
+	} else if !allowedCR {
+		klog.V(2).Infof("Skipping SecretShare ClusterRole cleanup for %q: not permitted", constant.Secretshare)
+	} else {
+		if err := b.deleteResource(&rbacv1.ClusterRole{}, constant.Secretshare, "", "ClusterRole"); err != nil {
+			return err
+		}
 	}
 
-	if err := b.deleteResource(&rbacv1.ClusterRoleBinding{}, "secretshare-"+b.CSData.ServicesNs, "", "ClusterRoleBinding"); err != nil {
-		return err
+	crbName := "secretshare-" + b.CSData.ServicesNs
+	allowedCRB, err := b.CanI(ctx, "rbac.authorization.k8s.io", "clusterrolebindings", "delete", crbName)
+	if err != nil {
+		klog.Errorf("Skipping SecretShare ClusterRoleBinding cleanup for %q: SSAR failed: %v", crbName, err)
+	} else if !allowedCRB {
+		klog.V(2).Infof("Skipping SecretShare ClusterRoleBinding cleanup for %q: not permitted", crbName)
+	} else {
+		if err := b.deleteResource(&rbacv1.ClusterRoleBinding{}, crbName, "", "ClusterRoleBinding"); err != nil {
+			return err
+		}
 	}
 
 	exist, err := b.CheckCRD("ibmcpcs.ibm.com/v1", "SecretShare")
@@ -1180,8 +1269,61 @@ func (b *Bootstrap) CreateCsMaps() error {
 		})
 	}
 
+	// Check create permission before creating common-service-maps in kube-public
+	allowedCreate, err := b.CanI(ctx, "", "configmaps", "create", cm.ObjectMeta.Name)
+	if err != nil {
+		klog.Warningf("Unable to perform SSAR for creating common-service-maps: %v", err)
+		allowedCreate = false
+	}
+	if !allowedCreate {
+		klog.V(2).Infof("Skipping creation of kube-public/%s: not permitted", cm.ObjectMeta.Name)
+		return nil
+	}
 	if err := b.Client.Create(ctx, cm); err != nil {
 		klog.Errorf("could not create common-service-map in kube-public: %v", err)
+	}
+	return nil
+}
+
+// GetCmOfMapCs returns the common-service-maps ConfigMap from kube-public guarded by SSAR.
+func (b *Bootstrap) GetCmOfMapCs(ctx context.Context) (*corev1.ConfigMap, error) {
+	allowed, err := b.CanI(ctx, "", "configmaps", "get", constant.CsMapConfigMap)
+	if err != nil {
+		return nil, fmt.Errorf("no permission to get %s: %v", constant.CsMapConfigMap, err)
+	}
+	if !allowed {
+		return nil, fmt.Errorf("not permitted to get %s", constant.CsMapConfigMap)
+	}
+
+	// reuse util helper
+	cm, err := util.GetCmOfMapCs(b.Reader)
+	if err != nil {
+		return nil, err
+	}
+	return cm, nil
+}
+
+// UpdateCsMaps updates the common-service-maps ConfigMap guarded by SSAR.
+func (b *Bootstrap) UpdateCsMaps(cm *corev1.ConfigMap) error {
+	allowed, err := b.CanI(context.Background(), "", "configmaps", "update", constant.CsMapConfigMap)
+	if err != nil {
+		return fmt.Errorf("no permission to update %s: %v", constant.CsMapConfigMap, err)
+	}
+	if !allowed {
+		klog.V(2).Infof("Skipping update of kube-public/%s: not permitted", constant.CsMapConfigMap)
+		return nil
+	}
+
+	// use util.UpdateCsMaps with current CSData
+	if err := util.UpdateCsMaps(cm, b.CSData.WatchNamespaces, b.CSData.ServicesNs, b.CSData.OperatorNs); err != nil {
+		return err
+	}
+	// Validate the updated ConfigMap data before writing it back to the cluster
+	if err := util.ValidateCsMaps(cm); err != nil {
+		return fmt.Errorf("validation failed for common-service-maps: %v", err)
+	}
+	if err := b.Client.Update(context.TODO(), cm); err != nil {
+		return err
 	}
 	return nil
 }
@@ -1365,40 +1507,29 @@ func (b *Bootstrap) DeployResource(cr, placeholder string) bool {
 	return true
 }
 
-func (b *Bootstrap) CheckClusterType(ns string) (bool, error) {
-	var isOCP bool
-	dc := discovery.NewDiscoveryClientForConfigOrDie(b.Config)
-	_, apiLists, err := dc.ServerGroupsAndResources()
+// isOpenShiftCluster checks if the cluster is OpenShift by looking for route.openshift.io API group.
+func (b *Bootstrap) isOpenShiftCluster() bool {
+	dc, err := discovery.NewDiscoveryClientForConfig(b.Config)
 	if err != nil {
-		return false, err
+		klog.Warningf("Failed to create discovery client: %v", err)
+		return false
 	}
-	for _, apiList := range apiLists {
-		if apiList.GroupVersion == "machineconfiguration.openshift.io/v1" {
-			for _, r := range apiList.APIResources {
-				if r.Kind == "MachineConfig" {
-					isOCP = true
-				}
-			}
-		}
-		// check if the cluster is OCP by checking if the cluster has Infrastructure CR
-		if apiList.GroupVersion == "config.openshift.io/v1" {
-			for _, r := range apiList.APIResources {
-				if r.Kind == "Infrastructure" {
-					infraObj := &unstructured.Unstructured{}
-					infraObj.SetGroupVersionKind(schema.GroupVersionKind{
-						Group:   "config.openshift.io",
-						Version: "v1",
-						Kind:    "Infrastructure",
-					})
-					if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: "cluster"}, infraObj); err == nil {
-						isOCP = true
-					} else {
-						klog.Errorf("Fail to get Infrastructure resource named cluster: %v", err)
-					}
-				}
-			}
+	apiGroups, err := dc.ServerGroups()
+	if err != nil {
+		klog.Warningf("Failed to get server API groups, cannot determine if cluster is OCP: %v", err)
+		return false
+	}
+	for _, group := range apiGroups.Groups {
+		if group.Name == constant.RouteAPIGroup {
+			return true
 		}
 	}
+	return false
+}
+
+func (b *Bootstrap) CheckClusterType(ns string) (bool, error) {
+	// Detect OCP by checking if route.openshift.io API group exists
+	isOCP := b.isOpenShiftCluster()
 	klog.Infof("Cluster type is OCP: %v", isOCP)
 
 	config := &corev1.ConfigMap{}
@@ -2041,15 +2172,40 @@ func (b *Bootstrap) CleanupWebhookResources() error {
 		Kind:    "Service",
 		Scope:   "namespaceScope",
 	}
-	// cleanup old webhookconfigurations and services
-	if err := b.Cleanup(b.CSData.OperatorNs, &validatingWebhookConfiguration); err != nil {
-		klog.Errorf("Failed to cleanup validatingWebhookConfig: %v", err)
-		return err
+
+	allowed, err := b.CanI(ctx, "admissionregistration.k8s.io",
+		"validatingwebhookconfigurations", "delete",
+		validatingWebhookConfiguration.Name)
+
+	if err != nil {
+		klog.Errorf("Skipping ValidatingWebhookConfiguration cleanup for %q: SSAR failed: %v",
+			validatingWebhookConfiguration.Name, err)
+	} else if !allowed {
+		klog.V(2).Infof("Skipping ValidatingWebhookConfiguration cleanup for %q: not permitted",
+			validatingWebhookConfiguration.Name)
+	} else {
+		// cleanup old webhookconfigurations and services
+		if err := b.Cleanup(b.CSData.OperatorNs, &validatingWebhookConfiguration); err != nil {
+			klog.Errorf("Failed to cleanup validatingWebhookConfiguration: %v", err)
+			return err
+		}
 	}
 
-	if err := b.Cleanup(b.CSData.OperatorNs, &mutatingWebhookConfiguration); err != nil {
-		klog.Errorf("Failed to cleanup mutatingWebhookConfiguration: %v", err)
-		return err
+	allowed, err = b.CanI(ctx, "admissionregistration.k8s.io",
+		"mutatingwebhookconfigurations", "delete",
+		mutatingWebhookConfiguration.Name)
+
+	if err != nil {
+		klog.Errorf("Skipping MutatingWebhookConfiguration cleanup for %q: SSAR failed: %v",
+			mutatingWebhookConfiguration.Name, err)
+	} else if !allowed {
+		klog.V(2).Infof("Skipping MutatingWebhookConfiguration cleanup for %q: not permitted",
+			mutatingWebhookConfiguration.Name)
+	} else {
+		if err := b.Cleanup(b.CSData.OperatorNs, &mutatingWebhookConfiguration); err != nil {
+			klog.Errorf("Failed to cleanup mutatingWebhookConfiguration: %v", err)
+			return err
+		}
 	}
 
 	if err := b.Cleanup(b.CSData.OperatorNs, &webhookService); err != nil {
@@ -2252,67 +2408,6 @@ func (b *Bootstrap) UpdateManageCertRotationLabel(instance *apiv3.CommonService)
 	return nil
 }
 
-func (b *Bootstrap) UpdateEDBUserManaged() error {
-	operatorNamespace, err := util.GetOperatorNamespace()
-	if err != nil {
-		return err
-	}
-	defaultCsCR := &apiv3.CommonService{}
-	csName := "common-service"
-	if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: csName, Namespace: operatorNamespace}, defaultCsCR); err != nil {
-		return err
-	}
-	servicesNamespace := string(defaultCsCR.Spec.ServicesNamespace)
-
-	config := &corev1.ConfigMap{}
-	if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: constant.IBMCPPCONFIG, Namespace: servicesNamespace}, config); err != nil {
-		if errors.IsNotFound(err) {
-			return nil
-		}
-		return err
-	}
-	userManaged := config.Data["EDB_USER_MANAGED_OPERATOR_ENABLED"]
-	if userManaged != "true" {
-		unsetEDBUserManaged(defaultCsCR)
-	} else {
-		setEDBUserManaged(defaultCsCR)
-	}
-
-	if err := b.Client.Update(context.TODO(), defaultCsCR); err != nil {
-		return err
-	}
-	return nil
-}
-
-func unsetEDBUserManaged(instance *apiv3.CommonService) {
-	if instance.Spec.OperatorConfigs == nil {
-		return
-	}
-	for i := range instance.Spec.OperatorConfigs {
-		i := i
-		if instance.Spec.OperatorConfigs[i].Name == "internal-use-only-edb" {
-			instance.Spec.OperatorConfigs[i].UserManaged = false
-		}
-	}
-}
-
-func setEDBUserManaged(instance *apiv3.CommonService) {
-	if instance.Spec.OperatorConfigs == nil {
-		instance.Spec.OperatorConfigs = []apiv3.OperatorConfig{}
-	}
-	isExist := false
-	for i := range instance.Spec.OperatorConfigs {
-		i := i
-		if instance.Spec.OperatorConfigs[i].Name == "internal-use-only-edb" {
-			instance.Spec.OperatorConfigs[i].UserManaged = true
-			isExist = true
-		}
-	}
-	if !isExist {
-		instance.Spec.OperatorConfigs = append(instance.Spec.OperatorConfigs, apiv3.OperatorConfig{Name: "internal-use-only-edb", UserManaged: true})
-	}
-}
-
 func (b *Bootstrap) waitOperatorCSV(subName, packageManifest, operatorNs string) (bool, error) {
 	var isWaiting bool
 	// Wait for the operator CSV to be installed
@@ -2391,6 +2486,10 @@ func (b *Bootstrap) CheckSubOperatorStatus(instance *apiv3.CommonService) (bool,
 		}
 		if operator == nil {
 			klog.Infof("The operator %s is in no-op mode, skipping it", opt)
+			continue
+		}
+		if operator.UserManaged {
+			klog.Infof("The operator %s is user-managed, skipping status checks", operator.Name)
 			continue
 		}
 		optStatus, err := b.setOperatorStatus(instance, operator.Name, operator.PackageName, operator.Namespace)

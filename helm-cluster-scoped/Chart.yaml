@@ -2,5 +2,5 @@ apiVersion: v2
 name: ibm-common-service-operator-cluster-scoped
 description: A Helm chart for ibm-common-service-operator
 type: application
-version: 4.15.0
-appVersion: 4.15.0
+version: 4.18.0
+appVersion: 4.18.0

@@ -39,6 +39,20 @@ metadata:
             "servicesNamespace": "{{ .Values.global.instanceNamespace }}",
             "size": "{{ .Values.cpfs.size }}",
             "storageClass": "{{ .Values.global.blockStorageClass }}"
+            {{- if not (.Values.cpfs.roksEnabled | default true) }},
+            "services": [
+              {
+                "name": "ibm-im-operator",
+                "spec": {
+                  "authentication": {
+                    "config": {
+                      "roksEnabled": {{ .Values.cpfs.roksEnabled | default true }}
+                    }
+                  }
+                }
+              }
+            ]
+            {{- end }}
           }
         }
       ]
@@ -75,7 +89,7 @@ spec:
                       - s390x
       containers:         
         - name: ibm-common-service-operator
-          image: {{ .Values.cpfs.imagePullPrefix | default .Values.global.imagePullPrefix }}/{{ .Values.cpfs.imageRegistryNamespaceOperator}}/common-service-operator:4.15.0
+          image: {{ .Values.cpfs.imagePullPrefix | default .Values.global.imagePullPrefix }}/{{ .Values.cpfs.imageRegistryNamespaceOperator}}/common-service-operator:4.18.0
           command: 
             - /manager
           env:             

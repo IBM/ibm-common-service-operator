@@ -222,6 +222,30 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+  - name: ibm-im-operator-v4.15
+    namespace: "{{ .CPFSNs }}"
+    channel: v4.15
+    packageName: ibm-iam-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+  - name: ibm-im-operator-v4.16
+    namespace: "{{ .CPFSNs }}"
+    channel: v4.16
+    packageName: ibm-iam-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+  - name: ibm-im-operator-v4.17
+    namespace: "{{ .CPFSNs }}"
+    channel: v4.17
+    packageName: ibm-iam-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
 	IdpConfigUIOpReg = `
@@ -334,6 +358,30 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+  - name: ibm-idp-config-ui-operator-v4.12
+    namespace: "{{ .CPFSNs }}"
+    channel: v4.12
+    packageName: ibm-commonui-operator-app
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+  - name: ibm-idp-config-ui-operator-v4.13
+    namespace: "{{ .CPFSNs }}"
+    channel: v4.13
+    packageName: ibm-commonui-operator-app
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+  - name: ibm-idp-config-ui-operator-v4.14
+    namespace: "{{ .CPFSNs }}"
+    channel: v4.14
+    packageName: ibm-commonui-operator-app
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
 	PlatformUIOpReg = `
@@ -409,6 +457,30 @@ spec:
   - name: ibm-platformui-operator-v6.2
     namespace: "{{ .CPFSNs }}"
     channel: v6.2
+    packageName: ibm-zen-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+  - name: ibm-platformui-operator-v6.3
+    namespace: "{{ .CPFSNs }}"
+    channel: v6.3
+    packageName: ibm-zen-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+  - name: ibm-platformui-operator-v6.4
+    namespace: "{{ .CPFSNs }}"
+    channel: v6.4
+    packageName: ibm-zen-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+  - name: ibm-platformui-operator-v6.5
+    namespace: "{{ .CPFSNs }}"
+    channel: v6.5
     packageName: ibm-zen-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -518,10 +590,20 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     name: ibm-cnpg-postgres-operator
     namespace: "{{ .CPFSNs }}"
-    packageName: ibm-cnpg-postgres-operator
+    packageName: cnpg-ibm
     scope: public
-    operatorConfig: cloud-native-postgresql-operator-config
-    sourceName: {{ .CatalogSourceName }}
+    sourceName: ibm-cnpg-postgresql-operator-catalog
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+  - channel: stable-v1.25
+    fallbackChannels:
+      - stable-v1.22
+      - stable
+    installPlanApproval: {{ .ApprovalMode }}
+    name: common-service-cnpg
+    namespace: "{{ .CPFSNs }}"
+    packageName: cnpg-ibm
+    scope: public
+    sourceName: ibm-cnpg-postgresql-operator-catalog
     sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 )
@@ -700,6 +782,27 @@ spec:
           onPremMultipleDeploy: {{ .OnPremMultiEnable }}
       operandBindInfo: 
         operand: ibm-im-operator
+  - name: ibm-im-operator-v4.15
+    spec:
+      authentication:
+        config:
+          onPremMultipleDeploy: {{ .OnPremMultiEnable }}
+      operandBindInfo: 
+        operand: ibm-im-operator
+  - name: ibm-im-operator-v4.16
+    spec:
+      authentication:
+        config:
+          onPremMultipleDeploy: {{ .OnPremMultiEnable }}
+      operandBindInfo: 
+        operand: ibm-im-operator
+  - name: ibm-im-operator-v4.17
+    spec:
+      authentication:
+        config:
+          onPremMultipleDeploy: {{ .OnPremMultiEnable }}
+      operandBindInfo: 
+        operand: ibm-im-operator
 `
 
 	UserMgmtOpCon = `
@@ -816,6 +919,21 @@ spec:
       commonWebUI: {}
       switcheritem: {}
       navconfiguration: {}
+  - name: ibm-idp-config-ui-operator-v4.12
+    spec:
+      commonWebUI: {}
+      switcheritem: {}
+      navconfiguration: {}
+  - name: ibm-idp-config-ui-operator-v4.13
+    spec:
+      commonWebUI: {}
+      switcheritem: {}
+      navconfiguration: {}
+  - name: ibm-idp-config-ui-operator-v4.14
+    spec:
+      commonWebUI: {}
+      switcheritem: {}
+      navconfiguration: {}
 `
 
 	PlatformUIOpCon = `
@@ -900,6 +1018,15 @@ spec:
     spec:
       operandBindInfo: {}
   - name: ibm-platformui-operator-v6.2
+    spec:
+      operandBindInfo: {}
+  - name: ibm-platformui-operator-v6.3
+    spec:
+      operandBindInfo: {}
+  - name: ibm-platformui-operator-v6.4
+    spec:
+      operandBindInfo: {}
+  - name: ibm-platformui-operator-v6.5
     spec:
       operandBindInfo: {}
 `
@@ -1151,7 +1278,7 @@ spec:
                 keytool -importcert -file ${CA_DIR}/${cert} -keystore ${TRUSTSTORE_DIR}/keycloak-truststore.jks -storepass changeit -alias ${cert} -noprompt
               done
               echo "Truststore file built, starting Keycloak ..."
-              "/opt/keycloak/bin/kc.sh" "$@" --spi-truststore-file-file=${TRUSTSTORE_DIR}/keycloak-truststore.jks --spi-truststore-file-password=changeit --spi-truststore-file-hostname-verification-policy=WILDCARD --spi-user-profile-declarative-user-profile-config-file=${USERPROFILE_DIR}/cs-keycloak-user-profile.json
+              "/opt/keycloak/bin/kc.sh" "$@" --spi-truststore-file-file=${TRUSTSTORE_DIR}/keycloak-truststore.jks --spi-truststore-file-password=changeit --spi-truststore-file-hostname-verification-policy=WILDCARD --spi-user-profile-declarative-user-profile-config-file=${USERPROFILE_DIR}/cs-keycloak-user-profile.json --spi-events-listener--jboss-logging--success-level=info
       - apiVersion: v1
         data:
           data:
@@ -1355,9 +1482,6 @@ spec:
         data:
           spec:
             internalTrafficPolicy: Cluster
-            ipFamilies:
-              - IPv4
-            ipFamilyPolicy: SingleStack
             ports:
               - name: https
                 port: 8443
@@ -1954,6 +2078,9 @@ spec:
             imagePullSecrets:
               - name: ibm-entitlement-key
             logLevel: info
+            ephemeralVolumesSizeLimit:
+              shm: 500Mi
+              temporaryData: 500Mi
             primaryUpdateStrategy: unsupervised
             primaryUpdateMethod: switchover
             enableSuperuserAccess: true
@@ -2202,6 +2329,9 @@ spec:
             imagePullSecrets:
               - name: ibm-entitlement-key
             logLevel: info
+            ephemeralVolumesSizeLimit:
+              shm: 500Mi
+              temporaryData: 500Mi
             primaryUpdateStrategy: unsupervised
             primaryUpdateMethod: switchover
             enableSuperuserAccess: true
@@ -2322,8 +2452,19 @@ metadata:
     version: {{ .Version }}
 spec:
   services:
-  - name: ibm-cnpg-postgres-operator
+  - name: common-service-cnpg
     resources:
+      - apiVersion: operator.ibm.com/v1alpha1
+        data:
+          spec:
+            requests:
+              - operands:
+                  - name: ibm-cnpg-postgres-operator
+                registry: common-service
+                registryNamespace: {{ .ServicesNs }}
+        force: true
+        kind: OperandRequest
+        name: cnpg-postgresql-operator-request  
       - apiVersion: cert-manager.io/v1
         kind: Certificate
         name: common-service-db-replica-tls-cert
@@ -2371,9 +2512,6 @@ spec:
               name: cs-ca-issuer
             renewBefore: 720h0m0s
             secretName: common-service-db-tls-secret
-            secretTemplate:
-              labels:
-                k8s.enterprisedb.io/reload: ''
             usages:
               - server auth
       - apiVersion: cert-manager.io/v1
@@ -2425,12 +2563,12 @@ spec:
               private-superuser-db:
                 secret: common-service-db-superuser
             description: Binding information that should be accessible to Common Service Postgresql Adopters
-            operand: common-service-postgresql
+            operand: common-service-cnpg
             registry: common-service
             registryNamespace: {{ .ServicesNs }}
         force: true
         kind: OperandBindInfo
-        name: common-service-postgresql-bindinfo
+        name: common-service-cnpg-bindinfo
       - apiVersion: postgresql.cnpg.ibm.com/v1
         kind: Cluster
         name: common-service-db          
@@ -2778,7 +2916,7 @@ spec:
     sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-im-operator
     namespace: "{{ .CPFSNs }}"
-    channel: v4.14
+    channel: v4.17
     packageName: ibm-iam-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -2816,9 +2954,17 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+  - channel: v6.0
+    name: ibm-events-operator-v6.0
+    namespace: "{{ .CPFSNs }}"
+    packageName: ibm-events-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-platformui-operator
     namespace: "{{ .CPFSNs }}"
-    channel: v6.2
+    channel: v6.4
     packageName: ibm-zen-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -2826,7 +2972,7 @@ spec:
     sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-idp-config-ui-operator
     namespace: "{{ .CPFSNs }}"
-    channel: v4.11
+    channel: v4.14
     packageName: ibm-commonui-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -2874,6 +3020,18 @@ spec:
     operatorConfig: cloud-native-postgresql-operator-config
     configName: cloud-native-postgresql
     sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+  - channel: stable-v1.25
+    fallbackChannels:
+      - stable-v1.22
+      - stable
+    name: ibm-cnpg-postgres-operator
+    namespace: "{{ .CPFSNs }}"
+    packageName: cnpg-ibm
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    configName: ibm-cnpg-postgres-operator
+    sourceName: ibm-cnpg-postgresql-operator-catalog
     sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: alpha
     name: ibm-user-data-services-operator
@@ -3164,7 +3322,7 @@ metadata:
   name: operand-deployment-lifecycle-manager-app
   namespace: "{{ .CPFSNs }}"
 spec:
-  channel: v4.5
+  channel: "{{ .ODLMChannel }}"
   installPlanApproval: {{ .ApprovalMode }}
   name: ibm-odlm
   source: {{ .ODLMCatalogSourceName }}

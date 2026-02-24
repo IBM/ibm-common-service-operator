@@ -1,86 +1,4 @@
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: ibm-common-service-operator
-rules:
-# Manipulate ConfigMap in kube-public namespace
-- verbs:
-  - delete
-  - update
-  apiGroups:
-  - ''
-  resources:
-  - configmaps
-  resourceNames:
-  - common-service-maps
-- verbs:
-  - delete
-  apiGroups:
-  - ""
-  resources:
-  - configmaps
-  resourceNames:
-  - cloud-native-postgresql-image-list
-- verbs:
-  - create
-  - get
-  - list
-  - watch
-  - update
-  apiGroups:
-  - ''
-  resources:
-  - configmaps
-- verbs:
-  - get
-  apiGroups:
-  - ''
-  resources:
-  - secrets
-# Get StorageClass from cluster
-- apiGroups:
-  - storage.k8s.io
-  resources:
-  - storageclasses
-  verbs:
-  - get
-  - list
-  - watch
-# manage mutation webhook configuration
-- apiGroups:
-  - admissionregistration.k8s.io
-  resources:
-  - mutatingwebhookconfigurations
-  - validatingwebhookconfigurations
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- verbs:
-  - get
-  apiGroups:
-  - config.openshift.io
-  resources:
-  - infrastructures
-- apiGroups:
-  - rbac.authorization.k8s.io
-  resources:
-  - clusterrolebindings
-  - clusterroles
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
----
-apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: ibm-common-service-operator
@@ -88,8 +6,13 @@ rules:
 - apiGroups:
   - ""
   verbs:
+  - create
   - delete
+  - get
+  - list
   - patch
+  - update
+  - watch
   resources:
   - configmaps
 - apiGroups:
@@ -194,8 +117,13 @@ rules:
   - get
   - patch
   - update
-
-
+- apiGroups:
+  - packages.operators.coreos.com
+  resources:
+  - packagemanifests
+  verbs:
+  - get
+  - list
 # handle clean up of deprecated objects
 - apiGroups:
   - certmanager.k8s.io
@@ -275,6 +203,7 @@ rules:
   - watch
 - apiGroups:
   - postgresql.k8s.enterprisedb.io
+  - postgresql.cnpg.ibm.com
   resources:
   - clusters
   verbs:

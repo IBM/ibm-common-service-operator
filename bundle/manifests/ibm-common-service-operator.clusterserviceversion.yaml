@@ -22,8 +22,8 @@ metadata:
       ]
     capabilities: Seamless Upgrades
     cloudPakThemesVersion: styles4100.css
-    containerImage: icr.io/cpopen/common-service-operator:4.15.0
-    createdAt: "2025-05-16T03:15:01Z"
+    containerImage: icr.io/cpopen/common-service-operator:4.18.0
+    createdAt: "2026-01-20T18:13:21Z"
     description: The IBM Cloud Pak foundational services operator is used to deploy IBM foundational services.
     features.operators.openshift.io/disconnected: "true"
     features.operators.openshift.io/fips-compliant: "true"
@@ -34,12 +34,12 @@ metadata:
     features.operators.openshift.io/token-auth-gcp: "false"
     nss.operator.ibm.com/managed-operators: ibm-common-service-operator
     nss.operator.ibm.com/managed-webhooks: ""
-    olm.skipRange: ">=3.3.0 <4.15.0"
-    operatorChannel: v4.15
-    operatorVersion: 4.15.0
+    olm.skipRange: ">=3.3.0 <4.18.0"
+    operatorChannel: v4.18
+    operatorVersion: 4.18.0
     operators.openshift.io/infrastructure-features: '["disconnected"]'
     operators.operatorframework.io/builder: operator-sdk-v1.38.0
-    operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v4-alpha
     repository: https://github.com/IBM/ibm-common-service-operator
     support: IBM
   labels:
@@ -47,7 +47,7 @@ metadata:
     operatorframework.io/arch.ppc64le: supported
     operatorframework.io/arch.s390x: supported
     operatorframework.io/os.linux: supported
-  name: ibm-common-service-operator.v4.15.0
+  name: ibm-common-service-operator.v4.18.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -207,7 +207,7 @@ spec:
 
     ## Operator versions
 
-     - 4.15.0
+     - 4.18.0
 
     ## Prerequisites
 
@@ -254,82 +254,6 @@ spec:
       mediatype: image/png
   install:
     spec:
-      clusterPermissions:
-        - rules:
-            - apiGroups:
-                - ""
-              resourceNames:
-                - common-service-maps
-              resources:
-                - configmaps
-              verbs:
-                - delete
-                - update
-            - apiGroups:
-                - ""
-              resourceNames:
-                - cloud-native-postgresql-image-list
-              resources:
-                - configmaps
-              verbs:
-                - delete
-            - apiGroups:
-                - ""
-              resources:
-                - configmaps
-              verbs:
-                - create
-                - get
-                - list
-                - watch
-                - update
-            - apiGroups:
-                - ""
-              resources:
-                - secrets
-              verbs:
-                - get
-            - apiGroups:
-                - storage.k8s.io
-              resources:
-                - storageclasses
-              verbs:
-                - get
-                - list
-                - watch
-            - apiGroups:
-                - admissionregistration.k8s.io
-              resources:
-                - mutatingwebhookconfigurations
-                - validatingwebhookconfigurations
-              verbs:
-                - create
-                - delete
-                - get
-                - list
-                - patch
-                - update
-                - watch
-            - apiGroups:
-                - config.openshift.io
-              resources:
-                - infrastructures
-              verbs:
-                - get
-            - apiGroups:
-                - rbac.authorization.k8s.io
-              resources:
-                - clusterrolebindings
-                - clusterroles
-              verbs:
-                - create
-                - delete
-                - get
-                - list
-                - patch
-                - update
-                - watch
-          serviceAccountName: ibm-common-service-operator
       deployments:
         - label:
             app.kubernetes.io/instance: ibm-common-service-operator
@@ -385,7 +309,7 @@ spec:
                         value: ibm-common-service-operator
                       - name: CPFS_UTILS_IMAGE
                         value: icr.io/cpopen/cpfs/cpfs-utils:latest
-                    image: icr.io/cpopen/common-service-operator:4.15.0
+                    image: icr.io/cpopen/common-service-operator:4.18.0
                     imagePullPolicy: IfNotPresent
                     livenessProbe:
                       failureThreshold: 10
@@ -431,8 +355,13 @@ spec:
               resources:
                 - configmaps
               verbs:
+                - create
                 - delete
+                - get
+                - list
                 - patch
+                - update
+                - watch
             - apiGroups:
                 - operator.ibm.com
               resources:
@@ -536,6 +465,13 @@ spec:
                 - patch
                 - update
             - apiGroups:
+                - packages.operators.coreos.com
+              resources:
+                - packagemanifests
+              verbs:
+                - get
+                - list
+            - apiGroups:
                 - certmanager.k8s.io
               resources:
                 - certificates
@@ -612,6 +548,7 @@ spec:
                 - watch
             - apiGroups:
                 - postgresql.k8s.enterprisedb.io
+                - postgresql.cnpg.ibm.com
               resources:
                 - clusters
               verbs:
@@ -642,7 +579,7 @@ spec:
   minKubeVersion: 1.19.0
   provider:
     name: IBM
-  version: 4.15.0
+  version: 4.18.0
   webhookdefinitions:
     - admissionReviewVersions:
         - v1
@@ -685,11 +622,11 @@ spec:
       type: ValidatingAdmissionWebhook
       webhookPath: /validate-operator-ibm-com-v3-commonservice
   relatedImages:
-    - image: icr.io/cpopen/common-service-operator:4.15.0
+    - image: icr.io/cpopen/common-service-operator:4.18.0
       name: COMMON_SERVICE_OPERATOR_IMAGE
     - image: icr.io/cpopen/cpfs/cpfs-utils:latest
       name: CPFS_UTILS_IMAGE
     - image: icr.io/cpopen/cpfs/must-gather:latest
       name: MUST_GATHER_IMAGE
-    - image: icr.io/cpopen/cpfs/cpfs-oadp-plugins:4.15.0
+    - image: icr.io/cpopen/cpfs/cpfs-oadp-plugins:4.18.0
       name: CPFS_OADP_PLUGINS_IMAGE

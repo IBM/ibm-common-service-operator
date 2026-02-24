@@ -545,85 +545,6 @@ rules:
   - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: ibm-common-service-operator
-rules:
-- apiGroups:
-  - ""
-  resourceNames:
-  - common-service-maps
-  resources:
-  - configmaps
-  verbs:
-  - delete
-  - update
-- apiGroups:
-  - ""
-  resourceNames:
-  - cloud-native-postgresql-image-list
-  resources:
-  - configmaps
-  verbs:
-  - delete
-- apiGroups:
-  - ""
-  resources:
-  - configmaps
-  verbs:
-  - create
-  - get
-  - list
-  - watch
-  - update
-- apiGroups:
-  - ""
-  resources:
-  - secrets
-  verbs:
-  - get
-- apiGroups:
-  - storage.k8s.io
-  resources:
-  - storageclasses
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - admissionregistration.k8s.io
-  resources:
-  - mutatingwebhookconfigurations
-  - validatingwebhookconfigurations
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - config.openshift.io
-  resources:
-  - infrastructures
-  verbs:
-  - get
-- apiGroups:
-  - rbac.authorization.k8s.io
-  resources:
-  - clusterrolebindings
-  - clusterroles
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
----
-apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   labels:
@@ -635,23 +556,6 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: ibm-common-service-operator
-subjects:
-- kind: ServiceAccount
-  name: ibm-common-service-operator
-  namespace: custom-namespace
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  labels:
-    app.kubernetes.io/instance: ibm-common-service-operator
-    app.kubernetes.io/managed-by: ibm-common-service-operator
-    app.kubernetes.io/name: ibm-common-service-operator
-  name: ibm-common-service-operator
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
   name: ibm-common-service-operator
 subjects:
 - kind: ServiceAccount
@@ -732,7 +636,7 @@ spec:
           value: "false"
         - name: OPERATOR_NAME
           value: ibm-common-service-operator
-        image: icr.io/cpopen/common-service-operator:4.15.0
+        image: icr.io/cpopen/common-service-operator:4.18.0
         imagePullPolicy: IfNotPresent
         livenessProbe:
           failureThreshold: 10

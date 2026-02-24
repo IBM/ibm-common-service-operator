@@ -50,6 +50,7 @@ metadata:
   namespace: {{ $i }}
   labels:
     component-id: {{ $chartName }}
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
     {{- if $.Values.cpfs.labels }}
       {{- with $.Values.cpfs.labels }}
         {{- toYaml . | nindent 4 }}
@@ -61,8 +62,13 @@ rules:
     resources: 
       - configmaps
     verbs: 
+      - create
       - delete
+      - get
+      - list
       - patch
+      - update
+      - watch
   - apiGroups: 
       - operator.ibm.com
     resources: 
@@ -242,11 +248,19 @@ rules:
       - watch
   - apiGroups:
       - postgresql.k8s.enterprisedb.io
+      - postgresql.cnpg.ibm.com
     resources:
       - clusters
     verbs:
       - get
       - list
       - update
+  - apiGroups:
+    - packages.operators.coreos.com
+    resources:
+    - packagemanifests
+    verbs:
+    - get
+    - list
 ---
 {{- end }}

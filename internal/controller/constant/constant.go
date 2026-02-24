@@ -46,6 +46,10 @@ const (
 	CsMapConfigMapNs = "kube-public"
 	// CS Saas configMap
 	SaasConfigMap = "saas-config"
+	// ODLM Channel
+	ODLMChannel = "v4.5"
+	// ODLM PackageName
+	ODLMPackageName = "ibm-odlm"
 	// Namespace Scope Operator resource name
 	NsSubResourceName = "nsSubscription"
 	// Namespace Scope Operator sub name
@@ -94,6 +98,8 @@ const (
 	CSCACertificate = "cs-ca-certificate"
 	// CertManagerSub is the name of ibm-cert-manager-operator subscription
 	CertManagerSub = "ibm-cert-manager-operator"
+	// RouteAPIGroup is the API group for OpenShift Routes, used for OCP cluster detection
+	RouteAPIGroup = "route.openshift.io"
 	// CsClonedFromLabel is the label used to label the CommonService CR are cloned from the default CR in operatorNamespace
 	CsClonedFromLabel = "operator.ibm.com/common-services.cloned-from"
 	// IBMCPPCONFIG is the name of ibm-cpp-config ConfigMap

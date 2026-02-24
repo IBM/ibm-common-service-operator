@@ -30,8 +30,8 @@ import (
 
 	utilyaml "github.com/ghodss/yaml"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+	operatorsv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/package-server/apis/operators/v1"
 	corev1 "k8s.io/api/core/v1"
-	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -347,23 +347,6 @@ func GetCmOfMapCs(r client.Reader) (*corev1.ConfigMap, error) {
 	return csConfigmap, nil
 }
 
-// CheckStorageClass gets StorageClassList in current cluster, then validates whether StorageClass created
-func CheckStorageClass(r client.Reader) error {
-	csStorageClass := &storagev1.StorageClassList{}
-	err := r.List(context.TODO(), csStorageClass)
-	if err != nil {
-		return fmt.Errorf("fail to list storageClass: %v", err)
-	}
-
-	size := len(csStorageClass.Items)
-	klog.Info("StorageClass Number: ", size)
-
-	if size <= 0 {
-		klog.Warning("StorageClass is not found, which might be required by CloudPak services, please refer to CloudPak's documentation for prerequisites.")
-	}
-	return nil
-}
-
 // UpdateNSList updates adopter namespaces of Common Services
 func UpdateNSList(r client.Reader, c client.Client, cm *corev1.ConfigMap, nssKey, cpfsNamespace string, addControlNs bool) error {
 	nsScope := &nssv1.NamespaceScope{}
@@ -463,31 +446,6 @@ func UpdateAllNSList(r client.Reader, c client.Client, cm *corev1.ConfigMap, nss
 	return nil
 }
 
-// CheckSaas checks whether it is a SaaS deployment for Common Services
-func CheckSaas(r client.Reader) (enable bool) {
-	cmName := constant.SaasConfigMap
-	cmNs := "kube-public"
-	saasConfigmap := &corev1.ConfigMap{}
-	err := r.Get(context.TODO(), types.NamespacedName{Name: cmName, Namespace: cmNs}, saasConfigmap)
-	if errors.IsNotFound(err) {
-		klog.V(2).Infof("There is no configmap %v/%v in the cluster: Running Common Service Operator in On-Prem mode", cmNs, cmName)
-		return false
-	} else if err != nil {
-		klog.Errorf("Failed to fetch configmap %v/%v: %v", cmNs, cmName, err)
-		return false
-	}
-	v, ok := saasConfigmap.Data["ibm_cloud_saas"]
-	if !ok {
-		klog.V(2).Infof("There is no ibm_cloud_saas in configmap %v/%v: Running Common Service Operator in On-Prem mode", cmNs, cmName)
-		return false
-	}
-	if v != "true" {
-		return false
-	}
-	klog.V(2).Infof("Running Common Service Operator in SaaS mode")
-	return true
-}
-
 // CheckMultiInstance checks whether it is a MultiInstances including SaaS and on-prem MultiInstances
 func CheckMultiInstances(r client.Reader) (enable bool) {
 	return true
@@ -544,6 +502,26 @@ func GetCatalogSource(packageName, ns string, r client.Reader) (CatalogSourceNam
 	}
 
 	return subscriptions[0].Spec.CatalogSource, subscriptions[0].Spec.CatalogSourceNamespace
+}
+
+func CheckODLMCatalogSource(r client.Reader, packageName, catalogSourceName, catalogSourceNamespace, operatorNamespace string) (bool, error) {
+	found := false
+	// Get CatalogSource from PackageManifest
+	pmList := &operatorsv1.PackageManifestList{}
+	if err := r.List(context.TODO(), pmList, &client.ListOptions{Namespace: operatorNamespace}); err != nil {
+		return found, fmt.Errorf("failed to list PackageManifest: %v", err)
+	}
+
+	for _, pm := range pmList.Items {
+		if pm.Status.PackageName == packageName && pm.Status.CatalogSource == catalogSourceName && pm.Status.CatalogSourceNamespace == catalogSourceNamespace {
+			for _, channel := range pm.Status.Channels {
+				if channel.Name == constant.ODLMChannel {
+					found = true
+				}
+			}
+		}
+	}
+	return found, nil
 }
 
 // UpdateCsMaps will update namespaceMapping in common-service-maps

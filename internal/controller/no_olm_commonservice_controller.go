@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -111,33 +112,24 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 
 	// Creating/updating common-service-maps, skip when installing in AllNamespace Mode
 	if r.Bootstrap.CSData.WatchNamespaces != "" {
-		cm, err := util.GetCmOfMapCs(r.Reader)
+		cm, err := r.Bootstrap.GetCmOfMapCs(ctx)
 		if err != nil {
-			// Create new common-service-maps
 			if errors.IsNotFound(err) {
 				klog.Infof("Creating common-service-maps ConfigMap in kube-public")
 				if err = r.Bootstrap.CreateCsMaps(); err != nil {
 					klog.Errorf("Failed to create common-service-maps ConfigMap: %v", err)
 					os.Exit(1)
 				}
-			} else if !errors.IsNotFound(err) {
+			} else if strings.Contains(err.Error(), "not permitted") || strings.Contains(err.Error(), "no permission") {
+				klog.V(2).Infof("Skipping common-service-maps operations: %v", err)
+			} else {
 				klog.Errorf("Failed to get common-service-maps: %v", err)
 				os.Exit(1)
 			}
 		} else {
-			// Update common-service-maps
-			klog.Infof("Updating common-service-maps ConfigMap in kube-public")
-			if err := util.UpdateCsMaps(cm, r.Bootstrap.CSData.WatchNamespaces, r.Bootstrap.CSData.ServicesNs, r.Bootstrap.CSData.OperatorNs); err != nil {
+			// Update common-service-maps via bootstrap wrapper (includes SSAR)
+			if err := r.Bootstrap.UpdateCsMaps(cm); err != nil {
 				klog.Errorf("Failed to update common-service-maps: %v", err)
-				os.Exit(1)
-			}
-			// Validate common-service-maps
-			if err := util.ValidateCsMaps(cm); err != nil {
-				klog.Errorf("Unsupported common-service-maps: %v", err)
-				os.Exit(1)
-			}
-			if err := r.Client.Update(context.TODO(), cm); err != nil {
-				klog.Errorf("Failed to update namespaceMapping in common-service-maps: %v", err)
 				os.Exit(1)
 			}
 		}
@@ -155,25 +147,6 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 			}
 		}
 	}
-	// no need to check cluster type
-	// typeCorrect, err := r.Bootstrap.CheckClusterType(util.GetServicesNamespace(r.Reader))
-	// if err != nil {
-	// 	klog.Errorf("Failed to verify cluster type  %v", err)
-	// 	if err := r.updatePhase(ctx, instance, CRFailed); err != nil {
-	// 		klog.Error(err)
-	// 	}
-	// 	klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
-	// 	return ctrl.Result{}, err
-	// }
-
-	// if !typeCorrect {
-	// 	klog.Error("Cluster type specificed in the ibm-cpp-config isn't correct")
-	// 	if statusErr = r.updatePhase(ctx, instance, CRFailed); statusErr != nil {
-	// 		klog.Error(statusErr)
-	// 	}
-	// 	klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
-	// 	return ctrl.Result{}, statusErr
-	// }
 
 	// deploy Cert Manager CR
 	if err := r.Bootstrap.DeployCertManagerCR(); err != nil {
@@ -197,7 +170,7 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 	// Install/update Opreg and Opcon resources before installing ODLM if CRDs exist
 	if existOpreg && existOpcon {
 		klog.Info("Installing/Updating OperandRegistry")
-		if err := r.Bootstrap.InstallOrUpdateOpreg(""); err != nil {
+		if err := r.Bootstrap.InstallOrUpdateOpreg(ctx, ""); err != nil {
 			klog.Errorf("Fail to Installing/Updating OperandConfig: %v", err)
 			return ctrl.Result{}, err
 		}
@@ -264,14 +237,6 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.OperatorNs, "common-service", instance.Namespace, instance.Name))
 	}
 
-	if statusErr = r.Bootstrap.UpdateEDBUserManaged(); statusErr != nil {
-		if statusErr := r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
-			klog.Error(statusErr)
-		}
-		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
-		return ctrl.Result{}, statusErr
-	}
-
 	if isEqual, statusErr = r.updateOperatorConfig(ctx, instance.Spec.OperatorConfigs); statusErr != nil {
 		if statusErr := r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
 			klog.Error(statusErr)
@@ -283,6 +248,16 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 	}
 
 	if statusErr = configurationcollector.CreateUpdateConfig(r.Bootstrap); statusErr != nil {
+		if statusErr := r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
+			klog.Error(statusErr)
+		}
+		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
+		return ctrl.Result{}, statusErr
+	}
+
+	// Wait for Postgres Cluster image to be updated
+	if statusErr = r.Bootstrap.UpdatePostgresClusterImage(ctx, instance); statusErr != nil {
+		klog.Errorf("Failed to update Postgres Cluster image: %v", statusErr)
 		if statusErr := r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
 			klog.Error(statusErr)
 		}
@@ -383,8 +358,9 @@ func (r *CommonServiceReconciler) ReconcileNoOLMGeneralCR(ctx context.Context, i
 		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.OperatorNs, "common-service", instance.Namespace, instance.Name))
 	}
 
-	isEqual, err = r.updateOperatorConfig(ctx, instance.Spec.OperatorConfigs)
-	if err != nil {
+	// Wait for Postgres Cluster image to be updated
+	if err := r.Bootstrap.UpdatePostgresClusterImage(ctx, instance); err != nil {
+		klog.Errorf("Failed to update Postgres Cluster image: %v", err)
 		if err := r.updatePhase(ctx, instance, apiv3.CRFailed); err != nil {
 			klog.Error(err)
 		}
@@ -400,11 +376,6 @@ func (r *CommonServiceReconciler) ReconcileNoOLMGeneralCR(ctx context.Context, i
 	if err = r.Bootstrap.UpdateManageCertRotationLabel(instance); err != nil {
 		klog.Error(err)
 		return ctrl.Result{}, err
-	}
-
-	// Create Event if there is no update in OperatorConfig after applying current CR
-	if isEqual {
-		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update to, replica sizings in the OperatorConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.OperatorNs, "test-operator-config", instance.Namespace, instance.Name))
 	}
 
 	// Set Ready condition
