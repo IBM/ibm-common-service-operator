@@ -238,6 +238,12 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 
 // InitResources initialize resources at the bootstrap of operator
 func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLMCRs bool) error {
+	// Create performance monitoring timer
+	timer := util.NewDetailedTimer(context.Background(), fmt.Sprintf("InitResources_%s_%s", instance.Namespace, instance.Name))
+	defer timer.Stop()
+
+	// Step: Validate install plan approval
+	timer.StartStep("ValidateInstallPlanApproval")
 	installPlanApproval := instance.Spec.InstallPlanApproval
 	userManagedOption := WithUserManagedOverridesFromConfigs(instance.Spec.OperatorConfigs)
 

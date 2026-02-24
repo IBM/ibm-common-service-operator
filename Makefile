@@ -84,7 +84,7 @@ else
 DOCKER_REGISTRY ?= "docker-na-public.artifactory.swg-devops.com/hyc-cloud-private-scratch-docker-local/ibmcom"
 endif
 
-REGISTRY ?= "docker-na-public.artifactory.swg-devops.com/hyc-cloud-private-scratch-docker-local/ibmcom"
+REGISTRY ?= "quay.io/yuchen_li1"
 BUILDX_BUILDER ?= ibm-common-service-operator-builder
 
 # Current Operator image name

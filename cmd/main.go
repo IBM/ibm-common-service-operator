@@ -18,12 +18,15 @@ package main
 
 import (
 	"flag"
+	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	olmv1 "github.com/operator-framework/api/pkg/operators/v1"
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	operatorsv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/package-server/apis/operators/v1"
+	"github.com/prometheus/client_golang/prometheus"
 	admv1 "k8s.io/api/admissionregistration/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -33,6 +36,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	nssv1 "github.com/IBM/ibm-namespace-scope-operator/v4/api/v1"
 	ssv1 "github.com/IBM/ibm-secretshare-operator/api/v1"
@@ -54,6 +58,16 @@ import (
 
 var (
 	scheme = runtime.NewScheme()
+
+	// API usage metrics
+	apiCallDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "cs_api_call_duration_seconds",
+			Help:    "Duration of Kubernetes API calls",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"method", "status"},
+	)
 )
 
 func init() {
@@ -70,6 +84,33 @@ func init() {
 	utilruntime.Must(olmv1.AddToScheme(scheme))
 	utilruntime.Must(operatorsv1.AddToScheme(scheme))
 	utilruntime.Must(certmanagerv1.AddToScheme(scheme))
+
+	// Register custom metrics
+	metrics.Registry.MustRegister(apiCallDuration)
+}
+
+// Simple transport layer wrapper
+type instrumentedRoundTripper struct {
+	rt http.RoundTripper
+}
+
+func (i instrumentedRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	start := time.Now()
+	resp, err := i.rt.RoundTrip(req)
+	elapsed := time.Since(start).Seconds()
+
+	method := req.Method
+	status := "error"
+	if resp != nil {
+		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			status = "success"
+		} else {
+			status = "failure"
+		}
+	}
+
+	apiCallDuration.WithLabelValues(method, status).Observe(elapsed)
+	return resp, err
 }
 
 func main() {
@@ -105,7 +146,13 @@ func main() {
 	watchNamespaceList := strings.Split(watchNamespace, ",")
 	options = util.NewCSCache(watchNamespaceList, options)
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
+	// Configure API call metrics
+	cfg := ctrl.GetConfigOrDie()
+	cfg.WrapTransport = func(rt http.RoundTripper) http.RoundTripper {
+		return instrumentedRoundTripper{rt: rt}
+	}
+
+	mgr, err := ctrl.NewManager(cfg, options)
 	if err != nil {
 		klog.Errorf("Unable to start manager: %v", err)
 		os.Exit(1)
