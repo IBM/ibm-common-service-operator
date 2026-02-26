@@ -248,38 +248,11 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 		return ctrl.Result{}, statusErr
 	}
 
-	// Apply new configs to CommonService CR
-	cs := util.NewUnstructured("operator.ibm.com", "CommonService", "v3")
-	if statusErr = r.Bootstrap.Client.Get(ctx, types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}, cs); statusErr != nil {
-		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
-		return ctrl.Result{}, statusErr
-	}
-	// Set "Pending" condition and "Updating" for phase when config CS CR
-	instance.SetPendingCondition(constant.MasterCR, apiv3.ConditionTypeReconciling, corev1.ConditionTrue, apiv3.ConditionReasonConfig, apiv3.ConditionMessageConfig)
-	instance.Status.Phase = apiv3.CRUpdating
-	newConfigs, serviceControllerMapping, statusErr := r.getNewConfigs(cs)
-	if statusErr != nil {
-		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
-		instance.SetErrorCondition(constant.MasterCR, apiv3.ConditionTypeError, corev1.ConditionTrue, apiv3.ConditionReasonError, statusErr.Error())
-		instance.Status.Phase = apiv3.CRFailed
-	}
-
-	if statusErr = r.Client.Status().Update(ctx, instance); statusErr != nil {
-		klog.Errorf("Fail to update %s/%s: %v", instance.Namespace, instance.Name, statusErr)
-		return ctrl.Result{}, statusErr
-	}
+	// OperandConfig already created with complete configuration
+	// in InitResources, no need for second updateOperandConfig call
+	klog.Info("OperandConfig created with complete configuration")
 
 	var isEqual bool
-	if isEqual, statusErr = r.updateOperandConfig(ctx, newConfigs, serviceControllerMapping); statusErr != nil {
-		if statusErr := r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
-			klog.Error(statusErr)
-		}
-		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
-		return ctrl.Result{}, statusErr
-	} else if isEqual {
-		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.OperatorNs, "common-service", instance.Namespace, instance.Name))
-	}
-
 	if isEqual, statusErr = r.updateOperatorConfig(ctx, instance.Spec.OperatorConfigs); statusErr != nil {
 		if statusErr := r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
 			klog.Error(statusErr)
@@ -371,11 +344,6 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(ctx context.Context, instan
 		return ctrl.Result{}, err
 	}
 
-	cs := util.NewUnstructured("operator.ibm.com", "CommonService", "v3")
-	if err := r.Bootstrap.Client.Get(ctx, types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}, cs); err != nil {
-		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
-		return ctrl.Result{}, err
-	}
 	// Generate Issuer and Certificate CR
 	if err := r.Bootstrap.DeployCertManagerCR(); err != nil {
 		klog.Errorf("Failed to deploy cert manager CRs: %v", err)
@@ -386,7 +354,8 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(ctx context.Context, instan
 		return ctrl.Result{}, err
 	}
 
-	newConfigs, serviceControllerMapping, err := r.getNewConfigs(cs)
+	// Extract configurations using new extractor for subsequent updates
+	newConfigs, serviceControllerMapping, err := ExtractCommonServiceConfigs(instance, r.Bootstrap.CSData.ServicesNs)
 	if err != nil {
 		if err := r.updatePhase(ctx, instance, apiv3.CRFailed); err != nil {
 			klog.Error(err)
@@ -395,6 +364,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(ctx context.Context, instan
 		return ctrl.Result{}, err
 	}
 
+	// Update OperandConfig (single update for subsequent reconciliations)
 	isEqual, err := r.updateOperandConfig(ctx, newConfigs, serviceControllerMapping)
 	if err != nil {
 		if err := r.updatePhase(ctx, instance, apiv3.CRFailed); err != nil {
@@ -557,6 +527,10 @@ func isNonNoopOperandReconcile(operandRegistry *odlm.OperandRegistry) bool {
 }
 
 func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	// Set up configuration merger for single-stage OperandConfig creation
+	// This injects the merge logic into bootstrap without creating import cycles
+	bootstrap.SetConfigMerger(CreateMergerFunc(r))
+	klog.Info("Configuration merger initialized for single-stage OperandConfig creation")
 
 	controller := ctrl.NewControllerManagedBy(mgr).
 		// AnnotationChangedPredicate is intended to be used in conjunction with the GenerationChangedPredicate
