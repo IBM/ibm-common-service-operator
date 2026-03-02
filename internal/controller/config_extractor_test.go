@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -66,7 +67,7 @@ func TestExtractCommonServiceConfigs_StorageClass(t *testing.T) {
 	found := false
 	for _, c := range configs {
 		b, _ := json.Marshal(c)
-		if contains(string(b), "my-storage-class") {
+		if strings.Contains(string(b), "my-storage-class") {
 			found = true
 			break
 		}
@@ -87,7 +88,7 @@ func TestExtractCommonServiceConfigs_RouteHost(t *testing.T) {
 	found := false
 	for _, c := range configs {
 		b, _ := json.Marshal(c)
-		if contains(string(b), "cp-console.apps.example.com") {
+		if strings.Contains(string(b), "cp-console.apps.example.com") {
 			found = true
 			break
 		}
@@ -108,7 +109,7 @@ func TestExtractCommonServiceConfigs_DefaultAdminUser(t *testing.T) {
 	found := false
 	for _, c := range configs {
 		b, _ := json.Marshal(c)
-		if contains(string(b), "myadmin") {
+		if strings.Contains(string(b), "myadmin") {
 			found = true
 			break
 		}
@@ -129,7 +130,7 @@ func TestExtractCommonServiceConfigs_FipsEnabled(t *testing.T) {
 	found := false
 	for _, c := range configs {
 		b, _ := json.Marshal(c)
-		if contains(string(b), "true") {
+		if strings.Contains(string(b), "true") {
 			found = true
 			break
 		}
@@ -208,7 +209,7 @@ func TestExtractCommonServiceConfigs_CustomServices(t *testing.T) {
 	found := false
 	for _, c := range configs {
 		b, _ := json.Marshal(c)
-		if contains(string(b), "ibm-iam-operator") {
+		if strings.Contains(string(b), "ibm-iam-operator") {
 			found = true
 			break
 		}
@@ -263,18 +264,3 @@ func TestExtractCommonServiceConfigs_MultipleFeatures(t *testing.T) {
 	assert.GreaterOrEqual(t, len(configs), 3,
 		"three feature flags should produce at least 3 config entries")
 }
-
-// contains is a simple substring helper used in tests.
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
-		func() bool {
-			for i := 0; i <= len(s)-len(substr); i++ {
-				if s[i:i+len(substr)] == substr {
-					return true
-				}
-			}
-			return false
-		}())
-}
-
-// Made with Bob

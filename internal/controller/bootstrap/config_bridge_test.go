@@ -197,5 +197,3 @@ func TestMergeConfigs_SingleStageNoRaceCondition(t *testing.T) {
 	assert.NotEqual(t, "base-opcon", result,
 		"result must not be the bare base config (that would indicate an incomplete intermediate state)")
 }
-
-// Made with Bob

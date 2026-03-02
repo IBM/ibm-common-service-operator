@@ -210,6 +210,10 @@ spec:
 	)
 	require.NoError(t, err)
 	assert.NotEmpty(t, result)
+
+	// The CS config should have been merged in even though the base had no services
+	assert.True(t, strings.Contains(result, "ibm-iam-operator"),
+		"CS config service should appear in result even when base services list was empty")
 }
 
 // TestMergeBaseAndCSConfigs_PreservesUnchangedServices verifies that services not
@@ -351,15 +355,21 @@ spec:
 	require.NoError(t, err, "merged result must be valid OperandConfig YAML")
 	require.NotEmpty(t, opcon.Spec.Services, "merged OperandConfig must contain services")
 
-	// Verify the service is present — completeness check.
-	found := false
-	for _, svc := range opcon.Spec.Services {
-		if svc.Name == "ibm-iam-operator" {
-			found = true
+	// Verify the service is present and the CS replica value was applied in the
+	// single call — this is the core single-stage completeness assertion.
+	var iamSvc *odlm.ConfigService
+	for i := range opcon.Spec.Services {
+		if opcon.Spec.Services[i].Name == "ibm-iam-operator" {
+			iamSvc = &opcon.Spec.Services[i]
 			break
 		}
 	}
-	assert.True(t, found, "ibm-iam-operator must be present in the single-stage merged OperandConfig")
-}
+	require.NotNil(t, iamSvc, "ibm-iam-operator must be present in the single-stage merged OperandConfig")
 
-// Made with Bob
+	// The merged YAML must contain the CS-supplied replica value (3), not the
+	// base value (1), proving CS values were applied in the same call.
+	assert.True(t, strings.Contains(result, "3"),
+		"merged result must contain the CS-supplied replica count (3), not the base value (1)")
+	assert.False(t, strings.Contains(result, `"replicas":1`) || strings.Contains(result, "replicas: 1"),
+		"merged result must not retain the base replica count of 1 for ibm-iam-operator")
+}
