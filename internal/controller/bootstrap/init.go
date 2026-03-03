@@ -969,7 +969,6 @@ func (b *Bootstrap) InstallOrUpdateOpcon(forceUpdateODLMCRs bool) error {
 		constant.UserMgmtOpCon,
 		constant.IdpConfigUIOpCon,
 		constant.PlatformUIOpCon,
-		constant.EDBOpCon,
 		constant.KeyCloakOpCon,
 		constant.CommonServicePGOpCon,
 		constant.CommonServiceCNPGOpCon,
