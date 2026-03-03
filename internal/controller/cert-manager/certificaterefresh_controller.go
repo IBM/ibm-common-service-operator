@@ -18,11 +18,13 @@ package certmanager
 
 import (
 	"context"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -62,6 +64,14 @@ func (r *CertificateRefreshReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	reqLogger := logd.WithValues("req.Namespace", req.Namespace, "req.Name", req.Name)
 	reqLogger.Info("Reconciling CertificateRefresh")
+
+	// Collect errors from secret deletion operations
+	var deletionErrors []error
+	defer func() {
+		if len(deletionErrors) > 0 {
+			logd.Error(utilerrors.NewAggregate(deletionErrors), "Errors occurred during secret deletion", "errorCount", len(deletionErrors))
+		}
+	}()
 
 	// Get the certificate that invoked reconciliation is a CA in the listOfCAs
 	secret := &corev1.Secret{}
@@ -164,14 +174,21 @@ func (r *CertificateRefreshReconciler) Reconcile(ctx context.Context, req ctrl.R
 					continue
 				}
 				logd.Error(err, "Failed to delete leaf secret", "secret", leafSecret.Name)
-				// Don't return error, continue with other secrets
+				// Collect the error instead of returning immediately
+				deletionErrors = append(deletionErrors, fmt.Errorf("failed to delete secret %s/%s: %w", leafSecret.Namespace, leafSecret.Name, err))
 				continue
 			}
 			logd.Info("Successfully deleted leaf secret", "secret", leafSecret.Name)
 		}
 	}
 
-	logd.Info("All leaf certificates refreshed for", "Secret.Name", secret.Name, "Secret.Namespace", secret.Namespace)
+	logd.Info("All leaf certificates processed for", "Secret.Name", secret.Name, "Secret.Namespace", secret.Namespace)
+
+	// Return aggregated errors if any occurred during secret deletion
+	if len(deletionErrors) > 0 {
+		return ctrl.Result{}, utilerrors.NewAggregate(deletionErrors)
+	}
+
 	return ctrl.Result{}, nil
 }
 
