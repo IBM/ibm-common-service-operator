@@ -28,7 +28,7 @@ OPENSHIFT_VERSIONS ?= v4.12-v4.17
 # Be aware that the target commands are only tested with Docker which is
 # scaffolded by default. However, you might want to replace it to use other
 # tools. (i.e. podman)
-CONTAINER_TOOL ?= podman
+CONTAINER_TOOL ?= docker
 
 CSV_PATH=bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
 

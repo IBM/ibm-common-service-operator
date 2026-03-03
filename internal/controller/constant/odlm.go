@@ -1032,6 +1032,64 @@ spec:
 `
 )
 
+const EDBOpCon = `
+apiVersion: operator.ibm.com/v1alpha1
+kind: OperandConfig
+metadata:
+  name: common-service
+  namespace: "{{ .ServicesNs }}"
+  labels:
+    operator.ibm.com/managedByCsOperator: "true"
+  annotations:
+    version: {{ .Version }}
+spec:
+  services:
+  {{- range .ServiceNames.PostgreSQL }}
+  - name: {{ . }}
+    resources:
+      - apiVersion: v1
+        kind: Secret
+        name: postgresql-operator-controller-manager-config
+        namespace: "{{ $.OperatorNs }}"
+        annotations:
+          postgresql-operator-controller-manager-ready:
+            templatingValueFrom:
+              objectRef:
+                apiVersion: v1
+                kind: Pod
+                labelSelector:
+                  app.kubernetes.io/name: postgresql-operator-controller-manager
+                path: .metadata.name
+                namespace: {{ $.OperatorNs }}
+              required: true
+      - apiVersion: v1
+        kind: ServiceAccount
+        name: edb-license-sa
+        namespace: "{{ $.OperatorNs }}"
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: Role
+        name: edb-license-role
+        namespace: "{{ $.OperatorNs }}"
+        data:
+          rules:
+          - apiGroups: [""]
+            resources: ["pods", "secrets"]
+            verbs: ["create", "update", "patch", "get", "list", "delete", "watch"]
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        name: edb-license-rolebinding
+        namespace: "{{ $.OperatorNs }}"
+        data:
+          subjects:
+          - kind: ServiceAccount
+            name: edb-license-sa
+          roleRef:
+            kind: Role
+            name: edb-license-role
+            apiGroup: rbac.authorization.k8s.io
+  {{- end }}
+`
+
 const (
 	KeyCloakOpCon = `
 apiVersion: operator.ibm.com/v1alpha1
@@ -1751,6 +1809,46 @@ spec:
               supportedLocales: [ "en", "de" , "es", "fr", "it", "ja", "ko", "pt_BR", "zh_CN", "zh_TW"]
   - name: edb-keycloak
     resources:
+      - apiVersion: v1
+        kind: Secret
+        name: postgresql-operator-controller-manager-config
+        namespace: "{{ .OperatorNs }}"
+        annotations:
+          postgresql-operator-controller-manager-ready:
+            templatingValueFrom:
+              objectRef:
+                apiVersion: v1
+                kind: Pod
+                labelSelector:
+                  app.kubernetes.io/name: postgresql-operator-controller-manager
+                path: .metadata.name
+                namespace: {{ .OperatorNs }}
+              required: true
+      - apiVersion: v1
+        kind: ServiceAccount
+        name: edb-license-sa
+        namespace: "{{ .OperatorNs }}"
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: Role
+        name: edb-license-role
+        namespace: "{{ .OperatorNs }}"
+        data:
+          rules:
+          - apiGroups: [""]
+            resources: ["pods", "secrets"]
+            verbs: ["create", "update", "patch", "get", "list", "delete", "watch"] 
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        name: edb-license-rolebinding
+        namespace: "{{ .OperatorNs }}"
+        data:
+          subjects:
+          - kind: ServiceAccount
+            name: edb-license-sa
+          roleRef:
+            kind: Role
+            name: edb-license-role
+            apiGroup: rbac.authorization.k8s.io
       - apiVersion: postgresql.k8s.enterprisedb.io/v1
         data:
           spec:
@@ -1759,6 +1857,15 @@ spec:
                 backup.velero.io/backup-volumes: pgdata,pg-wal
               labels:
                 foundationservices.cloudpak.ibm.com: keycloak
+            description:
+              templatingValueFrom:
+                objectRef:
+                  apiVersion: v1
+                  kind: Secret
+                  name: postgresql-operator-controller-manager-config
+                  path: .metadata.annotations.postgresql-operator-controller-manager-ready
+                  namespace: {{ .OperatorNs }}
+                required: true
             bootstrap:
               initdb:
                 database: keycloak
@@ -1953,6 +2060,15 @@ spec:
             inheritedMetadata:
               labels:
                 foundationservices.cloudpak.ibm.com: cs-db
+            description:
+              templatingValueFrom:
+                objectRef:
+                  apiVersion: v1
+                  kind: Secret
+                  name: postgresql-operator-controller-manager-config
+                  path: .metadata.annotations.postgresql-operator-controller-manager-ready
+                  namespace: {{ .OperatorNs }}
+                required: true
             bootstrap:
               initdb:
                 database: im
