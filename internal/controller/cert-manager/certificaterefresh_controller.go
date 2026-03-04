@@ -18,11 +18,13 @@ package certmanager
 
 import (
 	"context"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -62,6 +64,14 @@ func (r *CertificateRefreshReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	reqLogger := logd.WithValues("req.Namespace", req.Namespace, "req.Name", req.Name)
 	reqLogger.Info("Reconciling CertificateRefresh")
+
+	// Collect errors from secret deletion operations
+	var deletionErrors []error
+	defer func() {
+		if len(deletionErrors) > 0 {
+			logd.Error(utilerrors.NewAggregate(deletionErrors), "Errors occurred during secret deletion", "errorCount", len(deletionErrors))
+		}
+	}()
 
 	// Get the certificate that invoked reconciliation is a CA in the listOfCAs
 	secret := &corev1.Secret{}
@@ -116,39 +126,69 @@ func (r *CertificateRefreshReconciler) Reconcile(ctx context.Context, req ctrl.R
 	// Fetch issuers
 	issuers, err := r.findIssuersBasedOnCA(secret)
 	if err != nil {
+		logd.Error(err, "Error finding issuers based on CA")
 		return ctrl.Result{}, err
 	}
 
-	// // Fetch all the secrets of leaf certificates issued by these issuers/clusterissuers
-	var leafSecrets []*corev1.Secret
+	if len(issuers) == 0 {
+		logd.Info("No issuers found for CA secret", "Secret.Name", secret.Name)
+		return ctrl.Result{}, nil
+	}
 
+	logd.V(2).Info("Found issuers for CA", "count", len(issuers), "issuers", getIssuerNames(issuers))
+
+	// Fetch all leaf certificates issued by these issuers
 	v1LeafCerts, err := r.findV1Certs(issuers)
 	if err != nil {
 		logd.Error(err, "Error reading the leaf certificates for issuer - requeue the request")
 		return ctrl.Result{}, err
 	}
 
-	leafSecrets, err = r.findLeafSecrets(v1LeafCerts)
-	if err != nil {
-		logd.Error(err, "Error finding secrets from v1 leaf certificates - requeue the request")
-		return ctrl.Result{}, err
+	if len(v1LeafCerts) == 0 {
+		logd.Info("No leaf certificates found for issuers")
+		return ctrl.Result{}, nil
 	}
 
-	// Compare ca.crt in leaf with tls.crt of CA
-	// If the values don't match, delete the secret; if error, requeue else don't requeue
-	for _, leafSecret := range leafSecrets {
+	logd.Info("Found leaf certificates", "count", len(v1LeafCerts))
+
+	// For each leaf certificate, check if its secret's ca.crt matches the new CA
+	for _, cert := range v1LeafCerts {
+		leafSecret, err := r.getSecret(&cert)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				logd.V(2).Info("Secret not found for cert " + cert.Name)
+				continue
+			}
+			logd.Error(err, "Error getting secret for certificate "+cert.Name)
+			return ctrl.Result{}, err
+		}
+
+		// Compare ca.crt in leaf with tls.crt of CA
 		if string(leafSecret.Data["ca.crt"]) != string(tlsValueOfCA) {
-			logd.Info("Deleting leaf secret " + leafSecret.Name + " as ca.crt value has changed")
+			logd.Info("CA mismatch detected for certificate", "cert", cert.Name, "secret", leafSecret.Name)
+
+			// Delete the secret to trigger cert-manager to recreate it with the new CA
 			if err := r.Client.Delete(context.TODO(), leafSecret); err != nil {
 				if errors.IsNotFound(err) {
+					logd.Info("Secret already deleted", "secret", leafSecret.Name)
 					continue
 				}
-				return ctrl.Result{}, err
+				logd.Error(err, "Failed to delete leaf secret", "secret", leafSecret.Name)
+				// Collect the error instead of returning immediately
+				deletionErrors = append(deletionErrors, fmt.Errorf("failed to delete secret %s/%s: %w", leafSecret.Namespace, leafSecret.Name, err))
+				continue
 			}
+			logd.Info("Successfully deleted leaf secret", "secret", leafSecret.Name)
 		}
 	}
 
-	logd.Info("All leaf certificates refreshed for", "Secret.Name", secret.Name, "Secret.Namespace", secret.Namespace)
+	logd.Info("All leaf certificates processed for", "Secret.Name", secret.Name, "Secret.Namespace", secret.Namespace)
+
+	// Return aggregated errors if any occurred during secret deletion
+	if len(deletionErrors) > 0 {
+		return ctrl.Result{}, utilerrors.NewAggregate(deletionErrors)
+	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -225,6 +265,15 @@ func (r *CertificateRefreshReconciler) findLeafSecrets(v1Certs []certmanagerv1.C
 	}
 
 	return leafSecrets, nil
+}
+
+// getIssuerNames returns a list of issuer names for logging
+func getIssuerNames(issuers []certmanagerv1.Issuer) []string {
+	names := make([]string, len(issuers))
+	for i, issuer := range issuers {
+		names[i] = issuer.Name
+	}
+	return names
 }
 
 // SetupWithManager sets up the controller with the Manager.
