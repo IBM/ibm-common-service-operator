@@ -1820,17 +1820,6 @@ spec:
   services:
   - name: common-service-postgresql
     resources:
-      - apiVersion: operator.ibm.com/v1alpha1
-        data:
-          spec:
-            requests:
-              - operands:
-                  - name: cloud-native-postgresql-v1.25
-                registry: common-service
-                registryNamespace: {{ .ServicesNs }}
-        force: true
-        kind: OperandRequest
-        name: postgresql-operator-request
       - apiVersion: cert-manager.io/v1
         kind: Certificate
         name: common-service-db-replica-tls-cert
