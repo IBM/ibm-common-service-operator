@@ -176,7 +176,7 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 		}
 
 		klog.Info("Installing/Updating OperandConfig")
-		if err := r.Bootstrap.InstallOrUpdateOpcon(forceUpdateODLMCRs); err != nil {
+		if err := r.Bootstrap.InstallOrUpdateOpcon(forceUpdateODLMCRs, instance); err != nil {
 			klog.Errorf("Fail to Installing/Updating OperandConfig: %v", err)
 			return ctrl.Result{}, err
 		}
@@ -184,58 +184,11 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 		klog.Error("ODLM CRD not ready, waiting for it to be ready")
 	}
 
-	// Init common service bootstrap resource
-	// Including namespace-scope configmap
-	// Deploy OperandConfig and OperandRegistry
-	// if statusErr = r.Bootstrap.InitResources(instance, forceUpdateODLMCRs); statusErr != nil {
-	// 	if statusErr := r.updatePhase(ctx, instance, CRFailed); statusErr != nil {
-	// 		klog.Error(statusErr)
-	// 	}
-	// 	klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
-	// 	return ctrl.Result{}, statusErr
-	// }
-
-	// Generate Issuer and Certificate CR
-	// if statusErr = r.Bootstrap.DeployCertManagerCR(); statusErr != nil {
-	// 	klog.Errorf("Failed to deploy cert manager CRs: %v", statusErr)
-	// 	if statusErr = r.updatePhase(ctx, instance, CRFailed); statusErr != nil {
-	// 		klog.Error(statusErr)
-	// 	}
-	// 	klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
-	// 	return ctrl.Result{}, statusErr
-	// }
-
-	// Apply new configs to CommonService CR
-	cs := util.NewUnstructured("operator.ibm.com", "CommonService", "v3")
-	if statusErr = r.Bootstrap.Client.Get(ctx, types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}, cs); statusErr != nil {
-		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
-		return ctrl.Result{}, statusErr
-	}
-	// Set "Pengding" condition and "Updating" for phase when config CS CR
-	instance.SetPendingCondition(constant.MasterCR, apiv3.ConditionTypeReconciling, corev1.ConditionTrue, apiv3.ConditionReasonConfig, apiv3.ConditionMessageConfig)
-	instance.Status.Phase = apiv3.CRUpdating
-	newConfigs, serviceControllerMapping, statusErr := r.getNewConfigs(cs)
-	if statusErr != nil {
-		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
-		instance.SetErrorCondition(constant.MasterCR, apiv3.ConditionTypeError, corev1.ConditionTrue, apiv3.ConditionReasonError, statusErr.Error())
-		instance.Status.Phase = apiv3.CRFailed
-	}
-
-	if statusErr = r.Client.Status().Update(ctx, instance); statusErr != nil {
-		klog.Errorf("Fail to update %s/%s: %v", instance.Namespace, instance.Name, statusErr)
-		return ctrl.Result{}, statusErr
-	}
+	// OperandConfig already created with complete configuration
+	// in InstallOrUpdateOpcon, no need for second updateOperandConfig call
+	klog.Info("OperandConfig created with complete configuration via single-stage creation")
 
 	var isEqual bool
-	if isEqual, statusErr = r.updateOperandConfig(ctx, newConfigs, serviceControllerMapping); statusErr != nil {
-		if statusErr := r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
-			klog.Error(statusErr)
-		}
-		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
-		return ctrl.Result{}, statusErr
-	} else if isEqual {
-		r.Recorder.Event(instance, corev1.EventTypeNormal, "Noeffect", fmt.Sprintf("No update, resource sizings in the OperandConfig %s/%s are larger than the profile from CommonService CR %s/%s", r.Bootstrap.CSData.OperatorNs, "common-service", instance.Namespace, instance.Name))
-	}
 
 	if isEqual, statusErr = r.updateOperatorConfig(ctx, instance.Spec.OperatorConfigs); statusErr != nil {
 		if statusErr := r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
@@ -320,11 +273,6 @@ func (r *CommonServiceReconciler) ReconcileNoOLMGeneralCR(ctx context.Context, i
 		return ctrl.Result{}, err
 	}
 
-	cs := util.NewUnstructured("operator.ibm.com", "CommonService", "v3")
-	if err := r.Bootstrap.Client.Get(ctx, types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}, cs); err != nil {
-		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
-		return ctrl.Result{}, err
-	}
 	// Generate Issuer and Certificate CR
 	if err := r.Bootstrap.DeployCertManagerCR(); err != nil {
 		klog.Errorf("Failed to deploy cert manager CRs: %v", err)
@@ -335,7 +283,8 @@ func (r *CommonServiceReconciler) ReconcileNoOLMGeneralCR(ctx context.Context, i
 		return ctrl.Result{}, err
 	}
 
-	newConfigs, serviceControllerMapping, err := r.getNewConfigs(cs)
+	// Extract configurations using new extractor for subsequent updates
+	newConfigs, serviceControllerMapping, err := ExtractCommonServiceConfigs(instance, r.Bootstrap.CSData.ServicesNs)
 	if err != nil {
 		if err := r.updatePhase(ctx, instance, apiv3.CRFailed); err != nil {
 			klog.Error(err)
@@ -344,6 +293,7 @@ func (r *CommonServiceReconciler) ReconcileNoOLMGeneralCR(ctx context.Context, i
 		return ctrl.Result{}, err
 	}
 
+	// Update OperandConfig (single update for subsequent reconciliations)
 	isEqual, err := r.updateOperandConfig(ctx, newConfigs, serviceControllerMapping)
 	if err != nil {
 		if err := r.updatePhase(ctx, instance, apiv3.CRFailed); err != nil {

@@ -319,7 +319,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		}
 
 		klog.Info("Installing/Updating OperandConfig")
-		if err := b.InstallOrUpdateOpcon(forceUpdateODLMCRs); err != nil {
+		if err := b.InstallOrUpdateOpcon(forceUpdateODLMCRs, instance); err != nil {
 			return err
 		}
 	}
@@ -369,7 +369,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		}
 
 		klog.Info("Installing/Updating OperandConfig")
-		if err := b.InstallOrUpdateOpcon(forceUpdateODLMCRs); err != nil {
+		if err := b.InstallOrUpdateOpcon(forceUpdateODLMCRs, instance); err != nil {
 			return err
 		}
 	}
@@ -960,7 +960,8 @@ func (b *Bootstrap) InstallOrUpdateOpreg(ctx context.Context, installPlanApprova
 }
 
 // InstallOrUpdateOpcon will install or update OperandConfig when Opcon CRD is existent
-func (b *Bootstrap) InstallOrUpdateOpcon(forceUpdateODLMCRs bool) error {
+// Now accepts CommonService instance with merged configurations
+func (b *Bootstrap) InstallOrUpdateOpcon(forceUpdateODLMCRs bool, csInstance *apiv3.CommonService) error {
 
 	var baseCon string
 	configs := []string{
@@ -983,7 +984,21 @@ func (b *Bootstrap) InstallOrUpdateOpcon(forceUpdateODLMCRs bool) error {
 		return err
 	}
 
-	if err := b.renderTemplate(concatenatedCon, b.CSData, forceUpdateODLMCRs); err != nil {
+	// Merge CommonService configurations with base templates
+	// before rendering to create complete OperandConfig in one step
+	finalConfig := concatenatedCon
+	if csInstance != nil {
+		klog.Info("Merging CommonService configurations with base OperandConfig")
+		mergedConfig, err := b.mergeConfigs(concatenatedCon, csInstance)
+		if err != nil {
+			klog.Errorf("Failed to merge configurations: %v", err)
+			return err
+		}
+		finalConfig = mergedConfig
+		klog.Info("Successfully merged configurations for single-stage OperandConfig creation")
+	}
+
+	if err := b.renderTemplate(finalConfig, b.CSData, forceUpdateODLMCRs); err != nil {
 		return err
 	}
 	return nil
