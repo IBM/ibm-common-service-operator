@@ -134,49 +134,136 @@ func mergeCSCRs(csSummary, csCR, ruleSlice []interface{}, serviceControllerMappi
 			csSummary = setSpecByName(csSummary, operator.(map[string]interface{})["name"].(string), summaryCR.(map[string]interface{})["spec"])
 		}
 
-		// check if operator.(map[string]interface{})["resources"] is nil
-		if operator.(map[string]interface{})["resources"] != nil {
-			for i, opResource := range operator.(map[string]interface{})["resources"].([]interface{}) {
-				var apiVersion, kind, name, namespace string
-				if opResource.(map[string]interface{})["apiVersion"] != nil {
-					apiVersion = opResource.(map[string]interface{})["apiVersion"].(string)
-				}
-				if opResource.(map[string]interface{})["kind"] != nil {
-					kind = opResource.(map[string]interface{})["kind"].(string)
-				}
-				if opResource.(map[string]interface{})["name"] != nil {
-					name = opResource.(map[string]interface{})["name"].(string)
-				}
-				if opResource.(map[string]interface{})["namespace"] != nil {
-					namespace = opResource.(map[string]interface{})["namespace"].(string)
-				}
-				// check if above 4 fields are all set
-				if apiVersion == "" || kind == "" || name == "" {
-					klog.Warningf("Skipping merging resource %s/%s/%s/%s, because apiVersion, kind or name is not set", apiVersion, kind, name, namespace)
-					continue
-				}
-				// check if namespace is set, if not, set it to OperandConfig namespace
-				if namespace == "" {
-					namespace = opconNs
-				}
-				if summaryCR == nil || summaryCR.(map[string]interface{})["resources"] == nil {
-					continue
-				}
-				newResource := getItemByGVKNameNamespace(summaryCR.(map[string]interface{})["resources"].([]interface{}), opconNs, apiVersion, kind, name, namespace)
-				if newResource != nil {
-					if _, ok := nonDefaultProfileController[serviceController]; ok {
-						if isOpResourceExists(newResource) {
-							klog.Info("### DEBUG: deleting key")
-							newResource.(map[string]interface{})["data"].(map[string]interface{})["spec"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})["cpu"] = struct{}{}
-						}
-					}
-					operator.(map[string]interface{})["resources"].([]interface{})[i] = mergeCRsIntoOperandConfigWithDefaultRules(opResource.(map[string]interface{}), newResource.(map[string]interface{}), false)
-				}
+		// Merge resources: preserve base resources and merge/add CS resources
+		// This fixes the bug where base-only resources (like Certificates) were lost
+		if operator.(map[string]interface{})["resources"] != nil || (summaryCR != nil && summaryCR.(map[string]interface{})["resources"] != nil) {
+			// Get base resources from summary (these must be preserved)
+			baseResources := []interface{}{}
+			if summaryCR != nil && summaryCR.(map[string]interface{})["resources"] != nil {
+				baseResources = summaryCR.(map[string]interface{})["resources"].([]interface{})
 			}
-			csSummary = setResByName(csSummary, operator.(map[string]interface{})["name"].(string), operator.(map[string]interface{})["resources"].([]interface{}))
+
+			// Get CS resources to merge
+			csResources := []interface{}{}
+			if operator.(map[string]interface{})["resources"] != nil {
+				csResources = operator.(map[string]interface{})["resources"].([]interface{})
+			}
+
+			// Merge resources: update base with CS overrides, preserve base-only resources
+			mergedResources := mergeResourceArrays(baseResources, csResources, opconNs, serviceController)
+
+			// Set the merged resources
+			csSummary = setResByName(csSummary, operator.(map[string]interface{})["name"].(string), mergedResources)
 		}
 	}
 	return csSummary
+}
+
+// mergeResourceArrays merges base resources with CS resources, preserving base-only resources
+// and allowing CS resources to override matching base resources.
+// This fixes the critical bug where base resources (like Certificates) were lost during merge.
+func mergeResourceArrays(baseResources, csResources []interface{}, opconNs string, serviceController string) []interface{} {
+	// Start with a copy of base resources to preserve them
+	mergedResources := make([]interface{}, 0, len(baseResources)+len(csResources))
+
+	// Track which base resources have been updated by CS resources
+	updatedBaseIndices := make(map[int]bool)
+
+	// First pass: merge CS resources into matching base resources
+	for _, csResource := range csResources {
+		var csApiVersion, csKind, csName, csNamespace string
+		if csResource.(map[string]interface{})["apiVersion"] != nil {
+			csApiVersion = csResource.(map[string]interface{})["apiVersion"].(string)
+		}
+		if csResource.(map[string]interface{})["kind"] != nil {
+			csKind = csResource.(map[string]interface{})["kind"].(string)
+		}
+		if csResource.(map[string]interface{})["name"] != nil {
+			csName = csResource.(map[string]interface{})["name"].(string)
+		}
+		if csResource.(map[string]interface{})["namespace"] != nil {
+			csNamespace = csResource.(map[string]interface{})["namespace"].(string)
+		}
+
+		// Validate required fields
+		if csApiVersion == "" || csKind == "" || csName == "" {
+			klog.Warningf("Skipping CS resource %s/%s/%s/%s: missing required fields", csApiVersion, csKind, csName, csNamespace)
+			continue
+		}
+
+		// Default namespace to opconNs if not set
+		if csNamespace == "" {
+			csNamespace = opconNs
+		}
+
+		// Find matching base resource
+		matchedBaseIndex := -1
+		for i, baseResource := range baseResources {
+			if updatedBaseIndices[i] {
+				continue // Already processed
+			}
+
+			var baseApiVersion, baseKind, baseName, baseNamespace string
+			if baseResource.(map[string]interface{})["apiVersion"] != nil {
+				baseApiVersion = baseResource.(map[string]interface{})["apiVersion"].(string)
+			}
+			if baseResource.(map[string]interface{})["kind"] != nil {
+				baseKind = baseResource.(map[string]interface{})["kind"].(string)
+			}
+			if baseResource.(map[string]interface{})["name"] != nil {
+				baseName = baseResource.(map[string]interface{})["name"].(string)
+			}
+			if baseResource.(map[string]interface{})["namespace"] != nil {
+				baseNamespace = baseResource.(map[string]interface{})["namespace"].(string)
+			} else {
+				baseNamespace = opconNs
+			}
+
+			// Check if resources match by GVK+Name+Namespace
+			if baseApiVersion == csApiVersion && baseKind == csKind && baseName == csName && baseNamespace == csNamespace {
+				matchedBaseIndex = i
+				break
+			}
+		}
+
+		if matchedBaseIndex >= 0 {
+			// Merge CS resource into base resource
+			baseResource := baseResources[matchedBaseIndex]
+			mergedResource := mergeCRsIntoOperandConfigWithDefaultRules(csResource.(map[string]interface{}), baseResource.(map[string]interface{}), false)
+
+			// Apply profile controller cleanup if needed
+			if _, ok := nonDefaultProfileController[serviceController]; ok {
+				if isOpResourceExists(mergedResource) {
+					klog.V(2).Info("Applying profile controller cleanup to merged resource")
+					if mergedResource["data"] != nil && mergedResource["data"].(map[string]interface{})["spec"] != nil {
+						if resources, ok := mergedResource["data"].(map[string]interface{})["spec"].(map[string]interface{})["resources"].(map[string]interface{}); ok {
+							if limits, ok := resources["limits"].(map[string]interface{}); ok {
+								limits["cpu"] = struct{}{}
+							}
+						}
+					}
+				}
+			}
+
+			mergedResources = append(mergedResources, mergedResource)
+			updatedBaseIndices[matchedBaseIndex] = true
+		} else {
+			// CS resource is new, add it
+			mergedResources = append(mergedResources, csResource)
+		}
+	}
+
+	// Second pass: add base resources that weren't updated by CS resources
+	for i, baseResource := range baseResources {
+		if !updatedBaseIndices[i] {
+			mergedResources = append(mergedResources, baseResource)
+		}
+	}
+
+	klog.V(2).Infof("Merged resources: %d base + %d CS = %d total (preserved %d base-only)",
+		len(baseResources), len(csResources), len(mergedResources), len(baseResources)-len(updatedBaseIndices))
+
+	return mergedResources
 }
 
 // mergeCRsIntoOperandConfig merges CRs by specific rules
