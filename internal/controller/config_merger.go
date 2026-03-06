@@ -157,12 +157,12 @@ func validateMergedConfig(config *odlm.OperandConfig) error {
 // MergeConfigs is a convenience function that combines extraction and merging
 // Used by bootstrap to create complete OperandConfig in single stage
 func MergeConfigs(
-	r *CommonServiceReconciler,
 	baseConfig string,
 	cs *apiv3.CommonService,
+	servicesNs string,
 ) (string, error) {
 	// Extract CommonService configurations
-	csConfigs, serviceControllerMapping, err := ExtractCommonServiceConfigs(cs, r.Bootstrap.CSData.ServicesNs)
+	csConfigs, serviceControllerMapping, err := ExtractCommonServiceConfigs(cs, servicesNs)
 	if err != nil {
 		return "", fmt.Errorf("failed to extract CommonService configs: %v", err)
 	}
@@ -172,7 +172,7 @@ func MergeConfigs(
 		baseConfig,
 		csConfigs,
 		serviceControllerMapping,
-		r.Bootstrap.CSData.ServicesNs,
+		servicesNs,
 	)
 	if err != nil {
 		return "", fmt.Errorf("failed to merge configurations: %v", err)
@@ -185,6 +185,6 @@ func MergeConfigs(
 // This is used to inject the merge logic into bootstrap without import cycles
 func CreateMergerFunc(r *CommonServiceReconciler) func(baseConfig string, cs *apiv3.CommonService, servicesNs string) (string, error) {
 	return func(baseConfig string, cs *apiv3.CommonService, servicesNs string) (string, error) {
-		return MergeConfigs(r, baseConfig, cs)
+		return MergeConfigs(baseConfig, cs, servicesNs)
 	}
 }

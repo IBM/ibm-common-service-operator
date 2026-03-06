@@ -26,20 +26,17 @@ import (
 	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
 )
 
-// resetConfigMerger clears the package-level configMerger between tests to
-// prevent state leaking across test cases.
-func resetConfigMerger() {
-	configMerger = nil
+// newTestBootstrap creates a Bootstrap instance for testing with the given ServicesNs.
+func newTestBootstrap(servicesNs string) *Bootstrap {
+	return &Bootstrap{
+		CSData: apiv3.CSData{ServicesNs: servicesNs},
+	}
 }
 
 // TestSetConfigMerger_NilByDefault verifies that before SetConfigMerger is called
-// the package-level merger is nil and mergeConfigs returns the base config unchanged.
+// the merger is nil and mergeConfigs returns the base config unchanged.
 func TestSetConfigMerger_NilByDefault(t *testing.T) {
-	resetConfigMerger()
-
-	b := &Bootstrap{
-		CSData: apiv3.CSData{ServicesNs: "ibm-common-services"},
-	}
+	b := newTestBootstrap("ibm-common-services")
 	cs := &apiv3.CommonService{}
 
 	result, err := b.mergeConfigs("base-config", cs)
@@ -51,18 +48,13 @@ func TestSetConfigMerger_NilByDefault(t *testing.T) {
 // TestSetConfigMerger_InjectsFunction verifies that SetConfigMerger stores the
 // provided function and that mergeConfigs delegates to it.
 func TestSetConfigMerger_InjectsFunction(t *testing.T) {
-	resetConfigMerger()
-	defer resetConfigMerger()
-
 	called := false
-	SetConfigMerger(func(baseConfig string, cs *apiv3.CommonService, servicesNs string) (string, error) {
+	b := newTestBootstrap("ibm-common-services")
+	b.SetConfigMerger(func(baseConfig string, cs *apiv3.CommonService, servicesNs string) (string, error) {
 		called = true
 		return "merged-" + baseConfig, nil
 	})
 
-	b := &Bootstrap{
-		CSData: apiv3.CSData{ServicesNs: "ibm-common-services"},
-	}
 	cs := &apiv3.CommonService{}
 
 	result, err := b.mergeConfigs("base", cs)
@@ -74,18 +66,13 @@ func TestSetConfigMerger_InjectsFunction(t *testing.T) {
 // TestSetConfigMerger_PassesServicesNs verifies that mergeConfigs forwards the
 // Bootstrap's ServicesNs to the injected merger function.
 func TestSetConfigMerger_PassesServicesNs(t *testing.T) {
-	resetConfigMerger()
-	defer resetConfigMerger()
-
 	var capturedNs string
-	SetConfigMerger(func(baseConfig string, cs *apiv3.CommonService, servicesNs string) (string, error) {
+	b := newTestBootstrap("my-services-ns")
+	b.SetConfigMerger(func(baseConfig string, cs *apiv3.CommonService, servicesNs string) (string, error) {
 		capturedNs = servicesNs
 		return baseConfig, nil
 	})
 
-	b := &Bootstrap{
-		CSData: apiv3.CSData{ServicesNs: "my-services-ns"},
-	}
 	cs := &apiv3.CommonService{}
 
 	_, err := b.mergeConfigs("config", cs)
@@ -97,18 +84,13 @@ func TestSetConfigMerger_PassesServicesNs(t *testing.T) {
 // TestSetConfigMerger_PassesCSInstance verifies that mergeConfigs forwards the
 // CommonService instance to the injected merger function.
 func TestSetConfigMerger_PassesCSInstance(t *testing.T) {
-	resetConfigMerger()
-	defer resetConfigMerger()
-
 	var capturedCS *apiv3.CommonService
-	SetConfigMerger(func(baseConfig string, cs *apiv3.CommonService, servicesNs string) (string, error) {
+	b := newTestBootstrap("ibm-common-services")
+	b.SetConfigMerger(func(baseConfig string, cs *apiv3.CommonService, servicesNs string) (string, error) {
 		capturedCS = cs
 		return baseConfig, nil
 	})
 
-	b := &Bootstrap{
-		CSData: apiv3.CSData{ServicesNs: "ibm-common-services"},
-	}
 	cs := &apiv3.CommonService{}
 	cs.Name = "common-service"
 	cs.Namespace = "ibm-common-services"
@@ -123,17 +105,12 @@ func TestSetConfigMerger_PassesCSInstance(t *testing.T) {
 // TestSetConfigMerger_PropagatesError verifies that an error returned by the
 // injected merger function is propagated back to the caller of mergeConfigs.
 func TestSetConfigMerger_PropagatesError(t *testing.T) {
-	resetConfigMerger()
-	defer resetConfigMerger()
-
 	mergeErr := errors.New("merge failed")
-	SetConfigMerger(func(baseConfig string, cs *apiv3.CommonService, servicesNs string) (string, error) {
+	b := newTestBootstrap("ibm-common-services")
+	b.SetConfigMerger(func(baseConfig string, cs *apiv3.CommonService, servicesNs string) (string, error) {
 		return "", mergeErr
 	})
 
-	b := &Bootstrap{
-		CSData: apiv3.CSData{ServicesNs: "ibm-common-services"},
-	}
 	cs := &apiv3.CommonService{}
 
 	result, err := b.mergeConfigs("config", cs)
@@ -145,19 +122,14 @@ func TestSetConfigMerger_PropagatesError(t *testing.T) {
 // TestSetConfigMerger_Overwrite verifies that calling SetConfigMerger a second
 // time replaces the previously registered function.
 func TestSetConfigMerger_Overwrite(t *testing.T) {
-	resetConfigMerger()
-	defer resetConfigMerger()
-
-	SetConfigMerger(func(baseConfig string, cs *apiv3.CommonService, servicesNs string) (string, error) {
+	b := newTestBootstrap("ibm-common-services")
+	b.SetConfigMerger(func(baseConfig string, cs *apiv3.CommonService, servicesNs string) (string, error) {
 		return "first", nil
 	})
-	SetConfigMerger(func(baseConfig string, cs *apiv3.CommonService, servicesNs string) (string, error) {
+	b.SetConfigMerger(func(baseConfig string, cs *apiv3.CommonService, servicesNs string) (string, error) {
 		return "second", nil
 	})
 
-	b := &Bootstrap{
-		CSData: apiv3.CSData{ServicesNs: "ibm-common-services"},
-	}
 	cs := &apiv3.CommonService{}
 
 	result, err := b.mergeConfigs("config", cs)
@@ -171,21 +143,16 @@ func TestSetConfigMerger_Overwrite(t *testing.T) {
 // produces a complete merged result — there is no intermediate state where the
 // base config is returned before CS values are applied.
 func TestMergeConfigs_SingleStageNoRaceCondition(t *testing.T) {
-	resetConfigMerger()
-	defer resetConfigMerger()
-
 	// Simulate the real merger: it always returns a "complete" config that
 	// includes both base and CS values in one shot.
-	SetConfigMerger(func(baseConfig string, cs *apiv3.CommonService, servicesNs string) (string, error) {
+	b := newTestBootstrap("ibm-common-services")
+	b.SetConfigMerger(func(baseConfig string, cs *apiv3.CommonService, servicesNs string) (string, error) {
 		// In production this would be MergeConfigs(); here we just verify the
 		// contract: the result must differ from the bare base config, proving
 		// CS values were applied in the same call.
 		return baseConfig + "+cs-values", nil
 	})
 
-	b := &Bootstrap{
-		CSData: apiv3.CSData{ServicesNs: "ibm-common-services"},
-	}
 	cs := &apiv3.CommonService{}
 
 	result, err := b.mergeConfigs("base-opcon", cs)

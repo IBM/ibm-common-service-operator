@@ -82,6 +82,7 @@ type Bootstrap struct {
 	MultiInstancesEnable bool
 	CSOperators          []CSOperator
 	CSData               apiv3.CSData
+	configMerger         ConfigMergerFunc
 }
 
 // CanI performs a SelfSubjectAccessReview (SSAR) to check whether the operator service account

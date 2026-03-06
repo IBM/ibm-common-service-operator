@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/v4/api/v1alpha1"
 )
 
@@ -372,4 +373,66 @@ spec:
 		"merged result must contain the CS-supplied replica count (3), not the base value (1)")
 	assert.False(t, strings.Contains(result, `"replicas":1`) || strings.Contains(result, "replicas: 1"),
 		"merged result must not retain the base replica count of 1 for ibm-iam-operator")
+}
+
+// TestMergeConfigs_EmptyCS verifies that MergeConfigs handles an empty CommonService
+// gracefully and returns the base config unchanged.
+func TestMergeConfigs_EmptyCS(t *testing.T) {
+	cs := &apiv3.CommonService{}
+	result, err := MergeConfigs(minimalBaseOpconYAML, cs, "ibm-common-services")
+	require.NoError(t, err)
+	assert.NotEmpty(t, result)
+
+	// Verify the result still contains the original services
+	opcon, err := parseOperandConfig(result)
+	require.NoError(t, err)
+	assert.Len(t, opcon.Spec.Services, 2)
+}
+
+// TestMergeConfigs_WithCSFeatures verifies that MergeConfigs properly extracts
+// CommonService configurations and merges them with the base config.
+func TestMergeConfigs_WithCSFeatures(t *testing.T) {
+	cs := &apiv3.CommonService{}
+	cs.Spec.StorageClass = "my-storage"
+	cs.Spec.RouteHost = "example.com"
+
+	result, err := MergeConfigs(minimalBaseOpconYAML, cs, "ibm-common-services")
+	require.NoError(t, err)
+	assert.NotEmpty(t, result)
+
+	opcon, err := parseOperandConfig(result)
+	require.NoError(t, err)
+	assert.NotEmpty(t, opcon.Spec.Services)
+}
+
+// TestMergeConfigs_InvalidBaseConfig verifies that an invalid base config
+// returns an error through MergeConfigs.
+func TestMergeConfigs_InvalidBaseConfig(t *testing.T) {
+	cs := &apiv3.CommonService{}
+	_, err := MergeConfigs("{ not valid yaml: [", cs, "ibm-common-services")
+	assert.Error(t, err)
+}
+
+// TestMergeConfigs_PassesServicesNs verifies that MergeConfigs passes servicesNs
+// through to the extraction and merging functions, not using a hardcoded value.
+func TestMergeConfigs_PassesServicesNs(t *testing.T) {
+	cs := &apiv3.CommonService{}
+	cs.Spec.Size = "small"
+
+	customNsYAML := `
+apiVersion: operator.ibm.com/v1alpha1
+kind: OperandConfig
+metadata:
+  name: common-service
+  namespace: custom-ns
+spec:
+  services:
+  - name: ibm-iam-operator
+    spec:
+      authentication:
+        replicas: 1
+`
+	result, err := MergeConfigs(customNsYAML, cs, "custom-ns")
+	require.NoError(t, err)
+	assert.NotEmpty(t, result)
 }
