@@ -248,10 +248,6 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 		return ctrl.Result{}, statusErr
 	}
 
-	// OperandConfig already created with complete configuration
-	// in InitResources, no need for second updateOperandConfig call
-	klog.Info("OperandConfig created with complete configuration")
-
 	var isEqual bool
 	if isEqual, statusErr = r.updateOperatorConfig(ctx, instance.Spec.OperatorConfigs); statusErr != nil {
 		if statusErr := r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
