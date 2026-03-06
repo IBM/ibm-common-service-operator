@@ -556,7 +556,7 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 					if newResource != nil {
 						if _, ok := nonDefaultProfileController[serviceController]; ok {
 							if isOpResourceExists(newResource) {
-								klog.Info("### DEBUG: deleting key")
+								klog.V(2).Info("Clearing CPU limits for non-default profile controller")
 								newResource.(map[string]interface{})["data"].(map[string]interface{})["spec"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})["cpu"] = struct{}{}
 							}
 						}
@@ -605,15 +605,15 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 
 func isOpResourceExists(opResource interface{}) bool {
 	if opResource.(map[string]interface{})["data"] == nil {
-		klog.Info("### DEBUG: data not exists")
+		klog.V(2).Info("Resource has no data field")
 		return false
 	}
 	if opResource.(map[string]interface{})["data"].(map[string]interface{})["spec"] == nil {
-		klog.Info("### DEBUG: data not exists")
+		klog.V(2).Info("Resource data has no spec field")
 		return false
 	}
 	if opResource.(map[string]interface{})["data"].(map[string]interface{})["spec"].(map[string]interface{})["resources"] == nil {
-		klog.Info("### DEBUG: resources not exists")
+		klog.V(2).Info("Resource spec has no resources field")
 		return false
 	}
 	return true
@@ -713,7 +713,7 @@ func (r *CommonServiceReconciler) getExtremeizes(ctx context.Context, opconServi
 					if summarizedRes != nil {
 						if _, ok := nonDefaultProfileController[serviceController]; ok {
 							if isOpResourceExists(summarizedRes) {
-								klog.Info("### DEBUG: deleting key")
+								klog.V(2).Info("Clearing CPU limits for non-default profile controller in summarized resource")
 								summarizedRes.(map[string]interface{})["data"].(map[string]interface{})["spec"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})["cpu"] = struct{}{}
 							}
 						}
