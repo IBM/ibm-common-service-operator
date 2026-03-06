@@ -367,5 +367,3 @@ func extractSizeTemplate(cs *apiv3.CommonService, sizeTemplate string, serviceCo
 
 	return sizes, serviceControllerMapping, nil
 }
-
-// Made with Bob

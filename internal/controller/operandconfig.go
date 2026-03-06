@@ -159,6 +159,23 @@ func mergeCSCRs(csSummary, csCR, ruleSlice []interface{}, serviceControllerMappi
 	return csSummary
 }
 
+// toStringMap safely converts an interface{} to map[string]interface{}.
+// Returns nil and false if the conversion fails.
+func toStringMap(v interface{}) (map[string]interface{}, bool) {
+	m, ok := v.(map[string]interface{})
+	return m, ok
+}
+
+// getStringField safely extracts a string field from a resource map.
+func getStringField(m map[string]interface{}, key string) string {
+	if v, ok := m[key]; ok {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return ""
+}
+
 // mergeResourceArrays merges base resources with CS resources, preserving base-only resources
 // and allowing CS resources to override matching base resources.
 // This fixes the critical bug where base resources (like Certificates) were lost during merge.
@@ -171,19 +188,16 @@ func mergeResourceArrays(baseResources, csResources []interface{}, opconNs strin
 
 	// First pass: merge CS resources into matching base resources
 	for _, csResource := range csResources {
-		var csApiVersion, csKind, csName, csNamespace string
-		if csResource.(map[string]interface{})["apiVersion"] != nil {
-			csApiVersion = csResource.(map[string]interface{})["apiVersion"].(string)
+		csMap, ok := toStringMap(csResource)
+		if !ok {
+			klog.Warningf("Skipping CS resource: unexpected type %T", csResource)
+			continue
 		}
-		if csResource.(map[string]interface{})["kind"] != nil {
-			csKind = csResource.(map[string]interface{})["kind"].(string)
-		}
-		if csResource.(map[string]interface{})["name"] != nil {
-			csName = csResource.(map[string]interface{})["name"].(string)
-		}
-		if csResource.(map[string]interface{})["namespace"] != nil {
-			csNamespace = csResource.(map[string]interface{})["namespace"].(string)
-		}
+
+		csApiVersion := getStringField(csMap, "apiVersion")
+		csKind := getStringField(csMap, "kind")
+		csName := getStringField(csMap, "name")
+		csNamespace := getStringField(csMap, "namespace")
 
 		// Validate required fields
 		if csApiVersion == "" || csKind == "" || csName == "" {
@@ -203,19 +217,16 @@ func mergeResourceArrays(baseResources, csResources []interface{}, opconNs strin
 				continue // Already processed
 			}
 
-			var baseApiVersion, baseKind, baseName, baseNamespace string
-			if baseResource.(map[string]interface{})["apiVersion"] != nil {
-				baseApiVersion = baseResource.(map[string]interface{})["apiVersion"].(string)
+			baseMap, ok := toStringMap(baseResource)
+			if !ok {
+				continue
 			}
-			if baseResource.(map[string]interface{})["kind"] != nil {
-				baseKind = baseResource.(map[string]interface{})["kind"].(string)
-			}
-			if baseResource.(map[string]interface{})["name"] != nil {
-				baseName = baseResource.(map[string]interface{})["name"].(string)
-			}
-			if baseResource.(map[string]interface{})["namespace"] != nil {
-				baseNamespace = baseResource.(map[string]interface{})["namespace"].(string)
-			} else {
+
+			baseApiVersion := getStringField(baseMap, "apiVersion")
+			baseKind := getStringField(baseMap, "kind")
+			baseName := getStringField(baseMap, "name")
+			baseNamespace := getStringField(baseMap, "namespace")
+			if baseNamespace == "" {
 				baseNamespace = opconNs
 			}
 
@@ -228,17 +239,19 @@ func mergeResourceArrays(baseResources, csResources []interface{}, opconNs strin
 
 		if matchedBaseIndex >= 0 {
 			// Merge CS resource into base resource
-			baseResource := baseResources[matchedBaseIndex]
-			mergedResource := mergeCRsIntoOperandConfigWithDefaultRules(csResource.(map[string]interface{}), baseResource.(map[string]interface{}), false)
+			baseMap, _ := toStringMap(baseResources[matchedBaseIndex])
+			mergedResource := mergeCRsIntoOperandConfigWithDefaultRules(csMap, baseMap, false)
 
 			// Apply profile controller cleanup if needed
 			if _, ok := nonDefaultProfileController[serviceController]; ok {
 				if isOpResourceExists(mergedResource) {
 					klog.V(2).Info("Applying profile controller cleanup to merged resource")
-					if mergedResource["data"] != nil && mergedResource["data"].(map[string]interface{})["spec"] != nil {
-						if resources, ok := mergedResource["data"].(map[string]interface{})["spec"].(map[string]interface{})["resources"].(map[string]interface{}); ok {
-							if limits, ok := resources["limits"].(map[string]interface{}); ok {
-								limits["cpu"] = struct{}{}
+					if dataMap, ok := toStringMap(mergedResource["data"]); ok {
+						if specMap, ok := toStringMap(dataMap["spec"]); ok {
+							if resources, ok := toStringMap(specMap["resources"]); ok {
+								if limits, ok := toStringMap(resources["limits"]); ok {
+									limits["cpu"] = struct{}{}
+								}
 							}
 						}
 					}
@@ -604,15 +617,22 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 }
 
 func isOpResourceExists(opResource interface{}) bool {
-	if opResource.(map[string]interface{})["data"] == nil {
+	resMap, ok := toStringMap(opResource)
+	if !ok {
+		klog.V(2).Info("Resource is not a map")
+		return false
+	}
+	dataMap, ok := toStringMap(resMap["data"])
+	if !ok {
 		klog.V(2).Info("Resource has no data field")
 		return false
 	}
-	if opResource.(map[string]interface{})["data"].(map[string]interface{})["spec"] == nil {
+	specMap, ok := toStringMap(dataMap["spec"])
+	if !ok {
 		klog.V(2).Info("Resource data has no spec field")
 		return false
 	}
-	if opResource.(map[string]interface{})["data"].(map[string]interface{})["spec"].(map[string]interface{})["resources"] == nil {
+	if specMap["resources"] == nil {
 		klog.V(2).Info("Resource spec has no resources field")
 		return false
 	}
