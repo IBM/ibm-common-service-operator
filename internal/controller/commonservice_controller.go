@@ -529,7 +529,7 @@ func isNonNoopOperandReconcile(operandRegistry *odlm.OperandRegistry) bool {
 func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// Set up configuration merger for single-stage OperandConfig creation
 	// This injects the merge logic into bootstrap without creating import cycles
-	bootstrap.SetConfigMerger(CreateMergerFunc(r))
+	r.Bootstrap.SetConfigMerger(CreateMergerFunc(r))
 	klog.Info("Configuration merger initialized for single-stage OperandConfig creation")
 
 	controller := ctrl.NewControllerManagedBy(mgr).

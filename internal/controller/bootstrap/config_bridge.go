@@ -24,19 +24,16 @@ import (
 // This allows bootstrap to use controller merge logic without import cycles
 type ConfigMergerFunc func(baseConfig string, cs *apiv3.CommonService, servicesNs string) (string, error)
 
-// configMerger holds the merger function set by the reconciler
-var configMerger ConfigMergerFunc
-
-// SetConfigMerger sets the configuration merger function
-// Called during reconciler initialization to inject the merge logic
-func SetConfigMerger(merger ConfigMergerFunc) {
-	configMerger = merger
+// SetConfigMerger sets the configuration merger function on the Bootstrap instance.
+// Called during reconciler initialization to inject the merge logic.
+func (b *Bootstrap) SetConfigMerger(merger ConfigMergerFunc) {
+	b.configMerger = merger
 }
 
 // mergeConfigs calls the injected merger function if available
 func (b *Bootstrap) mergeConfigs(baseConfig string, cs *apiv3.CommonService) (string, error) {
-	if configMerger != nil {
-		return configMerger(baseConfig, cs, b.CSData.ServicesNs)
+	if b.configMerger != nil {
+		return b.configMerger(baseConfig, cs, b.CSData.ServicesNs)
 	}
 	// If no merger is set, return base config unchanged
 	return baseConfig, nil
