@@ -654,25 +654,22 @@ func (r *CommonServiceReconciler) getExtremeizes(ctx context.Context, opconServi
 	}); err != nil {
 		return []interface{}{}, err
 	}
-	csList, err := util.ObjectListToNewUnstructuredList(csObjectList)
-	if err != nil {
-		return []interface{}{}, err
-	}
+
 	var configSummary []interface{}
 	tmpConfigsSlice := make(map[int][]interface{})
 	serviceControllerMappingSummary := make(map[string]string)
-	for _, cs := range csList.Items {
+	for i, cs := range csObjectList.Items {
 		if cs.GetDeletionTimestamp() != nil {
 			continue
 		}
 
-		csConfigs, serviceControllerMapping, err := r.getNewConfigs(&cs)
+		csConfigs, serviceControllerMapping, err := ExtractCommonServiceConfigs(&cs, r.CSData.ServicesNs)
 		if err != nil {
 			return []interface{}{}, err
 		}
 
 		serviceControllerMappingSummary = mergeProfileController(serviceControllerMappingSummary, serviceControllerMapping)
-		tmpConfigsSlice[len(tmpConfigsSlice)] = csConfigs
+		tmpConfigsSlice[i] = csConfigs
 	}
 	for _, csConfigs := range tmpConfigsSlice {
 		configSummary = mergeCSCRs(configSummary, csConfigs, ruleSlice, serviceControllerMappingSummary, r.CSData.ServicesNs)
