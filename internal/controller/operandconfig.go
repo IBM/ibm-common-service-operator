@@ -178,19 +178,20 @@ func getStringField(m map[string]interface{}, key string) string {
 
 // mergeResourceArrays merges base resources with CS resources, preserving base-only resources
 // and allowing CS resources to override matching base resources.
-// This fixes the critical bug where base resources (like Certificates) were lost during merge.
+// Base resource ordering is preserved: matched base resources are replaced in-place,
+// and new CS-only resources are appended at the end.
 func mergeResourceArrays(baseResources, csResources []interface{}, opconNs string, serviceController string) []interface{} {
-	// Start with a copy of base resources to preserve them
-	mergedResources := make([]interface{}, 0, len(baseResources)+len(csResources))
+	// Map from base index → merged result (populated during CS resource iteration)
+	mergedByBaseIndex := make(map[int]interface{})
+	// Track which CS resources matched a base resource
+	matchedCSIndices := make(map[int]bool)
 
-	// Track which base resources have been updated by CS resources
-	updatedBaseIndices := make(map[int]bool)
-
-	// First pass: merge CS resources into matching base resources
-	for _, csResource := range csResources {
+	// First pass: find matches between CS and base resources, merge them
+	for csIdx, csResource := range csResources {
 		csMap, ok := toStringMap(csResource)
 		if !ok {
 			klog.Warningf("Skipping CS resource: unexpected type %T", csResource)
+			matchedCSIndices[csIdx] = true // mark as handled (skipped)
 			continue
 		}
 
@@ -202,6 +203,7 @@ func mergeResourceArrays(baseResources, csResources []interface{}, opconNs strin
 		// Validate required fields
 		if csApiVersion == "" || csKind == "" || csName == "" {
 			klog.Warningf("Skipping CS resource %s/%s/%s/%s: missing required fields", csApiVersion, csKind, csName, csNamespace)
+			matchedCSIndices[csIdx] = true // mark as handled (skipped)
 			continue
 		}
 
@@ -211,10 +213,9 @@ func mergeResourceArrays(baseResources, csResources []interface{}, opconNs strin
 		}
 
 		// Find matching base resource
-		matchedBaseIndex := -1
-		for i, baseResource := range baseResources {
-			if updatedBaseIndices[i] {
-				continue // Already processed
+		for baseIdx, baseResource := range baseResources {
+			if _, alreadyMerged := mergedByBaseIndex[baseIdx]; alreadyMerged {
+				continue // Already matched by another CS resource
 			}
 
 			baseMap, ok := toStringMap(baseResource)
@@ -232,49 +233,51 @@ func mergeResourceArrays(baseResources, csResources []interface{}, opconNs strin
 
 			// Check if resources match by GVK+Name+Namespace
 			if baseApiVersion == csApiVersion && baseKind == csKind && baseName == csName && baseNamespace == csNamespace {
-				matchedBaseIndex = i
-				break
-			}
-		}
+				// Merge CS resource into base resource
+				mergedResource := mergeCRsIntoOperandConfigWithDefaultRules(csMap, baseMap, false)
 
-		if matchedBaseIndex >= 0 {
-			// Merge CS resource into base resource
-			baseMap, _ := toStringMap(baseResources[matchedBaseIndex])
-			mergedResource := mergeCRsIntoOperandConfigWithDefaultRules(csMap, baseMap, false)
-
-			// Apply profile controller cleanup if needed
-			if _, ok := nonDefaultProfileController[serviceController]; ok {
-				if isOpResourceExists(mergedResource) {
-					klog.V(2).Info("Applying profile controller cleanup to merged resource")
-					if dataMap, ok := toStringMap(mergedResource["data"]); ok {
-						if specMap, ok := toStringMap(dataMap["spec"]); ok {
-							if resources, ok := toStringMap(specMap["resources"]); ok {
-								if limits, ok := toStringMap(resources["limits"]); ok {
-									limits["cpu"] = struct{}{}
+				// Apply profile controller cleanup if needed
+				if _, ok := nonDefaultProfileController[serviceController]; ok {
+					if isOpResourceExists(mergedResource) {
+						klog.V(2).Info("Applying profile controller cleanup to merged resource")
+						if dataMap, ok := toStringMap(mergedResource["data"]); ok {
+							if specMap, ok := toStringMap(dataMap["spec"]); ok {
+								if resources, ok := toStringMap(specMap["resources"]); ok {
+									if limits, ok := toStringMap(resources["limits"]); ok {
+										limits["cpu"] = struct{}{}
+									}
 								}
 							}
 						}
 					}
 				}
-			}
 
-			mergedResources = append(mergedResources, mergedResource)
-			updatedBaseIndices[matchedBaseIndex] = true
-		} else {
-			// CS resource is new, add it
-			mergedResources = append(mergedResources, csResource)
+				mergedByBaseIndex[baseIdx] = mergedResource
+				matchedCSIndices[csIdx] = true
+				break
+			}
 		}
 	}
 
-	// Second pass: add base resources that weren't updated by CS resources
+	// Second pass: build result in base order, replacing matched base resources with merged results
+	mergedResources := make([]interface{}, 0, len(baseResources)+len(csResources))
 	for i, baseResource := range baseResources {
-		if !updatedBaseIndices[i] {
+		if merged, ok := mergedByBaseIndex[i]; ok {
+			mergedResources = append(mergedResources, merged)
+		} else {
 			mergedResources = append(mergedResources, baseResource)
 		}
 	}
 
+	// Third pass: append new CS-only resources (those that didn't match any base resource)
+	for csIdx, csResource := range csResources {
+		if !matchedCSIndices[csIdx] {
+			mergedResources = append(mergedResources, csResource)
+		}
+	}
+
 	klog.V(2).Infof("Merged resources: %d base + %d CS = %d total (preserved %d base-only)",
-		len(baseResources), len(csResources), len(mergedResources), len(baseResources)-len(updatedBaseIndices))
+		len(baseResources), len(csResources), len(mergedResources), len(baseResources)-len(mergedByBaseIndex))
 
 	return mergedResources
 }
