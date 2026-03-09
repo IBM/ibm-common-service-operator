@@ -78,7 +78,6 @@ rules:
   - operators.coreos.com
   resources:
   - subscriptions
-  - clusterserviceversions
   verbs:
   - create
   - delete
@@ -87,6 +86,13 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - operators.coreos.com
+  resources:
+  - clusterserviceversions
+  verbs:
+  - delete
+  - get
 - apiGroups:
   - ''
   resources:
