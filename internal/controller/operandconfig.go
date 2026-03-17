@@ -370,6 +370,7 @@ func mergeChangedMap(key string, defaultMap interface{}, changedMap interface{},
 					"shared_buffers":    true,
 				}
 				if _, ok := comparableKeys[key]; ok {
+					// for comparable keys
 					klog.V(3).Infof("Found comparable key: %s, defaultMap=%v (type=%T), changedMap=%v (type=%T), directAssign=%v",
 						key, defaultMap, defaultMap, changedMap, changedMap, directAssign)
 					if directAssign {
@@ -381,7 +382,14 @@ func mergeChangedMap(key string, defaultMap interface{}, changedMap interface{},
 						finalMap[key], _ = rules.ResourceComparison(defaultMap, changedMap)
 						klog.V(3).Infof("ResourceComparison returned for key=%s, result=%v", key, finalMap[key])
 					}
-
+				} else {
+					// For non-comparable keys
+					if directAssign {
+						klog.V(3).Infof("Non-comparable key with directAssign=true: %s, using defaultMap value: %v", key, defaultMap)
+						finalMap[key] = defaultMap
+					} else {
+						klog.V(3).Infof("Non-comparable key with directAssign=false: %s, skipping to avoid multi-CR conflicts", key)
+					}
 				}
 			}
 		}
