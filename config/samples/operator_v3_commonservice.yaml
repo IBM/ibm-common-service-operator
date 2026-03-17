@@ -8,3 +8,6 @@ metadata:
   name: example-commonservice
 spec:
   size: starterset
+  # Optional: Specify a custom entitlement key secret name for pulling images
+  # If not specified, defaults to "ibm-entitlement-key"
+  # entitlementKeyName: "my-custom-entitlement-key"

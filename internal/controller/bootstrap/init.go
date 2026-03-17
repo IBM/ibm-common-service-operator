@@ -151,6 +151,7 @@ func NewNonOLMBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		StatusMonitoredServices: constant.StatusMonitoredServices,
 		ServiceNames:            constant.ServiceNames,
 		UtilsImage:              util.GetUtilsImage(),
+		EntitlementKeyName:      constant.DefaultEntitlementKeyName,
 	}
 
 	bs = &Bootstrap{
@@ -202,6 +203,7 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 		StatusMonitoredServices: constant.StatusMonitoredServices,
 		ServiceNames:            constant.ServiceNames,
 		UtilsImage:              util.GetUtilsImage(),
+		EntitlementKeyName:      constant.DefaultEntitlementKeyName,
 	}
 
 	bs = &Bootstrap{

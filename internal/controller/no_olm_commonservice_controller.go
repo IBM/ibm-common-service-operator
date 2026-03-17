@@ -90,6 +90,7 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 	// catalogsorurce and catalogsource namespace should be empty
 	r.Bootstrap.CSData.CatalogSourceName = ""
 	r.Bootstrap.CSData.CatalogSourceNs = ""
+	r.Bootstrap.CSData.EntitlementKeyName = instance.GetEntitlementKeyName()
 
 	if statusErr = r.Client.Status().Patch(ctx, instance, client.MergeFrom(originalInstance)); statusErr != nil {
 		return ctrl.Result{}, fmt.Errorf("error while patching CommonService.Status: %v", statusErr)

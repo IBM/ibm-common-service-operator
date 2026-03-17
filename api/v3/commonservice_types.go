@@ -51,6 +51,7 @@ type CSData struct {
 	StatusMonitoredServices string
 	ServiceNames            map[string][]string
 	UtilsImage              string
+	EntitlementKeyName      string
 }
 
 // +kubebuilder:pruning:PreserveUnknownFields
@@ -133,6 +134,10 @@ type CommonServiceSpec struct {
 	// AutoScaleConfig is a bool to enable or disable HPA
 	// +optional
 	AutoScaleConfig bool `json:"autoScaleConfig,omitempty"`
+	// EntitlementKeyName specifies the name of the secret containing the IBM entitlement key
+	// for pulling images. Defaults to "ibm-entitlement-key" if not specified.
+	// +optional
+	EntitlementKeyName string `json:"entitlementKeyName,omitempty"`
 }
 
 // OperatorConfig is configuration composed of key-value pairs to be injected into specified CSVs
@@ -469,6 +474,15 @@ func (r *CommonService) UpdateTopologyCR(CSData *CSData) {
 	csCR.Kind = constant.KindCR
 	masterCRSlice = append(masterCRSlice, csCR)
 	r.Status.ConfigStatus.TopologyConfigurableCRs = masterCRSlice
+}
+
+// GetEntitlementKeyName returns the entitlement key name from the CommonService spec.
+// If not specified, it returns the default value from constant.DefaultEntitlementKeyName.
+func (r *CommonService) GetEntitlementKeyName() string {
+	if r.Spec.EntitlementKeyName != "" {
+		return r.Spec.EntitlementKeyName
+	}
+	return constant.DefaultEntitlementKeyName
 }
 
 func init() {
