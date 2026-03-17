@@ -384,12 +384,7 @@ func mergeChangedMap(key string, defaultMap interface{}, changedMap interface{},
 					}
 				} else {
 					// For non-comparable keys
-					if directAssign {
-						klog.V(3).Infof("Non-comparable key with directAssign=true: %s, using defaultMap value: %v", key, defaultMap)
-						finalMap[key] = defaultMap
-					} else {
-						klog.V(3).Infof("Non-comparable key with directAssign=false: %s, skipping to avoid multi-CR conflicts", key)
-					}
+					finalMap[key] = defaultMap
 				}
 			}
 		}
