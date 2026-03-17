@@ -53,12 +53,10 @@ const (
 
 // mergeCRsIntoOperandConfig merges CRs by specific rules
 func mergeCRsIntoOperandConfig(defaultMap map[string]interface{}, changedMap map[string]interface{}, rules map[string]interface{}, overwrite, directAssign bool) map[string]interface{} {
-	if !overwrite {
-		for key := range changedMap {
-			// Remove the items not from the rules
-			filterChangedMapWithRules(key, changedMap[key], rules[key], changedMap)
-		}
-	}
+	// Removed filterChangedMapWithRules call to allow non-rule-based fields (like storageClass, routeHost, etc.)
+	// to be properly merged. The mergeChangedMap function handles both comparable keys (with rules)
+	// and non-comparable keys (without rules) correctly.
+
 	for key := range defaultMap {
 		if reflect.DeepEqual(defaultMap[key], changedMap[key]) {
 			continue
