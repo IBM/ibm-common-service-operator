@@ -578,8 +578,7 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 							}
 						}
 
-						mergedResource := mergeCRsIntoOperandConfigWithDefaultRules(newResource.(map[string]interface{}), opResource.(map[string]interface{}), true)
-						opResources[i] = mergedResource
+						opResources[i] = mergeCRsIntoOperandConfigWithDefaultRules(opResource.(map[string]interface{}), newResource.(map[string]interface{}), true)
 					}
 				}
 				opService.(map[string]interface{})["resources"] = opResources
