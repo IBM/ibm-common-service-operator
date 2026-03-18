@@ -615,7 +615,7 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 
 		objInCluster, err := b.GetObject(obj)
 		if errors.IsNotFound(err) {
-			klog.Infof("Creating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
+			klog.V(2).Infof("Creating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
 
 			if err := b.CreateObject(obj); err != nil {
 				errMsg = err
@@ -1001,7 +1001,6 @@ func (b *Bootstrap) InstallOrUpdateOpcon(forceUpdateODLMCRs bool, csInstance *ap
 	}
 
 	// Always force update when we have merged CommonService configurations
-	// This ensures that changes to storageClass and other non-version-controlled fields are applied
 	forceUpdate := forceUpdateODLMCRs || (csInstance != nil)
 
 	if err := b.renderTemplate(finalConfig, b.CSData, forceUpdate); err != nil {

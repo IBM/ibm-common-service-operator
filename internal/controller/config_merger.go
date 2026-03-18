@@ -19,8 +19,6 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
-	"strings"
 
 	utilyaml "github.com/ghodss/yaml"
 	"k8s.io/klog"
@@ -75,12 +73,6 @@ func MergeBaseAndCSConfigs(
 	// Merge CommonService configs into base services using existing merge logic
 	mergedServices := mergeCSCRs(baseServicesInterface, csConfigs, ruleSlice, serviceControllerMapping, servicesNs)
 
-	// IMPORTANT: Do NOT convert mergedServices to odlm.ConfigService struct
-	// because the struct may not include all fields (like storageClass, zenFrontDoor, etc.)
-	// and JSON unmarshal will drop those fields.
-	// Instead, we keep mergedServices as []interface{} and convert the entire OperandConfig
-	// to map[string]interface{} for manipulation, then convert back to YAML.
-
 	// Convert baseOpcon to map for manipulation
 	baseOpconBytes, err := json.Marshal(baseOpcon)
 	if err != nil {
@@ -128,22 +120,6 @@ func convertMapToYAML(data map[string]interface{}) (string, error) {
 	}
 
 	return string(yamlBytes), nil
-}
-
-// incrementVersion increments the patch version of a semantic version string
-// e.g., "1.0.0" -> "1.0.1", "1.2.3" -> "1.2.4"
-func incrementVersion(version string) (string, error) {
-	parts := strings.Split(version, ".")
-	if len(parts) != 3 {
-		return "", fmt.Errorf("invalid version format: %s", version)
-	}
-
-	patch, err := strconv.Atoi(parts[2])
-	if err != nil {
-		return "", fmt.Errorf("invalid patch version: %s", parts[2])
-	}
-
-	return fmt.Sprintf("%s.%s.%d", parts[0], parts[1], patch+1), nil
 }
 
 // parseOperandConfig parses YAML string to OperandConfig object
