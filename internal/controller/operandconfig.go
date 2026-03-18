@@ -55,15 +55,14 @@ const (
 func mergeCRsIntoOperandConfig(defaultMap map[string]interface{}, changedMap map[string]interface{}, rules map[string]interface{}, overwrite, directAssign bool) map[string]interface{} {
 	if !overwrite {
 		for key := range changedMap {
-			// Remove the items not from the rules
 			filterChangedMapWithRules(key, changedMap[key], rules[key], changedMap)
 		}
 	}
+
 	for key := range defaultMap {
 		if reflect.DeepEqual(defaultMap[key], changedMap[key]) {
 			continue
 		}
-		// CR overwrites the existing OperandConfig
 		mergeChangedMap(key, defaultMap[key], changedMap[key], changedMap, directAssign)
 	}
 	return changedMap
@@ -312,7 +311,6 @@ func filterChangedMapWithRules(key string, changedMap interface{}, rules interfa
 		}
 	default:
 		if rules == nil && changedMap != nil {
-			klog.V(3).Info("delete " + key)
 			delete(finalMap, key)
 		}
 	}
@@ -328,8 +326,14 @@ func mergeChangedMap(key string, defaultMap interface{}, changedMap interface{},
 			} else if _, ok := changedMap.(map[string]interface{}); ok { //Check that the changed map value is also a map[string]interface
 				defaultMapRef := defaultMap
 				changedMapRef := changedMap.(map[string]interface{})
+				// Ensure finalMap[key] points to changedMapRef (or create if nil)
+				if finalMap[key] == nil {
+					finalMap[key] = changedMapRef
+				}
+				// Now recurse into the map that's stored in finalMap[key]
+				targetMap := finalMap[key].(map[string]interface{})
 				for newKey := range defaultMapRef {
-					mergeChangedMap(newKey, defaultMapRef[newKey], changedMapRef[newKey], finalMap[key].(map[string]interface{}), directAssign)
+					mergeChangedMap(newKey, defaultMapRef[newKey], changedMapRef[newKey], targetMap, directAssign)
 				}
 			}
 		case []interface{}:
@@ -353,7 +357,6 @@ func mergeChangedMap(key string, defaultMap interface{}, changedMap interface{},
 				}
 			}
 		default:
-			//Check if the value was set, otherwise set it
 			if changedMap == nil {
 				finalMap[key] = defaultMap
 			} else {
@@ -370,19 +373,13 @@ func mergeChangedMap(key string, defaultMap interface{}, changedMap interface{},
 					"shared_buffers":    true,
 				}
 				if _, ok := comparableKeys[key]; ok {
-					klog.V(3).Infof("Found comparable key: %s, defaultMap=%v (type=%T), changedMap=%v (type=%T), directAssign=%v",
-						key, defaultMap, defaultMap, changedMap, changedMap, directAssign)
 					if directAssign {
-						// Merge current CS CR into OperandConfig
-						klog.V(3).Infof("DirectAssign=true, skipping comparison for key=%s", key)
 						finalMap[key] = changedMap
 					} else {
-						klog.V(3).Infof("Calling ResourceComparison for key=%s with defaultMap=%v, changedMap=%v", key, defaultMap, changedMap)
 						finalMap[key], _ = rules.ResourceComparison(defaultMap, changedMap)
-						klog.V(3).Infof("ResourceComparison returned for key=%s, result=%v", key, finalMap[key])
 					}
-
 				}
+				// For non-comparable keys, changedMap is already set, no action needed
 			}
 		}
 	}
@@ -503,17 +500,20 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 		if newConfigForOperator == nil {
 			continue
 		}
-		opService := getItemByName(opconServices, newConfigForOperator.(map[string]interface{})["name"].(string))
+		serviceName := newConfigForOperator.(map[string]interface{})["name"].(string)
+		opService := getItemByName(opconServices, serviceName)
 		if opService == nil {
+			klog.V(2).Infof("Service %s not found in OperandConfig, skipping", serviceName)
 			continue
 		}
 		serviceController := serviceControllerMapping["profileController"]
-		if controller, ok := serviceControllerMapping[newConfigForOperator.(map[string]interface{})["name"].(string)]; ok {
+		if controller, ok := serviceControllerMapping[serviceName]; ok {
 			serviceController = controller
 		}
 		// Fetch newConfigForOperator and rules for an operator
-		rules := getItemByName(ruleSlice, opService.(map[string]interface{})["name"].(string))
+		rules := getItemByName(ruleSlice, serviceName)
 
+		// Handle spec configurations
 		if opService.(map[string]interface{})["spec"] != nil && newConfigForOperator.(map[string]interface{})["spec"] != nil {
 			for cr, spec := range opService.(map[string]interface{})["spec"].(map[string]interface{}) {
 				if _, ok := nonDefaultProfileController[serviceController]; ok {
@@ -532,7 +532,7 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 					opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsIntoOperandConfig(spec.(map[string]interface{}), newConfigForCR, ruleForCR, overwrite, true)
 				} else {
 					if overwrite {
-						opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsIntoOperandConfigWithDefaultRules(spec.(map[string]interface{}), newConfigForCR, false)
+						opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsIntoOperandConfigWithDefaultRules(spec.(map[string]interface{}), newConfigForCR, true)
 					}
 				}
 			}
@@ -577,6 +577,7 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 								newResource.(map[string]interface{})["data"].(map[string]interface{})["spec"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})["cpu"] = struct{}{}
 							}
 						}
+
 						opResources[i] = mergeCRsIntoOperandConfigWithDefaultRules(opResource.(map[string]interface{}), newResource.(map[string]interface{}), true)
 					}
 				}
