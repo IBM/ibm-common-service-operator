@@ -421,3 +421,240 @@ func TestMergeResourceArrays_PostgreSQLCertificatesScenario(t *testing.T) {
 	spec := data["spec"].(map[string]interface{})
 	assert.NotNil(t, spec["resources"], "Cluster should have resources from CS config")
 }
+
+// TestMergeChangedMap_NonComparableKeys verifies that non-comparable keys
+// (like storageClass, zenFrontDoor) are properly merged from defaultMap to finalMap.
+// This test validates the fix for the bug where these fields were being ignored.
+func TestMergeChangedMap_NonComparableKeys(t *testing.T) {
+	tests := []struct {
+		name         string
+		key          string
+		defaultMap   interface{}
+		changedMap   interface{}
+		expected     interface{}
+		directAssign bool
+	}{
+		{
+			name:         "storageClass field should be merged when directAssign=true and changedMap is nil",
+			key:          "storageClass",
+			defaultMap:   "nfs-storage",
+			changedMap:   nil,
+			expected:     "nfs-storage",
+			directAssign: true,
+		},
+		{
+			name:         "storageClass field should be merged when directAssign=true and changedMap is empty",
+			key:          "storageClass",
+			defaultMap:   "nfs-storage",
+			changedMap:   "",
+			expected:     "nfs-storage",
+			directAssign: true,
+		},
+		{
+			name:         "storageClass field should NOT be merged when directAssign=false",
+			key:          "storageClass",
+			defaultMap:   "nfs-storage",
+			changedMap:   "",
+			expected:     nil,
+			directAssign: false,
+		},
+		{
+			name:         "zenFrontDoor field should be merged when directAssign=true",
+			key:          "zenFrontDoor",
+			defaultMap:   true,
+			changedMap:   nil,
+			expected:     true,
+			directAssign: true,
+		},
+		{
+			name:         "zenFrontDoor false should be merged when directAssign=true",
+			key:          "zenFrontDoor",
+			defaultMap:   false,
+			changedMap:   nil,
+			expected:     false,
+			directAssign: true,
+		},
+		{
+			name:         "zenFrontDoor should NOT be merged when directAssign=false",
+			key:          "zenFrontDoor",
+			defaultMap:   true,
+			changedMap:   false,
+			expected:     nil,
+			directAssign: false,
+		},
+		{
+			name:         "custom string field should be merged when directAssign=true",
+			key:          "customField",
+			defaultMap:   "customValue",
+			changedMap:   nil,
+			expected:     "customValue",
+			directAssign: true,
+		},
+		{
+			name:         "custom number field should be merged when directAssign=true",
+			key:          "customNumber",
+			defaultMap:   float64(123),
+			changedMap:   nil,
+			expected:     float64(123),
+			directAssign: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			finalMap := make(map[string]interface{})
+			mergeChangedMap(tt.key, tt.defaultMap, tt.changedMap, finalMap, tt.directAssign)
+
+			if tt.expected == nil {
+				assert.NotContains(t, finalMap, tt.key,
+					"Field %s should NOT be set when directAssign=false", tt.key)
+			} else {
+				assert.Equal(t, tt.expected, finalMap[tt.key],
+					"Field %s should be set to defaultMap value", tt.key)
+			}
+		})
+	}
+}
+
+// TestMergeChangedMap_NestedStorageClass verifies that storageClass fields
+// nested within maps are properly merged.
+func TestMergeChangedMap_NestedStorageClass(t *testing.T) {
+	// Simulate the structure: spec.storage.storageClass
+	defaultMap := map[string]interface{}{
+		"storage": map[string]interface{}{
+			"storageClass": "nfs-storage",
+			"size":         "10Gi",
+		},
+		"walStorage": map[string]interface{}{
+			"storageClass": "nfs-storage",
+			"size":         "5Gi",
+		},
+	}
+
+	// OperandConfig has storage but without storageClass
+	changedMap := map[string]interface{}{
+		"storage": map[string]interface{}{
+			"size": "10Gi",
+		},
+		"walStorage": map[string]interface{}{
+			"size": "5Gi",
+		},
+	}
+
+	finalMap := make(map[string]interface{})
+	// Initialize nested maps in finalMap
+	finalMap["storage"] = make(map[string]interface{})
+	finalMap["walStorage"] = make(map[string]interface{})
+
+	// Merge storage
+	mergeChangedMap("storage", defaultMap["storage"], changedMap["storage"], finalMap, false)
+	// Merge walStorage
+	mergeChangedMap("walStorage", defaultMap["walStorage"], changedMap["walStorage"], finalMap, false)
+
+	// Verify storageClass was added to both
+	storageMap := finalMap["storage"].(map[string]interface{})
+	assert.Equal(t, "nfs-storage", storageMap["storageClass"],
+		"storageClass should be merged into storage")
+
+	walStorageMap := finalMap["walStorage"].(map[string]interface{})
+	assert.Equal(t, "nfs-storage", walStorageMap["storageClass"],
+		"storageClass should be merged into walStorage")
+}
+
+// TestMergeChangedMap_ComparableKeysStillWork verifies that the fix doesn't
+// break the existing behavior for comparable keys (replicas, cpu, memory, etc.)
+func TestMergeChangedMap_ComparableKeysStillWork(t *testing.T) {
+	tests := []struct {
+		name       string
+		key        string
+		defaultMap interface{}
+		changedMap interface{}
+		// For comparable keys, ResourceComparison picks the larger value
+		expectLarger bool
+	}{
+		{
+			name:         "replicas comparison",
+			key:          "replicas",
+			defaultMap:   float64(3),
+			changedMap:   float64(2),
+			expectLarger: true,
+		},
+		{
+			name:         "cpu comparison",
+			key:          "cpu",
+			defaultMap:   "500m",
+			changedMap:   "200m",
+			expectLarger: true,
+		},
+		{
+			name:         "memory comparison",
+			key:          "memory",
+			defaultMap:   "2Gi",
+			changedMap:   "1Gi",
+			expectLarger: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			finalMap := make(map[string]interface{})
+			mergeChangedMap(tt.key, tt.defaultMap, tt.changedMap, finalMap, false)
+
+			// Verify the key exists in finalMap
+			assert.Contains(t, finalMap, tt.key,
+				"Comparable key %s should be present in finalMap", tt.key)
+
+			// The actual comparison logic is in ResourceComparison,
+			// we just verify that the key was processed
+			assert.NotNil(t, finalMap[tt.key],
+				"Comparable key %s should have a value", tt.key)
+		})
+	}
+}
+
+// TestMergeCRsIntoOperandConfigWithDefaultRules_StorageClass is an integration test
+// that verifies storageClass merging through the full merge flow.
+func TestMergeCRsIntoOperandConfigWithDefaultRules_StorageClass(t *testing.T) {
+	// Simulate CommonService config with storageClass
+	defaultMap := map[string]interface{}{
+		"data": map[string]interface{}{
+			"spec": map[string]interface{}{
+				"storage": map[string]interface{}{
+					"storageClass": "nfs-storage",
+					"size":         "10Gi",
+				},
+				"walStorage": map[string]interface{}{
+					"storageClass": "nfs-storage",
+					"size":         "5Gi",
+				},
+			},
+		},
+	}
+
+	// Simulate OperandConfig without storageClass
+	changedMap := map[string]interface{}{
+		"data": map[string]interface{}{
+			"spec": map[string]interface{}{
+				"storage": map[string]interface{}{
+					"size": "10Gi",
+				},
+				"walStorage": map[string]interface{}{
+					"size": "5Gi",
+				},
+			},
+		},
+	}
+
+	result := mergeCRsIntoOperandConfigWithDefaultRules(defaultMap, changedMap, false)
+
+	// Verify storageClass was merged
+	data := result["data"].(map[string]interface{})
+	spec := data["spec"].(map[string]interface{})
+	storage := spec["storage"].(map[string]interface{})
+	walStorage := spec["walStorage"].(map[string]interface{})
+
+	assert.Equal(t, "nfs-storage", storage["storageClass"],
+		"storageClass should be merged into storage")
+	assert.Equal(t, "nfs-storage", walStorage["storageClass"],
+		"storageClass should be merged into walStorage")
+}

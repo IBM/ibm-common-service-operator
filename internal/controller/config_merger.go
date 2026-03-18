@@ -73,33 +73,53 @@ func MergeBaseAndCSConfigs(
 	// Merge CommonService configs into base services using existing merge logic
 	mergedServices := mergeCSCRs(baseServicesInterface, csConfigs, ruleSlice, serviceControllerMapping, servicesNs)
 
-	// Convert merged services back to OperandConfig format
-	mergedServicesBytes, err := json.Marshal(mergedServices)
+	// Convert baseOpcon to map for manipulation
+	baseOpconBytes, err := json.Marshal(baseOpcon)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal merged services: %v", err)
+		return "", fmt.Errorf("failed to marshal base OperandConfig: %v", err)
 	}
 
-	var configServices []odlm.ConfigService
-	if err := json.Unmarshal(mergedServicesBytes, &configServices); err != nil {
-		return "", fmt.Errorf("failed to unmarshal merged services: %v", err)
+	var baseOpconMap map[string]interface{}
+	if err := json.Unmarshal(baseOpconBytes, &baseOpconMap); err != nil {
+		return "", fmt.Errorf("failed to unmarshal base OperandConfig to map: %v", err)
 	}
 
-	// Update OperandConfig with merged services
-	baseOpcon.Spec.Services = configServices
-
-	// Validate merged configuration
-	if err := validateMergedConfig(baseOpcon); err != nil {
-		klog.Warningf("Merged configuration validation warning: %v", err)
+	// Update services in the map (preserving all fields including non-struct fields)
+	if baseOpconMap["spec"] == nil {
+		baseOpconMap["spec"] = make(map[string]interface{})
 	}
+	baseOpconMap["spec"].(map[string]interface{})["services"] = mergedServices
 
-	// Convert back to YAML string
-	mergedYAML, err := convertOperandConfigToYAML(baseOpcon)
+	// Validate merged configuration (basic validation on the map)
+	if baseOpconMap["spec"] == nil || baseOpconMap["spec"].(map[string]interface{})["services"] == nil {
+		return "", fmt.Errorf("merged configuration has no services")
+	}
+	services := baseOpconMap["spec"].(map[string]interface{})["services"].([]interface{})
+	klog.V(2).Infof("Validated merged OperandConfig with %d services", len(services))
+
+	// Convert map back to YAML string (preserving all fields)
+	mergedYAML, err := convertMapToYAML(baseOpconMap)
 	if err != nil {
 		return "", fmt.Errorf("failed to convert merged config to YAML: %v", err)
 	}
 
 	klog.Info("Successfully merged CommonService configurations with base OperandConfig")
 	return mergedYAML, nil
+}
+
+// convertMapToYAML converts a map to YAML string
+func convertMapToYAML(data map[string]interface{}) (string, error) {
+	jsonBytes, err := json.Marshal(data)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal map: %v", err)
+	}
+
+	yamlBytes, err := utilyaml.JSONToYAML(jsonBytes)
+	if err != nil {
+		return "", fmt.Errorf("failed to convert JSON to YAML: %v", err)
+	}
+
+	return string(yamlBytes), nil
 }
 
 // parseOperandConfig parses YAML string to OperandConfig object

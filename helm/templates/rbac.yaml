@@ -97,7 +97,6 @@ rules:
     resources: 
       - deployments
       - statefulsets
-      - daemonsets
     verbs: 
       - delete
       - get
@@ -105,6 +104,13 @@ rules:
       - patch
       - update
       - watch
+  - apiGroups: 
+      - apps
+    resources: 
+      - daemonsets
+    verbs: 
+      - list
+      - update
   - apiGroups: 
       - operator.ibm.com
     resources: 
@@ -126,7 +132,6 @@ rules:
       - operators.coreos.com
     resources: 
       - subscriptions
-      - clusterserviceversions
     verbs: 
       - create
       - delete
@@ -135,6 +140,13 @@ rules:
       - patch
       - update
       - watch
+  - apiGroups: 
+      - operators.coreos.com
+    resources: 
+      - clusterserviceversions
+    verbs: 
+      - delete
+      - get
   - apiGroups: 
       - ""
     resources: 

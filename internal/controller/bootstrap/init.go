@@ -618,6 +618,7 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 		objInCluster, err := b.GetObject(obj)
 		if errors.IsNotFound(err) {
 			klog.V(2).Infof("Creating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
+
 			if err := b.CreateObject(obj); err != nil {
 				errMsg = err
 			}
@@ -665,6 +666,7 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 
 		if update {
 			klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
+
 			resourceVersion := objInCluster.GetResourceVersion()
 			obj.SetResourceVersion(resourceVersion)
 			if err := b.UpdateObject(obj); err != nil {
@@ -1000,7 +1002,10 @@ func (b *Bootstrap) InstallOrUpdateOpcon(forceUpdateODLMCRs bool, csInstance *ap
 		klog.Info("Successfully merged configurations for single-stage OperandConfig creation")
 	}
 
-	if err := b.renderTemplate(finalConfig, b.CSData, forceUpdateODLMCRs); err != nil {
+	// Always force update when we have merged CommonService configurations
+	forceUpdate := forceUpdateODLMCRs || (csInstance != nil)
+
+	if err := b.renderTemplate(finalConfig, b.CSData, forceUpdate); err != nil {
 		return err
 	}
 	return nil
