@@ -615,9 +615,59 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 
 		objInCluster, err := b.GetObject(obj)
 		if errors.IsNotFound(err) {
-			klog.V(2).Infof("Creating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
+			klog.Infof("Creating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
+
+			// Debug: Check if OperandConfig contains storageClass before create
+			if gvk.Kind == "OperandConfig" && obj.GetName() == "common-service" {
+				objJSON, _ := json.Marshal(obj.Object)
+				objStr := string(objJSON)
+				if strings.Contains(objStr, "storageClass") {
+					klog.Info("🟢 CreateOrUpdateFromYaml: OperandConfig object BEFORE Create contains storageClass")
+					// Extract and log the storage config
+					if spec, ok := obj.Object["spec"].(map[string]interface{}); ok {
+						if services, ok := spec["services"].([]interface{}); ok {
+							for _, svc := range services {
+								if svcMap, ok := svc.(map[string]interface{}); ok {
+									if svcMap["name"] == "edb-keycloak" {
+										klog.Infof("  edb-keycloak service found in object before create")
+										if resources, ok := svcMap["resources"].([]interface{}); ok && len(resources) > 0 {
+											if res, ok := resources[0].(map[string]interface{}); ok {
+												if data, ok := res["data"].(map[string]interface{}); ok {
+													if resSpec, ok := data["spec"].(map[string]interface{}); ok {
+														if storage, ok := resSpec["storage"].(map[string]interface{}); ok {
+															klog.Infof("  storage config: %v", storage)
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				} else {
+					klog.Warning("🟠 CreateOrUpdateFromYaml: OperandConfig object BEFORE Create does NOT contain storageClass!")
+				}
+			}
+
 			if err := b.CreateObject(obj); err != nil {
 				errMsg = err
+			}
+
+			// Debug: Check if OperandConfig still contains storageClass after create
+			if gvk.Kind == "OperandConfig" && obj.GetName() == "common-service" {
+				// Re-fetch from cluster to see what was actually saved
+				createdObj, err := b.GetObject(obj)
+				if err == nil {
+					createdJSON, _ := json.Marshal(createdObj.Object)
+					createdStr := string(createdJSON)
+					if strings.Contains(createdStr, "storageClass") {
+						klog.Info("✅ CreateOrUpdateFromYaml: OperandConfig AFTER Create still contains storageClass")
+					} else {
+						klog.Warning("❌ CreateOrUpdateFromYaml: OperandConfig AFTER Create lost storageClass!")
+					}
+				}
 			}
 			continue
 		} else if err != nil {
@@ -663,10 +713,60 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 
 		if update {
 			klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
+
+			// Debug: Check if OperandConfig contains storageClass before update
+			if gvk.Kind == "OperandConfig" && obj.GetName() == "common-service" {
+				objJSON, _ := json.Marshal(obj.Object)
+				objStr := string(objJSON)
+				if strings.Contains(objStr, "storageClass") {
+					klog.Info("🔵 CreateOrUpdateFromYaml: OperandConfig object BEFORE Update contains storageClass")
+					// Extract and log the storage config
+					if spec, ok := obj.Object["spec"].(map[string]interface{}); ok {
+						if services, ok := spec["services"].([]interface{}); ok {
+							for _, svc := range services {
+								if svcMap, ok := svc.(map[string]interface{}); ok {
+									if svcMap["name"] == "edb-keycloak" {
+										klog.Infof("  edb-keycloak service found in object before update")
+										if resources, ok := svcMap["resources"].([]interface{}); ok && len(resources) > 0 {
+											if res, ok := resources[0].(map[string]interface{}); ok {
+												if data, ok := res["data"].(map[string]interface{}); ok {
+													if resSpec, ok := data["spec"].(map[string]interface{}); ok {
+														if storage, ok := resSpec["storage"].(map[string]interface{}); ok {
+															klog.Infof("  storage config: %v", storage)
+														}
+													}
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				} else {
+					klog.Warning("⚠️  CreateOrUpdateFromYaml: OperandConfig object BEFORE Update does NOT contain storageClass!")
+				}
+			}
+
 			resourceVersion := objInCluster.GetResourceVersion()
 			obj.SetResourceVersion(resourceVersion)
 			if err := b.UpdateObject(obj); err != nil {
 				errMsg = err
+			}
+
+			// Debug: Check if OperandConfig still contains storageClass after update
+			if gvk.Kind == "OperandConfig" && obj.GetName() == "common-service" {
+				// Re-fetch from cluster to see what was actually saved
+				updatedObj, err := b.GetObject(obj)
+				if err == nil {
+					updatedJSON, _ := json.Marshal(updatedObj.Object)
+					updatedStr := string(updatedJSON)
+					if strings.Contains(updatedStr, "storageClass") {
+						klog.Info("✅ CreateOrUpdateFromYaml: OperandConfig AFTER Update still contains storageClass")
+					} else {
+						klog.Warning("❌ CreateOrUpdateFromYaml: OperandConfig AFTER Update lost storageClass!")
+					}
+				}
 			}
 		}
 	}
@@ -998,7 +1098,12 @@ func (b *Bootstrap) InstallOrUpdateOpcon(forceUpdateODLMCRs bool, csInstance *ap
 		klog.Info("Successfully merged configurations for single-stage OperandConfig creation")
 	}
 
-	if err := b.renderTemplate(finalConfig, b.CSData, forceUpdateODLMCRs); err != nil {
+	// Always force update when we have merged CommonService configurations
+	forceUpdate := forceUpdateODLMCRs || (csInstance != nil)
+	klog.Infof("Rendering OperandConfig template with forceUpdate=%v (forceUpdateODLMCRs=%v, hasCSInstance=%v)",
+		forceUpdate, forceUpdateODLMCRs, csInstance != nil)
+
+	if err := b.renderTemplate(finalConfig, b.CSData, forceUpdate); err != nil {
 		return err
 	}
 	return nil
@@ -1385,6 +1490,14 @@ func (b *Bootstrap) renderTemplate(objectTemplate string, data interface{}, alwa
 	forceUpdate := false
 	if len(alwaysUpdate) != 0 {
 		forceUpdate = alwaysUpdate[0]
+	}
+
+	// Debug: Check if the YAML contains storageClass before sending to Kubernetes
+	yamlContent := buffer.String()
+	if strings.Contains(yamlContent, "OperandConfig") && strings.Contains(yamlContent, "storageClass") {
+		klog.Info("🚀 renderTemplate: YAML contains OperandConfig with storageClass, sending to Kubernetes...")
+	} else if strings.Contains(yamlContent, "OperandConfig") {
+		klog.Warning("⚠️  renderTemplate: YAML contains OperandConfig but NO storageClass!")
 	}
 
 	if err := b.CreateOrUpdateFromYaml(buffer.Bytes(), forceUpdate); err != nil {

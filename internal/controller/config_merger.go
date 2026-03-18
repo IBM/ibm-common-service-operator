@@ -19,6 +19,8 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 
 	utilyaml "github.com/ghodss/yaml"
 	"k8s.io/klog"
@@ -73,33 +75,82 @@ func MergeBaseAndCSConfigs(
 	// Merge CommonService configs into base services using existing merge logic
 	mergedServices := mergeCSCRs(baseServicesInterface, csConfigs, ruleSlice, serviceControllerMapping, servicesNs)
 
-	// Convert merged services back to OperandConfig format
-	mergedServicesBytes, err := json.Marshal(mergedServices)
+	// IMPORTANT: Do NOT convert mergedServices to odlm.ConfigService struct
+	// because the struct may not include all fields (like storageClass, zenFrontDoor, etc.)
+	// and JSON unmarshal will drop those fields.
+	// Instead, we keep mergedServices as []interface{} and convert the entire OperandConfig
+	// to map[string]interface{} for manipulation, then convert back to YAML.
+
+	// Convert baseOpcon to map for manipulation
+	baseOpconBytes, err := json.Marshal(baseOpcon)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal merged services: %v", err)
+		return "", fmt.Errorf("failed to marshal base OperandConfig: %v", err)
 	}
 
-	var configServices []odlm.ConfigService
-	if err := json.Unmarshal(mergedServicesBytes, &configServices); err != nil {
-		return "", fmt.Errorf("failed to unmarshal merged services: %v", err)
+	var baseOpconMap map[string]interface{}
+	if err := json.Unmarshal(baseOpconBytes, &baseOpconMap); err != nil {
+		return "", fmt.Errorf("failed to unmarshal base OperandConfig to map: %v", err)
 	}
 
-	// Update OperandConfig with merged services
-	baseOpcon.Spec.Services = configServices
-
-	// Validate merged configuration
-	if err := validateMergedConfig(baseOpcon); err != nil {
-		klog.Warningf("Merged configuration validation warning: %v", err)
+	// Update services in the map (preserving all fields including non-struct fields)
+	if baseOpconMap["spec"] == nil {
+		baseOpconMap["spec"] = make(map[string]interface{})
 	}
+	baseOpconMap["spec"].(map[string]interface{})["services"] = mergedServices
 
-	// Convert back to YAML string
-	mergedYAML, err := convertOperandConfigToYAML(baseOpcon)
+	// Validate merged configuration (basic validation on the map)
+	if baseOpconMap["spec"] == nil || baseOpconMap["spec"].(map[string]interface{})["services"] == nil {
+		return "", fmt.Errorf("merged configuration has no services")
+	}
+	services := baseOpconMap["spec"].(map[string]interface{})["services"].([]interface{})
+	klog.V(2).Infof("Validated merged OperandConfig with %d services", len(services))
+
+	// Convert map back to YAML string (preserving all fields)
+	mergedYAML, err := convertMapToYAML(baseOpconMap)
 	if err != nil {
 		return "", fmt.Errorf("failed to convert merged config to YAML: %v", err)
 	}
 
+	// Debug: Check if storageClass is in the final YAML
+	if strings.Contains(mergedYAML, "storageClass") {
+		klog.Info("✅ Final YAML contains storageClass")
+	} else {
+		klog.Warning("❌ Final YAML does NOT contain storageClass!")
+	}
+
 	klog.Info("Successfully merged CommonService configurations with base OperandConfig")
 	return mergedYAML, nil
+}
+
+// convertMapToYAML converts a map to YAML string
+func convertMapToYAML(data map[string]interface{}) (string, error) {
+	jsonBytes, err := json.Marshal(data)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal map: %v", err)
+	}
+
+	yamlBytes, err := utilyaml.JSONToYAML(jsonBytes)
+	if err != nil {
+		return "", fmt.Errorf("failed to convert JSON to YAML: %v", err)
+	}
+
+	return string(yamlBytes), nil
+}
+
+// incrementVersion increments the patch version of a semantic version string
+// e.g., "1.0.0" -> "1.0.1", "1.2.3" -> "1.2.4"
+func incrementVersion(version string) (string, error) {
+	parts := strings.Split(version, ".")
+	if len(parts) != 3 {
+		return "", fmt.Errorf("invalid version format: %s", version)
+	}
+
+	patch, err := strconv.Atoi(parts[2])
+	if err != nil {
+		return "", fmt.Errorf("invalid patch version: %s", parts[2])
+	}
+
+	return fmt.Sprintf("%s.%s.%d", parts[0], parts[1], patch+1), nil
 }
 
 // parseOperandConfig parses YAML string to OperandConfig object
