@@ -53,12 +53,16 @@ const (
 
 // mergeCRsIntoOperandConfig merges CRs by specific rules
 func mergeCRsIntoOperandConfig(defaultMap map[string]interface{}, changedMap map[string]interface{}, rules map[string]interface{}, overwrite, directAssign bool) map[string]interface{} {
+	if !overwrite {
+		for key := range changedMap {
+			filterChangedMapWithRules(key, changedMap[key], rules[key], changedMap)
+		}
+	}
 
 	for key := range defaultMap {
 		if reflect.DeepEqual(defaultMap[key], changedMap[key]) {
 			continue
 		}
-		// CR overwrites the existing OperandConfig
 		mergeChangedMap(key, defaultMap[key], changedMap[key], changedMap, directAssign)
 	}
 	return changedMap
@@ -279,25 +283,13 @@ func mergeResourceArrays(baseResources, csResources []interface{}, opconNs strin
 
 // mergeCRsIntoOperandConfig merges CRs by specific rules
 func mergeCRsIntoOperandConfigWithDefaultRules(defaultMap map[string]interface{}, changedMap map[string]interface{}, directAssign bool) map[string]interface{} {
-	klog.V(3).Infof("mergeCRsIntoOperandConfigWithDefaultRules: START - changedMap keys=%v", getMapKeys(changedMap))
 	for key := range defaultMap {
 		if reflect.DeepEqual(defaultMap[key], changedMap[key]) {
 			continue
 		}
-		klog.V(3).Infof("mergeCRsIntoOperandConfigWithDefaultRules: processing key=%s", key)
 		mergeChangedMap(key, defaultMap[key], changedMap[key], changedMap, directAssign)
 	}
-	klog.V(3).Infof("mergeCRsIntoOperandConfigWithDefaultRules: END - changedMap keys=%v", getMapKeys(changedMap))
 	return changedMap
-}
-
-// Helper function to get map keys for debugging
-func getMapKeys(m map[string]interface{}) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	return keys
 }
 
 func filterChangedMapWithRules(key string, changedMap interface{}, rules interface{}, finalMap map[string]interface{}) {
@@ -319,27 +311,23 @@ func filterChangedMapWithRules(key string, changedMap interface{}, rules interfa
 		}
 	default:
 		if rules == nil && changedMap != nil {
-			klog.V(3).Info("delete " + key)
 			delete(finalMap, key)
 		}
 	}
 }
 
 func mergeChangedMap(key string, defaultMap interface{}, changedMap interface{}, finalMap map[string]interface{}, directAssign bool) {
-	klog.V(3).Infof("mergeChangedMap: key=%s, defaultMap type=%T, changedMap type=%T, directAssign=%v", key, defaultMap, changedMap, directAssign)
 	if !reflect.DeepEqual(defaultMap, changedMap) {
 		switch defaultMap := defaultMap.(type) {
 		case map[string]interface{}:
 			//Check that the changed map value doesn't contain this map at all and is nil
 			if changedMap == nil {
-				klog.V(3).Infof("mergeChangedMap: key=%s, changedMap is nil, setting finalMap[key]=defaultMap", key)
 				finalMap[key] = defaultMap
 			} else if _, ok := changedMap.(map[string]interface{}); ok { //Check that the changed map value is also a map[string]interface
 				defaultMapRef := defaultMap
 				changedMapRef := changedMap.(map[string]interface{})
 				// Ensure finalMap[key] points to changedMapRef (or create if nil)
 				if finalMap[key] == nil {
-					klog.V(3).Infof("mergeChangedMap: key=%s, finalMap[key] is nil, setting to changedMapRef", key)
 					finalMap[key] = changedMapRef
 				}
 				// Now recurse into the map that's stored in finalMap[key]
@@ -369,7 +357,6 @@ func mergeChangedMap(key string, defaultMap interface{}, changedMap interface{},
 				}
 			}
 		default:
-			//Check if the value was set, otherwise set it
 			if changedMap == nil {
 				finalMap[key] = defaultMap
 			} else {
@@ -386,17 +373,13 @@ func mergeChangedMap(key string, defaultMap interface{}, changedMap interface{},
 					"shared_buffers":    true,
 				}
 				if _, ok := comparableKeys[key]; ok {
-					// for comparable keys
 					if directAssign {
-						// Merge current CS CR into OperandConfig
 						finalMap[key] = changedMap
 					} else {
 						finalMap[key], _ = rules.ResourceComparison(defaultMap, changedMap)
 					}
-				} else {
-					// For non-comparable keys (like storageClass, routeHost, etc.)
-					finalMap[key] = defaultMap
 				}
+				// For non-comparable keys, changedMap is already set, no action needed
 			}
 		}
 	}
@@ -544,9 +527,13 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 				newConfigForCR := newConfigForOperator.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
 
 				overwrite := true
-				if overwrite {
-					// where defaultMap is the new config from CS, changedMap is existing config in OperandConfig
-					opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsIntoOperandConfigWithDefaultRules(newConfigForCR, spec.(map[string]interface{}), true)
+				if rules != nil && rules.(map[string]interface{})["spec"] != nil && rules.(map[string]interface{})["spec"].(map[string]interface{})[cr] != nil {
+					ruleForCR := rules.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
+					opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsIntoOperandConfig(spec.(map[string]interface{}), newConfigForCR, ruleForCR, overwrite, true)
+				} else {
+					if overwrite {
+						opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsIntoOperandConfigWithDefaultRules(spec.(map[string]interface{}), newConfigForCR, true)
+					}
 				}
 			}
 		}
