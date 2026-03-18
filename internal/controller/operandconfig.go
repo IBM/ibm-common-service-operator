@@ -232,30 +232,7 @@ func mergeResourceArrays(baseResources, csResources []interface{}, opconNs strin
 			// Check if resources match by GVK+Name+Namespace
 			if baseApiVersion == csApiVersion && baseKind == csKind && baseName == csName && baseNamespace == csNamespace {
 				// Merge CS resource into base resource
-				klog.V(3).Infof("mergeResourceArrays: Merging CS resource %s/%s/%s into base", csApiVersion, csKind, csName)
-				klog.V(3).Infof("mergeResourceArrays: baseMap keys before merge: %v", getMapKeys(baseMap))
-				if dataMap, ok := toStringMap(baseMap["data"]); ok {
-					if specMap, ok := toStringMap(dataMap["spec"]); ok {
-						klog.V(3).Infof("mergeResourceArrays: baseMap spec keys: %v", getMapKeys(specMap))
-						if storage, ok := toStringMap(specMap["storage"]); ok {
-							klog.V(3).Infof("mergeResourceArrays: baseMap storage before merge: %v", storage)
-						} else {
-							klog.V(3).Infof("mergeResourceArrays: baseMap has no storage field")
-						}
-					}
-				}
 				mergedResource := mergeCRsIntoOperandConfigWithDefaultRules(csMap, baseMap, false)
-				klog.V(3).Infof("mergeResourceArrays: mergedResource keys after merge: %v", getMapKeys(mergedResource))
-				if dataMap, ok := toStringMap(mergedResource["data"]); ok {
-					if specMap, ok := toStringMap(dataMap["spec"]); ok {
-						klog.V(3).Infof("mergeResourceArrays: mergedResource spec keys: %v", getMapKeys(specMap))
-						if storage, ok := toStringMap(specMap["storage"]); ok {
-							klog.V(3).Infof("mergeResourceArrays: mergedResource storage after merge: %v", storage)
-						} else {
-							klog.V(3).Infof("mergeResourceArrays: mergedResource has no storage field")
-						}
-					}
-				}
 
 				// Apply profile controller cleanup if needed
 				if _, ok := nonDefaultProfileController[serviceController]; ok {
@@ -398,9 +375,7 @@ func mergeChangedMap(key string, defaultMap interface{}, changedMap interface{},
 		default:
 			//Check if the value was set, otherwise set it
 			if changedMap == nil {
-				klog.V(3).Infof("mergeChangedMap: key=%s (default case), changedMap is nil, setting finalMap[key]=defaultMap (value=%v)", key, defaultMap)
 				finalMap[key] = defaultMap
-				klog.V(3).Infof("mergeChangedMap: key=%s, after setting, finalMap[key]=%v", key, finalMap[key])
 			} else {
 				var comparableKeys = map[string]bool{
 					"replicas":          true,
@@ -416,20 +391,14 @@ func mergeChangedMap(key string, defaultMap interface{}, changedMap interface{},
 				}
 				if _, ok := comparableKeys[key]; ok {
 					// for comparable keys
-					klog.V(3).Infof("Found comparable key: %s, defaultMap=%v (type=%T), changedMap=%v (type=%T), directAssign=%v",
-						key, defaultMap, defaultMap, changedMap, changedMap, directAssign)
 					if directAssign {
 						// Merge current CS CR into OperandConfig
-						klog.V(3).Infof("DirectAssign=true, skipping comparison for key=%s", key)
 						finalMap[key] = changedMap
 					} else {
-						klog.V(3).Infof("Calling ResourceComparison for key=%s with defaultMap=%v, changedMap=%v", key, defaultMap, changedMap)
 						finalMap[key], _ = rules.ResourceComparison(defaultMap, changedMap)
-						klog.V(3).Infof("ResourceComparison returned for key=%s, result=%v", key, finalMap[key])
 					}
 				} else {
 					// For non-comparable keys (like storageClass, routeHost, etc.)
-					klog.V(3).Infof("Non-comparable key=%s, defaultMap=%v, changedMap=%v, directAssign=%v", key, defaultMap, changedMap, directAssign)
 					finalMap[key] = defaultMap
 				}
 			}

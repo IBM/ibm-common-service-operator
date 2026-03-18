@@ -111,13 +111,6 @@ func MergeBaseAndCSConfigs(
 		return "", fmt.Errorf("failed to convert merged config to YAML: %v", err)
 	}
 
-	// Debug: Check if storageClass is in the final YAML
-	if strings.Contains(mergedYAML, "storageClass") {
-		klog.Info("✅ Final YAML contains storageClass")
-	} else {
-		klog.Warning("❌ Final YAML does NOT contain storageClass!")
-	}
-
 	klog.Info("Successfully merged CommonService configurations with base OperandConfig")
 	return mergedYAML, nil
 }
