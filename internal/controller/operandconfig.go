@@ -295,10 +295,8 @@ func mergeCRsIntoOperandConfigWithDefaultRules(defaultMap map[string]interface{}
 func filterChangedMapWithRules(key string, changedMap interface{}, rules interface{}, finalMap map[string]interface{}) {
 	switch changedMap.(type) {
 	case map[string]interface{}:
-		//Check that the changed map value doesn't contain this map at all and is nil
-		if rules == nil {
-			delete(finalMap, key)
-		} else {
+		// For map types, only filter if rules exist and are also a map
+		if rules != nil {
 			if _, ok := rules.(map[string]interface{}); ok {
 				rulesRef := rules.(map[string]interface{})
 				changedMapRef := changedMap.(map[string]interface{})
@@ -310,9 +308,8 @@ func filterChangedMapWithRules(key string, changedMap interface{}, rules interfa
 			}
 		}
 	default:
-		if rules == nil && changedMap != nil {
-			delete(finalMap, key)
-		}
+		// For non-map types, keep them regardless of rules
+		// This preserves fields like storageClass, zenFrontDoor, etc.
 	}
 }
 
