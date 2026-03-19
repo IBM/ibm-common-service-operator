@@ -309,7 +309,6 @@ func filterChangedMapWithRules(key string, changedMap interface{}, rules interfa
 		}
 	default:
 		// For non-map types, keep them regardless of rules
-		// This preserves fields like storageClass, zenFrontDoor, etc.
 	}
 }
 
