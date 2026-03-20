@@ -583,27 +583,13 @@ metadata:
     status-monitored-services: {{ .StatusMonitoredServices }}
 spec:
   operators:
-  - channel: stable-v1.25
-    fallbackChannels:
-      - stable-v1.22
-      - stable
-    installPlanApproval: {{ .ApprovalMode }}
-    name: ibm-cnpg-postgres-operator
-    namespace: "{{ .CPFSNs }}"
-    packageName: cnpg-ibm
-    scope: public
-    sourceName: ibm-cnpg-postgresql-operator-catalog
-    sourceNamespace: "{{ .CatalogSourceNs }}"
-  - channel: stable-v1.25
-    fallbackChannels:
-      - stable-v1.22
-      - stable
+  - channel: stable-v1.28
     installPlanApproval: {{ .ApprovalMode }}
     name: common-service-cnpg
     namespace: "{{ .CPFSNs }}"
-    packageName: cnpg-ibm
+    packageName: ibm-pg-operator
     scope: public
-    sourceName: ibm-cnpg-postgresql-operator-catalog
+    sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 )
@@ -2134,17 +2120,6 @@ spec:
   services:
   - name: common-service-cnpg
     resources:
-      - apiVersion: operator.ibm.com/v1alpha1
-        data:
-          spec:
-            requests:
-              - operands:
-                  - name: ibm-cnpg-postgres-operator
-                registry: common-service
-                registryNamespace: {{ .ServicesNs }}
-        force: true
-        kind: OperandRequest
-        name: cnpg-postgresql-operator-request  
       - apiVersion: cert-manager.io/v1
         kind: Certificate
         name: common-service-db-replica-tls-cert
@@ -2709,17 +2684,14 @@ spec:
     configName: cloud-native-postgresql
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
-  - channel: stable-v1.25
-    fallbackChannels:
-      - stable-v1.22
-      - stable
-    name: ibm-cnpg-postgres-operator
+  - channel: stable-v1.28
+    name: ibm-pg-operator
     namespace: "{{ .CPFSNs }}"
-    packageName: cnpg-ibm
+    packageName: ibm-pg-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
-    configName: ibm-cnpg-postgres-operator
-    sourceName: ibm-cnpg-postgresql-operator-catalog
+    configName: ibm-pg-operator
+    sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: alpha
     name: ibm-user-data-services-operator
