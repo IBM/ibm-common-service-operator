@@ -91,7 +91,7 @@ const Medium = `
             shared_buffers: 96MB
 - name: common-service-cnpg
   resources:
-  - apiVersion: postgresql.cnpg.ibm.com/v1
+  - apiVersion: pg.ibm.com/v1
     kind: Cluster
     name: common-service-db
     data:

@@ -2249,7 +2249,7 @@ spec:
         force: true
         kind: OperandBindInfo
         name: common-service-cnpg-bindinfo
-      - apiVersion: postgresql.cnpg.ibm.com/v1
+      - apiVersion: pg.ibm.com/v1
         kind: Cluster
         name: common-service-db          
         force: true
