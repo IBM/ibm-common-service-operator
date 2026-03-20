@@ -2277,7 +2277,7 @@ spec:
             imageName:
               templatingValueFrom:
                 configMapKeyRef:
-                  name: cnpg-ibm-operand-images-config
+                  name: ibm-pg-operator-operand-images-config
                   key: ibm-postgresql-16-operand-image
                   namespace: {{ .OperatorNs }}
             imagePullSecrets:
