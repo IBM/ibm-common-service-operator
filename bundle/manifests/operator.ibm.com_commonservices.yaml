@@ -80,9 +80,9 @@ spec:
                 type: boolean
               enableInstanaMetricCollection:
                 type: boolean
-              entitlementKeyName:
+              imagePullSecret:
                 description: |-
-                  EntitlementKeyName specifies the name of the secret containing the IBM entitlement key
+                  ImagePullSecret specifies the name of the secret containing the IBM entitlement key
                   for pulling images. Defaults to "ibm-entitlement-key" if not specified.
                 type: string
               features:
