@@ -97,7 +97,7 @@ const ConfigurationRules = `
             shared_buffers: LARGEST_VALUE
 - name: common-service-cnpg
   resources:
-  - apiVersion: postgresql.cnpg.ibm.com/v1
+  - apiVersion: pg.ibm.com/v1
     kind: Cluster
     name: common-service-db
     data:
