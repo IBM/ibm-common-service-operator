@@ -108,6 +108,11 @@ spec:
                     type: boolean
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              imagePullSecret:
+                description: |-
+                  ImagePullSecret specifies the name of the secret containing the IBM entitlement key
+                  for pulling images. Defaults to "ibm-entitlement-key" if not specified.
+                type: string
               installPlanApproval:
                 description: |-
                   InstallPlanApproval sets the approval mode for ODLM and other

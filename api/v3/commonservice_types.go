@@ -51,6 +51,7 @@ type CSData struct {
 	StatusMonitoredServices string
 	ServiceNames            map[string][]string
 	UtilsImage              string
+	ImagePullSecret         string
 }
 
 // +kubebuilder:pruning:PreserveUnknownFields
@@ -133,6 +134,10 @@ type CommonServiceSpec struct {
 	// AutoScaleConfig is a bool to enable or disable HPA
 	// +optional
 	AutoScaleConfig bool `json:"autoScaleConfig,omitempty"`
+	// ImagePullSecret specifies the name of the secret containing the IBM entitlement key
+	// for pulling images. Defaults to "ibm-entitlement-key" if not specified.
+	// +optional
+	ImagePullSecret string `json:"imagePullSecret,omitempty"`
 }
 
 // OperatorConfig is configuration composed of key-value pairs to be injected into specified CSVs
@@ -469,6 +474,15 @@ func (r *CommonService) UpdateTopologyCR(CSData *CSData) {
 	csCR.Kind = constant.KindCR
 	masterCRSlice = append(masterCRSlice, csCR)
 	r.Status.ConfigStatus.TopologyConfigurableCRs = masterCRSlice
+}
+
+// GetImagePullSecret returns the image pull secret name from the CommonService spec.
+// If not specified, it returns the default value from constant.DefaultImagePullSecret.
+func (r *CommonService) GetImagePullSecret() string {
+	if r.Spec.ImagePullSecret != "" {
+		return r.Spec.ImagePullSecret
+	}
+	return constant.DefaultImagePullSecret
 }
 
 func init() {
