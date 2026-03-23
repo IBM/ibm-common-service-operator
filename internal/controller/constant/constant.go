@@ -98,8 +98,8 @@ const (
 	CSCACertificate = "cs-ca-certificate"
 	// CertManagerSub is the name of ibm-cert-manager-operator subscription
 	CertManagerSub = "ibm-cert-manager-operator"
-	// DefaultEntitlementKeyName is the default name of the IBM entitlement key secret
-	DefaultEntitlementKeyName = "ibm-entitlement-key"
+	// DefaultImagePullSecret is the default name of the IBM entitlement key secret
+	DefaultImagePullSecret = "ibm-entitlement-key"
 	// RouteAPIGroup is the API group for OpenShift Routes, used for OCP cluster detection
 	RouteAPIGroup = "route.openshift.io"
 	// CsClonedFromLabel is the label used to label the CommonService CR are cloned from the default CR in operatorNamespace

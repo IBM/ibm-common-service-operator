@@ -51,7 +51,7 @@ type CSData struct {
 	StatusMonitoredServices string
 	ServiceNames            map[string][]string
 	UtilsImage              string
-	EntitlementKeyName      string
+	ImagePullSecret         string
 }
 
 // +kubebuilder:pruning:PreserveUnknownFields
@@ -134,10 +134,10 @@ type CommonServiceSpec struct {
 	// AutoScaleConfig is a bool to enable or disable HPA
 	// +optional
 	AutoScaleConfig bool `json:"autoScaleConfig,omitempty"`
-	// EntitlementKeyName specifies the name of the secret containing the IBM entitlement key
+	// ImagePullSecret specifies the name of the secret containing the IBM entitlement key
 	// for pulling images. Defaults to "ibm-entitlement-key" if not specified.
 	// +optional
-	EntitlementKeyName string `json:"entitlementKeyName,omitempty"`
+	ImagePullSecret string `json:"imagePullSecret,omitempty"`
 }
 
 // OperatorConfig is configuration composed of key-value pairs to be injected into specified CSVs
@@ -476,13 +476,13 @@ func (r *CommonService) UpdateTopologyCR(CSData *CSData) {
 	r.Status.ConfigStatus.TopologyConfigurableCRs = masterCRSlice
 }
 
-// GetEntitlementKeyName returns the entitlement key name from the CommonService spec.
-// If not specified, it returns the default value from constant.DefaultEntitlementKeyName.
-func (r *CommonService) GetEntitlementKeyName() string {
-	if r.Spec.EntitlementKeyName != "" {
-		return r.Spec.EntitlementKeyName
+// GetImagePullSecret returns the image pull secret name from the CommonService spec.
+// If not specified, it returns the default value from constant.DefaultImagePullSecret.
+func (r *CommonService) GetImagePullSecret() string {
+	if r.Spec.ImagePullSecret != "" {
+		return r.Spec.ImagePullSecret
 	}
-	return constant.DefaultEntitlementKeyName
+	return constant.DefaultImagePullSecret
 }
 
 func init() {

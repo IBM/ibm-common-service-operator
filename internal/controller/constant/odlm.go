@@ -1776,7 +1776,7 @@ spec:
                   key: ibm-postgresql-14-operand-image
                   namespace: {{ .OperatorNs }}
             imagePullSecrets:
-              - name: {{ .EntitlementKeyName }}
+              - name: {{ .ImagePullSecret }}
             logLevel: info
             ephemeralVolumesSizeLimit:
               shm: 500Mi
@@ -2007,7 +2007,7 @@ spec:
                   key: ibm-postgresql-16-operand-image
                   namespace: {{ .OperatorNs }}
             imagePullSecrets:
-              - name: {{ .EntitlementKeyName }}
+              - name: {{ .ImagePullSecret }}
             logLevel: info
             ephemeralVolumesSizeLimit:
               shm: 500Mi
@@ -2306,7 +2306,7 @@ spec:
                   key: ibm-postgresql-16-operand-image
                   namespace: {{ .OperatorNs }}
             imagePullSecrets:
-              - name: {{ .EntitlementKeyName }}
+              - name: {{ .ImagePullSecret }}
             logLevel: info
             primaryUpdateStrategy: unsupervised
             primaryUpdateMethod: switchover

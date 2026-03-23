@@ -145,7 +145,7 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 	r.Bootstrap.CSData.ServicesNs = string(instance.Status.ConfigStatus.ServicesNamespace)
 	r.Bootstrap.CSData.CatalogSourceName = string(instance.Status.ConfigStatus.CatalogName)
 	r.Bootstrap.CSData.CatalogSourceNs = string(instance.Status.ConfigStatus.CatalogNamespace)
-	r.Bootstrap.CSData.EntitlementKeyName = instance.GetEntitlementKeyName()
+	r.Bootstrap.CSData.ImagePullSecret = instance.GetImagePullSecret()
 
 	var forceUpdateODLMCRs bool
 	if !reflect.DeepEqual(originalInstance.Status, instance.Status) {

@@ -39,7 +39,7 @@ metadata:
             "servicesNamespace": "{{ .Values.global.instanceNamespace }}",
             "size": "{{ .Values.cpfs.size }}",
             "storageClass": "{{ .Values.global.blockStorageClass }}",
-            "entitlementKeyName": "{{ .Values.global.entitlementKeyName }}"
+            "imagePullSecret": "{{ .Values.global.imagePullSecret }}"
             {{- if not (.Values.cpfs.roksEnabled | default true) }},
             "services": [
               {

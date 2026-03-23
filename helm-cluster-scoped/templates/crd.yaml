@@ -1,24 +1,11 @@
+---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.14.0
+    controller-gen.kubebuilder.io/version: v0.18.0
   labels:
-    app.kubernetes.io/instance: ibm-common-service-operator
-    app.kubernetes.io/managed-by: ibm-common-service-operator
-    app.kubernetes.io/name: ibm-common-service-operator
     foundationservices.cloudpak.ibm.com: crd
-    component-id: {{ .Chart.Name }}
-    {{- if .Values.cpfs.labels }}
-      {{- with .Values.cpfs.labels }}
-        {{- toYaml . | nindent 4 }}
-      {{- end }}
-    {{- end}}
-    {{- if .Values.cpfs.clusterLabels }}
-      {{- with .Values.cpfs.clusterLabels }}
-        {{- toYaml . | nindent 4 }}
-      {{- end }}
-    {{- end}}
   name: commonservices.operator.ibm.com
 spec:
   group: operator.ibm.com
@@ -66,6 +53,9 @@ spec:
                   BYOCACertificate enables the option to replace the cs-ca-certificate with
                   your own CA certificate
                 type: boolean
+              autoScaleConfig:
+                description: AutoScaleConfig is a bool to enable or disable HPA
+                type: boolean
               catalogName:
                 description: |-
                   CatalogName is the name of the CatalogSource that will be used for ODLM
@@ -81,11 +71,11 @@ spec:
                   DefalutAdminUser is the name of the default admin user for foundational
                   services IM, default is cpadmin
                 type: string
-              enableInstanaMetricCollection:
-                type: boolean
               disableManageCertRotation:
                 description: DisableManageCertRotation is a bool to enable or disable
                   schedule cert renewal
+                type: boolean
+              enableInstanaMetricCollection:
                 type: boolean
               features:
                 description: Features defines the configurations of Cloud Pak Services
@@ -118,6 +108,11 @@ spec:
                     type: boolean
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              imagePullSecret:
+                description: |-
+                  ImagePullSecret specifies the name of the secret containing the IBM entitlement key
+                  for pulling images. Defaults to "ibm-entitlement-key" if not specified.
+                type: string
               installPlanApproval:
                 description: |-
                   InstallPlanApproval sets the approval mode for ODLM and other
@@ -295,7 +290,7 @@ spec:
                       services is using
                     type: string
                   catalogNamespace:
-                    description: CatalogNamespace is the namesapce of the CatalogSource
+                    description: CatalogNamespace is the namespace of the CatalogSource
                     type: string
                   configurable:
                     description: |-

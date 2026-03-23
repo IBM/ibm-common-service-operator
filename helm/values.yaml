@@ -22,5 +22,4 @@ global:
   tetheredNamespaces: []
   operatorNamespace: operator-ns
   imagePullSecret: ibm-entitlement-key
-  entitlementKeyName: ibm-entitlement-key
   instanceNamespace:
