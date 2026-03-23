@@ -249,15 +249,16 @@ func mergeChangedMap(key string, defaultMap interface{}, changedMap interface{},
 				finalMap[key] = defaultMap
 			} else {
 				var comparableKeys = map[string]bool{
-					"replicas":        true,
-					"cpu":             true,
-					"memory":          true,
-					"profile":         true,
-					"fipsEnabled":     true,
-					"fips_enabled":    true,
-					"instances":       true,
-					"max_connections": true,
-					"shared_buffers":  true,
+					"replicas":          true,
+					"cpu":               true,
+					"memory":            true,
+					"ephemeral-storage": true,
+					"profile":           true,
+					"fipsEnabled":       true,
+					"fips_enabled":      true,
+					"instances":         true,
+					"max_connections":   true,
+					"shared_buffers":    true,
 				}
 				if _, ok := comparableKeys[key]; ok {
 					klog.V(3).Infof("Found comparable key: %s, defaultMap=%v (type=%T), changedMap=%v (type=%T), directAssign=%v",
