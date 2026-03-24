@@ -1100,7 +1100,7 @@ func (r *CommonServiceReconciler) removeOrphanedResources(opService, desiredServ
 		if r.isResourceInDesiredState(opRes, desiredResourcesList, opconNs) {
 			filteredResources = append(filteredResources, opRes)
 		} else {
-			klog.Infof("Removed orphaned resource: %s/%s/%s/%s from service %s", apiVersion, kind, name, namespace, opServiceMap["name"])
+			klog.V(2).Infof("Removed orphaned resource: %s/%s/%s/%s from service %s", apiVersion, kind, name, namespace, opServiceMap["name"])
 		}
 	}
 
