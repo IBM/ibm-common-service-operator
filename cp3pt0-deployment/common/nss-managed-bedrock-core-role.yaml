@@ -423,14 +423,6 @@ rules:
       - secretshares
   - verbs:
       - get
-      - list
-      - update
-    apiGroups:
-      - pg.ibm.com
-    resources:
-      - clusters
-  - verbs:
-      - get
     apiGroups:
       - ''
     resources:
@@ -1494,7 +1486,7 @@ rules:
       - watch
     apiGroups:
       - postgresql.k8s.enterprisedb.io
-      - postgresql.cnpg.ibm.com
+      - pg.ibm.com
     resources:
       - clusters
       - clusters/status
