@@ -26,6 +26,9 @@ spec:
           runAsNonRoot: true
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp  
         command:
           - bash
           - -c
@@ -149,5 +152,8 @@ spec:
       # Pod-level minimal security context
       securityContext:
         runAsNonRoot: true
+      volumes:
+      - name: tmp
+        emptyDir: {}
       imagePullSecrets:
       - name: {{ .Values.global.imagePullSecret }}
