@@ -583,7 +583,7 @@ metadata:
     status-monitored-services: {{ .StatusMonitoredServices }}
 spec:
   operators:
-  - channel: stable-v1.28
+  - channel: v1.28
     installPlanApproval: {{ .ApprovalMode }}
     name: common-service-cnpg
     namespace: "{{ .CPFSNs }}"
