@@ -12,7 +12,15 @@ spec:
     spec:
       containers:
       - name: bedrock-migration-job
-        image: {{ .Values.cpfs.imagePullPrefix | default .Values.global.imagePullPrefix }}/{{ .Values.cpfs.imageRegistryNamespaceOperand }}/cpfs-utils:latest
+        image: {{- if .Values.cpfs.utilsImage }}{{ .Values.cpfs.utilsImage }}{{- else }}{{ .Values.cpfs.imagePullPrefix | default .Values.global.imagePullPrefix }}/{{ .Values.cpfs.imageRegistryNamespaceOperand }}/cpfs-utils:{{ .Values.cpfs.utilsImageTag | default "latest" }}{{ if .Values.cpfs.imageDigest }}@{{ .Values.cpfs.imageDigest }}{{ end }}{{- end }}
+        # Resource requests/limits to satisfy Kyverno
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
         command:
           - bash
           - -c
