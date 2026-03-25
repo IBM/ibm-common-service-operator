@@ -583,7 +583,7 @@ metadata:
     status-monitored-services: {{ .StatusMonitoredServices }}
 spec:
   operators:
-  - channel: stable-v1.28
+  - channel: v1.28
     installPlanApproval: {{ .ApprovalMode }}
     name: common-service-cnpg
     namespace: "{{ .CPFSNs }}"
@@ -2684,8 +2684,8 @@ spec:
     configName: cloud-native-postgresql
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
-  - channel: stable-v1.28
-    name: ibm-pg-operator
+  - channel: v1.28
+    name: ibm-pg-operator-v1.28
     namespace: "{{ .CPFSNs }}"
     packageName: ibm-pg-operator
     scope: public
