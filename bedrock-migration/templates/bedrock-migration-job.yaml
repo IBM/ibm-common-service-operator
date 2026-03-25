@@ -12,7 +12,14 @@ spec:
     spec:
       containers:
       - name: bedrock-migration-job
-        image: {{- if .Values.cpfs.utilsImage }}{{ .Values.cpfs.utilsImage }}{{- else }}{{ .Values.cpfs.imagePullPrefix | default .Values.global.imagePullPrefix }}/{{ .Values.cpfs.imageRegistryNamespaceOperand }}/cpfs-utils:{{ .Values.cpfs.utilsImageTag | default "latest" }}{{ if .Values.cpfs.imageDigest }}@{{ .Values.cpfs.imageDigest }}{{ end }}{{- end }}
+        image: >-
+          {{- if .Values.cpfs.utilsImage }}
+            {{ .Values.cpfs.utilsImage }}
+          {{- else if .Values.cpfs.imageDigest }}
+            {{ .Values.cpfs.imagePullPrefix | default .Values.global.imagePullPrefix }}/{{ .Values.cpfs.imageRegistryNamespaceOperand }}/cpfs-utils@{{ .Values.cpfs.imageDigest }}
+          {{- else }}
+            {{ .Values.cpfs.imagePullPrefix | default .Values.global.imagePullPrefix }}/{{ .Values.cpfs.imageRegistryNamespaceOperand }}/cpfs-utils:{{ .Values.cpfs.utilsImageTag | default "latest" }}
+          {{- end }}
         # Resource requests/limits to satisfy Kyverno
         resources:
           requests:
