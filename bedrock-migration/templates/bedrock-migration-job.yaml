@@ -26,9 +26,6 @@ spec:
           runAsNonRoot: true
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
-        volumeMounts:
-        - name: tmp
-          mountPath: /tmp  
         command:
           - bash
           - -c
@@ -149,8 +146,5 @@ spec:
             oc delete serviceaccount bedrock-migration-job-sa -n $operatorNamespace --ignore-not-found
       restartPolicy: Never
       serviceAccount: bedrock-migration-job-sa
-      volumes:
-      - name: tmp
-        emptyDir: {}
       imagePullSecrets:
       - name: {{ .Values.global.imagePullSecret }}
