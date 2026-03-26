@@ -149,9 +149,6 @@ spec:
             oc delete serviceaccount bedrock-migration-job-sa -n $operatorNamespace --ignore-not-found
       restartPolicy: Never
       serviceAccount: bedrock-migration-job-sa
-      # Pod-level minimal security context
-      securityContext:
-        runAsNonRoot: true
       volumes:
       - name: tmp
         emptyDir: {}
