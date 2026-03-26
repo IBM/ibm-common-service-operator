@@ -658,3 +658,583 @@ func TestMergeCRsIntoOperandConfigWithDefaultRules_StorageClass(t *testing.T) {
 	assert.Equal(t, "nfs-storage", walStorage["storageClass"],
 		"storageClass should be merged into walStorage")
 }
+
+// TestRemoveOrphanedSpecFields_RemovesOrphanedCRs verifies that CR specs
+// not present in the desired state are removed from OperandConfig.
+func TestRemoveOrphanedSpecFields_RemovesOrphanedCRs(t *testing.T) {
+	r := &CommonServiceReconciler{}
+
+	// OperandConfig has multiple CRs
+	opService := map[string]interface{}{
+		"name": "ibm-im-operator",
+		"spec": map[string]interface{}{
+			"authentication": map[string]interface{}{
+				"replicas": float64(2),
+			},
+			"oidcclientwatcher": map[string]interface{}{
+				"replicas": float64(1),
+			},
+			"orphanedCR": map[string]interface{}{
+				"replicas": float64(1),
+			},
+		},
+	}
+
+	// Desired state only has authentication and oidcclientwatcher
+	desiredService := map[string]interface{}{
+		"name": "ibm-im-operator",
+		"spec": map[string]interface{}{
+			"authentication": map[string]interface{}{
+				"replicas": float64(2),
+			},
+			"oidcclientwatcher": map[string]interface{}{
+				"replicas": float64(1),
+			},
+		},
+	}
+
+	err := r.removeOrphanedSpecFields(opService, desiredService)
+	require.NoError(t, err)
+
+	// Verify orphanedCR was removed
+	opSpec := opService["spec"].(map[string]interface{})
+	assert.Contains(t, opSpec, "authentication", "authentication should be preserved")
+	assert.Contains(t, opSpec, "oidcclientwatcher", "oidcclientwatcher should be preserved")
+	assert.NotContains(t, opSpec, "orphanedCR", "orphanedCR should be removed")
+}
+
+// TestRemoveOrphanedSpecFields_PreservesBaseConfig verifies that when
+// desiredService is nil (base config only), no fields are removed.
+func TestRemoveOrphanedSpecFields_PreservesBaseConfig(t *testing.T) {
+	r := &CommonServiceReconciler{}
+
+	opService := map[string]interface{}{
+		"name": "ibm-im-operator",
+		"spec": map[string]interface{}{
+			"authentication": map[string]interface{}{
+				"replicas": float64(2),
+			},
+			"baseCR": map[string]interface{}{
+				"replicas": float64(1),
+			},
+		},
+	}
+
+	// No desired service (base config only)
+	err := r.removeOrphanedSpecFields(opService, nil)
+	require.NoError(t, err)
+
+	// Verify all fields are preserved
+	opSpec := opService["spec"].(map[string]interface{})
+	assert.Contains(t, opSpec, "authentication", "authentication should be preserved")
+	assert.Contains(t, opSpec, "baseCR", "baseCR should be preserved")
+}
+
+// TestRemoveOrphanedSpecFields_HandlesEmptyDesiredSpec verifies behavior
+// when desired service has no spec field.
+func TestRemoveOrphanedSpecFields_HandlesEmptyDesiredSpec(t *testing.T) {
+	r := &CommonServiceReconciler{}
+
+	opService := map[string]interface{}{
+		"name": "ibm-im-operator",
+		"spec": map[string]interface{}{
+			"authentication": map[string]interface{}{
+				"replicas": float64(2),
+			},
+		},
+	}
+
+	desiredService := map[string]interface{}{
+		"name": "ibm-im-operator",
+		// No spec field
+	}
+
+	err := r.removeOrphanedSpecFields(opService, desiredService)
+	require.NoError(t, err)
+
+	// All CRs should be removed when desired spec is nil
+	opSpec := opService["spec"].(map[string]interface{})
+	assert.Empty(t, opSpec, "All CRs should be removed when desired spec is nil")
+}
+
+// TestRemoveOrphanedResources_RemovesOrphanedResources verifies that
+// resources not in the desired state are removed.
+func TestRemoveOrphanedResources_RemovesOrphanedResources(t *testing.T) {
+	r := &CommonServiceReconciler{}
+
+	opService := map[string]interface{}{
+		"name": "ibm-im-operator",
+		"resources": []interface{}{
+			map[string]interface{}{
+				"apiVersion": "v1",
+				"kind":       "ConfigMap",
+				"name":       "keep-this",
+				"namespace":  "cs-system",
+			},
+			map[string]interface{}{
+				"apiVersion": "v1",
+				"kind":       "ConfigMap",
+				"name":       "remove-this",
+				"namespace":  "cs-system",
+			},
+		},
+	}
+
+	desiredService := map[string]interface{}{
+		"name": "ibm-im-operator",
+		"resources": []interface{}{
+			map[string]interface{}{
+				"apiVersion": "v1",
+				"kind":       "ConfigMap",
+				"name":       "keep-this",
+				"namespace":  "cs-system",
+			},
+		},
+	}
+
+	err := r.removeOrphanedResources(opService, desiredService, "cs-system")
+	require.NoError(t, err)
+
+	// Verify only the desired resource remains
+	resources := opService["resources"].([]interface{})
+	require.Len(t, resources, 1, "Only one resource should remain")
+	assert.Equal(t, "keep-this", resources[0].(map[string]interface{})["name"])
+}
+
+// TestRemoveOrphanedResources_PreservesBaseConfig verifies that when
+// desiredService is nil, all resources are preserved.
+func TestRemoveOrphanedResources_PreservesBaseConfig(t *testing.T) {
+	r := &CommonServiceReconciler{}
+
+	opService := map[string]interface{}{
+		"name": "ibm-im-operator",
+		"resources": []interface{}{
+			map[string]interface{}{
+				"apiVersion": "v1",
+				"kind":       "ConfigMap",
+				"name":       "base-config",
+			},
+			map[string]interface{}{
+				"apiVersion": "v1",
+				"kind":       "Secret",
+				"name":       "base-secret",
+			},
+		},
+	}
+
+	// No desired service (base config only)
+	err := r.removeOrphanedResources(opService, nil, "cs-system")
+	require.NoError(t, err)
+
+	// All resources should be preserved
+	resources := opService["resources"].([]interface{})
+	assert.Len(t, resources, 2, "All base resources should be preserved")
+}
+
+// TestRemoveOrphanedResources_HandlesEmptyDesiredResources verifies that
+// when desired service has no resources, all are removed.
+func TestRemoveOrphanedResources_HandlesEmptyDesiredResources(t *testing.T) {
+	r := &CommonServiceReconciler{}
+
+	opService := map[string]interface{}{
+		"name": "ibm-im-operator",
+		"resources": []interface{}{
+			map[string]interface{}{
+				"apiVersion": "v1",
+				"kind":       "ConfigMap",
+				"name":       "remove-me",
+			},
+		},
+	}
+
+	desiredService := map[string]interface{}{
+		"name": "ibm-im-operator",
+		// No resources field
+	}
+
+	err := r.removeOrphanedResources(opService, desiredService, "cs-system")
+	require.NoError(t, err)
+
+	// All resources should be removed
+	resources := opService["resources"].([]interface{})
+	assert.Empty(t, resources, "All resources should be removed when desired has none")
+}
+
+// TestIsResourceInDesiredState_MatchesByGVKNameNamespace verifies that
+// resources are matched by GroupVersionKind + Name + Namespace.
+func TestIsResourceInDesiredState_MatchesByGVKNameNamespace(t *testing.T) {
+	r := &CommonServiceReconciler{}
+
+	opResource := map[string]interface{}{
+		"apiVersion": "v1",
+		"kind":       "ConfigMap",
+		"name":       "my-config",
+		"namespace":  "cs-system",
+	}
+
+	desiredResources := []interface{}{
+		map[string]interface{}{
+			"apiVersion": "v1",
+			"kind":       "ConfigMap",
+			"name":       "my-config",
+			"namespace":  "cs-system",
+		},
+		map[string]interface{}{
+			"apiVersion": "v1",
+			"kind":       "ConfigMap",
+			"name":       "other-config",
+			"namespace":  "cs-system",
+		},
+	}
+
+	result := r.isResourceInDesiredState(opResource, desiredResources, "cs-system")
+	assert.True(t, result, "Resource should be found in desired state")
+}
+
+// TestIsResourceInDesiredState_NotFoundWhenMissing verifies that
+// resources not in desired state return false.
+func TestIsResourceInDesiredState_NotFoundWhenMissing(t *testing.T) {
+	r := &CommonServiceReconciler{}
+
+	opResource := map[string]interface{}{
+		"apiVersion": "v1",
+		"kind":       "ConfigMap",
+		"name":       "missing-config",
+		"namespace":  "cs-system",
+	}
+
+	desiredResources := []interface{}{
+		map[string]interface{}{
+			"apiVersion": "v1",
+			"kind":       "ConfigMap",
+			"name":       "other-config",
+			"namespace":  "cs-system",
+		},
+	}
+
+	result := r.isResourceInDesiredState(opResource, desiredResources, "cs-system")
+	assert.False(t, result, "Resource should not be found in desired state")
+}
+
+// TestIsResourceInDesiredState_UsesHashComparison verifies that hash
+// comparison is used to detect resource changes.
+func TestIsResourceInDesiredState_UsesHashComparison(t *testing.T) {
+	r := &CommonServiceReconciler{}
+
+	// Same resource with different content
+	opResource := map[string]interface{}{
+		"apiVersion": "v1",
+		"kind":       "ConfigMap",
+		"name":       "my-config",
+		"namespace":  "cs-system",
+		"data": map[string]interface{}{
+			"key": "old-value",
+		},
+	}
+
+	desiredResources := []interface{}{
+		map[string]interface{}{
+			"apiVersion": "v1",
+			"kind":       "ConfigMap",
+			"name":       "my-config",
+			"namespace":  "cs-system",
+			"data": map[string]interface{}{
+				"key": "new-value",
+			},
+		},
+	}
+
+	// Resource should still be found (hash mismatch is logged but resource is kept)
+	result := r.isResourceInDesiredState(opResource, desiredResources, "cs-system")
+	assert.True(t, result, "Resource should be found even with different content (hash mismatch)")
+}
+
+// TestIsResourceInDesiredState_DefaultsNamespace verifies that when
+// namespace is not specified, it defaults to opconNs.
+func TestIsResourceInDesiredState_DefaultsNamespace(t *testing.T) {
+	r := &CommonServiceReconciler{}
+
+	opResource := map[string]interface{}{
+		"apiVersion": "v1",
+		"kind":       "ConfigMap",
+		"name":       "my-config",
+		// No namespace specified
+	}
+
+	desiredResources := []interface{}{
+		map[string]interface{}{
+			"apiVersion": "v1",
+			"kind":       "ConfigMap",
+			"name":       "my-config",
+			// No namespace specified
+		},
+	}
+
+	result := r.isResourceInDesiredState(opResource, desiredResources, "default-ns")
+	assert.True(t, result, "Resources without namespace should match using default namespace")
+}
+
+// TestIsResourceInDesiredState_KeepsUnparsableResources verifies that
+// resources that can't be parsed are kept (safe default).
+func TestIsResourceInDesiredState_KeepsUnparsableResources(t *testing.T) {
+	r := &CommonServiceReconciler{}
+
+	// Invalid resource (not a map)
+	opResource := "invalid-resource"
+
+	desiredResources := []interface{}{
+		map[string]interface{}{
+			"apiVersion": "v1",
+			"kind":       "ConfigMap",
+			"name":       "my-config",
+		},
+	}
+
+	result := r.isResourceInDesiredState(opResource, desiredResources, "cs-system")
+	assert.True(t, result, "Unparsable resources should be kept (safe default)")
+}
+
+// TestIsResourceInDesiredState_KeepsResourcesWithMissingFields verifies
+// that resources with missing required fields are kept.
+func TestIsResourceInDesiredState_KeepsResourcesWithMissingFields(t *testing.T) {
+	r := &CommonServiceReconciler{}
+
+	tests := []struct {
+		name       string
+		opResource map[string]interface{}
+	}{
+		{
+			name: "Missing apiVersion",
+			opResource: map[string]interface{}{
+				"kind": "ConfigMap",
+				"name": "my-config",
+			},
+		},
+		{
+			name: "Missing kind",
+			opResource: map[string]interface{}{
+				"apiVersion": "v1",
+				"name":       "my-config",
+			},
+		},
+		{
+			name: "Missing name",
+			opResource: map[string]interface{}{
+				"apiVersion": "v1",
+				"kind":       "ConfigMap",
+			},
+		},
+	}
+
+	desiredResources := []interface{}{
+		map[string]interface{}{
+			"apiVersion": "v1",
+			"kind":       "ConfigMap",
+			"name":       "my-config",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := r.isResourceInDesiredState(tt.opResource, desiredResources, "cs-system")
+			assert.True(t, result, "Resources with missing fields should be kept (safe default)")
+		})
+	}
+}
+
+// TestIsResourceInDesiredState_DifferentNamespaces verifies that resources
+// with same GVK and name but different namespaces are treated as different.
+func TestIsResourceInDesiredState_DifferentNamespaces(t *testing.T) {
+	r := &CommonServiceReconciler{}
+
+	opResource := map[string]interface{}{
+		"apiVersion": "v1",
+		"kind":       "ConfigMap",
+		"name":       "my-config",
+		"namespace":  "ns1",
+	}
+
+	desiredResources := []interface{}{
+		map[string]interface{}{
+			"apiVersion": "v1",
+			"kind":       "ConfigMap",
+			"name":       "my-config",
+			"namespace":  "ns2", // Different namespace
+		},
+	}
+
+	result := r.isResourceInDesiredState(opResource, desiredResources, "default-ns")
+	assert.False(t, result, "Resources with different namespaces should not match")
+}
+
+// TestIsResourceInDesiredState_IdenticalResources verifies that identical
+// resources are correctly identified (hash match).
+func TestIsResourceInDesiredState_IdenticalResources(t *testing.T) {
+	r := &CommonServiceReconciler{}
+
+	resource := map[string]interface{}{
+		"apiVersion": "apps/v1",
+		"kind":       "Deployment",
+		"name":       "my-app",
+		"namespace":  "cs-system",
+		"data": map[string]interface{}{
+			"spec": map[string]interface{}{
+				"replicas": float64(3),
+				"template": map[string]interface{}{
+					"spec": map[string]interface{}{
+						"containers": []interface{}{
+							map[string]interface{}{
+								"name":  "nginx",
+								"image": "nginx:1.19",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Create a copy for desired resources
+	desiredResources := []interface{}{
+		map[string]interface{}{
+			"apiVersion": "apps/v1",
+			"kind":       "Deployment",
+			"name":       "my-app",
+			"namespace":  "cs-system",
+			"data": map[string]interface{}{
+				"spec": map[string]interface{}{
+					"replicas": float64(3),
+					"template": map[string]interface{}{
+						"spec": map[string]interface{}{
+							"containers": []interface{}{
+								map[string]interface{}{
+									"name":  "nginx",
+									"image": "nginx:1.19",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	result := r.isResourceInDesiredState(resource, desiredResources, "cs-system")
+	assert.True(t, result, "Identical resources should match (hash match)")
+}
+
+// TestGetItemByName verifies the helper function for finding items by name.
+func TestGetItemByName(t *testing.T) {
+	slice := []interface{}{
+		map[string]interface{}{"name": "service1"},
+		map[string]interface{}{"name": "service2"},
+		map[string]interface{}{"name": "service3"},
+	}
+
+	tests := []struct {
+		name     string
+		findName string
+		found    bool
+	}{
+		{
+			name:     "Find existing service",
+			findName: "service2",
+			found:    true,
+		},
+		{
+			name:     "Service not found",
+			findName: "service4",
+			found:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := getItemByName(slice, tt.findName)
+			if tt.found {
+				assert.NotNil(t, result)
+				assert.Equal(t, tt.findName, result.(map[string]interface{})["name"])
+			} else {
+				assert.Nil(t, result)
+			}
+		})
+	}
+}
+
+// TestGetItemByGVKNameNamespace verifies the helper function for finding
+// resources by GroupVersionKind + Name + Namespace.
+func TestGetItemByGVKNameNamespace(t *testing.T) {
+	resources := []interface{}{
+		map[string]interface{}{
+			"apiVersion": "v1",
+			"kind":       "ConfigMap",
+			"name":       "config1",
+			"namespace":  "ns1",
+		},
+		map[string]interface{}{
+			"apiVersion": "v1",
+			"kind":       "ConfigMap",
+			"name":       "config2",
+			"namespace":  "ns2",
+		},
+		map[string]interface{}{
+			"apiVersion": "apps/v1",
+			"kind":       "Deployment",
+			"name":       "deploy1",
+			"namespace":  "ns1",
+		},
+	}
+
+	tests := []struct {
+		name       string
+		apiVersion string
+		kind       string
+		resName    string
+		namespace  string
+		found      bool
+	}{
+		{
+			name:       "Find ConfigMap in ns1",
+			apiVersion: "v1",
+			kind:       "ConfigMap",
+			resName:    "config1",
+			namespace:  "ns1",
+			found:      true,
+		},
+		{
+			name:       "Find Deployment",
+			apiVersion: "apps/v1",
+			kind:       "Deployment",
+			resName:    "deploy1",
+			namespace:  "ns1",
+			found:      true,
+		},
+		{
+			name:       "Not found - wrong namespace",
+			apiVersion: "v1",
+			kind:       "ConfigMap",
+			resName:    "config1",
+			namespace:  "ns2",
+			found:      false,
+		},
+		{
+			name:       "Not found - wrong kind",
+			apiVersion: "v1",
+			kind:       "Secret",
+			resName:    "config1",
+			namespace:  "ns1",
+			found:      false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := getItemByGVKNameNamespace(resources, "default-ns", tt.apiVersion, tt.kind, tt.resName, tt.namespace)
+			if tt.found {
+				assert.NotNil(t, result)
+			} else {
+				assert.Nil(t, result)
+			}
+		})
+	}
+}
