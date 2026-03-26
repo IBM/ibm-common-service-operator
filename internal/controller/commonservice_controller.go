@@ -145,6 +145,7 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 	r.Bootstrap.CSData.ServicesNs = string(instance.Status.ConfigStatus.ServicesNamespace)
 	r.Bootstrap.CSData.CatalogSourceName = string(instance.Status.ConfigStatus.CatalogName)
 	r.Bootstrap.CSData.CatalogSourceNs = string(instance.Status.ConfigStatus.CatalogNamespace)
+	r.Bootstrap.CSData.ImagePullSecret = instance.GetImagePullSecret()
 
 	var forceUpdateODLMCRs bool
 	if !reflect.DeepEqual(originalInstance.Status, instance.Status) {
@@ -247,10 +248,6 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
 		return ctrl.Result{}, statusErr
 	}
-
-	// OperandConfig already created with complete configuration
-	// in InitResources, no need for second updateOperandConfig call
-	klog.Info("OperandConfig created with complete configuration")
 
 	var isEqual bool
 	if isEqual, statusErr = r.updateOperatorConfig(ctx, instance.Spec.OperatorConfigs); statusErr != nil {
@@ -529,7 +526,7 @@ func isNonNoopOperandReconcile(operandRegistry *odlm.OperandRegistry) bool {
 func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// Set up configuration merger for single-stage OperandConfig creation
 	// This injects the merge logic into bootstrap without creating import cycles
-	bootstrap.SetConfigMerger(CreateMergerFunc(r))
+	r.Bootstrap.SetConfigMerger(CreateMergerFunc(r))
 	klog.Info("Configuration merger initialized for single-stage OperandConfig creation")
 
 	controller := ctrl.NewControllerManagedBy(mgr).

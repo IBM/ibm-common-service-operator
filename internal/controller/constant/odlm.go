@@ -583,27 +583,13 @@ metadata:
     status-monitored-services: {{ .StatusMonitoredServices }}
 spec:
   operators:
-  - channel: stable-v1.25
-    fallbackChannels:
-      - stable-v1.22
-      - stable
-    installPlanApproval: {{ .ApprovalMode }}
-    name: ibm-cnpg-postgres-operator
-    namespace: "{{ .CPFSNs }}"
-    packageName: cnpg-ibm
-    scope: public
-    sourceName: ibm-cnpg-postgresql-operator-catalog
-    sourceNamespace: "{{ .CatalogSourceNs }}"
-  - channel: stable-v1.25
-    fallbackChannels:
-      - stable-v1.22
-      - stable
+  - channel: v1.28
     installPlanApproval: {{ .ApprovalMode }}
     name: common-service-cnpg
     namespace: "{{ .CPFSNs }}"
-    packageName: cnpg-ibm
+    packageName: ibm-pg-operator
     scope: public
-    sourceName: ibm-cnpg-postgresql-operator-catalog
+    sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 )
@@ -1031,160 +1017,6 @@ spec:
       operandBindInfo: {}
 `
 )
-
-const EDBOpCon = `
-apiVersion: operator.ibm.com/v1alpha1
-kind: OperandConfig
-metadata:
-  name: common-service
-  namespace: "{{ .ServicesNs }}"
-  labels:
-    operator.ibm.com/managedByCsOperator: "true"
-  annotations:
-    version: {{ .Version }}
-spec:
-  services:
-  {{- range .ServiceNames.PostgreSQL }}
-  - name: {{ . }}
-    resources:
-      - apiVersion: batch/v1
-        kind: Job
-        name: create-postgres-license-config
-        namespace: "{{ $.OperatorNs }}"
-        labels:
-          operator.ibm.com/opreq-control: 'true'
-        data:
-          spec:
-            activeDeadlineSeconds: 600
-            backoffLimit: 5
-            template:
-              metadata:
-                annotations:
-                  productID: 068a62892a1e4db39641342e592daa25
-                  productMetric: FREE
-                  productName: IBM Cloud Platform Common Services
-              spec:
-                imagePullSecrets:
-                  - name: ibm-entitlement-key
-                affinity:
-                  nodeAffinity:
-                    requiredDuringSchedulingIgnoredDuringExecution:
-                      nodeSelectorTerms:
-                      - matchExpressions:
-                        - key: kubernetes.io/arch
-                          operator: In
-                          values:
-                          - amd64
-                          - ppc64le
-                          - s390x
-                initContainers:
-                - command:
-                  - bash
-                  - -c
-                  - |
-                    cat << EOF | kubectl apply -f -
-                    apiVersion: v1
-                    kind: Secret
-                    type: Opaque
-                    metadata:
-                      name: postgresql-operator-controller-manager-config
-                    data:
-                      EDB_LICENSE_KEY: $(base64 /license_keys/edb/EDB_LICENSE_KEY | tr -d '\n')
-                    EOF
-                  image:
-                    templatingValueFrom:
-                      default:
-                        required: true
-                        configMapKeyRef:
-                          name: cloud-native-postgresql-image-list
-                          key: edb-postgres-license-provider-image
-                          namespace: {{ $.OperatorNs }}
-                      configMapKeyRef:
-                        name: cloud-native-postgresql-operand-images-config
-                        key: edb-postgres-license-provider-image
-                        namespace: {{ $.OperatorNs }}
-                  name: edb-license
-                  resources:
-                    limits:
-                      cpu: 500m
-                      memory: 512Mi
-                    requests:
-                      cpu: 100m
-                      memory: 50Mi
-                  securityContext:
-                    allowPrivilegeEscalation: false
-                    capabilities:
-                      drop:
-                      - ALL
-                    privileged: false
-                    readOnlyRootFilesystem: true
-                containers:
-                - command: ["bash", "-c"]
-                  args:
-                  - |
-                    kubectl delete pods -l app.kubernetes.io/name=cloud-native-postgresql
-                    kubectl annotate secret postgresql-operator-controller-manager-config ibm-license-key-applied="EDB Database with IBM License Key"
-                  image:
-                    templatingValueFrom:
-                      default:
-                        required: true
-                        configMapKeyRef:
-                          name: cloud-native-postgresql-image-list
-                          key: edb-postgres-license-provider-image
-                          namespace: {{ $.OperatorNs }}
-                      configMapKeyRef:
-                        name: cloud-native-postgresql-operand-images-config
-                        key: edb-postgres-license-provider-image
-                        namespace: {{ $.OperatorNs }}
-                  name: restart-edb-pod
-                  resources:
-                    limits:
-                      cpu: 500m
-                      memory: 512Mi
-                    requests:
-                      cpu: 100m
-                      memory: 50Mi
-                  securityContext:
-                    allowPrivilegeEscalation: false
-                    capabilities:
-                      drop:
-                      - ALL
-                    privileged: false
-                    readOnlyRootFilesystem: true
-                hostIPC: false
-                hostNetwork: false
-                hostPID: false
-                restartPolicy: OnFailure
-                securityContext:
-                  runAsNonRoot: true
-                serviceAccountName: edb-license-sa
-      - apiVersion: v1
-        kind: ServiceAccount
-        name: edb-license-sa
-        namespace: "{{ $.OperatorNs }}"
-      - apiVersion: rbac.authorization.k8s.io/v1
-        kind: Role
-        name: edb-license-role
-        namespace: "{{ $.OperatorNs }}"
-        data:
-          rules:
-          - apiGroups: [""]
-            resources: ["pods", "secrets"]
-            verbs: ["create", "update", "patch", "get", "list", "delete", "watch"]
-      - apiVersion: rbac.authorization.k8s.io/v1
-        kind: RoleBinding
-        name: edb-license-rolebinding
-        namespace: "{{ $.OperatorNs }}"
-        data:
-          subjects:
-          - kind: ServiceAccount
-            name: edb-license-sa
-          roleRef:
-            kind: Role
-            name: edb-license-role
-            apiGroup: rbac.authorization.k8s.io
-  {{- end }}
-`
 
 const (
 	KeyCloakOpCon = `
@@ -1905,143 +1737,6 @@ spec:
               supportedLocales: [ "en", "de" , "es", "fr", "it", "ja", "ko", "pt_BR", "zh_CN", "zh_TW"]
   - name: edb-keycloak
     resources:
-      - apiVersion: batch/v1
-        kind: Job
-        force: true
-        name: create-postgres-license-config
-        namespace: "{{ .OperatorNs }}"
-        labels:
-          operator.ibm.com/opreq-control: 'true'
-        data:
-          spec:
-            activeDeadlineSeconds: 600
-            backoffLimit: 5
-            template:
-              metadata:
-                annotations:
-                  productID: 068a62892a1e4db39641342e592daa25
-                  productMetric: FREE
-                  productName: IBM Cloud Platform Common Services
-              spec:
-                imagePullSecrets:
-                  - name: ibm-entitlement-key
-                affinity:
-                  nodeAffinity:
-                    requiredDuringSchedulingIgnoredDuringExecution:
-                      nodeSelectorTerms:
-                      - matchExpressions:
-                        - key: kubernetes.io/arch
-                          operator: In
-                          values:
-                          - amd64
-                          - ppc64le
-                          - s390x
-                initContainers:
-                - command:
-                  - bash
-                  - -c
-                  - |
-                    cat << EOF | kubectl apply -f -
-                    apiVersion: v1
-                    kind: Secret
-                    type: Opaque
-                    metadata:
-                      name: postgresql-operator-controller-manager-config
-                    data:
-                      EDB_LICENSE_KEY: $(base64 /license_keys/edb/EDB_LICENSE_KEY | tr -d '\n')
-                    EOF
-                  image:
-                    templatingValueFrom:
-                      default:
-                        required: true
-                        configMapKeyRef:
-                          name: cloud-native-postgresql-image-list
-                          key: edb-postgres-license-provider-image
-                          namespace: {{ .OperatorNs }}
-                      configMapKeyRef:
-                        name: cloud-native-postgresql-operand-images-config
-                        key: edb-postgres-license-provider-image
-                        namespace: {{ $.OperatorNs }}
-                  name: edb-license
-                  resources:
-                    limits:
-                      cpu: 500m
-                      memory: 512Mi
-                    requests:
-                      cpu: 100m
-                      memory: 50Mi
-                  securityContext:
-                    allowPrivilegeEscalation: false
-                    capabilities:
-                      drop:
-                      - ALL
-                    privileged: false
-                    readOnlyRootFilesystem: true
-                containers:
-                - command: ["bash", "-c"]
-                  args:
-                  - |
-                    kubectl delete pods -l app.kubernetes.io/name=cloud-native-postgresql
-                    kubectl annotate secret postgresql-operator-controller-manager-config ibm-license-key-applied="EDB Database with IBM License Key"
-                  image:
-                    templatingValueFrom:
-                      default:
-                        required: true
-                        configMapKeyRef:
-                          name: cloud-native-postgresql-image-list
-                          key: edb-postgres-license-provider-image
-                          namespace: {{ .OperatorNs }}
-                      configMapKeyRef:
-                        name: cloud-native-postgresql-operand-images-config
-                        key: edb-postgres-license-provider-image
-                        namespace: {{ $.OperatorNs }}
-                  name: restart-edb-pod
-                  resources:
-                    limits:
-                      cpu: 500m
-                      memory: 512Mi
-                    requests:
-                      cpu: 100m
-                      memory: 50Mi
-                  securityContext:
-                    allowPrivilegeEscalation: false
-                    capabilities:
-                      drop:
-                      - ALL
-                    privileged: false
-                    readOnlyRootFilesystem: true
-                hostIPC: false
-                hostNetwork: false
-                hostPID: false
-                restartPolicy: OnFailure
-                securityContext:
-                  runAsNonRoot: true
-                serviceAccountName: edb-license-sa
-      - apiVersion: v1
-        kind: ServiceAccount
-        name: edb-license-sa
-        namespace: "{{ .OperatorNs }}"
-      - apiVersion: rbac.authorization.k8s.io/v1
-        kind: Role
-        name: edb-license-role
-        namespace: "{{ .OperatorNs }}"
-        data:
-          rules:
-          - apiGroups: [""]
-            resources: ["pods", "secrets"]
-            verbs: ["create", "update", "patch", "get", "list", "delete", "watch"] 
-      - apiVersion: rbac.authorization.k8s.io/v1
-        kind: RoleBinding
-        name: edb-license-rolebinding
-        namespace: "{{ .OperatorNs }}"
-        data:
-          subjects:
-          - kind: ServiceAccount
-            name: edb-license-sa
-          roleRef:
-            kind: Role
-            name: edb-license-role
-            apiGroup: rbac.authorization.k8s.io
       - apiVersion: postgresql.k8s.enterprisedb.io/v1
         data:
           spec:
@@ -2050,15 +1745,6 @@ spec:
                 backup.velero.io/backup-volumes: pgdata,pg-wal
               labels:
                 foundationservices.cloudpak.ibm.com: keycloak
-            description:
-              templatingValueFrom:
-                objectRef:
-                  apiVersion: v1
-                  kind: Secret
-                  name: postgresql-operator-controller-manager-config
-                  path: .metadata.annotations.ibm-license-key-applied
-                  namespace: {{ .OperatorNs }}
-                required: true
             bootstrap:
               initdb:
                 database: keycloak
@@ -2076,7 +1762,7 @@ spec:
                   key: ibm-postgresql-14-operand-image
                   namespace: {{ .OperatorNs }}
             imagePullSecrets:
-              - name: ibm-entitlement-key
+              - name: {{ .ImagePullSecret }}
             logLevel: info
             ephemeralVolumesSizeLimit:
               shm: 500Mi
@@ -2120,17 +1806,6 @@ spec:
   services:
   - name: common-service-postgresql
     resources:
-      - apiVersion: operator.ibm.com/v1alpha1
-        data:
-          spec:
-            requests:
-              - operands:
-                  - name: cloud-native-postgresql-v1.25
-                registry: common-service
-                registryNamespace: {{ .ServicesNs }}
-        force: true
-        kind: OperandRequest
-        name: postgresql-operator-request
       - apiVersion: cert-manager.io/v1
         kind: Certificate
         name: common-service-db-replica-tls-cert
@@ -2253,15 +1928,6 @@ spec:
             inheritedMetadata:
               labels:
                 foundationservices.cloudpak.ibm.com: cs-db
-            description:
-              templatingValueFrom:
-                objectRef:
-                  apiVersion: v1
-                  kind: Secret
-                  name: postgresql-operator-controller-manager-config
-                  path: .metadata.annotations.ibm-license-key-applied
-                  namespace: {{ .OperatorNs }}
-                required: true
             bootstrap:
               initdb:
                 database: im
@@ -2327,7 +1993,7 @@ spec:
                   key: ibm-postgresql-16-operand-image
                   namespace: {{ .OperatorNs }}
             imagePullSecrets:
-              - name: ibm-entitlement-key
+              - name: {{ .ImagePullSecret }}
             logLevel: info
             ephemeralVolumesSizeLimit:
               shm: 500Mi
@@ -2454,17 +2120,6 @@ spec:
   services:
   - name: common-service-cnpg
     resources:
-      - apiVersion: operator.ibm.com/v1alpha1
-        data:
-          spec:
-            requests:
-              - operands:
-                  - name: ibm-cnpg-postgres-operator
-                registry: common-service
-                registryNamespace: {{ .ServicesNs }}
-        force: true
-        kind: OperandRequest
-        name: cnpg-postgresql-operator-request  
       - apiVersion: cert-manager.io/v1
         kind: Certificate
         name: common-service-db-replica-tls-cert
@@ -2569,7 +2224,7 @@ spec:
         force: true
         kind: OperandBindInfo
         name: common-service-cnpg-bindinfo
-      - apiVersion: postgresql.cnpg.ibm.com/v1
+      - apiVersion: pg.ibm.com/v1
         kind: Cluster
         name: common-service-db          
         force: true
@@ -2622,11 +2277,11 @@ spec:
             imageName:
               templatingValueFrom:
                 configMapKeyRef:
-                  name: cnpg-ibm-operand-images-config
+                  name: ibm-pg-operator-operand-images-config
                   key: ibm-postgresql-16-operand-image
                   namespace: {{ .OperatorNs }}
             imagePullSecrets:
-              - name: ibm-entitlement-key
+              - name: {{ .ImagePullSecret }}
             logLevel: info
             primaryUpdateStrategy: unsupervised
             primaryUpdateMethod: switchover
@@ -2962,6 +2617,14 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
+  - channel: v6.1
+    name: ibm-events-operator-v6.1
+    namespace: "{{ .CPFSNs }}"
+    packageName: ibm-events-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-platformui-operator
     namespace: "{{ .CPFSNs }}"
     channel: v6.4
@@ -3021,17 +2684,14 @@ spec:
     configName: cloud-native-postgresql
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
-  - channel: stable-v1.25
-    fallbackChannels:
-      - stable-v1.22
-      - stable
-    name: ibm-cnpg-postgres-operator
+  - channel: v1.28
+    name: ibm-pg-operator-v1.28
     namespace: "{{ .CPFSNs }}"
-    packageName: cnpg-ibm
+    packageName: ibm-pg-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
-    configName: ibm-cnpg-postgres-operator
-    sourceName: ibm-cnpg-postgresql-operator-catalog
+    configName: ibm-pg-operator
+    sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: alpha
     name: ibm-user-data-services-operator

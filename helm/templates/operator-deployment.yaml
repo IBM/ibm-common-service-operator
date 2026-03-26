@@ -38,7 +38,8 @@ metadata:
             "operatorNamespace": "{{ .Values.global.operatorNamespace }}",
             "servicesNamespace": "{{ .Values.global.instanceNamespace }}",
             "size": "{{ .Values.cpfs.size }}",
-            "storageClass": "{{ .Values.global.blockStorageClass }}"
+            "storageClass": "{{ .Values.global.blockStorageClass }}",
+            "imagePullSecret": "{{ .Values.global.imagePullSecret }}"
             {{- if not (.Values.cpfs.roksEnabled | default true) }},
             "services": [
               {
@@ -111,6 +112,10 @@ spec:
               value: "false"
             - name: OPERATOR_NAME
               value: ibm-common-service-operator
+            - name: CPFS_UTILS_IMAGE
+              value: {{ .Values.cpfs.imagePullPrefix | default .Values.global.imagePullPrefix }}/{{ .Values.cpfs.imageRegistryNamespaceOperand}}/cpfs-utils:latest
+            - name: CPFS_OADP_PLUGIN_IMAGE
+              value: {{ .Values.cpfs.imagePullPrefix | default .Values.global.imagePullPrefix }}/{{ .Values.cpfs.imageRegistryNamespaceOperand}}/cpfs-oadp-plugin:latest
           imagePullPolicy: IfNotPresent
           livenessProbe: 
             failureThreshold: 10

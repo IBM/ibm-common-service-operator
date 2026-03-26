@@ -90,6 +90,7 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 	// catalogsorurce and catalogsource namespace should be empty
 	r.Bootstrap.CSData.CatalogSourceName = ""
 	r.Bootstrap.CSData.CatalogSourceNs = ""
+	r.Bootstrap.CSData.ImagePullSecret = instance.GetImagePullSecret()
 
 	if statusErr = r.Client.Status().Patch(ctx, instance, client.MergeFrom(originalInstance)); statusErr != nil {
 		return ctrl.Result{}, fmt.Errorf("error while patching CommonService.Status: %v", statusErr)
@@ -183,10 +184,6 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 	} else {
 		klog.Error("ODLM CRD not ready, waiting for it to be ready")
 	}
-
-	// OperandConfig already created with complete configuration
-	// in InstallOrUpdateOpcon, no need for second updateOperandConfig call
-	klog.Info("OperandConfig created with complete configuration via single-stage creation")
 
 	var isEqual bool
 

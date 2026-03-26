@@ -76,6 +76,8 @@ spec:
           value: "ibm-common-service-operator"
         - name: CPFS_UTILS_IMAGE
           value: icr.io/cpopen/cpfs/cpfs-utils:latest
+        - name: CPFS_OADP_PLUGIN_IMAGE
+          value: icr.io/cpopen/cpfs/cpfs-oadp-plugin:latest
         resources:
           limits:
             cpu: 500m

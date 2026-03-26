@@ -55,15 +55,14 @@ const (
 func mergeCRsIntoOperandConfig(defaultMap map[string]interface{}, changedMap map[string]interface{}, rules map[string]interface{}, overwrite, directAssign bool) map[string]interface{} {
 	if !overwrite {
 		for key := range changedMap {
-			// Remove the items not from the rules
 			filterChangedMapWithRules(key, changedMap[key], rules[key], changedMap)
 		}
 	}
+
 	for key := range defaultMap {
 		if reflect.DeepEqual(defaultMap[key], changedMap[key]) {
 			continue
 		}
-		// CR overwrites the existing OperandConfig
 		mergeChangedMap(key, defaultMap[key], changedMap[key], changedMap, directAssign)
 	}
 	return changedMap
@@ -134,49 +133,152 @@ func mergeCSCRs(csSummary, csCR, ruleSlice []interface{}, serviceControllerMappi
 			csSummary = setSpecByName(csSummary, operator.(map[string]interface{})["name"].(string), summaryCR.(map[string]interface{})["spec"])
 		}
 
-		// check if operator.(map[string]interface{})["resources"] is nil
-		if operator.(map[string]interface{})["resources"] != nil {
-			for i, opResource := range operator.(map[string]interface{})["resources"].([]interface{}) {
-				var apiVersion, kind, name, namespace string
-				if opResource.(map[string]interface{})["apiVersion"] != nil {
-					apiVersion = opResource.(map[string]interface{})["apiVersion"].(string)
-				}
-				if opResource.(map[string]interface{})["kind"] != nil {
-					kind = opResource.(map[string]interface{})["kind"].(string)
-				}
-				if opResource.(map[string]interface{})["name"] != nil {
-					name = opResource.(map[string]interface{})["name"].(string)
-				}
-				if opResource.(map[string]interface{})["namespace"] != nil {
-					namespace = opResource.(map[string]interface{})["namespace"].(string)
-				}
-				// check if above 4 fields are all set
-				if apiVersion == "" || kind == "" || name == "" {
-					klog.Warningf("Skipping merging resource %s/%s/%s/%s, because apiVersion, kind or name is not set", apiVersion, kind, name, namespace)
-					continue
-				}
-				// check if namespace is set, if not, set it to OperandConfig namespace
-				if namespace == "" {
-					namespace = opconNs
-				}
-				if summaryCR == nil || summaryCR.(map[string]interface{})["resources"] == nil {
-					continue
-				}
-				newResource := getItemByGVKNameNamespace(summaryCR.(map[string]interface{})["resources"].([]interface{}), opconNs, apiVersion, kind, name, namespace)
-				if newResource != nil {
-					if _, ok := nonDefaultProfileController[serviceController]; ok {
-						if isOpResourceExists(newResource) {
-							klog.Info("### DEBUG: deleting key")
-							newResource.(map[string]interface{})["data"].(map[string]interface{})["spec"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})["cpu"] = struct{}{}
-						}
-					}
-					operator.(map[string]interface{})["resources"].([]interface{})[i] = mergeCRsIntoOperandConfigWithDefaultRules(opResource.(map[string]interface{}), newResource.(map[string]interface{}), false)
-				}
+		// Merge resources: preserve base resources and merge/add CS resources
+		// This fixes the bug where base-only resources (like Certificates) were lost
+		if operator.(map[string]interface{})["resources"] != nil || (summaryCR != nil && summaryCR.(map[string]interface{})["resources"] != nil) {
+			// Get base resources from summary (these must be preserved)
+			baseResources := []interface{}{}
+			if summaryCR != nil && summaryCR.(map[string]interface{})["resources"] != nil {
+				baseResources = summaryCR.(map[string]interface{})["resources"].([]interface{})
 			}
-			csSummary = setResByName(csSummary, operator.(map[string]interface{})["name"].(string), operator.(map[string]interface{})["resources"].([]interface{}))
+
+			// Get CS resources to merge
+			csResources := []interface{}{}
+			if operator.(map[string]interface{})["resources"] != nil {
+				csResources = operator.(map[string]interface{})["resources"].([]interface{})
+			}
+
+			// Merge resources: update base with CS overrides, preserve base-only resources
+			mergedResources := mergeResourceArrays(baseResources, csResources, opconNs, serviceController)
+
+			// Set the merged resources
+			csSummary = setResByName(csSummary, operator.(map[string]interface{})["name"].(string), mergedResources)
 		}
 	}
 	return csSummary
+}
+
+// toStringMap safely converts an interface{} to map[string]interface{}.
+// Returns nil and false if the conversion fails.
+func toStringMap(v interface{}) (map[string]interface{}, bool) {
+	m, ok := v.(map[string]interface{})
+	return m, ok
+}
+
+// getStringField safely extracts a string field from a resource map.
+func getStringField(m map[string]interface{}, key string) string {
+	if v, ok := m[key]; ok {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return ""
+}
+
+// mergeResourceArrays merges base resources with CS resources, preserving base-only resources
+// and allowing CS resources to override matching base resources.
+// Base resource ordering is preserved: matched base resources are replaced in-place,
+// and new CS-only resources are appended at the end.
+func mergeResourceArrays(baseResources, csResources []interface{}, opconNs string, serviceController string) []interface{} {
+	// Map from base index → merged result (populated during CS resource iteration)
+	mergedByBaseIndex := make(map[int]interface{})
+	// Track which CS resources matched a base resource
+	matchedCSIndices := make(map[int]bool)
+
+	// First pass: find matches between CS and base resources, merge them
+	for csIdx, csResource := range csResources {
+		csMap, ok := toStringMap(csResource)
+		if !ok {
+			klog.Warningf("Skipping CS resource: unexpected type %T", csResource)
+			matchedCSIndices[csIdx] = true // mark as handled (skipped)
+			continue
+		}
+
+		csApiVersion := getStringField(csMap, "apiVersion")
+		csKind := getStringField(csMap, "kind")
+		csName := getStringField(csMap, "name")
+		csNamespace := getStringField(csMap, "namespace")
+
+		// Validate required fields
+		if csApiVersion == "" || csKind == "" || csName == "" {
+			klog.Warningf("Skipping CS resource %s/%s/%s/%s: missing required fields", csApiVersion, csKind, csName, csNamespace)
+			matchedCSIndices[csIdx] = true // mark as handled (skipped)
+			continue
+		}
+
+		// Default namespace to opconNs if not set
+		if csNamespace == "" {
+			csNamespace = opconNs
+		}
+
+		// Find matching base resource
+		for baseIdx, baseResource := range baseResources {
+			if _, alreadyMerged := mergedByBaseIndex[baseIdx]; alreadyMerged {
+				continue // Already matched by another CS resource
+			}
+
+			baseMap, ok := toStringMap(baseResource)
+			if !ok {
+				continue
+			}
+
+			baseApiVersion := getStringField(baseMap, "apiVersion")
+			baseKind := getStringField(baseMap, "kind")
+			baseName := getStringField(baseMap, "name")
+			baseNamespace := getStringField(baseMap, "namespace")
+			if baseNamespace == "" {
+				baseNamespace = opconNs
+			}
+
+			// Check if resources match by GVK+Name+Namespace
+			if baseApiVersion == csApiVersion && baseKind == csKind && baseName == csName && baseNamespace == csNamespace {
+				// Merge CS resource into base resource
+				mergedResource := mergeCRsIntoOperandConfigWithDefaultRules(csMap, baseMap, false)
+
+				// Apply profile controller cleanup if needed
+				if _, ok := nonDefaultProfileController[serviceController]; ok {
+					if isOpResourceExists(mergedResource) {
+						klog.V(2).Info("Applying profile controller cleanup to merged resource")
+						if dataMap, ok := toStringMap(mergedResource["data"]); ok {
+							if specMap, ok := toStringMap(dataMap["spec"]); ok {
+								if resources, ok := toStringMap(specMap["resources"]); ok {
+									if limits, ok := toStringMap(resources["limits"]); ok {
+										limits["cpu"] = struct{}{}
+									}
+								}
+							}
+						}
+					}
+				}
+
+				mergedByBaseIndex[baseIdx] = mergedResource
+				matchedCSIndices[csIdx] = true
+				break
+			}
+		}
+	}
+
+	// Second pass: build result in base order, replacing matched base resources with merged results
+	mergedResources := make([]interface{}, 0, len(baseResources)+len(csResources))
+	for i, baseResource := range baseResources {
+		if merged, ok := mergedByBaseIndex[i]; ok {
+			mergedResources = append(mergedResources, merged)
+		} else {
+			mergedResources = append(mergedResources, baseResource)
+		}
+	}
+
+	// Third pass: append new CS-only resources (those that didn't match any base resource)
+	for csIdx, csResource := range csResources {
+		if !matchedCSIndices[csIdx] {
+			mergedResources = append(mergedResources, csResource)
+		}
+	}
+
+	klog.V(2).Infof("Merged resources: %d base + %d CS = %d total (preserved %d base-only)",
+		len(baseResources), len(csResources), len(mergedResources), len(baseResources)-len(mergedByBaseIndex))
+
+	return mergedResources
 }
 
 // mergeCRsIntoOperandConfig merges CRs by specific rules
@@ -193,10 +295,8 @@ func mergeCRsIntoOperandConfigWithDefaultRules(defaultMap map[string]interface{}
 func filterChangedMapWithRules(key string, changedMap interface{}, rules interface{}, finalMap map[string]interface{}) {
 	switch changedMap.(type) {
 	case map[string]interface{}:
-		//Check that the changed map value doesn't contain this map at all and is nil
-		if rules == nil {
-			delete(finalMap, key)
-		} else {
+		// For map types, only filter if rules exist and are also a map
+		if rules != nil {
 			if _, ok := rules.(map[string]interface{}); ok {
 				rulesRef := rules.(map[string]interface{})
 				changedMapRef := changedMap.(map[string]interface{})
@@ -208,10 +308,7 @@ func filterChangedMapWithRules(key string, changedMap interface{}, rules interfa
 			}
 		}
 	default:
-		if rules == nil && changedMap != nil {
-			klog.V(3).Info("delete " + key)
-			delete(finalMap, key)
-		}
+		// For non-map types, keep them regardless of rules
 	}
 }
 
@@ -225,8 +322,14 @@ func mergeChangedMap(key string, defaultMap interface{}, changedMap interface{},
 			} else if _, ok := changedMap.(map[string]interface{}); ok { //Check that the changed map value is also a map[string]interface
 				defaultMapRef := defaultMap
 				changedMapRef := changedMap.(map[string]interface{})
+				// Ensure finalMap[key] points to changedMapRef (or create if nil)
+				if finalMap[key] == nil {
+					finalMap[key] = changedMapRef
+				}
+				// Now recurse into the map that's stored in finalMap[key]
+				targetMap := finalMap[key].(map[string]interface{})
 				for newKey := range defaultMapRef {
-					mergeChangedMap(newKey, defaultMapRef[newKey], changedMapRef[newKey], finalMap[key].(map[string]interface{}), directAssign)
+					mergeChangedMap(newKey, defaultMapRef[newKey], changedMapRef[newKey], targetMap, directAssign)
 				}
 			}
 		case []interface{}:
@@ -250,35 +353,29 @@ func mergeChangedMap(key string, defaultMap interface{}, changedMap interface{},
 				}
 			}
 		default:
-			//Check if the value was set, otherwise set it
 			if changedMap == nil {
 				finalMap[key] = defaultMap
 			} else {
 				var comparableKeys = map[string]bool{
-					"replicas":        true,
-					"cpu":             true,
-					"memory":          true,
-					"profile":         true,
-					"fipsEnabled":     true,
-					"fips_enabled":    true,
-					"instances":       true,
-					"max_connections": true,
-					"shared_buffers":  true,
+					"replicas":          true,
+					"cpu":               true,
+					"memory":            true,
+					"ephemeral-storage": true,
+					"profile":           true,
+					"fipsEnabled":       true,
+					"fips_enabled":      true,
+					"instances":         true,
+					"max_connections":   true,
+					"shared_buffers":    true,
 				}
 				if _, ok := comparableKeys[key]; ok {
-					klog.V(3).Infof("Found comparable key: %s, defaultMap=%v (type=%T), changedMap=%v (type=%T), directAssign=%v",
-						key, defaultMap, defaultMap, changedMap, changedMap, directAssign)
 					if directAssign {
-						// Merge current CS CR into OperandConfig
-						klog.V(3).Infof("DirectAssign=true, skipping comparison for key=%s", key)
 						finalMap[key] = changedMap
 					} else {
-						klog.V(3).Infof("Calling ResourceComparison for key=%s with defaultMap=%v, changedMap=%v", key, defaultMap, changedMap)
 						finalMap[key], _ = rules.ResourceComparison(defaultMap, changedMap)
-						klog.V(3).Infof("ResourceComparison returned for key=%s, result=%v", key, finalMap[key])
 					}
-
 				}
+				// For non-comparable keys, changedMap is already set, no action needed
 			}
 		}
 	}
@@ -399,17 +496,20 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 		if newConfigForOperator == nil {
 			continue
 		}
-		opService := getItemByName(opconServices, newConfigForOperator.(map[string]interface{})["name"].(string))
+		serviceName := newConfigForOperator.(map[string]interface{})["name"].(string)
+		opService := getItemByName(opconServices, serviceName)
 		if opService == nil {
+			klog.V(2).Infof("Service %s not found in OperandConfig, skipping", serviceName)
 			continue
 		}
 		serviceController := serviceControllerMapping["profileController"]
-		if controller, ok := serviceControllerMapping[newConfigForOperator.(map[string]interface{})["name"].(string)]; ok {
+		if controller, ok := serviceControllerMapping[serviceName]; ok {
 			serviceController = controller
 		}
 		// Fetch newConfigForOperator and rules for an operator
-		rules := getItemByName(ruleSlice, opService.(map[string]interface{})["name"].(string))
+		rules := getItemByName(ruleSlice, serviceName)
 
+		// Handle spec configurations
 		if opService.(map[string]interface{})["spec"] != nil && newConfigForOperator.(map[string]interface{})["spec"] != nil {
 			for cr, spec := range opService.(map[string]interface{})["spec"].(map[string]interface{}) {
 				if _, ok := nonDefaultProfileController[serviceController]; ok {
@@ -428,7 +528,7 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 					opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsIntoOperandConfig(spec.(map[string]interface{}), newConfigForCR, ruleForCR, overwrite, true)
 				} else {
 					if overwrite {
-						opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsIntoOperandConfigWithDefaultRules(spec.(map[string]interface{}), newConfigForCR, false)
+						opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsIntoOperandConfigWithDefaultRules(spec.(map[string]interface{}), newConfigForCR, true)
 					}
 				}
 			}
@@ -469,10 +569,11 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 					if newResource != nil {
 						if _, ok := nonDefaultProfileController[serviceController]; ok {
 							if isOpResourceExists(newResource) {
-								klog.Info("### DEBUG: deleting key")
+								klog.V(2).Info("Clearing CPU limits for non-default profile controller")
 								newResource.(map[string]interface{})["data"].(map[string]interface{})["spec"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})["cpu"] = struct{}{}
 							}
 						}
+
 						opResources[i] = mergeCRsIntoOperandConfigWithDefaultRules(opResource.(map[string]interface{}), newResource.(map[string]interface{}), true)
 					}
 				}
@@ -517,16 +618,23 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 }
 
 func isOpResourceExists(opResource interface{}) bool {
-	if opResource.(map[string]interface{})["data"] == nil {
-		klog.Info("### DEBUG: data not exists")
+	resMap, ok := toStringMap(opResource)
+	if !ok {
+		klog.V(2).Info("Resource is not a map")
 		return false
 	}
-	if opResource.(map[string]interface{})["data"].(map[string]interface{})["spec"] == nil {
-		klog.Info("### DEBUG: data not exists")
+	dataMap, ok := toStringMap(resMap["data"])
+	if !ok {
+		klog.V(2).Info("Resource has no data field")
 		return false
 	}
-	if opResource.(map[string]interface{})["data"].(map[string]interface{})["spec"].(map[string]interface{})["resources"] == nil {
-		klog.Info("### DEBUG: resources not exists")
+	specMap, ok := toStringMap(dataMap["spec"])
+	if !ok {
+		klog.V(2).Info("Resource data has no spec field")
+		return false
+	}
+	if specMap["resources"] == nil {
+		klog.V(2).Info("Resource spec has no resources field")
 		return false
 	}
 	return true
@@ -544,25 +652,22 @@ func (r *CommonServiceReconciler) getExtremeizes(ctx context.Context, opconServi
 	}); err != nil {
 		return []interface{}{}, err
 	}
-	csList, err := util.ObjectListToNewUnstructuredList(csObjectList)
-	if err != nil {
-		return []interface{}{}, err
-	}
+
 	var configSummary []interface{}
 	tmpConfigsSlice := make(map[int][]interface{})
 	serviceControllerMappingSummary := make(map[string]string)
-	for _, cs := range csList.Items {
+	for i, cs := range csObjectList.Items {
 		if cs.GetDeletionTimestamp() != nil {
 			continue
 		}
 
-		csConfigs, serviceControllerMapping, err := r.getNewConfigs(&cs)
+		csConfigs, serviceControllerMapping, err := ExtractCommonServiceConfigs(&cs, r.CSData.ServicesNs)
 		if err != nil {
 			return []interface{}{}, err
 		}
 
 		serviceControllerMappingSummary = mergeProfileController(serviceControllerMappingSummary, serviceControllerMapping)
-		tmpConfigsSlice[len(tmpConfigsSlice)] = csConfigs
+		tmpConfigsSlice[i] = csConfigs
 	}
 	for _, csConfigs := range tmpConfigsSlice {
 		configSummary = mergeCSCRs(configSummary, csConfigs, ruleSlice, serviceControllerMappingSummary, r.CSData.ServicesNs)
@@ -626,7 +731,7 @@ func (r *CommonServiceReconciler) getExtremeizes(ctx context.Context, opconServi
 					if summarizedRes != nil {
 						if _, ok := nonDefaultProfileController[serviceController]; ok {
 							if isOpResourceExists(summarizedRes) {
-								klog.Info("### DEBUG: deleting key")
+								klog.V(2).Info("Clearing CPU limits for non-default profile controller in summarized resource")
 								summarizedRes.(map[string]interface{})["data"].(map[string]interface{})["spec"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})["cpu"] = struct{}{}
 							}
 						}

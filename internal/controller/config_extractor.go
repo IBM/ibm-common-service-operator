@@ -221,48 +221,58 @@ func extractSizeConfigs(
 	return sizeConfigs, serviceControllerMapping, nil
 }
 
+// convertServiceConfigs converts CommonService service specs to []interface{} maps.
+// This is the shared conversion logic used by both extractCustomSizeConfigs and extractSizeTemplate.
+func convertServiceConfigs(services []apiv3.ServiceConfig) []interface{} {
+	if services == nil {
+		return nil
+	}
+	var result []interface{}
+	for _, service := range services {
+		serviceMap := make(map[string]interface{})
+		serviceMap["name"] = service.Name
+
+		if service.Spec != nil {
+			specMap := make(map[string]interface{})
+			for key, val := range service.Spec {
+				var rawValue interface{}
+				if err := json.Unmarshal(val.Raw, &rawValue); err == nil {
+					specMap[key] = rawValue
+				}
+			}
+			serviceMap["spec"] = specMap
+		}
+
+		if service.Resources != nil {
+			var resources []interface{}
+			for _, res := range service.Resources {
+				var rawResource interface{}
+				if err := json.Unmarshal(res.Raw, &rawResource); err == nil {
+					resources = append(resources, rawResource)
+				}
+			}
+			serviceMap["resources"] = resources
+		}
+
+		if service.ManagementStrategy != "" {
+			serviceMap["managementStrategy"] = service.ManagementStrategy
+		}
+
+		result = append(result, serviceMap)
+	}
+	return result
+}
+
 // extractCustomSizeConfigs extracts custom size configurations from services field
 func extractCustomSizeConfigs(cs *apiv3.CommonService, serviceControllerMapping map[string]string) ([]interface{}, map[string]string) {
-	var dest []interface{}
+	dest := convertServiceConfigs(cs.Spec.Services)
 
+	// Populate serviceControllerMapping from management strategies
 	if cs.Spec.Services != nil {
 		for _, service := range cs.Spec.Services {
-			serviceMap := make(map[string]interface{})
-
-			// Convert service name
-			serviceMap["name"] = service.Name
-
-			// Convert service spec
-			if service.Spec != nil {
-				specMap := make(map[string]interface{})
-				for key, val := range service.Spec {
-					var rawValue interface{}
-					if err := json.Unmarshal(val.Raw, &rawValue); err == nil {
-						specMap[key] = rawValue
-					}
-				}
-				serviceMap["spec"] = specMap
-			}
-
-			// Convert service resources
-			if service.Resources != nil {
-				var resources []interface{}
-				for _, res := range service.Resources {
-					var rawResource interface{}
-					if err := json.Unmarshal(res.Raw, &rawResource); err == nil {
-						resources = append(resources, rawResource)
-					}
-				}
-				serviceMap["resources"] = resources
-			}
-
-			// Handle management strategy
 			if service.ManagementStrategy != "" {
-				serviceMap["managementStrategy"] = service.ManagementStrategy
 				serviceControllerMapping[service.Name] = service.ManagementStrategy
 			}
-
-			dest = append(dest, serviceMap)
 		}
 	}
 
@@ -272,41 +282,7 @@ func extractCustomSizeConfigs(cs *apiv3.CommonService, serviceControllerMapping 
 // extractSizeTemplate applies a size template and merges with custom services
 func extractSizeTemplate(cs *apiv3.CommonService, sizeTemplate string, serviceControllerMapping map[string]string, opconNs string) ([]interface{}, map[string]string, error) {
 	// Convert custom services to []interface{}
-	var src []interface{}
-	if cs.Spec.Services != nil {
-		for _, service := range cs.Spec.Services {
-			serviceMap := make(map[string]interface{})
-			serviceMap["name"] = service.Name
-
-			if service.Spec != nil {
-				specMap := make(map[string]interface{})
-				for key, val := range service.Spec {
-					var rawValue interface{}
-					if err := json.Unmarshal(val.Raw, &rawValue); err == nil {
-						specMap[key] = rawValue
-					}
-				}
-				serviceMap["spec"] = specMap
-			}
-
-			if service.Resources != nil {
-				var resources []interface{}
-				for _, res := range service.Resources {
-					var rawResource interface{}
-					if err := json.Unmarshal(res.Raw, &rawResource); err == nil {
-						resources = append(resources, rawResource)
-					}
-				}
-				serviceMap["resources"] = resources
-			}
-
-			if service.ManagementStrategy != "" {
-				serviceMap["managementStrategy"] = service.ManagementStrategy
-			}
-
-			src = append(src, serviceMap)
-		}
-	}
+	src := convertServiceConfigs(cs.Spec.Services)
 
 	// Convert size template string to slice
 	sizes, err := convertStringToSlice(sizeTemplate)
@@ -367,5 +343,3 @@ func extractSizeTemplate(cs *apiv3.CommonService, sizeTemplate string, serviceCo
 
 	return sizes, serviceControllerMapping, nil
 }
-
-// Made with Bob
