@@ -115,7 +115,7 @@ spec:
             - name: CPFS_UTILS_IMAGE
               value: {{ .Values.cpfs.imagePullPrefix | default .Values.global.imagePullPrefix }}/{{ .Values.cpfs.imageRegistryNamespaceOperand}}/cpfs-utils:latest
             - name: CPFS_OADP_PLUGIN_IMAGE
-              value: {{ .Values.cpfs.imagePullPrefix | default .Values.global.imagePullPrefix }}/{{ .Values.cpfs.imageRegistryNamespaceOperand}}/cpfs-oadp-plugin:latest
+              value: {{ .Values.cpfs.imagePullPrefix | default .Values.global.imagePullPrefix }}/{{ .Values.cpfs.imageRegistryNamespaceOperand}}/cpfs-oadp-plugins:latest
           imagePullPolicy: IfNotPresent
           livenessProbe: 
             failureThreshold: 10

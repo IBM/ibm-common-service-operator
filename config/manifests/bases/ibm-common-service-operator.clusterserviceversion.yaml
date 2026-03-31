@@ -271,7 +271,7 @@ spec:
     name: COMMON_SERVICE_OPERATOR_IMAGE
   - image: icr.io/cpopen/cpfs/cpfs-utils:latest
     name: CPFS_UTILS_IMAGE
-  - image: icr.io/cpopen/cpfs/cpfs-oadp-plugin:latest
+  - image: icr.io/cpopen/cpfs/cpfs-oadp-plugins:latest
     name: CPFS_OADP_PLUGIN_IMAGE
   - image: icr.io/cpopen/cpfs/must-gather:latest
     name: MUST_GATHER_IMAGE
