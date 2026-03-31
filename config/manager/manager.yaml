@@ -77,7 +77,7 @@ spec:
         - name: CPFS_UTILS_IMAGE
           value: icr.io/cpopen/cpfs/cpfs-utils:latest
         - name: CPFS_OADP_PLUGIN_IMAGE
-          value: icr.io/cpopen/cpfs/cpfs-oadp-plugin:latest
+          value: icr.io/cpopen/cpfs/cpfs-oadp-plugins:latest
         resources:
           limits:
             cpu: 500m
