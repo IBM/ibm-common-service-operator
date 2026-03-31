@@ -10,4 +10,3 @@ global:
 
 cpfs:
   imageRegistryNamespaceOperand: cpopen/cpfs
-  utilsImageDigest: "sha256:xxxxxx"
