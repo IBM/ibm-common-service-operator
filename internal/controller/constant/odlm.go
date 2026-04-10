@@ -494,9 +494,9 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
-  - name: ibm-platformui-operator-v6.5
+  - name: ibm-platformui-operator-v6.10
     namespace: "{{ .CPFSNs }}"
-    channel: v6.5
+    channel: v6.10
     packageName: ibm-zen-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -2655,7 +2655,7 @@ spec:
     sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-platformui-operator
     namespace: "{{ .CPFSNs }}"
-    channel: v6.4
+    channel: v6.10
     packageName: ibm-zen-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
@@ -2663,7 +2663,7 @@ spec:
     sourceNamespace: "{{ .CatalogSourceNs }}"
   - name: ibm-idp-config-ui-operator
     namespace: "{{ .CPFSNs }}"
-    channel: v4.14
+    channel: v4.15
     packageName: ibm-commonui-operator-app
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
