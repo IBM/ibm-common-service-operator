@@ -564,6 +564,18 @@ function label_helm_cluster_scope(){
     edb_release_namespace=$(${OC} get crd clusters.postgresql.k8s.enterprisedb.io -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
     ${OC} label secret sh.helm.release.v1.$edb_release_name.v1 -n $edb_release_namespace foundationservices.cloudpak.ibm.com=edb-cluster  --overwrite=true 2>/dev/null
 
+    #ibm-pg (crds, clusterrole, clusterrolebinding, webhooks) 
+    ${OC} label crd backups.pg.ibm.com clusterimagecatalogs.pg.ibm.com clusters.pg.ibm.com databases.pg.ibm.com failoverquorums.pg.ibm.com imagecatalogs.pg.ibm.com poolers.pg.ibm.com publications.pg.ibm.com scheduledbackups.pg.ibm.com subscriptions.pg.ibm.com foundationservices.cloudpak.ibm.com=ibm-pg-cluster  --overwrite=true 2>/dev/null
+    ${OC} label clusterrole postgresql-operator-controller-manager-$OPERATOR_NS foundationservices.cloudpak.ibm.com=ibm-pg-cluster  --overwrite=true 2>/dev/null
+    ${OC} label clusterrolebinding postgresql-operator-controller-manager-$OPERATOR_NS foundationservices.cloudpak.ibm.com=ibm-pg-cluster  --overwrite=true 2>/dev/null
+
+    ${OC} label validatingwebhookconfiguration ibm-pg-validating-webhook-configuration-$OPERATOR_NS foundationservices.cloudpak.ibm.com=ibm-pg-cluster  --overwrite=true 2>/dev/null
+    ${OC} label mutatingwebhookconfiguration ibm-pg-mutating-webhook-configuration-$OPERATOR_NS foundationservices.cloudpak.ibm.com=ibm-pg-cluster  --overwrite=true 2>/dev/null
+    ibm_pg_release_name=$(${OC} get crd clusters.pg.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
+    ibm_pg_release_namespace=$(${OC} get crd clusters.pg.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
+    ${OC} label secret sh.helm.release.v1.$ibm_pg_release_name.v1 -n $edb_release_namespace foundationservices.cloudpak.ibm.com=ibm-pg-cluster  --overwrite=true 2>/dev/null
+
+
     #zen? (crds, clusterrole, clusterrolebinding)
     #assuming we are still responsible for zen
     #CRD covered in label_ns_and_related function
