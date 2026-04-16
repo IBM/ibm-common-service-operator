@@ -249,13 +249,14 @@ function label_ibm_catalogsources() {
 
     # Label the CatalogSource with ".spec.publisher: IBM" in private namespace
     local ibm_catalogsources=""
-    while IFS=' ' read -r -a sources; do
-        for source in "${sources[@]}"; do
-            if ${OC} get catalogsource "$source" -n "$namespace" -o json | grep -q '"publisher": *"IBM"*'; then
-                ibm_catalogsources+=" $source"
-            fi
-        done
-    done <<< "$(${OC} get catalogsource -n "$namespace" -o jsonpath='{.items[*].metadata.name}')"
+    local sources_list
+    sources_list=$(${OC} get catalogsource -n "$namespace" -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || echo "")
+    
+    for source in $sources_list; do
+        if ${OC} get catalogsource "$source" -n "$namespace" -o json 2>/dev/null | grep -q '"publisher": *"IBM"*'; then
+            ibm_catalogsources+=" $source"
+        fi
+    done
     
     # Add additional catalog sources
     ibm_catalogsources="${ADDITIONAL_SOURCES}${ibm_catalogsources}"
@@ -416,11 +417,11 @@ function label_lsr() {
 
     info "Start to label the necessary secrets"
     secrets=$(${OC} get secrets -n $LSR_NAMESPACE | grep ibm-license-service-reporter-token | cut -d ' ' -f1)
-    for secret in ${secrets[@]}; do
+    for secret in $secrets; do
         ${OC} label secret $secret foundationservices.cloudpak.ibm.com=lsr -n $LSR_NAMESPACE --overwrite=true 2>/dev/null
-    done    
+    done
     secrets=$(${OC} get secrets -n $LSR_NAMESPACE | grep ibm-license-service-reporter-credential | cut -d ' ' -f1)
-    for secret in ${secrets[@]}; do
+    for secret in $secrets; do
         ${OC} label secret $secret foundationservices.cloudpak.ibm.com=lsr -n $LSR_NAMESPACE --overwrite=true 2>/dev/null
     done
 
