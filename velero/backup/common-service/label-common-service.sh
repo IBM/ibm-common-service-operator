@@ -566,14 +566,13 @@ function label_helm_cluster_scope(){
 
     #ibm-pg (crds, clusterrole, clusterrolebinding, webhooks) 
     ${OC} label crd backups.pg.ibm.com clusterimagecatalogs.pg.ibm.com clusters.pg.ibm.com databases.pg.ibm.com failoverquorums.pg.ibm.com imagecatalogs.pg.ibm.com poolers.pg.ibm.com publications.pg.ibm.com scheduledbackups.pg.ibm.com subscriptions.pg.ibm.com foundationservices.cloudpak.ibm.com=ibm-pg-cluster  --overwrite=true 2>/dev/null
-    ${OC} label clusterrole postgresql-operator-controller-manager-$OPERATOR_NS foundationservices.cloudpak.ibm.com=ibm-pg-cluster  --overwrite=true 2>/dev/null
-    ${OC} label clusterrolebinding postgresql-operator-controller-manager-$OPERATOR_NS foundationservices.cloudpak.ibm.com=ibm-pg-cluster  --overwrite=true 2>/dev/null
-
+    ${OC} label clusterrole ibm-pg-operator-$OPERATOR_NS foundationservices.cloudpak.ibm.com=ibm-pg-cluster  --overwrite=true 2>/dev/null
+    ${OC} label clusterrolebinding ibm-pg-operator-rolebinding-$OPERATOR_NS foundationservices.cloudpak.ibm.com=ibm-pg-cluster  --overwrite=true 2>/dev/null
     ${OC} label validatingwebhookconfiguration ibm-pg-validating-webhook-configuration-$OPERATOR_NS foundationservices.cloudpak.ibm.com=ibm-pg-cluster  --overwrite=true 2>/dev/null
     ${OC} label mutatingwebhookconfiguration ibm-pg-mutating-webhook-configuration-$OPERATOR_NS foundationservices.cloudpak.ibm.com=ibm-pg-cluster  --overwrite=true 2>/dev/null
     ibm_pg_release_name=$(${OC} get crd clusters.pg.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
     ibm_pg_release_namespace=$(${OC} get crd clusters.pg.ibm.com -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
-    ${OC} label secret sh.helm.release.v1.$ibm_pg_release_name.v1 -n $edb_release_namespace foundationservices.cloudpak.ibm.com=ibm-pg-cluster  --overwrite=true 2>/dev/null
+    ${OC} label secret sh.helm.release.v1.$ibm_pg_release_name.v1 -n $ibm_pg_release_namespace foundationservices.cloudpak.ibm.com=ibm-pg-cluster  --overwrite=true 2>/dev/null
 
 
     #zen? (crds, clusterrole, clusterrolebinding)
@@ -668,6 +667,21 @@ function label_helm_namespace_scope(){
     edb_release_namespace=$(${OC} get deploy $deploy -n $OPERATOR_NS -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
     ${OC} label secret sh.helm.release.v1.$edb_release_name.v1 -n $edb_release_namespace foundationservices.cloudpak.ibm.com=edb-chart  --overwrite=true 2>/dev/null
 
+    #IBM PG
+    deploy=$(${OC} get deploy -n $OPERATOR_NS | grep ibm-pg-operator | awk '{print $1}')
+    ${OC} label deployment $deploy foundationservices.cloudpak.ibm.com=ibm-pg-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label configmap ibm-pg-operator-operand-images ibm-pg-default-monitoring ibm-pg-operator-config foundationservices.cloudpak.ibm.com=ibm-pg-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label service ibm-pg-webhook-service foundationservices.cloudpak.ibm.com=ibm-pg-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label serviceaccount ibm-pg-operator foundationservices.cloudpak.ibm.com=ibm-pg-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label role ibm-pg-operator foundationservices.cloudpak.ibm.com=ibm-pg-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label rolebinding ibm-pg-operator-rolebinding foundationservices.cloudpak.ibm.com=ibm-pg-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
+    ${OC} label role ibm-pg-operator foundationservices.cloudpak.ibm.com=ibm-pg-chart -n $SERVICES_NS --overwrite=true 2>/dev/null
+    ${OC} label rolebinding ibm-pg-operator-rolebinding foundationservices.cloudpak.ibm.com=ibm-pg-chart -n $SERVICES_NS --overwrite=true 2>/dev/null
+    ibm-pg_release_name=$(${OC} get deploy $deploy -n $OPERATOR_NS -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
+    ibm-pg_release_namespace=$(${OC} get deploy $deploy -n $OPERATOR_NS -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
+    ${OC} label secret sh.helm.release.v1.$ibm-pg_release_name.v1 -n $ibm-pg_release_namespace foundationservices.cloudpak.ibm.com=ibm-pg-chart  --overwrite=true 2>/dev/null
+
+
     #zen
     ${OC} label deploy ibm-zen-operator foundationservices.cloudpak.ibm.com=zen-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
     #zenservice covered in label_ns_and_related function
@@ -699,6 +713,11 @@ function label_helm_namespace_scope(){
             #ui
             ${OC} label role ibm-commonui-operator foundationservices.cloudpak.ibm.com=ui-chart -n $namespace --overwrite=true 2>/dev/null
             ${OC} label rolebinding ibm-commonui-operator foundationservices.cloudpak.ibm.com=ui-chart -n $namespace --overwrite=true 2>/dev/null
+
+            #ibm-pg
+            ${OC} label role ibm-pg-operator foundationservices.cloudpak.ibm.com=ibm-pg-chart -n $namespace --overwrite=true 2>/dev/null
+            ${OC} label rolebinding ibm-pg-operator-rolebinding foundationservices.cloudpak.ibm.com=ibm-pg-chart -n $namespace --overwrite=true 2>/dev/null
+
 
             # UMS (add deployment, serviceaccounts, roles, rolebindings, configmap, CRs)
             ${OC} label deployment ibm-usage-metering-operator foundationservices.cloudpak.ibm.com=ums -n $namespace --overwrite=true 2>/dev/null || true
