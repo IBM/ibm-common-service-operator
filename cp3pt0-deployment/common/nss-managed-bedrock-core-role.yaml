@@ -1789,3 +1789,171 @@ rules:
     resources:
       - remotekuberestemplate
       - remotekuberestemplates
+  - verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+    apiGroups:
+      - pg.ibm.com
+    resources:
+      - backups
+  - verbs:
+      - get
+      - patch
+      - update
+    apiGroups:
+      - pg.ibm.com
+    resources:
+      - backups/status
+  - verbs:
+      - get
+      - list
+      - watch
+    apiGroups:
+      - pg.ibm.com
+    resources:
+      - clusterimagecatalogs
+  - verbs:
+      - update
+    apiGroups:
+      - pg.ibm.com
+    resources:
+      - clusters/finalizers
+  - verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+    apiGroups:
+      - pg.ibm.com
+    resources:
+      - databases
+  - verbs:
+      - get
+      - patch
+      - update
+    apiGroups:
+      - pg.ibm.com
+    resources:
+      - databases/status
+  - verbs:
+      - create
+      - delete
+      - get
+      - list
+      - watch
+    apiGroups:
+      - pg.ibm.com
+    resources:
+      - failoverquorums
+  - verbs:
+      - get
+      - patch
+      - update
+      - watch
+    apiGroups:
+      - pg.ibm.com
+    resources:
+      - failoverquorums/status
+  - verbs:
+      - get
+      - list
+      - watch
+    apiGroups:
+      - pg.ibm.com
+    resources:
+      - imagecatalogs
+  - verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+    apiGroups:
+      - pg.ibm.com
+    resources:
+      - poolers
+  - verbs:
+      - update
+    apiGroups:
+      - pg.ibm.com
+    resources:
+      - poolers/finalizers
+  - verbs:
+      - get
+      - patch
+      - update
+      - watch
+    apiGroups:
+      - pg.ibm.com
+    resources:
+      - poolers/status
+  - verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+    apiGroups:
+      - pg.ibm.com
+    resources:
+      - publications
+  - verbs:
+      - get
+      - patch
+      - update
+    apiGroups:
+      - pg.ibm.com
+    resources:
+      - publications/status
+  - verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+    apiGroups:
+      - pg.ibm.com
+    resources:
+      - scheduledbackups
+  - verbs:
+      - get
+      - patch
+      - update
+    apiGroups:
+      - pg.ibm.com
+    resources:
+      - scheduledbackups/status
+  - verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+    apiGroups:
+      - pg.ibm.com
+    resources:
+      - subscriptions
+  - verbs:
+      - get
+      - patch
+      - update
+    apiGroups:
+      - pg.ibm.com
+    resources:
+      - subscriptions/status
