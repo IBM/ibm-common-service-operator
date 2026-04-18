@@ -162,7 +162,7 @@ function detect_csdb_operator() {
   # Check for IBM CloudNativePG cluster
   IBM_PG_CLUSTER=$(oc get cluster.pg.ibm.com common-service-db -n $namespace --ignore-not-found 2>/dev/null)
   if [[ -n $IBM_PG_CLUSTER ]]; then
-    info "Detected IBM CNPG cluster for common-service-db in namespace $namespace"
+    info "Detected IBM CNPG cluster for common-service-db in namespace $namespace" >&2
     echo "ibm-pg"
     return 0
   fi
@@ -170,13 +170,13 @@ function detect_csdb_operator() {
   # Check for EDB cluster
   EDB_CLUSTER=$(oc get cluster.postgresql.k8s.enterprisedb.io common-service-db -n $namespace --ignore-not-found 2>/dev/null)
   if [[ -n $EDB_CLUSTER ]]; then
-    info "Detected EDB cluster for common-service-db in namespace $namespace"
+    info "Detected EDB cluster for common-service-db in namespace $namespace" >&2
     echo "edb"
     return 0
   fi
   
   # Default to EDB if no cluster found (backward compatibility)
-  warning "No PostgreSQL cluster found for common-service-db in namespace $namespace, defaulting to EDB"
+  warning "No PostgreSQL cluster found for common-service-db in namespace $namespace, defaulting to EDB" >&2
   echo "edb"
   return 0
 }
@@ -188,7 +188,7 @@ function detect_zen_operator() {
   # Check for IBM CloudNativePG cluster (zen-metastore without -edb suffix)
   IBM_PG_CLUSTER=$(oc get cluster.pg.ibm.com zen-metastore -n $namespace --ignore-not-found 2>/dev/null)
   if [[ -n $IBM_PG_CLUSTER ]]; then
-    info "Detected IBM CNPG cluster for zen-metastore in namespace $namespace"
+    info "Detected IBM CNPG cluster for zen-metastore in namespace $namespace" >&2
     echo "ibm-pg"
     return 0
   fi
@@ -196,13 +196,13 @@ function detect_zen_operator() {
   # Check for EDB cluster (zen-metastore-edb with -edb suffix)
   EDB_CLUSTER=$(oc get cluster.postgresql.k8s.enterprisedb.io zen-metastore-edb -n $namespace --ignore-not-found 2>/dev/null)
   if [[ -n $EDB_CLUSTER ]]; then
-    info "Detected EDB cluster for zen-metastore-edb in namespace $namespace"
+    info "Detected EDB cluster for zen-metastore-edb in namespace $namespace" >&2
     echo "edb"
     return 0
   fi
   
   # Default to EDB if no cluster found (backward compatibility)
-  warning "No PostgreSQL cluster found for zen-metastore in namespace $namespace, defaulting to EDB"
+  warning "No PostgreSQL cluster found for zen-metastore in namespace $namespace, defaulting to EDB" >&2
   echo "edb"
   return 0
 }
