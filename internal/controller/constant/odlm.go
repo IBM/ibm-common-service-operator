@@ -589,24 +589,24 @@ const (
 apiVersion: operator.ibm.com/v1alpha1
 kind: OperandRegistry
 metadata:
-	 name: common-service
-	 namespace: "{{ .ServicesNs }}"
-	 labels:
-	   operator.ibm.com/managedByCsOperator: "true"
-	 annotations:
-	   version: {{ .Version }}
-	   excluded-catalogsource: {{ .ExcludedCatalog }}
-	   status-monitored-services: {{ .StatusMonitoredServices }}
+  name: common-service
+  namespace: "{{ .ServicesNs }}"
+  labels:
+    operator.ibm.com/managedByCsOperator: "true"
+  annotations:
+    version: {{ .Version }}
+    excluded-catalogsource: {{ .ExcludedCatalog }}
+    status-monitored-services: {{ .StatusMonitoredServices }}
 spec:
-	 operators:
-	 - channel: v28
-	   installPlanApproval: {{ .ApprovalMode }}
-	   name: common-service-cnpg
-	   namespace: "{{ .CPFSNs }}"
-	   packageName: ibm-pg-operator
-	   scope: public
-	   sourceName: {{ .CatalogSourceName }}
-	   sourceNamespace: "{{ .CatalogSourceNs }}"
+  operators:
+  - channel: v28
+    installPlanApproval: {{ .ApprovalMode }}
+    name: common-service-cnpg
+    namespace: "{{ .CPFSNs }}"
+    packageName: ibm-pg-operator
+    scope: public
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 
 	// CommonServicePGMigratorOpReg defines the OperandRegistry for the PG migrator
@@ -615,23 +615,23 @@ spec:
 apiVersion: operator.ibm.com/v1alpha1
 kind: OperandRegistry
 metadata:
-	 name: common-service-pg-migrator
-	 namespace: "{{ .ServicesNs }}"
-	 labels:
-	   operator.ibm.com/managedByCsOperator: "true"
-	 annotations:
-	   version: {{ .Version }}
-	   excluded-catalogsource: {{ .ExcludedCatalog }}
+  name: common-service-pg-migrator
+  namespace: "{{ .ServicesNs }}"
+  labels:
+    operator.ibm.com/managedByCsOperator: "true"
+  annotations:
+    version: {{ .Version }}
+    excluded-catalogsource: {{ .ExcludedCatalog }}
 spec:
-	 operators:
-	 - channel: v28
-	   installPlanApproval: {{ .ApprovalMode }}
-	   name: common-service-pg-migrator
-	   namespace: "{{ .CPFSNs }}"
-	   packageName: ibm-pg-operator
-	   scope: public
-	   sourceName: {{ .CatalogSourceName }}
-	   sourceNamespace: "{{ .CatalogSourceNs }}"
+  operators:
+  - channel: v28
+    installPlanApproval: {{ .ApprovalMode }}
+    name: common-service-pg-migrator
+    namespace: "{{ .CPFSNs }}"
+    packageName: ibm-pg-operator
+    scope: public
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
 `
 )
 
