@@ -978,6 +978,7 @@ func (b *Bootstrap) InstallOrUpdateOpcon(forceUpdateODLMCRs bool, csInstance *ap
 		constant.KeyCloakOpCon,
 		constant.CommonServicePGOpCon,
 		constant.CommonServiceCNPGOpCon,
+		constant.CommonServicePGMigratorOpCon,
 	}
 
 	baseCon = constant.CSV4OpCon
@@ -1011,7 +1012,7 @@ func (b *Bootstrap) InstallOrUpdateOpcon(forceUpdateODLMCRs bool, csInstance *ap
 	return nil
 }
 
-// InstallOrUpdateOpcon will install or update OperandConfig when Opcon CRD is existent
+// InstallOrUpdateOperatorConfig installs or updates the OperatorConfig resource.
 func (b *Bootstrap) InstallOrUpdateOperatorConfig(config string, forceUpdateODLMCRs bool) error {
 	// clean up OperatorConfigs not in servicesNamespace every time function is called
 	opts := []client.ListOption{
