@@ -2467,11 +2467,11 @@ spec:
           description: "Configuration for EDB to IBM PG migration"
         data:
           data:
-            MIGRATION_NAMESPACE: "{{ .ServicesNs }}"
-            MIGRATION_CLUSTER: "common-service-db"
-            MIGRATION_TIMEOUT: "120"
-            MIGRATION_SKIP_EDB_CLEANUP: "true"
-            MIGRATION_SKIP_OPERATOR_VALIDATION: "true"
+            NAMESPACE: "{{ .ServicesNs }}"
+            CLUSTER_NAME: "common-service-db"
+            TIMEOUT: "120"
+            SKIP_EDB_CLEANUP: "true"
+            SKIP_OPERATOR_VALIDATION: "true"
       - apiVersion: v1
         kind: ServiceAccount
         name: common-service-db-pg-migration-sa
@@ -2635,6 +2635,12 @@ spec:
                         ephemeral-storage: 256Mi
                     command:
                       - /usr/local/bin/pg-migrate
+                    args:
+                      - --namespace=$(NAMESPACE)
+                      - --cluster=$(CLUSTER_NAME)
+                      - --timeout=$(TIMEOUT)
+                      - --skip-edb-cleanup=$(SKIP_EDB_CLEANUP)
+                      - --skip-operator-validation=$(SKIP_OPERATOR_VALIDATION)
                     envFrom:
                       - configMapRef:
                           name: cpfs-migration-config
