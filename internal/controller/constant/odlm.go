@@ -2495,6 +2495,7 @@ spec:
                 - watch
                 - update
                 - patch
+                - delete
             - apiGroups:
                 - pg.ibm.com
               resources:
@@ -2507,6 +2508,7 @@ spec:
                 - watch
                 - update
                 - patch
+                - delete
             - apiGroups:
                 - ""
               resources:
@@ -2518,6 +2520,7 @@ spec:
                 - watch
                 - update
                 - patch
+                - delete
             - apiGroups:
                 - ""
               resources:
@@ -2529,6 +2532,7 @@ spec:
                 - watch
                 - update
                 - patch
+                - delete
             - apiGroups:
                 - ""
               resources:
@@ -2540,6 +2544,7 @@ spec:
                 - watch
                 - update
                 - patch
+                - delete
             - apiGroups:
                 - ""
               resources:
@@ -2550,6 +2555,7 @@ spec:
                 - watch
                 - update
                 - patch
+                - delete
             - apiGroups:
                 - apps
               resources:
