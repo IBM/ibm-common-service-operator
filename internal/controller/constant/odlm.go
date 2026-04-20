@@ -2489,6 +2489,7 @@ spec:
               resources:
                 - clusters
                 - clusters/status
+                - clusters/finalizers
               verbs:
                 - get
                 - list
@@ -2501,6 +2502,7 @@ spec:
               resources:
                 - clusters
                 - clusters/status
+                - clusters/finalizers
               verbs:
                 - create
                 - get
