@@ -90,6 +90,7 @@ func (b *Bootstrap) buildOperandRegistry(ctx context.Context, installPlanApprova
 		constant.KeyCloakOpReg,
 		constant.CommonServicePGOpReg,
 		constant.CommonServiceCNPGOpReg,
+		constant.CommonServicePGMigratorOpReg,
 	}
 
 	if b.SaasEnable {

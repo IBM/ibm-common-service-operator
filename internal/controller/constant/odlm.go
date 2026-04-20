@@ -608,6 +608,31 @@ spec:
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
 `
+
+	// CommonServicePGMigratorOpReg defines the OperandRegistry for the PG migrator
+	// This installs the IBM PG operator v28 as a prerequisite for EDB to IBM PG migration
+	CommonServicePGMigratorOpReg = `
+apiVersion: operator.ibm.com/v1alpha1
+kind: OperandRegistry
+metadata:
+  name: common-service-pg-migrator
+  namespace: "{{ .ServicesNs }}"
+  labels:
+    operator.ibm.com/managedByCsOperator: "true"
+  annotations:
+    version: {{ .Version }}
+    excluded-catalogsource: {{ .ExcludedCatalog }}
+spec:
+  operators:
+  - channel: v28
+    installPlanApproval: {{ .ApprovalMode }}
+    name: common-service-pg-migrator
+    namespace: "{{ .CPFSNs }}"
+    packageName: ibm-pg-operator
+    scope: public
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+`
 )
 
 const (
@@ -2317,6 +2342,7 @@ spec:
             replicationSlots:
               highAvailability:
                 enabled: true
+                slotPrefix: _cnp_
             certificates:
               clientCASecret: cs-ca-certificate-secret
               replicationTLSSecret: common-service-db-replica-tls-secret
@@ -2415,6 +2441,218 @@ spec:
             DATABASE_CA_CERT: ca.crt
             DATABASE_CLIENT_KEY: tls.key
             DATABASE_CLIENT_CERT: tls.crt
+`
+
+	// CommonServicePGMigratorOpCon defines the OperandConfig for the PG migrator
+	// This creates the RBAC resources and Job for EDB to IBM PG migration
+	CommonServicePGMigratorOpCon = `
+apiVersion: operator.ibm.com/v1alpha1
+kind: OperandConfig
+metadata:
+  name: common-service-pg-migrator
+  namespace: "{{ .ServicesNs }}"
+  labels:
+    operator.ibm.com/managedByCsOperator: "true"
+  annotations:
+    version: {{ .Version }}
+spec:
+  services:
+  - name: common-service-pg-migrator
+    resources:
+      - apiVersion: v1
+        kind: ConfigMap
+        name: cpfs-migration-config
+        labels:
+          app: cpfs-migrator
+        annotations:
+          description: "Configuration for EDB to IBM PG migration"
+        data:
+          data:
+            NAMESPACE: "{{ .ServicesNs }}"
+            CLUSTER_NAME: "common-service-db"
+            TIMEOUT: "120"
+            SKIP_EDB_CLEANUP: "true"
+            SKIP_OPERATOR_VALIDATION: "true"
+      - apiVersion: v1
+        kind: ServiceAccount
+        name: common-service-db-pg-migration-sa
+        labels:
+          app: cpfs-pg-migrator
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: Role
+        name: common-service-db-pg-migration-role
+        labels:
+          app: cpfs-pg-migrator
+        data:
+          rules:
+            - apiGroups:
+                - postgresql.k8s.enterprisedb.io
+              resources:
+                - clusters
+                - clusters/status
+                - clusters/finalizers
+              verbs:
+                - get
+                - list
+                - watch
+                - update
+                - patch
+                - delete
+            - apiGroups:
+                - pg.ibm.com
+              resources:
+                - clusters
+                - clusters/status
+                - clusters/finalizers
+              verbs:
+                - create
+                - get
+                - list
+                - watch
+                - update
+                - patch
+                - delete
+            - apiGroups:
+                - ""
+              resources:
+                - pods
+                - pods/status
+              verbs:
+                - get
+                - list
+                - watch
+                - update
+                - patch
+                - delete
+            - apiGroups:
+                - ""
+              resources:
+                - persistentvolumeclaims
+                - persistentvolumeclaims/status
+              verbs:
+                - get
+                - list
+                - watch
+                - update
+                - patch
+                - delete
+            - apiGroups:
+                - ""
+              resources:
+                - services
+                - services/status
+              verbs:
+                - get
+                - list
+                - watch
+                - update
+                - patch
+                - delete
+            - apiGroups:
+                - ""
+              resources:
+                - secrets
+              verbs:
+                - get
+                - list
+                - watch
+                - update
+                - patch
+                - delete
+            - apiGroups:
+                - apps
+              resources:
+                - deployments
+                - deployments/status
+              verbs:
+                - get
+                - list
+                - watch
+            - apiGroups:
+                - ""
+              resources:
+                - events
+              verbs:
+                - create
+                - patch
+            - apiGroups:
+                - ""
+              resources:
+                - configmaps
+              verbs:
+                - get
+                - list
+                - watch
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        name: common-service-db-pg-migration-rolebinding
+        labels:
+          app: cpfs-pg-migrator
+        data:
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: Role
+            name: common-service-db-pg-migration-role
+          subjects:
+            - kind: ServiceAccount
+              name: common-service-db-pg-migration-sa
+              namespace: {{ .ServicesNs }}
+      - apiVersion: batch/v1
+        kind: Job
+        name: common-service-db-pg-migration-job
+        labels:
+          app: cpfs-pg-migrator
+          app.kubernetes.io/instance: common-service-db-pg-migration-job
+          app.kubernetes.io/managed-by: common-service-db-pg-migration-job
+        annotations:
+          description: "Migrates EDB PostgreSQL cluster common-service-db to IBM PG Cluster"
+        data:
+          spec:
+            backoffLimit: 2
+            ttlSecondsAfterFinished: 3600
+            template:
+              metadata:
+                labels:
+                  app: cpfs-pg-migrator
+                  app.kubernetes.io/instance: common-service-db-pg-migration-job
+                  app.kubernetes.io/managed-by: common-service-db-pg-migration-job
+              spec:
+                serviceAccountName: common-service-db-pg-migration-sa
+                restartPolicy: Never
+                securityContext:
+                  runAsNonRoot: true
+                  seccompProfile:
+                    type: RuntimeDefault
+                containers:
+                  - name: migrator
+                    image: {{ .UtilsImage }}
+                    imagePullPolicy: Always
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      capabilities:
+                        drop: ["ALL"]
+                      readOnlyRootFilesystem: false
+                      runAsNonRoot: true
+                    resources:
+                      requests:
+                        cpu: 100m
+                        memory: 256Mi
+                        ephemeral-storage: 256Mi
+                      limits:
+                        cpu: 150m
+                        memory: 512Mi
+                        ephemeral-storage: 256Mi
+                    command:
+                      - /usr/local/bin/pg-migrate
+                    args:
+                      - --namespace=$(NAMESPACE)
+                      - --cluster=$(CLUSTER_NAME)
+                      - --timeout=$(TIMEOUT)
+                      - --skip-edb-cleanup=$(SKIP_EDB_CLEANUP)
+                      - --skip-operator-validation=$(SKIP_OPERATOR_VALIDATION)
+                    envFrom:
+                      - configMapRef:
+                          name: cpfs-migration-config
 `
 )
 
