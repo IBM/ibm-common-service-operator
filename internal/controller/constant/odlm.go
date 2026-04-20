@@ -2342,6 +2342,7 @@ spec:
             replicationSlots:
               highAvailability:
                 enabled: true
+                slotPrefix: _cnp_
             certificates:
               clientCASecret: cs-ca-certificate-secret
               replicationTLSSecret: common-service-db-replica-tls-secret
