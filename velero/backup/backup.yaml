@@ -58,6 +58,8 @@ spec:
       - zen-cluster
       - edb-chart
       - edb-cluster
+      - ibm-pg-chart
+      - ibm-pg-cluster
       - iam-chart
       - iam-cluster
       - nss-cluster
