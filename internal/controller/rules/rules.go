@@ -82,6 +82,10 @@ const ConfigurationRules = `
     data:
       spec:
         instances: LARGEST_VALUE
+        storage:
+          size: LARGEST_VALUE
+        walStorage:
+          size: LARGEST_VALUE
         resources:
           limits:
             cpu: LARGEST_VALUE
@@ -103,6 +107,10 @@ const ConfigurationRules = `
     data:
       spec:
         instances: LARGEST_VALUE
+        storage:
+          size: LARGEST_VALUE
+        walStorage:
+          size: LARGEST_VALUE
         resources:
           limits:
             cpu: LARGEST_VALUE
@@ -1191,6 +1199,10 @@ const ConfigurationRules = `
     data:
       spec:
         instances: LARGEST_VALUE
+        storage:
+          size: LARGEST_VALUE
+        walStorage:
+          size: LARGEST_VALUE
         resources:
           limits:
             cpu: LARGEST_VALUE
@@ -1206,6 +1218,10 @@ const ConfigurationRules = `
     data:
       spec:
         instances: LARGEST_VALUE
+        storage:
+          size: LARGEST_VALUE
+        walStorage:
+          size: LARGEST_VALUE
         resources:
           limits:
             cpu: LARGEST_VALUE

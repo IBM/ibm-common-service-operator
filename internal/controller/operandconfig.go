@@ -367,6 +367,7 @@ func mergeChangedMap(key string, defaultMap interface{}, changedMap interface{},
 					"instances":         true,
 					"max_connections":   true,
 					"shared_buffers":    true,
+					"size":              true,
 				}
 				if _, ok := comparableKeys[key]; ok {
 					if directAssign {
