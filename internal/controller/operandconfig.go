@@ -529,7 +529,7 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 	}
 
 	// 7. Hashes differ - replace entire services array
-	klog.Infof("Updating OperandConfig services (hash mismatch - existing: %s, desired: %s)", existingHash, desiredHash)
+	klog.Infof("Updating OperandConfig services)", existingHash, desiredHash)
 	opcon.Object["spec"].(map[string]interface{})["services"] = desiredServices
 
 	if err := r.Update(ctx, opcon); err != nil {
