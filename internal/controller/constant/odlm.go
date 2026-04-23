@@ -2490,6 +2490,7 @@ spec:
           data:
             NAMESPACE: "{{ .ServicesNs }}"
             CLUSTER_NAME: "common-service-db"
+            PG_VERSION: "16"
             TIMEOUT: "120"
             SKIP_EDB_CLEANUP: "true"
             SKIP_OPERATOR_VALIDATION: "true"
@@ -2667,6 +2668,7 @@ spec:
                     args:
                       - --namespace=$(NAMESPACE)
                       - --cluster=$(CLUSTER_NAME)
+                      - --pg-version=$(PG_VERSION)
                       - --timeout=$(TIMEOUT)
                       - --skip-edb-cleanup=$(SKIP_EDB_CLEANUP)
                       - --skip-operator-validation=$(SKIP_OPERATOR_VALIDATION)
