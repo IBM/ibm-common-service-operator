@@ -23,7 +23,6 @@ import (
 	"reflect"
 
 	utilyaml "github.com/ghodss/yaml"
-	"github.com/mohae/deepcopy"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
@@ -472,156 +471,74 @@ func deepMergeTwoMaps(key string, defaultMap interface{}, changedMap interface{}
 }
 
 func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newConfigs []interface{}, serviceControllerMapping map[string]string) (bool, error) {
+	// 1. Get existing OperandConfig
 	opcon := util.NewUnstructured("operator.ibm.com", "OperandConfig", "v1alpha1")
 	opconKey := types.NamespacedName{
 		Name:      "common-service",
 		Namespace: r.Bootstrap.CSData.ServicesNs,
 	}
 	if err := r.Reader.Get(ctx, opconKey, opcon); err != nil {
-		klog.Errorf("failed to get OperandConfig %s: %v", opconKey.String(), err)
+		klog.Errorf("Failed to get OperandConfig %s: %v", opconKey.String(), err)
 		return true, err
 	}
 
-	// Keep a version of existing config for comparison later
-	opconServices := opcon.Object["spec"].(map[string]interface{})["services"].([]interface{})
-	existingOpconServices := deepcopy.Copy(opconServices)
+	// 2. Build complete desired state from ALL CommonService CRs
+	desiredServices, _, err := r.buildDesiredStateFromAllCRs(ctx)
+	if err != nil {
+		klog.Errorf("Failed to build desired state from CommonService CRs: %v", err)
+		return true, err
+	}
 
-	// Convert rules string to slice
+	// 3. Apply extreme size handling to desired state
 	ruleSlice, err := convertStringToSlice(rules.ConfigurationRules)
 	if err != nil {
+		klog.Errorf("Failed to convert configuration rules: %v", err)
 		return true, err
 	}
 
-	for _, newConfigForOperator := range newConfigs {
-		if newConfigForOperator == nil {
-			continue
-		}
-		serviceName := newConfigForOperator.(map[string]interface{})["name"].(string)
-		opService := getItemByName(opconServices, serviceName)
-		if opService == nil {
-			klog.V(2).Infof("Service %s not found in OperandConfig, skipping", serviceName)
-			continue
-		}
-		serviceController := serviceControllerMapping["profileController"]
-		if controller, ok := serviceControllerMapping[serviceName]; ok {
-			serviceController = controller
-		}
-		// Fetch newConfigForOperator and rules for an operator
-		rules := getItemByName(ruleSlice, serviceName)
-
-		// Handle spec configurations
-		if opService.(map[string]interface{})["spec"] != nil && newConfigForOperator.(map[string]interface{})["spec"] != nil {
-			for cr, spec := range opService.(map[string]interface{})["spec"].(map[string]interface{}) {
-				if _, ok := nonDefaultProfileController[serviceController]; ok {
-					// clean up OperandConfig
-					opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = resetResourceInTemplate(spec.(map[string]interface{}), cr, rules)
-				}
-
-				if newConfigForOperator.(map[string]interface{})["spec"].(map[string]interface{})[cr] == nil {
-					continue
-				}
-				newConfigForCR := newConfigForOperator.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
-
-				overwrite := true
-				if rules != nil && rules.(map[string]interface{})["spec"] != nil && rules.(map[string]interface{})["spec"].(map[string]interface{})[cr] != nil {
-					ruleForCR := rules.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
-					opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsIntoOperandConfig(spec.(map[string]interface{}), newConfigForCR, ruleForCR, overwrite, true)
-				} else {
-					if overwrite {
-						opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsIntoOperandConfigWithDefaultRules(spec.(map[string]interface{}), newConfigForCR, true)
-					}
-				}
-			}
-		}
-
-		if opService.(map[string]interface{})["resources"] != nil {
-			if opResources, ok := opService.(map[string]interface{})["resources"].([]interface{}); ok {
-				for i, opResource := range opResources {
-					// get resource by checking apiVersion, kind, name, namespace
-					var apiVersion, kind, name, namespace string
-					if opResource.(map[string]interface{})["apiVersion"] != nil {
-						apiVersion = opResource.(map[string]interface{})["apiVersion"].(string)
-					}
-					if opResource.(map[string]interface{})["kind"] != nil {
-						kind = opResource.(map[string]interface{})["kind"].(string)
-					}
-					if opResource.(map[string]interface{})["name"] != nil {
-						name = opResource.(map[string]interface{})["name"].(string)
-					}
-					if opResource.(map[string]interface{})["namespace"] != nil {
-						namespace = opResource.(map[string]interface{})["namespace"].(string)
-					}
-					// check if above 4 fields are all set
-					if apiVersion == "" || kind == "" || name == "" {
-						klog.Warningf("Skipping merging resource %s/%s/%s/%s, because apiVersion, kind or name is not set", apiVersion, kind, name, namespace)
-						continue
-					}
-					// check if namespace is set, if not, set it to OperandConfig namespace
-					if namespace == "" {
-						namespace = opconKey.Namespace
-					}
-
-					if newConfigForOperator.(map[string]interface{})["resources"] == nil {
-						continue
-					}
-
-					newResource := getItemByGVKNameNamespace(newConfigForOperator.(map[string]interface{})["resources"].([]interface{}), opconKey.Namespace, apiVersion, kind, name, namespace)
-					if newResource != nil {
-						if _, ok := nonDefaultProfileController[serviceController]; ok {
-							if isOpResourceExists(newResource) {
-								klog.V(2).Info("Clearing CPU limits for non-default profile controller")
-								newResource.(map[string]interface{})["data"].(map[string]interface{})["spec"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})["cpu"] = struct{}{}
-							}
-						}
-
-						opResources[i] = mergeCRsIntoOperandConfigWithDefaultRules(opResource.(map[string]interface{}), newResource.(map[string]interface{}), true)
-					}
-				}
-				opService.(map[string]interface{})["resources"] = opResources
-			}
-		}
-
-	}
-
-	// Remove orphaned fields from OperandConfig
-	klog.V(2).Info("Removing orphaned fields from OperandConfig")
-	if err := r.removeOrphanedFields(ctx, opconServices); err != nil {
-		klog.Errorf("Failed to remove orphaned fields: %v", err)
-		// Don't fail the reconciliation, just log the error
-	}
-
-	// Checking all the common service CRs to get the minimal(unique largest) size
-	opconServices, err = r.getExtremeizes(ctx, opconServices, ruleSlice, Max)
+	desiredServices, err = r.getExtremeizes(ctx, desiredServices, ruleSlice, Max)
 	if err != nil {
+		klog.Errorf("Failed to apply extreme size handling: %v", err)
 		return true, err
 	}
 
-	// Compare to see whether new resource sizing is introduced into opconServices
-	isEqual := true
-	for _, opService := range opconServices {
-		existingOpService := getItemByName(existingOpconServices.([]interface{}), opService.(map[string]interface{})["name"].(string))
-		if opService.(map[string]interface{})["spec"] == nil {
-			continue
-		}
-		for cr, spec := range opService.(map[string]interface{})["spec"].(map[string]interface{}) {
-			existingCrSpec := existingOpService.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
-			if isEqual = rules.ResourceEqualComparison(existingCrSpec, spec); !isEqual {
-				break
-			}
-		}
-		if !isEqual {
-			break
-		}
+	// 4. Get existing services from OperandConfig
+	existingServices, ok := opcon.Object["spec"].(map[string]interface{})["services"].([]interface{})
+	if !ok {
+		klog.Errorf("Failed to extract existing services from OperandConfig")
+		return true, fmt.Errorf("invalid OperandConfig structure")
 	}
 
-	opcon.Object["spec"].(map[string]interface{})["services"] = opconServices
+	// 5. Calculate hashes for comparison
+	desiredHash, err := util.CalculateResourceHash(map[string]interface{}{"services": desiredServices})
+	if err != nil {
+		klog.Errorf("Failed to calculate hash for desired services: %v", err)
+		return true, err
+	}
+
+	existingHash, err := util.CalculateResourceHash(map[string]interface{}{"services": existingServices})
+	if err != nil {
+		klog.Errorf("Failed to calculate hash for existing services: %v", err)
+		return true, err
+	}
+
+	// 6. Compare hashes - if equal, no update needed
+	if desiredHash == existingHash {
+		klog.V(2).Infof("OperandConfig services unchanged (hash match: %s)", existingHash)
+		return true, nil
+	}
+
+	// 7. Hashes differ - replace entire services array
+	klog.Infof("Updating OperandConfig services (hash mismatch - existing: %s, desired: %s)", existingHash, desiredHash)
+	opcon.Object["spec"].(map[string]interface{})["services"] = desiredServices
 
 	if err := r.Update(ctx, opcon); err != nil {
-		klog.Errorf("failed to update OperandConfig %s: %v", opconKey.String(), err)
+		klog.Errorf("Failed to update OperandConfig %s: %v", opconKey.String(), err)
 		return true, err
 	}
 
-	return isEqual, nil
+	klog.Infof("Successfully updated OperandConfig %s with new services configuration", opconKey.String())
+	return false, nil
 }
 
 func isOpResourceExists(opResource interface{}) bool {
@@ -952,214 +869,4 @@ func (r *CommonServiceReconciler) buildDesiredStateFromAllCRs(ctx context.Contex
 	}
 
 	return aggregatedConfigs, serviceControllerMappingSummary, nil
-}
-
-// removeOrphanedFields removes fields from OperandConfig that are no longer present in any CommonService CR
-func (r *CommonServiceReconciler) removeOrphanedFields(ctx context.Context, opconServices []interface{}) error {
-	// Build the complete desired state from all CommonService CRs
-	desiredState, _, err := r.buildDesiredStateFromAllCRs(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to build desired state: %v", err)
-	}
-
-	// For each service in OperandConfig, remove fields not in desired state
-	for _, opService := range opconServices {
-		if opService == nil {
-			continue
-		}
-
-		serviceName := opService.(map[string]interface{})["name"].(string)
-		desiredService := getItemByName(desiredState, serviceName)
-
-		// Remove orphaned spec fields
-		if err := r.removeOrphanedSpecFields(opService, desiredService); err != nil {
-			klog.Errorf("Failed to remove orphaned spec fields for service %s: %v", serviceName, err)
-		}
-
-		// Remove orphaned resources
-		if err := r.removeOrphanedResources(opService, desiredService, r.CSData.ServicesNs); err != nil {
-			klog.Errorf("Failed to remove orphaned resources for service %s: %v", serviceName, err)
-		}
-	}
-
-	return nil
-}
-
-// removeOrphanedSpecFields removes CR specs that are no longer in the desired state
-func (r *CommonServiceReconciler) removeOrphanedSpecFields(opService, desiredService interface{}) error {
-	if opService == nil {
-		return nil
-	}
-
-	opServiceMap, ok := opService.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("opService is not a map")
-	}
-
-	opSpec := opServiceMap["spec"]
-	if opSpec == nil {
-		return nil
-	}
-
-	opSpecMap, ok := opSpec.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("opSpec is not a map")
-	}
-
-	// If there's no desired service, don't remove anything (it's managed by base config)
-	if desiredService == nil {
-		return nil
-	}
-
-	desiredServiceMap, ok := desiredService.(map[string]interface{})
-	if !ok {
-		return nil
-	}
-
-	desiredSpec := desiredServiceMap["spec"]
-
-	// Iterate through CRs in OperandConfig spec
-	for cr := range opSpecMap {
-		// If CR not in desired state, remove it
-		shouldRemove := false
-		if desiredSpec == nil {
-			shouldRemove = true
-		} else if desiredSpecMap, ok := desiredSpec.(map[string]interface{}); ok {
-			if desiredSpecMap[cr] == nil {
-				shouldRemove = true
-			}
-		}
-
-		if shouldRemove {
-			delete(opSpecMap, cr)
-			klog.Infof("Removed orphaned CR spec: %s from service %s", cr, opServiceMap["name"])
-		}
-	}
-
-	return nil
-}
-
-// removeOrphanedResources removes resources that are no longer in the desired state
-func (r *CommonServiceReconciler) removeOrphanedResources(opService, desiredService interface{}, opconNs string) error {
-	if opService == nil {
-		return nil
-	}
-
-	opServiceMap, ok := opService.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("opService is not a map")
-	}
-
-	opResources := opServiceMap["resources"]
-	if opResources == nil {
-		return nil
-	}
-
-	opResourcesList, ok := opResources.([]interface{})
-	if !ok {
-		return fmt.Errorf("opResources is not a list")
-	}
-
-	// If there's no desired service, don't remove anything (it's managed by base config)
-	if desiredService == nil {
-		return nil
-	}
-
-	desiredServiceMap, ok := desiredService.(map[string]interface{})
-	if !ok {
-		return nil
-	}
-
-	desiredResources := desiredServiceMap["resources"]
-	var desiredResourcesList []interface{}
-	if desiredResources != nil {
-		if list, ok := desiredResources.([]interface{}); ok {
-			desiredResourcesList = list
-		}
-	}
-
-	// Filter out resources not in desired state
-	filteredResources := []interface{}{}
-	for _, opRes := range opResourcesList {
-		opResMap, ok := opRes.(map[string]interface{})
-		if !ok {
-			filteredResources = append(filteredResources, opRes)
-			continue
-		}
-
-		// Extract resource identifiers
-		apiVersion := getStringField(opResMap, "apiVersion")
-		kind := getStringField(opResMap, "kind")
-		name := getStringField(opResMap, "name")
-		namespace := getStringField(opResMap, "namespace")
-		if namespace == "" {
-			namespace = opconNs
-		}
-
-		// Check if resource exists in desired state
-		if r.isResourceInDesiredState(opRes, desiredResourcesList, opconNs) {
-			filteredResources = append(filteredResources, opRes)
-		} else {
-			klog.V(2).Infof("Removed orphaned resource: %s/%s/%s/%s from service %s", apiVersion, kind, name, namespace, opServiceMap["name"])
-		}
-	}
-
-	opServiceMap["resources"] = filteredResources
-	return nil
-}
-
-// isResourceInDesiredState checks if a resource exists in the desired state using hash comparison
-func (r *CommonServiceReconciler) isResourceInDesiredState(opResource interface{}, desiredResources []interface{}, opconNs string) bool {
-	opResMap, ok := toStringMap(opResource)
-	if !ok {
-		return true // Keep resources we can't parse
-	}
-
-	apiVersion := getStringField(opResMap, "apiVersion")
-	kind := getStringField(opResMap, "kind")
-	name := getStringField(opResMap, "name")
-	namespace := getStringField(opResMap, "namespace")
-	if namespace == "" {
-		namespace = opconNs
-	}
-
-	// If any required field is missing, keep the resource
-	if apiVersion == "" || kind == "" || name == "" {
-		return true
-	}
-
-	// Check if resource exists in desired state by matching GVK+Name+Namespace
-	// Then compare using hash to detect changes
-	for _, desiredRes := range desiredResources {
-		desiredResMap, ok := toStringMap(desiredRes)
-		if !ok {
-			continue
-		}
-
-		desiredApiVersion := getStringField(desiredResMap, "apiVersion")
-		desiredKind := getStringField(desiredResMap, "kind")
-		desiredName := getStringField(desiredResMap, "name")
-		desiredNamespace := getStringField(desiredResMap, "namespace")
-		if desiredNamespace == "" {
-			desiredNamespace = opconNs
-		}
-
-		// Match by GVK + Name + Namespace
-		if apiVersion == desiredApiVersion && kind == desiredKind && name == desiredName && namespace == desiredNamespace {
-			// Resource found - now compare hashes to see if it changed
-			hashesMatch, err := util.CompareResourceHashes(opResMap, desiredResMap)
-			if err != nil {
-				klog.V(2).Infof("Failed to compare resource hashes for %s/%s/%s: %v, keeping resource", apiVersion, kind, name, err)
-				return true // Keep resource if hash comparison fails
-			}
-
-			if !hashesMatch {
-				klog.V(2).Infof("Resource %s/%s/%s has changed (hash mismatch), will be updated", apiVersion, kind, name)
-			}
-
-			return true // Resource exists in desired state
-		}
-	}
-
-	return false // Resource not found in desired state, should be removed
 }
