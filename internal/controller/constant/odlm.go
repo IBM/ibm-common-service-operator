@@ -2344,9 +2344,6 @@ spec:
                     operator: In
                     values:
                       - common-service-db
-            - maxSkew: 1
-              topologyKey: topology.kubernetes.io/region
-              whenUnsatisfiable: ScheduleAnyway
             imageName:
               templatingValueFrom:
                 configMapKeyRef:
