@@ -19,7 +19,10 @@ package common
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
+	encodingjson "encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -894,4 +897,36 @@ func GetFirstNCharacter(str string, n int) string {
 		return str
 	}
 	return str[:n]
+}
+
+// CalculateHash calculates the hash value for single resource
+func CalculateHash(input []byte) string {
+	if len(input) == 0 {
+		return ""
+	}
+	hashedData := sha256.Sum256(input)
+	return hex.EncodeToString(hashedData[:7])
+}
+
+// CalculateResourceHash calculates hash for a resource map
+func CalculateResourceHash(resource map[string]interface{}) (string, error) {
+	// Convert resource to JSON for consistent hashing
+	jsonBytes, err := encodingjson.Marshal(resource)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal resource: %v", err)
+	}
+	return CalculateHash(jsonBytes), nil
+}
+
+// CompareResourceHashes compares two resources by their hash values
+func CompareResourceHashes(resource1, resource2 map[string]interface{}) (bool, error) {
+	hash1, err := CalculateResourceHash(resource1)
+	if err != nil {
+		return false, err
+	}
+	hash2, err := CalculateResourceHash(resource2)
+	if err != nil {
+		return false, err
+	}
+	return hash1 == hash2, nil
 }
