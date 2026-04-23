@@ -133,7 +133,7 @@ const (
 	// CSPGCluster is the name of the common service postgresql cluster
 	CSPGCluster = "common-service-db"
 	// PGClusterGroup is the name of the common service postgresql cluster group
-	PGClusterGroup = "postgresql.k8s.enterprisedb.io"
+	PGClusterGroup = "pg.ibm.com"
 	// PGClusterKind is the kind of the common service postgresql cluster
 	PGClusterKind = "Cluster"
 	// PostgreSQLImageConfigMap is the name of the postgresql image list ConfigMap deployed with Postgres Operator

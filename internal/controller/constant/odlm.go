@@ -2190,7 +2190,7 @@ spec:
             secretName: common-service-db-replica-tls-secret
             secretTemplate:
               labels:
-                k8s.enterprisedb.io/reload: ''
+                pg.ibm.com/reload: ''
             usages:
               - client auth
       - apiVersion: cert-manager.io/v1
@@ -2312,6 +2312,17 @@ spec:
                             - amd64
                             - ppc64le
                             - s390x
+              additionalPodAntiAffinity:
+                preferredDuringSchedulingIgnoredDuringExecution:
+                  - podAffinityTerm:
+                      labelSelector:
+                        matchExpressions:
+                          - key: pg.ibm.com/cluster
+                            operator: In
+                            values:
+                              - common-service-db
+                      topologyKey: kubernetes.io/hostname
+                    weight: 50
               podAntiAffinityType: preferred
               topologyKey: topology.kubernetes.io/zone
             topologySpreadConstraints:
@@ -2320,13 +2331,19 @@ spec:
               whenUnsatisfiable: ScheduleAnyway
               labelSelector:
                 matchExpressions:
-                  - key: k8s.enterprisedb.io/cluster
+                  - key: pg.ibm.com/cluster
                     operator: In
                     values:
                       - common-service-db
             - maxSkew: 1
               topologyKey: topology.kubernetes.io/region
               whenUnsatisfiable: ScheduleAnyway
+              labelSelector:
+                matchExpressions:
+                  - key: pg.ibm.com/cluster
+                    operator: In
+                    values:
+                      - common-service-db
             imageName:
               templatingValueFrom:
                 configMapKeyRef:
@@ -2336,6 +2353,9 @@ spec:
             imagePullSecrets:
               - name: {{ .ImagePullSecret }}
             logLevel: info
+            ephemeralVolumesSizeLimit:
+              shm: 500Mi
+              temporaryData: 500Mi
             primaryUpdateStrategy: unsupervised
             primaryUpdateMethod: switchover
             enableSuperuserAccess: true
