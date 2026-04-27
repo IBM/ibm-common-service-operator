@@ -2581,6 +2581,17 @@ spec:
                 - patch
                 - delete
             - apiGroups:
+                - ""
+              resources:
+                - serviceaccounts
+              verbs:
+                - get
+                - list
+                - watch
+                - update
+                - patch
+                - delete
+            - apiGroups:
                 - apps
               resources:
                 - deployments
