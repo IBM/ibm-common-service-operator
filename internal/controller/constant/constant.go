@@ -138,8 +138,6 @@ const (
 	PGClusterKind = "Cluster"
 	// PostgreSQLImageConfigMap is the name of the postgresql image list ConfigMap deployed with Postgres Operator
 	PostgreSQLImageConfigMap = "cloud-native-postgresql-operand-images-config"
-	// CSPostgreSQLImageConfigMap is the name of the postgresql image list ConfigMap deployed by Common Service Operator
-	CSPostgreSQLImageConfigMap = "cloud-native-postgresql-image-list"
 	// PostgreSQL16ImageKey is the key for PostgreSQL 16 image in the ConfigMap
 	PostgreSQL16ImageKey = "ibm-postgresql-16-operand-image"
 	// ODLMWatchLabel is the label used to label the Subscription/CR/Configmap managed by ODLM
