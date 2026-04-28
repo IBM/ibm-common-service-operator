@@ -2494,11 +2494,43 @@ spec:
             TIMEOUT: "120"
             SKIP_EDB_CLEANUP: "true"
             SKIP_OPERATOR_VALIDATION: "true"
+            IBM_PG_NS: "{{ .OperatorNs }}"
       - apiVersion: v1
         kind: ServiceAccount
         name: common-service-db-pg-migration-sa
         labels:
           app: cpfs-pg-migrator
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: Role
+        name: common-service-db-pg-migration-role
+        namespace: {{ .OperatorNs }}
+        labels:
+          app: cpfs-pg-migrator
+        data:
+          rules:
+            - apiGroups:
+                - ""
+              resources:
+                - configmaps
+              verbs:
+                - get
+                - list
+                - watch
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        name: common-service-db-pg-migration-rolebinding
+        namespace: {{ .OperatorNs }}
+        labels:
+          app: cpfs-pg-migrator
+        data:
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: Role
+            name: common-service-db-pg-migration-role
+          subjects:
+            - kind: ServiceAccount
+              name: common-service-db-pg-migration-sa
+              namespace: {{ .ServicesNs }}
       - apiVersion: rbac.authorization.k8s.io/v1
         kind: Role
         name: common-service-db-pg-migration-role
@@ -2680,6 +2712,7 @@ spec:
                       - --namespace=$(NAMESPACE)
                       - --cluster=$(CLUSTER_NAME)
                       - --pg-version=$(PG_VERSION)
+                      - --ibm-pg-ns=$(IBM_PG_NS)
                       - --timeout=$(TIMEOUT)
                       - --skip-edb-cleanup=$(SKIP_EDB_CLEANUP)
                       - --skip-operator-validation=$(SKIP_OPERATOR_VALIDATION)
