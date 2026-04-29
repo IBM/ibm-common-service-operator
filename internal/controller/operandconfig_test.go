@@ -658,3 +658,122 @@ func TestMergeCRsIntoOperandConfigWithDefaultRules_StorageClass(t *testing.T) {
 	assert.Equal(t, "nfs-storage", walStorage["storageClass"],
 		"storageClass should be merged into walStorage")
 }
+
+// TestRemoveOrphanedSpecFields_RemovesOrphanedCRs verifies that CR specs
+// not present in the desired state are removed from OperandConfig.
+
+// TestGetItemByName verifies the helper function for finding items by name.
+func TestGetItemByName(t *testing.T) {
+	slice := []interface{}{
+		map[string]interface{}{"name": "service1"},
+		map[string]interface{}{"name": "service2"},
+		map[string]interface{}{"name": "service3"},
+	}
+
+	tests := []struct {
+		name     string
+		findName string
+		found    bool
+	}{
+		{
+			name:     "Find existing service",
+			findName: "service2",
+			found:    true,
+		},
+		{
+			name:     "Service not found",
+			findName: "service4",
+			found:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := getItemByName(slice, tt.findName)
+			if tt.found {
+				assert.NotNil(t, result)
+				assert.Equal(t, tt.findName, result.(map[string]interface{})["name"])
+			} else {
+				assert.Nil(t, result)
+			}
+		})
+	}
+}
+
+// TestGetItemByGVKNameNamespace verifies the helper function for finding
+// resources by GroupVersionKind + Name + Namespace.
+func TestGetItemByGVKNameNamespace(t *testing.T) {
+	resources := []interface{}{
+		map[string]interface{}{
+			"apiVersion": "v1",
+			"kind":       "ConfigMap",
+			"name":       "config1",
+			"namespace":  "ns1",
+		},
+		map[string]interface{}{
+			"apiVersion": "v1",
+			"kind":       "ConfigMap",
+			"name":       "config2",
+			"namespace":  "ns2",
+		},
+		map[string]interface{}{
+			"apiVersion": "apps/v1",
+			"kind":       "Deployment",
+			"name":       "deploy1",
+			"namespace":  "ns1",
+		},
+	}
+
+	tests := []struct {
+		name       string
+		apiVersion string
+		kind       string
+		resName    string
+		namespace  string
+		found      bool
+	}{
+		{
+			name:       "Find ConfigMap in ns1",
+			apiVersion: "v1",
+			kind:       "ConfigMap",
+			resName:    "config1",
+			namespace:  "ns1",
+			found:      true,
+		},
+		{
+			name:       "Find Deployment",
+			apiVersion: "apps/v1",
+			kind:       "Deployment",
+			resName:    "deploy1",
+			namespace:  "ns1",
+			found:      true,
+		},
+		{
+			name:       "Not found - wrong namespace",
+			apiVersion: "v1",
+			kind:       "ConfigMap",
+			resName:    "config1",
+			namespace:  "ns2",
+			found:      false,
+		},
+		{
+			name:       "Not found - wrong kind",
+			apiVersion: "v1",
+			kind:       "Secret",
+			resName:    "config1",
+			namespace:  "ns1",
+			found:      false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := getItemByGVKNameNamespace(resources, "default-ns", tt.apiVersion, tt.kind, tt.resName, tt.namespace)
+			if tt.found {
+				assert.NotNil(t, result)
+			} else {
+				assert.Nil(t, result)
+			}
+		})
+	}
+}

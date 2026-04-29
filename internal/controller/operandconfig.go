@@ -23,7 +23,6 @@ import (
 	"reflect"
 
 	utilyaml "github.com/ghodss/yaml"
-	"github.com/mohae/deepcopy"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
@@ -473,149 +472,74 @@ func deepMergeTwoMaps(key string, defaultMap interface{}, changedMap interface{}
 }
 
 func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newConfigs []interface{}, serviceControllerMapping map[string]string) (bool, error) {
+	// 1. Get existing OperandConfig
 	opcon := util.NewUnstructured("operator.ibm.com", "OperandConfig", "v1alpha1")
 	opconKey := types.NamespacedName{
 		Name:      "common-service",
 		Namespace: r.Bootstrap.CSData.ServicesNs,
 	}
 	if err := r.Reader.Get(ctx, opconKey, opcon); err != nil {
-		klog.Errorf("failed to get OperandConfig %s: %v", opconKey.String(), err)
+		klog.Errorf("Failed to get OperandConfig %s: %v", opconKey.String(), err)
 		return true, err
 	}
 
-	// Keep a version of existing config for comparison later
-	opconServices := opcon.Object["spec"].(map[string]interface{})["services"].([]interface{})
-	existingOpconServices := deepcopy.Copy(opconServices)
+	// 2. Build complete desired state from ALL CommonService CRs
+	desiredServices, _, err := r.buildDesiredStateFromAllCRs(ctx)
+	if err != nil {
+		klog.Errorf("Failed to build desired state from CommonService CRs: %v", err)
+		return true, err
+	}
 
-	// Convert rules string to slice
+	// 3. Apply extreme size handling to desired state
 	ruleSlice, err := convertStringToSlice(rules.ConfigurationRules)
 	if err != nil {
+		klog.Errorf("Failed to convert configuration rules: %v", err)
 		return true, err
 	}
 
-	for _, newConfigForOperator := range newConfigs {
-		if newConfigForOperator == nil {
-			continue
-		}
-		serviceName := newConfigForOperator.(map[string]interface{})["name"].(string)
-		opService := getItemByName(opconServices, serviceName)
-		if opService == nil {
-			klog.V(2).Infof("Service %s not found in OperandConfig, skipping", serviceName)
-			continue
-		}
-		serviceController := serviceControllerMapping["profileController"]
-		if controller, ok := serviceControllerMapping[serviceName]; ok {
-			serviceController = controller
-		}
-		// Fetch newConfigForOperator and rules for an operator
-		rules := getItemByName(ruleSlice, serviceName)
-
-		// Handle spec configurations
-		if opService.(map[string]interface{})["spec"] != nil && newConfigForOperator.(map[string]interface{})["spec"] != nil {
-			for cr, spec := range opService.(map[string]interface{})["spec"].(map[string]interface{}) {
-				if _, ok := nonDefaultProfileController[serviceController]; ok {
-					// clean up OperandConfig
-					opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = resetResourceInTemplate(spec.(map[string]interface{}), cr, rules)
-				}
-
-				if newConfigForOperator.(map[string]interface{})["spec"].(map[string]interface{})[cr] == nil {
-					continue
-				}
-				newConfigForCR := newConfigForOperator.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
-
-				overwrite := true
-				if rules != nil && rules.(map[string]interface{})["spec"] != nil && rules.(map[string]interface{})["spec"].(map[string]interface{})[cr] != nil {
-					ruleForCR := rules.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
-					opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsIntoOperandConfig(spec.(map[string]interface{}), newConfigForCR, ruleForCR, overwrite, true)
-				} else {
-					if overwrite {
-						opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsIntoOperandConfigWithDefaultRules(spec.(map[string]interface{}), newConfigForCR, true)
-					}
-				}
-			}
-		}
-
-		if opService.(map[string]interface{})["resources"] != nil {
-			if opResources, ok := opService.(map[string]interface{})["resources"].([]interface{}); ok {
-				for i, opResource := range opResources {
-					// get resource by checking apiVersion, kind, name, namespace
-					var apiVersion, kind, name, namespace string
-					if opResource.(map[string]interface{})["apiVersion"] != nil {
-						apiVersion = opResource.(map[string]interface{})["apiVersion"].(string)
-					}
-					if opResource.(map[string]interface{})["kind"] != nil {
-						kind = opResource.(map[string]interface{})["kind"].(string)
-					}
-					if opResource.(map[string]interface{})["name"] != nil {
-						name = opResource.(map[string]interface{})["name"].(string)
-					}
-					if opResource.(map[string]interface{})["namespace"] != nil {
-						namespace = opResource.(map[string]interface{})["namespace"].(string)
-					}
-					// check if above 4 fields are all set
-					if apiVersion == "" || kind == "" || name == "" {
-						klog.Warningf("Skipping merging resource %s/%s/%s/%s, because apiVersion, kind or name is not set", apiVersion, kind, name, namespace)
-						continue
-					}
-					// check if namespace is set, if not, set it to OperandConfig namespace
-					if namespace == "" {
-						namespace = opconKey.Namespace
-					}
-
-					if newConfigForOperator.(map[string]interface{})["resources"] == nil {
-						continue
-					}
-
-					newResource := getItemByGVKNameNamespace(newConfigForOperator.(map[string]interface{})["resources"].([]interface{}), opconKey.Namespace, apiVersion, kind, name, namespace)
-					if newResource != nil {
-						if _, ok := nonDefaultProfileController[serviceController]; ok {
-							if isOpResourceExists(newResource) {
-								klog.V(2).Info("Clearing CPU limits for non-default profile controller")
-								newResource.(map[string]interface{})["data"].(map[string]interface{})["spec"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})["cpu"] = struct{}{}
-							}
-						}
-
-						opResources[i] = mergeCRsIntoOperandConfigWithDefaultRules(opResource.(map[string]interface{}), newResource.(map[string]interface{}), true)
-					}
-				}
-				opService.(map[string]interface{})["resources"] = opResources
-			}
-		}
-
-	}
-
-	// Checking all the common service CRs to get the minimal(unique largest) size
-	opconServices, err = r.getExtremeizes(ctx, opconServices, ruleSlice, Max)
+	desiredServices, err = r.getExtremeizes(ctx, desiredServices, ruleSlice, Max)
 	if err != nil {
+		klog.Errorf("Failed to apply extreme size handling: %v", err)
 		return true, err
 	}
 
-	// Compare to see whether new resource sizing is introduced into opconServices
-	isEqual := true
-	for _, opService := range opconServices {
-		existingOpService := getItemByName(existingOpconServices.([]interface{}), opService.(map[string]interface{})["name"].(string))
-		if opService.(map[string]interface{})["spec"] == nil {
-			continue
-		}
-		for cr, spec := range opService.(map[string]interface{})["spec"].(map[string]interface{}) {
-			existingCrSpec := existingOpService.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
-			if isEqual = rules.ResourceEqualComparison(existingCrSpec, spec); !isEqual {
-				break
-			}
-		}
-		if !isEqual {
-			break
-		}
+	// 4. Get existing services from OperandConfig
+	existingServices, ok := opcon.Object["spec"].(map[string]interface{})["services"].([]interface{})
+	if !ok {
+		klog.Errorf("Failed to extract existing services from OperandConfig")
+		return true, fmt.Errorf("invalid OperandConfig structure")
 	}
 
-	opcon.Object["spec"].(map[string]interface{})["services"] = opconServices
+	// 5. Calculate hashes for comparison
+	desiredHash, err := util.CalculateResourceHash(map[string]interface{}{"services": desiredServices})
+	if err != nil {
+		klog.Errorf("Failed to calculate hash for desired services: %v", err)
+		return true, err
+	}
+
+	existingHash, err := util.CalculateResourceHash(map[string]interface{}{"services": existingServices})
+	if err != nil {
+		klog.Errorf("Failed to calculate hash for existing services: %v", err)
+		return true, err
+	}
+
+	// 6. Compare hashes - if equal, no update needed
+	if desiredHash == existingHash {
+		klog.V(2).Infof("OperandConfig services unchanged (hash match: %s)", existingHash)
+		return true, nil
+	}
+
+	// 7. Hashes differ - replace entire services array
+	klog.Infof("Updating OperandConfig services)", existingHash, desiredHash)
+	opcon.Object["spec"].(map[string]interface{})["services"] = desiredServices
 
 	if err := r.Update(ctx, opcon); err != nil {
-		klog.Errorf("failed to update OperandConfig %s: %v", opconKey.String(), err)
+		klog.Errorf("Failed to update OperandConfig %s: %v", opconKey.String(), err)
 		return true, err
 	}
 
-	return isEqual, nil
+	klog.Infof("Successfully updated OperandConfig %s with new services configuration", opconKey.String())
+	return false, nil
 }
 
 func isOpResourceExists(opResource interface{}) bool {
@@ -904,4 +828,46 @@ func getItemByGVKNameNamespace(opResources []interface{}, opconNs, apiVersion, k
 		}
 	}
 	return nil
+}
+
+// buildDesiredStateFromAllCRs aggregates configurations from all CommonService CRs
+// to determine the complete desired state for OperandConfig
+func (r *CommonServiceReconciler) buildDesiredStateFromAllCRs(ctx context.Context) ([]interface{}, map[string]string, error) {
+	// Fetch all the CommonService instances
+	csReq, err := labels.NewRequirement(constant.CsClonedFromLabel, selection.DoesNotExist, []string{})
+	if err != nil {
+		return nil, nil, err
+	}
+	csObjectList := &apiv3.CommonServiceList{}
+	if err := r.Client.List(ctx, csObjectList, &client.ListOptions{
+		LabelSelector: labels.NewSelector().Add(*csReq),
+	}); err != nil {
+		return nil, nil, err
+	}
+
+	var aggregatedConfigs []interface{}
+	serviceControllerMappingSummary := make(map[string]string)
+
+	// Convert rules string to slice
+	ruleSlice, err := convertStringToSlice(rules.ConfigurationRules)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	for _, cs := range csObjectList.Items {
+		if cs.GetDeletionTimestamp() != nil {
+			continue
+		}
+
+		csConfigs, serviceControllerMapping, err := ExtractCommonServiceConfigs(&cs, r.CSData.ServicesNs)
+		if err != nil {
+			klog.Errorf("Failed to extract configs from CommonService %s/%s: %v", cs.Namespace, cs.Name, err)
+			continue
+		}
+
+		serviceControllerMappingSummary = mergeProfileController(serviceControllerMappingSummary, serviceControllerMapping)
+		aggregatedConfigs = mergeCSCRs(aggregatedConfigs, csConfigs, ruleSlice, serviceControllerMappingSummary, r.CSData.ServicesNs)
+	}
+
+	return aggregatedConfigs, serviceControllerMappingSummary, nil
 }
