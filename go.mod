@@ -1,6 +1,6 @@
 module github.com/IBM/ibm-common-service-operator/v4
 
-go 1.26.1
+go 1.26.2
 
 require (
 	github.com/IBM/ibm-namespace-scope-operator/v4 v4.2.4-0.20240501132320-6675f97bc34f
@@ -8,7 +8,6 @@ require (
 	github.com/IBM/operand-deployment-lifecycle-manager/v4 v4.3.11-alpha
 	github.com/ghodss/yaml v1.0.0
 	github.com/ibm/ibm-cert-manager-operator v0.0.0-20230705134954-f3b9b344298a
-	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.27.10
 	github.com/operator-framework/api v0.6.2
