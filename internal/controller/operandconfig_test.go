@@ -21,6 +21,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
+	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/bootstrap"
 )
 
 // TestMergeResourceArrays_PreservesBaseOnlyResources verifies that base resources
@@ -776,4 +779,983 @@ func TestGetItemByGVKNameNamespace(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestMergeServicesWithBase_PreservesBaseOnlyServices verifies that services
+// only present in base (like pg-migrator) are preserved in the merged result.
+func TestMergeServicesWithBase_PreservesBaseOnlyServices(t *testing.T) {
+	baseServices := []interface{}{
+		map[string]interface{}{
+			"name": "common-service-postgresql",
+			"spec": map[string]interface{}{
+				"cluster": map[string]interface{}{
+					"instances": float64(2),
+				},
+			},
+		},
+		map[string]interface{}{
+			"name": "common-service-pg-migrator",
+			"resources": []interface{}{
+				map[string]interface{}{
+					"apiVersion": "batch/v1",
+					"kind":       "Job",
+					"name":       "pg-migration-job",
+				},
+			},
+		},
+	}
+
+	// CS services only contain postgresql, not pg-migrator
+	csServices := []interface{}{
+		map[string]interface{}{
+			"name": "common-service-postgresql",
+			"spec": map[string]interface{}{
+				"cluster": map[string]interface{}{
+					"instances": float64(3),
+				},
+			},
+		},
+	}
+
+	ruleSlice := []interface{}{}
+	reconciler := &CommonServiceReconciler{}
+	merged := reconciler.mergeServicesWithBase(baseServices, csServices, ruleSlice)
+
+	// Both services must be present
+	require.Len(t, merged, 2, "Both base services must be preserved")
+
+	// Verify pg-migrator is preserved
+	pgMigrator := getItemByName(merged, "common-service-pg-migrator")
+	require.NotNil(t, pgMigrator, "pg-migrator service must be preserved")
+
+	// Verify postgresql was merged
+	postgresql := getItemByName(merged, "common-service-postgresql")
+	require.NotNil(t, postgresql, "postgresql service must be present")
+	spec := postgresql.(map[string]interface{})["spec"].(map[string]interface{})
+	cluster := spec["cluster"].(map[string]interface{})
+	assert.Equal(t, float64(3), cluster["instances"], "CS value should be merged")
+}
+
+// TestMergeServicesWithBase_MergesMatchingServices verifies that services
+// present in both base and CS are properly merged.
+func TestMergeServicesWithBase_MergesMatchingServices(t *testing.T) {
+	baseServices := []interface{}{
+		map[string]interface{}{
+			"name": "common-service-postgresql",
+			"spec": map[string]interface{}{
+				"cluster": map[string]interface{}{
+					"instances": float64(1),
+					"storage": map[string]interface{}{
+						"size": "10Gi",
+					},
+				},
+			},
+			"resources": []interface{}{
+				map[string]interface{}{
+					"apiVersion": "cert-manager.io/v1",
+					"kind":       "Certificate",
+					"name":       "db-cert",
+				},
+			},
+		},
+	}
+
+	csServices := []interface{}{
+		map[string]interface{}{
+			"name": "common-service-postgresql",
+			"spec": map[string]interface{}{
+				"cluster": map[string]interface{}{
+					"instances": float64(3),
+				},
+			},
+		},
+	}
+
+	ruleSlice := []interface{}{}
+	reconciler := &CommonServiceReconciler{}
+	merged := reconciler.mergeServicesWithBase(baseServices, csServices, ruleSlice)
+
+	require.Len(t, merged, 1, "Should have one merged service")
+
+	service := merged[0].(map[string]interface{})
+	assert.Equal(t, "common-service-postgresql", service["name"])
+
+	// Verify spec was merged
+	spec := service["spec"].(map[string]interface{})
+	cluster := spec["cluster"].(map[string]interface{})
+	assert.Equal(t, float64(3), cluster["instances"], "CS instances should override")
+	assert.Equal(t, "10Gi", cluster["storage"].(map[string]interface{})["size"], "Base storage should be preserved")
+
+	// Verify resources were preserved
+	resources := service["resources"].([]interface{})
+	assert.Len(t, resources, 1, "Base resources should be preserved")
+}
+
+// TestMergeServicesWithBase_AddsCSOnlyServices verifies that services
+// only in CS are added to the result.
+func TestMergeServicesWithBase_AddsCSOnlyServices(t *testing.T) {
+	baseServices := []interface{}{
+		map[string]interface{}{
+			"name": "ibm-cert-manager-operator",
+		},
+	}
+
+	csServices := []interface{}{
+		map[string]interface{}{
+			"name": "ibm-cert-manager-operator",
+		},
+		map[string]interface{}{
+			"name": "new-custom-service",
+			"spec": map[string]interface{}{
+				"replicas": float64(2),
+			},
+		},
+	}
+
+	ruleSlice := []interface{}{}
+	reconciler := &CommonServiceReconciler{}
+	merged := reconciler.mergeServicesWithBase(baseServices, csServices, ruleSlice)
+
+	require.Len(t, merged, 2, "Should have both services")
+
+	newService := getItemByName(merged, "new-custom-service")
+	require.NotNil(t, newService, "New CS service should be added")
+	assert.Equal(t, float64(2), newService.(map[string]interface{})["spec"].(map[string]interface{})["replicas"])
+}
+
+// TestMergeServicesWithBase_EmptyCSServices verifies that all base services
+// are preserved when CS has no services.
+func TestMergeServicesWithBase_EmptyCSServices(t *testing.T) {
+	baseServices := []interface{}{
+		map[string]interface{}{"name": "service1"},
+		map[string]interface{}{"name": "service2"},
+		map[string]interface{}{"name": "service3"},
+	}
+
+	csServices := []interface{}{}
+	ruleSlice := []interface{}{}
+	reconciler := &CommonServiceReconciler{}
+	merged := reconciler.mergeServicesWithBase(baseServices, csServices, ruleSlice)
+
+	require.Len(t, merged, 3, "All base services must be preserved")
+	assert.NotNil(t, getItemByName(merged, "service1"))
+	assert.NotNil(t, getItemByName(merged, "service2"))
+	assert.NotNil(t, getItemByName(merged, "service3"))
+}
+
+// TestMergeServicesWithBase_RealWorldScenario tests the exact bug scenario:
+// base has pg-migrator, CS doesn't, and postgresql needs size config preserved.
+func TestMergeServicesWithBase_RealWorldScenario(t *testing.T) {
+	baseServices := []interface{}{
+		map[string]interface{}{
+			"name": "common-service-postgresql",
+			"spec": map[string]interface{}{
+				"cluster": map[string]interface{}{
+					"instances": float64(2),
+				},
+			},
+			"resources": []interface{}{
+				map[string]interface{}{
+					"apiVersion": "postgresql.k8s.enterprisedb.io/v1",
+					"kind":       "Cluster",
+					"name":       "common-service-db",
+					"data": map[string]interface{}{
+						"spec": map[string]interface{}{
+							"storage": map[string]interface{}{
+								"size":         "10Gi",
+								"storageClass": "nfs-client",
+							},
+						},
+					},
+				},
+			},
+		},
+		map[string]interface{}{
+			"name": "common-service-pg-migrator",
+			"resources": []interface{}{
+				map[string]interface{}{
+					"apiVersion": "batch/v1",
+					"kind":       "Job",
+					"name":       "pg-migration-job",
+				},
+			},
+		},
+	}
+
+	// CS from size profile - has postgresql but not pg-migrator
+	csServices := []interface{}{
+		map[string]interface{}{
+			"name": "common-service-postgresql",
+			"spec": map[string]interface{}{
+				"cluster": map[string]interface{}{
+					"instances": float64(2),
+				},
+			},
+			"resources": []interface{}{
+				map[string]interface{}{
+					"apiVersion": "postgresql.k8s.enterprisedb.io/v1",
+					"kind":       "Cluster",
+					"name":       "common-service-db",
+					"data": map[string]interface{}{
+						"spec": map[string]interface{}{
+							"instances": float64(2),
+							"resources": map[string]interface{}{
+								"limits": map[string]interface{}{
+									"cpu":    "200m",
+									"memory": "768Mi",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	ruleSlice := []interface{}{}
+	reconciler := &CommonServiceReconciler{
+		Bootstrap: &bootstrap.Bootstrap{
+			CSData: apiv3.CSData{
+				ServicesNs: "ibm-common-services",
+			},
+		},
+	}
+	merged := reconciler.mergeServicesWithBase(baseServices, csServices, ruleSlice)
+
+	// CRITICAL: Both services must be present
+	require.Len(t, merged, 2, "Both services must be present")
+
+	// Verify pg-migrator is preserved
+	pgMigrator := getItemByName(merged, "common-service-pg-migrator")
+	require.NotNil(t, pgMigrator, "pg-migrator must be preserved from base")
+
+	// Verify postgresql was merged with size config preserved
+	postgresql := getItemByName(merged, "common-service-postgresql")
+	require.NotNil(t, postgresql, "postgresql must be present")
+
+	resources := postgresql.(map[string]interface{})["resources"].([]interface{})
+	require.Len(t, resources, 1, "Should have merged Cluster resource")
+
+	cluster := resources[0].(map[string]interface{})
+	data := cluster["data"].(map[string]interface{})
+	spec := data["spec"].(map[string]interface{})
+
+	// Verify size config from base is preserved
+	storage := spec["storage"].(map[string]interface{})
+	assert.Equal(t, "10Gi", storage["size"], "Base storage size must be preserved")
+	assert.Equal(t, "nfs-client", storage["storageClass"], "Base storageClass must be preserved")
+
+	// Verify CS config was merged
+	assert.Equal(t, float64(2), spec["instances"], "CS instances should be present")
+	assert.NotNil(t, spec["resources"], "CS resources should be merged")
+}
+
+// TestMergeServiceConfig_MergesSpecWithRules verifies that spec sections
+// are merged according to configuration rules.
+func TestMergeServiceConfig_MergesSpecWithRules(t *testing.T) {
+	baseService := map[string]interface{}{
+		"name": "test-service",
+		"spec": map[string]interface{}{
+			"mongoDB": map[string]interface{}{
+				"replicas": float64(1),
+				"resources": map[string]interface{}{
+					"limits": map[string]interface{}{
+						"cpu":    "500m",
+						"memory": "512Mi",
+					},
+				},
+			},
+		},
+	}
+
+	csService := map[string]interface{}{
+		"name": "test-service",
+		"spec": map[string]interface{}{
+			"mongoDB": map[string]interface{}{
+				"replicas": float64(3),
+				"resources": map[string]interface{}{
+					"limits": map[string]interface{}{
+						"cpu":    "1000m",
+						"memory": "1Gi",
+					},
+				},
+			},
+		},
+	}
+
+	ruleSlice := []interface{}{}
+	reconciler := &CommonServiceReconciler{
+		Bootstrap: &bootstrap.Bootstrap{
+			CSData: apiv3.CSData{
+				ServicesNs: "ibm-common-services",
+			},
+		},
+	}
+
+	merged := reconciler.mergeServiceConfig(baseService, csService, "test-service", ruleSlice)
+
+	require.NotNil(t, merged["spec"])
+	spec := merged["spec"].(map[string]interface{})
+	mongoDB := spec["mongoDB"].(map[string]interface{})
+
+	// Verify merge happened
+	assert.NotNil(t, mongoDB["replicas"])
+	assert.NotNil(t, mongoDB["resources"])
+}
+
+// TestMergeServiceConfig_MergesResources verifies that resource arrays
+// are properly merged.
+func TestMergeServiceConfig_MergesResources(t *testing.T) {
+	baseService := map[string]interface{}{
+		"name": "test-service",
+		"resources": []interface{}{
+			map[string]interface{}{
+				"apiVersion": "cert-manager.io/v1",
+				"kind":       "Certificate",
+				"name":       "base-cert",
+			},
+		},
+	}
+
+	csService := map[string]interface{}{
+		"name": "test-service",
+		"resources": []interface{}{
+			map[string]interface{}{
+				"apiVersion": "v1",
+				"kind":       "ConfigMap",
+				"name":       "cs-config",
+			},
+		},
+	}
+
+	ruleSlice := []interface{}{}
+	reconciler := &CommonServiceReconciler{
+		Bootstrap: &bootstrap.Bootstrap{
+			CSData: apiv3.CSData{
+				ServicesNs: "ibm-common-services",
+			},
+		},
+	}
+
+	merged := reconciler.mergeServiceConfig(baseService, csService, "test-service", ruleSlice)
+
+	require.NotNil(t, merged["resources"])
+	resources := merged["resources"].([]interface{})
+
+	// Both resources should be present
+	require.Len(t, resources, 2, "Both base and CS resources should be present")
+}
+
+// TestMergeServiceConfig_CopiesManagementStrategy verifies that
+// managementStrategy is copied from CS config.
+func TestMergeServiceConfig_CopiesManagementStrategy(t *testing.T) {
+	baseService := map[string]interface{}{
+		"name": "test-service",
+	}
+
+	csService := map[string]interface{}{
+		"name":               "test-service",
+		"managementStrategy": "turbo",
+	}
+
+	ruleSlice := []interface{}{}
+	reconciler := &CommonServiceReconciler{
+		Bootstrap: &bootstrap.Bootstrap{
+			CSData: apiv3.CSData{
+				ServicesNs: "ibm-common-services",
+			},
+		},
+	}
+
+	merged := reconciler.mergeServiceConfig(baseService, csService, "test-service", ruleSlice)
+
+	assert.Equal(t, "turbo", merged["managementStrategy"], "managementStrategy should be copied from CS")
+}
+
+// TestMergeServiceConfig_PreservesBaseWhenCSEmpty verifies that base
+// configuration is preserved when CS has no spec or resources.
+func TestMergeServiceConfig_PreservesBaseWhenCSEmpty(t *testing.T) {
+	baseService := map[string]interface{}{
+		"name": "test-service",
+		"spec": map[string]interface{}{
+			"replicas": float64(3),
+		},
+		"resources": []interface{}{
+			map[string]interface{}{
+				"kind": "Certificate",
+				"name": "base-cert",
+			},
+		},
+	}
+
+	csService := map[string]interface{}{
+		"name": "test-service",
+	}
+
+	ruleSlice := []interface{}{}
+	reconciler := &CommonServiceReconciler{
+		Bootstrap: &bootstrap.Bootstrap{
+			CSData: apiv3.CSData{
+				ServicesNs: "ibm-common-services",
+			},
+		},
+	}
+
+	merged := reconciler.mergeServiceConfig(baseService, csService, "test-service", ruleSlice)
+
+	// Base spec and resources should be preserved
+	assert.NotNil(t, merged["spec"], "Base spec should be preserved")
+	assert.NotNil(t, merged["resources"], "Base resources should be preserved")
+
+	spec := merged["spec"].(map[string]interface{})
+	assert.Equal(t, float64(3), spec["replicas"], "Base replicas should be preserved")
+
+	resources := merged["resources"].([]interface{})
+	assert.Len(t, resources, 1, "Base resources should be preserved")
+}
+
+// TestMergeServiceConfig_PreservesSizeConfiguration verifies that the size
+// configuration in storage sections is preserved during merge.
+// This tests the specific bug where size config was missing in second reconciliation.
+func TestMergeServiceConfig_PreservesSizeConfiguration(t *testing.T) {
+	// Base service has complete storage configuration including size
+	baseService := map[string]interface{}{
+		"name": "common-service-postgresql",
+		"resources": []interface{}{
+			map[string]interface{}{
+				"apiVersion": "postgresql.k8s.enterprisedb.io/v1",
+				"kind":       "Cluster",
+				"name":       "common-service-db",
+				"data": map[string]interface{}{
+					"spec": map[string]interface{}{
+						"instances": float64(2),
+						"storage": map[string]interface{}{
+							"size":         "10Gi",
+							"storageClass": "nfs-client",
+						},
+						"walStorage": map[string]interface{}{
+							"size":         "5Gi",
+							"storageClass": "nfs-client",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// CS service from size profile - has resources but may not have size
+	csService := map[string]interface{}{
+		"name": "common-service-postgresql",
+		"resources": []interface{}{
+			map[string]interface{}{
+				"apiVersion": "postgresql.k8s.enterprisedb.io/v1",
+				"kind":       "Cluster",
+				"name":       "common-service-db",
+				"data": map[string]interface{}{
+					"spec": map[string]interface{}{
+						"instances": float64(2),
+						"resources": map[string]interface{}{
+							"limits": map[string]interface{}{
+								"cpu":    "200m",
+								"memory": "768Mi",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	ruleSlice := []interface{}{}
+	reconciler := &CommonServiceReconciler{
+		Bootstrap: &bootstrap.Bootstrap{
+			CSData: apiv3.CSData{
+				ServicesNs: "ibm-common-services",
+			},
+		},
+	}
+
+	merged := reconciler.mergeServiceConfig(baseService, csService, "common-service-postgresql", ruleSlice)
+
+	require.NotNil(t, merged["resources"], "Resources must be present")
+	resources := merged["resources"].([]interface{})
+	require.Len(t, resources, 1, "Should have one Cluster resource")
+
+	cluster := resources[0].(map[string]interface{})
+	data := cluster["data"].(map[string]interface{})
+	spec := data["spec"].(map[string]interface{})
+
+	// CRITICAL: Verify size configuration is preserved
+	require.NotNil(t, spec["storage"], "storage section must be preserved")
+	storage := spec["storage"].(map[string]interface{})
+	assert.Equal(t, "10Gi", storage["size"], "storage.size must be preserved from base")
+	assert.Equal(t, "nfs-client", storage["storageClass"], "storage.storageClass must be preserved from base")
+
+	require.NotNil(t, spec["walStorage"], "walStorage section must be preserved")
+	walStorage := spec["walStorage"].(map[string]interface{})
+	assert.Equal(t, "5Gi", walStorage["size"], "walStorage.size must be preserved from base")
+	assert.Equal(t, "nfs-client", walStorage["storageClass"], "walStorage.storageClass must be preserved from base")
+
+	// Verify CS resources config was also merged
+	require.NotNil(t, spec["resources"], "CS resources config should be merged")
+	resourcesConfig := spec["resources"].(map[string]interface{})
+	limits := resourcesConfig["limits"].(map[string]interface{})
+	assert.Equal(t, "200m", limits["cpu"], "CS cpu limits should be present")
+	assert.Equal(t, "768Mi", limits["memory"], "CS memory limits should be present")
+}
+
+// TestMergeServicesWithBase_PostgreSQLSizeConfigPreserved tests the complete
+// scenario where postgresql size configuration must be preserved across reconciliations.
+func TestMergeServicesWithBase_PostgreSQLSizeConfigPreserved(t *testing.T) {
+	// Simulate base OperandConfig with complete postgresql configuration
+	baseServices := []interface{}{
+		map[string]interface{}{
+			"name": "common-service-postgresql",
+			"resources": []interface{}{
+				map[string]interface{}{
+					"apiVersion": "cert-manager.io/v1",
+					"kind":       "Certificate",
+					"name":       "common-service-db-tls-cert",
+				},
+				map[string]interface{}{
+					"apiVersion": "postgresql.k8s.enterprisedb.io/v1",
+					"kind":       "Cluster",
+					"name":       "common-service-db",
+					"data": map[string]interface{}{
+						"spec": map[string]interface{}{
+							"instances": float64(2),
+							"storage": map[string]interface{}{
+								"size":         "20Gi",
+								"storageClass": "nfs-client",
+							},
+							"walStorage": map[string]interface{}{
+								"size":         "10Gi",
+								"storageClass": "nfs-client",
+							},
+							"postgresql": map[string]interface{}{
+								"parameters": map[string]interface{}{
+									"max_connections": "600",
+									"shared_buffers":  "64MB",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		map[string]interface{}{
+			"name": "common-service-pg-migrator",
+			"resources": []interface{}{
+				map[string]interface{}{
+					"apiVersion": "batch/v1",
+					"kind":       "Job",
+					"name":       "pg-migration-job",
+				},
+			},
+		},
+	}
+
+	// Simulate CS from size profile - has postgresql but not pg-migrator
+	// and may not have complete storage config
+	csServices := []interface{}{
+		map[string]interface{}{
+			"name": "common-service-postgresql",
+			"resources": []interface{}{
+				map[string]interface{}{
+					"apiVersion": "postgresql.k8s.enterprisedb.io/v1",
+					"kind":       "Cluster",
+					"name":       "common-service-db",
+					"data": map[string]interface{}{
+						"spec": map[string]interface{}{
+							"instances": float64(2),
+							"resources": map[string]interface{}{
+								"limits": map[string]interface{}{
+									"cpu":               "200m",
+									"memory":            "768Mi",
+									"ephemeral-storage": "512Mi",
+								},
+								"requests": map[string]interface{}{
+									"cpu":               "75m",
+									"memory":            "256Mi",
+									"ephemeral-storage": "128Mi",
+								},
+							},
+							"postgresql": map[string]interface{}{
+								"parameters": map[string]interface{}{
+									"max_connections": "600",
+									"shared_buffers":  "64MB",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	ruleSlice := []interface{}{}
+	reconciler := &CommonServiceReconciler{
+		Bootstrap: &bootstrap.Bootstrap{
+			CSData: apiv3.CSData{
+				ServicesNs: "ibm-common-services",
+			},
+		},
+	}
+
+	merged := reconciler.mergeServicesWithBase(baseServices, csServices, ruleSlice)
+
+	// Verify both services are present
+	require.Len(t, merged, 2, "Both services must be present")
+
+	// Verify pg-migrator is preserved
+	pgMigrator := getItemByName(merged, "common-service-pg-migrator")
+	require.NotNil(t, pgMigrator, "pg-migrator must be preserved")
+
+	// Verify postgresql with complete configuration
+	postgresql := getItemByName(merged, "common-service-postgresql")
+	require.NotNil(t, postgresql, "postgresql must be present")
+
+	resources := postgresql.(map[string]interface{})["resources"].([]interface{})
+	require.Len(t, resources, 2, "Should have Certificate and Cluster resources")
+
+	// Find the Cluster resource
+	var clusterResource map[string]interface{}
+	for _, res := range resources {
+		resMap := res.(map[string]interface{})
+		if resMap["kind"] == "Cluster" {
+			clusterResource = resMap
+			break
+		}
+	}
+
+	require.NotNil(t, clusterResource, "Cluster resource must be present")
+	data := clusterResource["data"].(map[string]interface{})
+	spec := data["spec"].(map[string]interface{})
+
+	// CRITICAL: Verify size configuration is preserved from base
+	require.NotNil(t, spec["storage"], "storage must be preserved")
+	storage := spec["storage"].(map[string]interface{})
+	assert.Equal(t, "20Gi", storage["size"], "storage.size from base must be preserved")
+	assert.Equal(t, "nfs-client", storage["storageClass"], "storage.storageClass from base must be preserved")
+
+	require.NotNil(t, spec["walStorage"], "walStorage must be preserved")
+	walStorage := spec["walStorage"].(map[string]interface{})
+	assert.Equal(t, "10Gi", walStorage["size"], "walStorage.size from base must be preserved")
+	assert.Equal(t, "nfs-client", walStorage["storageClass"], "walStorage.storageClass from base must be preserved")
+
+	// Verify CS configuration was also merged
+	assert.Equal(t, float64(2), spec["instances"], "instances from CS should be present")
+	require.NotNil(t, spec["resources"], "resources from CS should be merged")
+	resourcesConfig := spec["resources"].(map[string]interface{})
+	limits := resourcesConfig["limits"].(map[string]interface{})
+	assert.Equal(t, "200m", limits["cpu"], "CS cpu limits should be present")
+	assert.Equal(t, "768Mi", limits["memory"], "CS memory limits should be present")
+
+	// Verify postgresql parameters are preserved
+	require.NotNil(t, spec["postgresql"], "postgresql parameters must be present")
+	postgresql_params := spec["postgresql"].(map[string]interface{})
+	params := postgresql_params["parameters"].(map[string]interface{})
+	assert.Equal(t, "600", params["max_connections"], "max_connections should be preserved")
+	assert.Equal(t, "64MB", params["shared_buffers"], "shared_buffers should be preserved")
+}
+
+// TestMergeServicesWithBase_MultipleReconciliations simulates multiple
+// reconciliation cycles to ensure configuration remains stable.
+func TestMergeServicesWithBase_MultipleReconciliations(t *testing.T) {
+	// Initial base state
+	baseServices := []interface{}{
+		map[string]interface{}{
+			"name": "common-service-postgresql",
+			"resources": []interface{}{
+				map[string]interface{}{
+					"apiVersion": "postgresql.k8s.enterprisedb.io/v1",
+					"kind":       "Cluster",
+					"name":       "common-service-db",
+					"data": map[string]interface{}{
+						"spec": map[string]interface{}{
+							"storage": map[string]interface{}{
+								"size": "10Gi",
+							},
+						},
+					},
+				},
+			},
+		},
+		map[string]interface{}{
+			"name": "common-service-pg-migrator",
+			"resources": []interface{}{
+				map[string]interface{}{
+					"kind": "Job",
+					"name": "migration-job",
+				},
+			},
+		},
+	}
+
+	csServices := []interface{}{
+		map[string]interface{}{
+			"name": "common-service-postgresql",
+			"resources": []interface{}{
+				map[string]interface{}{
+					"apiVersion": "postgresql.k8s.enterprisedb.io/v1",
+					"kind":       "Cluster",
+					"name":       "common-service-db",
+					"data": map[string]interface{}{
+						"spec": map[string]interface{}{
+							"instances": float64(2),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	ruleSlice := []interface{}{}
+	reconciler := &CommonServiceReconciler{
+		Bootstrap: &bootstrap.Bootstrap{
+			CSData: apiv3.CSData{
+				ServicesNs: "ibm-common-services",
+			},
+		},
+	}
+
+	// First reconciliation
+	merged1 := reconciler.mergeServicesWithBase(baseServices, csServices, ruleSlice)
+	require.Len(t, merged1, 2, "First reconciliation: both services must be present")
+
+	// Second reconciliation - use result of first as new base
+	merged2 := reconciler.mergeServicesWithBase(merged1, csServices, ruleSlice)
+	require.Len(t, merged2, 2, "Second reconciliation: both services must still be present")
+
+	// Verify pg-migrator is still present after multiple reconciliations
+	pgMigrator := getItemByName(merged2, "common-service-pg-migrator")
+	require.NotNil(t, pgMigrator, "pg-migrator must be preserved after multiple reconciliations")
+
+	// Verify size config is still present
+	postgresql := getItemByName(merged2, "common-service-postgresql")
+	require.NotNil(t, postgresql, "postgresql must be present")
+	resources := postgresql.(map[string]interface{})["resources"].([]interface{})
+	cluster := resources[0].(map[string]interface{})
+	data := cluster["data"].(map[string]interface{})
+	spec := data["spec"].(map[string]interface{})
+	storage := spec["storage"].(map[string]interface{})
+	assert.Equal(t, "10Gi", storage["size"], "size must be preserved after multiple reconciliations")
+}
+
+// TestMergeServicesWithBase_RemovesOrphanedFields verifies that when a field
+// is removed from CommonService CR, it's removed from the final OperandConfig
+// (only base template fields are preserved).
+func TestMergeServicesWithBase_RemovesOrphanedFields(t *testing.T) {
+	// Base template has postgresql with storage config
+	baseServices := []interface{}{
+		map[string]interface{}{
+			"name": "common-service-postgresql",
+			"resources": []interface{}{
+				map[string]interface{}{
+					"apiVersion": "postgresql.k8s.enterprisedb.io/v1",
+					"kind":       "Cluster",
+					"name":       "common-service-db",
+					"data": map[string]interface{}{
+						"spec": map[string]interface{}{
+							"storage": map[string]interface{}{
+								"size": "10Gi",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// CS CR previously had a custom field, but now it's removed
+	// (simulating user removing a field from CS CR)
+	csServices := []interface{}{
+		map[string]interface{}{
+			"name": "common-service-postgresql",
+			"resources": []interface{}{
+				map[string]interface{}{
+					"apiVersion": "postgresql.k8s.enterprisedb.io/v1",
+					"kind":       "Cluster",
+					"name":       "common-service-db",
+					"data": map[string]interface{}{
+						"spec": map[string]interface{}{
+							"instances": float64(2),
+							// Note: no custom field here anymore
+						},
+					},
+				},
+			},
+		},
+	}
+
+	ruleSlice := []interface{}{}
+	reconciler := &CommonServiceReconciler{
+		Bootstrap: &bootstrap.Bootstrap{
+			CSData: apiv3.CSData{
+				ServicesNs: "ibm-common-services",
+			},
+		},
+	}
+
+	merged := reconciler.mergeServicesWithBase(baseServices, csServices, ruleSlice)
+
+	require.Len(t, merged, 1, "Should have one service")
+	service := merged[0].(map[string]interface{})
+	resources := service["resources"].([]interface{})
+	cluster := resources[0].(map[string]interface{})
+	data := cluster["data"].(map[string]interface{})
+	spec := data["spec"].(map[string]interface{})
+
+	// Base template field should be preserved
+	assert.NotNil(t, spec["storage"], "Base template storage should be preserved")
+	storage := spec["storage"].(map[string]interface{})
+	assert.Equal(t, "10Gi", storage["size"], "Base template size should be preserved")
+
+	// CS field should be present
+	assert.Equal(t, float64(2), spec["instances"], "CS instances should be present")
+}
+
+// TestMergeServicesWithBase_RemovesCSAddedResource verifies that when a
+// resource is removed from CS CR, it's removed from final OperandConfig
+// (only base template resources are preserved).
+func TestMergeServicesWithBase_RemovesCSAddedResource(t *testing.T) {
+	// Base template has only Certificate
+	baseServices := []interface{}{
+		map[string]interface{}{
+			"name": "common-service-postgresql",
+			"resources": []interface{}{
+				map[string]interface{}{
+					"apiVersion": "cert-manager.io/v1",
+					"kind":       "Certificate",
+					"name":       "db-cert",
+				},
+			},
+		},
+	}
+
+	// CS CR now has NO resources (user removed the custom ConfigMap)
+	// Previously CS had added a ConfigMap, but now it's removed
+	csServices := []interface{}{
+		map[string]interface{}{
+			"name": "common-service-postgresql",
+			// No resources in CS CR
+		},
+	}
+
+	ruleSlice := []interface{}{}
+	reconciler := &CommonServiceReconciler{
+		Bootstrap: &bootstrap.Bootstrap{
+			CSData: apiv3.CSData{
+				ServicesNs: "ibm-common-services",
+			},
+		},
+	}
+
+	merged := reconciler.mergeServicesWithBase(baseServices, csServices, ruleSlice)
+
+	require.Len(t, merged, 1, "Should have one service")
+	service := merged[0].(map[string]interface{})
+
+	// Base template Certificate should be preserved
+	require.NotNil(t, service["resources"], "Resources should be present")
+	resources := service["resources"].([]interface{})
+	require.Len(t, resources, 1, "Should have only base template Certificate")
+
+	cert := resources[0].(map[string]interface{})
+	assert.Equal(t, "Certificate", cert["kind"], "Should be Certificate from base")
+	assert.Equal(t, "db-cert", cert["name"], "Should be db-cert from base")
+}
+
+// TestMergeServicesWithBase_RemovesCSAddedService verifies that when an
+// entire service is removed from CS CR, it's removed from final OperandConfig
+// (only base template services are preserved).
+func TestMergeServicesWithBase_RemovesCSAddedService(t *testing.T) {
+	// Base template has postgresql and pg-migrator
+	baseServices := []interface{}{
+		map[string]interface{}{
+			"name": "common-service-postgresql",
+		},
+		map[string]interface{}{
+			"name": "common-service-pg-migrator",
+		},
+	}
+
+	// CS CR previously had a custom service, but now it's removed
+	// Only postgresql is in CS CR now
+	csServices := []interface{}{
+		map[string]interface{}{
+			"name": "common-service-postgresql",
+		},
+		// Note: custom-service was removed from CS CR
+	}
+
+	ruleSlice := []interface{}{}
+	reconciler := &CommonServiceReconciler{}
+
+	merged := reconciler.mergeServicesWithBase(baseServices, csServices, ruleSlice)
+
+	// Should have only base template services (postgresql and pg-migrator)
+	// The custom-service that was in CS CR is now gone
+	require.Len(t, merged, 2, "Should have only base template services")
+
+	serviceNames := make([]string, 0, 2)
+	for _, svc := range merged {
+		serviceNames = append(serviceNames, svc.(map[string]interface{})["name"].(string))
+	}
+
+	assert.Contains(t, serviceNames, "common-service-postgresql", "Base postgresql should be present")
+	assert.Contains(t, serviceNames, "common-service-pg-migrator", "Base pg-migrator should be present")
+	assert.NotContains(t, serviceNames, "custom-service", "CS-added service should be removed")
+}
+
+// TestMergeServicesWithBase_OrphanedFieldsAcrossReconciliations verifies
+// that orphaned fields don't accumulate across multiple reconciliations.
+func TestMergeServicesWithBase_OrphanedFieldsAcrossReconciliations(t *testing.T) {
+	// Base template
+	baseServices := []interface{}{
+		map[string]interface{}{
+			"name": "test-service",
+			"spec": map[string]interface{}{
+				"baseField": "baseValue",
+			},
+		},
+	}
+
+	ruleSlice := []interface{}{}
+	reconciler := &CommonServiceReconciler{}
+
+	// First reconciliation: CS adds customField
+	csServices1 := []interface{}{
+		map[string]interface{}{
+			"name": "test-service",
+			"spec": map[string]interface{}{
+				"customField": "customValue",
+			},
+		},
+	}
+
+	merged1 := reconciler.mergeServicesWithBase(baseServices, csServices1, ruleSlice)
+	service1 := merged1[0].(map[string]interface{})
+	spec1 := service1["spec"].(map[string]interface{})
+
+	// After first reconciliation, both fields should be present
+	assert.Equal(t, "baseValue", spec1["baseField"], "Base field should be present")
+	assert.Equal(t, "customValue", spec1["customField"], "Custom field should be present")
+
+	// Second reconciliation: CS removes customField
+	csServices2 := []interface{}{
+		map[string]interface{}{
+			"name": "test-service",
+			// No spec in CS CR - customField removed
+		},
+	}
+
+	// Use base template again (not merged1) to simulate fresh reconciliation
+	merged2 := reconciler.mergeServicesWithBase(baseServices, csServices2, ruleSlice)
+	service2 := merged2[0].(map[string]interface{})
+	spec2 := service2["spec"].(map[string]interface{})
+
+	// After second reconciliation, only base field should remain
+	assert.Equal(t, "baseValue", spec2["baseField"], "Base field should still be present")
+	assert.NotContains(t, spec2, "customField", "Custom field should be removed")
 }

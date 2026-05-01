@@ -67,16 +67,45 @@ func mergeCRsIntoOperandConfig(defaultMap map[string]interface{}, changedMap map
 	return changedMap
 }
 
-// shrinkSize merges CRs by picking the smaller size
+// shrinkSize merges CRs by picking the extreme size (max or min)
 func shrinkSize(defaultMap map[string]interface{}, changedMap map[string]interface{}, extreme Extreme) map[string]interface{} {
 	//TODO: Only shrink the parameter with `Largest_value` rule
+	// Create a deep copy of defaultMap to avoid modifying the original
+	resultMap := make(map[string]interface{})
+	for key, value := range defaultMap {
+		// Deep copy maps and slices
+		switch v := value.(type) {
+		case map[string]interface{}:
+			copiedMap := make(map[string]interface{})
+			for k, val := range v {
+				copiedMap[k] = val
+			}
+			resultMap[key] = copiedMap
+		case []interface{}:
+			copiedSlice := make([]interface{}, len(v))
+			copy(copiedSlice, v)
+			resultMap[key] = copiedSlice
+		default:
+			resultMap[key] = value
+		}
+	}
+
+	// Now merge with extreme logic - this will modify resultMap in place
 	for key := range defaultMap {
 		if reflect.DeepEqual(defaultMap[key], changedMap[key]) {
 			continue
 		}
-		mergeChangedMapWithExtremeSize(key, defaultMap[key], changedMap[key], defaultMap, extreme)
+		mergeChangedMapWithExtremeSize(key, defaultMap[key], changedMap[key], resultMap, extreme)
 	}
-	return defaultMap
+
+	// Also handle keys that exist in changedMap but not in defaultMap
+	for key, value := range changedMap {
+		if _, exists := defaultMap[key]; !exists {
+			resultMap[key] = value
+		}
+	}
+
+	return resultMap
 }
 
 func mergeProfileController(serviceControllerMappingSummary, serviceControllerMapping map[string]string) map[string]string {
@@ -97,11 +126,12 @@ func mergeProfileController(serviceControllerMappingSummary, serviceControllerMa
 
 func mergeCSCRs(csSummary, csCR, ruleSlice []interface{}, serviceControllerMappingSummary map[string]string, opconNs string) []interface{} {
 	for _, operator := range csCR {
-		summaryCR := getItemByName(csSummary, operator.(map[string]interface{})["name"].(string))
-		rules := getItemByName(ruleSlice, operator.(map[string]interface{})["name"].(string))
+		operatorName := operator.(map[string]interface{})["name"].(string)
+		summaryCR := getItemByName(csSummary, operatorName)
+		rules := getItemByName(ruleSlice, operatorName)
 		if summaryCR == nil {
 			summaryCR = map[string]interface{}{
-				"name":      operator.(map[string]interface{})["name"].(string),
+				"name":      operatorName,
 				"spec":      map[string]interface{}{},
 				"resources": []interface{}{},
 			}
@@ -111,7 +141,7 @@ func mergeCSCRs(csSummary, csCR, ruleSlice []interface{}, serviceControllerMappi
 			summaryCR.(map[string]interface{})["resources"] = []interface{}{}
 		}
 		serviceController := serviceControllerMappingSummary["profileController"]
-		if controller, ok := serviceControllerMappingSummary[operator.(map[string]interface{})["name"].(string)]; ok {
+		if controller, ok := serviceControllerMappingSummary[operatorName]; ok {
 			serviceController = controller
 		}
 		if operator.(map[string]interface{})["spec"] != nil {
@@ -126,6 +156,7 @@ func mergeCSCRs(csSummary, csCR, ruleSlice []interface{}, serviceControllerMappi
 				if rules != nil && rules.(map[string]interface{})["spec"] != nil && rules.(map[string]interface{})["spec"].(map[string]interface{})[cr] != nil {
 					ruleForCR := rules.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
 					sizeForCR := summaryCR.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
+					klog.V(2).Infof("Merging CR %s for operator %s: comparing accumulated summary with new spec", cr, operatorName)
 					summaryCR.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsIntoOperandConfig(sizeForCR, spec.(map[string]interface{}), ruleForCR, false, false)
 				}
 			}
@@ -483,55 +514,67 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 		return true, err
 	}
 
-	// 2. Build complete desired state from ALL CommonService CRs
-	desiredServices, _, err := r.buildDesiredStateFromAllCRs(ctx)
+	// 2. Get base template services (fresh from template, not from current OperandConfig)
+	baseTemplateServices, err := r.getBaseTemplateServices()
+	if err != nil {
+		klog.Errorf("Failed to get base template services: %v", err)
+		return true, err
+	}
+
+	// 3. Build desired state from ALL CommonService CRs
+	csDesiredServices, _, err := r.buildDesiredStateFromAllCRs(ctx)
 	if err != nil {
 		klog.Errorf("Failed to build desired state from CommonService CRs: %v", err)
 		return true, err
 	}
 
-	// 3. Apply extreme size handling to desired state
+	// 4. Apply extreme size handling to CS desired state
 	ruleSlice, err := convertStringToSlice(rules.ConfigurationRules)
 	if err != nil {
 		klog.Errorf("Failed to convert configuration rules: %v", err)
 		return true, err
 	}
 
-	desiredServices, err = r.getExtremeizes(ctx, desiredServices, ruleSlice, Max)
+	csDesiredServices, err = r.getExtremeizes(ctx, csDesiredServices, ruleSlice, Max)
 	if err != nil {
 		klog.Errorf("Failed to apply extreme size handling: %v", err)
 		return true, err
 	}
 
-	// 4. Get existing services from OperandConfig
-	existingServices, ok := opcon.Object["spec"].(map[string]interface{})["services"].([]interface{})
-	if !ok {
-		klog.Errorf("Failed to extract existing services from OperandConfig")
-		return true, fmt.Errorf("invalid OperandConfig structure")
-	}
+	// 5. Merge CS configurations with base template services
+	// This ensures: base template + current CS CR = final OperandConfig
+	// If a resource is removed from CS CR, it won't be in the final result
+	mergedServices := r.mergeServicesWithBase(baseTemplateServices, csDesiredServices, ruleSlice)
 
-	// 5. Calculate hashes for comparison
-	desiredHash, err := util.CalculateResourceHash(map[string]interface{}{"services": desiredServices})
+	// 6. Calculate hashes for comparison
+	mergedHash, err := util.CalculateResourceHash(map[string]interface{}{"services": mergedServices})
 	if err != nil {
-		klog.Errorf("Failed to calculate hash for desired services: %v", err)
+		klog.Errorf("Failed to calculate hash for merged services: %v", err)
 		return true, err
 	}
 
-	existingHash, err := util.CalculateResourceHash(map[string]interface{}{"services": existingServices})
+	// Get current services for comparison
+	currentServices, ok := opcon.Object["spec"].(map[string]interface{})["services"].([]interface{})
+	if !ok {
+		klog.Errorf("Failed to extract current services from OperandConfig")
+		return true, fmt.Errorf("invalid OperandConfig structure")
+	}
+
+	currentHash, err := util.CalculateResourceHash(map[string]interface{}{"services": currentServices})
 	if err != nil {
 		klog.Errorf("Failed to calculate hash for existing services: %v", err)
 		return true, err
 	}
 
-	// 6. Compare hashes - if equal, no update needed
-	if desiredHash == existingHash {
-		klog.V(2).Infof("OperandConfig services unchanged (hash match: %s)", existingHash)
+	// 7. Compare hashes - if equal, no update needed
+	if mergedHash == currentHash {
+		klog.V(2).Infof("OperandConfig services unchanged (hash match: %s)", currentHash)
 		return true, nil
 	}
 
-	// 7. Hashes differ - replace entire services array
-	klog.Infof("Updating OperandConfig services)", existingHash, desiredHash)
-	opcon.Object["spec"].(map[string]interface{})["services"] = desiredServices
+	// 8. Hashes differ - replace entire services array with merged result
+	klog.Infof("Updating OperandConfig services (hash changed: %s -> %s)", currentHash, mergedHash)
+	opcon.Object["spec"].(map[string]interface{})["services"] = mergedServices
 
 	if err := r.Update(ctx, opcon); err != nil {
 		klog.Errorf("Failed to update OperandConfig %s: %v", opconKey.String(), err)
@@ -540,6 +583,159 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 
 	klog.Infof("Successfully updated OperandConfig %s with new services configuration", opconKey.String())
 	return false, nil
+}
+
+// getBaseTemplateServices returns the base services from the OperandConfig template
+// This ensures we always start with the fresh template, not the current OperandConfig state
+func (r *CommonServiceReconciler) getBaseTemplateServices() ([]interface{}, error) {
+	// Get base template configs using common utility
+	configs := util.GetBaseOperandConfigList()
+
+	concatenatedCon, err := constant.ConcatenateConfigs(constant.CSV4OpCon, configs, r.Bootstrap.CSData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to concatenate base configs: %v", err)
+	}
+
+	// Use common utility function to parse and extract services
+	services, err := util.ParseOperandConfigServices(concatenatedCon)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse base config: %v", err)
+	}
+
+	return services, nil
+}
+
+// mergeServicesWithBase merges CommonService configurations with base OperandConfig services
+// This ensures base-only services are preserved while CS configs are applied
+func (r *CommonServiceReconciler) mergeServicesWithBase(baseServices, csServices, ruleSlice []interface{}) []interface{} {
+	// Create a map of CS service names for quick lookup
+	csServiceMap := make(map[string]interface{})
+	for _, csService := range csServices {
+		if csMap, ok := csService.(map[string]interface{}); ok {
+			if name, ok := csMap["name"].(string); ok {
+				csServiceMap[name] = csService
+			}
+		}
+	}
+
+	// Start with base services and merge CS configurations
+	result := make([]interface{}, 0, len(baseServices))
+	processedCSServices := make(map[string]bool)
+
+	for _, baseService := range baseServices {
+		baseMap, ok := baseService.(map[string]interface{})
+		if !ok {
+			result = append(result, baseService)
+			continue
+		}
+
+		serviceName, ok := baseMap["name"].(string)
+		if !ok {
+			result = append(result, baseService)
+			continue
+		}
+
+		// Check if this service has CS configuration
+		if csService, exists := csServiceMap[serviceName]; exists {
+			// Merge CS config into base service
+			csMap := csService.(map[string]interface{})
+			mergedService := r.mergeServiceConfig(baseMap, csMap, serviceName, ruleSlice)
+			result = append(result, mergedService)
+			processedCSServices[serviceName] = true
+		} else {
+			// No CS config for this service, keep base as-is
+			result = append(result, baseService)
+		}
+	}
+
+	// Add any CS-only services that weren't in base
+	for _, csService := range csServices {
+		if csMap, ok := csService.(map[string]interface{}); ok {
+			if name, ok := csMap["name"].(string); ok {
+				if !processedCSServices[name] {
+					result = append(result, csService)
+				}
+			}
+		}
+	}
+
+	return result
+}
+
+// mergeServiceConfig merges a single service configuration from CS into base
+func (r *CommonServiceReconciler) mergeServiceConfig(baseService, csService map[string]interface{}, serviceName string, ruleSlice []interface{}) map[string]interface{} {
+	result := make(map[string]interface{})
+
+	// Copy base service
+	for k, v := range baseService {
+		result[k] = v
+	}
+
+	// Get rules for this service
+	rules := getItemByName(ruleSlice, serviceName)
+
+	// Merge spec if present in CS config
+	if csService["spec"] != nil {
+		if result["spec"] == nil {
+			result["spec"] = make(map[string]interface{})
+		}
+
+		baseSpec, baseSpecOk := result["spec"].(map[string]interface{})
+		csSpec, csSpecOk := csService["spec"].(map[string]interface{})
+
+		if baseSpecOk && csSpecOk {
+			// Merge each CR in spec
+			for crName, csSpecValue := range csSpec {
+				if baseSpec[crName] == nil {
+					baseSpec[crName] = csSpecValue
+				} else if rules != nil && rules.(map[string]interface{})["spec"] != nil {
+					// Apply rules-based merge
+					ruleForCR := rules.(map[string]interface{})["spec"].(map[string]interface{})[crName]
+					if ruleForCR != nil {
+						baseSpec[crName] = mergeCRsIntoOperandConfig(
+							baseSpec[crName].(map[string]interface{}),
+							csSpecValue.(map[string]interface{}),
+							ruleForCR.(map[string]interface{}),
+							false,
+							false,
+						)
+					} else {
+						// No rules, use deep merge
+						baseSpec[crName] = mergeSizeProfile(
+							baseSpec[crName].(map[string]interface{}),
+							csSpecValue.(map[string]interface{}),
+						)
+					}
+				} else {
+					// No rules, use deep merge
+					if baseSpecMap, ok := baseSpec[crName].(map[string]interface{}); ok {
+						if csSpecMap, ok := csSpecValue.(map[string]interface{}); ok {
+							baseSpec[crName] = mergeSizeProfile(baseSpecMap, csSpecMap)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Merge resources if present in CS config
+	if csService["resources"] != nil {
+		baseResources := []interface{}{}
+		if result["resources"] != nil {
+			baseResources = result["resources"].([]interface{})
+		}
+		csResources := csService["resources"].([]interface{})
+
+		// Use existing resource merge logic
+		result["resources"] = mergeResourceArrays(baseResources, csResources, r.CSData.ServicesNs, "default")
+	}
+
+	// Copy managementStrategy if present
+	if csService["managementStrategy"] != nil {
+		result["managementStrategy"] = csService["managementStrategy"]
+	}
+
+	return result
 }
 
 func isOpResourceExists(opResource interface{}) bool {
@@ -565,7 +761,64 @@ func isOpResourceExists(opResource interface{}) bool {
 	return true
 }
 
+// getLargestSizeFromCRs determines the largest size across all CommonService CRs
+func (r *CommonServiceReconciler) getLargestSizeFromCRs(ctx context.Context) (string, error) {
+	csReq, err := labels.NewRequirement(constant.CsClonedFromLabel, selection.DoesNotExist, []string{})
+	if err != nil {
+		return "", err
+	}
+	csObjectList := &apiv3.CommonServiceList{}
+	if err := r.Client.List(ctx, csObjectList, &client.ListOptions{
+		LabelSelector: labels.NewSelector().Add(*csReq),
+	}); err != nil {
+		return "", err
+	}
+
+	sizePriority := map[string]int{
+		"starterset": 0,
+		"starter":    0,
+		"small":      1,
+		"medium":     2,
+		"large":      3,
+	}
+
+	largestSize := ""
+	largestPriority := -1
+
+	for _, cs := range csObjectList.Items {
+		if cs.GetDeletionTimestamp() != nil {
+			continue
+		}
+
+		csSize := cs.Spec.Size
+		if priority, ok := sizePriority[csSize]; ok {
+			klog.Infof("CommonService CR %s/%s has size: %s (priority: %d)", cs.Namespace, cs.Name, csSize, priority)
+			if priority > largestPriority {
+				largestPriority = priority
+				largestSize = csSize
+				klog.Infof("New largest size found: %s (priority: %d)", largestSize, largestPriority)
+			}
+		} else if csSize != "" {
+			klog.Infof("CommonService CR %s/%s has custom size configuration (not a predefined size)", cs.Namespace, cs.Name)
+		}
+	}
+
+	if largestSize == "" {
+		klog.Info("No predefined size found in any CommonService CR, will use starterset")
+		return "starterset", nil
+	}
+
+	klog.Infof("FINAL DECISION: Largest size across all CommonService CRs is: %s (priority: %d)", largestSize, largestPriority)
+	return largestSize, nil
+}
+
 func (r *CommonServiceReconciler) getExtremeizes(ctx context.Context, opconServices, ruleSlice []interface{}, extreme Extreme) ([]interface{}, error) {
+	// First, determine the largest size from all CommonService CRs
+	largestSize, err := r.getLargestSizeFromCRs(ctx)
+	if err != nil {
+		return []interface{}{}, err
+	}
+
 	// Fetch all the CommonService instances
 	csReq, err := labels.NewRequirement(constant.CsClonedFromLabel, selection.DoesNotExist, []string{})
 	if err != nil {
@@ -578,12 +831,24 @@ func (r *CommonServiceReconciler) getExtremeizes(ctx context.Context, opconServi
 		return []interface{}{}, err
 	}
 
+	klog.Infof("Found %d CommonService CRs to process for extreme size selection (extreme=%s, largest size=%s)", len(csObjectList.Items), extreme, largestSize)
+
 	var configSummary []interface{}
 	tmpConfigsSlice := make(map[int][]interface{})
 	serviceControllerMappingSummary := make(map[string]string)
 	for i, cs := range csObjectList.Items {
 		if cs.GetDeletionTimestamp() != nil {
+			klog.V(2).Infof("Skipping CommonService CR %s/%s (marked for deletion)", cs.Namespace, cs.Name)
 			continue
+		}
+
+		// Override the CR's size with the largest size if a predefined size was found
+		originalSize := cs.Spec.Size
+		if largestSize != "" {
+			cs.Spec.Size = largestSize
+			klog.Infof("Processing CommonService CR %s/%s: overriding size from '%s' to largest size '%s'", cs.Namespace, cs.Name, originalSize, largestSize)
+		} else {
+			klog.Infof("Processing CommonService CR %s/%s (size=%s) - index %d", cs.Namespace, cs.Name, cs.Spec.Size, i)
 		}
 
 		csConfigs, serviceControllerMapping, err := ExtractCommonServiceConfigs(&cs, r.CSData.ServicesNs)
@@ -594,7 +859,9 @@ func (r *CommonServiceReconciler) getExtremeizes(ctx context.Context, opconServi
 		serviceControllerMappingSummary = mergeProfileController(serviceControllerMappingSummary, serviceControllerMapping)
 		tmpConfigsSlice[i] = csConfigs
 	}
-	for _, csConfigs := range tmpConfigsSlice {
+	klog.Infof("Merging %d CommonService CR configurations into summary", len(tmpConfigsSlice))
+	for i, csConfigs := range tmpConfigsSlice {
+		klog.V(2).Infof("Merging configuration set %d into summary", i)
 		configSummary = mergeCSCRs(configSummary, csConfigs, ruleSlice, serviceControllerMappingSummary, r.CSData.ServicesNs)
 	}
 
@@ -617,6 +884,8 @@ func (r *CommonServiceReconciler) getExtremeizes(ctx context.Context, opconServi
 					continue
 				}
 				serviceForCR := crSummary.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
+				// shrinkSize now returns a new map with extreme values selected
+				klog.V(2).Infof("Applying extreme size (%s) for operator %s, CR %s", extreme, opService.(map[string]interface{})["name"], cr)
 				opService.(map[string]interface{})["spec"].(map[string]interface{})[cr] = shrinkSize(spec.(map[string]interface{}), serviceForCR, extreme)
 			}
 		}
@@ -660,6 +929,7 @@ func (r *CommonServiceReconciler) getExtremeizes(ctx context.Context, opconServi
 								summarizedRes.(map[string]interface{})["data"].(map[string]interface{})["spec"].(map[string]interface{})["resources"].(map[string]interface{})["limits"].(map[string]interface{})["cpu"] = struct{}{}
 							}
 						}
+						// shrinkSize now returns a new map with extreme values selected
 						opResources[i] = shrinkSize(opResource.(map[string]interface{}), summarizedRes.(map[string]interface{}), extreme)
 					}
 				}

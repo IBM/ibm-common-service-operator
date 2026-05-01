@@ -930,3 +930,73 @@ func CompareResourceHashes(resource1, resource2 map[string]interface{}) (bool, e
 	}
 	return hash1 == hash2, nil
 }
+
+// ParseOperandConfigServices parses a concatenated OperandConfig YAML string and extracts the services array.
+// This function handles both single OperandConfig objects and arrays of Kubernetes resources.
+// It's designed to work with the output of constant.ConcatenateConfigs().
+//
+// Parameters:
+//   - concatenatedConfig: YAML string containing one or more Kubernetes resources
+//
+// Returns:
+//   - []interface{}: The services array extracted from the OperandConfig's spec.services field
+//   - error: Any error encountered during parsing or extraction
+func ParseOperandConfigServices(concatenatedConfig string) ([]interface{}, error) {
+	// Parse YAML to JSON first
+	jsonSpec, err := utilyaml.YAMLToJSON([]byte(concatenatedConfig))
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert yaml to json: %v", err)
+	}
+
+	// Parse as generic structure (could be object or array)
+	var parsed interface{}
+	if err := encodingjson.Unmarshal(jsonSpec, &parsed); err != nil {
+		return nil, fmt.Errorf("failed to parse config: %v", err)
+	}
+
+	// Handle both single object and array of objects
+	var items []interface{}
+	switch v := parsed.(type) {
+	case map[string]interface{}:
+		// Single OperandConfig object
+		items = []interface{}{v}
+	case []interface{}:
+		// Array of resources
+		items = v
+	default:
+		return nil, fmt.Errorf("unexpected config format: expected object or array, got %T", parsed)
+	}
+
+	// Extract services from OperandConfig
+	for _, item := range items {
+		if itemMap, ok := item.(map[string]interface{}); ok {
+			if itemMap["kind"] == "OperandConfig" {
+				if spec, ok := itemMap["spec"].(map[string]interface{}); ok {
+					if services, ok := spec["services"].([]interface{}); ok {
+						klog.V(2).Infof("Extracted %d services from OperandConfig", len(services))
+						return services, nil
+					}
+				}
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("failed to extract services from OperandConfig: no valid OperandConfig found")
+}
+
+// GetBaseOperandConfigList returns the standard list of OperandConfig templates
+// used for building the base configuration. This centralizes the config list
+// that's used in multiple places (reconciler and bootstrap).
+func GetBaseOperandConfigList() []string {
+	return []string{
+		constant.MongoDBOpCon,
+		constant.IMOpCon,
+		constant.UserMgmtOpCon,
+		constant.IdpConfigUIOpCon,
+		constant.PlatformUIOpCon,
+		constant.KeyCloakOpCon,
+		constant.CommonServicePGOpCon,
+		constant.CommonServiceCNPGOpCon,
+		constant.CommonServicePGMigratorOpCon,
+	}
+}
