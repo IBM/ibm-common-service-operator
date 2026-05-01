@@ -1541,3 +1541,221 @@ func TestMergeServicesWithBase_MultipleReconciliations(t *testing.T) {
 	storage := spec["storage"].(map[string]interface{})
 	assert.Equal(t, "10Gi", storage["size"], "size must be preserved after multiple reconciliations")
 }
+
+// TestMergeServicesWithBase_RemovesOrphanedFields verifies that when a field
+// is removed from CommonService CR, it's removed from the final OperandConfig
+// (only base template fields are preserved).
+func TestMergeServicesWithBase_RemovesOrphanedFields(t *testing.T) {
+	// Base template has postgresql with storage config
+	baseServices := []interface{}{
+		map[string]interface{}{
+			"name": "common-service-postgresql",
+			"resources": []interface{}{
+				map[string]interface{}{
+					"apiVersion": "postgresql.k8s.enterprisedb.io/v1",
+					"kind":       "Cluster",
+					"name":       "common-service-db",
+					"data": map[string]interface{}{
+						"spec": map[string]interface{}{
+							"storage": map[string]interface{}{
+								"size": "10Gi",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// CS CR previously had a custom field, but now it's removed
+	// (simulating user removing a field from CS CR)
+	csServices := []interface{}{
+		map[string]interface{}{
+			"name": "common-service-postgresql",
+			"resources": []interface{}{
+				map[string]interface{}{
+					"apiVersion": "postgresql.k8s.enterprisedb.io/v1",
+					"kind":       "Cluster",
+					"name":       "common-service-db",
+					"data": map[string]interface{}{
+						"spec": map[string]interface{}{
+							"instances": float64(2),
+							// Note: no custom field here anymore
+						},
+					},
+				},
+			},
+		},
+	}
+
+	ruleSlice := []interface{}{}
+	reconciler := &CommonServiceReconciler{
+		Bootstrap: &bootstrap.Bootstrap{
+			CSData: apiv3.CSData{
+				ServicesNs: "ibm-common-services",
+			},
+		},
+	}
+
+	merged := reconciler.mergeServicesWithBase(baseServices, csServices, ruleSlice)
+
+	require.Len(t, merged, 1, "Should have one service")
+	service := merged[0].(map[string]interface{})
+	resources := service["resources"].([]interface{})
+	cluster := resources[0].(map[string]interface{})
+	data := cluster["data"].(map[string]interface{})
+	spec := data["spec"].(map[string]interface{})
+
+	// Base template field should be preserved
+	assert.NotNil(t, spec["storage"], "Base template storage should be preserved")
+	storage := spec["storage"].(map[string]interface{})
+	assert.Equal(t, "10Gi", storage["size"], "Base template size should be preserved")
+
+	// CS field should be present
+	assert.Equal(t, float64(2), spec["instances"], "CS instances should be present")
+}
+
+// TestMergeServicesWithBase_RemovesCSAddedResource verifies that when a
+// resource is removed from CS CR, it's removed from final OperandConfig
+// (only base template resources are preserved).
+func TestMergeServicesWithBase_RemovesCSAddedResource(t *testing.T) {
+	// Base template has only Certificate
+	baseServices := []interface{}{
+		map[string]interface{}{
+			"name": "common-service-postgresql",
+			"resources": []interface{}{
+				map[string]interface{}{
+					"apiVersion": "cert-manager.io/v1",
+					"kind":       "Certificate",
+					"name":       "db-cert",
+				},
+			},
+		},
+	}
+
+	// CS CR now has NO resources (user removed the custom ConfigMap)
+	// Previously CS had added a ConfigMap, but now it's removed
+	csServices := []interface{}{
+		map[string]interface{}{
+			"name": "common-service-postgresql",
+			// No resources in CS CR
+		},
+	}
+
+	ruleSlice := []interface{}{}
+	reconciler := &CommonServiceReconciler{
+		Bootstrap: &bootstrap.Bootstrap{
+			CSData: apiv3.CSData{
+				ServicesNs: "ibm-common-services",
+			},
+		},
+	}
+
+	merged := reconciler.mergeServicesWithBase(baseServices, csServices, ruleSlice)
+
+	require.Len(t, merged, 1, "Should have one service")
+	service := merged[0].(map[string]interface{})
+
+	// Base template Certificate should be preserved
+	require.NotNil(t, service["resources"], "Resources should be present")
+	resources := service["resources"].([]interface{})
+	require.Len(t, resources, 1, "Should have only base template Certificate")
+
+	cert := resources[0].(map[string]interface{})
+	assert.Equal(t, "Certificate", cert["kind"], "Should be Certificate from base")
+	assert.Equal(t, "db-cert", cert["name"], "Should be db-cert from base")
+}
+
+// TestMergeServicesWithBase_RemovesCSAddedService verifies that when an
+// entire service is removed from CS CR, it's removed from final OperandConfig
+// (only base template services are preserved).
+func TestMergeServicesWithBase_RemovesCSAddedService(t *testing.T) {
+	// Base template has postgresql and pg-migrator
+	baseServices := []interface{}{
+		map[string]interface{}{
+			"name": "common-service-postgresql",
+		},
+		map[string]interface{}{
+			"name": "common-service-pg-migrator",
+		},
+	}
+
+	// CS CR previously had a custom service, but now it's removed
+	// Only postgresql is in CS CR now
+	csServices := []interface{}{
+		map[string]interface{}{
+			"name": "common-service-postgresql",
+		},
+		// Note: custom-service was removed from CS CR
+	}
+
+	ruleSlice := []interface{}{}
+	reconciler := &CommonServiceReconciler{}
+
+	merged := reconciler.mergeServicesWithBase(baseServices, csServices, ruleSlice)
+
+	// Should have only base template services (postgresql and pg-migrator)
+	// The custom-service that was in CS CR is now gone
+	require.Len(t, merged, 2, "Should have only base template services")
+
+	serviceNames := make([]string, 0, 2)
+	for _, svc := range merged {
+		serviceNames = append(serviceNames, svc.(map[string]interface{})["name"].(string))
+	}
+
+	assert.Contains(t, serviceNames, "common-service-postgresql", "Base postgresql should be present")
+	assert.Contains(t, serviceNames, "common-service-pg-migrator", "Base pg-migrator should be present")
+	assert.NotContains(t, serviceNames, "custom-service", "CS-added service should be removed")
+}
+
+// TestMergeServicesWithBase_OrphanedFieldsAcrossReconciliations verifies
+// that orphaned fields don't accumulate across multiple reconciliations.
+func TestMergeServicesWithBase_OrphanedFieldsAcrossReconciliations(t *testing.T) {
+	// Base template
+	baseServices := []interface{}{
+		map[string]interface{}{
+			"name": "test-service",
+			"spec": map[string]interface{}{
+				"baseField": "baseValue",
+			},
+		},
+	}
+
+	ruleSlice := []interface{}{}
+	reconciler := &CommonServiceReconciler{}
+
+	// First reconciliation: CS adds customField
+	csServices1 := []interface{}{
+		map[string]interface{}{
+			"name": "test-service",
+			"spec": map[string]interface{}{
+				"customField": "customValue",
+			},
+		},
+	}
+
+	merged1 := reconciler.mergeServicesWithBase(baseServices, csServices1, ruleSlice)
+	service1 := merged1[0].(map[string]interface{})
+	spec1 := service1["spec"].(map[string]interface{})
+
+	// After first reconciliation, both fields should be present
+	assert.Equal(t, "baseValue", spec1["baseField"], "Base field should be present")
+	assert.Equal(t, "customValue", spec1["customField"], "Custom field should be present")
+
+	// Second reconciliation: CS removes customField
+	csServices2 := []interface{}{
+		map[string]interface{}{
+			"name": "test-service",
+			// No spec in CS CR - customField removed
+		},
+	}
+
+	// Use base template again (not merged1) to simulate fresh reconciliation
+	merged2 := reconciler.mergeServicesWithBase(baseServices, csServices2, ruleSlice)
+	service2 := merged2[0].(map[string]interface{})
+	spec2 := service2["spec"].(map[string]interface{})
+
+	// After second reconciliation, only base field should remain
+	assert.Equal(t, "baseValue", spec2["baseField"], "Base field should still be present")
+	assert.NotContains(t, spec2, "customField", "Custom field should be removed")
+}
