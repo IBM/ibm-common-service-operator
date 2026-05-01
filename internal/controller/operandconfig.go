@@ -483,11 +483,11 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 		return true, err
 	}
 
-	// 2. Get existing services from OperandConfig (base template services)
-	existingServices, ok := opcon.Object["spec"].(map[string]interface{})["services"].([]interface{})
-	if !ok {
-		klog.Errorf("Failed to extract existing services from OperandConfig")
-		return true, fmt.Errorf("invalid OperandConfig structure")
+	// 2. Get base template services (fresh from template, not from current OperandConfig)
+	baseTemplateServices, err := r.getBaseTemplateServices()
+	if err != nil {
+		klog.Errorf("Failed to get base template services: %v", err)
+		return true, err
 	}
 
 	// 3. Build desired state from ALL CommonService CRs
@@ -510,9 +510,10 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 		return true, err
 	}
 
-	// 5. Merge CS configurations with existing base services
-	// This preserves base-only services (like pg-migrator) while applying CS configs
-	mergedServices := r.mergeServicesWithBase(existingServices, csDesiredServices, ruleSlice)
+	// 5. Merge CS configurations with base template services
+	// This ensures: base template + current CS CR = final OperandConfig
+	// If a resource is removed from CS CR, it won't be in the final result
+	mergedServices := r.mergeServicesWithBase(baseTemplateServices, csDesiredServices, ruleSlice)
 
 	// 6. Calculate hashes for comparison
 	mergedHash, err := util.CalculateResourceHash(map[string]interface{}{"services": mergedServices})
@@ -521,20 +522,27 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 		return true, err
 	}
 
-	existingHash, err := util.CalculateResourceHash(map[string]interface{}{"services": existingServices})
+	// Get current services for comparison
+	currentServices, ok := opcon.Object["spec"].(map[string]interface{})["services"].([]interface{})
+	if !ok {
+		klog.Errorf("Failed to extract current services from OperandConfig")
+		return true, fmt.Errorf("invalid OperandConfig structure")
+	}
+
+	currentHash, err := util.CalculateResourceHash(map[string]interface{}{"services": currentServices})
 	if err != nil {
 		klog.Errorf("Failed to calculate hash for existing services: %v", err)
 		return true, err
 	}
 
 	// 7. Compare hashes - if equal, no update needed
-	if mergedHash == existingHash {
-		klog.V(2).Infof("OperandConfig services unchanged (hash match: %s)", existingHash)
+	if mergedHash == currentHash {
+		klog.V(2).Infof("OperandConfig services unchanged (hash match: %s)", currentHash)
 		return true, nil
 	}
 
 	// 8. Hashes differ - replace entire services array with merged result
-	klog.Infof("Updating OperandConfig services (hash changed: %s -> %s)", existingHash, mergedHash)
+	klog.Infof("Updating OperandConfig services (hash changed: %s -> %s)", currentHash, mergedHash)
 	opcon.Object["spec"].(map[string]interface{})["services"] = mergedServices
 
 	if err := r.Update(ctx, opcon); err != nil {
@@ -544,6 +552,50 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 
 	klog.Infof("Successfully updated OperandConfig %s with new services configuration", opconKey.String())
 	return false, nil
+}
+
+// getBaseTemplateServices returns the base services from the OperandConfig template
+// This ensures we always start with the fresh template, not the current OperandConfig state
+func (r *CommonServiceReconciler) getBaseTemplateServices() ([]interface{}, error) {
+	// Get base template configs
+	configs := []string{
+		constant.MongoDBOpCon,
+		constant.IMOpCon,
+		constant.UserMgmtOpCon,
+		constant.IdpConfigUIOpCon,
+		constant.PlatformUIOpCon,
+		constant.KeyCloakOpCon,
+		constant.CommonServicePGOpCon,
+		constant.CommonServiceCNPGOpCon,
+		constant.CommonServicePGMigratorOpCon,
+	}
+
+	concatenatedCon, err := constant.ConcatenateConfigs(constant.CSV4OpCon, configs, r.Bootstrap.CSData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to concatenate base configs: %v", err)
+	}
+
+	// Parse and extract services
+	baseConfig, err := convertStringToSlice(concatenatedCon)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse base config: %v", err)
+	}
+
+	// Extract services from OperandConfig
+	for _, item := range baseConfig {
+		if itemMap, ok := item.(map[string]interface{}); ok {
+			if itemMap["kind"] == "OperandConfig" {
+				if spec, ok := itemMap["spec"].(map[string]interface{}); ok {
+					if services, ok := spec["services"].([]interface{}); ok {
+						klog.V(2).Infof("Extracted %d services from base template", len(services))
+						return services, nil
+					}
+				}
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("failed to extract services from base template")
 }
 
 // mergeServicesWithBase merges CommonService configurations with base OperandConfig services

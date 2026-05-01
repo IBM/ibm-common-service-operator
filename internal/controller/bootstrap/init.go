@@ -967,8 +967,6 @@ func (b *Bootstrap) InstallOrUpdateOpreg(ctx context.Context, installPlanApprova
 // InstallOrUpdateOpcon will install or update OperandConfig when Opcon CRD is existent
 // Now accepts CommonService instance with merged configurations
 func (b *Bootstrap) InstallOrUpdateOpcon(forceUpdateODLMCRs bool, csInstance *apiv3.CommonService) error {
-
-	var baseCon string
 	configs := []string{
 		constant.MongoDBOpCon,
 		constant.IMOpCon,
@@ -981,9 +979,7 @@ func (b *Bootstrap) InstallOrUpdateOpcon(forceUpdateODLMCRs bool, csInstance *ap
 		constant.CommonServicePGMigratorOpCon,
 	}
 
-	baseCon = constant.CSV4OpCon
-
-	concatenatedCon, err := constant.ConcatenateConfigs(baseCon, configs, b.CSData)
+	concatenatedCon, err := constant.ConcatenateConfigs(constant.CSV4OpCon, configs, b.CSData)
 	if err != nil {
 		klog.Errorf("failed to concatenate OperandConfig: %v", err)
 		return err
