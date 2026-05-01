@@ -54,6 +54,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
+	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/common"
 	util "github.com/IBM/ibm-common-service-operator/v4/internal/controller/common"
 	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/constant"
 	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/deploy"
@@ -967,17 +968,8 @@ func (b *Bootstrap) InstallOrUpdateOpreg(ctx context.Context, installPlanApprova
 // InstallOrUpdateOpcon will install or update OperandConfig when Opcon CRD is existent
 // Now accepts CommonService instance with merged configurations
 func (b *Bootstrap) InstallOrUpdateOpcon(forceUpdateODLMCRs bool, csInstance *apiv3.CommonService) error {
-	configs := []string{
-		constant.MongoDBOpCon,
-		constant.IMOpCon,
-		constant.UserMgmtOpCon,
-		constant.IdpConfigUIOpCon,
-		constant.PlatformUIOpCon,
-		constant.KeyCloakOpCon,
-		constant.CommonServicePGOpCon,
-		constant.CommonServiceCNPGOpCon,
-		constant.CommonServicePGMigratorOpCon,
-	}
+	// Get base template configs using common utility
+	configs := common.GetBaseOperandConfigList()
 
 	concatenatedCon, err := constant.ConcatenateConfigs(constant.CSV4OpCon, configs, b.CSData)
 	if err != nil {

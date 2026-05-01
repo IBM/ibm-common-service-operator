@@ -303,11 +303,11 @@ func extractSizeTemplate(cs *apiv3.CommonService, sizeTemplate string, serviceCo
 		if controller, ok := config.(map[string]interface{})["managementStrategy"]; ok {
 			serviceControllerMapping[configSize.(map[string]interface{})["name"].(string)] = controller.(string)
 		}
-		// Merge spec
+		// Merge spec - use shrinkSize with Max to select larger values
 		if configSize.(map[string]interface{})["spec"] != nil && config.(map[string]interface{})["spec"] != nil {
-			for cr, mergedSize := range mergeSizeProfile(configSize.(map[string]interface{})["spec"].(map[string]interface{}), config.(map[string]interface{})["spec"].(map[string]interface{})) {
-				configSize.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergedSize
-			}
+			// shrinkSize with Max extreme will select the larger value between template and custom config
+			mergedSpec := shrinkSize(configSize.(map[string]interface{})["spec"].(map[string]interface{}), config.(map[string]interface{})["spec"].(map[string]interface{}), Max)
+			configSize.(map[string]interface{})["spec"] = mergedSpec
 		}
 		// Merge resources
 		if configSize.(map[string]interface{})["resources"] != nil && config.(map[string]interface{})["resources"] != nil {
@@ -334,7 +334,8 @@ func extractSizeTemplate(cs *apiv3.CommonService, sizeTemplate string, serviceCo
 				}
 				newResource := getItemByGVKNameNamespace(config.(map[string]interface{})["resources"].([]interface{}), opconNs, apiVersion, kind, name, namespace)
 				if newResource != nil {
-					configSize.(map[string]interface{})["resources"].([]interface{})[j] = mergeSizeProfile(res.(map[string]interface{}), newResource.(map[string]interface{}))
+					// Use shrinkSize with Max to select larger values between template and custom resource
+					configSize.(map[string]interface{})["resources"].([]interface{})[j] = shrinkSize(res.(map[string]interface{}), newResource.(map[string]interface{}), Max)
 				}
 			}
 		}
