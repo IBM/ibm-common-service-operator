@@ -1804,12 +1804,6 @@ spec:
                 owner: app
             imageName:
               templatingValueFrom:
-                default:
-                  required: true
-                  configMapKeyRef:
-                    name: cloud-native-postgresql-image-list
-                    key: ibm-postgresql-14-operand-image
-                    namespace: {{ .OperatorNs }}
                 configMapKeyRef:
                   name: cloud-native-postgresql-operand-images-config
                   key: ibm-postgresql-14-operand-image
@@ -2035,12 +2029,6 @@ spec:
                       - common-service-db
             imageName:
               templatingValueFrom:
-                default:
-                  required: true
-                  configMapKeyRef:
-                    name: cloud-native-postgresql-image-list
-                    key: ibm-postgresql-16-operand-image
-                    namespace: {{ .OperatorNs }}
                 configMapKeyRef:
                   name: cloud-native-postgresql-operand-images-config
                   key: ibm-postgresql-16-operand-image

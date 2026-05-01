@@ -21,7 +21,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -265,15 +264,6 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 	if err := b.CreateNsScopeConfigmap(); err != nil {
 		klog.Errorf("Failed to create Namespace Scope ConfigMap: %v", err)
 		return err
-	}
-
-	// Temporary solution for EDB image ConfigMap reference
-	if os.Getenv("NO_OLM") != "true" {
-		klog.Infof("It is not a non-OLM mode, create EDB Image ConfigMap")
-		if err := b.CreateEDBImageMaps(); err != nil {
-			klog.Errorf("Failed to create EDB Image ConfigMap: %v", err)
-			return err
-		}
 	}
 
 	// Create Keycloak themes ConfigMap
@@ -1030,15 +1020,6 @@ func (b *Bootstrap) InstallOrUpdateOperatorConfig(config string, forceUpdateODLM
 // CreateNsScopeConfigmap creates nss configmap for operators
 func (b *Bootstrap) CreateNsScopeConfigmap() error {
 	cmRes := constant.NamespaceScopeConfigMap
-	if err := b.renderTemplate(cmRes, b.CSData, false); err != nil {
-		return err
-	}
-	return nil
-}
-
-// CreateEDBImageConfig creates a ConfigMap contains EDB image reference
-func (b *Bootstrap) CreateEDBImageMaps() error {
-	cmRes := constant.EDBImageConfigMap
 	if err := b.renderTemplate(cmRes, b.CSData, false); err != nil {
 		return err
 	}
@@ -2676,8 +2657,8 @@ func (b *Bootstrap) UpdatePostgresClusterImage(ctx context.Context, instance *ap
 	if err != nil {
 		return err
 	} else if configMap == nil {
-		klog.Infof("Neither %s nor %s configmap found in namespace %s, skipping Postgres Cluster image update check",
-			constant.PostgreSQLImageConfigMap, constant.CSPostgreSQLImageConfigMap, b.CSData.OperatorNs)
+		klog.Infof("%s configmap not found in namespace %s, skipping Postgres Cluster image update check",
+			constant.PostgreSQLImageConfigMap, b.CSData.OperatorNs)
 		return nil
 	}
 	configMapName := configMap.GetName()
@@ -2768,8 +2749,7 @@ func (b *Bootstrap) UpdatePostgresClusterImage(ctx context.Context, instance *ap
 }
 
 // getPostgresImageConfigMap gets the configmap containing PostgreSQL image information
-// It first tries to get the configmap deployed with Postgres Operator,
-// and if not found, it looks for the configmap created by CS operator
+// It looks for the configmap deployed with Postgres Operator
 func (b *Bootstrap) getPostgresImageConfigMap(ctx context.Context) (*corev1.ConfigMap, error) {
 	configMap := &corev1.ConfigMap{}
 	configMapName := constant.PostgreSQLImageConfigMap
@@ -2777,22 +2757,10 @@ func (b *Bootstrap) getPostgresImageConfigMap(ctx context.Context) (*corev1.Conf
 	if err := b.Reader.Get(ctx, types.NamespacedName{
 		Name:      configMapName,
 		Namespace: b.CSData.OperatorNs,
-	}, configMap); err != nil && errors.IsNotFound(err) {
-		// If the configmap is not found, find configmap created by CS operator
-		configMapName = constant.CSPostgreSQLImageConfigMap
-
-		if err := b.Client.Get(ctx, types.NamespacedName{
-			Name:      configMapName,
-			Namespace: b.CSData.OperatorNs,
-		}, configMap); err != nil {
-			if errors.IsNotFound(err) {
-
-				return nil, nil
-			}
-			klog.Errorf("Failed to get configmap %s in namespace %s: %v", configMapName, b.CSData.OperatorNs, err)
-			return nil, err
+	}, configMap); err != nil {
+		if errors.IsNotFound(err) {
+			return nil, nil
 		}
-	} else if err != nil {
 		klog.Errorf("Failed to get configmap %s in namespace %s: %v", configMapName, b.CSData.OperatorNs, err)
 		return nil, err
 	}
