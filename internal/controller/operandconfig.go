@@ -483,37 +483,41 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 		return true, err
 	}
 
-	// 2. Build complete desired state from ALL CommonService CRs
-	desiredServices, _, err := r.buildDesiredStateFromAllCRs(ctx)
-	if err != nil {
-		klog.Errorf("Failed to build desired state from CommonService CRs: %v", err)
-		return true, err
-	}
-
-	// 3. Apply extreme size handling to desired state
-	ruleSlice, err := convertStringToSlice(rules.ConfigurationRules)
-	if err != nil {
-		klog.Errorf("Failed to convert configuration rules: %v", err)
-		return true, err
-	}
-
-	desiredServices, err = r.getExtremeizes(ctx, desiredServices, ruleSlice, Max)
-	if err != nil {
-		klog.Errorf("Failed to apply extreme size handling: %v", err)
-		return true, err
-	}
-
-	// 4. Get existing services from OperandConfig
+	// 2. Get existing services from OperandConfig (base template services)
 	existingServices, ok := opcon.Object["spec"].(map[string]interface{})["services"].([]interface{})
 	if !ok {
 		klog.Errorf("Failed to extract existing services from OperandConfig")
 		return true, fmt.Errorf("invalid OperandConfig structure")
 	}
 
-	// 5. Calculate hashes for comparison
-	desiredHash, err := util.CalculateResourceHash(map[string]interface{}{"services": desiredServices})
+	// 3. Build desired state from ALL CommonService CRs
+	csDesiredServices, _, err := r.buildDesiredStateFromAllCRs(ctx)
 	if err != nil {
-		klog.Errorf("Failed to calculate hash for desired services: %v", err)
+		klog.Errorf("Failed to build desired state from CommonService CRs: %v", err)
+		return true, err
+	}
+
+	// 4. Apply extreme size handling to CS desired state
+	ruleSlice, err := convertStringToSlice(rules.ConfigurationRules)
+	if err != nil {
+		klog.Errorf("Failed to convert configuration rules: %v", err)
+		return true, err
+	}
+
+	csDesiredServices, err = r.getExtremeizes(ctx, csDesiredServices, ruleSlice, Max)
+	if err != nil {
+		klog.Errorf("Failed to apply extreme size handling: %v", err)
+		return true, err
+	}
+
+	// 5. Merge CS configurations with existing base services
+	// This preserves base-only services (like pg-migrator) while applying CS configs
+	mergedServices := r.mergeServicesWithBase(existingServices, csDesiredServices, ruleSlice)
+
+	// 6. Calculate hashes for comparison
+	mergedHash, err := util.CalculateResourceHash(map[string]interface{}{"services": mergedServices})
+	if err != nil {
+		klog.Errorf("Failed to calculate hash for merged services: %v", err)
 		return true, err
 	}
 
@@ -523,15 +527,15 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 		return true, err
 	}
 
-	// 6. Compare hashes - if equal, no update needed
-	if desiredHash == existingHash {
+	// 7. Compare hashes - if equal, no update needed
+	if mergedHash == existingHash {
 		klog.V(2).Infof("OperandConfig services unchanged (hash match: %s)", existingHash)
 		return true, nil
 	}
 
-	// 7. Hashes differ - replace entire services array
-	klog.Infof("Updating OperandConfig services)", existingHash, desiredHash)
-	opcon.Object["spec"].(map[string]interface{})["services"] = desiredServices
+	// 8. Hashes differ - replace entire services array with merged result
+	klog.Infof("Updating OperandConfig services (hash changed: %s -> %s)", existingHash, mergedHash)
+	opcon.Object["spec"].(map[string]interface{})["services"] = mergedServices
 
 	if err := r.Update(ctx, opcon); err != nil {
 		klog.Errorf("Failed to update OperandConfig %s: %v", opconKey.String(), err)
@@ -540,6 +544,139 @@ func (r *CommonServiceReconciler) updateOperandConfig(ctx context.Context, newCo
 
 	klog.Infof("Successfully updated OperandConfig %s with new services configuration", opconKey.String())
 	return false, nil
+}
+
+// mergeServicesWithBase merges CommonService configurations with base OperandConfig services
+// This ensures base-only services are preserved while CS configs are applied
+func (r *CommonServiceReconciler) mergeServicesWithBase(baseServices, csServices, ruleSlice []interface{}) []interface{} {
+	// Create a map of CS service names for quick lookup
+	csServiceMap := make(map[string]interface{})
+	for _, csService := range csServices {
+		if csMap, ok := csService.(map[string]interface{}); ok {
+			if name, ok := csMap["name"].(string); ok {
+				csServiceMap[name] = csService
+			}
+		}
+	}
+
+	// Start with base services and merge CS configurations
+	result := make([]interface{}, 0, len(baseServices))
+	processedCSServices := make(map[string]bool)
+
+	for _, baseService := range baseServices {
+		baseMap, ok := baseService.(map[string]interface{})
+		if !ok {
+			result = append(result, baseService)
+			continue
+		}
+
+		serviceName, ok := baseMap["name"].(string)
+		if !ok {
+			result = append(result, baseService)
+			continue
+		}
+
+		// Check if this service has CS configuration
+		if csService, exists := csServiceMap[serviceName]; exists {
+			// Merge CS config into base service
+			csMap := csService.(map[string]interface{})
+			mergedService := r.mergeServiceConfig(baseMap, csMap, serviceName, ruleSlice)
+			result = append(result, mergedService)
+			processedCSServices[serviceName] = true
+		} else {
+			// No CS config for this service, keep base as-is
+			result = append(result, baseService)
+		}
+	}
+
+	// Add any CS-only services that weren't in base
+	for _, csService := range csServices {
+		if csMap, ok := csService.(map[string]interface{}); ok {
+			if name, ok := csMap["name"].(string); ok {
+				if !processedCSServices[name] {
+					result = append(result, csService)
+				}
+			}
+		}
+	}
+
+	return result
+}
+
+// mergeServiceConfig merges a single service configuration from CS into base
+func (r *CommonServiceReconciler) mergeServiceConfig(baseService, csService map[string]interface{}, serviceName string, ruleSlice []interface{}) map[string]interface{} {
+	result := make(map[string]interface{})
+
+	// Copy base service
+	for k, v := range baseService {
+		result[k] = v
+	}
+
+	// Get rules for this service
+	rules := getItemByName(ruleSlice, serviceName)
+
+	// Merge spec if present in CS config
+	if csService["spec"] != nil {
+		if result["spec"] == nil {
+			result["spec"] = make(map[string]interface{})
+		}
+
+		baseSpec, baseSpecOk := result["spec"].(map[string]interface{})
+		csSpec, csSpecOk := csService["spec"].(map[string]interface{})
+
+		if baseSpecOk && csSpecOk {
+			// Merge each CR in spec
+			for crName, csSpecValue := range csSpec {
+				if baseSpec[crName] == nil {
+					baseSpec[crName] = csSpecValue
+				} else if rules != nil && rules.(map[string]interface{})["spec"] != nil {
+					// Apply rules-based merge
+					ruleForCR := rules.(map[string]interface{})["spec"].(map[string]interface{})[crName]
+					if ruleForCR != nil {
+						baseSpec[crName] = mergeCRsIntoOperandConfig(
+							baseSpec[crName].(map[string]interface{}),
+							csSpecValue.(map[string]interface{}),
+							ruleForCR.(map[string]interface{}),
+							false,
+							false,
+						)
+					} else {
+						// No rules, use deep merge
+						baseSpec[crName] = mergeSizeProfile(
+							baseSpec[crName].(map[string]interface{}),
+							csSpecValue.(map[string]interface{}),
+						)
+					}
+				} else {
+					// No rules, use deep merge
+					if baseSpecMap, ok := baseSpec[crName].(map[string]interface{}); ok {
+						if csSpecMap, ok := csSpecValue.(map[string]interface{}); ok {
+							baseSpec[crName] = mergeSizeProfile(baseSpecMap, csSpecMap)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Merge resources if present in CS config
+	if csService["resources"] != nil {
+		baseResources := []interface{}{}
+		if result["resources"] != nil {
+			baseResources = result["resources"].([]interface{})
+		}
+		csResources := csService["resources"].([]interface{})
+
+		// Use existing resource merge logic
+		result["resources"] = mergeResourceArrays(baseResources, csResources, r.CSData.ServicesNs, "default")
+	}
+
+	// Copy managementStrategy if present
+	if csService["managementStrategy"] != nil {
+		result["managementStrategy"] = csService["managementStrategy"]
+	}
+
+	return result
 }
 
 func isOpResourceExists(opResource interface{}) bool {
