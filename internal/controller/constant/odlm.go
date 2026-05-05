@@ -2696,14 +2696,6 @@ spec:
                         ephemeral-storage: 256Mi
                     command:
                       - /usr/local/bin/pg-migrate
-                    args:
-                      - --namespace=$(NAMESPACE)
-                      - --cluster=$(CLUSTER_NAME)
-                      - --pg-version=$(PG_VERSION)
-                      - --ibm-pg-ns=$(IBM_PG_NS)
-                      - --timeout=$(TIMEOUT)
-                      - --skip-edb-cleanup=$(SKIP_EDB_CLEANUP)
-                      - --skip-operator-validation=$(SKIP_OPERATOR_VALIDATION)
                     envFrom:
                       - configMapRef:
                           name: cpfs-migration-config
