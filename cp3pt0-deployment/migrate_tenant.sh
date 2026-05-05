@@ -57,6 +57,7 @@ STEP=0
 # ---------- Main functions ----------
 
 . ${BASE_DIR}/common/utils.sh
+. ${BASE_DIR}/common/cli_compat.sh
 
 function main() {
     parse_arguments "$@"
@@ -299,12 +300,12 @@ function pre_req() {
     check_command "${YQ}"
     check_yq_version
 
-    # Checking oc command logged in
-    user=$(${OC} whoami 2> /dev/null)
-    if [ $? -ne 0 ]; then
-        error "You must be logged into the OpenShift Cluster from the oc command line"
+    # Checking cluster CLI command logged in
+    user=$(get_current_user "${OC}")
+    if [ $? -ne 0 ] || [ -z "$user" ]; then
+        error "You must be logged into the Kubernetes cluster from the ${OC} command line"
     else
-        success "oc command logged in as ${user}"
+        success "${OC} command logged in as ${user}"
     fi
 
     if [ $LICENSE_ACCEPT -ne 1 ]; then
