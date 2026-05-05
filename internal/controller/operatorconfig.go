@@ -45,7 +45,6 @@ func (r *CommonServiceReconciler) updateOperatorConfig(ctx context.Context, conf
 		return true, nil
 	}
 
-	// TODO: remove when this feature is generalized to all other operators
 	replicasProvided := false
 	for _, config := range aggregatedConfigs {
 		packageName, err := r.fetchPackageNameFromOpReg(ctx, config.Name)
@@ -102,7 +101,6 @@ func (r *CommonServiceReconciler) aggregateOperatorConfigsFromAllCRs(ctx context
 	operatorConfigMap := make(map[string]*v3.OperatorConfig)
 
 	for _, cs := range csObjectList.Items {
-		// Skip CRs that are being deleted
 		if cs.GetDeletionTimestamp() != nil {
 			klog.V(2).Infof("Skipping CommonService CR %s/%s (being deleted)", cs.Namespace, cs.Name)
 			continue
@@ -121,7 +119,6 @@ func (r *CommonServiceReconciler) aggregateOperatorConfigsFromAllCRs(ctx context
 
 			existingConfig, exists := operatorConfigMap[config.Name]
 			if !exists {
-				// First time seeing this operator config
 				configCopy := config
 				operatorConfigMap[config.Name] = &configCopy
 				klog.Infof("Added OperatorConfig %s with %d replicas from CR %s/%s", config.Name, *config.Replicas, cs.Namespace, cs.Name)

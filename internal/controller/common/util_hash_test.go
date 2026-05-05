@@ -313,5 +313,3 @@ func TestCompareResourceHashes_OrderIndependence(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, result, "Resources with same content should match regardless of key order in code")
 }
-
-// Made with Bob
