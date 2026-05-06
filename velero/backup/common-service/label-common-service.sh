@@ -678,9 +678,9 @@ function label_helm_namespace_scope(){
     ${OC} label rolebinding ibm-pg-operator-rolebinding foundationservices.cloudpak.ibm.com=ibm-pg-chart -n $OPERATOR_NS --overwrite=true 2>/dev/null
     ${OC} label role ibm-pg-operator foundationservices.cloudpak.ibm.com=ibm-pg-chart -n $SERVICES_NS --overwrite=true 2>/dev/null
     ${OC} label rolebinding ibm-pg-operator-rolebinding foundationservices.cloudpak.ibm.com=ibm-pg-chart -n $SERVICES_NS --overwrite=true 2>/dev/null
-    ibm-pg_release_name=$(${OC} get deploy $deploy -n $OPERATOR_NS -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
-    ibm-pg_release_namespace=$(${OC} get deploy $deploy -n $OPERATOR_NS -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
-    ${OC} label secret sh.helm.release.v1.$ibm-pg_release_name.v1 -n $ibm-pg_release_namespace foundationservices.cloudpak.ibm.com=ibm-pg-chart  --overwrite=true 2>/dev/null
+    ibm_pg_release_name=$(${OC} get deploy $deploy -n $OPERATOR_NS -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' --ignore-not-found)
+    ibm_pg_release_namespace=$(${OC} get deploy $deploy -n $OPERATOR_NS -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}' --ignore-not-found)
+    ${OC} label secret sh.helm.release.v1.$ibm_pg_release_name.v1 -n $ibm_pg_release_namespace foundationservices.cloudpak.ibm.com=ibm-pg-chart  --overwrite=true 2>/dev/null
 
 
     #zen
