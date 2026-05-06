@@ -866,10 +866,6 @@ func (r *CommonServiceReconciler) getExtremeizes(ctx context.Context, opconServi
 	for i, csConfigs := range tmpConfigsSlice {
 		klog.V(2).Infof("Merging configuration set %d into summary", i)
 		configSummary = mergeCSCRs(configSummary, csConfigs, ruleSlice, serviceControllerMappingSummary, r.CSData.ServicesNs)
-		if summary := getItemByName(configSummary, "ibm-im-operator"); summary != nil {
-			summaryBytes, _ := json.Marshal(summary)
-			klog.Infof("getExtremeizes: configSummary ibm-im-operator after set %d = %s", i, string(summaryBytes))
-		}
 	}
 
 	for _, opService := range opconServices {
@@ -1144,10 +1140,6 @@ func (r *CommonServiceReconciler) buildDesiredStateFromAllCRs(ctx context.Contex
 
 		serviceControllerMappingSummary = mergeProfileController(serviceControllerMappingSummary, serviceControllerMapping)
 		aggregatedConfigs = mergeCSCRs(aggregatedConfigs, csConfigs, ruleSlice, serviceControllerMappingSummary, r.CSData.ServicesNs)
-		if summary := getItemByName(aggregatedConfigs, "ibm-im-operator"); summary != nil {
-			summaryBytes, _ := json.Marshal(summary)
-			klog.Infof("aggregateCommonServiceConfigs: ibm-im-operator summary after merging %s/%s = %s", cs.Namespace, cs.Name, string(summaryBytes))
-		}
 	}
 
 	return aggregatedConfigs, serviceControllerMappingSummary, nil
