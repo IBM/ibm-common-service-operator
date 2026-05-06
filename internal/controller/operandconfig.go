@@ -158,6 +158,9 @@ func mergeCSCRs(csSummary, csCR, ruleSlice []interface{}, serviceControllerMappi
 					sizeForCR := summaryCR.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
 					klog.V(2).Infof("Merging CR %s for operator %s: comparing accumulated summary with new spec", cr, operatorName)
 					summaryCR.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeCRsIntoOperandConfig(sizeForCR, spec.(map[string]interface{}), ruleForCR, false, false)
+				} else {
+					sizeForCR := summaryCR.(map[string]interface{})["spec"].(map[string]interface{})[cr].(map[string]interface{})
+					summaryCR.(map[string]interface{})["spec"].(map[string]interface{})[cr] = mergeSizeProfile(sizeForCR, spec.(map[string]interface{}))
 				}
 			}
 			csSummary = setSpecByName(csSummary, operator.(map[string]interface{})["name"].(string), summaryCR.(map[string]interface{})["spec"])

@@ -22,6 +22,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/v4/api/v1alpha1"
@@ -252,6 +253,59 @@ func TestMergeBaseAndCSConfigs_PreservesUnchangedServices(t *testing.T) {
 	assert.Contains(t, names, "ibm-management-ingress-operator")
 }
 
+func TestMergeBaseAndCSConfigs_PreservesCommonServiceOnlyFieldsDuringSizeTemplateMerge(t *testing.T) {
+	baseConfig := `
+apiVersion: operator.ibm.com/v1alpha1
+kind: OperandConfig
+metadata:
+  name: common-service
+  namespace: ibm-common-services
+spec:
+  services:
+  - name: ibm-im-operator
+    spec:
+      authentication:
+        config:
+          onPremMultipleDeploy: true
+`
+
+	cs := &apiv3.CommonService{}
+	cs.Spec.Size = "medium"
+	cs.Spec.Services = []apiv3.ServiceConfig{
+		{
+			Name: "ibm-im-operator",
+			Spec: map[string]apiv3.ExtensionWithMarker{
+				"authentication": {
+					RawExtension: runtime.RawExtension{
+						Raw: []byte(`{
+							"config": {"zenFrontDoor": true},
+							"labels": {
+								"icpdsupport/addOnId": "cpfs",
+								"icpdsupport/app": "im"
+							}
+						}`),
+					},
+				},
+			},
+		},
+	}
+
+	csConfigs, serviceControllerMapping, err := ExtractCommonServiceConfigs(cs, "ibm-common-services")
+	require.NoError(t, err)
+
+	result, err := MergeBaseAndCSConfigs(
+		baseConfig,
+		csConfigs,
+		serviceControllerMapping,
+		"ibm-common-services",
+	)
+	require.NoError(t, err)
+	assert.Contains(t, result, "zenFrontDoor: true")
+	assert.Contains(t, result, "icpdsupport/addOnId: cpfs")
+	assert.Contains(t, result, "onPremMultipleDeploy: true")
+	assert.Contains(t, result, "replicas: 2")
+}
+
 // TestMergeBaseAndCSConfigs_OutputIsValidYAML verifies that the merged result is
 // valid YAML that round-trips through JSON without data loss.
 func TestMergeBaseAndCSConfigs_OutputIsValidYAML(t *testing.T) {
@@ -435,4 +489,65 @@ spec:
 	result, err := MergeConfigs(customNsYAML, cs, "custom-ns")
 	require.NoError(t, err)
 	assert.NotEmpty(t, result)
+}
+
+func TestMergeBaseAndCSConfigs_MergesDuplicateServiceEntriesBeforeBaseMerge(t *testing.T) {
+	baseYAML := `
+apiVersion: operator.ibm.com/v1alpha1
+kind: OperandConfig
+metadata:
+  name: common-service
+  namespace: ibm-common-services
+spec:
+  services:
+  - name: ibm-im-operator
+    spec:
+      authentication:
+        config:
+          onPremMultipleDeploy: true
+`
+	csConfigs := []interface{}{
+		map[string]interface{}{
+			"name": "ibm-im-operator",
+			"spec": map[string]interface{}{
+				"authentication": map[string]interface{}{
+					"config": map[string]interface{}{
+						"zenFrontDoor": true,
+					},
+					"labels": map[string]interface{}{
+						"icpdsupport/addOnId": "cpfs",
+						"icpdsupport/app":     "im",
+					},
+				},
+			},
+		},
+		map[string]interface{}{
+			"name": "ibm-im-operator",
+			"spec": map[string]interface{}{
+				"authentication": map[string]interface{}{
+					"replicas": float64(2),
+					"authService": map[string]interface{}{
+						"resources": map[string]interface{}{
+							"requests": map[string]interface{}{
+								"cpu": "200m",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	result, err := MergeBaseAndCSConfigs(
+		baseYAML,
+		csConfigs,
+		map[string]string{"profileController": "default"},
+		"ibm-common-services",
+	)
+	require.NoError(t, err)
+
+	assert.Contains(t, result, "zenFrontDoor: true")
+	assert.Contains(t, result, "icpdsupport/addOnId: cpfs")
+	assert.Contains(t, result, "replicas: 2")
+	assert.Contains(t, result, "cpu: 200m")
 }
