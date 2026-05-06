@@ -472,6 +472,26 @@ func (r *CommonServiceReconciler) mappingToCsRequestForConfigMaps(ctx context.Co
 	return nil
 }
 
+func (r *CommonServiceReconciler) mappingToCsRequestForCommonService(ctx context.Context, object client.Object) []reconcile.Request {
+	cs, ok := object.(*apiv3.CommonService)
+	if !ok {
+		return nil
+	}
+
+	// When any CommonService CR changes, trigger reconciliation of the master CR
+	// This ensures OperatorConfigs are aggregated from all CRs
+	if cs.Name != constant.MasterCR || cs.Namespace != r.Bootstrap.CSData.OperatorNs {
+		klog.Infof("CommonService CR %s/%s changed, triggering master CR reconciliation for OperatorConfig aggregation", cs.Namespace, cs.Name)
+		return []reconcile.Request{
+			{NamespacedName: types.NamespacedName{
+				Name:      constant.MasterCR,
+				Namespace: r.Bootstrap.CSData.OperatorNs,
+			}},
+		}
+	}
+	return nil
+}
+
 func (r *CommonServiceReconciler) mappingToCsRequestForOperandRegistry(ctx context.Context, object client.Object) []reconcile.Request {
 	operandRegistry, ok := object.(*odlm.OperandRegistry)
 	if !ok {
@@ -539,6 +559,14 @@ func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(
 			&corev1.ConfigMap{},
 			handler.EnqueueRequestsFromMapFunc(r.mappingToCsRequestForConfigMaps),
+			builder.WithPredicates(predicate.Funcs{
+				CreateFunc: func(e event.CreateEvent) bool { return true },
+				UpdateFunc: func(e event.UpdateEvent) bool { return true },
+				DeleteFunc: func(e event.DeleteEvent) bool { return !e.DeleteStateUnknown },
+			})).
+		Watches(
+			&apiv3.CommonService{},
+			handler.EnqueueRequestsFromMapFunc(r.mappingToCsRequestForCommonService),
 			builder.WithPredicates(predicate.Funcs{
 				CreateFunc: func(e event.CreateEvent) bool { return true },
 				UpdateFunc: func(e event.UpdateEvent) bool { return true },
