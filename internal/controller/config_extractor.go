@@ -303,11 +303,11 @@ func extractSizeTemplate(cs *apiv3.CommonService, sizeTemplate string, serviceCo
 		if controller, ok := config.(map[string]interface{})["managementStrategy"]; ok {
 			serviceControllerMapping[configSize.(map[string]interface{})["name"].(string)] = controller.(string)
 		}
-		// Merge spec - use shrinkSize with Max to select larger values
+		// Merge spec - keep size-template scaling behavior for configurable fields,
+		// then merge CommonService-only fields so non-template keys are preserved.
 		if configSize.(map[string]interface{})["spec"] != nil && config.(map[string]interface{})["spec"] != nil {
-			// shrinkSize with Max extreme will select the larger value between template and custom config
-			mergedSpec := shrinkSize(configSize.(map[string]interface{})["spec"].(map[string]interface{}), config.(map[string]interface{})["spec"].(map[string]interface{}), Max)
-			configSize.(map[string]interface{})["spec"] = mergedSpec
+			scaledSpec := shrinkSize(configSize.(map[string]interface{})["spec"].(map[string]interface{}), config.(map[string]interface{})["spec"].(map[string]interface{}), Max)
+			configSize.(map[string]interface{})["spec"] = mergeSizeProfile(scaledSpec, config.(map[string]interface{})["spec"].(map[string]interface{}))
 		}
 		// Merge resources
 		if configSize.(map[string]interface{})["resources"] != nil && config.(map[string]interface{})["resources"] != nil {
