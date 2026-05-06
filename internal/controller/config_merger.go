@@ -70,8 +70,6 @@ func MergeBaseAndCSConfigs(
 		return "", fmt.Errorf("failed to convert configuration rules: %v", err)
 	}
 
-	csConfigs = mergeDuplicateCSConfigs(csConfigs)
-
 	// Merge CommonService configs into base services using existing merge logic
 	mergedServices := mergeCSCRs(baseServicesInterface, csConfigs, ruleSlice, serviceControllerMapping, servicesNs)
 
@@ -107,104 +105,6 @@ func MergeBaseAndCSConfigs(
 
 	klog.Info("Successfully merged CommonService configurations with base OperandConfig")
 	return mergedYAML, nil
-}
-
-func mergeDuplicateCSConfigs(csConfigs []interface{}) []interface{} {
-	if len(csConfigs) <= 1 {
-		return csConfigs
-	}
-
-	mergedByName := make(map[string]map[string]interface{})
-	order := make([]string, 0, len(csConfigs))
-
-	for _, cfg := range csConfigs {
-		cfgMap, ok := cfg.(map[string]interface{})
-		if !ok {
-			continue
-		}
-
-		name, _ := cfgMap["name"].(string)
-		if name == "" {
-			continue
-		}
-
-		existing, found := mergedByName[name]
-		if !found {
-			mergedByName[name] = deepCopyConfigMap(cfgMap)
-			order = append(order, name)
-			continue
-		}
-
-		mergeCSConfigMaps(existing, cfgMap)
-	}
-
-	result := make([]interface{}, 0, len(order))
-	for _, name := range order {
-		result = append(result, mergedByName[name])
-	}
-	return result
-}
-
-func deepCopyConfigMap(src map[string]interface{}) map[string]interface{} {
-	out := make(map[string]interface{}, len(src))
-	for k, v := range src {
-		out[k] = deepCopyValue(v)
-	}
-	return out
-}
-
-func deepCopyValue(v interface{}) interface{} {
-	switch typed := v.(type) {
-	case map[string]interface{}:
-		copied := make(map[string]interface{}, len(typed))
-		for k, val := range typed {
-			copied[k] = deepCopyValue(val)
-		}
-		return copied
-	case []interface{}:
-		copied := make([]interface{}, len(typed))
-		for i, val := range typed {
-			copied[i] = deepCopyValue(val)
-		}
-		return copied
-	default:
-		return v
-	}
-}
-
-func mergeCSConfigMaps(dst, src map[string]interface{}) {
-	for key, srcVal := range src {
-		if key == "name" {
-			continue
-		}
-
-		dstVal, exists := dst[key]
-		if !exists || dstVal == nil {
-			dst[key] = deepCopyValue(srcVal)
-			continue
-		}
-
-		switch srcTyped := srcVal.(type) {
-		case map[string]interface{}:
-			if dstTyped, ok := dstVal.(map[string]interface{}); ok {
-				mergeCSConfigMaps(dstTyped, srcTyped)
-			} else {
-				dst[key] = deepCopyValue(srcVal)
-			}
-		case []interface{}:
-			if key == "resources" {
-				if dstResources, ok := dstVal.([]interface{}); ok {
-					dst[key] = append(dstResources, srcTyped...)
-				} else {
-					dst[key] = deepCopyValue(srcVal)
-				}
-			} else {
-				dst[key] = deepCopyValue(srcVal)
-			}
-		default:
-			dst[key] = srcVal
-		}
-	}
 }
 
 // convertMapToYAML converts a map to YAML string

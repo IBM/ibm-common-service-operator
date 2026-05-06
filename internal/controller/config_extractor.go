@@ -334,8 +334,10 @@ func extractSizeTemplate(cs *apiv3.CommonService, sizeTemplate string, serviceCo
 				}
 				newResource := getItemByGVKNameNamespace(config.(map[string]interface{})["resources"].([]interface{}), opconNs, apiVersion, kind, name, namespace)
 				if newResource != nil {
-					// Use shrinkSize with Max to select larger values between template and custom resource
-					configSize.(map[string]interface{})["resources"].([]interface{})[j] = shrinkSize(res.(map[string]interface{}), newResource.(map[string]interface{}), Max)
+					// Keep size-template scaling behavior for resource values,
+					// then merge CommonService-only nested fields back into the matched resource.
+					scaledResource := shrinkSize(res.(map[string]interface{}), newResource.(map[string]interface{}), Max)
+					configSize.(map[string]interface{})["resources"].([]interface{})[j] = mergeSizeProfile(scaledResource, newResource.(map[string]interface{}))
 				}
 			}
 		}
