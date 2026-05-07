@@ -2482,7 +2482,7 @@ spec:
             TIMEOUT: "120"
             SKIP_EDB_CLEANUP: "true"
             SKIP_OPERATOR_VALIDATION: "true"
-            IBM_PG_NS: "{{ .OperatorNs }}"
+            IBMPG_NAMESPACE: "{{ .OperatorNs }}"
       - apiVersion: v1
         kind: ServiceAccount
         name: common-service-db-pg-migration-sa
