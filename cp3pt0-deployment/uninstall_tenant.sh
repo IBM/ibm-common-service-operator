@@ -127,7 +127,7 @@ function print_usage() {
     echo "The --operator-namespace must be provided."
     echo ""
     echo "Options:"
-    echo "   --oc string                    Optional. File path to oc CLI. Default uses oc in your PATH"
+    echo "   --oc string                    Optional. File path to oc/kubectl CLI. Default uses oc in your PATH"
     echo "   --yq string                    Optional. File path to yq CLI. Default uses yq in your PATH"
     echo "   --helm string                  Optional. File path to helm CLI. Default uses helm in your PATH"
     echo "   --operator-namespace string    Required. Namespace to uninstall Foundational services operators and the whole tenant."

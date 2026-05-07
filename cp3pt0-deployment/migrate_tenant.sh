@@ -270,7 +270,7 @@ function print_usage() {
     echo "See https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.0?topic=4x-in-place-migration for more information."
     echo ""
     echo "Options:"
-    echo "   --oc string                        Optional. File path to oc CLI. Default uses oc in your PATH"
+    echo "   --oc string                        Optional. File path to oc/kubectl CLI. Default uses oc in your PATH"
     echo "   --yq string                        Optional. File path to yq CLI. Default uses yq in your PATH"
     echo "   --operator-namespace string        Required. Namespace to migrate Foundational services operator"
     echo "   --services-namespace               Optional. Namespace to migrate operands of Foundational services, i.e. 'dataplane'. Default is the same as operator-namespace"
