@@ -102,7 +102,7 @@ spec:
 
             echo "Deleting IM, UI, and EDB ServiceAccounts and Jobs in operator namespace $operatorNamespace and services namespace $servicesNamespace..."
             oc delete --ignore-not-found sa postgresql-operator-manager edb-license-sa -n $operatorNamespace
-            oc delete --ignore-not-found sa ibm-iam-operand-restricted ibm-commonui-operand common-service-db -n $servicesNamespace
+            oc delete --ignore-not-found sa ibm-iam-operand-restricted ibm-commonui-operand -n $servicesNamespace
             oc delete --ignore-not-found role edb-license-role -n $operatorNamespace
             oc delete --ignore-not-found job create-postgres-license-config -n $operatorNamespace
 
@@ -125,7 +125,6 @@ spec:
                 #get edb roles
                 roles="${roles} $(oc get roles -n $ns | grep postgresql-operator-controller-manager | awk '{print $1}' | tr "\n" " ")"
                 roles="${roles} $(oc get roles -n $ns | grep cloud-native-postgresql | awk '{print $1}' | tr "\n" " ")"
-                roles="${roles} $(oc get roles -n $ns | grep common-service-db | awk '{print $1}' | tr "\n" " ")"
 
                 if [[ $ns != $servicesNamespace ]]; then
                     edbSA=$(oc get sa -n $ns --ignore-not-found | grep postgresql-operator-controller-manager | awk '{print $1}' | tr "\n" " ")
