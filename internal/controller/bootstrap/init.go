@@ -2624,3 +2624,90 @@ func (b *Bootstrap) fetchSubscription(subName, packageManifest, operatorNs strin
 	return sub, nil
 }
 
+// extractServiceSummariesFromOperandConfig extracts service summaries from OperandConfig
+// This is a helper function that can be called from the controller after OperandConfig creation
+func (b *Bootstrap) ExtractServiceSummariesFromOperandConfig() ([]apiv3.MergedServiceSummary, error) {
+	// Get the merged OperandConfig
+	opcon := &odlm.OperandConfig{}
+	if err := b.Reader.Get(ctx, types.NamespacedName{
+		Name:      "common-service",
+		Namespace: b.CSData.ServicesNs,
+	}, opcon); err != nil {
+		return nil, fmt.Errorf("failed to get OperandConfig: %v", err)
+	}
+
+	// Convert to YAML
+	opconBytes, err := json.Marshal(opcon)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal OperandConfig: %v", err)
+	}
+
+	yamlBytes, err := utilyaml.JSONToYAML(opconBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert to YAML: %v", err)
+	}
+
+	// Extract service summaries
+	mergedServices, err := extractServiceSummariesFromYAML(string(yamlBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract service summaries: %v", err)
+	}
+
+	return mergedServices, nil
+}
+
+// extractServiceSummariesFromYAML extracts service summaries from OperandConfig YAML
+func extractServiceSummariesFromYAML(mergedOpconYAML string) ([]apiv3.MergedServiceSummary, error) {
+	// Parse YAML to map for flexible access
+	jsonBytes, err := utilyaml.YAMLToJSON([]byte(mergedOpconYAML))
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert YAML to JSON: %v", err)
+	}
+
+	var opconMap map[string]interface{}
+	if err := json.Unmarshal(jsonBytes, &opconMap); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal OperandConfig: %v", err)
+	}
+
+	// Navigate to spec.services
+	spec, ok := opconMap["spec"].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("spec not found in OperandConfig")
+	}
+
+	services, ok := spec["services"].([]interface{})
+	if !ok {
+		return []apiv3.MergedServiceSummary{}, nil // No services is valid
+	}
+
+	var summaries []apiv3.MergedServiceSummary
+	for _, svcInterface := range services {
+		svc, ok := svcInterface.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		name, _ := svc["name"].(string)
+		if name == "" {
+			continue
+		}
+
+		summary := apiv3.MergedServiceSummary{
+			Name: name,
+		}
+
+		// Extract managementStrategy if present
+		if mgmtStrategy, ok := svc["managementStrategy"].(string); ok {
+			summary.ManagementStrategy = mgmtStrategy
+		}
+
+		// Count resources if present
+		if resources, ok := svc["resources"].([]interface{}); ok {
+			summary.ResourceCount = len(resources)
+		}
+
+		summaries = append(summaries, summary)
+	}
+
+	return summaries, nil
+}

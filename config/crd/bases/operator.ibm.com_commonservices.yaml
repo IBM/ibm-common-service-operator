@@ -234,6 +234,119 @@ spec:
           status:
             description: CommonServiceStatus defines the observed state of CommonService
             properties:
+              appliedSpec:
+                description: AppliedSpec contains the complete CommonService spec
+                  that was used to generate the current configuration
+                properties:
+                  BYOCACertificate:
+                    type: boolean
+                  autoScaleConfig:
+                    type: boolean
+                  catalogName:
+                    description: Catalog configuration
+                    type: string
+                  catalogNamespace:
+                    type: string
+                  defaultAdminUser:
+                    description: User and authentication
+                    type: string
+                  disableManageCertRotation:
+                    type: boolean
+                  enableInstanaMetricCollection:
+                    description: Monitoring
+                    type: boolean
+                  features:
+                    description: Features configuration
+                    properties:
+                      apiCatalog:
+                        description: AppliedAPICatalog captures API catalog configuration
+                        properties:
+                          storageClass:
+                            type: string
+                        type: object
+                      bedrockshim:
+                        description: AppliedBedrockshim captures bedrockshim configuration
+                        properties:
+                          crossplaneProviderRemoval:
+                            type: boolean
+                          enabled:
+                            type: boolean
+                        type: object
+                    type: object
+                  fipsEnabled:
+                    description: Security and compliance
+                    type: boolean
+                  hugepages:
+                    description: Advanced configurations
+                    properties:
+                      enable:
+                        type: boolean
+                      hugePagesSizes:
+                        additionalProperties:
+                          type: string
+                        type: object
+                    type: object
+                  imagePullSecret:
+                    description: Image configuration
+                    type: string
+                  installPlanApproval:
+                    description: Installation and approval settings
+                    type: string
+                  labels:
+                    additionalProperties:
+                      type: string
+                    description: Resource labeling
+                    type: object
+                  license:
+                    description: License
+                    properties:
+                      accept:
+                        type: boolean
+                      key:
+                        type: string
+                      license:
+                        type: string
+                      use:
+                        type: string
+                    required:
+                    - accept
+                    type: object
+                  manualManagement:
+                    type: boolean
+                  operatorConfigs:
+                    items:
+                      description: AppliedOperatorConfig captures operator configuration
+                      properties:
+                        name:
+                          type: string
+                        replicas:
+                          format: int32
+                          type: integer
+                        userManaged:
+                          type: boolean
+                      type: object
+                    type: array
+                  operatorNamespace:
+                    type: string
+                  profileController:
+                    type: string
+                  routeHost:
+                    description: Networking
+                    type: string
+                  servicesCount:
+                    description: Custom service configurations (count only, not full
+                      details)
+                    type: integer
+                  servicesNamespace:
+                    description: Namespace configuration
+                    type: string
+                  size:
+                    description: Sizing and scaling
+                    type: string
+                  storageClass:
+                    description: Storage
+                    type: string
+                type: object
               bedrockOperators:
                 items:
                   description: BedrockOperator describes a list of foundational services'
@@ -342,6 +455,73 @@ spec:
                       type: object
                     type: array
                 type: object
+              mergeInfo:
+                description: MergeInfo tracks information about the merge process
+                  across multiple CommonService CRs
+                properties:
+                  conflicts:
+                    items:
+                      description: MergeConflict documents a conflict that occurred
+                        during merge
+                      properties:
+                        field:
+                          type: string
+                        resolution:
+                          type: string
+                        values:
+                          items:
+                            type: string
+                          type: array
+                        winner:
+                          type: string
+                      required:
+                      - field
+                      - resolution
+                      - values
+                      - winner
+                      type: object
+                    type: array
+                  lastMergeTime:
+                    type: string
+                  sourceCRCount:
+                    type: integer
+                  sourceCRs:
+                    items:
+                      description: SourceCR identifies a CommonService CR that contributed
+                        to the merge
+                      properties:
+                        name:
+                          type: string
+                        namespace:
+                          type: string
+                        priority:
+                          type: integer
+                      required:
+                      - name
+                      - namespace
+                      - priority
+                      type: object
+                    type: array
+                required:
+                - sourceCRCount
+                type: object
+              mergedServices:
+                description: MergedServices contains a summary of services from the
+                  merged OperandConfig
+                items:
+                  description: MergedServiceSummary provides a summary of a service
+                    in the merged OperandConfig
+                  properties:
+                    managementStrategy:
+                      type: string
+                    name:
+                      type: string
+                    resourceCount:
+                      type: integer
+                  required:
+                  - name
+                  type: object
+                type: array
               overallStatus:
                 description: OverallStatus describes whether the Installation for
                   the foundational services has succeeded or not

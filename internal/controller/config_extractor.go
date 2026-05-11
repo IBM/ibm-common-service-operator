@@ -29,6 +29,7 @@ import (
 	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
 	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/constant"
 	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/size"
+	utilyaml "github.com/ghodss/yaml"
 )
 
 // ExtractCommonServiceConfigs extracts all configurations from CommonService CR
@@ -345,4 +346,60 @@ func extractSizeTemplate(cs *apiv3.CommonService, sizeTemplate string, serviceCo
 	}
 
 	return sizes, serviceControllerMapping, nil
+}
+
+// ExtractServiceSummaries extracts service summaries from merged OperandConfig YAML
+func ExtractServiceSummaries(mergedOpconYAML string) ([]apiv3.MergedServiceSummary, error) {
+	// Parse YAML to map for flexible access
+	jsonBytes, err := utilyaml.YAMLToJSON([]byte(mergedOpconYAML))
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert YAML to JSON: %v", err)
+	}
+
+	var opconMap map[string]interface{}
+	if err := json.Unmarshal(jsonBytes, &opconMap); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal OperandConfig: %v", err)
+	}
+
+	// Navigate to spec.services
+	spec, ok := opconMap["spec"].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("spec not found in OperandConfig")
+	}
+
+	services, ok := spec["services"].([]interface{})
+	if !ok {
+		return []apiv3.MergedServiceSummary{}, nil // No services is valid
+	}
+
+	var summaries []apiv3.MergedServiceSummary
+	for _, svcInterface := range services {
+		svc, ok := svcInterface.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		name, _ := svc["name"].(string)
+		if name == "" {
+			continue
+		}
+
+		summary := apiv3.MergedServiceSummary{
+			Name: name,
+		}
+
+		// Extract managementStrategy if present
+		if mgmtStrategy, ok := svc["managementStrategy"].(string); ok {
+			summary.ManagementStrategy = mgmtStrategy
+		}
+
+		// Count resources if present
+		if resources, ok := svc["resources"].([]interface{}); ok {
+			summary.ResourceCount = len(resources)
+		}
+
+		summaries = append(summaries, summary)
+	}
+
+	return summaries, nil
 }
