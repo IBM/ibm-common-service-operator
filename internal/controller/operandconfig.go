@@ -1118,14 +1118,91 @@ func (r *CommonServiceReconciler) buildDesiredStateFromAllCRs(ctx context.Contex
 		return nil, nil, err
 	}
 
-	var aggregatedConfigs []interface{}
-	serviceControllerMappingSummary := make(map[string]string)
-
 	// Convert rules string to slice
 	ruleSlice, err := convertStringToSlice(rules.ConfigurationRules)
 	if err != nil {
 		return nil, nil, err
 	}
+
+	// PASS 1: Collect all features from all CRs (first non-empty value wins)
+	klog.Info("PASS 1: Collecting features from all CommonService CRs")
+	mergedFeatureCS := &apiv3.CommonService{
+		Spec: apiv3.CommonServiceSpec{},
+	}
+
+	for _, cs := range csObjectList.Items {
+		if cs.GetDeletionTimestamp() != nil {
+			continue
+		}
+
+		// Collect storageClass (first non-empty wins)
+		if mergedFeatureCS.Spec.StorageClass == "" && cs.Spec.StorageClass != "" {
+			mergedFeatureCS.Spec.StorageClass = cs.Spec.StorageClass
+			klog.Infof("Collected storageClass=%s from CR %s/%s", cs.Spec.StorageClass, cs.Namespace, cs.Name)
+		}
+
+		// Collect routeHost (first non-empty wins)
+		if mergedFeatureCS.Spec.RouteHost == "" && cs.Spec.RouteHost != "" {
+			mergedFeatureCS.Spec.RouteHost = cs.Spec.RouteHost
+			klog.Infof("Collected routeHost=%s from CR %s/%s", cs.Spec.RouteHost, cs.Namespace, cs.Name)
+		}
+
+		// Collect defaultAdminUser (first non-empty wins)
+		if mergedFeatureCS.Spec.DefaultAdminUser == "" && cs.Spec.DefaultAdminUser != "" {
+			mergedFeatureCS.Spec.DefaultAdminUser = cs.Spec.DefaultAdminUser
+			klog.Infof("Collected defaultAdminUser=%s from CR %s/%s", cs.Spec.DefaultAdminUser, cs.Namespace, cs.Name)
+		}
+
+		// Collect fipsEnabled (first true wins)
+		if !mergedFeatureCS.Spec.FipsEnabled && cs.Spec.FipsEnabled {
+			mergedFeatureCS.Spec.FipsEnabled = cs.Spec.FipsEnabled
+			klog.Infof("Collected fipsEnabled=%t from CR %s/%s", cs.Spec.FipsEnabled, cs.Namespace, cs.Name)
+		}
+
+		// Collect enableInstanaMetricCollection (first true wins)
+		if !mergedFeatureCS.Spec.EnableInstanaMetricCollection && cs.Spec.EnableInstanaMetricCollection {
+			mergedFeatureCS.Spec.EnableInstanaMetricCollection = cs.Spec.EnableInstanaMetricCollection
+			klog.Infof("Collected enableInstanaMetricCollection=%t from CR %s/%s", cs.Spec.EnableInstanaMetricCollection, cs.Namespace, cs.Name)
+		}
+
+		// Collect hugepages (first non-nil wins)
+		if mergedFeatureCS.Spec.HugePages == nil && cs.Spec.HugePages != nil {
+			mergedFeatureCS.Spec.HugePages = cs.Spec.HugePages.DeepCopy()
+			klog.Infof("Collected hugepages from CR %s/%s", cs.Namespace, cs.Name)
+		}
+
+		// Collect APICatalog storageClass (first non-empty wins)
+		if cs.Spec.Features != nil && cs.Spec.Features.APICatalog != nil && cs.Spec.Features.APICatalog.StorageClass != "" {
+			if mergedFeatureCS.Spec.Features == nil {
+				mergedFeatureCS.Spec.Features = &apiv3.Features{}
+			}
+			if mergedFeatureCS.Spec.Features.APICatalog == nil {
+				mergedFeatureCS.Spec.Features.APICatalog = &apiv3.APICatalog{}
+			}
+			if mergedFeatureCS.Spec.Features.APICatalog.StorageClass == "" {
+				mergedFeatureCS.Spec.Features.APICatalog.StorageClass = cs.Spec.Features.APICatalog.StorageClass
+				klog.Infof("Collected APICatalog storageClass=%s from CR %s/%s", cs.Spec.Features.APICatalog.StorageClass, cs.Namespace, cs.Name)
+			}
+		}
+
+		// Collect labels (merge all)
+		if cs.Spec.Labels != nil && len(cs.Spec.Labels) > 0 {
+			if mergedFeatureCS.Spec.Labels == nil {
+				mergedFeatureCS.Spec.Labels = make(map[string]string)
+			}
+			for k, v := range cs.Spec.Labels {
+				if _, exists := mergedFeatureCS.Spec.Labels[k]; !exists {
+					mergedFeatureCS.Spec.Labels[k] = v
+					klog.Infof("Collected label %s=%s from CR %s/%s", k, v, cs.Namespace, cs.Name)
+				}
+			}
+		}
+	}
+
+	// PASS 2: Process all CRs normally
+	klog.Info("PASS 2: Processing all CommonService CRs normally")
+	var aggregatedConfigs []interface{}
+	serviceControllerMappingSummary := make(map[string]string)
 
 	for _, cs := range csObjectList.Items {
 		if cs.GetDeletionTimestamp() != nil {
@@ -1140,6 +1217,16 @@ func (r *CommonServiceReconciler) buildDesiredStateFromAllCRs(ctx context.Contex
 
 		serviceControllerMappingSummary = mergeProfileController(serviceControllerMappingSummary, serviceControllerMapping)
 		aggregatedConfigs = mergeCSCRs(aggregatedConfigs, csConfigs, ruleSlice, serviceControllerMappingSummary, r.CSData.ServicesNs)
+	}
+
+	// PASS 3: Ensure collected features are present in final state
+	klog.Info("PASS 3: Ensuring collected features are present in final state")
+	featureConfigs, _, err := ExtractCommonServiceConfigs(mergedFeatureCS, r.CSData.ServicesNs)
+	if err != nil {
+		klog.Errorf("Failed to extract feature configs: %v", err)
+	} else if len(featureConfigs) > 0 {
+		klog.Infof("Merging %d feature configs into final state", len(featureConfigs))
+		aggregatedConfigs = mergeCSCRs(aggregatedConfigs, featureConfigs, ruleSlice, serviceControllerMappingSummary, r.CSData.ServicesNs)
 	}
 
 	return aggregatedConfigs, serviceControllerMappingSummary, nil

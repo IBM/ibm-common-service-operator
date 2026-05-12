@@ -241,6 +241,11 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 
 // InitResources initialize resources at the bootstrap of operator
 func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLMCRs bool) error {
+	// Make a deep copy to preserve the merged configuration for OperandConfig creation
+	// This is necessary because Status().Update() calls below will refresh the instance
+	// from the API server, potentially losing merged configuration from multiple CRs
+	mergedConfig := instance.DeepCopy()
+
 	installPlanApproval := instance.Spec.InstallPlanApproval
 	userManagedOption := WithUserManagedOverridesFromConfigs(instance.Spec.OperatorConfigs)
 
@@ -313,7 +318,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		}
 
 		klog.Info("Installing/Updating OperandConfig")
-		if err := b.InstallOrUpdateOpcon(forceUpdateODLMCRs, instance); err != nil {
+		if err := b.InstallOrUpdateOpcon(forceUpdateODLMCRs, mergedConfig); err != nil {
 			return err
 		}
 	}
@@ -363,7 +368,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		}
 
 		klog.Info("Installing/Updating OperandConfig")
-		if err := b.InstallOrUpdateOpcon(forceUpdateODLMCRs, instance); err != nil {
+		if err := b.InstallOrUpdateOpcon(forceUpdateODLMCRs, mergedConfig); err != nil {
 			return err
 		}
 	}
