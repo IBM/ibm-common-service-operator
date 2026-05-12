@@ -2066,3 +2066,12 @@ rules:
       - get
       - list
       - watch
+  - apiGroups:
+      - pg.ibm.com
+    resources:
+      - imagecatalogs
+    verbs:
+      - create
+      - delete
+      - get
+      - update
