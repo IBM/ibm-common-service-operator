@@ -28,6 +28,7 @@ func init() {
 		"common-service-postgresql",
 		"cloud-native-postgresql-v1.22",
 		"cloud-native-postgresql-v1.25",
+		"cloud-native-postgresql-v1.28",
 	}
 
 	servicesConfig := ""
