@@ -140,7 +140,8 @@ func TestExtractCommonServiceConfigs_FipsEnabled(t *testing.T) {
 
 func TestExtractCommonServiceConfigs_AutoScaleConfigFalse(t *testing.T) {
 	cs := newCS()
-	cs.Spec.AutoScaleConfig = false
+	falseVal := false
+	cs.Spec.AutoScaleConfig = &falseVal
 
 	configs, _, err := ExtractCommonServiceConfigs(cs, testServicesNs)
 	require.NoError(t, err)
@@ -159,7 +160,8 @@ func TestExtractCommonServiceConfigs_AutoScaleConfigFalse(t *testing.T) {
 
 func TestExtractCommonServiceConfigs_AutoScaleConfigTrue(t *testing.T) {
 	cs := newCS()
-	cs.Spec.AutoScaleConfig = true
+	trueVal := true
+	cs.Spec.AutoScaleConfig = &trueVal
 
 	configs, _, err := ExtractCommonServiceConfigs(cs, testServicesNs)
 	require.NoError(t, err)

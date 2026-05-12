@@ -365,14 +365,19 @@ func (b *Bootstrap) mergeBooleans(merged, cr *apiv3.CommonService, baseName, crN
 	}
 
 	// AutoScaleConfig
-	if !merged.Spec.AutoScaleConfig && cr.Spec.AutoScaleConfig {
-		*conflicts = append(*conflicts, apiv3.MergeConflict{
-			Field:      "spec.autoScaleConfig",
-			Values:     []string{"false", "true"},
-			Resolution: "logical_or",
-			Winner:     crName,
-		})
-		merged.Spec.AutoScaleConfig = true
+	if cr.Spec.AutoScaleConfig != nil {
+		if merged.Spec.AutoScaleConfig == nil {
+			merged.Spec.AutoScaleConfig = cr.Spec.AutoScaleConfig
+		} else if !*merged.Spec.AutoScaleConfig && *cr.Spec.AutoScaleConfig {
+			*conflicts = append(*conflicts, apiv3.MergeConflict{
+				Field:      "spec.autoScaleConfig",
+				Values:     []string{"false", "true"},
+				Resolution: "logical_or",
+				Winner:     crName,
+			})
+			trueVal := true
+			merged.Spec.AutoScaleConfig = &trueVal
+		}
 	}
 
 	// EnableInstanaMetricCollection
