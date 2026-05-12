@@ -57,6 +57,21 @@ func ExtractCommonServiceConfigs(
 	return newConfigs, serviceControllerMapping, nil
 }
 
+// ExtractServiceSpecificConfigs extracts only service-specific configurations (size/services)
+// without global feature flags. Used in multi-CR scenarios to avoid feature conflicts.
+func ExtractServiceSpecificConfigs(
+	cs *apiv3.CommonService,
+	servicesNs string,
+) ([]interface{}, map[string]string, error) {
+	// Extract only size configurations (which include service-specific settings)
+	sizeConfigs, serviceControllerMapping, err := extractSizeConfigs(cs, servicesNs)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return sizeConfigs, serviceControllerMapping, nil
+}
+
 // extractFeatureConfigs handles feature flag extraction
 func extractFeatureConfigs(cs *apiv3.CommonService) ([]interface{}, error) {
 	var configs []interface{}

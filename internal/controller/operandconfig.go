@@ -265,8 +265,10 @@ func mergeResourceArrays(baseResources, csResources []interface{}, opconNs strin
 
 			// Check if resources match by GVK+Name+Namespace
 			if baseApiVersion == csApiVersion && baseKind == csKind && baseName == csName && baseNamespace == csNamespace {
-				// Merge CS resource into base resource
-				mergedResource := mergeCRsIntoOperandConfigWithDefaultRules(csMap, baseMap, false)
+				// Merge CS resource into base resource (CS takes precedence)
+				// Parameters: (defaultMap, changedMap, directAssign) - returns changedMap with defaultMap merged in
+				// We want CS to override base, so base is default and CS is changed
+				mergedResource := mergeCRsIntoOperandConfigWithDefaultRules(baseMap, csMap, false)
 
 				// Apply profile controller cleanup if needed
 				if _, ok := nonDefaultProfileController[serviceController]; ok {
@@ -1103,6 +1105,27 @@ func getItemByGVKNameNamespace(opResources []interface{}, opconNs, apiVersion, k
 	return nil
 }
 
+// filterConfigsByServiceName filters out service configurations that are in the exclusion set
+func filterConfigsByServiceName(configs []interface{}, excludeServices map[string]bool) []interface{} {
+	if len(excludeServices) == 0 {
+		return configs
+	}
+
+	filtered := make([]interface{}, 0, len(configs))
+	for _, config := range configs {
+		if configMap, ok := config.(map[string]interface{}); ok {
+			if name, ok := configMap["name"].(string); ok {
+				if !excludeServices[name] {
+					filtered = append(filtered, config)
+				} else {
+					klog.Infof("Filtered out service %s from feature configs (has explicit configuration)", name)
+				}
+			}
+		}
+	}
+	return filtered
+}
+
 // buildDesiredStateFromAllCRs aggregates configurations from all CommonService CRs
 // to determine the complete desired state for OperandConfig
 func (r *CommonServiceReconciler) buildDesiredStateFromAllCRs(ctx context.Context) ([]interface{}, map[string]string, error) {
@@ -1199,19 +1222,32 @@ func (r *CommonServiceReconciler) buildDesiredStateFromAllCRs(ctx context.Contex
 		}
 	}
 
-	// PASS 2: Process all CRs normally
-	klog.Info("PASS 2: Processing all CommonService CRs normally")
+	// PASS 2: Process service-specific configurations only (no global features)
+	klog.Info("PASS 2: Processing service-specific configurations from all CRs")
 	var aggregatedConfigs []interface{}
 	serviceControllerMappingSummary := make(map[string]string)
+	servicesWithExplicitConfig := make(map[string]bool)
 
 	for _, cs := range csObjectList.Items {
 		if cs.GetDeletionTimestamp() != nil {
 			continue
 		}
 
-		csConfigs, serviceControllerMapping, err := ExtractCommonServiceConfigs(&cs, r.CSData.ServicesNs)
+		// Track services that have explicit spec or resources configurations
+		if cs.Spec.Services != nil {
+			for _, svc := range cs.Spec.Services {
+				if (svc.Spec != nil && len(svc.Spec) > 0) || (svc.Resources != nil && len(svc.Resources) > 0) {
+					servicesWithExplicitConfig[svc.Name] = true
+					klog.Infof("Service %s has explicit configuration in CR %s/%s", svc.Name, cs.Namespace, cs.Name)
+				}
+			}
+		}
+
+		// Extract only service-specific configs (no global features like storageClass)
+		// This prevents global features from one CR overwriting service-specific configs from another
+		csConfigs, serviceControllerMapping, err := ExtractServiceSpecificConfigs(&cs, r.CSData.ServicesNs)
 		if err != nil {
-			klog.Errorf("Failed to extract configs from CommonService %s/%s: %v", cs.Namespace, cs.Name, err)
+			klog.Errorf("Failed to extract service-specific configs from CommonService %s/%s: %v", cs.Namespace, cs.Name, err)
 			continue
 		}
 
@@ -1219,14 +1255,21 @@ func (r *CommonServiceReconciler) buildDesiredStateFromAllCRs(ctx context.Contex
 		aggregatedConfigs = mergeCSCRs(aggregatedConfigs, csConfigs, ruleSlice, serviceControllerMappingSummary, r.CSData.ServicesNs)
 	}
 
-	// PASS 3: Ensure collected features are present in final state
-	klog.Info("PASS 3: Ensuring collected features are present in final state")
+	// PASS 3: Apply collected features only to services without explicit configurations
+	klog.Info("PASS 3: Applying collected features to services without explicit configurations")
 	featureConfigs, _, err := ExtractCommonServiceConfigs(mergedFeatureCS, r.CSData.ServicesNs)
 	if err != nil {
 		klog.Errorf("Failed to extract feature configs: %v", err)
 	} else if len(featureConfigs) > 0 {
-		klog.Infof("Merging %d feature configs into final state", len(featureConfigs))
-		aggregatedConfigs = mergeCSCRs(aggregatedConfigs, featureConfigs, ruleSlice, serviceControllerMappingSummary, r.CSData.ServicesNs)
+		// Filter feature configs to exclude services with explicit configurations
+		filteredFeatureConfigs := filterConfigsByServiceName(featureConfigs, servicesWithExplicitConfig)
+		if len(filteredFeatureConfigs) > 0 {
+			klog.Infof("Merging %d filtered feature configs into final state (excluded %d services with explicit config)",
+				len(filteredFeatureConfigs), len(featureConfigs)-len(filteredFeatureConfigs))
+			aggregatedConfigs = mergeCSCRs(aggregatedConfigs, filteredFeatureConfigs, ruleSlice, serviceControllerMappingSummary, r.CSData.ServicesNs)
+		} else {
+			klog.Info("All feature configs filtered out - all services have explicit configurations")
+		}
 	}
 
 	return aggregatedConfigs, serviceControllerMappingSummary, nil
