@@ -2479,7 +2479,7 @@ spec:
             NAMESPACE: "{{ .ServicesNs }}"
             CLUSTER_NAME: "common-service-db"
             PG_VERSION: "16"
-            TIMEOUT: "120"
+            TIMEOUT: "300"
             SKIP_EDB_CLEANUP: "true"
             SKIP_OPERATOR_VALIDATION: "true"
             IBMPG_NAMESPACE: "{{ .OperatorNs }}"
