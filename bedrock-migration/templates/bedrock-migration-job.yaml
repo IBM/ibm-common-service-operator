@@ -100,14 +100,6 @@ spec:
                 echo "Deleting EDB CSV and Subscription in operator namespace $operatorNamespace..."
                 oc delete --ignore-not-found csv $edbCSV -n $operatorNamespace && oc delete --ignore-not-found subscription.operators.coreos.com $edbSub -n $operatorNamespace
               fi
-
-              echo "Deleting EDB config resources in namespace $operatorNamespace to be regenerated after migration..."
-              oc delete configmap cloud-native-postgresql-image-list --ignore-not-found -n $operatorNamespace
-
-              echo "Deleting EDB ServiceAccounts and Jobs in operator namespace $operatorNamespace..."
-              oc delete --ignore-not-found sa postgresql-operator-manager edb-license-sa -n $operatorNamespace
-              oc delete --ignore-not-found role edb-license-role -n $operatorNamespace
-              oc delete --ignore-not-found job create-postgres-license-config -n $operatorNamespace
             fi
 
             echo "Deleting IM and UI ServiceAccounts in services namespace $servicesNamespace..."
