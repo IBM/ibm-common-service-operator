@@ -2349,7 +2349,7 @@ spec:
             imageCatalogRef:
               apiGroup: pg.ibm.com
               kind: ImageCatalog
-              name: common-service-db-imagecatalog
+              name: common-service-db-image-catalog
               major: 16
             imagePullSecrets:
               - name: {{ .ImagePullSecret }}
