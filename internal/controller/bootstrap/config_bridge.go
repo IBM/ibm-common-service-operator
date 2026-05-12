@@ -19,6 +19,7 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sort"
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
@@ -39,6 +40,8 @@ func (b *Bootstrap) SetConfigMerger(merger ConfigMergerFunc) {
 // mergeConfigs calls the injected merger function if available
 // It also determines the largest size from ALL CommonService CRs and overrides the current CR's size
 func (b *Bootstrap) mergeConfigs(baseConfig string, cs *apiv3.CommonService) (string, error) {
+	ctx := context.Background()
+
 	// First, determine the largest size from all CommonService CRs
 	largestSize, err := b.getLargestSizeFromAllCRs(ctx)
 	if err != nil {
@@ -700,4 +703,56 @@ func (b *Bootstrap) mergeServicesField(merged, cr *apiv3.CommonService, baseName
 			serviceMap[crService.Name] = &merged.Spec.Services[len(merged.Spec.Services)-1]
 		}
 	}
+}
+
+// SyncMergedStatusToAllCRs synchronizes the merged status to all CommonService CRs
+// This ensures all CRs display identical merge information for transparency
+func (b *Bootstrap) SyncMergedStatusToAllCRs(
+	ctx context.Context,
+	mergedCR *apiv3.CommonService,
+	conflicts []apiv3.MergeConflict,
+	sourceCRs []apiv3.SourceCR,
+	mergedServices []apiv3.MergedServiceSummary,
+) error {
+	// List all CommonService CRs
+	csObjectList := &apiv3.CommonServiceList{}
+	if err := b.Client.List(ctx, csObjectList); err != nil {
+		return fmt.Errorf("failed to list CommonService CRs for status sync: %v", err)
+	}
+
+	klog.Infof("Synchronizing merged status to %d CommonService CRs", len(csObjectList.Items))
+
+	// Update status for each CR
+	syncCount := 0
+	for _, cs := range csObjectList.Items {
+		if cs.GetDeletionTimestamp() != nil {
+			klog.V(2).Infof("Skipping deleted CR %s/%s", cs.Namespace, cs.Name)
+			continue // Skip deleted CRs
+		}
+
+		// Create a copy to update
+		updatedCR := cs.DeepCopy()
+
+		// Update merged config status with identical information
+		updatedCR.UpdateMergedConfigStatus(mergedCR, conflicts, sourceCRs, mergedServices)
+
+		// Only update if status actually changed
+		if !reflect.DeepEqual(cs.Status.AppliedSpec, updatedCR.Status.AppliedSpec) ||
+			!reflect.DeepEqual(cs.Status.MergeInfo, updatedCR.Status.MergeInfo) ||
+			!reflect.DeepEqual(cs.Status.MergedServices, updatedCR.Status.MergedServices) {
+
+			klog.Infof("Syncing merged status to CR %s/%s", cs.Namespace, cs.Name)
+			if err := b.Client.Status().Update(ctx, updatedCR); err != nil {
+				klog.Warningf("Failed to sync status to %s/%s: %v", cs.Namespace, cs.Name, err)
+				// Continue with other CRs even if one fails
+			} else {
+				syncCount++
+			}
+		} else {
+			klog.V(2).Infof("Status already up-to-date for CR %s/%s", cs.Namespace, cs.Name)
+		}
+	}
+
+	klog.Infof("Successfully synced merged status to %d CommonService CRs", syncCount)
+	return nil
 }

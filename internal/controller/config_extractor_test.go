@@ -138,6 +138,44 @@ func TestExtractCommonServiceConfigs_FipsEnabled(t *testing.T) {
 	assert.True(t, found, "extracted configs should contain fipsEnabled=true")
 }
 
+func TestExtractCommonServiceConfigs_AutoScaleConfigFalse(t *testing.T) {
+	cs := newCS()
+	cs.Spec.AutoScaleConfig = false
+
+	configs, _, err := ExtractCommonServiceConfigs(cs, testServicesNs)
+	require.NoError(t, err)
+	require.NotEmpty(t, configs)
+
+	found := false
+	for _, c := range configs {
+		b, _ := json.Marshal(c)
+		if strings.Contains(string(b), "\"autoScaleConfig\":false") {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "extracted configs should contain autoScaleConfig=false")
+}
+
+func TestExtractCommonServiceConfigs_AutoScaleConfigTrue(t *testing.T) {
+	cs := newCS()
+	cs.Spec.AutoScaleConfig = true
+
+	configs, _, err := ExtractCommonServiceConfigs(cs, testServicesNs)
+	require.NoError(t, err)
+	require.NotEmpty(t, configs)
+
+	found := false
+	for _, c := range configs {
+		b, _ := json.Marshal(c)
+		if strings.Contains(string(b), "\"autoScaleConfig\":true") {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "extracted configs should contain autoScaleConfig=true")
+}
+
 // TestExtractCommonServiceConfigs_ProfileController verifies that a custom
 // profileController is reflected in the serviceControllerMapping.
 func TestExtractCommonServiceConfigs_ProfileController(t *testing.T) {

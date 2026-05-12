@@ -268,10 +268,11 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 	}
 
 	// Update merged config status with complete information
+	statusBase := instance.DeepCopy()
 	instance.UpdateMergedConfigStatus(mergedCR, conflicts, sourceCRs, mergedServices)
 
 	// Patch status to persist the merged configuration
-	if err := r.Bootstrap.Client.Status().Patch(ctx, instance, client.MergeFrom(instance.DeepCopy())); err != nil {
+	if err := r.Bootstrap.Client.Status().Patch(ctx, instance, client.MergeFrom(statusBase)); err != nil {
 		klog.Warningf("Failed to update status with merged config: %v", err)
 		// Don't fail reconciliation for status update errors
 	}

@@ -92,8 +92,9 @@ func extractFeatureConfigs(cs *apiv3.CommonService) ([]interface{}, error) {
 	}
 
 	// Extract AutoScaleConfig configuration
-	if cs.Spec.AutoScaleConfig {
-		klog.Info("Extracting autoScaleConfig configuration")
+	// Check if autoScaleConfig field was explicitly set in the spec
+	if isAutoScaleConfigSet(cs) {
+		klog.Infof("Extracting autoScaleConfig configuration with value %t", cs.Spec.AutoScaleConfig)
 		t := template.Must(template.New("template AutoScaleConfigTemplate").Parse(constant.AutoScaleConfigTemplate))
 		var tmplWriter bytes.Buffer
 		autoScaleConfigEnable := struct {
@@ -402,4 +403,21 @@ func ExtractServiceSummaries(mergedOpconYAML string) ([]apiv3.MergedServiceSumma
 	}
 
 	return summaries, nil
+}
+
+// isAutoScaleConfigSet checks if the autoScaleConfig field was explicitly set in the CommonService spec
+// by marshaling the spec to JSON and checking if the field exists
+func isAutoScaleConfigSet(cs *apiv3.CommonService) bool {
+	specBytes, err := json.Marshal(cs.Spec)
+	if err != nil {
+		return false
+	}
+
+	var specMap map[string]interface{}
+	if err := json.Unmarshal(specBytes, &specMap); err != nil {
+		return false
+	}
+
+	_, exists := specMap["autoScaleConfig"]
+	return exists
 }
