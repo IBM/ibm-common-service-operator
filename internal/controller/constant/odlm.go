@@ -2266,6 +2266,19 @@ spec:
         kind: OperandBindInfo
         name: common-service-cnpg-bindinfo
       - apiVersion: pg.ibm.com/v1
+        kind: ImageCatalog
+        name: common-service-db-imagecatalog
+        force: true
+        data:
+          spec:
+            images:
+              - major: 16
+                templatingValueFrom:
+                  configMapKeyRef:
+                    name: ibm-pg-operator-operand-images
+                    key: postgres-16
+                    namespace: {{ .OperatorNs }}
+      - apiVersion: pg.ibm.com/v1
         kind: Cluster
         name: common-service-db          
         force: true
@@ -2332,12 +2345,11 @@ spec:
                     operator: In
                     values:
                       - common-service-db
-            imageName:
-              templatingValueFrom:
-                configMapKeyRef:
-                  name: ibm-pg-operator-operand-images
-                  key: postgres-16
-                  namespace: {{ .OperatorNs }}
+            imageCatalogRef:
+              apiGroup: pg.ibm.com/v1
+              kind: ImageCatalog
+              name: common-service-db-imagecatalog
+              major: 16
             imagePullSecrets:
               - name: {{ .ImagePullSecret }}
             logLevel: info
