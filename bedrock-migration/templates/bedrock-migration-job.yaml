@@ -33,6 +33,7 @@ spec:
             echo "Starting cleanup for OLM -> No OLM migration..."
             operatorNamespace={{ .Values.global.operatorNamespace }}
             servicesNamespace={{ .Values.global.instanceNamespace }}
+            skipEDBMigration={{ .Values.cpfs.skipEDBMigration }}
             namespaces=$(oc get cm namespace-scope -n $operatorNamespace -o jsonpath="{.data.namespaces}")
 
             
@@ -88,23 +89,21 @@ spec:
               oc delete --ignore-not-found csv $uiCSV -n $operatorNamespace && oc delete --ignore-not-found subscription.operators.coreos.com $uiSub -n $operatorNamespace
             fi
             
-            edbSub=$(oc get subscription.operators.coreos.com -n "$operatorNamespace" -o jsonpath="{.items[?(@.spec.name=='cloud-native-postgresql')].metadata.name}")
-            if [[ -z $edbSub ]]; then
-              echo "EDB Subscription not present in operator namespace $operatorNamespace, skipping deleting Subscription and CSV."
+            if [[ "$skipEDBMigration" == "true" ]]; then
+              echo "Skipping EDB operator cleanup as skipEDBMigration is set to true."
             else
-              edbCSV=$(oc get --ignore-not-found subscription.operators.coreos.com $edbSub -n $operatorNamespace -o jsonpath='{.status.currentCSV}')
-              echo "Deleting EDB CSV and Subscription in operator namespace $operatorNamespace..."
-              oc delete --ignore-not-found csv $edbCSV -n $operatorNamespace && oc delete --ignore-not-found subscription.operators.coreos.com $edbSub -n $operatorNamespace
+              edbSub=$(oc get subscription.operators.coreos.com -n "$operatorNamespace" -o jsonpath="{.items[?(@.spec.name=='cloud-native-postgresql')].metadata.name}")
+              if [[ -z $edbSub ]]; then
+                echo "EDB Subscription not present in operator namespace $operatorNamespace, skipping deleting Subscription and CSV."
+              else
+                edbCSV=$(oc get --ignore-not-found subscription.operators.coreos.com $edbSub -n $operatorNamespace -o jsonpath='{.status.currentCSV}')
+                echo "Deleting EDB CSV and Subscription in operator namespace $operatorNamespace..."
+                oc delete --ignore-not-found csv $edbCSV -n $operatorNamespace && oc delete --ignore-not-found subscription.operators.coreos.com $edbSub -n $operatorNamespace
+              fi
             fi
 
-            echo "Deleting EDB config resources in namespace $operatorNamespace to be regenerated after migration..."
-            oc delete configmap cloud-native-postgresql-image-list --ignore-not-found -n $operatorNamespace
-
-            echo "Deleting IM, UI, and EDB ServiceAccounts and Jobs in operator namespace $operatorNamespace and services namespace $servicesNamespace..."
-            oc delete --ignore-not-found sa postgresql-operator-manager edb-license-sa -n $operatorNamespace
+            echo "Deleting IM and UI ServiceAccounts in services namespace $servicesNamespace..."
             oc delete --ignore-not-found sa ibm-iam-operand-restricted ibm-commonui-operand -n $servicesNamespace
-            oc delete --ignore-not-found role edb-license-role -n $operatorNamespace
-            oc delete --ignore-not-found job create-postgres-license-config -n $operatorNamespace
 
             #loop for removing roles from services and tethered namespace
             echo "Cleaning up roles and rolebindings in namespaces $namespaces..."
@@ -122,15 +121,17 @@ spec:
                 #get ui roles
                 roles="${roles} $(oc get roles -n $ns | grep ibm-commonui | awk '{print $1}' | tr "\n" " ")"
                 
-                #get edb roles
-                roles="${roles} $(oc get roles -n $ns | grep postgresql-operator-controller-manager | awk '{print $1}' | tr "\n" " ")"
-                roles="${roles} $(oc get roles -n $ns | grep cloud-native-postgresql | awk '{print $1}' | tr "\n" " ")"
+                #get edb roles (skip if skipEDBMigration is true)
+                if [[ "$skipEDBMigration" != "true" ]]; then
+                  roles="${roles} $(oc get roles -n $ns | grep postgresql-operator-controller-manager | awk '{print $1}' | tr "\n" " ")"
+                  roles="${roles} $(oc get roles -n $ns | grep cloud-native-postgresql | awk '{print $1}' | tr "\n" " ")"
 
-                if [[ $ns != $servicesNamespace ]]; then
-                    edbSA=$(oc get sa -n $ns --ignore-not-found | grep postgresql-operator-controller-manager | awk '{print $1}' | tr "\n" " ")
-                    if [[ ${edbSA// /} != "" ]]; then
-                      oc delete sa $edbSA -n $ns --ignore-not-found
-                    fi
+                  if [[ $ns != $servicesNamespace ]]; then
+                      edbSA=$(oc get sa -n $ns --ignore-not-found | grep postgresql-operator-controller-manager | awk '{print $1}' | tr "\n" " ")
+                      if [[ ${edbSA// /} != "" ]]; then
+                        oc delete sa $edbSA -n $ns --ignore-not-found
+                      fi
+                  fi
                 fi
 
                 if [[ -z ${roles// /} ]]; then
