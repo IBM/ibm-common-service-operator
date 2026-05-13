@@ -228,53 +228,15 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 		return ctrl.Result{}, statusErr
 	}
 
-	// Merge all CommonService CRs before initialization
-	klog.Info("Merging all CommonService CRs to determine final configuration")
-	mergedCR, conflicts, sourceCRs, err := r.Bootstrap.MergeAllCommonServiceCRs(ctx, instance)
-	if err != nil {
-		klog.Errorf("Failed to merge CommonService CRs: %v", err)
-		if statusErr = r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
-			klog.Error(statusErr)
-		}
-		return ctrl.Result{}, err
-	}
-
-	// Log merge results
-	klog.Infof("Merged %d CommonService CRs with %d conflicts", len(sourceCRs), len(conflicts))
-	if len(conflicts) > 0 {
-		klog.Info("Merge conflicts detected:")
-		for _, conflict := range conflicts {
-			klog.Infof("  - %s: %v -> %s (resolution: %s, winner: %s)",
-				conflict.Field, conflict.Values, conflict.Values[0], conflict.Resolution, conflict.Winner)
-		}
-	}
-
-	// Init common service bootstrap resource using merged CR
+	// Init common service bootstrap resource
 	// Including namespace-scope configmap
 	// Deploy OperandConfig and OperandRegistry
-	if statusErr = r.Bootstrap.InitResources(mergedCR, forceUpdateODLMCRs); statusErr != nil {
+	if statusErr = r.Bootstrap.InitResources(instance, forceUpdateODLMCRs); statusErr != nil {
 		if statusErr := r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
 			klog.Error(statusErr)
 		}
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
 		return ctrl.Result{}, statusErr
-	}
-
-	// Extract service summaries from the created OperandConfig
-	mergedServices, err := r.Bootstrap.ExtractServiceSummariesFromOperandConfig()
-	if err != nil {
-		klog.Warningf("Failed to extract service summaries: %v", err)
-		mergedServices = []apiv3.MergedServiceSummary{} // Use empty slice on error
-	}
-
-	// Update merged config status with complete information
-	statusBase := instance.DeepCopy()
-	instance.UpdateMergedConfigStatus(mergedCR, conflicts, sourceCRs, mergedServices)
-
-	// Patch status to persist the merged configuration
-	if err := r.Bootstrap.Client.Status().Patch(ctx, instance, client.MergeFrom(statusBase)); err != nil {
-		klog.Warningf("Failed to update status with merged config: %v", err)
-		// Don't fail reconciliation for status update errors
 	}
 
 	// Generate Issuer and Certificate CR
