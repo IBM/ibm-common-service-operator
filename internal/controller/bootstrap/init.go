@@ -646,15 +646,49 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 			}
 			update = !equality.Semantic.DeepEqual(sub.Object["spec"], obj.Object["spec"])
 		} else if gvk.Kind == "Certificate" {
-			// Compare Certificate spec to determine if update is needed
+			// Compare Certificate privateKey field to determine if update is needed
 			existingSpec, existingSpecExists := objInCluster.Object["spec"]
 			newSpec, newSpecExists := obj.Object["spec"]
 
 			if existingSpecExists && newSpecExists {
-				// Compare the specs - update if they differ
-				update = !equality.Semantic.DeepEqual(existingSpec, newSpec)
-				if update {
-					klog.V(2).Infof("Certificate spec differs for %s/%s, will update", obj.GetNamespace(), obj.GetName())
+				existingSpecMap, existingOk := existingSpec.(map[string]interface{})
+				newSpecMap, newOk := newSpec.(map[string]interface{})
+
+				if existingOk && newOk {
+					// Only compare the privateKey field
+					existingPrivateKey := existingSpecMap["privateKey"]
+					newPrivateKey := newSpecMap["privateKey"]
+
+					// Handle cases where privateKey might be nil/empty
+					// Update if:
+					// 1. Both exist and differ
+					// 2. Only new one exists (existing is nil but new is not)
+					// 3. Only existing one exists (existing is not nil but new is nil)
+					if existingPrivateKey == nil && newPrivateKey != nil {
+						update = true
+						klog.V(2).Infof("Certificate privateKey field added for %s/%s, will update", obj.GetNamespace(), obj.GetName())
+					} else if existingPrivateKey != nil && newPrivateKey == nil {
+						update = true
+						klog.V(2).Infof("Certificate privateKey field removed for %s/%s, will update", obj.GetNamespace(), obj.GetName())
+					} else if existingPrivateKey != nil && newPrivateKey != nil {
+						// Both exist, compare them
+						update = !equality.Semantic.DeepEqual(existingPrivateKey, newPrivateKey)
+						if update {
+							klog.V(2).Infof("Certificate privateKey field differs for %s/%s, will update", obj.GetNamespace(), obj.GetName())
+						}
+					}
+					// If both are nil, update remains false (no change needed)
+
+					if update {
+						// Only update the privateKey field, preserve the rest of the spec
+						// Use the existing spec and only update the privateKey field
+						obj.Object["spec"] = existingSpecMap
+						if newPrivateKey != nil {
+							existingSpecMap["privateKey"] = newPrivateKey
+						} else {
+							delete(existingSpecMap, "privateKey")
+						}
+					}
 				}
 			} else if !existingSpecExists && newSpecExists {
 				// Existing object has no spec but new one does - update
