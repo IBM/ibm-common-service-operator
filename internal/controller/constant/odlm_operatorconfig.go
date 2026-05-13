@@ -19,8 +19,9 @@ package constant
 import "fmt"
 
 var PostGresOperatorConfig string
+var IBMPGOperatorConfig string
 
-// Populate PostGresOperatorConfig at package initialization
+// Populate PostGresOperatorConfig and IBMPGOperatorConfig at package initialization
 func init() {
 	services := []string{
 		"edb-keycloak",
@@ -48,6 +49,31 @@ metadata:
     version: {{ .Version }}
 spec:
   services:` + servicesConfig
+
+	// IBM PG operator services (using operator entry names from OperandRegistry)
+	ibmPGServices := []string{
+		"ibm-pg-operator-v28",
+		"common-service-cnpg",
+		"common-service-pg-migrator",
+	}
+
+	ibmPGServicesConfig := ""
+	for _, service := range ibmPGServices {
+		ibmPGServicesConfig += fmt.Sprintf(ibmPGServiceTemplate, service)
+	}
+
+	IBMPGOperatorConfig = `apiVersion: operator.ibm.com/v1alpha1
+kind: OperatorConfig
+metadata:
+  name: ibm-pg-operator-config
+  namespace: "{{ .ServicesNs }}"
+  labels:
+    operator.ibm.com/managedByCsOperator: "true"
+    operator.ibm.com/experimental: "true"
+  annotations:
+    version: {{ .Version }}
+spec:
+  services:` + ibmPGServicesConfig
 }
 
 const postgresServiceTemplate = `
@@ -97,3 +123,52 @@ const postgresServiceTemplate = `
           labelSelector:
             matchLabels:
               app.kubernetes.io/name: cloud-native-postgresql`
+
+
+const ibmPGServiceTemplate = `
+    - name: %s
+      replicas: placeholder-size
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+                - ppc64le
+                - s390x
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 90
+            podAffinityTerm:
+              topologyKey: topology.kubernetes.io/zone
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - ibm-pg-operator
+          - weight: 50
+            podAffinityTerm:
+              topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - ibm-pg-operator
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: ibm-pg-operator
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/region
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: ibm-pg-operator`
