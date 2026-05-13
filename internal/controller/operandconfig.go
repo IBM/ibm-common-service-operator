@@ -330,7 +330,7 @@ func mergeCRsIntoOperandConfigWithDefaultRules(defaultMap map[string]interface{}
 func filterChangedMapWithRules(key string, changedMap interface{}, rules interface{}, finalMap map[string]interface{}) {
 	switch changedMap.(type) {
 	case map[string]interface{}:
-		// For map types, only filter if rules exist and are also a map
+		// For map types, recursively filter if rules exist and are also a map
 		if rules != nil {
 			if _, ok := rules.(map[string]interface{}); ok {
 				rulesRef := rules.(map[string]interface{})
@@ -338,12 +338,14 @@ func filterChangedMapWithRules(key string, changedMap interface{}, rules interfa
 				for newKey := range changedMapRef {
 					filterChangedMapWithRules(newKey, changedMapRef[newKey], rulesRef[newKey], finalMap[key].(map[string]interface{}))
 				}
-			} else {
-				delete(finalMap, key)
 			}
+			// If rules exist but are not a map, keep the field (don't delete)
+			// This preserves fields that aren't in the rules
 		}
+		// If rules is nil, keep the map and all its contents (no filtering)
 	default:
 		// For non-map types, keep them regardless of rules
+		// This preserves boolean/string/number fields that aren't explicitly in rules
 	}
 }
 
@@ -363,8 +365,16 @@ func mergeChangedMap(key string, defaultMap interface{}, changedMap interface{},
 				}
 				// Now recurse into the map that's stored in finalMap[key]
 				targetMap := finalMap[key].(map[string]interface{})
+				// First, process all keys from defaultMap
 				for newKey := range defaultMapRef {
 					mergeChangedMap(newKey, defaultMapRef[newKey], changedMapRef[newKey], targetMap, directAssign)
+				}
+				// Then, process keys that exist only in changedMap (not in defaultMap)
+				for newKey := range changedMapRef {
+					if _, exists := defaultMapRef[newKey]; !exists {
+						// This key only exists in changedMap, add it to targetMap
+						targetMap[newKey] = changedMapRef[newKey]
+					}
 				}
 			}
 		case []interface{}:
@@ -410,8 +420,22 @@ func mergeChangedMap(key string, defaultMap interface{}, changedMap interface{},
 					} else {
 						finalMap[key], _ = rules.ResourceComparison(defaultMap, changedMap)
 					}
+				} else {
+					// For non-comparable keys, handle based on directAssign flag
+					if directAssign {
+						// When directAssign is true, use changedMap if it has a meaningful value, otherwise use defaultMap
+						if changedMap == "" || changedMap == nil {
+							finalMap[key] = defaultMap
+						} else {
+							finalMap[key] = changedMap
+						}
+					} else {
+						// When directAssign is false, only set if changedMap has a non-empty, non-false value
+						if changedMap != "" && changedMap != nil && changedMap != false {
+							finalMap[key] = changedMap
+						}
+					}
 				}
-				// For non-comparable keys, changedMap is already set, no action needed
 			}
 		}
 	}
@@ -671,9 +695,18 @@ func (r *CommonServiceReconciler) mergeServicesWithBase(baseServices, csServices
 func (r *CommonServiceReconciler) mergeServiceConfig(baseService, csService map[string]interface{}, serviceName string, ruleSlice []interface{}) map[string]interface{} {
 	result := make(map[string]interface{})
 
-	// Copy base service
+	// Deep copy base service to avoid modifying the original
 	for k, v := range baseService {
-		result[k] = v
+		// Deep copy maps to avoid reference sharing
+		if vMap, ok := v.(map[string]interface{}); ok {
+			copiedMap := make(map[string]interface{})
+			for mk, mv := range vMap {
+				copiedMap[mk] = mv
+			}
+			result[k] = copiedMap
+		} else {
+			result[k] = v
+		}
 	}
 
 	// Get rules for this service

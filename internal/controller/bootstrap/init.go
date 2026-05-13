@@ -989,7 +989,8 @@ func (b *Bootstrap) InstallOrUpdateOpcon(forceUpdateODLMCRs bool, csInstance *ap
 	// Always force update when we have merged CommonService configurations
 	forceUpdate := forceUpdateODLMCRs || (csInstance != nil)
 
-	if err := b.renderTemplate(finalConfig, b.CSData, forceUpdate); err != nil {
+	// Before applying, merge with existing OperandConfig to preserve manually added fields
+	if err := b.renderTemplateWithExistingMerge(finalConfig, b.CSData, forceUpdate); err != nil {
 		return err
 	}
 	return nil
@@ -1373,6 +1374,230 @@ func (b *Bootstrap) renderTemplate(objectTemplate string, data interface{}, alwa
 		return err
 	}
 	return nil
+}
+
+// renderTemplateWithExistingMerge renders a template and merges with existing resource
+// to preserve manually added fields that aren't managed by CommonService CR
+func (b *Bootstrap) renderTemplateWithExistingMerge(objectTemplate string, data interface{}, alwaysUpdate ...bool) error {
+	var buffer bytes.Buffer
+	t := template.Must(template.New("newTemplate").Parse(objectTemplate))
+	if err := t.Execute(&buffer, data); err != nil {
+		return err
+	}
+
+	forceUpdate := false
+	if len(alwaysUpdate) != 0 {
+		forceUpdate = alwaysUpdate[0]
+	}
+
+	// Parse the new YAML to get the objects
+	newObjects, err := util.YamlToObjects(buffer.Bytes())
+	if err != nil {
+		return err
+	}
+
+	// For each object, check if it's an OperandConfig and merge with existing
+	for _, newObj := range newObjects {
+		gvk := newObj.GetObjectKind().GroupVersionKind()
+
+		// Only apply special merge logic for OperandConfig
+		if gvk.Kind == "OperandConfig" && gvk.Group == "operator.ibm.com" {
+			klog.Info("Merging new OperandConfig with existing to preserve manually added fields")
+
+			// Get existing OperandConfig from cluster
+			existingObj, err := b.GetObject(newObj)
+			if err != nil {
+				if errors.IsNotFound(err) {
+					// OperandConfig doesn't exist yet, create it normally
+					klog.V(2).Infof("OperandConfig not found, creating new one")
+					if err := b.CreateObject(newObj); err != nil {
+						return err
+					}
+					continue
+				}
+				return err
+			}
+
+			// Merge existing with new, preserving fields not in new config
+			mergedObj, err := b.mergeOperandConfigs(existingObj, newObj)
+			if err != nil {
+				klog.Errorf("Failed to merge OperandConfigs: %v", err)
+				return err
+			}
+
+			// Update with merged config
+			if forceUpdate || b.shouldUpdateOperandConfig(existingObj, mergedObj) {
+				klog.Infof("Updating OperandConfig %s/%s with merged configuration", mergedObj.GetNamespace(), mergedObj.GetName())
+				resourceVersion := existingObj.GetResourceVersion()
+				mergedObj.SetResourceVersion(resourceVersion)
+				if err := b.UpdateObject(mergedObj); err != nil {
+					return err
+				}
+			} else {
+				klog.V(2).Infof("No update needed for OperandConfig %s/%s", mergedObj.GetNamespace(), mergedObj.GetName())
+			}
+		} else {
+			// For non-OperandConfig resources, use normal create/update logic
+			objInCluster, err := b.GetObject(newObj)
+			if errors.IsNotFound(err) {
+				klog.V(2).Infof("Creating resource with name: %s, namespace: %s, kind: %s", newObj.GetName(), newObj.GetNamespace(), gvk.Kind)
+				if err := b.CreateObject(newObj); err != nil {
+					return err
+				}
+				continue
+			} else if err != nil {
+				return err
+			}
+
+			if forceUpdate {
+				klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s", newObj.GetName(), newObj.GetNamespace(), gvk.Kind)
+				resourceVersion := objInCluster.GetResourceVersion()
+				newObj.SetResourceVersion(resourceVersion)
+				if err := b.UpdateObject(newObj); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// mergeOperandConfigs merges existing OperandConfig with new one, preserving manually added fields
+func (b *Bootstrap) mergeOperandConfigs(existing, new *unstructured.Unstructured) (*unstructured.Unstructured, error) {
+	// Get spec.services from both configs
+	existingSpec, existingSpecOk, err := unstructured.NestedFieldCopy(existing.Object, "spec")
+	if err != nil || !existingSpecOk {
+		klog.V(2).Info("No existing spec found, using new config as-is")
+		return new, nil
+	}
+
+	newSpec, newSpecOk, err := unstructured.NestedFieldCopy(new.Object, "spec")
+	if err != nil || !newSpecOk {
+		return nil, fmt.Errorf("new OperandConfig has no spec")
+	}
+
+	existingSpecMap, ok := existingSpec.(map[string]interface{})
+	if !ok {
+		return new, nil
+	}
+
+	newSpecMap, ok := newSpec.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("new spec is not a map")
+	}
+
+	// Get services arrays
+	existingServices, existingServicesOk := existingSpecMap["services"].([]interface{})
+	newServices, newServicesOk := newSpecMap["services"].([]interface{})
+
+	if !existingServicesOk || !newServicesOk {
+		klog.V(2).Info("Services not found in one of the configs, using new config")
+		return new, nil
+	}
+
+	// Merge services: for each service in new config, check if it exists in existing
+	// and preserve fields that aren't in the new config
+	mergedServices := make([]interface{}, 0, len(newServices))
+	for _, newSvc := range newServices {
+		newSvcMap, ok := newSvc.(map[string]interface{})
+		if !ok {
+			mergedServices = append(mergedServices, newSvc)
+			continue
+		}
+
+		newSvcName, ok := newSvcMap["name"].(string)
+		if !ok {
+			mergedServices = append(mergedServices, newSvc)
+			continue
+		}
+
+		// Find matching service in existing config
+		var existingSvcMap map[string]interface{}
+		for _, existingSvc := range existingServices {
+			if existingSvcTmp, ok := existingSvc.(map[string]interface{}); ok {
+				if existingName, ok := existingSvcTmp["name"].(string); ok && existingName == newSvcName {
+					existingSvcMap = existingSvcTmp
+					break
+				}
+			}
+		}
+
+		if existingSvcMap != nil {
+			// Merge the service configs
+			mergedSvc := b.mergeServiceConfigs(existingSvcMap, newSvcMap)
+			mergedServices = append(mergedServices, mergedSvc)
+		} else {
+			// Service doesn't exist in old config, use new one
+			mergedServices = append(mergedServices, newSvc)
+		}
+	}
+
+	// Update new config with merged services
+	newSpecMap["services"] = mergedServices
+	if err := unstructured.SetNestedField(new.Object, newSpecMap, "spec"); err != nil {
+		return nil, err
+	}
+
+	return new, nil
+}
+
+// mergeServiceConfigs merges service configs, preserving fields from existing that aren't in new
+func (b *Bootstrap) mergeServiceConfigs(existing, new map[string]interface{}) map[string]interface{} {
+	result := make(map[string]interface{})
+
+	// Start with new config
+	for k, v := range new {
+		result[k] = v
+	}
+
+	// Merge spec fields
+	if existingSpec, existingOk := existing["spec"].(map[string]interface{}); existingOk {
+		if newSpec, newOk := result["spec"].(map[string]interface{}); newOk {
+			result["spec"] = b.mergeSpecMaps(existingSpec, newSpec)
+		} else {
+			result["spec"] = existingSpec
+		}
+	}
+
+	return result
+}
+
+// mergeSpecMaps deeply merges spec maps, preserving fields from existing that aren't in new
+func (b *Bootstrap) mergeSpecMaps(existing, new map[string]interface{}) map[string]interface{} {
+	result := make(map[string]interface{})
+
+	// Start with new config
+	for k, v := range new {
+		result[k] = v
+	}
+
+	// Add fields from existing that aren't in new
+	for k, v := range existing {
+		if _, exists := result[k]; !exists {
+			// Field exists in old but not in new - preserve it
+			klog.V(2).Infof("Preserving field '%s' from existing config", k)
+			result[k] = v
+		} else {
+			// Field exists in both - recursively merge if both are maps
+			if existingMap, existingOk := v.(map[string]interface{}); existingOk {
+				if newMap, newOk := result[k].(map[string]interface{}); newOk {
+					result[k] = b.mergeSpecMaps(existingMap, newMap)
+				}
+			}
+		}
+	}
+
+	return result
+}
+
+// shouldUpdateOperandConfig determines if OperandConfig needs updating
+func (b *Bootstrap) shouldUpdateOperandConfig(existing, new *unstructured.Unstructured) bool {
+	// Compare specs to see if there are actual changes
+	existingSpec, _, _ := unstructured.NestedMap(existing.Object, "spec")
+	newSpec, _, _ := unstructured.NestedMap(new.Object, "spec")
+
+	return !equality.Semantic.DeepEqual(existingSpec, newSpec)
 }
 
 func (b *Bootstrap) GetObjs(objectTemplate string, data interface{}, alwaysUpdate ...bool) ([]*unstructured.Unstructured, error) {
