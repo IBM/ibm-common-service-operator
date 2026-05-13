@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -45,47 +44,72 @@ func (r *CommonServiceReconciler) updateOperatorConfig(ctx context.Context, conf
 		return true, nil
 	}
 
-	replicasProvided := false
+	// Group configs by package name
+	configsByPackage := make(map[string][]v3.OperatorConfig)
 	for _, config := range aggregatedConfigs {
 		packageName, err := r.fetchPackageNameFromOpReg(ctx, config.Name)
 		if err != nil {
 			return false, err
 		}
-		if packageName != "cloud-native-postgresql" {
-			return false, errors.New("failed to update OperatorConfig. This feature is only available for cloud-native-postgresql operator")
+		if packageName != "cloud-native-postgresql" && packageName != "ibm-pg-operator" {
+			return false, fmt.Errorf("failed to update OperatorConfig. This feature is only available for cloud-native-postgresql and ibm-pg-operator operators, got: %s", packageName)
 		}
 		if config.Replicas != nil {
-			replicasProvided = true
+			configsByPackage[packageName] = append(configsByPackage[packageName], config)
 		}
 	}
 
-	if !replicasProvided {
+	if len(configsByPackage) == 0 {
 		klog.Info("No replicas specified in any CommonService CR OperatorConfigs")
 		return true, nil
 	}
 
+	// Process each package type
+	for packageName, configs := range configsByPackage {
+		if err := r.applyOperatorConfigForPackage(ctx, packageName, configs); err != nil {
+			return false, err
+		}
+	}
+
+	return false, nil
+}
+
+func (r *CommonServiceReconciler) applyOperatorConfigForPackage(ctx context.Context, packageName string, configs []v3.OperatorConfig) error {
+	var configName, configTemplate string
+
+	switch packageName {
+	case "cloud-native-postgresql":
+		configName = "cloud-native-postgresql-operator-config"
+		configTemplate = constant.PostGresOperatorConfig
+	case "ibm-pg-operator":
+		configName = "ibm-pg-operator-config"
+		configTemplate = constant.IBMPGOperatorConfig
+	default:
+		return fmt.Errorf("unsupported package name: %s", packageName)
+	}
+
 	operatorConfig := &odlm.OperatorConfig{}
 	if err := r.Reader.Get(ctx, types.NamespacedName{
-		Name:      "cloud-native-postgresql-operator-config",
+		Name:      configName,
 		Namespace: r.Bootstrap.CSData.ServicesNs,
 	}, operatorConfig); err != nil {
 		if !apierrors.IsNotFound(err) {
 			klog.Errorf("failed to get OperatorConfig %s/%s: %v", operatorConfig.GetNamespace(), operatorConfig.GetName(), err)
-			return true, err
+			return err
 		}
 	}
 
 	// Use the aggregated replica value (maximum across all CRs)
-	replicas := *aggregatedConfigs[0].Replicas
-	klog.Infof("Applying OperatorConfig with %d replicas (aggregated from all CommonService CRs)", replicas)
+	replicas := *configs[0].Replicas
+	klog.Infof("Applying OperatorConfig for %s with %d replicas (aggregated from all CommonService CRs)", packageName, replicas)
 	replacer := strings.NewReplacer("placeholder-size", fmt.Sprintf("%d", replicas))
-	updatedConfig := replacer.Replace(constant.PostGresOperatorConfig)
-	klog.V(2).Infof("OperatorConfig to be applied will be: %v", updatedConfig)
+	updatedConfig := replacer.Replace(configTemplate)
+	klog.V(2).Infof("OperatorConfig to be applied for %s will be: %v", packageName, updatedConfig)
 
 	if err := r.Bootstrap.InstallOrUpdateOperatorConfig(updatedConfig, true); err != nil {
-		return false, err
+		return err
 	}
-	return false, nil
+	return nil
 }
 
 // aggregateOperatorConfigsFromAllCRs collects and merges OperatorConfigs from all CommonService CRs
@@ -156,5 +180,16 @@ func (r *CommonServiceReconciler) fetchPackageNameFromOpReg(ctx context.Context,
 			return operator.PackageName, nil
 		}
 	}
+	
+	// If exact name not found, check if the name matches a known package name
+	// This allows users to specify "ibm-pg-operator" as a shorthand for all operators
+	// with packageName "ibm-pg-operator" (e.g., ibm-pg-operator-v28, common-service-cnpg, etc.)
+	for _, r := range registry.Spec.Operators {
+		operator := r
+		if operator.PackageName == name {
+			return operator.PackageName, nil
+		}
+	}
+	
 	return "", nil
 }
