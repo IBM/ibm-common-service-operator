@@ -324,6 +324,16 @@ func mergeCRsIntoOperandConfigWithDefaultRules(defaultMap map[string]interface{}
 		}
 		mergeChangedMap(key, defaultMap[key], changedMap[key], changedMap, directAssign)
 	}
+
+	// Also preserve keys from changedMap that don't exist in defaultMap
+	// This ensures fields from the CR are not lost during merge
+	for key, value := range changedMap {
+		if _, exists := defaultMap[key]; !exists {
+			// Key exists in changedMap but not in defaultMap, preserve it
+			changedMap[key] = value
+		}
+	}
+
 	return changedMap
 }
 
@@ -487,6 +497,16 @@ func mergeSizeProfile(defaultMap map[string]interface{}, changedMap map[string]i
 		}
 		deepMergeTwoMaps(key, defaultMap[key], changedMap[key], changedMap)
 	}
+
+	// Also preserve keys from changedMap that don't exist in defaultMap
+	// This ensures fields the CR are not lost during merge
+	for key, value := range changedMap {
+		if _, exists := defaultMap[key]; !exists {
+			// Key exists in changedMap but not in defaultMap, preserve it
+			changedMap[key] = value
+		}
+	}
+
 	return changedMap
 }
 
