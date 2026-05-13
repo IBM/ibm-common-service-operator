@@ -70,6 +70,7 @@ spec:
 `
 
 // CSCACert is the CR of cs-ca-certificate
+// update the version annotation to trigger cert update
 const CSCACert = `
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -81,6 +82,8 @@ metadata:
     operator.ibm.com/managedByCsOperator: 'true'
     ibm-cert-manager-operator/refresh-ca-chain: 'true'
     manage-cert-rotation: 'true'
+  annotations:
+    version: 0.0.1
   name: cs-ca-certificate
   namespace: "placeholder"
 spec:
