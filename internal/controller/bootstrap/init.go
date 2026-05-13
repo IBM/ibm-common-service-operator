@@ -680,14 +680,17 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 					// If both are nil, update remains false (no change needed)
 
 					if update {
-						// Only update the privateKey field, preserve the rest of the spec
-						// Use the existing spec and only update the privateKey field
-						obj.Object["spec"] = existingSpecMap
+						// Only update the privateKey field in the spec, preserve everything else
+						// Keep the new object's metadata (labels, annotations) but use existing spec
+						// with only the privateKey field updated
 						if newPrivateKey != nil {
 							existingSpecMap["privateKey"] = newPrivateKey
 						} else {
 							delete(existingSpecMap, "privateKey")
 						}
+						// Replace the new spec with the modified existing spec
+						// This preserves all other spec fields from the cluster
+						obj.Object["spec"] = existingSpecMap
 					}
 				}
 			} else if !existingSpecExists && newSpecExists {
