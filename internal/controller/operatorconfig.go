@@ -1,3 +1,4 @@
+
 //
 // Copyright 2024 IBM Corporation
 //
@@ -44,57 +45,56 @@ func (r *CommonServiceReconciler) updateOperatorConfig(ctx context.Context, conf
 		return true, nil
 	}
 
-	// Group configs by package name
-	configsByPackage := make(map[string][]v3.OperatorConfig)
+	// Define supported operators and their corresponding OperatorConfig
+	// EDB operators (cloud-native-postgresql package)
+	edbOperators := map[string]bool{
+		"edb-keycloak":                  true,
+		"cloud-native-postgresql":       true,
+		"common-service-postgresql":     true,
+		"cloud-native-postgresql-v1.22": true,
+		"cloud-native-postgresql-v1.25": true,
+		"cloud-native-postgresql-v1.28": true,
+	}
+
+	// IBM PG operators (ibm-pg-operator package)
+	ibmPGOperators := map[string]bool{
+		"ibm-pg-operator-v28":        true,
+		"common-service-cnpg":        true,
+		"common-service-pg-migrator": true,
+	}
+
+	// Group configs by operator type
+	var edbConfigs, ibmPGConfigs []v3.OperatorConfig
 	for _, config := range aggregatedConfigs {
-		packageName, err := r.fetchPackageNameFromOpReg(ctx, config.Name)
-		if err != nil {
-			return false, err
+		if config.Replicas == nil {
+			continue
 		}
-		if packageName != "cloud-native-postgresql" && packageName != "ibm-pg-operator" {
-			return false, fmt.Errorf("failed to update OperatorConfig. This feature is only available for cloud-native-postgresql and ibm-pg-operator operators, got: %s", packageName)
-		}
-		if config.Replicas != nil {
-			configsByPackage[packageName] = append(configsByPackage[packageName], config)
+
+		if edbOperators[config.Name] {
+			edbConfigs = append(edbConfigs, config)
+			klog.Infof("Found EDB operator config: %s with %d replicas", config.Name, *config.Replicas)
+		} else if ibmPGOperators[config.Name] {
+			ibmPGConfigs = append(ibmPGConfigs, config)
+			klog.Infof("Found IBM PG operator config: %s with %d replicas", config.Name, *config.Replicas)
+		} else {
+			return false, fmt.Errorf("failed to update OperatorConfig. Operator '%s' is not supported for HA configuration", config.Name)
 		}
 	}
 
-	if len(configsByPackage) == 0 {
+	if len(edbConfigs) == 0 && len(ibmPGConfigs) == 0 {
 		klog.Info("No replicas specified in any CommonService CR OperatorConfigs")
 		return true, nil
 	}
 
-	// Process each package type
-	for packageName, configs := range configsByPackage {
-		if err := r.applyOperatorConfigForPackage(ctx, packageName, configs); err != nil {
+	// Process EDB operators
+	if len(edbConfigs) > 0 {
+		if err := r.applyOperatorConfigForType(ctx, "cloud-native-postgresql-operator-config", constant.PostGresOperatorConfig, edbConfigs, "EDB"); err != nil {
 			return false, err
 		}
 	}
 
-	return false, nil
-}
-
-func (r *CommonServiceReconciler) applyOperatorConfigForPackage(ctx context.Context, packageName string, configs []v3.OperatorConfig) error {
-	var configName, configTemplate string
-
-	switch packageName {
-	case "cloud-native-postgresql":
-		configName = "cloud-native-postgresql-operator-config"
-		configTemplate = constant.PostGresOperatorConfig
-	case "ibm-pg-operator":
-		configName = "ibm-pg-operator-config"
-		configTemplate = constant.IBMPGOperatorConfig
-	default:
-		return fmt.Errorf("unsupported package name: %s", packageName)
-	}
-
-	operatorConfig := &odlm.OperatorConfig{}
-	if err := r.Reader.Get(ctx, types.NamespacedName{
-		Name:      configName,
-		Namespace: r.Bootstrap.CSData.ServicesNs,
-	}, operatorConfig); err != nil {
-		if !apierrors.IsNotFound(err) {
-			klog.Errorf("failed to get OperatorConfig %s/%s: %v", operatorConfig.GetNamespace(), operatorConfig.GetName(), err)
+	// Process IBM PG operators
+	if len(ibmPGConfigs) > 0 {
 			return err
 		}
 	}
@@ -177,16 +177,6 @@ func (r *CommonServiceReconciler) fetchPackageNameFromOpReg(ctx context.Context,
 	for _, r := range registry.Spec.Operators {
 		operator := r
 		if operator.Name == name {
-			return operator.PackageName, nil
-		}
-	}
-	
-	// If exact name not found, check if the name matches a known package name
-	// This allows users to specify "ibm-pg-operator" as a shorthand for all operators
-	// with packageName "ibm-pg-operator" (e.g., ibm-pg-operator-v28, common-service-cnpg, etc.)
-	for _, r := range registry.Spec.Operators {
-		operator := r
-		if operator.PackageName == name {
 			return operator.PackageName, nil
 		}
 	}
