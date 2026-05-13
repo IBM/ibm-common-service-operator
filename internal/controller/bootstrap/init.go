@@ -645,6 +645,21 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 				obj.Object["spec"].(map[string]interface{})["config"] = sub.Object["spec"].(map[string]interface{})["config"]
 			}
 			update = !equality.Semantic.DeepEqual(sub.Object["spec"], obj.Object["spec"])
+		} else if gvk.Kind == "Certificate" {
+			// Compare Certificate spec to determine if update is needed
+			existingSpec, existingSpecExists := objInCluster.Object["spec"]
+			newSpec, newSpecExists := obj.Object["spec"]
+
+			if existingSpecExists && newSpecExists {
+				// Compare the specs - update if they differ
+				update = !equality.Semantic.DeepEqual(existingSpec, newSpec)
+				if update {
+					klog.V(2).Infof("Certificate spec differs for %s/%s, will update", obj.GetNamespace(), obj.GetName())
+				}
+			} else if !existingSpecExists && newSpecExists {
+				// Existing object has no spec but new one does - update
+				update = true
+			}
 		} else {
 			v1IsLarger, convertErr := util.CompareVersion(obj.GetAnnotations()["version"], objInCluster.GetAnnotations()["version"])
 			if convertErr != nil {
