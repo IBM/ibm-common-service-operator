@@ -605,6 +605,7 @@ spec:
     namespace: "{{ .CPFSNs }}"
     packageName: ibm-pg-operator
     scope: public
+    operatorConfig: ibm-pg-operator-config
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
 `
@@ -630,6 +631,7 @@ spec:
     namespace: "{{ .CPFSNs }}"
     packageName: ibm-pg-operator
     scope: public
+    operatorConfig: ibm-pg-operator-config
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
 `
@@ -3033,6 +3035,7 @@ spec:
     packageName: ibm-pg-operator
     scope: public
     installPlanApproval: {{ .ApprovalMode }}
+    operatorConfig: ibm-pg-operator-config
     configName: ibm-pg-operator
     sourceName: {{ .CatalogSourceName }}
     sourceNamespace: "{{ .CatalogSourceNs }}"
