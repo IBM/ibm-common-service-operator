@@ -88,9 +88,7 @@ func (r *CommonServiceReconciler) updateOperatorConfig(ctx context.Context, conf
 
 	// Process EDB operators
 	if len(edbConfigs) > 0 {
-		if err := r.applyOperatorConfigForType(ctx, "cloud-native-postgresql-operator-config", constant.PostGresOperatorConfig, edbConfigs, "EDB"); err != nil {
-			return false, err
-		}
+		return err
 	}
 
 	// Process IBM PG operators
