@@ -56,6 +56,21 @@ func ExtractCommonServiceConfigs(
 	return newConfigs, serviceControllerMapping, nil
 }
 
+// ExtractServiceSpecificConfigs extracts only service-specific configurations (size/services)
+// without global feature flags. Used in multi-CR scenarios to avoid feature conflicts.
+func ExtractServiceSpecificConfigs(
+	cs *apiv3.CommonService,
+	servicesNs string,
+) ([]interface{}, map[string]string, error) {
+	// Extract only size configurations (which include service-specific settings)
+	sizeConfigs, serviceControllerMapping, err := extractSizeConfigs(cs, servicesNs)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return sizeConfigs, serviceControllerMapping, nil
+}
+
 // extractFeatureConfigs handles feature flag extraction
 func extractFeatureConfigs(cs *apiv3.CommonService) ([]interface{}, error) {
 	var configs []interface{}
@@ -91,14 +106,15 @@ func extractFeatureConfigs(cs *apiv3.CommonService) ([]interface{}, error) {
 	}
 
 	// Extract AutoScaleConfig configuration
-	if cs.Spec.AutoScaleConfig {
-		klog.Info("Extracting autoScaleConfig configuration")
+	// Check if autoScaleConfig field was explicitly set in the spec
+	if cs.Spec.AutoScaleConfig != nil {
+		klog.Infof("Extracting autoScaleConfig configuration with value %t", *cs.Spec.AutoScaleConfig)
 		t := template.Must(template.New("template AutoScaleConfigTemplate").Parse(constant.AutoScaleConfigTemplate))
 		var tmplWriter bytes.Buffer
 		autoScaleConfigEnable := struct {
 			AutoScaleConfigEnable bool
 		}{
-			AutoScaleConfigEnable: cs.Spec.AutoScaleConfig,
+			AutoScaleConfigEnable: *cs.Spec.AutoScaleConfig,
 		}
 		if err := t.Execute(&tmplWriter, autoScaleConfigEnable); err != nil {
 			return nil, err

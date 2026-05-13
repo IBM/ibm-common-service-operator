@@ -265,8 +265,10 @@ func mergeResourceArrays(baseResources, csResources []interface{}, opconNs strin
 
 			// Check if resources match by GVK+Name+Namespace
 			if baseApiVersion == csApiVersion && baseKind == csKind && baseName == csName && baseNamespace == csNamespace {
-				// Merge CS resource into base resource
-				mergedResource := mergeCRsIntoOperandConfigWithDefaultRules(csMap, baseMap, false)
+				// Merge CS resource into base resource (CS takes precedence)
+				// Parameters: (defaultMap, changedMap, directAssign) - returns changedMap with defaultMap merged in
+				// We want CS to override base, so base is default and CS is changed
+				mergedResource := mergeCRsIntoOperandConfigWithDefaultRules(baseMap, csMap, false)
 
 				// Apply profile controller cleanup if needed
 				if _, ok := nonDefaultProfileController[serviceController]; ok {
@@ -322,13 +324,23 @@ func mergeCRsIntoOperandConfigWithDefaultRules(defaultMap map[string]interface{}
 		}
 		mergeChangedMap(key, defaultMap[key], changedMap[key], changedMap, directAssign)
 	}
+
+	// Also preserve keys from changedMap that don't exist in defaultMap
+	// This ensures fields from the CR are not lost during merge
+	for key, value := range changedMap {
+		if _, exists := defaultMap[key]; !exists {
+			// Key exists in changedMap but not in defaultMap, preserve it
+			changedMap[key] = value
+		}
+	}
+
 	return changedMap
 }
 
 func filterChangedMapWithRules(key string, changedMap interface{}, rules interface{}, finalMap map[string]interface{}) {
 	switch changedMap.(type) {
 	case map[string]interface{}:
-		// For map types, only filter if rules exist and are also a map
+		// For map types, recursively filter if rules exist and are also a map
 		if rules != nil {
 			if _, ok := rules.(map[string]interface{}); ok {
 				rulesRef := rules.(map[string]interface{})
@@ -336,12 +348,14 @@ func filterChangedMapWithRules(key string, changedMap interface{}, rules interfa
 				for newKey := range changedMapRef {
 					filterChangedMapWithRules(newKey, changedMapRef[newKey], rulesRef[newKey], finalMap[key].(map[string]interface{}))
 				}
-			} else {
-				delete(finalMap, key)
 			}
+			// If rules exist but are not a map, keep the field (don't delete)
+			// This preserves fields that aren't in the rules
 		}
+		// If rules is nil, keep the map and all its contents (no filtering)
 	default:
 		// For non-map types, keep them regardless of rules
+		// This preserves boolean/string/number fields that aren't explicitly in rules
 	}
 }
 
@@ -361,8 +375,16 @@ func mergeChangedMap(key string, defaultMap interface{}, changedMap interface{},
 				}
 				// Now recurse into the map that's stored in finalMap[key]
 				targetMap := finalMap[key].(map[string]interface{})
+				// First, process all keys from defaultMap
 				for newKey := range defaultMapRef {
 					mergeChangedMap(newKey, defaultMapRef[newKey], changedMapRef[newKey], targetMap, directAssign)
+				}
+				// Then, process keys that exist only in changedMap (not in defaultMap)
+				for newKey := range changedMapRef {
+					if _, exists := defaultMapRef[newKey]; !exists {
+						// This key only exists in changedMap, add it to targetMap
+						targetMap[newKey] = changedMapRef[newKey]
+					}
 				}
 			}
 		case []interface{}:
@@ -408,8 +430,22 @@ func mergeChangedMap(key string, defaultMap interface{}, changedMap interface{},
 					} else {
 						finalMap[key], _ = rules.ResourceComparison(defaultMap, changedMap)
 					}
+				} else {
+					// For non-comparable keys, handle based on directAssign flag
+					if directAssign {
+						// When directAssign is true, use changedMap if it has a meaningful value, otherwise use defaultMap
+						if changedMap == "" || changedMap == nil {
+							finalMap[key] = defaultMap
+						} else {
+							finalMap[key] = changedMap
+						}
+					} else {
+						// When directAssign is false, only set if changedMap has a non-empty, non-false value
+						if changedMap != "" && changedMap != nil && changedMap != false {
+							finalMap[key] = changedMap
+						}
+					}
 				}
-				// For non-comparable keys, changedMap is already set, no action needed
 			}
 		}
 	}
@@ -461,6 +497,16 @@ func mergeSizeProfile(defaultMap map[string]interface{}, changedMap map[string]i
 		}
 		deepMergeTwoMaps(key, defaultMap[key], changedMap[key], changedMap)
 	}
+
+	// Also preserve keys from changedMap that don't exist in defaultMap
+	// This ensures fields the CR are not lost during merge
+	for key, value := range changedMap {
+		if _, exists := defaultMap[key]; !exists {
+			// Key exists in changedMap but not in defaultMap, preserve it
+			changedMap[key] = value
+		}
+	}
+
 	return changedMap
 }
 
@@ -669,9 +715,18 @@ func (r *CommonServiceReconciler) mergeServicesWithBase(baseServices, csServices
 func (r *CommonServiceReconciler) mergeServiceConfig(baseService, csService map[string]interface{}, serviceName string, ruleSlice []interface{}) map[string]interface{} {
 	result := make(map[string]interface{})
 
-	// Copy base service
+	// Deep copy base service to avoid modifying the original
 	for k, v := range baseService {
-		result[k] = v
+		// Deep copy maps to avoid reference sharing
+		if vMap, ok := v.(map[string]interface{}); ok {
+			copiedMap := make(map[string]interface{})
+			for mk, mv := range vMap {
+				copiedMap[mk] = mv
+			}
+			result[k] = copiedMap
+		} else {
+			result[k] = v
+		}
 	}
 
 	// Get rules for this service
@@ -1103,6 +1158,27 @@ func getItemByGVKNameNamespace(opResources []interface{}, opconNs, apiVersion, k
 	return nil
 }
 
+// filterConfigsByServiceName filters out service configurations that are in the exclusion set
+func filterConfigsByServiceName(configs []interface{}, excludeServices map[string]bool) []interface{} {
+	if len(excludeServices) == 0 {
+		return configs
+	}
+
+	filtered := make([]interface{}, 0, len(configs))
+	for _, config := range configs {
+		if configMap, ok := config.(map[string]interface{}); ok {
+			if name, ok := configMap["name"].(string); ok {
+				if !excludeServices[name] {
+					filtered = append(filtered, config)
+				} else {
+					klog.Infof("Filtered out service %s from feature configs (has explicit configuration)", name)
+				}
+			}
+		}
+	}
+	return filtered
+}
+
 // buildDesiredStateFromAllCRs aggregates configurations from all CommonService CRs
 // to determine the complete desired state for OperandConfig
 func (r *CommonServiceReconciler) buildDesiredStateFromAllCRs(ctx context.Context) ([]interface{}, map[string]string, error) {
@@ -1118,13 +1194,16 @@ func (r *CommonServiceReconciler) buildDesiredStateFromAllCRs(ctx context.Contex
 		return nil, nil, err
 	}
 
-	var aggregatedConfigs []interface{}
-	serviceControllerMappingSummary := make(map[string]string)
-
 	// Convert rules string to slice
 	ruleSlice, err := convertStringToSlice(rules.ConfigurationRules)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	// PASS 1: Collect all features from all CRs (first non-empty value wins)
+	klog.Info("PASS 1: Collecting features from all CommonService CRs")
+	mergedFeatureCS := &apiv3.CommonService{
+		Spec: apiv3.CommonServiceSpec{},
 	}
 
 	for _, cs := range csObjectList.Items {
@@ -1132,14 +1211,118 @@ func (r *CommonServiceReconciler) buildDesiredStateFromAllCRs(ctx context.Contex
 			continue
 		}
 
-		csConfigs, serviceControllerMapping, err := ExtractCommonServiceConfigs(&cs, r.CSData.ServicesNs)
+		// Collect storageClass (first non-empty wins)
+		if mergedFeatureCS.Spec.StorageClass == "" && cs.Spec.StorageClass != "" {
+			mergedFeatureCS.Spec.StorageClass = cs.Spec.StorageClass
+			klog.Infof("Collected storageClass=%s from CR %s/%s", cs.Spec.StorageClass, cs.Namespace, cs.Name)
+		}
+
+		// Collect routeHost (first non-empty wins)
+		if mergedFeatureCS.Spec.RouteHost == "" && cs.Spec.RouteHost != "" {
+			mergedFeatureCS.Spec.RouteHost = cs.Spec.RouteHost
+			klog.Infof("Collected routeHost=%s from CR %s/%s", cs.Spec.RouteHost, cs.Namespace, cs.Name)
+		}
+
+		// Collect defaultAdminUser (first non-empty wins)
+		if mergedFeatureCS.Spec.DefaultAdminUser == "" && cs.Spec.DefaultAdminUser != "" {
+			mergedFeatureCS.Spec.DefaultAdminUser = cs.Spec.DefaultAdminUser
+			klog.Infof("Collected defaultAdminUser=%s from CR %s/%s", cs.Spec.DefaultAdminUser, cs.Namespace, cs.Name)
+		}
+
+		// Collect fipsEnabled (first true wins)
+		if !mergedFeatureCS.Spec.FipsEnabled && cs.Spec.FipsEnabled {
+			mergedFeatureCS.Spec.FipsEnabled = cs.Spec.FipsEnabled
+			klog.Infof("Collected fipsEnabled=%t from CR %s/%s", cs.Spec.FipsEnabled, cs.Namespace, cs.Name)
+		}
+
+		// Collect enableInstanaMetricCollection (first true wins)
+		if !mergedFeatureCS.Spec.EnableInstanaMetricCollection && cs.Spec.EnableInstanaMetricCollection {
+			mergedFeatureCS.Spec.EnableInstanaMetricCollection = cs.Spec.EnableInstanaMetricCollection
+			klog.Infof("Collected enableInstanaMetricCollection=%t from CR %s/%s", cs.Spec.EnableInstanaMetricCollection, cs.Namespace, cs.Name)
+		}
+
+		// Collect hugepages (first non-nil wins)
+		if mergedFeatureCS.Spec.HugePages == nil && cs.Spec.HugePages != nil {
+			mergedFeatureCS.Spec.HugePages = cs.Spec.HugePages.DeepCopy()
+			klog.Infof("Collected hugepages from CR %s/%s", cs.Namespace, cs.Name)
+		}
+
+		// Collect APICatalog storageClass (first non-empty wins)
+		if cs.Spec.Features != nil && cs.Spec.Features.APICatalog != nil && cs.Spec.Features.APICatalog.StorageClass != "" {
+			if mergedFeatureCS.Spec.Features == nil {
+				mergedFeatureCS.Spec.Features = &apiv3.Features{}
+			}
+			if mergedFeatureCS.Spec.Features.APICatalog == nil {
+				mergedFeatureCS.Spec.Features.APICatalog = &apiv3.APICatalog{}
+			}
+			if mergedFeatureCS.Spec.Features.APICatalog.StorageClass == "" {
+				mergedFeatureCS.Spec.Features.APICatalog.StorageClass = cs.Spec.Features.APICatalog.StorageClass
+				klog.Infof("Collected APICatalog storageClass=%s from CR %s/%s", cs.Spec.Features.APICatalog.StorageClass, cs.Namespace, cs.Name)
+			}
+		}
+
+		// Collect labels (merge all)
+		if cs.Spec.Labels != nil && len(cs.Spec.Labels) > 0 {
+			if mergedFeatureCS.Spec.Labels == nil {
+				mergedFeatureCS.Spec.Labels = make(map[string]string)
+			}
+			for k, v := range cs.Spec.Labels {
+				if _, exists := mergedFeatureCS.Spec.Labels[k]; !exists {
+					mergedFeatureCS.Spec.Labels[k] = v
+					klog.Infof("Collected label %s=%s from CR %s/%s", k, v, cs.Namespace, cs.Name)
+				}
+			}
+		}
+	}
+
+	// PASS 2: Process service-specific configurations only (no global features)
+	klog.Info("PASS 2: Processing service-specific configurations from all CRs")
+	var aggregatedConfigs []interface{}
+	serviceControllerMappingSummary := make(map[string]string)
+	servicesWithExplicitConfig := make(map[string]bool)
+
+	for _, cs := range csObjectList.Items {
+		if cs.GetDeletionTimestamp() != nil {
+			continue
+		}
+
+		// Track services that have explicit spec or resources configurations
+		if cs.Spec.Services != nil {
+			for _, svc := range cs.Spec.Services {
+				if (svc.Spec != nil && len(svc.Spec) > 0) || (svc.Resources != nil && len(svc.Resources) > 0) {
+					servicesWithExplicitConfig[svc.Name] = true
+					klog.Infof("Service %s has explicit configuration in CR %s/%s", svc.Name, cs.Namespace, cs.Name)
+				}
+			}
+		}
+
+		// Extract only service-specific configs (no global features like storageClass)
+		// This prevents global features from one CR overwriting service-specific configs from another
+		csConfigs, serviceControllerMapping, err := ExtractServiceSpecificConfigs(&cs, r.CSData.ServicesNs)
 		if err != nil {
-			klog.Errorf("Failed to extract configs from CommonService %s/%s: %v", cs.Namespace, cs.Name, err)
+			klog.Errorf("Failed to extract service-specific configs from CommonService %s/%s: %v", cs.Namespace, cs.Name, err)
 			continue
 		}
 
 		serviceControllerMappingSummary = mergeProfileController(serviceControllerMappingSummary, serviceControllerMapping)
 		aggregatedConfigs = mergeCSCRs(aggregatedConfigs, csConfigs, ruleSlice, serviceControllerMappingSummary, r.CSData.ServicesNs)
+	}
+
+	// PASS 3: Apply collected features only to services without explicit configurations
+	klog.Info("PASS 3: Applying collected features to services without explicit configurations")
+	featureConfigs, _, err := ExtractCommonServiceConfigs(mergedFeatureCS, r.CSData.ServicesNs)
+	if err != nil {
+		klog.Errorf("Failed to extract feature configs: %v", err)
+	} else if len(featureConfigs) > 0 {
+		// Filter feature configs to exclude services with explicit configurations
+		filteredFeatureConfigs := filterConfigsByServiceName(featureConfigs, servicesWithExplicitConfig)
+		if len(filteredFeatureConfigs) > 0 {
+			klog.Infof("Merging %d filtered feature configs into final state (excluded %d services with explicit config)",
+				len(filteredFeatureConfigs), len(featureConfigs)-len(filteredFeatureConfigs))
+			aggregatedConfigs = mergeCSCRs(aggregatedConfigs, filteredFeatureConfigs, ruleSlice, serviceControllerMappingSummary, r.CSData.ServicesNs)
+		} else {
+			klog.Info("All feature configs filtered out - all services have explicit configurations")
+		}
 	}
 
 	return aggregatedConfigs, serviceControllerMappingSummary, nil

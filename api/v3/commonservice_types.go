@@ -133,7 +133,7 @@ type CommonServiceSpec struct {
 	DisableManageCertRotation bool `json:"disableManageCertRotation,omitempty"`
 	// AutoScaleConfig is a bool to enable or disable HPA
 	// +optional
-	AutoScaleConfig bool `json:"autoScaleConfig,omitempty"`
+	AutoScaleConfig *bool `json:"autoScaleConfig,omitempty"`
 	// ImagePullSecret specifies the name of the secret containing the IBM entitlement key
 	// for pulling images. Defaults to "ibm-entitlement-key" if not specified.
 	// +optional
