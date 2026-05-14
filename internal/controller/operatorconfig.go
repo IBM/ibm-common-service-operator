@@ -99,18 +99,19 @@ func (r *CommonServiceReconciler) processOperatorConfigs(ctx context.Context, co
 	}
 
 	// Use the aggregated replica value (maximum across all CRs)
-	// Find the first non-nil replica count defensively instead of assuming configs[0] is always valid.
-	var replicas *int32
+	// Find the maximum replica count across all configs
+	var maxReplicas *int32
 	for _, config := range configs {
 		if config.Replicas != nil {
-			replicas = config.Replicas
-			break
+			if maxReplicas == nil || *config.Replicas > *maxReplicas {
+				maxReplicas = config.Replicas
+			}
 		}
 	}
-	if replicas == nil {
+	if maxReplicas == nil {
 		return fmt.Errorf("invalid config for %s: replicas is nil", operatorConfigName)
 	}
-	replicaCount := *replicas
+	replicaCount := *maxReplicas
 	klog.Infof("Applying OperatorConfig for %s with %d replicas (aggregated from all CommonService CRs)", packageName, replicaCount)
 	replacer := strings.NewReplacer("placeholder-size", fmt.Sprintf("%d", replicaCount))
 	updatedConfig := replacer.Replace(configTemplate)
