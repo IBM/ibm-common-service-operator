@@ -662,7 +662,7 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 			obj.SetResourceVersion(resourceVersion)
 
 			// Special handling for cs-ca-certificate: only update annotations and spec
-			if gvk.Kind == "Certificate" && obj.GetName() == "cs-ca-certificate" {
+			if gvk.Kind == "Certificate" && obj.GetName() == constant.CSCACertificate {
 				// Preserve existing object and only update annotations and spec
 				if newAnnotations := obj.GetAnnotations(); newAnnotations != nil {
 					objInCluster.SetAnnotations(newAnnotations)
