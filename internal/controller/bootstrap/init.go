@@ -660,8 +660,23 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 
 			resourceVersion := objInCluster.GetResourceVersion()
 			obj.SetResourceVersion(resourceVersion)
-			if err := b.UpdateObject(obj); err != nil {
-				errMsg = err
+
+			// Special handling for cs-ca-certificate: only update annotations and spec
+			if gvk.Kind == "Certificate" && obj.GetName() == constant.CSCACertificate {
+				// Preserve existing object and only update annotations and spec
+				if newAnnotations := obj.GetAnnotations(); newAnnotations != nil {
+					objInCluster.SetAnnotations(newAnnotations)
+				}
+				if newSpec, found := obj.Object["spec"]; found {
+					objInCluster.Object["spec"] = newSpec
+				}
+				if err := b.UpdateObject(objInCluster); err != nil {
+					errMsg = err
+				}
+			} else {
+				if err := b.UpdateObject(obj); err != nil {
+					errMsg = err
+				}
 			}
 		}
 	}
