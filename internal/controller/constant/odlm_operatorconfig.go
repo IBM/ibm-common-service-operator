@@ -31,10 +31,6 @@ const (
 )
 
 // EDBOperatorServices lists all EDB PostgreSQL operator services.
-// This is the single source of truth for EDB operator service names used across:
-// - OperatorConfig templates (init function)
-// - Operator grouping logic (operatorconfig.go)
-// - Size profiles (size/*.go)
 var EDBOperatorServices = []string{
 	"edb-keycloak",
 	"cloud-native-postgresql",
@@ -45,10 +41,6 @@ var EDBOperatorServices = []string{
 }
 
 // IBMPGOperatorServices lists all IBM PG operator services.
-// This is the single source of truth for IBM PG operator service names used across:
-// - OperatorConfig templates (init function)
-// - Operator grouping logic (operatorconfig.go)
-// - Size profiles (size/*.go)
 var IBMPGOperatorServices = []string{
 	"ibm-pg-operator-v28",
 	"common-service-cnpg",
@@ -56,19 +48,11 @@ var IBMPGOperatorServices = []string{
 }
 
 // PostGresOperatorConfig contains the OperatorConfig template for EDB PostgreSQL operators.
-// This is used for the cloud-native-postgresql package which includes EDB-based PostgreSQL services.
 var PostGresOperatorConfig string
 
 // IBMPGOperatorConfig contains the OperatorConfig template for IBM PostgreSQL operators.
-// This is used for the ibm-pg-operator package which includes IBM's PostgreSQL implementation.
-// The IBM PG operator is the successor to EDB and provides enhanced features and support.
 var IBMPGOperatorConfig string
 
-// Populate PostGresOperatorConfig and IBMPGOperatorConfig at package initialization.
-// These templates define HA topology constraints including:
-// - Node affinity for multi-architecture support (amd64, ppc64le, s390x)
-// - Pod anti-affinity to spread replicas across zones and hosts
-// - Topology spread constraints for zone and region distribution
 func init() {
 	// Build EDB PostgreSQL operator config from the service list
 	servicesConfig := ""
