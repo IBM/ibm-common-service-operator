@@ -18,28 +18,52 @@ package constant
 
 import "fmt"
 
+// Package names for PostgreSQL operators
+const (
+	CloudNativePostgreSQLPackage = "cloud-native-postgresql"
+	IBMPGOperatorPackage         = "ibm-pg-operator"
+)
+
+// OperatorConfig names for PostgreSQL operators
+const (
+	CloudNativePostgreSQLOperatorConfigName = "cloud-native-postgresql-operator-config"
+	IBMPGOperatorConfigName                 = "ibm-pg-operator-config"
+)
+
+// EDBOperatorServices lists all EDB PostgreSQL operator services.
+var EDBOperatorServices = []string{
+	"edb-keycloak",
+	"cloud-native-postgresql",
+	"common-service-postgresql",
+	"cloud-native-postgresql-v1.22",
+	"cloud-native-postgresql-v1.25",
+	"cloud-native-postgresql-v1.28",
+}
+
+// IBMPGOperatorServices lists all IBM PG operator services.
+var IBMPGOperatorServices = []string{
+	"ibm-pg-operator-v28",
+	"common-service-cnpg",
+	"common-service-pg-migrator",
+}
+
+// PostGresOperatorConfig contains the OperatorConfig template for EDB PostgreSQL operators.
 var PostGresOperatorConfig string
 
-// Populate PostGresOperatorConfig at package initialization
-func init() {
-	services := []string{
-		"edb-keycloak",
-		"cloud-native-postgresql",
-		"common-service-postgresql",
-		"cloud-native-postgresql-v1.22",
-		"cloud-native-postgresql-v1.25",
-		"cloud-native-postgresql-v1.28",
-	}
+// IBMPGOperatorConfig contains the OperatorConfig template for IBM PostgreSQL operators.
+var IBMPGOperatorConfig string
 
+func init() {
+	// Build EDB PostgreSQL operator config from the service list
 	servicesConfig := ""
-	for _, service := range services {
+	for _, service := range EDBOperatorServices {
 		servicesConfig += fmt.Sprintf(postgresServiceTemplate, service)
 	}
 
 	PostGresOperatorConfig = `apiVersion: operator.ibm.com/v1alpha1
 kind: OperatorConfig
 metadata:
-  name: cloud-native-postgresql-operator-config
+  name: ` + CloudNativePostgreSQLOperatorConfigName + `
   namespace: "{{ .ServicesNs }}"
   labels:
     operator.ibm.com/managedByCsOperator: "true"
@@ -48,6 +72,25 @@ metadata:
     version: {{ .Version }}
 spec:
   services:` + servicesConfig
+
+	// Build IBM PG operator config from the service list
+	ibmPGServicesConfig := ""
+	for _, service := range IBMPGOperatorServices {
+		ibmPGServicesConfig += fmt.Sprintf(ibmPGServiceTemplate, service)
+	}
+
+	IBMPGOperatorConfig = `apiVersion: operator.ibm.com/v1alpha1
+kind: OperatorConfig
+metadata:
+  name: ` + IBMPGOperatorConfigName + `
+  namespace: "{{ .ServicesNs }}"
+  labels:
+    operator.ibm.com/managedByCsOperator: "true"
+    operator.ibm.com/experimental: "true"
+  annotations:
+    version: {{ .Version }}
+spec:
+  services:` + ibmPGServicesConfig
 }
 
 const postgresServiceTemplate = `
@@ -97,3 +140,51 @@ const postgresServiceTemplate = `
           labelSelector:
             matchLabels:
               app.kubernetes.io/name: cloud-native-postgresql`
+
+const ibmPGServiceTemplate = `
+    - name: %s
+      replicas: placeholder-size
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+                - ppc64le
+                - s390x
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 90
+            podAffinityTerm:
+              topologyKey: topology.kubernetes.io/zone
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - ibm-pg-operator
+          - weight: 50
+            podAffinityTerm:
+              topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - ibm-pg-operator
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: ibm-pg-operator
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/region
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: ibm-pg-operator`

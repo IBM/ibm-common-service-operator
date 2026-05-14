@@ -18,17 +18,14 @@ package controllers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 
 	v3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
+	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/common"
 	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/constant"
-	odlm "github.com/IBM/operand-deployment-lifecycle-manager/v4/api/v1alpha1"
 )
 
 func (r *CommonServiceReconciler) updateOperatorConfig(ctx context.Context, configList []v3.OperatorConfig) (bool, error) {
@@ -45,47 +42,84 @@ func (r *CommonServiceReconciler) updateOperatorConfig(ctx context.Context, conf
 		return true, nil
 	}
 
-	replicasProvided := false
+	// Group configs by operator type using the service lists from constant package
+	var edbConfigs, ibmPGConfigs []v3.OperatorConfig
 	for _, config := range aggregatedConfigs {
-		packageName, err := r.fetchPackageNameFromOpReg(ctx, config.Name)
-		if err != nil {
-			return false, err
+		if config.Replicas == nil {
+			continue
 		}
-		if packageName != "cloud-native-postgresql" {
-			return false, errors.New("failed to update OperatorConfig. This feature is only available for cloud-native-postgresql operator")
-		}
-		if config.Replicas != nil {
-			replicasProvided = true
+
+		if common.Contains(constant.EDBOperatorServices, config.Name) {
+			edbConfigs = append(edbConfigs, config)
+			klog.Infof("Found EDB operator config: %s with %d replicas", config.Name, *config.Replicas)
+		} else if common.Contains(constant.IBMPGOperatorServices, config.Name) {
+			ibmPGConfigs = append(ibmPGConfigs, config)
+			klog.Infof("Found IBM PG operator config: %s with %d replicas", config.Name, *config.Replicas)
+		} else {
+			return false, fmt.Errorf("failed to update OperatorConfig. Operator '%s' is not supported for HA configuration", config.Name)
 		}
 	}
 
-	if !replicasProvided {
+	if len(edbConfigs) == 0 && len(ibmPGConfigs) == 0 {
 		klog.Info("No replicas specified in any CommonService CR OperatorConfigs")
 		return true, nil
 	}
 
-	operatorConfig := &odlm.OperatorConfig{}
-	if err := r.Reader.Get(ctx, types.NamespacedName{
-		Name:      "cloud-native-postgresql-operator-config",
-		Namespace: r.Bootstrap.CSData.ServicesNs,
-	}, operatorConfig); err != nil {
-		if !apierrors.IsNotFound(err) {
-			klog.Errorf("failed to get OperatorConfig %s/%s: %v", operatorConfig.GetNamespace(), operatorConfig.GetName(), err)
-			return true, err
+	// Process EDB operators
+	if len(edbConfigs) > 0 {
+		if err := r.processOperatorConfigs(ctx, edbConfigs, constant.PostGresOperatorConfig, constant.CloudNativePostgreSQLPackage); err != nil {
+			return false, err
 		}
 	}
 
+	// Process IBM PG operators
+	if len(ibmPGConfigs) > 0 {
+		if err := r.processOperatorConfigs(ctx, ibmPGConfigs, constant.IBMPGOperatorConfig, constant.IBMPGOperatorPackage); err != nil {
+			return false, err
+		}
+	}
+
+	return false, nil
+}
+
+// processOperatorConfigs processes a group of operator configs and applies them
+func (r *CommonServiceReconciler) processOperatorConfigs(ctx context.Context, configs []v3.OperatorConfig, configTemplate string, packageName string) error {
+	if len(configs) == 0 {
+		return nil
+	}
+
+	// Validate package name and get corresponding OperatorConfig name
+	var operatorConfigName string
+	if packageName == constant.CloudNativePostgreSQLPackage {
+		operatorConfigName = constant.CloudNativePostgreSQLOperatorConfigName
+	} else if packageName == constant.IBMPGOperatorPackage {
+		operatorConfigName = constant.IBMPGOperatorConfigName
+	} else {
+		return fmt.Errorf("unsupported package name: %s", packageName)
+	}
+
 	// Use the aggregated replica value (maximum across all CRs)
-	replicas := *aggregatedConfigs[0].Replicas
-	klog.Infof("Applying OperatorConfig with %d replicas (aggregated from all CommonService CRs)", replicas)
-	replacer := strings.NewReplacer("placeholder-size", fmt.Sprintf("%d", replicas))
-	updatedConfig := replacer.Replace(constant.PostGresOperatorConfig)
-	klog.V(2).Infof("OperatorConfig to be applied will be: %v", updatedConfig)
+	// Find the first non-nil replica count defensively instead of assuming configs[0] is always valid.
+	var replicas *int32
+	for _, config := range configs {
+		if config.Replicas != nil {
+			replicas = config.Replicas
+			break
+		}
+	}
+	if replicas == nil {
+		return fmt.Errorf("invalid config for %s: replicas is nil", operatorConfigName)
+	}
+	replicaCount := *replicas
+	klog.Infof("Applying OperatorConfig for %s with %d replicas (aggregated from all CommonService CRs)", packageName, replicaCount)
+	replacer := strings.NewReplacer("placeholder-size", fmt.Sprintf("%d", replicaCount))
+	updatedConfig := replacer.Replace(configTemplate)
+	klog.V(2).Infof("OperatorConfig to be applied for %s will be: %v", packageName, updatedConfig)
 
 	if err := r.Bootstrap.InstallOrUpdateOperatorConfig(updatedConfig, true); err != nil {
-		return false, err
+		return err
 	}
-	return false, nil
+	return nil
 }
 
 // aggregateOperatorConfigsFromAllCRs collects and merges OperatorConfigs from all CommonService CRs
@@ -142,19 +176,4 @@ func (r *CommonServiceReconciler) aggregateOperatorConfigsFromAllCRs(ctx context
 
 	klog.Infof("Aggregated %d OperatorConfig(s) from %d CommonService CR(s)", len(result), len(csObjectList.Items))
 	return result, nil
-}
-
-func (r *CommonServiceReconciler) fetchPackageNameFromOpReg(ctx context.Context, name string) (string, error) {
-	registry, err := r.GetOperandRegistry(ctx, "common-service", r.CSData.ServicesNs)
-	if err != nil {
-		return "", err
-	}
-
-	for _, r := range registry.Spec.Operators {
-		operator := r
-		if operator.Name == name {
-			return operator.PackageName, nil
-		}
-	}
-	return "", nil
 }
