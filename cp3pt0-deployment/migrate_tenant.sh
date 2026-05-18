@@ -18,9 +18,10 @@ OPERATOR_NS=""
 SERVICES_NS=""
 NS_LIST=""
 CONTROL_NS=""
-CHANNEL="v4.10"
-ODLM_CHANNEL="v4.3"
+CHANNEL="v4.13"
+ODLM_CHANNEL="v4.5"
 MAINTAINED_CHANNEL="v4.2"
+SINGLETON_CHANNEL="v4.2"
 SOURCE="opencloud-operators"
 CERT_MANAGER_SOURCE="ibm-cert-manager-catalog"
 LICENSING_SOURCE="ibm-licensing-catalog"
@@ -56,6 +57,7 @@ STEP=0
 # ---------- Main functions ----------
 
 . ${BASE_DIR}/common/utils.sh
+. ${BASE_DIR}/common/cli_compat.sh
 
 function main() {
     parse_arguments "$@"
@@ -85,7 +87,7 @@ function main() {
         arguments+=" --enable-private-catalog"
     fi
     
-    ${BASE_DIR}/setup_singleton.sh "--operator-namespace" "$SERVICES_NS" "-c" "$MAINTAINED_CHANNEL" "--cert-manager-source" "$CERT_MANAGER_SOURCE" "--licensing-source" "$LICENSING_SOURCE" "--license-accept" $arguments "--yq" "$YQ" "--oc" "$OC"
+    ${BASE_DIR}/setup_singleton.sh "--operator-namespace" "$SERVICES_NS" "-c" "$SINGLETON_CHANNEL" "--cert-manager-source" "$CERT_MANAGER_SOURCE" "--licensing-source" "$LICENSING_SOURCE" "--license-accept" $arguments "--yq" "$YQ" "--oc" "$OC"
 
     if [ $? -ne 0 ]; then
         error "Failed to migrate singleton services"
@@ -268,7 +270,7 @@ function print_usage() {
     echo "See https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.0?topic=4x-in-place-migration for more information."
     echo ""
     echo "Options:"
-    echo "   --oc string                        Optional. File path to oc CLI. Default uses oc in your PATH"
+    echo "   --oc string                        Optional. File path to oc/kubectl CLI. Default uses oc in your PATH"
     echo "   --yq string                        Optional. File path to yq CLI. Default uses yq in your PATH"
     echo "   --operator-namespace string        Required. Namespace to migrate Foundational services operator"
     echo "   --services-namespace               Optional. Namespace to migrate operands of Foundational services, i.e. 'dataplane'. Default is the same as operator-namespace"
@@ -298,12 +300,12 @@ function pre_req() {
     check_command "${YQ}"
     check_yq_version
 
-    # Checking oc command logged in
-    user=$(${OC} whoami 2> /dev/null)
-    if [ $? -ne 0 ]; then
-        error "You must be logged into the OpenShift Cluster from the oc command line"
+    # Checking cluster CLI command logged in
+    user=$(get_current_user "${OC}")
+    if [ $? -ne 0 ] || [ -z "$user" ]; then
+        error "You must be logged into the Kubernetes cluster from the ${OC} command line"
     else
-        success "oc command logged in as ${user}"
+        success "${OC} command logged in as ${user}"
     fi
 
     if [ $LICENSE_ACCEPT -ne 1 ]; then
@@ -364,18 +366,33 @@ function pre_req() {
         error "Channel is not semantic vx.y"
     fi
     
-    # When Common Service channel info is less then maintained channel, update maintained channel for backward compatibility e.g., v4.1 and v4.0
-    # Otherwise, maintained channel is pinned at v4.2
+    # When Common Service channel is less than v4.2, maintained channel is the same as CS channel (e.g., v4.1 or v4.0)
+    # When Common Service channel is between v4.2 and v4.12, maintained channel is pinned at v4.2
+    # When Common Service  channel is greater than v4.12, maintained channel is pinned at v4.3
+    # The singleton channel follows the same rule as maintained channel for channels less than v4.2
+
     IFS='.' read -r channel_major channel_minor <<< "${CHANNEL#v}"
     IFS='.' read -r maintained_major maintained_minor <<< "${MAINTAINED_CHANNEL#v}"
 
     if (( channel_major < maintained_major )) || { (( channel_major == maintained_major )) && (( channel_minor < maintained_minor )); }; then
         MAINTAINED_CHANNEL="$CHANNEL"
+        SINGLETON_CHANNEL="$CHANNEL"
+    elif (( channel_major == 4 )) && (( channel_minor > 12 )); then
+        MAINTAINED_CHANNEL="v4.3"
     fi
-
+    
     # When Common Service channel is less than v4.5, use maintained channel for ODLM channel
+    # When Common Service channel is between v4.5 and v4.10, use v4.3 for ODLM channel
+    # When Common Service channel is v4.11, use v4.4 for ODLM channel
+    # When Common Service channel is greater than v4.11, use v4.5 for ODLM channel
     if (( channel_major < 4 )) || { (( channel_major == 4 )) && (( channel_minor < 5 )); }; then
         ODLM_CHANNEL="$MAINTAINED_CHANNEL"
+    elif (( channel_major == 4 )) && (( channel_minor >= 5 )) && (( channel_minor <= 10 )); then
+        ODLM_CHANNEL="v4.3"
+    elif (( channel_major == 4 )) && (( channel_minor == 11 )); then
+        ODLM_CHANNEL="v4.4"
+    else
+        ODLM_CHANNEL="v4.5"
     fi
 }
 

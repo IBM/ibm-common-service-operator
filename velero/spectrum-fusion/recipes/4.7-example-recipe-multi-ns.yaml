@@ -2,7 +2,7 @@ apiVersion: spp-data-protection.isf.ibm.com/v1alpha1
 kind: Recipe
 metadata:
   name: cs-recipe
-  namespace: ibm-spectrum-fusion-ns
+  namespace: <spectrum fusion ns>
 spec:
   appType: common-service
   groups:
@@ -12,7 +12,7 @@ spec:
         - certificates.cert-manager.io
         - issuers.cert-manager.io
         # - clusterissuers.cert-manager.io
-        # - certmanagerconfigs.operator.ibm.com
+        - certmanagerconfigs.operator.ibm.com
         - customresourcedefinitions.apiextensions.k8s.io
       labelSelector: foundationservices.cloudpak.ibm.com=cert-manager
       name: cert-manager-resources
@@ -21,7 +21,16 @@ spec:
       includeClusterResources: true
       includedResourceTypes:
         - customresourcedefinitions.apiextensions.k8s.io
-      name: cert-manager-crd
+      name: cert-manager-crds
+      type: resource
+    - backupRef: cert-manager-resources
+      includeClusterResources: true
+      includedResourceTypes:
+        - secrets
+        - certificates.cert-manager.io
+        - issuers.cert-manager.io
+        - certmanagerconfigs.operator.ibm.com
+      name: cert-manager-workload-resources
       type: resource
     - includeClusterResources: true
       includedResourceTypes:
@@ -129,6 +138,11 @@ spec:
       type: resource
     - includedResourceTypes:
         - subscriptions.operators.coreos.com
+      labelSelector: foundationservices.cloudpak.ibm.com=singleton-subscription
+      name: cert-manager-subscription
+      type: resource
+    - includedResourceTypes:
+        - subscriptions.operators.coreos.com
       labelSelector: foundationservices.cloudpak.ibm.com=lsr
       name: license-service-reporter-subscriptions
       type: resource
@@ -136,35 +150,7 @@ spec:
       includedResourceTypes:
         - customresourcedefinitions.apiextensions.k8s.io
       labelSelector: foundationservices.cloudpak.ibm.com=crd
-      name: commonservice-crd
-      type: resource
-    - includeClusterResources: true
-      includedResourceTypes:
-        - deployments
-        - roles
-        - serviceaccounts
-        - rolebindings
-        - configmaps
-      labelSelector: foundationservices.cloudpak.ibm.com=cpfs-util-backup
-      name: setup-tenant-resources
-      type: resource
-    - includeClusterResources: true
-      includedResourceTypes:
-        - jobs
-      labelSelector: foundationservices.cloudpak.ibm.com=setup-tenant-job
-      name: setup-tenant-job-yaml
-      restoreStatus:
-        excludedResources:
-          - jobs
-      type: resource
-    - labelSelector: foundationservices.cloudpak.ibm.com=cpfs-util-backup
-      name: cpfs-util-volume
-      type: volume
-    - includeClusterResources: true
-      includedResourceTypes:
-        - customresourcedefinitions.apiextensions.k8s.io
-      labelSelector: foundationservices.cloudpak.ibm.com=crd
-      name: nss-crd
+      name: commonservices-crd
       type: resource
     - includedResourceTypes:
         - commonservices.operator.ibm.com
@@ -172,9 +158,12 @@ spec:
       name: commonservice-cr
       type: resource
     - includedResourceTypes:
+        - roles
+        - rolebindings
+        - serviceaccounts
         - namespacescopes.operator.ibm.com
       labelSelector: foundationservices.cloudpak.ibm.com=nss
-      name: nss-cr
+      name: nss-resources
       type: resource
     - includedResourceTypes:
         - operandrequests.operator.ibm.com
@@ -261,7 +250,7 @@ spec:
           name: podReady
           onError: fail
           timeout: 600
-      labelSelector: 'k8s.enterprisedb.io/cluster=common-service-db,role=primary'
+      labelSelector: 'foundationservices.cloudpak.ibm.com=cs-db,role=primary'
       name: common-service-db-check
       namespace: <service namespace>
       onError: fail
@@ -269,24 +258,24 @@ spec:
       timeout: 600
       type: check
     - chks:
-        - condition: '{$.status.phase} == {"Running"}'
+        - condition: '{$.spec.replicas} == {$.status.readyReplicas}'
           name: podReady
           onError: fail
-          timeout: 1200
-      labelSelector: app.kubernetes.io/name=operand-deployment-lifecycle-manager
-      name: odlm-check
+          timeout: 600
+      name: nss-check
+      nameSelector: ibm-namespace-scope-operator
       namespace: <operator namespace>
       onError: fail
-      selectResource: pod
-      timeout: 1200
+      selectResource: deployment
+      timeout: 600
       type: check
     - chks:
         - condition: '{$.status.phase} == {"Running"}'
           name: podReady
           onError: fail
           timeout: 600
-      labelSelector: foundationservices.cloudpak.ibm.com=cpfs-util-backup
-      name: setup-tenant-check
+      labelSelector: app.kubernetes.io/name=operand-deployment-lifecycle-manager
+      name: odlm-check
       namespace: <operator namespace>
       onError: fail
       selectResource: pod
@@ -299,7 +288,7 @@ spec:
           timeout: 600
       labelSelector: app.kubernetes.io/name=cert-manager
       name: cert-manager-operator-check
-      namespace: ibm-cert-manager
+      namespace: <cert manager namespace>
       onError: fail
       selectResource: pod
       timeout: 600
@@ -311,7 +300,7 @@ spec:
           timeout: 600
       name: cert-manager-webhook-check
       nameSelector: cert-manager-webhook
-      namespace: ibm-cert-manager
+      namespace: <cert manager namespace>
       onError: fail
       selectResource: deployment
       timeout: 600
@@ -368,42 +357,6 @@ spec:
       onError: fail
       selectResource: pod
       timeout: 1200
-      type: check
-    - labelSelector: foundationservices.cloudpak.ibm.com=cpfs-util-backup
-      name: setup-tenant
-      namespace: <operator namespace>
-      onError: fail
-      ops:
-        - command: |
-            ["/bin/bash", "-c", "/cs-br/setup_tenant.sh --operator-namespace <operator namespace> --services-namespace <service namespace> --tethered-namespaces <comma delimited (no spaces) list of Cloud Pak workload namespaces that use this foundational services instance> --license-accept -c v<foundational services version number in use i.e. 4.0, 4.1, 4.2, etc> -p <.spec.size value from commonservice cr> -i <install mode, either Manual or Automatic> -s <catalog source name> -n <catalog source namespace> -v"]
-          container: cpfs-util
-          name: setup-tenant-command
-          timeout: 600
-      selectResource: pod
-      type: exec
-    - labelSelector: foundationservices.cloudpak.ibm.com=cpfs-util-backup
-      name: setup-tenant-job
-      namespace: <operator namespace>
-      onError: fail
-      ops:
-        - command: |
-            ["/bin/bash", "-c", "oc patch job setup-tenant-job -n <operator namespace> --type=\"json\" -p '[{\"op\": \"remove\", \"path\":\"/spec/suspend\"}]'"]
-          container: cpfs-util
-          name: trigger-setup-tenant-job
-          timeout: 600
-      selectResource: pod
-      type: exec
-    - chks:
-        - condition: '{$.status.phase} == {"Succeeded"}'
-          name: jobComplete
-          onError: fail
-          timeout: 600
-      labelSelector: foundationservices.cloudpak.ibm.com=setup-tenant-job
-      name: setup-tenant-job-check
-      namespace: <operator namespace>
-      onError: fail
-      selectResource: pod
-      timeout: 600
       type: check
     - chks:
         - condition: '{$.status.phase} == {"Running"}'
@@ -515,22 +468,21 @@ spec:
         - group: license-service-reporter-parent
         - group: license-service-reporter-resources
         - hook: zen5-data/backup
-        - group: cpfs-util-volume
         - group: zenservice
         - group: zen-br-resources
         - group: common-services-namespace
         - group: pull-secret
         - group: common-services-catalogs
         - group: common-services-operatorgroups
-        - group: common-services-configmaps
-        - group: license-service-reporter-crd
-        - group: commonservice-crd
-        - group: commonservice-cr
-        - group: setup-tenant-resources
-        - group: setup-tenant-job-yaml
-        - group: singleton-subscriptions
+        - group: cert-manager-subscription
         - group: cert-manager-resources
+        - group: license-service-reporter-crd
+        - group: singleton-subscriptions
         - group: license-service-reporter-subscriptions
+        - group: common-services-configmaps
+        - group: commonservices-crd
+        - group: commonservice-cr
+        - group: nss-resources
         - group: common-services-subscriptions
         - group: operand-resources
         - group: odlm-resources
@@ -546,15 +498,16 @@ spec:
         - group: ow-pull-secret
         - group: common-services-catalogs
         - group: common-services-operatorgroups
-        - group: common-services-configmaps
-        - group: commonservice-crd
-        - group: cert-manager-crd
-        - group: license-service-reporter-crd
-        - group: singleton-subscriptions
-        - group: commonservice-cr
+        - group: cert-manager-crds
+        - group: cert-manager-workload-resources
+        - group: cert-manager-subscription
         - hook: cert-manager-operator-check/podReady
         - hook: cert-manager-webhook-check/podReady
-        - group: cert-manager-resources
+        - group: license-service-reporter-crd
+        - group: singleton-subscriptions
+        - group: common-services-configmaps
+        - group: commonservice-crd
+        - group: commonservice-cr
         - group: licensing-resources
         - group: license-service-reporter-subscriptions
         - hook: license-service-reporter-check/podReady
@@ -564,13 +517,13 @@ spec:
         - group: lsr-deployment
         - hook: lsr-deployment/podReady
         - hook: lsr-data/restore
+        # restore common services
+        - group: common-services-configmaps
+        - group: commonservices-crd
+        - group: commonservice-cr
+        - group: nss-resources
         - group: common-services-subscriptions
-        - group: cpfs-util-volume
-        - group: setup-tenant-resources
-        - group: setup-tenant-job-yaml
-        - hook: setup-tenant-check/podReady
-        - hook: setup-tenant-job/trigger-setup-tenant-job
-        - hook: setup-tenant-job-check/jobComplete
+        - hook: nss-check/podReady
         - hook: odlm-check/podReady
         - group: odlm-resources
         - group: operand-resources

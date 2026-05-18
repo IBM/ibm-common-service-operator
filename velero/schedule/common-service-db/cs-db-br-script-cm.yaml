@@ -6,6 +6,29 @@ metadata:
   labels:
     foundationservices.cloudpak.ibm.com: cs-db-data
 data:
+  dummy_route.yaml: |
+    apiVersion: route.openshift.io/v1
+    kind: Route
+    metadata:
+        annotations:
+            haproxy.router.openshift.io/pod-concurrent-connections: "100"
+            haproxy.router.openshift.io/rate-limit-connections: "true"
+            haproxy.router.openshift.io/rate-limit-connections.concurrent-tcp: "100"
+            haproxy.router.openshift.io/rate-limit-connections.rate-http: "100"
+            haproxy.router.openshift.io/rate-limit-connections.rate-tcp: "100"
+            haproxy.router.openshift.io/timeout: 90s
+        name: dummy
+    spec:
+        path: /
+        port:
+            targetPort: 43
+            insecureEdgeTerminationPolicy: Redirect
+            termination: reencrypt
+        wildcardPolicy: None
+        to:
+            kind: Service
+            name: common-web-ui
+            weight: 100
   br_cs-db.sh: |
     #!/usr/bin/env bash
 
@@ -29,6 +52,7 @@ data:
     BACKUP_DIR=/cs-db/cs-db-backup
 
     function main {
+        EMBEDDED=$(oc get cm -n $CSDB_NAMESPACE im-datastore-edb-cm -o jsonpath='{.data.IS_EMBEDDED}{"\n"}')
         if [[ $MODE == "backup" ]]; then
             save_log "logs" "backup_log"
             trap cleanup_log EXIT
@@ -47,58 +71,63 @@ data:
     }
 
     function backup {
-        mkdir -p $BACKUP_DIR/database
-        #mkdir -p $BACKUP_DIR/secrets
-        CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io common-service-db -o jsonpath="{.status.currentPrimary}" -n $CSDB_NAMESPACE` && \
-        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- mkdir -p /run/cs-db_backup && \
-        info "Beginning backup of cloudpak database..."
-        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=cloudpak -f /run/cs-db_backup/cs-db_cloudpak_backup.dump --format=c
-        info "Beginning backup of im database..."
-        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=im -f /run/cs-db_backup/cs-db_im_backup.dump --format=c
-        info "Beginning backup of zen database..."
-        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=zen -f /run/cs-db_backup/cs-db_zen_backup.dump --format=c
-        ACCOUNT_IAM=$(oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" | grep "account_iam" || echo False)
-        if [[ $ACCOUNT_IAM != "False" ]]; then
-            info "Beginning backup of account_iam database..."
-            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=account_iam -f /run/cs-db_backup/cs-db_account_iam_backup.dump --format=c
-        fi
+        if [[ $EMBEDDED == "true" ]] || [[ -z $EMBEDDED ]]; then
+            info "Embedded Postgres DB in use, beginning backup."
+            mkdir -p $BACKUP_DIR/database
+            CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io common-service-db -o jsonpath="{.status.currentPrimary}" -n $CSDB_NAMESPACE` && \
+            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- mkdir -p /run/cs-db_backup && \
+            info "Beginning backup of im database..."
+            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=im -f /run/cs-db_backup/cs-db_im_backup.dump --format=c
+            info "Beginning backup of zen database..."
+            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=zen -f /run/cs-db_backup/cs-db_zen_backup.dump --format=c
+            ACCOUNT_IAM=$(oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" | grep "account_iam" || echo False)
+            if [[ $ACCOUNT_IAM != "False" ]]; then
+                info "Beginning backup of account_iam database..."
+                oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_dump -v --username=postgres --dbname=account_iam -f /run/cs-db_backup/cs-db_account_iam_backup.dump --format=c
+            fi
 
-        #Move backup to backup location
-        info "Copy backup file."
-        oc cp $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_cloudpak_backup.dump $BACKUP_DIR/database/cs-db_cloudpak_backup.dump
-        oc cp $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_im_backup.dump $BACKUP_DIR/database/cs-db_im_backup.dump
-        oc cp $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_zen_backup.dump $BACKUP_DIR/database/cs-db_zen_backup.dump
-        if [[ $ACCOUNT_IAM != "False" ]]; then
-            oc cp $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_account_iam_backup.dump $BACKUP_DIR/database/cs-db_account_iam_backup.dump
+            #Move backup to backup location
+            info "Copy backup file."
+            oc cp $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_im_backup.dump $BACKUP_DIR/database/cs-db_im_backup.dump
+            oc cp $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_zen_backup.dump $BACKUP_DIR/database/cs-db_zen_backup.dump
+            if [[ $ACCOUNT_IAM != "False" ]]; then
+                oc cp $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_account_iam_backup.dump $BACKUP_DIR/database/cs-db_account_iam_backup.dump
+            fi
+        else
+            info "External Postgres DB in use, skipping backup."
         fi
 
     }
 
     function restore {
 
-        wait_for_cluster_cr
-        CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io common-service-db -o jsonpath="{.status.currentPrimary}" -n $CSDB_NAMESPACE` 
-        oc exec $CNPG_PRIMARY_POD -n $CSDB_NAMESPACE -- mkdir -p /run/cs-db_backup
-        oc cp $BACKUP_DIR/database/cs-db_cloudpak_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_cloudpak_backup.dump
-        oc cp $BACKUP_DIR/database/cs-db_im_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_im_backup.dump
-        oc cp $BACKUP_DIR/database/cs-db_zen_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_zen_backup.dump
-        ACCOUNT_IAM=$(ls $BACKUP_DIR/database/ | grep "cs-db_account_iam_backup.dump" || echo False)
-        if [[ $ACCOUNT_IAM != "False" ]]; then
-            oc cp $BACKUP_DIR/database/cs-db_account_iam_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_account_iam_backup.dump        
+        if [[ $EMBEDDED == "true" ]] || [[ -z $EMBEDDED ]]; then
+            info "Embedded Postgres DB in use, beginning data restore."
+            wait_for_cluster_cr
+            CNPG_PRIMARY_POD=`oc get cluster.postgresql.k8s.enterprisedb.io common-service-db -o jsonpath="{.status.currentPrimary}" -n $CSDB_NAMESPACE` 
+            oc exec $CNPG_PRIMARY_POD -n $CSDB_NAMESPACE -- mkdir -p /run/cs-db_backup
+            oc cp $BACKUP_DIR/database/cs-db_im_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_im_backup.dump
+            oc cp $BACKUP_DIR/database/cs-db_zen_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_zen_backup.dump
+            ACCOUNT_IAM=$(ls $BACKUP_DIR/database/ | grep "cs-db_account_iam_backup.dump" || echo False)
+            if [[ $ACCOUNT_IAM != "False" ]]; then
+                oc cp $BACKUP_DIR/database/cs-db_account_iam_backup.dump $CSDB_NAMESPACE/$CNPG_PRIMARY_POD:/run/cs-db_backup/cs-db_account_iam_backup.dump        
+            fi
+            
+            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
+            info "Beginning restore of im database..."
+            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname im --format=c --clean --if-exists --exit-on-error -v /run/cs-db_backup/cs-db_im_backup.dump
+            info "Beginning restore of zen database..."
+            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname zen --format=c --clean --if-exists --exit-on-error -v /run/cs-db_backup/cs-db_zen_backup.dump
+            if [[ $ACCOUNT_IAM != "False" ]]; then
+                info "Beginning restore of account_iam database..."
+                oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname account_iam --format=c --clean --if-exists --exit-on-error -v /run/cs-db_backup/cs-db_account_iam_backup.dump        
+            fi
+            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
+        else
+            info "External Postgres DB in use, skipping data restore."
         fi
-        
-        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
-        info "Beginning restore of cloudpak database..."
-        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname cloudpak --format=c --clean --exit-on-error -v /run/cs-db_backup/cs-db_cloudpak_backup.dump
-        info "Beginning restore of im database..."
-        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname im --format=c --clean --exit-on-error -v /run/cs-db_backup/cs-db_im_backup.dump
-        info "Beginning restore of zen database..."
-        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname zen --format=c --clean --exit-on-error -v /run/cs-db_backup/cs-db_zen_backup.dump
-        if [[ $ACCOUNT_IAM != "False" ]]; then
-            info "Beginning restore of account_iam database..."
-            oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- pg_restore -U postgres --dbname account_iam --format=c --clean --exit-on-error -v /run/cs-db_backup/cs-db_account_iam_backup.dump        
-        fi
-        oc -n $CSDB_NAMESPACE exec -t $CNPG_PRIMARY_POD -c postgres -- psql -U postgres -c "\list" -c "\dn" -c "\du"
+
+        update_ROKS_URL
 
         info "Rerunning OIDC registration job..."
         oc -n $CSDB_NAMESPACE get job oidc-client-registration -o yaml > /tmp/oidc-client-registration.yaml
@@ -109,6 +138,12 @@ data:
         oc apply -f /tmp/oidc-client-registration.yaml
         rm -f /tmp/oidc-client-registration.yaml
         wait_for_oidc
+
+        info "Restarting platform-auth-service..."
+        oc -n $CSDB_NAMESPACE delete pod -l app.kubernetes.io/instance=platform-auth-service
+        info "Wait for previous pod to delete..."
+        sleep 30
+        wait_for_auth_service
     }
 
     function wait_for_oidc {
@@ -116,23 +151,50 @@ data:
         info "Waiting for job $job_name to complete in namespace $CSDB_NAMESPACE."
         job_exists=$(oc get job $job_name -n $CSDB_NAMESPACE --no-headers || echo fail)
         if [[ $job_exists != "fail" ]]; then
-            completed=$(oc get job $job_name -n $CSDB_NAMESPACE --no-headers | awk '{print $2}')
+            completed=$(oc get job/$job_name -n $CSDB_NAMESPACE -o jsonpath="{.status.conditions[?(@.type=='Complete')].type}")
             retry_count=20
-            while [[ $completed != "1/1" ]] && [[ $retry_count > 0 ]]
+            while [[ $completed != "Complete" ]] && [[ $retry_count > 0 ]]
             do
                 info "Wait for job $job_name to complete. Try again in 15s."
                 sleep 15
-                completed=$(oc get job $job_name -n $CSDB_NAMESPACE --no-headers | awk '{print $2}')
-                retry_count=$retry_count-1
+                completed=$(oc get job/$job_name -n $CSDB_NAMESPACE -o jsonpath="{.status.conditions[?(@.type=='Complete')].type}")
+                retry_count=$((retry_count-1))
             done
 
-            if [[ $retry_count == 0 ]] && [[ $completed != "1/1" ]]; then
+            if [[ $retry_count == 0 ]] && [[ $completed != "Complete" ]]; then
                 error "Timed out waiting for job $job_name."
             else
                 info "Job $job_name completed."
             fi
         else
             error "Job $job_name not present."
+        fi
+    }
+
+    function wait_for_auth_service {
+        info "Waiting for pod platform-auth-service to restart in namespace $CSDB_NAMESPACE."  
+        deployment_exists=$(oc get deployment platform-auth-service -n $CSDB_NAMESPACE --no-headers || echo "fail")    
+        if [[ $deployment_exists != "fail" ]]; then
+            replicas=$(oc get deployment platform-auth-service -n $CSDB_NAMESPACE --no-headers -o jsonpath='{.spec.replicas}')
+            ready_replicas=$(oc get deployment platform-auth-service -n $CSDB_NAMESPACE --no-headers -o jsonpath='{.status.readyReplicas}')
+            retry_count=60
+            while [[ "$replicas" != "$ready_replicas" ]] && [[ $retry_count > 0 ]]
+            do
+                info "Wait for pod platform-auth-service to complete. Try again in 5s."
+                sleep 5
+                completed=$(oc get job $job_name -n $CSDB_NAMESPACE --no-headers | awk '{print $2}')
+                retry_count=$((retry_count-1))
+                replicas=$(oc get deployment platform-auth-service -n $CSDB_NAMESPACE --no-headers -o jsonpath='{.spec.replicas}')
+                ready_replicas=$(oc get deployment platform-auth-service -n $CSDB_NAMESPACE --no-headers -o jsonpath='{.status.readyReplicas}')
+            done
+
+            if [[ $retry_count == 0 ]] && [[ "$replicas" != "$ready_replicas" ]]; then
+                error "Timed out waiting for pod platform-auth-service."
+            else
+                info "Pod platform-auth-service restarted."
+            fi
+        else
+            error "Deployment platform-auth-service not exist."
         fi
     }
 
@@ -158,6 +220,36 @@ data:
         else
             error "EDB cluster $CLUSTER_CR not present."
         fi
+    }
+
+    function update_ROKS_URL(){
+        info "Creating dummy route to update ROKS_URL value..."
+        #create dummy route
+        oc apply -f cs-db/dummy_route.yaml -n $CSDB_NAMESPACE
+        
+        #take domain value of route
+        #looks something like dummy-<namespace>.apps.<domain>.cp.fyre.ibm.com
+        #interested in everything after "apps."
+        info "Grabbing new hostname..."
+        dummy_hostname=$(oc get route dummy -n $CSDB_NAMESPACE -o jsonpath='{.spec.host}')
+        len_ns_str=${#CSDB_NAMESPACE}
+        
+        #add the length of the namespace to the length of word "dummy". Also include length of "apps" and the two periods
+        cut_len=$(($len_ns_str+12))
+        
+        #build correct string
+        actual_hostname=${dummy_hostname:cut_len}
+        info "New hostname: $actual_hostname"
+        new_ROKS_URL="https://oauth-openshift.apps.$actual_hostname"
+        info "New ROKS_URL value: $new_ROKS_URL"
+        
+        #replace value in platform-auth-idp cm
+        info "Updating ROKS_URL value in platform-auth-idp configmap..."
+        oc patch cm platform-auth-idp -n $CSDB_NAMESPACE --type merge --patch '{"data":{"ROKS_URL":"'${new_ROKS_URL}'"}}'
+        
+        #delete dummy route
+        info "Deleting dummy route from namespace $CSDB_NAMESPACE..."
+        oc delete route dummy -n $CSDB_NAMESPACE
     }
 
     function save_log(){

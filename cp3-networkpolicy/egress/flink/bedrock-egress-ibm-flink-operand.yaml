@@ -3,16 +3,19 @@ apiVersion: networking.k8s.io/v1
 metadata:
   name: egress-ibm-flink-operand
   namespace: "flinkNamespace"
+  labels:
+    component: cpfs3
+    service: flink
 spec:
   podSelector: 
     matchLabels:
       type: flink-standalone-kubernetes
   egress:
     - ports:
-        - protocol: TCP
-          port: 443
-        - protocol: TCP
-          port: 9443
+      - protocol: TCP
+        port: 443
+      - protocol: TCP
+        port: 6443
       to:
         - podSelector:
             matchLabels:
@@ -25,6 +28,12 @@ spec:
         port: 8081
       - protocol: TCP
         port: 9081
+      - protocol: TCP
+        port: 6122
+      - protocol: TCP
+        port: 6123
+      - protocol: TCP
+        port: 6124
       to:
         - podSelector: {}
   policyTypes:

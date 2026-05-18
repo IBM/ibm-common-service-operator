@@ -17,7 +17,7 @@ YQ=yq
 ENABLE_LICENSING=0
 MINIMAL_RBAC_ENABLED=0
 MINIMAL_RBAC=""
-CHANNEL="v4.10"
+CHANNEL="v4.13"
 MAINTAINED_CHANNEL="v4.2"
 SOURCE="opencloud-operators"
 SOURCE_NS="openshift-marketplace"
@@ -53,6 +53,7 @@ PREVIEW_DIR="/tmp/setup-tenant-$(date +'%Y%m%d%H%M%S')-preview"
 # ---------- Main functions ----------
 
 . ${BASE_DIR}/common/utils.sh
+. ${BASE_DIR}/common/cli_compat.sh
 
 function main() {
     parse_arguments "$@"
@@ -162,7 +163,7 @@ function print_usage() {
     echo "See https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.0?topic=online-installing-foundational-services-by-using-script for more information."
     echo ""
     echo "Options:"
-    echo "   --oc string                    Optional. File path to oc CLI. Default uses oc in your PATH"
+    echo "   --oc string                    Optional. File path to oc/kubectl CLI. Default uses oc in your PATH"
     echo "   --yq string                    Optional. File path to yq CLI. Default uses yq in your PATH"
     echo "   --enable-licensing             Optional. Set this flag to install ibm-licensing-operator"
     echo "   --operator-namespace string    Required. Namespace to install Foundational services operator"
@@ -198,12 +199,12 @@ function pre_req() {
     check_command "${YQ}"
     check_yq_version
 
-    # Checking oc command logged in
-    user=$($OC whoami 2> /dev/null)
-    if [ $? -ne 0 ]; then
-        error "You must be logged into the OpenShift Cluster from the oc command line"
+    # Checking cluster CLI command logged in
+    user=$(get_current_user "$OC")
+    if [ $? -ne 0 ] || [ -z "$user" ]; then
+        error "You must be logged into the Kubernetes cluster from the $OC command line"
     else
-        success "oc command logged in as ${user}"
+        success "$OC command logged in as ${user}"
     fi
 
     if [ $LICENSE_ACCEPT -ne 1 ]; then
@@ -264,13 +265,16 @@ function pre_req() {
         error "Must provide additional namespaces for --tethered-namespaces, different from operator-namespace and services-namespace"
     fi
 
-    # When Common Service channel info is less then maintained channel, update maintained channel for backward compatibility e.g., v4.1 and v4.0
-    # Otherwise, maintained channel is pinned at v4.2
+    # When Common Service channel is less than v4.2, maintained channel is the same as CS channel (e.g., v4.1 or v4.0)
+    # When Common Service channel is between v4.2 and v4.12, maintained channel is pinned at v4.2
+    # When Common Service  channel is greater than v4.12, maintained channel is pinned at v4.3
     IFS='.' read -r channel_major channel_minor <<< "${CHANNEL#v}"
     IFS='.' read -r maintained_major maintained_minor <<< "${MAINTAINED_CHANNEL#v}"
 
     if (( channel_major < maintained_major )) || { (( channel_major == maintained_major )) && (( channel_minor < maintained_minor )); }; then
         MAINTAINED_CHANNEL="$CHANNEL"
+    elif (( channel_major == 4 )) && (( channel_minor > 12 )); then
+        MAINTAINED_CHANNEL="v4.3"
     fi
 
     # Check if the file path to the minimal RBAC permissions exists
@@ -649,6 +653,7 @@ function install_cs_operator() {
                     # config commonservice operator_namespace and service_namespace
                     configure_cs_kind $ns
                     # upgrade operator
+                    warning "Found another ibm-common-service-operator subscription in namespace $ns, please make sure it is needed for CloudPak, checking upgrade...\n"
                     validate_operator_catalogsource $pm $ns $op_source $op_source_ns $CHANNEL op_source op_source_ns
                     update_operator $pm $ns $CHANNEL $op_source $op_source_ns $INSTALL_MODE
                     wait_for_operator_upgrade $ns $pm $CHANNEL $INSTALL_MODE
@@ -752,6 +757,14 @@ EOF
                 retries=$((retries-1))
                 continue
             fi
+        fi
+
+        # Get the resource version of the CommonService CR from the cluster
+        # and update the resource version in the file
+        local resource_version=$(${OC} get commonservice common-service -n ${OPERATOR_NS} -o jsonpath='{.metadata.resourceVersion}' --ignore-not-found)
+        if [[ -n "${resource_version}" ]]; then
+            debug1 "Updating resourceVersion in commonservice.yaml to ${resource_version}\n"
+            ${YQ} -i eval '.metadata.resourceVersion = "'${resource_version}'"' ${PREVIEW_DIR}/commonservice.yaml    
         fi
 
         cat "${PREVIEW_DIR}/commonservice.yaml" | ${OC_CMD} apply -f -

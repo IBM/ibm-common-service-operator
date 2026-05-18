@@ -25,6 +25,7 @@ STEP=0
 # ---------- Main functions ----------
 
 . ${BASE_DIR}/utils.sh
+. ${BASE_DIR}/cli_compat.sh
 
 function main() {
     parse_arguments "$@"
@@ -32,9 +33,11 @@ function main() {
 
     # cleanup namespaceScope in Control namespace
     cleanup_NamespaceScope $CONTROL_NS
+    delete_operator "ibm-namespace-scope-operator" "$CONTROL_NS"
 
-    # cleanup webhookc
+    # cleanup webhook
     cleanup_webhook $CONTROL_NS ""
+    cleanup_webhook_service $CONTROL_NS
     
     # cleanup secretshare
     cleanup_secretshare $CONTROL_NS ""
@@ -87,13 +90,13 @@ function print_usage() {
 function pre_req() {
     check_command "${OC}"
 
-    # checking oc command logged in
-    user=$(${OC} whoami 2> /dev/null)
-    if [ $? -ne 0 ]; then
-        error "You must be logged into the OpenShift Cluster from the oc command line"
+    # checking cluster CLI command logged in
+    user=$(get_current_user "${OC}")
+    if [ $? -ne 0 ] || [ -z "$user" ]; then
+        error "You must be logged into the Kubernetes cluster from the ${OC} command line"
         exit 1
     else
-        success "oc command logged in as ${user}"
+        success "${OC} command logged in as ${user}"
     fi
 
     get_control_namespace

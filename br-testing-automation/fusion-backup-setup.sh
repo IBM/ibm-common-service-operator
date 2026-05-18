@@ -18,32 +18,37 @@
 set -o pipefail
 set -o errtrace
 
+HUB_SETUP="false"
 BACKUP_SETUP="false"
 RESTORE_SETUP="false"
 
-
 BASE_DIR=$(cd $(dirname "$0")/$(dirname "$(readlink $0)") && pwd -P)
+OUTPUT_FILE="${BASE_DIR}/env-fusion.properties"
 . ../cp3pt0-deployment/common/utils.sh
-source ${BASE_DIR}/env.properties
 
-function main(){
+function main() {
     parse_arguments "$@"
+    info "Base Directory: $BASE_DIR"
+    source $OUTPUT_FILE
     prereq
-    echo $BASE_DIR
-    validate_sc
-    if [[ $BACKUP_SETUP == "true" ]]; then
+    if [[ $HUB_SETUP == "true" ]]; then
         save_log "logs" "hub_setup_log"
         trap cleanup_log EXIT
+        validate_sc
         install_sf_br "hub"
+        success "Fusion installed on Hub Cluster."
+    fi
+    if [[ $BACKUP_SETUP == "true" ]]; then
         create_sf_resources
         deploy_cs_br_resources
         label_cs_resources
-        success "Hub cluster prepped for BR."
-    elif [[ $RESTORE_SETUP == "true" ]]; then
+        success "Fusion resources configured on Hub Cluster, ready for Backup."
+    fi
+    if [[ $RESTORE_SETUP == "true" ]]; then
         save_log "logs" "spoke_setup_log"
         trap cleanup_log EXIT
         install_sf_br "spoke"
-        success "Spoke cluster prepped for BR."
+        success "Spoke cluster prepped for Restore."
     fi
 }
 
@@ -60,8 +65,10 @@ function print_usage(){
     echo "Options:"
     echo "   --oc string                    Optional. File path to oc CLI. Default uses oc in your PATH. Can also be set in env.properties."
     echo "   --yq string                    Optional. File path to yq CLI. Default uses yq in your PATH. Can also be set in env.properties."
-    echo "   --hub-setup                    Optional. Set up Spectrum Fusion Backup and Restore Hub cluster, create necessary SF resources, and label CPFS resources on cluster."
+    echo "   --backup-setup                 Optional. Create Fusion recipes and application resources for specified instance. Label CPFS resources to prep for Backup."
+    echo "   --hub-setup                    Optional. Set up Spectrum Fusion Backup and Restore Hub cluster."
     echo "   --spoke-setup                  Optional. Set up Spectrum Fusion Backup and Restore Spoke cluster. Must have an existing Hub cluster to connect to."
+    echo "   --env-file                     Optional. Enter env var file to populate necessary parameters. Default file name is env-oadp.properties."
     echo "   -h, --help                     Print usage information"
     echo ""
 }
@@ -82,11 +89,18 @@ function parse_arguments() {
             shift
             YQ=$1
             ;;
-        --hub-setup)
+        --backup-setup)
             BACKUP_SETUP="true"
+            ;;
+        --hub-setup)
+            HUB_SETUP="true"
             ;;
         --spoke-setup)
             RESTORE_SETUP="true"
+            ;;
+        --env-file)
+            shift
+            OUTPUT_FILE=$1
             ;;
         -h | --help)
             print_usage
@@ -99,6 +113,32 @@ function parse_arguments() {
         shift
     done
     echo ""
+}
+
+# Detect PostgreSQL operator type for zen-metastore cluster
+function detect_zen_operator() {
+  local namespace=$1
+  
+  # Check for IBM CloudNativePG cluster (zen-metastore without -edb suffix)
+  IBM_PG_CLUSTER=$(${OC} get cluster.pg.ibm.com zen-metastore -n $namespace --ignore-not-found 2>/dev/null)
+  if [[ -n $IBM_PG_CLUSTER ]]; then
+    info "Detected IBM CNPG cluster for zen-metastore in namespace $namespace"
+    echo "ibm-pg"
+    return 0
+  fi
+  
+  # Check for EDB cluster (zen-metastore-edb with -edb suffix)
+  EDB_CLUSTER=$(${OC} get cluster.postgresql.k8s.enterprisedb.io zen-metastore-edb -n $namespace --ignore-not-found 2>/dev/null)
+  if [[ -n $EDB_CLUSTER ]]; then
+    info "Detected EDB cluster for zen-metastore-edb in namespace $namespace"
+    echo "edb"
+    return 0
+  fi
+  
+  # Default to EDB if no cluster found (backward compatibility)
+  warning "No PostgreSQL cluster found for zen-metastore in namespace $namespace, defaulting to EDB"
+  echo "edb"
+  return 0
 }
 
 function prereq() {
@@ -133,8 +173,8 @@ function prereq() {
                 error "Missing value for one or more of OPERATOR_NAMESPACE, SERVICES_NS, BACKUP_STORAGE_LOCATION_NAME, STORAGE_BUCKET_NAME, S3_URL, STORAGE_SECRET_ACCESS_KEY, STORAGE_SECRET_ACCESS_KEY_ID, CERT_MANAGER_NAMESPACE, LICENSING_NAMESPACE, LSR_NAMESPACE, CPFS_VERSION, ZENSERVICE_NAME. Please update env.properties file with correct parameters and rerun."
             fi
         elif [[ $RESTORE_SETUP == "true" ]]; then
-            if [[ -z $HUB_OC_TOKEN ]] || [[ -z $HUB_SERVER ]] || [[ -z $SPOKE_OC_TOKEN ]] || [[ -z $SPOKE_SERVER ]]; then
-                error "Missing value for one or more of HUB_OC_TOKEN, HUB_SERVER, SPOKE_OC_TOKEN, SPOKE_SERVER. Please update env.properties file with correct parameters and rerun."
+            if [[ -z $HUB_USERNAME ]] || [[ -z $HUB_PASSWORD ]] || [[ -z $HUB_SERVER ]] || [[ -z $SPOKE_USERNAME ]] || [[ -z $SPOKE_PASSWORD ]] || [[ -z $SPOKE_SERVER ]]; then
+                error "Missing value for one or more of HUB_USERNAME, HUB_PASSWORD, HUB_SERVER, SPOKE_USERNAME, SPOKE_PASSWORD, SPOKE_SERVER. Please update env.properties file with correct parameters and rerun."
             fi
         fi
     fi
@@ -207,15 +247,16 @@ function install_sf_br(){
         error="false"
         info "Connecting to spoke cluster $SPOKE_SERVER"
         #oc login to spoke cluster
-        ${OC} login --token=$SPOKE_OC_TOKEN --server=$SPOKE_SERVER --insecure-skip-tls-verify=true
+        ${OC} login -u $SPOKE_USERNAME -p $SPOKE_PASSWORD --server=$SPOKE_SERVER --insecure-skip-tls-verify=true
+        validate_sc
         ./cmd-line-install/install/install-isf-br.sh -s $catalog_image -n $SF_NAMESPACE || error="true"
         if [[ $error == "true" ]]; then
-            ${OC} login --token=$HUB_OC_TOKEN --server=$HUB_SERVER --insecure-skip-tls-verify=true
+            ${OC} login -u $HUB_USERNAME -p $HUB_PASSWORD --server=$HUB_SERVER --insecure-skip-tls-verify=true
             error "SF install script failed to install on spoke cluster. Logging back into hub cluster $HUB_SERVER."
         fi
         info "Connecting to hub cluster $HUB_SERVER"
         #oc login to the hub cluster
-        ${OC} login --token=$HUB_OC_TOKEN --server=$HUB_SERVER --insecure-skip-tls-verify=true
+        ${OC} login -u $HUB_USERNAME -p $HUB_PASSWORD --server=$HUB_SERVER --insecure-skip-tls-verify=true
         apiurl=$(oc whoami --show-server)
         cluster=$(echo $apiurl | cut -d":" -f2 | tr -d /)
         file=spokes_$cluster.yaml
@@ -225,12 +266,12 @@ function install_sf_br(){
         
         info "Re-connecting to spoke cluster $SPOKE_SERVER"
         #oc login to spoke cluster
-        ${OC} login --token=$SPOKE_OC_TOKEN --server=$SPOKE_SERVER --insecure-skip-tls-verify=true
+        ${OC} login -u $SPOKE_USERNAME -p $SPOKE_PASSWORD --server=$SPOKE_SERVER --insecure-skip-tls-verify=true
         info "Applying spoke yaml..."
         #apply generated yaml file
         ${OC} apply -f $work_dir/$file || error="true"
         if [[ $error == "true" ]]; then
-            ${OC} login --token=$HUB_OC_TOKEN --server=$HUB_SERVER --insecure-skip-tls-verify=true
+            ${OC} login -u $HUB_USERNAME -p $HUB_PASSWORD --server=$HUB_SERVER --insecure-skip-tls-verify=true
             error "Failed to apply spoke yaml on spoke cluster $SPOKE_SERVER. Logging back into hub cluster $HUB_SERVER."
         fi
         info "Waiting for BR Agent service to install on spoke cluster $SPOKE_SERVER..."
@@ -250,13 +291,13 @@ function install_sf_br(){
             fi
         done
         if [[ $(${OC} get fusionserviceinstance ibm-backup-restore-agent-service-instance -n $SF_NAMESPACE -o jsonpath='{.status.installStatus.status}') != "Completed" ]] && [[ $retries == 0 ]]; then
-            ${OC} login --token=$HUB_OC_TOKEN --server=$HUB_SERVER --insecure-skip-tls-verify=true
+            ${OC} login -u $HUB_USERNAME -p $HUB_PASSWORD --server=$HUB_SERVER --insecure-skip-tls-verify=true
             error "Timed out waiting for agent service install to come ready on spoke cluster $SPOKE_SERVER. Reconnecting to hub cluster $HUB_SERVER."
         fi
         
         info "Re-connecting to hub cluster $HUB_SERVER"
         #oc login to the hub cluster
-        ${OC} login --token=$HUB_OC_TOKEN --server=$HUB_SERVER --insecure-skip-tls-verify=true
+        ${OC} login -u $HUB_USERNAME -p $HUB_PASSWORD --server=$HUB_SERVER --insecure-skip-tls-verify=true
         success "Spectrum Fusion and Backup and Restore Spoke Service installed."
     fi
 
@@ -276,8 +317,7 @@ function create_sf_resources(){
     cp ../velero/spectrum-fusion/backup_storage_location.yaml ./templates/backup_storage_location.yaml
     cp ../velero/spectrum-fusion/policy_assignment.yaml ./templates/policy_assignment.yaml
     cp ../velero/spectrum-fusion/policy.yaml ./templates/policy.yaml
-    cp ../velero/spectrum-fusion/recipes/4.7-example-recipe-multi-ns.yaml ./templates/multi-ns-recipe.yaml
-    
+
     info "Editing backup storage location resources..."
     #backup storage secret
     sed -i -E "s/<location name>/$BACKUP_STORAGE_LOCATION_NAME/" ./templates/backup_storage_location_secret.yaml
@@ -296,59 +336,266 @@ function create_sf_resources(){
     sed -i -E "s/<s3 url>/$S3_URL/" ./templates/backup_storage_location.yaml
     ${OC} apply -f ./templates/backup_storage_location_secret.yaml -f ./templates/backup_storage_location.yaml || error "Unable to create backup storage location resources to namespace $SF_NAMESPACE."
     
-    change_ns="false"
-    if [[ $SF_NAMESPACE != "ibm-spectrum-fusion-ns" ]]; then
-        change_ns="true"
+    local all_namespaces=()
+    local namespaces=("$OPERATOR_NS")
+    local tethered_array=()
+    local singleton_namespaces=()
+    local extra_namespaces=("openshift-marketplace" "openshift-config" "kube-public")
+
+    if [[ $SERVICES_NS != "$OPERATOR_NS" ]]; then
+        namespaces+=("$SERVICES_NS")
     fi
     
-    #application
-    info "Editing application resource..."
-    sed -i -E "s/<operator namespace>/$OPERATOR_NS/" ./templates/application.yaml
-    sed -i -E "s/<service namespace>/$SERVICES_NS/" ./templates/application.yaml
-    sed -i -E "s/<tenant namespace 1>/$TETHERED_NAMESPACE1/" ./templates/application.yaml
-    sed -i -E "s/<tenant namespace 2>/$TETHERED_NAMESPACE2/" ./templates/application.yaml
-    sed -i -E "s/<cert manager namespace>/$CERT_MANAGER_NAMESPACE/" ./templates/application.yaml
-    sed -i -E "s/<licensing namespace>/$LICENSING_NAMESPACE/" ./templates/application.yaml
-    sed -i -E "s/<lsr namespace>/$LSR_NAMESPACE/" ./templates/application.yaml
-    if [[ $change_ns == "true" ]]; then
-        ${YQ} -i '.metadata.namespace = "'${SF_NAMESPACE}'"' ./templates/application.yaml || error "Could not update namespace value in application.yaml."
+    if [[ $TETHERED_NS != "" ]]; then
+        local space_delimited="${TETHERED_NS//,/ }"
+        tethered_array=($space_delimited)
     fi
-    ${OC} apply -f ./templates/application.yaml || error "Unable to create application in namespace $SF_NAMESPACE."
-
-    #backup policy
-    info "Editing backup policy resource..."
-    sed -i -E "s/<storage_location>/$BACKUP_STORAGE_LOCATION_NAME/" ./templates/policy.yaml
-    ${OC} apply -f ./templates/policy.yaml -n $SF_NAMESPACE || error "Unable to create policy in namespace $SF_NAMESPACE."
-
-    #recipe
-    info "Editing recipe resource..."
-    sed -i -E "s/<operator namespace>/$OPERATOR_NS/" ./templates/multi-ns-recipe.yaml
-    sed -i -E "s/<service namespace>/$SERVICES_NS/" ./templates/multi-ns-recipe.yaml
-    sed -i -E "s/<cert manager namespace>/$CERT_MANAGER_NAMESPACE/" ./templates/multi-ns-recipe.yaml
-    sed -i -E "s/<licensing namespace>/$LICENSING_NAMESPACE/" ./templates/multi-ns-recipe.yaml
-    sed -i -E "s/<lsr namespace>/$LSR_NAMESPACE/" ./templates/multi-ns-recipe.yaml
-    sed -i -E "s/<zenservice name>/$ZENSERVICE_NAME/" ./templates/multi-ns-recipe.yaml
-    tethered_namespaces="$TETHERED_NAMESPACE1,$TETHERED_NAMESPACE2"
-    sed -i -E "s/<comma delimited \(no spaces\) list of Cloud Pak workload namespaces that use this foundational services instance>/$tethered_namespaces/" ./templates/multi-ns-recipe.yaml
-    sed -i -E "s/<foundational services version number in use i.e. 4.0, 4.1, 4.2, etc>/$CPFS_VERSION/" ./templates/multi-ns-recipe.yaml
-    size=$(${OC} get commonservice common-service -n $OPERATOR_NS -o jsonpath='{.spec.size}')
-    sed -i -E "s/<.spec.size value from commonservice cr>/$size/" ./templates/multi-ns-recipe.yaml
-    sed -i -E "s/<install mode, either Manual or Automatic>/Automatic/" ./templates/multi-ns-recipe.yaml
-    sed -i -E "s/<catalog source name>/$CS_CATALOG_SOURCE/" ./templates/multi-ns-recipe.yaml
-    sed -i -E "s/<catalog source namespace>/$CAT_SRC_NS/" ./templates/multi-ns-recipe.yaml
-
-    if [[ $change_ns == "true" ]]; then
-        ${YQ} -i '.metadata.namesace = "'${SF_NAMESPACE}'"' ./templates/multi-ns-recipe.yaml || error "Could not update namespace value in multi-ns-recipe.yaml."
+    
+    if [[ $ENABLE_CERT_MANAGER == "true" ]]; then
+        singleton_namespaces+=("$CERT_MANAGER_NAMESPACE")
     fi
-    ${OC} apply -f ./templates/multi-ns-recipe.yaml || error "Unable to create recipe in namespace $SF_NAMESPACE."
-
-    #policyassignment
-    info "Editing policy assignment resource..."
-    if [[ $change_ns == "true" ]]; then
-        ${YQ} -i '.metadata.namesace = "'${SF_NAMESPACE}'"' ./templates/policy_assignment.yaml || error "Could not update namespace value in policy_assignment.yaml."
+    if [[ $ENABLE_LICENSING == "true" ]]; then
+        singleton_namespaces+=("$LICENSING_NAMESPACE")
     fi
-    ${OC} apply -f ./templates/policy_assignment.yaml || error "Unable to create policy assignment in namespace $SF_NAMESPACE."
+    if [[ $ENABLE_LSR == "true" ]]; then
+        singleton_namespaces+=("$LSR_NAMESPACE")
+    fi
+    
+    all_namespaces=("${namespaces[@]}" "${tethered_array[@]}" "${extra_namespaces[@]}" "${singleton_namespaces[@]}")
+    info "All namespaces ${all_namespaces[*]}"
+    if [[ $DYNAMIC == "false" ]]; then
+        #application
+        info "Editing application resource..."
+        update_application_namespaces ./templates/application.yaml "${all_namespaces[@]}"
+        # sed -i -E "s/<operator namespace>/$OPERATOR_NS/" ./templates/application.yaml
+        # sed -i -E "s/<service namespace>/$SERVICES_NS/" ./templates/application.yaml
+        # sed -i -E "s/<tenant namespace 1>/$TETHERED_NAMESPACE1/" ./templates/application.yaml
+        # sed -i -E "s/<tenant namespace 2>/$TETHERED_NAMESPACE2/" ./templates/application.yaml
+        # sed -i -E "s/<cert manager namespace>/$CERT_MANAGER_NAMESPACE/" ./templates/application.yaml
+        # sed -i -E "s/<licensing namespace>/$LICENSING_NAMESPACE/" ./templates/application.yaml
+        # sed -i -E "s/<lsr namespace>/$LSR_NAMESPACE/" ./templates/application.yaml
+        sed -i -E "s/<spectrum fusion ns>/$SF_NAMESPACE/" ./templates/application.yaml
 
+        ${OC} apply -f ./templates/application.yaml || error "Unable to create application in namespace $SF_NAMESPACE."
+
+        #backup policy
+        info "Editing backup policy resource..."
+        sed -i -E "s/<storage_location>/$BACKUP_STORAGE_LOCATION_NAME/" ./templates/policy.yaml
+        ${OC} apply -f ./templates/policy.yaml -n $SF_NAMESPACE || error "Unable to create policy in namespace $SF_NAMESPACE."
+
+        #policyassignment
+        info "Editing policy assignment resource..."
+        sed -i -E "s/<spectrum fusion ns>/$SF_NAMESPACE/" ./templates/policy_assignment.yaml
+        recipe_name="cs-recipe"
+        sed -i -E "s/<recipe namespace>/$SF_NAMESPACE/" ./templates/policy_assignment.yaml
+        sed -i -E "s/<recipe name>/$recipe_name/" ./templates/policy_assignment.yaml
+        ${OC} apply -f ./templates/policy_assignment.yaml || error "Unable to create policy assignment in namespace $SF_NAMESPACE."
+
+        cp ../velero/spectrum-fusion/recipes/4.7-example-recipe-multi-ns.yaml ./templates/multi-ns-recipe.yaml
+        #non-dynamic recipe
+        info "Editing recipe resource..."
+        sed -i -E "s/<operator namespace>/$OPERATOR_NS/" ./templates/multi-ns-recipe.yaml
+        sed -i -E "s/<service namespace>/$SERVICES_NS/" ./templates/multi-ns-recipe.yaml
+        sed -i -E "s/<cert manager namespace>/$CERT_MANAGER_NAMESPACE/" ./templates/multi-ns-recipe.yaml
+        sed -i -E "s/<licensing namespace>/$LICENSING_NAMESPACE/" ./templates/multi-ns-recipe.yaml
+        sed -i -E "s/<lsr namespace>/$LSR_NAMESPACE/" ./templates/multi-ns-recipe.yaml
+        sed -i -E "s/<zenservice name>/$ZENSERVICE_NAME/" ./templates/multi-ns-recipe.yaml
+        sed -i -E "s/<spectrum fusion ns>/$SF_NAMESPACE/" ./templates/multi-ns-recipe.yaml
+        
+        tethered_namespaces="$TETHERED_NAMESPACE1,$TETHERED_NAMESPACE2"
+        sed -i -E "s/<comma delimited \(no spaces\) list of Cloud Pak workload namespaces that use this foundational services instance>/$tethered_namespaces/" ./templates/multi-ns-recipe.yaml
+        sed -i -E "s/<foundational services version number in use i.e. 4.0, 4.1, 4.2, etc>/$CPFS_VERSION/" ./templates/multi-ns-recipe.yaml
+        size=$(${OC} get commonservice common-service -n $OPERATOR_NS -o jsonpath='{.spec.size}')
+        sed -i -E "s/<.spec.size value from commonservice cr>/$size/" ./templates/multi-ns-recipe.yaml
+        sed -i -E "s/<install mode, either Manual or Automatic>/Automatic/" ./templates/multi-ns-recipe.yaml
+        sed -i -E "s/<catalog source name>/$CS_CATALOG_SOURCE/" ./templates/multi-ns-recipe.yaml
+        sed -i -E "s/<catalog source namespace>/$CAT_SRC_NS/" ./templates/multi-ns-recipe.yaml
+
+        if [[ $change_ns == "true" ]]; then
+            ${YQ} -i '.metadata.namesace = "'${SF_NAMESPACE}'"' ./templates/multi-ns-recipe.yaml || error "Could not update namespace value in multi-ns-recipe.yaml."
+        fi
+        ${OC} apply -f ./templates/multi-ns-recipe.yaml || error "Unable to create recipe in namespace $SF_NAMESPACE."
+    else
+        #core recipes
+        if [[ $NO_OLM == "true" ]]; then
+            cp ../velero/spectrum-fusion/recipes/no-olm/core/child-csdb-recipe-2.10.0.yaml ./templates/child-csdb-recipe.yaml
+            
+            # Detect PostgreSQL operator type for zen-metastore and copy appropriate recipe
+            if [[ $ZEN_ENABLED == "true" ]]; then
+                ZEN_OPERATOR=$(detect_zen_operator $SERVICES_NS)
+                if [[ $ZEN_OPERATOR == "ibm-pg" ]]; then
+                    info "Using IBM CNPG zen recipe for namespace $SERVICES_NS"
+                    cp ../velero/spectrum-fusion/recipes/no-olm/core/child-zen-recipe-ibm-pg.yaml ./templates/child-zen-recipe.yaml
+                else
+                    info "Using EDB zen recipe for namespace $SERVICES_NS"
+                    cp ../velero/spectrum-fusion/recipes/no-olm/core/child-zen-recipe-2.10.0.yaml ./templates/child-zen-recipe.yaml
+                fi
+            fi
+            
+            cp ../velero/spectrum-fusion/recipes/no-olm/core/parent-cpfs-recipe.yaml ./templates/parent-cpfs-recipe.yaml
+            cp ../velero/spectrum-fusion/recipes/no-olm/core/child-cs-odlm-chart-recipe.yaml ./templates/child-cs-odlm-chart-recipe.yaml
+            cp ../velero/spectrum-fusion/recipes/no-olm/core/child-edb-chart-recipe.yaml ./templates/child-edb-chart-recipe.yaml
+            cp ../velero/spectrum-fusion/recipes/no-olm/core/child-im-ui-chart-recipe.yaml ./templates/child-im-ui-chart-recipe.yaml
+            cp ../velero/spectrum-fusion/recipes/no-olm/core/child-nss-chart-recipe.yaml ./templates/child-nss-recipe.yaml
+            cp ../velero/spectrum-fusion/recipes/no-olm/core/child-zen-chart-recipe.yaml ./templates/child-zen-chart-recipe.yaml
+            cp ../velero/spectrum-fusion/recipes/no-olm/core/peripheral-resources.yaml ./templates/peripheral-resources.yaml
+        else
+            cp ../velero/spectrum-fusion/recipes/dynamic-recipes/core/child-csdb-recipe-2.10.0.yaml ./templates/child-csdb-recipe.yaml
+            
+            # Detect PostgreSQL operator type for zen-metastore and copy appropriate recipe
+            if [[ $ZEN_ENABLED == "true" ]]; then
+                ZEN_OPERATOR=$(detect_zen_operator $SERVICES_NS)
+                if [[ $ZEN_OPERATOR == "ibm-pg" ]]; then
+                    info "Using IBM CNPG zen recipe for namespace $SERVICES_NS"
+                    cp ../velero/spectrum-fusion/recipes/dynamic-recipes/core/child-zen-recipe-ibm-pg.yaml ./templates/child-zen-recipe.yaml
+                else
+                    info "Using EDB zen recipe for namespace $SERVICES_NS"
+                    cp ../velero/spectrum-fusion/recipes/dynamic-recipes/core/child-zen-recipe-2.10.0.yaml ./templates/child-zen-recipe.yaml
+                fi
+            fi
+            
+            cp ../velero/spectrum-fusion/recipes/dynamic-recipes/core/child-nss-recipe.yaml ./templates/child-nss-recipe.yaml
+            cp ../velero/spectrum-fusion/recipes/dynamic-recipes/core/parent-cpfs-recipe.yaml ./templates/parent-cpfs-recipe.yaml
+            cp ../velero/spectrum-fusion/recipes/dynamic-recipes/core/peripheral-resources.yaml ./templates/peripheral-resources.yaml
+        fi    
+        info "Editing Application Resource..."
+        local dynamic_namespaces=("${namespaces[@]}" "${tethered_array[@]}" "${extra_namespaces[@]}")
+        info "namespaces: ${dynamic_namespaces[*]}"
+        update_application_namespaces ./templates/peripheral-resources.yaml "${dynamic_namespaces[@]}"
+        
+        info "Editing Backup Policy Resource..."
+        sed -i -E "s/<location name>/$BACKUP_STORAGE_LOCATION_NAME/" ./templates/peripheral-resources.yaml
+        
+        info "Editing Policy Assignment Resource..."
+        recipe_name="cs-core"
+        sed -i -E "s/<fusion ns>/$SF_NAMESPACE/" ./templates/peripheral-resources.yaml
+        sed -i -E "s/<parent recipe namespace>/$OPERATOR_NS/" ./templates/peripheral-resources.yaml
+        sed -i -E "s/<recipe name>/$recipe_name/" ./templates/peripheral-resources.yaml
+
+        ${OC} apply -f ./templates/peripheral-resources.yaml || error "Unable to create either application, backup policy, or policy assignment in namespace $SF_NAMESPACE."
+        
+        info "Editing recipe resources..."
+        #parent
+        sed -i -E "s/<parent recipe namespace>/$OPERATOR_NS/" ./templates/parent-cpfs-recipe.yaml
+        #im
+        sed -i -E "s/<parent recipe namespace>/$OPERATOR_NS/" ./templates/child-csdb-recipe.yaml
+        sed -i -E "s/<child recipe namespace>/$SERVICES_NS/" ./templates/child-csdb-recipe.yaml
+        #nss
+        sed -i -E "s/<parent recipe namespace>/$OPERATOR_NS/" ./templates/child-nss-recipe.yaml
+        sed -i -E "s/<child recipe namespace>/$OPERATOR_NS/" ./templates/child-nss-recipe.yaml
+        #zen
+        sed -i -E "s/<parent recipe namespace>/$OPERATOR_NS/" ./templates/child-zen-recipe.yaml
+        sed -i -E "s/<zenservice name>/$ZENSERVICE_NAME/" ./templates/child-zen-recipe.yaml
+        sed -i -E "s/<child recipe namespace>/$SERVICES_NS/" ./templates/child-zen-recipe.yaml
+        if [[ $NO_OLM == "true" ]]; then
+            sed -i -E "s/<parent recipe namespace>/$OPERATOR_NS/" ./templates/child-cs-odlm-chart-recipe.yaml
+            sed -i -E "s/<parent recipe namespace>/$OPERATOR_NS/" ./templates/child-edb-chart-recipe.yaml
+            sed -i -E "s/<parent recipe namespace>/$OPERATOR_NS/" ./templates/child-im-ui-chart-recipe.yaml
+            sed -i -E "s/<parent recipe namespace>/$OPERATOR_NS/" ./templates/child-zen-chart-recipe.yaml
+
+            sed -i -E "s/<child recipe namespace>/$OPERATOR_NS/" ./templates/child-cs-odlm-chart-recipe.yaml
+            sed -i -E "s/<child recipe namespace>/$OPERATOR_NS/" ./templates/child-edb-chart-recipe.yaml
+            sed -i -E "s/<child recipe namespace>/$OPERATOR_NS/" ./templates/child-im-ui-chart-recipe.yaml
+            sed -i -E "s/<child recipe namespace>/$OPERATOR_NS/" ./templates/child-zen-chart-recipe.yaml
+            
+            sed -i -E "s/<operator_ns>/$OPERATOR_NS/" ./templates/child-cs-odlm-chart-recipe.yaml
+            sed -i -E "s/<operator_ns>/$OPERATOR_NS/" ./templates/child-edb-chart-recipe.yaml
+            sed -i -E "s/<operator_ns>/$OPERATOR_NS/" ./templates/child-im-ui-chart-recipe.yaml
+            sed -i -E "s/<operator_ns>/$OPERATOR_NS/" ./templates/child-zen-chart-recipe.yaml
+        fi
+
+        #apply recipes
+        ${OC} apply -f ./templates/parent-cpfs-recipe.yaml || error "Unable to create core parent recipe in namespace $OPERATOR_NS."
+        if [[ $NO_OLM == "true" ]]; then
+            ${OC} apply -f ./templates/child-cs-odlm-chart-recipe.yaml || error "Unable to create Installer chart child recipe in namespace $OPERATOR_NS."
+        fi
+        if [[ $IM_ENABLED == "true" ]]; then
+            ${OC} apply -f ./templates/child-csdb-recipe.yaml || error "Unable to create IM child recipe in namespace $SERVICES_NS."
+            if [[ $NO_OLM == "true" ]]; then
+                ${OC} apply -f ./templates/child-im-ui-chart-recipe.yaml || error "Unable to create IM chart child recipe in namespace $OPERATOR_NS."
+                ${OC} apply -f ./templates/child-edb-chart-recipe.yaml || error "Unable to create EDB chart child recipe in namespace $OPERATOR_NS."
+            fi
+        fi
+        if [[ $ZEN_ENABLED == "true" ]]; then
+            ${OC} apply -f ./templates/child-zen-recipe.yaml || error "Unable to create Zen child recipe in namespace $SERVICES_NS."
+            if [[ $NO_OLM == "true" ]]; then
+                ${OC} apply -f ./templates/child-zen-chart-recipe.yaml || error "Unable to create Zen chart child recipe in namespace $OPERATOR_NS."
+                if [[ $IM_ENABLED != "true" ]]; then
+                    ${OC} apply -f ./templates/child-edb-chart-recipe.yaml || error "Unable to create EDB chart child recipe in namespace $OPERATOR_NS."
+                fi
+            fi
+        fi
+        if [[ $NSS_ENABLED == "true" ]]; then
+            ${OC} apply -f ./templates/child-nss-recipe.yaml || error "Unable to create NSS child recipe in namespace $OPERATOR_NS."
+        fi
+
+        #singleton recipes
+        if [[ $ENABLE_CERT_MANAGER == "true" ]] || [[ $ENABLE_LICENSING == "true" ]] || [[ $ENABLE_LSR == "true" ]]; then
+            info "Editing singleton fusion resources..."
+            if [[ $NO_OLM == "true" ]]; then
+                cp ../velero/spectrum-fusion/recipes/no-olm/singletons/parent-singleton-recipe.yaml ./templates/parent-singleton-recipe.yaml
+                cp ../velero/spectrum-fusion/recipes/no-olm/singletons/peripheral-resources.yaml ./templates/peripheral-resources.yaml
+            else
+                cp ../velero/spectrum-fusion/recipes/dynamic-recipes/singletons/parent-singleton-recipe.yaml ./templates/parent-singleton-recipe.yaml
+                cp ../velero/spectrum-fusion/recipes/dynamic-recipes/singletons/peripheral-resources.yaml ./templates/peripheral-resources.yaml
+            fi
+            #edit parent recipe
+            sed -i -E "s/<fusion ns>/$SF_NAMESPACE/" ./templates/parent-singleton-recipe.yaml
+            #edit peripheral resources
+            local dynamic_singleton_namespaces=("${extra_namespaces[@]}" "${singleton_namespaces[@]}")
+            info "dynamic singleton namespaces ${dynamic_singleton_namespaces[*]}"
+            update_application_namespaces ./templates/peripheral-resources.yaml "${dynamic_singleton_namespaces[@]}"
+            sed -i -E "s/<fusion ns>/$SF_NAMESPACE/" ./templates/peripheral-resources.yaml
+            sed -i -E "s/<location name>/$BACKUP_STORAGE_LOCATION_NAME/" ./templates/peripheral-resources.yaml
+            # sed -i -E "s/<cert manager namespace>/$CERT_MANAGER_NAMESPACE/" ./templates/peripheral-resources.yaml
+            # sed -i -E "s/<licensing namespace>/$LICENSING_NAMESPACE/" ./templates/peripheral-resources.yaml
+            # sed -i -E "s/<lsr namespace>/$LSR_NAMESPACE/" ./templates/peripheral-resources.yaml
+            sed -i -E "s/<s3 url>/$S3_URL/" ./templates/peripheral-resources.yaml
+
+            encoded_access_key=$(echo $STORAGE_SECRET_ACCESS_KEY | tr -d '\n' | base64 -w 0)
+            sed -i -E "s/<base 64 encoded secret access key>/$encoded_access_key/" ./templates/peripheral-resources.yaml
+            encoded_access_key_id=$(echo $STORAGE_SECRET_ACCESS_KEY_ID | tr -d '\n' | base64 -w 0)
+            sed -i -E "s/<base 64 encoded access key id>/$encoded_access_key_id/" ./templates/peripheral-resources.yaml
+            
+            ${OC} apply -f ./templates/parent-singleton-recipe.yaml || error "Unable to create singleton parent recipe in namespace $SF_NAMESPACE."
+            ${OC} apply -f ./templates/peripheral-resources.yaml || error "Unable to create singleton peripheral resources in namespace $SF_NAMESPACE."
+            
+            if [[ $ENABLE_CERT_MANAGER == "true" ]]; then
+                if [[ $NO_OLM == "true" ]]; then
+                    cp ../velero/spectrum-fusion/recipes/no-olm/singletons/child-cert-manager-recipe.yaml ./templates/child-cert-manager-recipe.yaml
+                else
+                    cp ../velero/spectrum-fusion/recipes/dynamic-recipes/singletons/child-cert-manager-recipe.yaml ./templates/child-cert-manager-recipe.yaml
+                fi
+                #edit cm child recipe
+                sed -i -E "s/<cert manager namespace>/$CERT_MANAGER_NAMESPACE/" ./templates/child-cert-manager-recipe.yaml
+                sed -i -E "s/<fusion ns>/$SF_NAMESPACE/" ./templates/child-cert-manager-recipe.yaml
+                ${OC} apply -f ./templates/child-cert-manager-recipe.yaml || error "Unable to create cert manager child recipe in namespace $CERT_MANAGER_NAMESPACE."
+            fi
+            if [[ $ENABLE_LICENSING == "true" ]]; then
+                if [[ $NO_OLM == "true" ]]; then
+                    cp ../velero/spectrum-fusion/recipes/no-olm/singletons/child-licensing-recipe.yaml ./templates/child-licensing-recipe.yaml
+                else
+                    cp ../velero/spectrum-fusion/recipes/dynamic-recipes/singletons/child-licensing-recipe.yaml ./templates/child-licensing-recipe.yaml
+                fi
+                #edit licensing child recipe
+                sed -i -E "s/<licensing namespace>/$LICENSING_NAMESPACE/" ./templates/child-licensing-recipe.yaml
+                sed -i -E "s/<fusion ns>/$SF_NAMESPACE/" ./templates/child-licensing-recipe.yaml
+                ${OC} apply -f ./templates/child-licensing-recipe.yaml || error "Unable to create licensing child recipe in namespace $LICENSING_NAMESPACE."
+            fi
+            if [[ $ENABLE_LSR == "true" ]]; then
+                if [[ $NO_OLM == "true" ]]; then
+                    cp ../velero/spectrum-fusion/recipes/no-olm/singletons/child-ls-reporter-recipe.yaml ./templates/child-ls-reporter-recipe.yaml
+                else
+                    cp ../velero/spectrum-fusion/recipes/dynamic-recipes/singletons/child-ls-reporter-recipe.yaml ./templates/child-ls-reporter-recipe.yaml
+                fi
+                #edit lsr child recipe
+                sed -i -E "s/<lsr namespace>/$LSR_NAMESPACE/" ./templates/child-ls-reporter-recipe.yaml
+                sed -i -E "s/<fusion ns>/$SF_NAMESPACE/" ./templates/child-ls-reporter-recipe.yaml
+                ${OC} apply -f ./templates/child-ls-reporter-recipe.yaml || error "Unable to create license service reporter child recipe in namespace $LSR_NAMESPACE."
+            fi
+        fi
+    fi
+    
     success "Spectrum Fusion BR resources created in namespace $SF_NAMESPACE."
 
 }
@@ -356,10 +603,38 @@ function create_sf_resources(){
 function deploy_cs_br_resources() {
     title "Deploying necessary BR resources for persistent CPFS components."
     # cd ../velero/schedule
-    tethered_namespaces="$TETHERED_NAMESPACE1,$TETHERED_NAMESPACE2"
-    info "Parameters:  --services-ns $SERVICES_NS --operator-ns $OPERATOR_NS --lsr-ns $LSR_NAMESPACE --im --zen --tethered-ns $tethered_namespaces --util --storage-class $STORAGE_CLASS"
-    ./../velero/schedule/deploy-br-resources.sh --services-ns $SERVICES_NS --operator-ns $OPERATOR_NS --lsr-ns $LSR_NAMESPACE --im --zen --lsr --tethered-ns $tethered_namespaces --util --storage-class $STORAGE_CLASS || error "Script deploy-br-resources.sh failed to deploy BR resources."
-    # cd $BASE_DIR
+    deploy_arg_str=""
+    if [[ $SERVICES_NS != $OPERATOR_NS ]]; then
+        deploy_arg_str="--services-ns $SERVICES_NS"
+    else
+        deploy_arg_str="--operator-ns $OPERATOR_NS"
+    fi
+    if [[ $ENABLE_LSR == "true" ]]; then
+        deploy_arg_str="$deploy_arg_str --lsr-ns $LSR_NAMESPACE --lsr"
+    fi
+    if [[ $IM_ENABLED == "true" ]] || [[ $ZEN_ENABLED == "true" ]] || [[ $ENABLE_LSR == "true" ]]; then
+        if [[ $IM_ENABLED == "true" ]]; then
+            deploy_arg_str="$deploy_arg_str --im"
+        fi
+        if [[ $ZEN_ENABLED == "true" ]]; then
+            deploy_arg_str="$deploy_arg_str --zen"
+        fi
+        if [[ $STORAGE_CLASS != "" ]]; then
+            deploy_arg_str="$deploy_arg_str --storage-class $STORAGE_CLASS"
+        fi
+        info "Deploying necessary backup resources for tenant $OPERATOR_NS..."
+        info "Backup resource deployment script parameters: $deploy_arg_str"
+        ./../velero/schedule/deploy-br-resources.sh $deploy_arg_str || error "Script deploy-br-resources.sh failed to deploy BR resources."
+        if [[ $IM_ENABLED == "true" ]]; then
+            wait_for_deployment $SERVICES_NS "cs-db-backup" 
+        fi
+        if [[ $ZEN_ENABLED == "true" ]]; then
+            wait_for_deployment $SERVICES_NS "zen5-backup" 
+        fi
+        if [[ $ENABLE_LSR == "true" ]]; then
+            wait_for_deployment $LSR_NAMESPACE "lsr-backup" 
+        fi
+    fi
     success "BR resources for persistent CPFS components deployed."
 }
 
@@ -368,16 +643,40 @@ function label_cs_resources() {
 
     info "Labeling cert manager resources..."
     ./../velero/backup/cert-manager/label-cert-manager.sh || error "Unable to complete labeling of cert manager resources."
+    
+    label_arg_str="--operator-ns $OPERATOR_NS"
+    if [[ $SERVICES_NS != $OPERATOR_NS ]]; then
+        label_arg_str="$label_arg_str --services-ns $SERVICES_NS"
+    fi
+    if [[ $TETHERED_NS != "" ]]; then
+        label_arg_str="$label_arg_str --tethered-ns $TETHERED_NS"
+    fi
+    if [[ $ENABLE_CERT_MANAGER == "true" ]]; then
+        label_arg_str="$label_arg_str --cert-manager-ns $CERT_MANAGER_NAMESPACE"
+    fi
+    if [[ $ENABLE_LICENSING == "true" ]]; then
+        label_arg_str="$label_arg_str --licensing-ns $LICENSING_NAMESPACE"
+        info "Labeling licensing resources in namespace $LICENSING_NAMESPACE..."
+        ./../velero/backup/licensing/label-licensing-configmaps.sh $LICENSING_NAMESPACE || error "Licensing labeling script did not complete successfully."
+    fi
+    if [[ $ENABLE_LSR == "true" ]]; then
+        label_arg_str="$label_arg_str --lsr-ns $LSR_NAMESPACE"
+    fi
+    if [[ $ENABLE_PRIVATE_CATALOG == "true" ]]; then
+        label_arg_str="$label_arg_str --enable-private-catalog"
+    fi
+    if [[ $ENABLE_DEFAULT_CS == "true" ]]; then
+        label_arg_str="$label_arg_str --enable-default-catalog-ns"
+    fi
+    if [[ $ADDITIONAL_SOURCES != "" ]]; then
+        label_arg_str="$label_arg_str --additional-catalog-sources $ADDITIONAL_SOURCES"
+    fi
+    if [[ $NO_OLM == "true" ]]; then
+        label_arg_str="$label_arg_str --no-olm"
+    fi
 
-    info "Labeling licensing resources..."
-    ./../velero/backup/licensing/label-licensing-configmaps.sh $LICENSING_NAMESPACE || error "Unable to complete labeling of licensing resources."
-
-    mv ../velero/backup/common-service/env.properties ../velero/backup/common-service/og-env.properties
-    cp env.properties ../velero/backup/common-service/env.properties
-    export TETHERED_NS="$TETHERED_NAMESPACE1,$TETHERED_NAMESPACE2"
-    info "Labeling remaining CPFS resources..."
-    ./../velero/backup/common-service/label-common-service.sh || error "Unable to complete labeling of CPFS resources."
-
+    info "Labeling script parameters: $label_arg_str"
+    ./../velero/backup/common-service/label-common-service.sh $label_arg_str || error "Script label-common-service.sh failed to complete."
     success "CPFS resources labeled."
 }
 
@@ -388,6 +687,43 @@ function check_yq() {
   if [ "$(printf '%s\n' "$yq_minimum_version" "$yq_version" | sort -V | head -n1)" != "$yq_minimum_version" ]; then 
     error "yq version $yq_version must be at least $yq_minimum_version or higher.\nInstructions for installing/upgrading yq are available here: https://github.com/marketplace/actions/yq-portable-yaml-processor"
   fi
+}
+
+function update_application_namespaces() {
+    local file="$1"
+    shift
+    local namespaces=("$@")
+    info "Updating application in file $file with namespaces $namespaces..."
+
+    # Create temp files
+    local temp_dir=$(mktemp -d)
+    local app_file="$temp_dir/app.yaml"
+    local others_file="$temp_dir/others.yaml"
+    
+    # Extract documents
+    ${YQ} eval 'select(.kind == "Application")' "$file" > "$app_file"
+    ${YQ} eval 'select(.kind != "Application")' "$file" > "$others_file"
+    
+    # Build namespace array
+    local json_array="["
+    for i in "${!namespaces[@]}"; do
+        [ $i -gt 0 ] && json_array+=","
+        json_array+="\"${namespaces[$i]}\""
+    done
+    json_array+="]"
+    
+    # Update Application file
+    ${YQ} eval ".spec.includedNamespaces = $json_array" -i "$app_file"
+    
+    # Reconstruct file
+    cat "$app_file" > "$file"
+    if [ -s "$others_file" ]; then
+        echo "---" >> "$file"
+        cat "$others_file" >> "$file"
+    fi
+    
+    # Cleanup
+    rm -rf "$temp_dir"
 }
 
 function msg() {

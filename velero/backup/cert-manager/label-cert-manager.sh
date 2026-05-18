@@ -171,6 +171,13 @@ function label_all_resources(){
                 info "Secret platform-auth-idp-credentials not present in namespace $namespace. Skipping..."
             fi
 
+            um_namespace_list=$(oc get secret -n $namespace | grep user-mgmt-bootstrap | grep -v "bindinfo" |  awk '{print $1}' | tr "\n" " ")
+            if [[ $um_namespace_list != "" ]]; then
+                label_specified_secret $namespace user-mgmt-bootstrap
+            else
+                info "Secret user-mgmt-bootstrap not present in namespace $namespace. Skipping..."
+            fi
+
             #grab default scim credentials
             scim_secret_namespace_list=$(oc get secret -n $namespace | grep platform-auth-scim-credentials | grep -v "bindinfo" |  awk '{print $1}' | tr "\n" " ")
             if [[ $scim_secret_namespace_list != "" ]]; then
@@ -226,6 +233,17 @@ function label_all_resources(){
                 do
                     oc label secret ibm-zen-metastore-edb-secret -n $namespace foundationservices.cloudpak.ibm.com-
                     oc label certificate ibm-zen-metastore-edb-certificate -n $namespace foundationservices.cloudpak.ibm.com-
+                done
+            fi
+
+            #remove label from metastore-db certificate and secret
+            metastore_secret_ns_list=$(oc get secret -n $namespace --no-headers | grep  ibm-zen-metastore-secret | awk '{print $1}' | tr "\n" " ")
+            if [[ $metastore_secret_ns_list != "" ]]; then
+                info "removing label from zen-metastore-secret and certificate."
+                for ns in $metastore_secret_ns_list
+                do
+                    oc label secret ibm-zen-metastore-secret -n $namespace foundationservices.cloudpak.ibm.com-
+                    oc label certificate ibm-zen-metastore-certificate -n $namespace foundationservices.cloudpak.ibm.com-
                 done
             fi
         done
@@ -304,6 +322,16 @@ function label_all_resources(){
             info "Secret platform-auth-idp-credentials not present in namespace $auth_namespace. Skipping..."
         fi
 
+        um_namespace_list=$(oc get secret -A | grep user-mgmt-bootstrap | grep -v "bindinfo" |  awk '{print $1}' | tr "\n" " ")
+        if [[ $um_namespace_list != "" ]]; then
+            for um_namespace in $um_namespace_list
+            do
+                label_specified_secret $um_namespace user-mgmt-bootstrap
+            done
+        else
+            info "Secret user-mgmt-bootstrap not present in namespace $um_namespace. Skipping..."
+        fi
+
         #grab default scim credentials
         scim_secret_namespace_list=$(oc get secret -A | grep platform-auth-scim-credentials | grep -v "bindinfo" |  awk '{print $1}' | tr "\n" " ")
         if [[ $scim_secret_namespace_list != "" ]]; then
@@ -377,6 +405,17 @@ function label_all_resources(){
             do
                 oc label secret ibm-zen-metastore-edb-secret -n $ns foundationservices.cloudpak.ibm.com-
                 oc label certificate ibm-zen-metastore-edb-certificate -n $ns foundationservices.cloudpak.ibm.com-
+            done
+        fi
+
+        #remove label from metastore-db certificate and secret
+        metastore_secret_ns_list=$(oc get secret -A --no-headers | grep  ibm-zen-metastore-secret | awk '{print $1}' | tr "\n" " ")
+        if [[ $metastore_secret_ns_list != "" ]]; then
+            info "removing label from zen-metastore-secret and certificate."
+            for ns in $metastore_secret_ns_list
+            do
+                oc label secret ibm-zen-metastore-secret -n $namespace foundationservices.cloudpak.ibm.com-
+                oc label certificate ibm-zen-metastore-certificate -n $namespace foundationservices.cloudpak.ibm.com-
             done
         fi
     fi

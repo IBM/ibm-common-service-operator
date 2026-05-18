@@ -110,6 +110,43 @@ function translate_step() {
     echo "${step}" | tr '[1-9]' '[a-i]'
 }
 
+function check_for_condition() {
+    local condition=$1
+    local retries=$2
+    local sleep_time=$3
+    local wait_message=$4
+    local success_message=$5
+    local error_message=$6
+    local debug_condition=${7:-}
+
+    info "${wait_message}"
+    while true; do
+        result=$(eval "${condition}")
+
+        if [[ ( ${retries} -eq 0 ) && ( -z "${result}" ) ]]; then
+            return 1
+        fi
+
+        sleep ${sleep_time}
+        result=$(eval "${condition}")
+
+        if [[ -z "${result}" ]]; then
+            if [[ ! -z "${debug_condition}" ]]; then
+                debug "${debug_condition} -> \n$(eval "${debug_condition}")\n"
+            fi
+
+            info "RETRYING: ${wait_message} (${retries} left)"
+            retries=$(( retries - 1 ))
+        else
+            break
+        fi
+    done
+
+    if [[ ! -z "${success_message}" ]]; then
+        return 0
+    fi
+}
+
 function wait_for_condition() {
     local condition=$1
     local retries=$2
@@ -248,7 +285,7 @@ function wait_for_operator() {
     wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
 }
 
-function wait_for_issuer() {
+function check_for_issuer() {
     local issuer=$1
     local namespace=$2
     local condition="${OC} -n ${namespace} get issuer.v1.cert-manager.io ${issuer} --ignore-not-found -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}' | grep 'True'"
@@ -259,10 +296,11 @@ function wait_for_issuer() {
     local success_message="Issuer ${issuer} in namespace ${namespace} is Ready"
     local error_message="Timeout after ${total_time_mins} minutes waiting for Issuer ${issuer} in namespace ${namespace} to be Ready"
 
-    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+    check_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+    return $?
 }
 
-function wait_for_certificate() {
+function check_for_certificate() {
     local certificate=$1
     local namespace=$2
     local condition="${OC} -n ${namespace} get certificate.v1.cert-manager.io ${certificate} --ignore-not-found -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}' | grep 'True'"
@@ -273,7 +311,8 @@ function wait_for_certificate() {
     local success_message="Certificate ${certificate} in namespace ${namespace} is Ready"
     local error_message="Timeout after ${total_time_mins} minutes waiting for Certificate ${certificate} in namespace ${namespace} to be Ready"
 
-    wait_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+    check_for_condition "${condition}" ${retries} ${sleep_time} "${wait_message}" "${success_message}" "${error_message}"
+    return $?
 }
 
 function wait_for_csv() {
@@ -312,7 +351,7 @@ function wait_for_cscr_status(){
     local namespace=$1
     local name=$2
     local condition="${OC} -n ${namespace} get commonservice ${name} --no-headers --ignore-not-found -o jsonpath='{.status.phase}' | grep 'Succeeded'"
-    local retries=100
+    local retries=150
     local sleep_time=6
     local total_time_mins=$(( sleep_time * retries / 60))
     local wait_message="Waiting for CommonService CR ${name} in ${namespace} to be ready"
@@ -473,11 +512,11 @@ function patch_watch_namespace() {
 function wait_for_deployment() {
     local namespace=$1
     local name=$2
+    local retries="${3:-10}"
     local needReplicas=$(${OC} -n ${namespace} get deployment ${name} --no-headers --ignore-not-found -o jsonpath='{.spec.replicas}' | awk '{print $1}')
     local readyReplicas="${OC} -n ${namespace} get deployment ${name} --no-headers --ignore-not-found -o jsonpath='{.status.readyReplicas}' | grep '${needReplicas}'"
     local replicas="${OC} -n ${namespace} get deployment ${name} --no-headers --ignore-not-found -o jsonpath='{.status.replicas}' | grep '${needReplicas}'"
     local condition="(${readyReplicas} && ${replicas})"
-    local retries=10
     local sleep_time=30
     local total_time_mins=$(( sleep_time * retries / 60))
     local wait_message="Waiting for Deployment ${name} to be ready"
@@ -498,7 +537,8 @@ function wait_for_licensing_instance_deployment() {
         if [ -z "$ns" ]; then
             info "RETRYING: Waiting for Deployment ibm-licensing-service-instance to be ready (${retries} left)"
         else
-          break
+            info "Found licensing instance"
+            break
         fi
 
         ((retries--))
@@ -615,6 +655,28 @@ function get_catalogsource() {
         # Extracting the values using string manipulation
         catalog_source=$(echo "$result" | awk -F': ' '{print $2}' | awk -F',' '{print $1}')
         catalog_namespace=$(echo "$result" | awk -F': ' '{print $NF}')
+    elif [[ count -eq 2 ]]; then
+        # If there are two catalog sources, 
+        # case 1: "catalog_source_1" and "catalog_source_2", we return both of them
+        # case 2: "certified-operators" and "catalog_source_2", we only return "catalog_source_2"
+        # Split the result into lines
+        IFS=$'\n' read -rd '' -a lines <<< "$result"
+
+        for ((i = 0; i < ${#lines[@]}; i+=2)); do
+            name_line=${lines[$i]}
+            ns_line=${lines[$i+1]}
+            name=$(echo "$name_line" | awk -F': ' '{print $2}')
+            ns=$(echo "$ns_line" | awk -F': ' '{print $2}')
+            # If the catalog source is not "certified-operators", we use it
+            if [[ "$name" != "certified-operators" ]]; then
+                catalog_source=$name
+                catalog_namespace=$ns
+            else
+                # If the catalog source is "certified-operators", we skip it
+                count=1
+                continue
+            fi
+        done
     fi
     echo "$count $catalog_source $catalog_namespace"
 }
@@ -751,10 +813,15 @@ function cm_smoke_test(){
     cleanup_cm_resources $issuer_name $cert_name $sercret_name $namespace
     create_issuer $issuer_name $namespace
     create_certificate $issuer_name $cert_name $sercret_name $namespace
-    wait_for_issuer $issuer_name $namespace
-    wait_for_certificate $cert_name $namespace
-    if [[ $? -eq 0 ]]; then
-        cleanup_cm_resources $issuer_name $cert_name $sercret_name $namespace
+    check_for_issuer $issuer_name $namespace
+    ret1=$?
+    check_for_certificate $cert_name $namespace
+    ret2=$?
+    cleanup_cm_resources $issuer_name $cert_name $sercret_name $namespace
+    if [[ $ret1 -eq 0 && $ret2 -eq 0 ]]; then
+        return 0
+    else
+        return 1
     fi
 }
 
@@ -1043,6 +1110,12 @@ function cleanup_webhook() {
     info "Deleting ValidatingWebhookConfiguration..."
     ${OC} delete ValidatingWebhookConfiguration ibm-cs-ns-mapping-webhook-configuration --ignore-not-found
 
+}
+
+function cleanup_webhook_service() {
+    local control_ns=$1
+    info "Deleting ibm-common-service-webhook-service"
+    ${OC} delete service ibm-common-service-webhook -n $control_ns --ignore-not-found
 }
 
 # Clean up secretshare deployment and CR in service_ns
