@@ -239,6 +239,29 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 		return ctrl.Result{}, statusErr
 	}
 
+	// Build desired state from all CommonService CRs and update OperandConfig
+	klog.Info("Building desired state from all CommonService CRs")
+	newConfigs, serviceControllerMapping, err := r.buildDesiredStateFromAllCRs(ctx)
+	if err != nil {
+		if statusErr := r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
+			klog.Error(statusErr)
+		}
+		klog.Errorf("Failed to build desired state from CRs: %v", err)
+		return ctrl.Result{}, err
+	}
+
+	// Update OperandConfig with the aggregated configurations
+	klog.Info("Updating OperandConfig with aggregated configurations")
+	if isEqual, err := r.updateOperandConfig(ctx, newConfigs, serviceControllerMapping); err != nil {
+		if statusErr := r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
+			klog.Error(statusErr)
+		}
+		klog.Errorf("Failed to update OperandConfig: %v", err)
+		return ctrl.Result{}, err
+	} else if isEqual {
+		klog.V(2).Info("No changes detected in OperandConfig after applying CommonService configurations")
+	}
+
 	// Generate Issuer and Certificate CR
 	if statusErr = r.Bootstrap.DeployCertManagerCR(); statusErr != nil {
 		klog.Errorf("Failed to deploy cert manager CRs: %v", statusErr)
