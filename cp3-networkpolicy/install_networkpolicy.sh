@@ -127,8 +127,8 @@ function print_usage() {
     echo "   -lsr, --licensing-svc-reporter-namespace string      License Service Reporter namespace. No default value"
     echo "   -flink, --flink-namespace string                     Flink namespace. No default value"
     echo "   -opensearch, --opensearch-namespace string           Opensearch namespace. No default value"
-    echo "   -events, --events-namespace string                   Events namespace. No default value"
-    echo "   -kafka, --kafka-instance-name string                 Kafka instance name (ibmevents.ibm.com CR name). Required when -events is set"
+    echo "   -events, --events-namespace string                   Events namespace. Optional, no default value"
+    echo "   -kafka, --kafka-instance-name string            Kafka instance name (ibmevents.ibm.com CR name). Required when -events is set"
     echo "   -u, --uninstall                                      Uninstall both ingress and egress IBM Common Services Network Policies"
     echo "   -e, --egress                                         Deploy egress NetworkPolicies. Without this option, only ingress NetworkPolicies are deployed"
     echo "   --skipIAM                                            Skip installing network policies with for IAM services, Default is false"
@@ -306,22 +306,19 @@ function check_prereqs() {
         fi
     fi
 
-    # if EVENTS_NAMESPACE is not specified, use CS_NAMESPACE
-    if [[ -z "${EVENTS_NAMESPACE}" && ! -z "${CS_NAMESPACE}" ]]; then
-        EVENTS_NAMESPACE=${CS_NAMESPACE}
-
+    # if EVENTS_NAMESPACE is specified, check existence and create if needed
+    if [[ ! -z "${EVENTS_NAMESPACE}" ]]; then
         # check existence of EVENTS_NAMESPACE
         events_namespace_exists=$(oc get project "${EVENTS_NAMESPACE}" 2> /dev/null)
         if [ $? -ne 0 ]; then
             info "Creating Events namespace: ${EVENTS_NAMESPACE}"
             oc create namespace "${EVENTS_NAMESPACE}"
         fi
-    fi
-
-    # if EVENTS_NAMESPACE is specified but KAFKA_INSTANCE_NAME is not, use default name
-    if [[ ! -z "${EVENTS_NAMESPACE}" && -z "${KAFKA_INSTANCE_NAME}" ]]; then
-        KAFKA_INSTANCE_NAME="my-cluster"
-        warning "Kafka instance name not specified, using default: ${KAFKA_INSTANCE_NAME}"
+        
+        # if EVENTS_NAMESPACE is specified, KAFKA_INSTANCE_NAME must also be specified
+        if [[ -z "${KAFKA_INSTANCE_NAME}" ]]; then
+            error "Kafka instance name (-kafka) must be specified when events namespace (-events) is provided"
+        fi
     fi
 
 }
