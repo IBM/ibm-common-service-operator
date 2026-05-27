@@ -317,7 +317,7 @@ function check_prereqs() {
         
         # if EVENTS_NAMESPACE is specified, KAFKA_INSTANCE_NAME must also be specified
         if [[ -z "${KAFKA_INSTANCE_NAME}" ]]; then
-            error "Kafka instance name (-kafka) must be specified when events namespace (-events) is provided"
+            error "Kafka instance name (-kafka or --kafka-instance-name) must be specified when events namespace (-events) is provided"
         fi
     fi
 
