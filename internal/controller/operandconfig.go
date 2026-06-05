@@ -295,6 +295,10 @@ func mergeChangedMapWithExtremeSize(key string, defaultMap interface{}, changedM
 				defaultMapRef := defaultMap.([]interface{})
 				changedMapRef := changedMap.([]interface{})
 				for i := range changedMapRef {
+					// Check if defaultMapRef has enough elements to avoid index out of range panic
+					if i >= len(defaultMapRef) {
+						continue
+					}
 					for newKey := range changedMapRef[i].(map[string]interface{}) {
 						if _, ok := defaultMapRef[i].(map[string]interface{}); ok {
 							mergeChangedMapWithExtremeSize(newKey, defaultMapRef[i].(map[string]interface{})[newKey], changedMapRef[i].(map[string]interface{})[newKey], finalMap[key].([]interface{})[i].(map[string]interface{}), extreme)
