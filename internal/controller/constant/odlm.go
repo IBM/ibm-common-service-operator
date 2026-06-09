@@ -1788,6 +1788,20 @@ spec:
     installPlanApproval: {{ .ApprovalMode }}
     operatorConfig: cloud-native-postgresql-operator-config
     configName: cloud-native-postgresql
+  - channel: stable-v1.28
+    fallbackChannels:
+      - stable-v1.25
+      - stable-v1.22
+      - stable
+    name: cloud-native-postgresql-v1.28
+    namespace: "{{ .CPFSNs }}"
+    packageName: cloud-native-postgresql
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    operatorConfig: cloud-native-postgresql-operator-config
+    configName: cloud-native-postgresql
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: alpha
     name: ibm-user-data-services-operator
     namespace: "{{ .CPFSNs }}"
