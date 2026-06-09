@@ -284,8 +284,9 @@ metadata:
     status-monitored-services: {{ .StatusMonitoredServices }}
 spec:
   operators:
-  - channel: stable-v1.25
+  - channel: stable-v1.28
     fallbackChannels:
+      - stable-v1.25
       - stable-v1.22
       - stable
     installPlanApproval: {{ .ApprovalMode }}
