@@ -83,6 +83,7 @@ type Bootstrap struct {
 	CSOperators          []CSOperator
 	CSData               apiv3.CSData
 	configMerger         ConfigMergerFunc
+	CSInstance           *apiv3.CommonService // CommonService CR instance for owner references
 }
 
 // CanI performs a SelfSubjectAccessReview (SSAR) to check whether the operator service account
@@ -241,6 +242,9 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 
 // InitResources initialize resources at the bootstrap of operator
 func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLMCRs bool) error {
+	// Set the CommonService instance for owner references
+	b.CSInstance = instance
+	
 	installPlanApproval := instance.Spec.InstallPlanApproval
 	userManagedOption := WithUserManagedOverridesFromConfigs(instance.Spec.OperatorConfigs)
 
@@ -595,6 +599,87 @@ func (b *Bootstrap) CreateOrUpdateFromJson(objectTemplate string, alwaysUpdate .
 	return nil
 }
 
+// shouldAddOwnerReference determines if a resource should have an owner reference added
+func (b *Bootstrap) shouldAddOwnerReference(obj *unstructured.Unstructured) bool {
+	if b.CSInstance == nil {
+		return false
+	}
+
+	gvk := obj.GetObjectKind().GroupVersionKind()
+	name := obj.GetName()
+
+	// ConfigMaps that need owner references
+	if gvk.Kind == "ConfigMap" && gvk.Version == "v1" && gvk.Group == "" {
+		configMapsNeedingOwner := []string{
+			"cloud-native-postgresql-image-list",
+			"cs-keycloak-theme",
+			constant.IBMCPPCONFIG, // "ibm-cpp-config"
+			constant.NamespaceScopeConfigmapName, // "namespace-scope"
+		}
+		for _, cmName := range configMapsNeedingOwner {
+			if name == cmName {
+				return true
+			}
+		}
+	}
+
+	// Certificate resources that need owner references
+	if gvk.Kind == "Certificate" && gvk.Group == "cert-manager.io" {
+		if name == constant.CSCACertificate { // "cs-ca-certificate"
+			return true
+		}
+	}
+
+	// Secret resources that need owner references
+	if gvk.Kind == "Secret" && gvk.Version == "v1" && gvk.Group == "" {
+		if name == "cs-ca-certificate-secret" {
+			return true
+		}
+	}
+
+	return false
+}
+
+// addOwnerReference adds an owner reference to the object if appropriate
+func (b *Bootstrap) addOwnerReference(obj *unstructured.Unstructured) error {
+	if !b.shouldAddOwnerReference(obj) {
+		return nil
+	}
+
+	if b.CSInstance == nil {
+		klog.V(2).Infof("Skipping owner reference for %s/%s: CSInstance is nil", obj.GetNamespace(), obj.GetName())
+		return nil
+	}
+
+	// Create owner reference
+	ownerRef := metav1.OwnerReference{
+		APIVersion:         b.CSInstance.APIVersion,
+		Kind:               b.CSInstance.Kind,
+		Name:               b.CSInstance.Name,
+		UID:                b.CSInstance.UID,
+		Controller:         func() *bool { t := true; return &t }(),
+		BlockOwnerDeletion: func() *bool { t := true; return &t }(),
+	}
+
+	// Get existing owner references
+	existingOwnerRefs := obj.GetOwnerReferences()
+	
+	// Check if owner reference already exists
+	for _, ref := range existingOwnerRefs {
+		if ref.UID == ownerRef.UID {
+			klog.V(2).Infof("Owner reference already exists for %s/%s", obj.GetNamespace(), obj.GetName())
+			return nil
+		}
+	}
+
+	// Add the new owner reference
+	existingOwnerRefs = append(existingOwnerRefs, ownerRef)
+	obj.SetOwnerReferences(existingOwnerRefs)
+	
+	klog.Infof("Added owner reference to %s %s/%s", obj.GetKind(), obj.GetNamespace(), obj.GetName())
+	return nil
+}
+
 func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...bool) error {
 	objects, err := util.YamlToObjects(yamlContent)
 	if err != nil {
@@ -605,6 +690,11 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 
 	for _, obj := range objects {
 		gvk := obj.GetObjectKind().GroupVersionKind()
+
+		// Add owner reference if appropriate
+		if err := b.addOwnerReference(obj); err != nil {
+			klog.Errorf("Failed to add owner reference to %s/%s: %v", obj.GetNamespace(), obj.GetName(), err)
+		}
 
 		objInCluster, err := b.GetObject(obj)
 		if errors.IsNotFound(err) {
@@ -669,6 +759,12 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 				}
 				if newSpec, found := obj.Object["spec"]; found {
 					objInCluster.Object["spec"] = newSpec
+				}
+				// Ensure owner reference is set on update
+				if b.shouldAddOwnerReference(objInCluster) {
+					if err := b.addOwnerReference(objInCluster); err != nil {
+						klog.Errorf("Failed to add owner reference during update to %s/%s: %v", objInCluster.GetNamespace(), objInCluster.GetName(), err)
+					}
 				}
 				if err := b.UpdateObject(objInCluster); err != nil {
 					errMsg = err
