@@ -83,6 +83,7 @@ type Bootstrap struct {
 	CSOperators          []CSOperator
 	CSData               apiv3.CSData
 	configMerger         ConfigMergerFunc
+	CSInstance           *apiv3.CommonService // CommonService CR instance for owner references
 }
 
 // CanI performs a SelfSubjectAccessReview (SSAR) to check whether the operator service account
@@ -241,6 +242,9 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 
 // InitResources initialize resources at the bootstrap of operator
 func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLMCRs bool) error {
+	// Set the CommonService instance for owner references
+	b.CSInstance = instance
+	
 	installPlanApproval := instance.Spec.InstallPlanApproval
 	userManagedOption := WithUserManagedOverridesFromConfigs(instance.Spec.OperatorConfigs)
 
@@ -606,6 +610,11 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 	for _, obj := range objects {
 		gvk := obj.GetObjectKind().GroupVersionKind()
 
+		// Add owner reference if appropriate
+		if err := b.addOwnerReference(obj); err != nil {
+			klog.Errorf("Failed to add owner reference to %s/%s: %v", obj.GetNamespace(), obj.GetName(), err)
+		}
+
 		objInCluster, err := b.GetObject(obj)
 		if errors.IsNotFound(err) {
 			klog.V(2).Infof("Creating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
@@ -669,6 +678,12 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 				}
 				if newSpec, found := obj.Object["spec"]; found {
 					objInCluster.Object["spec"] = newSpec
+				}
+				// Ensure owner reference is set on update
+				if b.shouldAddOwnerReference(objInCluster) {
+					if err := b.addOwnerReference(objInCluster); err != nil {
+						klog.Errorf("Failed to add owner reference during update to %s/%s: %v", objInCluster.GetNamespace(), objInCluster.GetName(), err)
+					}
 				}
 				if err := b.UpdateObject(objInCluster); err != nil {
 					errMsg = err
