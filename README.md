@@ -19,8 +19,9 @@ Red Hat OpenShift Container Platform 4.3 or newer installed on one of the follow
    - Linux on Power (ppc64le)
 
 ## Operator versions
+ 
+ - 4.18.2
 
- - 4.18.1
 
 ## Prerequisites
 
