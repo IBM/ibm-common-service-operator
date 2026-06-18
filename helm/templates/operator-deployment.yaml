@@ -64,7 +64,9 @@ metadata:
             "namespace": "{{ .Values.global.operatorNamespace }}"
           },
           "data": {
+            {{- if .Values.global.domainName }}
             "domain_name": "{{ .Values.global.domainName }}",
+            {{- end }}
             "kubernetes_cluster_type": "{{ .Values.global.clusterType }}"
           }
         },
@@ -76,7 +78,9 @@ metadata:
             "namespace": "{{ .Values.global.instanceNamespace }}"
           },
           "data": {
+            {{- if .Values.global.domainName }}
             "domain_name": "{{ .Values.global.domainName }}",
+            {{- end }}
             "kubernetes_cluster_type": "{{ .Values.global.clusterType }}"
           }
         }

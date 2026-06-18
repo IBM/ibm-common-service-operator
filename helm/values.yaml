@@ -24,4 +24,4 @@ global:
   imagePullSecret: ibm-entitlement-key
   instanceNamespace:
   clusterType: ocp
-  domainName: ""
+  domainName: 
