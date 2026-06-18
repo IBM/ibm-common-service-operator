@@ -194,6 +194,7 @@ spec:
      - Linux on IBM Z and LinuxONE
 
     ## Operator versions
+       
      - 4.18.2
 
 
