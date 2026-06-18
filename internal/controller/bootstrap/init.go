@@ -500,8 +500,8 @@ func (b *Bootstrap) CreateCsCR() error {
 	return nil
 }
 
-func (b *Bootstrap) CreateCsCRNoOLM() error {
-	klog.V(2).Infof("creating cs cr")
+func (b *Bootstrap) CreateCRNoOLM() error {
+	klog.V(2).Infof("creating cs cr and ibm-cpp configmap")
 
 	cs := util.NewUnstructured("operator.ibm.com", "CommonService", "v3")
 	cs.SetName("common-service")
@@ -553,7 +553,8 @@ func (b *Bootstrap) CreateOrUpdateFromJson(objectTemplate string, alwaysUpdate .
 		}
 
 		spec := cr.Object["spec"]
-		if spec == "" {
+		data := cr.Object["data"]
+		if spec == "" || data == "" {
 			continue
 		}
 

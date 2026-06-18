@@ -55,6 +55,30 @@ metadata:
             ]
             {{- end }}
           }
+        },
+        {
+          "apiVersion": "v1",
+          "kind": "ConfigMap",
+          "metadata": {
+            "name": "ibm-cpp-config",
+            "namespace": "{{ .Values.global.operatorNamespace }}"
+          },
+          "data": {
+            "domain_name": "{{ .Values.global.domainName }}",
+            "kubernetes_cluster_type": "{{ .Values.global.clusterType }}"
+          }
+        },
+        {
+          "apiVersion": "v1",
+          "kind": "ConfigMap",
+          "metadata": {
+            "name": "ibm-cpp-config",
+            "namespace": "{{ .Values.global.instanceNamespace }}"
+          },
+          "data": {
+            "domain_name": "{{ .Values.global.domainName }}",
+            "kubernetes_cluster_type": "{{ .Values.global.clusterType }}"
+          }
         }
       ]
 spec: 
