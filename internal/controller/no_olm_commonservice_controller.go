@@ -83,6 +83,25 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 		}
 	}()
 
+	typeCorrect, err := r.Bootstrap.CheckClusterType(util.GetServicesNamespace(r.Reader))
+	if err != nil {
+		klog.Errorf("Failed to verify cluster type  %v", err)
+		if err := r.updatePhase(ctx, instance, apiv3.CRFailed); err != nil {
+			klog.Error(err)
+		}
+		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
+		return ctrl.Result{}, err
+	}
+
+	if !typeCorrect {
+		klog.Error("Cluster type specificed in the ibm-cpp-config isn't correct")
+		if statusErr = r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
+			klog.Error(statusErr)
+		}
+		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
+		return ctrl.Result{}, statusErr
+	}
+
 	operatorDeployed, servicesDeployed := r.Bootstrap.CheckDeployStatus(ctx)
 	instance.UpdateConfigStatus(&r.Bootstrap.CSData, operatorDeployed, servicesDeployed)
 
