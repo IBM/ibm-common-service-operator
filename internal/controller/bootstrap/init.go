@@ -552,6 +552,11 @@ func (b *Bootstrap) CreateOrUpdateFromJson(objectTemplate string, alwaysUpdate .
 			continue
 		}
 
+		namespace := cr.GetNamespace()
+		if namespace == "" {
+			continue
+		}
+
 		spec := cr.Object["spec"]
 		data := cr.Object["data"]
 		if spec == "" || data == "" {
@@ -563,7 +568,7 @@ func (b *Bootstrap) CreateOrUpdateFromJson(objectTemplate string, alwaysUpdate .
 
 		if err := b.Client.Get(ctx, types.NamespacedName{
 			Name:      name,
-			Namespace: b.CSData.OperatorNs,
+			Namespace: namespace,
 		}, &crInCluster); err != nil && !errors.IsNotFound(err) {
 			return err
 		} else if errors.IsNotFound(err) {
