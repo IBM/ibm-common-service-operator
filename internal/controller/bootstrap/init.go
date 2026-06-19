@@ -515,12 +515,34 @@ func (b *Bootstrap) CreateCRNoOLM() error {
 	annotations := deploy.GetAnnotations()
 	almExample := annotations["alm-examples"]
 
-	if _, err := b.GetObject(cs); errors.IsNotFound(err) { // Only if it's a fresh install
-		// Fresh Intall: No ODLM and NO CR
-		return b.CreateOrUpdateFromJson(almExample)
+	// Check if CommonService CR exists
+	csExists := true
+	if _, err := b.GetObject(cs); errors.IsNotFound(err) {
+		csExists = false
 	} else if err != nil {
 		return err
 	}
+
+	// Check if ibm-cpp-config ConfigMap exists in ServicesNs
+	cppConfigExists := true
+	cppConfig := &corev1.ConfigMap{}
+	cppConfigKey := types.NamespacedName{
+		Name:      constant.IBMCPPCONFIG,
+		Namespace: b.CSData.ServicesNs,
+	}
+	if err := b.Reader.Get(ctx, cppConfigKey, cppConfig); errors.IsNotFound(err) {
+		cppConfigExists = false
+	} else if err != nil {
+		return err
+	}
+
+	// If either CommonService CR or ibm-cpp-config ConfigMap doesn't exist, create all resources from alm-examples
+	if !csExists || !cppConfigExists {
+		klog.Infof("Creating resources from alm-examples (csExists=%v, cppConfigExists=%v)", csExists, cppConfigExists)
+		return b.CreateOrUpdateFromJson(almExample)
+	}
+
+	klog.V(2).Infof("CommonService CR and ibm-cpp-config ConfigMap already exist, skipping creation")
 	return nil
 }
 
@@ -559,7 +581,8 @@ func (b *Bootstrap) CreateOrUpdateFromJson(objectTemplate string, alwaysUpdate .
 
 		spec := cr.Object["spec"]
 		data := cr.Object["data"]
-		if spec == "" && data == "" {
+		if spec == nil && data == nil {
+			klog.V(2).Infof("Skipping object %s/%s: neither spec nor data found", cr.GetNamespace(), cr.GetName())
 			continue
 		}
 

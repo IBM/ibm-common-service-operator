@@ -60,20 +60,14 @@ metadata:
           "apiVersion": "v1",
           "kind": "ConfigMap",
           "metadata": {
-            "name": "ibm-cpp-config",
-            "namespace": "{{ .Values.global.operatorNamespace }}"
-          },
-          "data": {
-            {{- if .Values.global.domainName }}
-            "domain_name": "{{ .Values.global.domainName }}",
-            {{- end }}
-            "kubernetes_cluster_type": "{{ .Values.global.clusterType }}"
-          }
-        },
-        {
-          "apiVersion": "v1",
-          "kind": "ConfigMap",
-          "metadata": {
+            "labels": {
+                "component-id": "{{ .Chart.Name }}",
+                "operator.ibm.com/managedByCsOperator": "true"
+                {{- range $key, $val := .Values.cpfs.labels }}
+                ,
+                "{{ $key }}": "{{ $val }}"
+                {{- end}}
+              },
             "name": "ibm-cpp-config",
             "namespace": "{{ .Values.global.instanceNamespace }}"
           },
@@ -81,7 +75,8 @@ metadata:
             {{- if .Values.global.domainName }}
             "domain_name": "{{ .Values.global.domainName }}",
             {{- end }}
-            "kubernetes_cluster_type": "{{ .Values.global.clusterType }}"
+            "kubernetes_cluster_type": "{{ .Values.global.clusterType }}",
+            "storageclass.default": "{{ .Values.global.blockStorageClass }}"
           }
         }
       ]
