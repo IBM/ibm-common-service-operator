@@ -559,7 +559,7 @@ func (b *Bootstrap) CreateOrUpdateFromJson(objectTemplate string, alwaysUpdate .
 
 		spec := cr.Object["spec"]
 		data := cr.Object["data"]
-		if spec == "" || data == "" {
+		if spec == "" && data == "" {
 			continue
 		}
 
