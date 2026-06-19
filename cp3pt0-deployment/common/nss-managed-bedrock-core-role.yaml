@@ -806,6 +806,13 @@ rules:
     resources:
       - deployments/scale
   - verbs:
+      - patch
+      - update
+    apiGroups:
+      - ''
+    resources:
+      - pods/resize
+  - verbs:
       - create
       - patch
     apiGroups:
