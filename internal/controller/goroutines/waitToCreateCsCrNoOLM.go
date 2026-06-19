@@ -30,7 +30,7 @@ import (
 // WaitToCreateCsCR waits for the creation of the CommonService CR in the operator namespace.
 func WaitToCreateCRNoOLM(bs *bootstrap.Bootstrap) {
 	for {
-		klog.Infof("Start to Create CommonService CR in the namespace %s", bs.CSData.OperatorNs)
+		klog.Infof("Start to Create CommonService CR and configmap in the namespace %s", bs.CSData.OperatorNs)
 		if err := bs.CreateCRNoOLM(); err != nil {
 			if strings.Contains(fmt.Sprint(err), "failed to call webhook") {
 				klog.Infof("Webhook Server not ready, waiting for it to be ready : %v", err)

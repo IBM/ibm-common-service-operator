@@ -573,6 +573,7 @@ func (b *Bootstrap) CreateOrUpdateFromJson(objectTemplate string, alwaysUpdate .
 			return err
 		} else if errors.IsNotFound(err) {
 			// Create Custom Resource
+			klog.Infof("creating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", cr.GetName(), cr.GetNamespace(), cr.GetKind(), cr.GetObjectKind().GroupVersionKind().Group, cr.GetObjectKind().GroupVersionKind().Version)
 			if err := b.CreateObject(&cr); err != nil {
 				return err
 			}
