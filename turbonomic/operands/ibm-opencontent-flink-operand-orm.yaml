@@ -1,0 +1,51 @@
+apiVersion: devops.turbonomic.io/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: flink-jobmanager-orm
+  namespace: $namespace
+spec:
+  mappings:
+    patterns:
+      - owned:
+          apiVersion: apps/v1
+          kind: ReplicaSet
+          name: job-manager
+          path: '.spec.containers[?(@.name=="tls-proxy")].resources'
+        ownerPath: .spec.containers.resources
+      - owned:
+          apiVersion: apps/v1
+          kind: ReplicaSet
+          name: job-manager
+          path: '.spec.containers[?(@.name=="flink-main-container")].resources'
+        ownerPath: .spec.containers.resources
+    selectors:
+      flink_deploy:
+        matchLabels:
+          app.kubernetes.io/name: ibm-opencontent-flink
+  owner:
+    apiVersion: flink.ibm.com/v1beta1
+    kind: FlinkDeployment
+    name: test-flink-deployment
+---
+apiVersion: devops.turbonomic.io/v1alpha1
+kind: OperatorResourceMapping
+metadata:
+  name: flink-taskmanager-orm
+  namespace: $namespace
+spec:
+  mappings:
+    patterns:
+      - owned:
+          apiVersion: apps/v1
+          kind: ReplicaSet
+          name: taskmanager
+          path: '.spec.containers[?(@.name=="flink-main-container")].resources'
+        ownerPath: '.spec.containers.resources'
+    selectors:
+      flink_deploy:
+        matchLabels:
+          app.kubernetes.io/name: ibm-opencontent-flink
+  owner:
+    apiVersion: flink.ibm.com/v1beta1
+    kind: FlinkDeployment
+    name: test-flink-deployment
