@@ -28,10 +28,10 @@ metadata:
   annotations:
     version: {{ .Version }}
 data:
-  ibm-postgresql-14-operand-image: icr.io/cpopen/edb/postgresql:14.22@sha256:6d74c43c7f6d016c28484d252607feeb2b1c5a2a0539db60bc685718d55cc770
-  ibm-postgresql-15-operand-image: icr.io/cpopen/edb/postgresql:15.17@sha256:1f31a3ab18f4f9d0ef852f4dd22300746150912e5a4731ed07195f9c79674e40
-  ibm-postgresql-16-operand-image: icr.io/cpopen/edb/postgresql:16.13@sha256:c632b5ef78ab6686939e8f76543c08dac8cb77e7b30578b21eb0a0c8d3b0b020
-  ibm-postgresql-17-operand-image: icr.io/cpopen/edb/postgresql:17.9@sha256:69e19c5ee470943d281445c670dac682e4963362ca9e8638b2623cbf27124e33
-  ibm-postgresql-18-operand-image: icr.io/cpopen/edb/postgresql:18.3@sha256:6a2e4c1108532a28d89b83e33d8206e543b63372e31f6831b997740de36d3b79
-  edb-postgres-license-provider-image: cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:fd61ba81bd15d53e79ed8bc7467acf4e92b813dc8dac916e30231468efca2afe
+  ibm-postgresql-14-operand-image: icr.io/cpopen/edb/postgresql:14.23@sha256:063c8a38d80a2b34f06ccdf4e432424a2d1257cddbefb87794b39ae505f8c921
+  ibm-postgresql-15-operand-image: icr.io/cpopen/edb/postgresql:15.18@sha256:3d2f9ceb5f3414881d67a78f921303e47b2eb90601c0a938fea6d16611d26b0f
+  ibm-postgresql-16-operand-image: icr.io/cpopen/edb/postgresql:16.14@sha256:e32d271e1d9635b6d9b9b46d84f4984a28d3cc863d828a4fbb42ec082c5976bd
+  ibm-postgresql-17-operand-image: icr.io/cpopen/edb/postgresql:17.10@sha256:256e0a72bbcd490af6071e82d8fb1697a24835223cd186b2673b72f6d8add4d9
+  ibm-postgresql-18-operand-image: icr.io/cpopen/edb/postgresql:18.4@sha256:8b046402ce495e262f6589b4ad16d960e190f151a42751461f5939b2275511db
+  edb-postgres-license-provider-image: cp.icr.io/cp/cpd/edb-postgres-license-provider@sha256:b259810099ca7a4150f00ccaa870b02890d1d7f022f3ac330918d515968a033b
 `
