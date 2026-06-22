@@ -31,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
+	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/bootstrap"
 	util "github.com/IBM/ibm-common-service-operator/v4/internal/controller/common"
 	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/configurationcollector"
 	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/constant"
@@ -155,9 +156,6 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 		return ctrl.Result{}, err
 	}
 
-	// Temporary solution for EDB image ConfigMap reference
-	klog.Infof("It is a non-OLM mode, skip creating EDB Image ConfigMap...")
-
 	klog.Infof("Start to Create ODLM CR in the namespace %s", r.Bootstrap.CSData.OperatorNs)
 
 	var forceUpdateODLMCRs bool
@@ -171,7 +169,8 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 	// Install/update Opreg and Opcon resources before installing ODLM if CRDs exist
 	if existOpreg && existOpcon {
 		klog.Info("Installing/Updating OperandRegistry")
-		if err := r.Bootstrap.InstallOrUpdateOpreg(ctx, ""); err != nil {
+		userManagedOption := bootstrap.WithUserManagedOverridesFromConfigs(instance.Spec.OperatorConfigs)
+		if err := r.Bootstrap.InstallOrUpdateOpreg(ctx, "", userManagedOption); err != nil {
 			klog.Errorf("Fail to Installing/Updating OperandConfig: %v", err)
 			return ctrl.Result{}, err
 		}
