@@ -55,6 +55,29 @@ metadata:
             ]
             {{- end }}
           }
+        },
+        {
+          "apiVersion": "v1",
+          "kind": "ConfigMap",
+          "metadata": {
+            "labels": {
+                "component-id": "{{ .Chart.Name }}",
+                "operator.ibm.com/managedByCsOperator": "true"
+                {{- range $key, $val := .Values.cpfs.labels }}
+                ,
+                "{{ $key }}": "{{ $val }}"
+                {{- end}}
+              },
+            "name": "ibm-cpp-config",
+            "namespace": "{{ .Values.global.instanceNamespace }}"
+          },
+          "data": {
+            {{- if .Values.global.domainName }}
+            "domain_name": "{{ .Values.global.domainName }}",
+            {{- end }}
+            "kubernetes_cluster_type": "{{ .Values.global.clusterType }}",
+            "storageclass.default": "{{ .Values.global.blockStorageClass }}"
+          }
         }
       ]
 spec: 
