@@ -24,6 +24,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
@@ -500,12 +501,8 @@ func (b *Bootstrap) CreateCsCR() error {
 	return nil
 }
 
-func (b *Bootstrap) CreateCRNoOLM() error {
-	klog.V(2).Infof("creating cs cr and ibm-cpp configmap")
-
-	cs := util.NewUnstructured("operator.ibm.com", "CommonService", "v3")
-	cs.SetName("common-service")
-	cs.SetNamespace(b.CSData.OperatorNs)
+func (b *Bootstrap) CreateResourcesFromAlmExamples() error {
+	klog.Infof("creating resources from alm-examples")
 
 	deploy, err := b.GetDeployment()
 	if err != nil {
@@ -514,112 +511,77 @@ func (b *Bootstrap) CreateCRNoOLM() error {
 
 	annotations := deploy.GetAnnotations()
 	almExample := annotations["alm-examples"]
-
-	// Check if CommonService CR exists
-	csExists := true
-	if _, err := b.GetObject(cs); errors.IsNotFound(err) {
-		csExists = false
-	} else if err != nil {
-		return err
+	if almExample == "" {
+		return fmt.Errorf("alm-examples annotation is empty")
 	}
 
-	// Check if ibm-cpp-config ConfigMap exists in ServicesNs
-	cppConfigExists := true
-	cppConfig := &corev1.ConfigMap{}
-	cppConfigKey := types.NamespacedName{
-		Name:      constant.IBMCPPCONFIG,
-		Namespace: b.CSData.ServicesNs,
-	}
-	if err := b.Reader.Get(ctx, cppConfigKey, cppConfig); errors.IsNotFound(err) {
-		cppConfigExists = false
-	} else if err != nil {
-		return err
-	}
-
-	// If either CommonService CR or ibm-cpp-config ConfigMap doesn't exist, create all resources from alm-examples
-	if !csExists || !cppConfigExists {
-		klog.Infof("Creating resources from alm-examples (csExists=%v, cppConfigExists=%v)", csExists, cppConfigExists)
-		return b.CreateOrUpdateFromJson(almExample)
-	}
-
-	klog.V(2).Infof("CommonService CR and ibm-cpp-config ConfigMap already exist, skipping creation")
-	return nil
-}
-
-func (b *Bootstrap) CreateOrUpdateFromJson(objectTemplate string, alwaysUpdate ...bool) error {
-	klog.V(2).Infof("creating object from Json: %s", objectTemplate)
-
-	// Create a slice for crTemplates
 	var crTemplates []interface{}
-
-	// Convert CR template string to slice
-	if err := json.Unmarshal([]byte(objectTemplate), &crTemplates); err != nil {
+	if err := json.Unmarshal([]byte(almExample), &crTemplates); err != nil {
 		return err
 	}
+
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	var errs []error
 
 	for _, crTemplate := range crTemplates {
-		// Create an unstruct object for CR and request its value to CR template
-
-		forceUpdate := false
-		if len(alwaysUpdate) != 0 {
-			forceUpdate = alwaysUpdate[0]
+		crObject, ok := crTemplate.(map[string]interface{})
+		if !ok {
+			mu.Lock()
+			errs = append(errs, fmt.Errorf("invalid alm-example object type %T", crTemplate))
+			mu.Unlock()
+			continue
 		}
-		update := forceUpdate
 
 		var cr unstructured.Unstructured
-		cr.Object = crTemplate.(map[string]interface{})
+		cr.Object = crObject
 
 		name := cr.GetName()
 		if name == "" {
+			klog.V(2).Infof("Skipping object with empty name")
 			continue
 		}
 
 		namespace := cr.GetNamespace()
 		if namespace == "" {
+			klog.V(2).Infof("Skipping object %s: empty namespace", name)
 			continue
 		}
 
 		spec := cr.Object["spec"]
 		data := cr.Object["data"]
 		if spec == nil && data == nil {
-			klog.V(2).Infof("Skipping object %s/%s: neither spec nor data found", cr.GetNamespace(), cr.GetName())
+			klog.V(2).Infof("Skipping object %s/%s: neither spec nor data found", namespace, name)
 			continue
 		}
 
-		crInCluster := unstructured.Unstructured{}
-		crInCluster.SetGroupVersionKind(cr.GroupVersionKind())
+		wg.Add(1)
+		go func(obj unstructured.Unstructured) {
+			defer wg.Done()
 
-		if err := b.Client.Get(ctx, types.NamespacedName{
-			Name:      name,
-			Namespace: namespace,
-		}, &crInCluster); err != nil && !errors.IsNotFound(err) {
-			return err
-		} else if errors.IsNotFound(err) {
-			// Create Custom Resource
-			klog.Infof("creating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", cr.GetName(), cr.GetNamespace(), cr.GetKind(), cr.GetObjectKind().GroupVersionKind().Group, cr.GetObjectKind().GroupVersionKind().Version)
-			if err := b.CreateObject(&cr); err != nil {
-				return err
-			}
-			continue
-		} else {
-			// Compare version
-			v1IsLarger, convertErr := util.CompareVersion(cr.GetAnnotations()["version"], crInCluster.GetAnnotations()["version"])
-			if convertErr != nil {
-				return convertErr
-			}
-			if v1IsLarger {
-				update = true
-			}
-		}
+			gvk := obj.GetObjectKind().GroupVersionKind()
+			klog.Infof("Creating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s", obj.GetName(), obj.GetNamespace(), gvk.Kind, gvk.Group, gvk.Version)
 
-		if update {
-			klog.Infof("Updating resource with name: %s, namespace: %s, kind: %s, apiversion: %s/%s\n", cr.GetName(), cr.GetNamespace(), cr.GetKind(), cr.GetObjectKind().GroupVersionKind().Group, cr.GetObjectKind().GroupVersionKind().Version)
-			resourceVersion := crInCluster.GetResourceVersion()
-			cr.SetResourceVersion(resourceVersion)
-			if err := b.UpdateObject(&cr); err != nil {
-				return err
+			if err := b.CreateObject(&obj); err != nil {
+				if errors.IsAlreadyExists(err) {
+					klog.Infof("Resource already exists, skipping create for %s/%s, kind: %s, apiversion: %s/%s", obj.GetNamespace(), obj.GetName(), gvk.Kind, gvk.Group, gvk.Version)
+					return
+				}
+
+				mu.Lock()
+				errs = append(errs, fmt.Errorf("failed to create resource %s/%s, kind: %s, apiversion: %s/%s: %w", obj.GetNamespace(), obj.GetName(), gvk.Kind, gvk.Group, gvk.Version, err))
+				mu.Unlock()
+				return
 			}
-		}
+
+			klog.Infof("Successfully created resource %s/%s, kind: %s, apiversion: %s/%s", obj.GetNamespace(), obj.GetName(), gvk.Kind, gvk.Group, gvk.Version)
+		}(cr)
+	}
+
+	wg.Wait()
+
+	if len(errs) > 0 {
+		return fmt.Errorf("failed to create resources from alm-examples: %v", errs)
 	}
 
 	return nil
