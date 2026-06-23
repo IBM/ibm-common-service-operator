@@ -252,7 +252,7 @@ bundle-manifests: clis
 	echo "\n  # OpenShift annotations." >> bundle/metadata/annotations.yaml ;\
 	echo "  com.redhat.openshift.versions: $(OPENSHIFT_VERSIONS)" >> bundle/metadata/annotations.yaml ;\
 	$(OPERATOR_SDK) bundle validate ./bundle
-	$(YQ) eval -i '.metadata.annotations."olm.skipRange" = ">=3.3.0 <${RELEASE_VERSION}"' ${CSV_PATH}
+	$(YQ) eval -i '.metadata.annotations."olm.skipRange" = ">=4.6.0 <${RELEASE_VERSION}"' ${CSV_PATH}
 	$(YQ) eval -i '.spec.webhookdefinitions[0].deploymentName = "ibm-common-service-operator" | .spec.webhookdefinitions[1].deploymentName = "ibm-common-service-operator"' ${CSV_PATH}
 	$(YQ) eval-all -i '.spec.relatedImages = load("config/manifests/bases/ibm-common-service-operator.clusterserviceversion.yaml").spec.relatedImages' bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
 
