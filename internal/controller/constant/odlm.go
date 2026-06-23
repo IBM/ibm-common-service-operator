@@ -552,8 +552,9 @@ metadata:
     status-monitored-services: {{ .StatusMonitoredServices }}
 spec:
   operators:
-  - channel: stable-v1.25
+  - channel: stable-v1.28
     fallbackChannels:
+      - stable-v1.25
       - stable-v1.22
       - stable
     installPlanApproval: {{ .ApprovalMode }}
@@ -2676,6 +2677,20 @@ spec:
       - stable-v1.22
       - stable
     name: cloud-native-postgresql-v1.25
+    namespace: "{{ .CPFSNs }}"
+    packageName: cloud-native-postgresql
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    operatorConfig: cloud-native-postgresql-operator-config
+    configName: cloud-native-postgresql
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+  - channel: stable-v1.28
+    fallbackChannels:
+      - stable-v1.25
+      - stable-v1.22
+      - stable
+    name: cloud-native-postgresql-v1.28
     namespace: "{{ .CPFSNs }}"
     packageName: cloud-native-postgresql
     scope: public
