@@ -74,7 +74,7 @@ metadata:
           "data": {
             {{- if .Values.global.domainName }}
             "domain_name": "{{ .Values.global.domainName }}",
-            "connectionType": "{{ .Values.global.connectionType }}",
+            "connection_type": "{{ .Values.global.connectionType }}",
             {{- end }}
             "kubernetes_cluster_type": "{{ .Values.global.clusterType }}",
             "storageclass.default": "{{ .Values.global.blockStorageClass }}"
