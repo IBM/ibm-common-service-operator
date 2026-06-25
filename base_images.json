@@ -7,7 +7,7 @@
     "destStage": "edge",
     "destNamespace": "build-images",
     "destImage": "ubi9-minimal",
-    "tag": "9.7-1773939694",
+    "tag": "9.8-1782366411",
     "updatePackages": []
   },
   {
@@ -18,7 +18,7 @@
     "destStage": "edge",
     "destNamespace": "build-images",
     "destImage": "ubi9",
-    "tag": "9.7-1774227732",
+    "tag": "9.8-1782365825",
     "updatePackages": []
   },
   {
@@ -29,14 +29,54 @@
     "destStage": "edge",
     "destNamespace": "build-images",
     "destImage": "ubi9-micro",
-    "tag": "9.7-1773894938",
+    "tag": "9.8-1782363471",
     "updatePackages": []
   },
   {
     "imageType": "node",
     "sourceImage": "ubi9-minimal",
-    "sourceTag": "9.7-1773939694",
+    "sourceTag": "9.8-1782366411",
     "destImage": "node-v22-ubi9-minimal",
-    "nodeVersion": "22.22.1"
+    "nodeVersion": "22.23.1"
+  },
+  {
+    "imageType": "external",
+    "sourceRepo": "registry.access.redhat.com",
+    "sourceNamespace": "ubi10",
+    "sourceImage": "ubi-minimal",
+    "destStage": "edge",
+    "destNamespace": "build-images",
+    "destImage": "ubi10-minimal",
+    "tag": "10.2-1782283038",
+    "updatePackages": []
+  },
+  {
+    "imageType": "external",
+    "sourceRepo": "registry.access.redhat.com",
+    "sourceNamespace": "ubi10",
+    "sourceImage": "ubi",
+    "destStage": "edge",
+    "destNamespace": "build-images",
+    "destImage": "ubi10",
+    "tag": "10.2-1782277716",
+    "updatePackages": []
+  },
+  {
+    "imageType": "external",
+    "sourceRepo": "registry.access.redhat.com",
+    "sourceNamespace": "ubi10",
+    "sourceImage": "ubi-micro",
+    "destStage": "edge",
+    "destNamespace": "build-images",
+    "destImage": "ubi10-micro",
+    "tag": "10.2-1779859609",
+    "updatePackages": []
+  },
+  {
+    "imageType": "node",
+    "sourceImage": "ubi10-minimal",
+    "sourceTag": "10.2-1782283038",
+    "destImage": "node-v22-ubi10-minimal",
+    "nodeVersion": "22.23.1"
   }
 ]
