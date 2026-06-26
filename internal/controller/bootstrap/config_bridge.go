@@ -33,20 +33,27 @@ func (b *Bootstrap) SetConfigMerger(merger ConfigMergerFunc) {
 	b.configMerger = merger
 }
 
-// mergeConfigs calls the injected merger function if available
-// It also determines the largest size from ALL CommonService CRs and overrides the current CR's size
-func (b *Bootstrap) mergeConfigs(baseConfig string, cs *apiv3.CommonService) (string, error) {
-	// First, determine the largest size from all CommonService CRs
-	largestSize, err := b.getLargestSizeFromAllCRs(ctx)
-	if err != nil {
-		return "", err
-	}
+// mergeConfigs calls the injected merger function if available.
+// It also determines the largest size from ALL CommonService CRs and overrides the current CR's size.
+// A context.Context is required to propagate cancellation into the client.List call.
+// When b.Client is nil (e.g. in unit tests) the size-override step is skipped entirely.
+func (b *Bootstrap) mergeConfigs(ctx context.Context, baseConfig string, cs *apiv3.CommonService) (string, error) {
+	// Determine the largest size from all CommonService CRs — only when a live client is available.
+	// Unit tests create Bootstrap without a client; skipping avoids a nil-pointer panic there.
+	if b.Client != nil {
+		largestSize, err := b.getLargestSizeFromAllCRs(ctx)
+		if err != nil {
+			return "", err
+		}
 
-	// Override the current CR's size with the largest size if found
-	originalSize := cs.Spec.Size
-	if largestSize != "" {
-		cs.Spec.Size = largestSize
-		klog.Infof("Bootstrap: Overriding CommonService CR %s/%s size from '%s' to largest size '%s'", cs.Namespace, cs.Name, originalSize, largestSize)
+		// Work on a shallow copy to avoid mutating the caller's object.
+		if largestSize != "" {
+			csCopy := *cs
+			csCopy.Spec.Size = largestSize
+			cs = &csCopy
+			klog.Infof("Bootstrap: Overriding CommonService CR %s/%s size from '%s' to largest size '%s'",
+				cs.Namespace, cs.Name, largestSize, largestSize)
+		}
 	}
 
 	if b.configMerger != nil {

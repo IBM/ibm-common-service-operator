@@ -17,6 +17,7 @@
 package bootstrap
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -39,7 +40,7 @@ func TestSetConfigMerger_NilByDefault(t *testing.T) {
 	b := newTestBootstrap("ibm-common-services")
 	cs := &apiv3.CommonService{}
 
-	result, err := b.mergeConfigs("base-config", cs)
+	result, err := b.mergeConfigs(context.Background(), "base-config", cs)
 	require.NoError(t, err)
 	assert.Equal(t, "base-config", result,
 		"when no merger is set, mergeConfigs must return the base config unchanged")
@@ -57,7 +58,7 @@ func TestSetConfigMerger_InjectsFunction(t *testing.T) {
 
 	cs := &apiv3.CommonService{}
 
-	result, err := b.mergeConfigs("base", cs)
+	result, err := b.mergeConfigs(context.Background(), "base", cs)
 	require.NoError(t, err)
 	assert.True(t, called, "the injected merger function must be called")
 	assert.Equal(t, "merged-base", result)
@@ -75,7 +76,7 @@ func TestSetConfigMerger_PassesServicesNs(t *testing.T) {
 
 	cs := &apiv3.CommonService{}
 
-	_, err := b.mergeConfigs("config", cs)
+	_, err := b.mergeConfigs(context.Background(), "config", cs)
 	require.NoError(t, err)
 	assert.Equal(t, "my-services-ns", capturedNs,
 		"mergeConfigs must pass Bootstrap.CSData.ServicesNs to the merger function")
@@ -95,7 +96,7 @@ func TestSetConfigMerger_PassesCSInstance(t *testing.T) {
 	cs.Name = "common-service"
 	cs.Namespace = "ibm-common-services"
 
-	_, err := b.mergeConfigs("config", cs)
+	_, err := b.mergeConfigs(context.Background(), "config", cs)
 	require.NoError(t, err)
 	require.NotNil(t, capturedCS)
 	assert.Equal(t, "common-service", capturedCS.Name)
@@ -113,7 +114,7 @@ func TestSetConfigMerger_PropagatesError(t *testing.T) {
 
 	cs := &apiv3.CommonService{}
 
-	result, err := b.mergeConfigs("config", cs)
+	result, err := b.mergeConfigs(context.Background(), "config", cs)
 	assert.Error(t, err)
 	assert.Equal(t, mergeErr, err)
 	assert.Empty(t, result)
@@ -132,7 +133,7 @@ func TestSetConfigMerger_Overwrite(t *testing.T) {
 
 	cs := &apiv3.CommonService{}
 
-	result, err := b.mergeConfigs("config", cs)
+	result, err := b.mergeConfigs(context.Background(), "config", cs)
 	require.NoError(t, err)
 	assert.Equal(t, "second", result,
 		"the second SetConfigMerger call must overwrite the first")
@@ -155,7 +156,7 @@ func TestMergeConfigs_SingleStageNoRaceCondition(t *testing.T) {
 
 	cs := &apiv3.CommonService{}
 
-	result, err := b.mergeConfigs("base-opcon", cs)
+	result, err := b.mergeConfigs(context.Background(), "base-opcon", cs)
 	require.NoError(t, err)
 
 	// The result must already contain CS values — no second call needed.
