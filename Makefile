@@ -312,14 +312,16 @@ NETRC_FILE ?= $(HOME)/.netrc
 
 build-operator-image: config-docker cloudpak-theme.jar prepare-buildx ## Build the operator image.
 	@echo "Building the $(OPERATOR_IMAGE_NAME) docker image for $(LOCAL_ARCH)..."
-	@$(CONTAINER_TOOL) buildx build \
+	@NETRC_SECRET=""; \
+	if [ -f "$(NETRC_FILE)" ]; then NETRC_SECRET="--secret id=netrc,src=$(NETRC_FILE)"; fi; \
+	$(CONTAINER_TOOL) buildx build \
 		--builder $(BUILDX_BUILDER) \
 		--platform linux/$(LOCAL_ARCH) \
 		--build-arg VCS_REF=$(VCS_REF) \
 		--build-arg RELEASE_VERSION=$(RELEASE_VERSION) \
 		--build-arg TARGETOS=linux \
 		--build-arg TARGETARCH=$(LOCAL_ARCH) \
-		--secret id=netrc,src=$(NETRC_FILE) \
+		$$NETRC_SECRET \
 		-t $(LOCAL_ARCH_IMAGE) \
 		--load \
 		-f Dockerfile .

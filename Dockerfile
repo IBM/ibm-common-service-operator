@@ -21,7 +21,7 @@ COPY go.sum go.sum
 # The netrc secret provides credentials for github.ibm.com (private modules).
 # It is mounted read-only at /root/.netrc and is never baked into the image.
 # Pass it with: docker buildx build --secret id=netrc,src=$HOME/.netrc
-RUN --mount=type=secret,id=netrc,dst=/root/.netrc,mode=0400 \
+RUN --mount=type=secret,id=netrc,dst=/root/.netrc,mode=0400,required=false \
     go mod download
 
 # Copy the go source
