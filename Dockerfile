@@ -1,8 +1,16 @@
 # Build the manager binary
+# syntax=docker/dockerfile:1
 FROM docker-na-public.artifactory.swg-devops.com/hyc-cloud-private-dockerhub-docker-remote/golang:1.26.4 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 ARG GOARCH
+
+# Private modules hosted on github.ibm.com must not be looked up via the public
+# Go checksum database or proxy. Setting these here (in the build stage only)
+# means no secret is needed for sum verification.
+ENV GONOSUMDB="github.ibm.com/*" \
+    GOPRIVATE="github.ibm.com/*" \
+    GOFLAGS="-mod=mod"
 
 WORKDIR /workspace
 # Copy the Go Modules manifests
@@ -10,7 +18,11 @@ COPY go.mod go.mod
 COPY go.sum go.sum
 # cache deps before building and copying source so that we don't need to re-download as much
 # and so that source changes don't invalidate our downloaded layer
-RUN go mod download
+# The netrc secret provides credentials for github.ibm.com (private modules).
+# It is mounted read-only at /root/.netrc and is never baked into the image.
+# Pass it with: docker buildx build --secret id=netrc,src=$HOME/.netrc
+RUN --mount=type=secret,id=netrc,dst=/root/.netrc,mode=0400 \
+    go mod download
 
 # Copy the go source
 COPY cmd/main.go cmd/main.go

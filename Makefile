@@ -307,6 +307,9 @@ prepare-buildx:
 	@docker buildx inspect $(BUILDX_BUILDER) >/dev/null 2>&1 || docker buildx create --name $(BUILDX_BUILDER) --driver docker-container --use
 	@docker buildx use $(BUILDX_BUILDER)
 
+# NETRC_FILE can be overridden on the command line, e.g. NETRC_FILE=/path/to/.netrc make build-operator-image
+NETRC_FILE ?= $(HOME)/.netrc
+
 build-operator-image: config-docker cloudpak-theme.jar prepare-buildx ## Build the operator image.
 	@echo "Building the $(OPERATOR_IMAGE_NAME) docker image for $(LOCAL_ARCH)..."
 	@$(CONTAINER_TOOL) buildx build \
@@ -316,6 +319,7 @@ build-operator-image: config-docker cloudpak-theme.jar prepare-buildx ## Build t
 		--build-arg RELEASE_VERSION=$(RELEASE_VERSION) \
 		--build-arg TARGETOS=linux \
 		--build-arg TARGETARCH=$(LOCAL_ARCH) \
+		--secret id=netrc,src=$(NETRC_FILE) \
 		-t $(LOCAL_ARCH_IMAGE) \
 		--load \
 		-f Dockerfile .
