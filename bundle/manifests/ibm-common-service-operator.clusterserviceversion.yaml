@@ -34,7 +34,7 @@ metadata:
     features.operators.openshift.io/token-auth-gcp: "false"
     nss.operator.ibm.com/managed-operators: ibm-common-service-operator
     nss.operator.ibm.com/managed-webhooks: ""
-    olm.skipRange: ">=3.3.0 <4.19.2"
+    olm.skipRange: ">=4.6.0 <4.19.2"
     operatorChannel: v4.19
     operatorVersion: 4.19.2
     operators.openshift.io/infrastructure-features: '["disconnected"]'
