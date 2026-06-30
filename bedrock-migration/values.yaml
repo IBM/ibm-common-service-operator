@@ -12,3 +12,5 @@ cpfs:
   imageRegistryNamespaceOperand: cpopen/cpfs
   # skipEDBMigration: Controls whether to skip cleanup of the OLM-based EDB operator during bedrock migration.
   skipEDBMigration: false
+  # skipIBMPGMigration: Controls whether to skip cleanup of the OLM-based IBM PG operator during bedrock migration.
+  skipIBMPGMigration: false
