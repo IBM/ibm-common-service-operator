@@ -327,6 +327,10 @@ func TestMergeResourceArrays_PostgreSQLCertificatesScenario(t *testing.T) {
 					"dnsNames": []interface{}{
 						"common-service-db",
 						"common-service-db.cs4-data",
+							"common-service-db.cs4-data.svc.cluster.local",
+							"common-service-db-r.cs4-data.svc.cluster.local",
+							"common-service-db-ro.cs4-data.svc.cluster.local",
+							"common-service-db-rw.cs4-data.svc.cluster.local",
 					},
 				},
 			},
