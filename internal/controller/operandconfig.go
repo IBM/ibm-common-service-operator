@@ -270,6 +270,23 @@ func mergeResourceArrays(baseResources, csResources []interface{}, opconNs strin
 				// We want CS to override base, so base is default and CS is changed
 				mergedResource := mergeCRsIntoOperandConfigWithDefaultRules(baseMap, csMap, false)
 
+				// Post-merge cleanup: when a CNPG Cluster resource carries replica config
+				// (i.e. bootstrap.pg_basebackup is present), remove bootstrap.initdb from
+				// the merged result. The merge framework cannot express deletion via nil, so
+				// we handle it here explicitly.
+				if csKind == "Cluster" && csApiVersion == "pg.ibm.com/v1" {
+					if dataMap, ok := toStringMap(mergedResource["data"]); ok {
+						if specMap, ok := toStringMap(dataMap["spec"]); ok {
+							if bootstrap, ok := toStringMap(specMap["bootstrap"]); ok {
+								if _, hasPgBaseBackup := bootstrap["pg_basebackup"]; hasPgBaseBackup {
+									delete(bootstrap, "initdb")
+									klog.Infof("Removed bootstrap.initdb from Cluster %s/%s (replica mode: pg_basebackup present)", csNamespace, csName)
+								}
+							}
+						}
+					}
+				}
+
 				// Apply profile controller cleanup if needed
 				if _, ok := nonDefaultProfileController[serviceController]; ok {
 					if isOpResourceExists(mergedResource) {
@@ -1251,6 +1268,12 @@ func (r *CommonServiceReconciler) buildDesiredStateFromAllCRs(ctx context.Contex
 					klog.Infof("Collected label %s=%s from CR %s/%s", k, v, cs.Namespace, cs.Name)
 				}
 			}
+		}
+
+		// Collect csPostgreSQLReplica (first non-nil wins; only one allowed per tenant)
+		if mergedFeatureCS.Spec.CSPostgreSQLReplica == nil && cs.Spec.CSPostgreSQLReplica != nil {
+			mergedFeatureCS.Spec.CSPostgreSQLReplica = cs.Spec.CSPostgreSQLReplica.DeepCopy()
+			klog.Infof("Collected csPostgreSQLReplica from CR %s/%s (source=%s)", cs.Namespace, cs.Name, cs.Spec.CSPostgreSQLReplica.Replica.Source)
 		}
 	}
 

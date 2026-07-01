@@ -42,7 +42,9 @@ type Defaulter struct {
 	Reader    client.Reader
 	Client    client.Client
 	IsDormant bool
-	decoder   *admission.Decoder
+	// decoder is stored as an interface value (not a pointer) as per Go best practices.
+	// admission.Decoder is an interface type, and interfaces should not be stored as pointers.
+	decoder admission.Decoder
 }
 
 // podAnnotator adds an annotation to every incoming pods.
@@ -109,7 +111,7 @@ func (r *Defaulter) Default(instance *odlm.OperandRequest) {
 }
 
 func (r *Defaulter) InjectDecoder(decoder admission.Decoder) error {
-	r.decoder = &decoder
+	r.decoder = decoder
 	return nil
 }
 
@@ -121,7 +123,7 @@ func (r *Defaulter) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 	// Inject the decoder
 	decoder := admission.NewDecoder(mgr.GetScheme())
-	if err := r.InjectDecoder(*decoder); err != nil {
+	if err := r.InjectDecoder(decoder); err != nil {
 		return err
 	}
 

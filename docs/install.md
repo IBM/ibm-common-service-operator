@@ -16,6 +16,7 @@
     - [Configure general parameters](#configure-general-parameters)
   - [5.Install Individual Common Services](#5install-individual-common-services)
   - [6.Manage Individual Common Service Operators](#6manage-individual-common-service-operators)
+  - [Configure PostgreSQL Replica (Geo-Redundancy)](#configure-postgresql-replica-geo-redundancy)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -188,6 +189,103 @@ spec:
       mongoDB:
         storageClass: cephfs
 ```
+
+### Configure PostgreSQL Replica (Geo-Redundancy)
+
+To configure `common-service-db` as a streaming replica of a primary PostgreSQL cluster, add
+`csPostgreSQLReplica` to the `CommonService` spec. This enables disaster recovery and
+geo-redundancy scenarios.
+
+**Prerequisites:** a reachable primary IBM CNPG cluster, network access on port 5432, and
+(if using TLS) Kubernetes Secrets in the services namespace containing the client certificate,
+key, and CA bundle.
+
+#### Minimal example (no TLS)
+
+```yaml
+apiVersion: operator.ibm.com/v3
+kind: CommonService
+metadata:
+  name: common-service
+  namespace: ibm-common-services
+spec:
+  license:
+    accept: true
+  size: starterset
+  csPostgreSQLReplica:
+    replica:
+      enabled: true
+      source: primary-cluster
+    externalClusters:
+      - name: primary-cluster
+        connectionParameters:
+          host: primary-rw.primary-ns.svc.cluster.local
+          port: "5432"
+          user: streaming_replica
+          dbname: postgres
+    bootstrap:
+      pg_basebackup:
+        source: primary-cluster
+```
+
+#### Full example (with mTLS)
+
+```yaml
+apiVersion: operator.ibm.com/v3
+kind: CommonService
+metadata:
+  name: common-service
+  namespace: ibm-common-services
+spec:
+  license:
+    accept: true
+  size: small
+  storageClass: managed-nfs-storage
+  csPostgreSQLReplica:
+    replica:
+      enabled: true
+      source: primary-cluster
+    externalClusters:
+      - name: primary-cluster
+        connectionParameters:
+          host: primary-rw.primary-ns.svc.cluster.local
+          port: "5432"
+          user: streaming_replica
+          dbname: postgres
+          sslmode: verify-full
+        sslCert:
+          name: primary-cluster-cert
+          key: tls.crt
+        sslKey:
+          name: primary-cluster-cert
+          key: tls.key
+        sslRootCert:
+          name: primary-cluster-cert
+          key: ca.crt
+    bootstrap:
+      pg_basebackup:
+        source: primary-cluster
+        database: postgres
+        owner: postgres
+```
+
+**Key constraints:**
+- Only **one** `csPostgreSQLReplica` is allowed per tenant. The admission webhook rejects a second one.
+- All three sub-fields — `replica`, `externalClusters`, and `bootstrap.pg_basebackup` — are required.
+- `replica.source` must match the `name` of an entry in `externalClusters`.
+
+To remove replica configuration and return to standalone mode:
+
+```bash
+oc patch commonservice common-service -n ibm-common-services \
+  --type=json \
+  -p='[{"op": "remove", "path": "/spec/csPostgreSQLReplica"}]'
+```
+
+For full API reference, validation details, and troubleshooting, see
+[`docs/postgresql-replica-configuration.md`](./postgresql-replica-configuration.md).
+
+---
 
 ## 5.Install Individual Common Services
 
