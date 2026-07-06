@@ -22,8 +22,11 @@ import (
 	"net/http"
 	"strings"
 
+	admissionv1 "k8s.io/api/admission/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -43,7 +46,9 @@ type Defaulter struct {
 	Reader    client.Reader
 	Client    client.Client
 	IsDormant bool
-	decoder   *admission.Decoder
+	// decoder is stored as an interface value (not a pointer) as per Go best practices.
+	// admission.Decoder is an interface type, and interfaces should not be stored as pointers.
+	decoder admission.Decoder
 }
 
 // podAnnotator adds an annotation to every incoming pods.
@@ -126,27 +131,43 @@ func (r *Defaulter) Handle(ctx context.Context, req admission.Request) admission
 		if deniedServicesNs {
 			return admission.Denied(fmt.Sprintf("Services Namespace: %v is not allowed to be configured in namespace %v", servicesNamespace, req.AdmissionRequest.Namespace))
 		}
-
-		// // check CatalogName
-		// catalogName := cs.Spec.CatalogName
-		// deniedCatalog := r.CheckConfig(string(catalogName), catalogSourceName)
-		// if deniedCatalog {
-		// 	return admission.Denied(fmt.Sprintf("CatalogSource Name: %v is not allowed to be configured in namespace %v", catalogName, req.AdmissionRequest.Namespace))
-		// }
-
-		// // check CatalogNamespace
-		// catalogNamespace := cs.Spec.CatalogNamespace
-		// deniedCatalogNs := r.CheckConfig(string(catalogNamespace), catalogSourceNs)
-		// if deniedCatalogNs {
-		// 	return admission.Denied(fmt.Sprintf("CatalogSource Namespace: %v is not allowed to be configured in namespace %v", catalogNamespace, req.AdmissionRequest.Namespace))
-		// }
-
 	}
 
 	// check HugePageSetting
 	deniedHugePage, err := r.HugePageSettingDenied(csUnstrcuted)
 	if err != nil || deniedHugePage {
 		return admission.Denied(fmt.Sprintf("HugePageSetting is invalid: %v", err))
+	}
+
+	// Validate replica configuration against existing OperandConfig.
+	// Skip for non-configurable CRs: these are copies of the master CR that the reconciler
+	// pushes to other watch namespaces (same name "common-service", different namespace).
+	// They carry the same CSPostgreSQLReplica field as the master, so the OperandConfig will
+	// already contain the replica config written by the master — rejecting the copy here
+	// would be a false positive.
+	isNonConfigurableCR := req.AdmissionRequest.Name == constant.MasterCR && req.AdmissionRequest.Namespace != operatorNs
+
+	// Only run the replica-uniqueness check when CSPostgreSQLReplica is newly introduced
+	// by this request. On UPDATE requests where the field was already present in the old
+	// object, the OperandConfig already contains the replica config written from that CR —
+	// re-checking it would always produce a false-positive rejection.
+	isNewReplica := false
+	if cs.Spec.CSPostgreSQLReplica != nil {
+		if req.Operation == admissionv1.Update {
+			oldCs := &operatorv3.CommonService{}
+			if err := r.decoder.DecodeRaw(req.OldObject, oldCs); err == nil {
+				isNewReplica = oldCs.Spec.CSPostgreSQLReplica == nil
+			}
+		} else {
+			// CREATE
+			isNewReplica = true
+		}
+	}
+
+	if !isNonConfigurableCR && isNewReplica {
+		if err := r.validateReplicaConfig(ctx, cs, serviceNs); err != nil {
+			return admission.Denied(fmt.Sprintf("Replica configuration validation failed: %v", err))
+		}
 	}
 
 	// admission.PatchResponse generates a Response containing patches.
@@ -198,8 +219,104 @@ func (r *Defaulter) HugePageSettingDenied(cs *unstructured.Unstructured) (bool, 
 	return false, nil
 }
 
+// validateReplicaConfig checks if adding a replica configuration would violate the single-replica constraint
+// by examining the actual OperandConfig resource in the cluster
+func (r *Defaulter) validateReplicaConfig(ctx context.Context, cs *operatorv3.CommonService, serviceNs string) error {
+	// Check if this CR has a CSPostgreSQLReplica configuration
+	if cs.Spec.CSPostgreSQLReplica == nil {
+		return nil
+	}
+
+	// Check the actual OperandConfig in the cluster for existing replica configurations
+	opcon := &unstructured.Unstructured{}
+	opcon.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "operator.ibm.com",
+		Version: "v1alpha1",
+		Kind:    "OperandConfig",
+	})
+
+	opconKey := types.NamespacedName{
+		Name:      "common-service",
+		Namespace: serviceNs,
+	}
+
+	if err := r.Reader.Get(ctx, opconKey, opcon); err != nil {
+		// If OperandConfig doesn't exist yet, this is the first one - allow it
+		if client.IgnoreNotFound(err) == nil {
+			return nil
+		}
+		return fmt.Errorf("failed to get OperandConfig: %v", err)
+	}
+
+	// Check if OperandConfig already has a replica configuration
+	spec, ok := opcon.Object["spec"].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	services, ok := spec["services"].([]interface{})
+	if !ok {
+		return nil
+	}
+
+	for _, svc := range services {
+		svcMap, ok := svc.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		serviceName, _ := svcMap["name"].(string)
+		if serviceName != "common-service-cnpg" {
+			continue
+		}
+
+		resources, ok := svcMap["resources"].([]interface{})
+		if !ok {
+			continue
+		}
+
+		for _, res := range resources {
+			resMap, ok := res.(map[string]interface{})
+			if !ok {
+				continue
+			}
+
+			kind, _ := resMap["kind"].(string)
+			name, _ := resMap["name"].(string)
+			if kind != "Cluster" || name != "common-service-db" {
+				continue
+			}
+
+			data, ok := resMap["data"].(map[string]interface{})
+			if !ok {
+				continue
+			}
+
+			resSpec, ok := data["spec"].(map[string]interface{})
+			if !ok {
+				continue
+			}
+
+			// Check for existing replica configuration
+			if _, hasReplica := resSpec["replica"]; hasReplica {
+				return fmt.Errorf("a CSPostgreSQLReplica configuration already exists in the OperandConfig; only one replica configuration is allowed per tenant")
+			}
+			if _, hasExternal := resSpec["externalClusters"]; hasExternal {
+				return fmt.Errorf("a CSPostgreSQLReplica configuration already exists in the OperandConfig; only one replica configuration is allowed per tenant")
+			}
+			if bootstrap, ok := resSpec["bootstrap"].(map[string]interface{}); ok {
+				if _, hasPgBasebackup := bootstrap["pg_basebackup"]; hasPgBasebackup {
+					return fmt.Errorf("a CSPostgreSQLReplica configuration already exists in the OperandConfig; only one replica configuration is allowed per tenant")
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
 func (r *Defaulter) InjectDecoder(decoder admission.Decoder) error {
-	r.decoder = &decoder
+	r.decoder = decoder
 	return nil
 }
 
@@ -211,7 +328,7 @@ func (r *Defaulter) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 	// Inject the decoder
 	decoder := admission.NewDecoder(mgr.GetScheme())
-	if err := r.InjectDecoder(*decoder); err != nil {
+	if err := r.InjectDecoder(decoder); err != nil {
 		return err
 	}
 

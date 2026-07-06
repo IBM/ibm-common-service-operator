@@ -1887,15 +1887,19 @@ spec:
               - common-service-db
               - common-service-db.{{ .ServicesNs }}
               - common-service-db.{{ .ServicesNs }}.svc
+              - common-service-db.{{ .ServicesNs }}.svc.cluster.local
               - common-service-db-r
               - common-service-db-r.{{ .ServicesNs }}
               - common-service-db-r.{{ .ServicesNs }}.svc
+              - common-service-db-r.{{ .ServicesNs }}.svc.cluster.local
               - common-service-db-ro
               - common-service-db-ro.{{ .ServicesNs }}
               - common-service-db-ro.{{ .ServicesNs }}.svc
+              - common-service-db-ro.{{ .ServicesNs }}.svc.cluster.local
               - common-service-db-rw
               - common-service-db-rw.{{ .ServicesNs }}
               - common-service-db-rw.{{ .ServicesNs }}.svc
+              - common-service-db-rw.{{ .ServicesNs }}.svc.cluster.local
             duration: 8760h0m0s
             issuerRef:
               kind: Issuer
@@ -2195,15 +2199,19 @@ spec:
               - common-service-db
               - common-service-db.{{ .ServicesNs }}
               - common-service-db.{{ .ServicesNs }}.svc
+              - common-service-db.{{ .ServicesNs }}.svc.cluster.local
               - common-service-db-r
               - common-service-db-r.{{ .ServicesNs }}
               - common-service-db-r.{{ .ServicesNs }}.svc
+              - common-service-db-r.{{ .ServicesNs }}.svc.cluster.local
               - common-service-db-ro
               - common-service-db-ro.{{ .ServicesNs }}
               - common-service-db-ro.{{ .ServicesNs }}.svc
+              - common-service-db-ro.{{ .ServicesNs }}.svc.cluster.local
               - common-service-db-rw
               - common-service-db-rw.{{ .ServicesNs }}
               - common-service-db-rw.{{ .ServicesNs }}.svc
+              - common-service-db-rw.{{ .ServicesNs }}.svc.cluster.local
             duration: 8760h0m0s
             issuerRef:
               kind: Issuer

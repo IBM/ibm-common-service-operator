@@ -84,6 +84,12 @@ tasks:
           export LOCAL_ARCH=amd64
           echo "Installing Go dependencies"
           yum install -y golang
+          # Write .netrc so the Docker build secret can authenticate to github.ibm.com
+          GH_TOKEN="$(get_env GITHUB_TOKEN "")"
+          if [ -n "$GH_TOKEN" ]; then
+            printf 'machine github.ibm.com login x-token password %s\n' "$GH_TOKEN" > ~/.netrc
+            chmod 600 ~/.netrc
+          fi
           make build-push-image
       - name: sign-artifact
         when: 'false'
@@ -122,6 +128,11 @@ tasks:
           export LOCAL_ARCH=ppc64le
           echo "Installing Go dependencies"
           yum install -y golang
+          GH_TOKEN="$(get_env GITHUB_TOKEN "")"
+          if [ -n "$GH_TOKEN" ]; then
+            printf 'machine github.ibm.com login x-token password %s\n' "$GH_TOKEN" > ~/.netrc
+            chmod 600 ~/.netrc
+          fi
           make build-push-image
       - name: sign-artifact
         when: 'false'
@@ -160,6 +171,11 @@ tasks:
           export LOCAL_ARCH=s390x
           echo "Installing Go dependencies"
           yum install -y golang
+          GH_TOKEN="$(get_env GITHUB_TOKEN "")"
+          if [ -n "$GH_TOKEN" ]; then
+            printf 'machine github.ibm.com login x-token password %s\n' "$GH_TOKEN" > ~/.netrc
+            chmod 600 ~/.netrc
+          fi
           make build-push-image
       - name: sign-artifact
         when: 'false'

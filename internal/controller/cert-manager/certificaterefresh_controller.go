@@ -28,10 +28,7 @@ import (
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	certmanagerv1 "github.com/ibm/ibm-cert-manager-operator/apis/cert-manager/v1"
 
@@ -280,17 +277,8 @@ func getIssuerNames(issuers []certmanagerv1.Issuer) []string {
 func (r *CertificateRefreshReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	klog.V(2).Infof("Set up")
 
-	// Create a new controller
-	c, err := controller.New("certificaterefresh-controller", mgr, controller.Options{Reconciler: r})
-	if err != nil {
-		return err
-	}
-
-	// Watch for changes to Certificates in the cluster
-	err = c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), &handler.EnqueueRequestForObject{})
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return ctrl.NewControllerManagedBy(mgr).
+		Named("certificate-refresh").
+		For(&corev1.Secret{}).
+		Complete(r)
 }

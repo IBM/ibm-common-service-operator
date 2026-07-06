@@ -20,6 +20,7 @@ import (
 	"time"
 
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+	pgv1 "github.ibm.com/ibm-pg/ibm-pg-types/pkg/api/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -138,6 +139,12 @@ type CommonServiceSpec struct {
 	// for pulling images. Defaults to "ibm-entitlement-key" if not specified.
 	// +optional
 	ImagePullSecret string `json:"imagePullSecret,omitempty"`
+	// CSPostgreSQLReplica configures common-service-db as a replica cluster
+	// When specified, enables streaming replication from primary cluster
+	// Storage, certificates, and other settings remain CS operator defaults
+	// IMPORTANT: Only ONE CSPostgreSQLReplica allowed per tenant (first-come-first-serve)
+	// +optional
+	CSPostgreSQLReplica *CSPostgreSQLReplicaConfig `json:"csPostgreSQLReplica,omitempty"`
 }
 
 // OperatorConfig is configuration composed of key-value pairs to be injected into specified CSVs
@@ -186,6 +193,22 @@ type APICatalog struct {
 type Bedrockshim struct {
 	Enabled                   bool `json:"enabled,omitempty"`
 	CrossplaneProviderRemoval bool `json:"crossplaneProviderRemoval,omitempty"`
+}
+
+// CSPostgreSQLReplicaConfig contains ONLY replica-specific configuration
+// for configuring common-service-db as a replica cluster
+type CSPostgreSQLReplicaConfig struct {
+	// Replica configuration from IBM PG API
+	// +required
+	Replica pgv1.ReplicaClusterConfiguration `json:"replica"`
+
+	// ExternalClusters defines the primary cluster connection
+	// +required
+	ExternalClusters []pgv1.ExternalCluster `json:"externalClusters"`
+
+	// Bootstrap configuration for initial data sync via pg_basebackup
+	// +required
+	Bootstrap pgv1.BootstrapConfiguration `json:"bootstrap"`
 }
 
 // BedrockOperator describes a list of foundational services' operators currently installed for this tenant.

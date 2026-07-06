@@ -27,12 +27,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	certmanagerv1 "github.com/ibm/ibm-cert-manager-operator/apis/cert-manager/v1"
 )
@@ -350,19 +348,10 @@ func (r *PodRefreshReconciler) updateDaemonSetAnnotations(daemonsetsToUpdate []a
 func (r *PodRefreshReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	klog.V(2).Infof("Set up")
 
-	// Create a new controller
-	c, err := controller.New("podrefresh-controller", mgr, controller.Options{Reconciler: r})
-	if err != nil {
-		return err
-	}
-
-	// Watch for changes to Certificates in the cluster
-	err = c.Watch(source.Kind(mgr.GetCache(), &certmanagerv1.Certificate{}), &handler.EnqueueRequestForObject{}, isExpiredPredicate{})
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return ctrl.NewControllerManagedBy(mgr).
+		Named("pod-refresh").
+		For(&certmanagerv1.Certificate{}, builder.WithPredicates(isExpiredPredicate{})).
+		Complete(r)
 }
 
 type isExpiredPredicate struct{}
@@ -376,8 +365,14 @@ func (isExpiredPredicate) Delete(e event.DeleteEvent) bool {
 }
 
 func (isExpiredPredicate) Update(e event.UpdateEvent) bool {
-	oldCert := (e.ObjectOld).(*certmanagerv1.Certificate)
-	updatedCert := (e.ObjectNew).(*certmanagerv1.Certificate)
+	oldCert, ok := e.ObjectOld.(*certmanagerv1.Certificate)
+	if !ok {
+		return false
+	}
+	updatedCert, ok := e.ObjectNew.(*certmanagerv1.Certificate)
+	if !ok {
+		return false
+	}
 	if oldCert.Status.NotAfter == nil && updatedCert.Status.NotAfter != nil {
 		return true
 	}
