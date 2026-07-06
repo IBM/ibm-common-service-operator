@@ -22,9 +22,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -41,6 +44,10 @@ var (
 	restartLabel        = "certmanager.k8s.io/time-restarted"
 	noRestartAnnotation = "certmanager.k8s.io/disable-auto-restart"
 	t                   = "true"
+	// Retry configuration for Secret verification
+	secretVerificationRetryDelay    = 5 * time.Second
+	secretVerificationMaxRetries    = 12 // 12 retries * 5 seconds = 60 seconds max wait
+	secretVerificationBackoffFactor = 1.5
 )
 
 // CertificateReconciler reconciles a Certificate object
@@ -50,6 +57,7 @@ type PodRefreshReconciler struct {
 }
 
 // //+kubebuilder:rbac:groups=apps,resources=deployments;statefulsets;daemonsets,verbs=get;list;watch;create;update;patch
+// //+kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -66,8 +74,7 @@ func (r *PodRefreshReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	reqLogger := logd.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
 	reqLogger.Info("Reconciling podrefresh")
 
-	// Get the certificate that invoked reconciliation is a CA in the listOfCAs
-
+	// Get the certificate that invoked reconciliation
 	cert := &certmanagerv1.Certificate{}
 	err := r.Client.Get(context.TODO(), req.NamespacedName, cert)
 	if err != nil {
@@ -80,15 +87,154 @@ func (r *PodRefreshReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	if cert.Status.NotBefore != nil && cert.Status.NotAfter != nil {
+		// Verify that the Secret exists and has been updated before triggering pod restarts
+		secretReady, requeueDelay, err := r.verifySecretReady(cert, reqLogger)
+		if err != nil {
+			reqLogger.Error(err, "Failed to verify Secret readiness", "Secret", cert.Spec.SecretName)
+			return ctrl.Result{}, err
+		}
+
+		if !secretReady {
+			reqLogger.Info("Secret not ready yet, requeuing",
+				"Secret", cert.Spec.SecretName,
+				"RequeueAfter", requeueDelay)
+			return ctrl.Result{RequeueAfter: requeueDelay}, nil
+		}
+
+		// Secret is ready, proceed with pod restart
+		reqLogger.Info("Secret verified and ready, proceeding with pod restart",
+			"Secret", cert.Spec.SecretName,
+			"Certificate", cert.Name)
+
 		if err := r.restart(cert.Spec.SecretName, cert.Name, cert.Namespace, cert.Status.NotBefore.Format("2006-1-2.150405")); err != nil {
-			reqLogger.Error(err, "Failed to fresh pod")
+			reqLogger.Error(err, "Failed to refresh pod")
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
 	}
 	// requeue the request when certificate status is not ready to
-	// ensure we don't lost a certificate update
+	// ensure we don't lose a certificate update
 	return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+}
+
+// verifySecretReady checks if the Secret referenced by the Certificate exists and has been updated
+// Returns: (secretReady bool, requeueDelay time.Duration, error)
+func (r *PodRefreshReconciler) verifySecretReady(cert *certmanagerv1.Certificate, logger logr.Logger) (bool, time.Duration, error) {
+	secretName := cert.Spec.SecretName
+	namespace := cert.Namespace
+
+	// Get the Secret
+	secret := &corev1.Secret{}
+	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: secretName, Namespace: namespace}, secret)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			logger.Info("Secret not found yet, will retry",
+				"Secret", secretName,
+				"Certificate", cert.Name)
+			return false, secretVerificationRetryDelay, nil
+		}
+		return false, 0, fmt.Errorf("error getting Secret %s/%s: %w", namespace, secretName, err)
+	}
+
+	// Verify the Secret has been updated after the certificate renewal
+	// Check if the Secret's creation timestamp or cert-manager annotations indicate it's been updated
+	certNotBefore := cert.Status.NotBefore.Time
+
+	// Check if Secret has the cert-manager annotation indicating it was updated
+	certManagerAnnotation := secret.Annotations["cert-manager.io/certificate-name"]
+	if certManagerAnnotation != cert.Name {
+		logger.V(2).Info("Secret does not have matching cert-manager annotation",
+			"Secret", secretName,
+			"Expected", cert.Name,
+			"Got", certManagerAnnotation)
+	}
+
+	// Verify Secret contains certificate data
+	if len(secret.Data) == 0 {
+		logger.Info("Secret exists but has no data yet, will retry",
+			"Secret", secretName)
+		return false, secretVerificationRetryDelay, nil
+	}
+
+	// Check for required certificate fields
+	if _, hasTLSCert := secret.Data["tls.crt"]; !hasTLSCert {
+		logger.Info("Secret missing tls.crt, will retry",
+			"Secret", secretName)
+		return false, secretVerificationRetryDelay, nil
+	}
+
+	if _, hasTLSKey := secret.Data["tls.key"]; !hasTLSKey {
+		logger.Info("Secret missing tls.key, will retry",
+			"Secret", secretName)
+		return false, secretVerificationRetryDelay, nil
+	}
+
+	// Compare Secret's creation/update time with certificate's NotBefore
+	// If the Secret was created/updated after the certificate's NotBefore time,
+	// it likely contains the new certificate
+	secretTime := secret.CreationTimestamp.Time
+
+	// Check if Secret has been updated (look at metadata.resourceVersion or creation time)
+	// If Secret is older than the certificate's NotBefore, it might still have old data
+	if secretTime.Before(certNotBefore) {
+		// Secret exists but might be stale - check if it's been recently modified
+		// In Kubernetes, we can't directly get the last modified time, but we can infer
+		// from the fact that cert-manager should have updated it
+		logger.Info("Secret creation time is before certificate NotBefore, checking if recently updated",
+			"Secret", secretName,
+			"SecretCreationTime", secretTime,
+			"CertNotBefore", certNotBefore)
+
+		// Give cert-manager some time to update the Secret
+		// If we've been waiting too long, there might be an issue
+		timeSinceCertUpdate := time.Since(certNotBefore)
+		if timeSinceCertUpdate < 60*time.Second {
+			// Still within reasonable time window, requeue with backoff
+			delay := r.calculateBackoffDelay(timeSinceCertUpdate)
+			logger.Info("Waiting for Secret to be updated by cert-manager",
+				"Secret", secretName,
+				"TimeSinceCertUpdate", timeSinceCertUpdate,
+				"NextRetryIn", delay)
+			return false, delay, nil
+		}
+
+		// Been waiting too long - log warning but proceed
+		// The Secret might have been updated but we can't detect it reliably
+		logger.Info("Secret appears old but proceeding after timeout",
+			"Secret", secretName,
+			"TimeSinceCertUpdate", timeSinceCertUpdate)
+	}
+
+	logger.Info("Secret verified and ready",
+		"Secret", secretName,
+		"Certificate", cert.Name,
+		"SecretCreationTime", secretTime,
+		"CertNotBefore", certNotBefore)
+
+	return true, 0, nil
+}
+
+// calculateBackoffDelay calculates exponential backoff delay based on elapsed time
+func (r *PodRefreshReconciler) calculateBackoffDelay(elapsed time.Duration) time.Duration {
+	// Calculate which retry attempt this would be
+	retryNum := int(elapsed / secretVerificationRetryDelay)
+	if retryNum >= secretVerificationMaxRetries {
+		retryNum = secretVerificationMaxRetries - 1
+	}
+
+	// Calculate exponential backoff: baseDelay * (backoffFactor ^ retryNum)
+	delay := secretVerificationRetryDelay
+	for i := 0; i < retryNum; i++ {
+		delay = time.Duration(float64(delay) * secretVerificationBackoffFactor)
+	}
+
+	// Cap at 30 seconds
+	maxDelay := 30 * time.Second
+	if delay > maxDelay {
+		delay = maxDelay
+	}
+
+	return delay
 }
 
 // pod refresh is enabled. It will edit the deployments, statefulsets, and daemonsets
