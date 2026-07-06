@@ -18,6 +18,8 @@ package certmanager
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"strings"
 	"time"
@@ -139,6 +141,7 @@ func (r *PodRefreshReconciler) verifySecretReady(cert *certmanagerv1.Certificate
 	// Verify the Secret has been updated after the certificate renewal
 	// Check if the Secret's creation timestamp or cert-manager annotations indicate it's been updated
 	certNotBefore := cert.Status.NotBefore.Time
+	certNotAfter := cert.Status.NotAfter.Time
 
 	// Check if Secret has the cert-manager annotation indicating it was updated
 	certManagerAnnotation := secret.Annotations["cert-manager.io/certificate-name"]
@@ -169,25 +172,46 @@ func (r *PodRefreshReconciler) verifySecretReady(cert *certmanagerv1.Certificate
 		return false, secretVerificationRetryDelay, nil
 	}
 
-	// Compare Secret's creation/update time with certificate's NotBefore
-	// If the Secret was created/updated after the certificate's NotBefore time,
-	// it likely contains the new certificate
-	secretTime := secret.CreationTimestamp.Time
+	// Decode and verify the actual certificate content from the Secret
+	// This is the most reliable way to ensure the Secret contains the new certificate
+	certData := secret.Data["tls.crt"]
+	block, _ := pem.Decode(certData)
+	if block == nil {
+		logger.Info("Failed to decode PEM block from tls.crt, will retry",
+			"Secret", secretName)
+		return false, secretVerificationRetryDelay, nil
+	}
 
-	// Check if Secret has been updated (look at metadata.resourceVersion or creation time)
-	// If Secret is older than the certificate's NotBefore, it might still have old data
-	if secretTime.Before(certNotBefore) {
-		// Secret exists but might be stale - check if it's been recently modified
-		// In Kubernetes, we can't directly get the last modified time, but we can infer
-		// from the fact that cert-manager should have updated it
-		logger.Info("Secret creation time is before certificate NotBefore, checking if recently updated",
-			"Secret", secretName,
-			"SecretCreationTime", secretTime,
-			"CertNotBefore", certNotBefore)
+	x509Cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		logger.Error(err, "Failed to parse X.509 certificate from Secret, will retry",
+			"Secret", secretName)
+		return false, secretVerificationRetryDelay, nil
+	}
 
-		// Give cert-manager some time to update the Secret
-		// If we've been waiting too long, there might be an issue
+	// Compare the certificate's NotBefore/NotAfter time with the expected NotBefore from the Certificate CR
+	secretCertNotBefore := x509Cert.NotBefore
+	secretCertNotAfter := x509Cert.NotAfter
+
+	logger.V(2).Info("Comparing certificate timestamps",
+		"Secret", secretName,
+		"SecretCertNotBefore", secretCertNotBefore,
+		"ExpectedCertNotBefore", certNotBefore,
+		"SecretCertNotAfter", x509Cert.NotAfter,
+		"ExpectedCertNotAfter", cert.Status.NotAfter.Time)
+
+	// Check if the certificate in the Secret matches the expected certificate
+	// We compare NotBefore times - they should match or the Secret cert should be newer
+	if secretCertNotAfter.Before(certNotBefore) {
+		// Secret contains an older certificate, need to wait for cert-manager to update it
 		timeSinceCertUpdate := time.Since(certNotBefore)
+
+		logger.Info("Secret contains old certificate, waiting for cert-manager to update",
+			"Secret", secretName,
+			"SecretCertNotBefore", secretCertNotBefore,
+			"ExpectedCertNotBefore", certNotBefore,
+			"TimeSinceCertUpdate", timeSinceCertUpdate)
+
 		if timeSinceCertUpdate < 60*time.Second {
 			// Still within reasonable time window, requeue with backoff
 			delay := r.calculateBackoffDelay(timeSinceCertUpdate)
@@ -199,17 +223,21 @@ func (r *PodRefreshReconciler) verifySecretReady(cert *certmanagerv1.Certificate
 		}
 
 		// Been waiting too long - log warning but proceed
-		// The Secret might have been updated but we can't detect it reliably
-		logger.Info("Secret appears old but proceeding after timeout",
+		// There might be a cert-manager issue, but we don't want to block indefinitely
+		logger.Info("Secret still contains old certificate after timeout, proceeding anyway",
 			"Secret", secretName,
-			"TimeSinceCertUpdate", timeSinceCertUpdate)
+			"TimeSinceCertUpdate", timeSinceCertUpdate,
+			"SecretCertNotBefore", secretCertNotBefore,
+			"ExpectedCertNotBefore", certNotBefore)
 	}
 
-	logger.Info("Secret verified and ready",
+	logger.Info("Secret verified and contains updated certificate",
 		"Secret", secretName,
 		"Certificate", cert.Name,
-		"SecretCreationTime", secretTime,
-		"CertNotBefore", certNotBefore)
+		"SecretCertNotBefore", secretCertNotBefore,
+		"SecretCertNotAfter", x509Cert.NotAfter,
+		"ExpectedCertNotBefore", certNotBefore,
+		"ExpectedCertNotAfter", cert.Status.NotAfter.Time)
 
 	return true, 0, nil
 }
