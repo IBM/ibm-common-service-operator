@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: cpfs-migration-job
+  name: bedrock-migration-job
   namespace: {{ .Values.global.operatorNamespace }}
   annotations:
     "helm.sh/hook-delete-policy": before-hook-creation
@@ -11,7 +11,7 @@ spec:
   template:
     spec:
       containers:
-      - name: cpfs-migration-job
+      - name: bedrock-migration-job
         image: {{ .Values.cpfs.imagePullPrefix | default .Values.global.imagePullPrefix }}/{{ .Values.cpfs.imageRegistryNamespaceOperand }}/cpfs-utils:latest
         # Resource requests/limits to satisfy Kyverno
         resources:
@@ -169,8 +169,8 @@ spec:
                 fi
                 echo "Namespace $ns complete."
             done
-            oc delete serviceaccount cpfs-migration-job-sa -n $operatorNamespace --ignore-not-found
+            oc delete serviceaccount bedrock-migration-job-sa -n $operatorNamespace --ignore-not-found
       restartPolicy: Never
-      serviceAccount: cpfs-migration-job-sa
+      serviceAccount: bedrock-migration-job-sa
       imagePullSecrets:
       - name: {{ .Values.global.imagePullSecret }}

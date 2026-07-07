@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: cpfs-migration-job-sa
+  name: bedrock-migration-job-sa
   namespace: {{ .Values.global.operatorNamespace }}
   annotations:
     "helm.sh/hook": pre-install,pre-upgrade
@@ -10,7 +10,7 @@ metadata:
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: cpfs-migration-job-role-{{ .Values.global.operatorNamespace }}
+  name: bedrock-migration-job-role-{{ .Values.global.operatorNamespace }}
   namespace: {{ .Values.global.operatorNamespace }}
   annotations:
     "helm.sh/hook": pre-install,pre-upgrade
@@ -71,7 +71,7 @@ rules:
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: cpfs-migration-job-rb-{{ .Values.global.operatorNamespace }}
+  name: bedrock-migration-job-rb-{{ .Values.global.operatorNamespace }}
   namespace: {{ .Values.global.operatorNamespace }}
   annotations:
     "helm.sh/hook": pre-install,pre-upgrade
@@ -79,12 +79,12 @@ metadata:
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded,hook-failed
 subjects:
   - kind: ServiceAccount
-    name: cpfs-migration-job-sa
+    name: bedrock-migration-job-sa
     namespace: {{ .Values.global.operatorNamespace }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: cpfs-migration-job-role-{{ .Values.global.operatorNamespace }}
+  name: bedrock-migration-job-role-{{ .Values.global.operatorNamespace }}
 {{- $watchNamespaces := .Values.global.tetheredNamespaces | default list -}}
 {{- if .Values.global.instanceNamespace -}}
 {{- $watchNamespaces = append $watchNamespaces .Values.global.instanceNamespace -}}
@@ -94,7 +94,7 @@ roleRef:
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: cpfs-migration-job-role
+  name: bedrock-migration-job-role
   namespace: {{ $namespace }}
   annotations:
     "helm.sh/hook": pre-install,pre-upgrade
@@ -125,7 +125,7 @@ rules:
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: cpfs-migration-job-rb
+  name: bedrock-migration-job-rb
   namespace: {{ $namespace }}
   annotations:
     "helm.sh/hook": pre-install,pre-upgrade
@@ -133,10 +133,10 @@ metadata:
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded,hook-failed
 subjects:
   - kind: ServiceAccount
-    name: cpfs-migration-job-sa
+    name: bedrock-migration-job-sa
     namespace: {{ $.Values.global.operatorNamespace }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: cpfs-migration-job-role
+  name: bedrock-migration-job-role
 {{- end }}
