@@ -202,7 +202,11 @@ func (r *PodRefreshReconciler) verifySecretReady(cert *certmanagerv1.Certificate
 
 	// Check if the certificate in the Secret matches the expected certificate
 	// We compare NotBefore times - they should match or the Secret cert should be newer
-	if secretCertNotAfter.Before(certNotBefore) {
+	// e.g old cert notBefore Jan 1, notAfter Jan 3,
+	// new cert notBefore Jan 3, notAfter Jan 5,
+	// old secret notBefore Jan 1, notAfter Jan 3,
+	// new secret notBefore Jan 3, notAfter Jan 5,
+	if secretCertNotAfter.Before(certNotAfter) || secretCertNotBefore.Before(certNotBefore) {
 		// Secret contains an older certificate, need to wait for cert-manager to update it
 		timeSinceCertUpdate := time.Since(certNotBefore)
 
