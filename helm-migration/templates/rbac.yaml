@@ -1,0 +1,142 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cpfs-migration-job-sa
+  namespace: {{ .Values.global.operatorNamespace }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-1"
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: cpfs-migration-job-role-{{ .Values.global.operatorNamespace }}
+  namespace: {{ .Values.global.operatorNamespace }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded,hook-failed
+rules: 
+- apiGroups: 
+  - operators.coreos.com
+  resources:
+  - subscriptions
+  - clusterserviceversions
+  verbs:
+  - list
+  - get
+  - delete
+  - watch
+- apiGroups: 
+  - "rbac.authorization.k8s.io"
+  resources:
+  - roles
+  - rolebindings
+  verbs:
+  - list
+  - get
+  - delete
+  - watch
+- apiGroups: 
+  - ""
+  resources:
+  - configmaps
+  - serviceaccounts
+  - secrets
+  verbs:
+  - list
+  - get
+  - delete
+  - watch
+- apiGroups: 
+  - "batch"
+  resources:
+  - jobs
+  verbs:
+  - list
+  - get
+  - delete
+  - watch
+- apiGroups: 
+  - "operator.ibm.com"
+  resources:
+  - namespacescopes
+  verbs:
+  - list
+  - get
+  - delete
+  - patch
+  - watch
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: cpfs-migration-job-rb-{{ .Values.global.operatorNamespace }}
+  namespace: {{ .Values.global.operatorNamespace }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded,hook-failed
+subjects:
+  - kind: ServiceAccount
+    name: cpfs-migration-job-sa
+    namespace: {{ .Values.global.operatorNamespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cpfs-migration-job-role-{{ .Values.global.operatorNamespace }}
+{{- $watchNamespaces := .Values.global.tetheredNamespaces | default list -}}
+{{- if .Values.global.instanceNamespace -}}
+{{- $watchNamespaces = append $watchNamespaces .Values.global.instanceNamespace -}}
+{{- end -}}
+{{- range $namespace := $watchNamespaces | uniq }}
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: cpfs-migration-job-role
+  namespace: {{ $namespace }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded,hook-failed
+rules:
+- apiGroups: 
+  - "rbac.authorization.k8s.io"
+  resources:
+  - roles
+  - rolebindings
+  verbs:
+  - list
+  - get
+  - delete
+  - watch
+- apiGroups: 
+  - ""
+  resources:
+  - configmaps
+  - serviceaccounts
+  verbs:
+  - list
+  - get
+  - delete
+  - watch
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: cpfs-migration-job-rb
+  namespace: {{ $namespace }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded,hook-failed
+subjects:
+  - kind: ServiceAccount
+    name: cpfs-migration-job-sa
+    namespace: {{ $.Values.global.operatorNamespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cpfs-migration-job-role
+{{- end }}

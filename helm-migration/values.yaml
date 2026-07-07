@@ -1,0 +1,16 @@
+imEnabled: "true" #should this be a global value? Is there a better way to determine this?
+
+#stand-in global values for testing
+global:
+  operatorNamespace: "cs-op"
+  instanceNamespace: "cs-serv"
+  tetheredNamespaces: [""]
+  imagePullPrefix: icr.io
+  imagePullSecret: ibm-entitlement-key
+
+cpfs:
+  imageRegistryNamespaceOperand: cpopen/cpfs
+  # skipEDBMigration: Controls whether to skip cleanup of the OLM-based EDB operator during bedrock migration.
+  skipEDBMigration: false
+  # skipIBMPGMigration: Controls whether to skip cleanup of the OLM-based IBM PG operator during bedrock migration.
+  skipIBMPGMigration: false

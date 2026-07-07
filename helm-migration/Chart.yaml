@@ -1,0 +1,6 @@
+apiVersion: v2
+name: cpfs-migration
+description: A Helm chart for migrating CPFS from OLM to No OLM
+type: application
+version: 0.0.4192
+appVersion: "0.0.4192"
