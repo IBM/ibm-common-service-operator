@@ -1237,6 +1237,12 @@ func (r *CommonServiceReconciler) buildDesiredStateFromAllCRs(ctx context.Contex
 			klog.Infof("Collected enableInstanaMetricCollection=%t from CR %s/%s", cs.Spec.EnableInstanaMetricCollection, cs.Namespace, cs.Name)
 		}
 
+		// Collect autoScaleConfig (first non-nil wins, or first true if set)
+		if mergedFeatureCS.Spec.AutoScaleConfig == nil && cs.Spec.AutoScaleConfig != nil {
+			mergedFeatureCS.Spec.AutoScaleConfig = cs.Spec.AutoScaleConfig
+			klog.Infof("Collected autoScaleConfig=%t from CR %s/%s", *cs.Spec.AutoScaleConfig, cs.Namespace, cs.Name)
+		}
+
 		// Collect hugepages (first non-nil wins)
 		if mergedFeatureCS.Spec.HugePages == nil && cs.Spec.HugePages != nil {
 			mergedFeatureCS.Spec.HugePages = cs.Spec.HugePages.DeepCopy()
