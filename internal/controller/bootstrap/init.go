@@ -326,7 +326,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		return err
 	} else if installODLM {
 		klog.Info("Installing ODLM Operator")
-		if err := b.renderTemplate(constant.ODLMSubscription, b.CSData); err != nil {
+		if err := b.renderTemplate(constant.ODLMSubscription, b.CSData, nil); err != nil {
 			return err
 		}
 	} else {
@@ -485,14 +485,14 @@ func (b *Bootstrap) CreateCsCR() error {
 		// using `ibm-common-services` ns as ServicesNs if CS CR does not exist
 		if _, err := b.GetObject(cs); errors.IsNotFound(err) {
 			b.CSData.ServicesNs = constant.MasterNamespace
-			return b.renderTemplate(constant.CsCR, b.CSData)
+			return b.renderTemplate(constant.CsCR, b.CSData, nil)
 		} else if err != nil {
 			return err
 		}
 	} else {
 		if _, err := b.GetObject(cs); errors.IsNotFound(err) { // Only if it's a fresh install
 			// Fresh Intall: No ODLM and NO CR
-			return b.renderTemplate(constant.CsCR, b.CSData)
+			return b.renderTemplate(constant.CsCR, b.CSData, nil)
 		} else if err != nil {
 			return err
 		}
@@ -1113,7 +1113,7 @@ func (b *Bootstrap) InstallOrUpdateOperatorConfig(config string, forceUpdateODLM
 		}
 	}
 
-	if err := b.renderTemplate(config, b.CSData, forceUpdateODLMCRs); err != nil {
+	if err := b.renderTemplate(config, b.CSData, nil, forceUpdateODLMCRs); err != nil {
 		return err
 	}
 
@@ -1123,7 +1123,7 @@ func (b *Bootstrap) InstallOrUpdateOperatorConfig(config string, forceUpdateODLM
 // CreateNsScopeConfigmap creates nss configmap for operators
 func (b *Bootstrap) CreateNsScopeConfigmap() error {
 	cmRes := constant.NamespaceScopeConfigMap
-	if err := b.renderTemplate(cmRes, b.CSData, false); err != nil {
+	if err := b.renderTemplate(cmRes, b.CSData, nil, false); err != nil {
 		return err
 	}
 	return nil
@@ -1999,7 +1999,7 @@ func (b *Bootstrap) DeployCertManagerCR(instance *apiv3.CommonService) error {
 	}
 
 	for _, cr := range constant.CertManagerIssuers {
-		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.ServicesNs))); err != nil {
+		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.ServicesNs)), nil); err != nil {
 			return err
 		}
 	}
