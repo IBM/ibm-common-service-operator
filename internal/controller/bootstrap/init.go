@@ -49,7 +49,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
-	"k8s.io/utils/ptr"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -653,8 +653,8 @@ func (b *Bootstrap) addOwnerReference(obj *unstructured.Unstructured, instance *
 		Kind:               constant.KindCR,
 		Name:               instance.Name,
 		UID:                instance.UID,
-		Controller:         ptr.To(true),
-		BlockOwnerDeletion: ptr.To(true),
+		Controller:         pointer.Bool(true),
+		BlockOwnerDeletion: pointer.Bool(true),
 	}
 
 	// Get existing owner references
