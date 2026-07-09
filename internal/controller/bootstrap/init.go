@@ -83,7 +83,6 @@ type Bootstrap struct {
 	CSOperators          []CSOperator
 	CSData               apiv3.CSData
 	configMerger         ConfigMergerFunc
-	CSInstance           *apiv3.CommonService // CommonService CR instance for owner references
 }
 
 // CanI performs a SelfSubjectAccessReview (SSAR) to check whether the operator service account
@@ -242,9 +241,6 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 
 // InitResources initialize resources at the bootstrap of operator
 func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLMCRs bool) error {
-	// Set the CommonService instance for owner references
-	b.CSInstance = instance
-	
 	installPlanApproval := instance.Spec.InstallPlanApproval
 	userManagedOption := WithUserManagedOverridesFromConfigs(instance.Spec.OperatorConfigs)
 
@@ -271,7 +267,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 	}
 
 	// Create Keycloak themes ConfigMap
-	if err := b.CreateKeycloakThemesConfigMap(); err != nil {
+	if err := b.CreateKeycloakThemesConfigMap(instance); err != nil {
 		klog.Errorf("Failed to create Keycloak Themes ConfigMap: %v", err)
 		return err
 	}
@@ -600,8 +596,8 @@ func (b *Bootstrap) CreateOrUpdateFromJson(objectTemplate string, alwaysUpdate .
 }
 
 // shouldAddOwnerReference determines if a resource should have an owner reference added
-func (b *Bootstrap) shouldAddOwnerReference(obj *unstructured.Unstructured) bool {
-	if b.CSInstance == nil {
+func (b *Bootstrap) shouldAddOwnerReference(obj *unstructured.Unstructured, instance *apiv3.CommonService) bool {
+	if instance == nil {
 		return false
 	}
 
@@ -641,13 +637,8 @@ func (b *Bootstrap) shouldAddOwnerReference(obj *unstructured.Unstructured) bool
 }
 
 // addOwnerReference adds an owner reference to the object if appropriate
-func (b *Bootstrap) addOwnerReference(obj *unstructured.Unstructured) error {
-	if !b.shouldAddOwnerReference(obj) {
-		return nil
-	}
-
-	if b.CSInstance == nil {
-		klog.V(2).Infof("Skipping owner reference for %s/%s: CSInstance is nil", obj.GetNamespace(), obj.GetName())
+func (b *Bootstrap) addOwnerReference(obj *unstructured.Unstructured, instance *apiv3.CommonService) error {
+	if !b.shouldAddOwnerReference(obj, instance) {
 		return nil
 	}
 
@@ -680,7 +671,7 @@ func (b *Bootstrap) addOwnerReference(obj *unstructured.Unstructured) error {
 	return nil
 }
 
-func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...bool) error {
+func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, instance *apiv3.CommonService, alwaysUpdate ...bool) error {
 	objects, err := util.YamlToObjects(yamlContent)
 	if err != nil {
 		return err
@@ -692,7 +683,7 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 		gvk := obj.GetObjectKind().GroupVersionKind()
 
 		// Add owner reference if appropriate
-		if err := b.addOwnerReference(obj); err != nil {
+		if err := b.addOwnerReference(obj, instance); err != nil {
 			klog.Errorf("Failed to add owner reference to %s/%s: %v", obj.GetNamespace(), obj.GetName(), err)
 		}
 
@@ -761,8 +752,8 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 					objInCluster.Object["spec"] = newSpec
 				}
 				// Ensure owner reference is set on update
-				if b.shouldAddOwnerReference(objInCluster) {
-					if err := b.addOwnerReference(objInCluster); err != nil {
+				if b.shouldAddOwnerReference(objInCluster, instance) {
+					if err := b.addOwnerReference(objInCluster, instance); err != nil {
 						klog.Errorf("Failed to add owner reference during update to %s/%s: %v", objInCluster.GetNamespace(), objInCluster.GetName(), err)
 					}
 				}
@@ -1139,7 +1130,7 @@ func (b *Bootstrap) CreateNsScopeConfigmap() error {
 }
 
 // CreateKeycloakThemesConfigMap creates a ConfigMap contains Keycloak themes
-func (b *Bootstrap) CreateKeycloakThemesConfigMap() error {
+func (b *Bootstrap) CreateKeycloakThemesConfigMap(instance *apiv3.CommonService) error {
 
 	klog.Info("Extracting Keycloak themes from jar file")
 	themeFile := constant.KeycloakThemesJar
@@ -1150,7 +1141,7 @@ func (b *Bootstrap) CreateKeycloakThemesConfigMap() error {
 	b.CSData.CloudPakThemes = util.EncodeBase64(themeFileContent)
 
 	cmRes := constant.KeycloakThemesConfigMap
-	if err := b.renderTemplate(cmRes, b.CSData, false); err != nil {
+	if err := b.renderTemplate(cmRes, b.CSData, instance, false); err != nil {
 		return err
 	}
 	return nil
@@ -1464,7 +1455,7 @@ func (b *Bootstrap) deleteSubscription(name, namespace string) error {
 	return nil
 }
 
-func (b *Bootstrap) renderTemplate(objectTemplate string, data interface{}, alwaysUpdate ...bool) error {
+func (b *Bootstrap) renderTemplate(objectTemplate string, data interface{}, instance *apiv3.CommonService, alwaysUpdate ...bool) error {
 	var buffer bytes.Buffer
 	t := template.Must(template.New("newTemplate").Parse(objectTemplate))
 	if err := t.Execute(&buffer, data); err != nil {
@@ -1476,7 +1467,7 @@ func (b *Bootstrap) renderTemplate(objectTemplate string, data interface{}, alwa
 		forceUpdate = alwaysUpdate[0]
 	}
 
-	if err := b.CreateOrUpdateFromYaml(buffer.Bytes(), forceUpdate); err != nil {
+	if err := b.CreateOrUpdateFromYaml(buffer.Bytes(), instance, forceUpdate); err != nil {
 		return err
 	}
 	return nil
@@ -1916,7 +1907,7 @@ func (b *Bootstrap) IsBYOCert() (bool, error) {
 	}
 }
 
-func (b *Bootstrap) DeployCertManagerCR() error {
+func (b *Bootstrap) DeployCertManagerCR(instance *apiv3.CommonService) error {
 	for _, kind := range constant.CertManagerKinds {
 		klog.Infof("Checking if resource %s CRD exsits ", kind)
 		// if the crd is not exist, skip it
@@ -2014,7 +2005,7 @@ func (b *Bootstrap) DeployCertManagerCR() error {
 	}
 	if deployRootCert {
 		for _, cr := range constant.CertManagerCerts {
-			if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.ServicesNs))); err != nil {
+			if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.ServicesNs)), instance); err != nil {
 				return err
 			}
 		}
