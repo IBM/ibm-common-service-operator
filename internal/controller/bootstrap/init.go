@@ -1805,7 +1805,7 @@ func (b *Bootstrap) updateApprovalMode() error {
 // deployResource deploys the given resource CR
 func (b *Bootstrap) DeployResource(cr, placeholder string) bool {
 	if err := utilwait.PollUntilContextCancel(ctx, time.Second*10, true, func(ctx context.Context) (done bool, err error) {
-		err = b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.ServicesNs)))
+		err = b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.ServicesNs)), nil)
 		if err != nil {
 			return false, err
 		}
