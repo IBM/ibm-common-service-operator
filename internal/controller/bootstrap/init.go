@@ -641,10 +641,10 @@ func (b *Bootstrap) addOwnerReference(obj *unstructured.Unstructured, instance *
 
 	// Create owner reference
 	ownerRef := metav1.OwnerReference{
-		APIVersion:         b.CSInstance.APIVersion,
-		Kind:               b.CSInstance.Kind,
-		Name:               b.CSInstance.Name,
-		UID:                b.CSInstance.UID,
+		APIVersion:         constant.APIVersion,
+		Kind:               constant.KindCR,
+		Name:               instance.Name,
+		UID:                instance.UID,
 		Controller:         func() *bool { t := true; return &t }(),
 		BlockOwnerDeletion: func() *bool { t := true; return &t }(),
 	}
