@@ -114,25 +114,27 @@ func extractFeatureConfigs(cs *apiv3.CommonService) ([]interface{}, error) {
 	}
 
 	// Extract AutoScaleConfig configuration
-	// Check if autoScaleConfig field was explicitly set in the spec
+	// If autoScaleConfig is not set, treat it as false
+	autoScaleConfigValue := false
 	if cs.Spec.AutoScaleConfig != nil {
-		klog.Infof("Extracting autoScaleConfig configuration with value %t", *cs.Spec.AutoScaleConfig)
-		t := template.Must(template.New("template AutoScaleConfigTemplate").Parse(constant.AutoScaleConfigTemplate))
-		var tmplWriter bytes.Buffer
-		autoScaleConfigEnable := struct {
-			AutoScaleConfigEnable bool
-		}{
-			AutoScaleConfigEnable: *cs.Spec.AutoScaleConfig,
-		}
-		if err := t.Execute(&tmplWriter, autoScaleConfigEnable); err != nil {
-			return nil, err
-		}
-		autoScaleConfig, err := convertStringToSlice(tmplWriter.String())
-		if err != nil {
-			return nil, err
-		}
-		configs = append(configs, autoScaleConfig...)
+		autoScaleConfigValue = *cs.Spec.AutoScaleConfig
 	}
+	klog.Infof("Extracting autoScaleConfig configuration with value %t", autoScaleConfigValue)
+	t := template.Must(template.New("template AutoScaleConfigTemplate").Parse(constant.AutoScaleConfigTemplate))
+	var tmplWriter bytes.Buffer
+	autoScaleConfigEnable := struct {
+		AutoScaleConfigEnable bool
+	}{
+		AutoScaleConfigEnable: autoScaleConfigValue,
+	}
+	if err := t.Execute(&tmplWriter, autoScaleConfigEnable); err != nil {
+		return nil, err
+	}
+	autoScaleConfig, err := convertStringToSlice(tmplWriter.String())
+	if err != nil {
+		return nil, err
+	}
+	configs = append(configs, autoScaleConfig...)
 
 	// Extract routeHost configuration
 	if cs.Spec.RouteHost != "" {
