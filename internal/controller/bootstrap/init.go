@@ -49,6 +49,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -625,7 +626,7 @@ func (b *Bootstrap) shouldAddOwnerReference(obj *unstructured.Unstructured, inst
 
 	// Secret resources that need owner references
 	if gvk.Kind == "Secret" && gvk.Version == "v1" && gvk.Group == "" {
-		if name == "cs-ca-certificate-secret" {
+		if name == constant.CSCACertificateSecret {
 			return true
 		}
 	}
@@ -639,14 +640,21 @@ func (b *Bootstrap) addOwnerReference(obj *unstructured.Unstructured, instance *
 		return nil
 	}
 
+	// Kubernetes does not allow cross-namespace owner references
+	if obj.GetNamespace() != "" && obj.GetNamespace() != instance.Namespace {
+		klog.V(2).Infof("Skipping cross-namespace owner ref for %s/%s (owner is in %s)",
+			obj.GetNamespace(), obj.GetName(), instance.Namespace)
+		return nil
+	}
+
 	// Create owner reference
 	ownerRef := metav1.OwnerReference{
 		APIVersion:         constant.APIVersion,
 		Kind:               constant.KindCR,
 		Name:               instance.Name,
 		UID:                instance.UID,
-		Controller:         func() *bool { t := true; return &t }(),
-		BlockOwnerDeletion: func() *bool { t := true; return &t }(),
+		Controller:         ptr.To(true),
+		BlockOwnerDeletion: ptr.To(true),
 	}
 
 	// Get existing owner references
