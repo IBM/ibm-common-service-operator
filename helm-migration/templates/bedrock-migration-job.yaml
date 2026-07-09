@@ -34,6 +34,7 @@ spec:
             operatorNamespace={{ .Values.global.operatorNamespace }}
             servicesNamespace={{ .Values.global.instanceNamespace }}
             skipEDBMigration={{ .Values.cpfs.skipEDBMigration }}
+            skipIBMPGMigration={{ .Values.cpfs.skipIBMPGMigration }}
             namespaces=$(oc get cm namespace-scope -n $operatorNamespace -o jsonpath="{.data.namespaces}")
 
             
@@ -101,6 +102,19 @@ spec:
                 oc delete --ignore-not-found csv $edbCSV -n $operatorNamespace && oc delete --ignore-not-found subscription.operators.coreos.com $edbSub -n $operatorNamespace
               fi
             fi
+            
+            if [[ "$skipIBMPGMigration" == "true" ]]; then
+              echo "Skipping IBM PG operator cleanup as skipIBMPGMigration is set to true."
+            else
+              ibmPGSub=$(oc get subscription.operators.coreos.com -n "$operatorNamespace" -o jsonpath="{.items[?(@.spec.name=='ibm-pg-operator')].metadata.name}")
+              if [[ -z $ibmPGSub ]]; then
+                echo "IBM PG Subscription not present in operator namespace $operatorNamespace, skipping deleting Subscription and CSV."
+              else
+                ibmPGCSV=$(oc get --ignore-not-found subscription.operators.coreos.com $ibmPGSub -n $operatorNamespace -o jsonpath='{.status.currentCSV}')
+                echo "Deleting IBM PG CSV and Subscription in operator namespace $operatorNamespace..."
+                oc delete --ignore-not-found csv $ibmPGCSV -n $operatorNamespace && oc delete --ignore-not-found subscription.operators.coreos.com $ibmPGSub -n $operatorNamespace
+              fi
+            fi
 
             echo "Deleting IM and UI ServiceAccounts in services namespace $servicesNamespace..."
             oc delete --ignore-not-found sa ibm-iam-operand-restricted ibm-commonui-operand -n $servicesNamespace
@@ -130,6 +144,18 @@ spec:
                       edbSA=$(oc get sa -n $ns --ignore-not-found | grep postgresql-operator-controller-manager | awk '{print $1}' | tr "\n" " ")
                       if [[ ${edbSA// /} != "" ]]; then
                         oc delete sa $edbSA -n $ns --ignore-not-found
+                      fi
+                  fi
+                fi
+                
+                #get ibm-pg roles (skip if skipIBMPGMigration is true)
+                if [[ "$skipIBMPGMigration" != "true" ]]; then
+                  roles="${roles} $(oc get roles -n $ns | grep ibm-pg-operator | awk '{print $1}' | tr "\n" " ")"
+
+                  if [[ $ns != $servicesNamespace ]]; then
+                      ibmPGSA=$(oc get sa -n $ns --ignore-not-found | grep ibm-pg-operator | awk '{print $1}' | tr "\n" " ")
+                      if [[ ${ibmPGSA// /} != "" ]]; then
+                        oc delete sa $ibmPGSA -n $ns --ignore-not-found
                       fi
                   fi
                 fi

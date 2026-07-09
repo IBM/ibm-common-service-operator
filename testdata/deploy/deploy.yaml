@@ -16,7 +16,7 @@ spec:
       annotations:
         description: The IBM Common Service Operator is used to deploy IBM Common Services
         operatorChannel: v4.19
-        operatorVersion: 4.19.1
+        operatorVersion: 4.19.2
         cloudPakThemesVersion: styles4100.css
     spec:
       affinity:

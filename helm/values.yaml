@@ -23,3 +23,6 @@ global:
   operatorNamespace: operator-ns
   imagePullSecret: ibm-entitlement-key
   instanceNamespace:
+  clusterType: ocp
+  connectionType: 
+  domainName: 

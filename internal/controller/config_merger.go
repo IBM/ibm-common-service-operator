@@ -38,6 +38,11 @@ func MergeBaseAndCSConfigs(
 ) (string, error) {
 	klog.Info("Merging base OperandConfig with CommonService configurations")
 
+	// Validate only one CSPostgreSQLReplica across all CRs
+	if err := validateSingleReplicaConfig(csConfigs); err != nil {
+		return "", err
+	}
+
 	// Parse base config YAML to OperandConfig object
 	baseOpcon, err := parseOperandConfig(baseConfig)
 	if err != nil {
@@ -150,6 +155,84 @@ func convertOperandConfigToYAML(opcon *odlm.OperandConfig) (string, error) {
 	}
 
 	return string(yamlBytes), nil
+}
+
+// validateSingleReplicaConfig ensures only one CSPostgreSQLReplica configuration exists per tenant
+// The replica config is identified by checking for the Cluster resource with replica/externalClusters fields
+func validateSingleReplicaConfig(csConfigs []interface{}) error {
+	replicaCount := 0
+	var firstReplicaCR string
+
+	for _, config := range csConfigs {
+		configMap, ok := config.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		// Check if this is the common-service-cnpg service with Cluster resources
+		serviceName, _ := configMap["name"].(string)
+		if serviceName != "common-service-cnpg" {
+			continue
+		}
+
+		// Check resources array for Cluster with replica configuration
+		if resources, ok := configMap["resources"].([]interface{}); ok {
+			for _, resource := range resources {
+				resourceMap, ok := resource.(map[string]interface{})
+				if !ok {
+					continue
+				}
+
+				// Check if this is a Cluster resource
+				kind, _ := resourceMap["kind"].(string)
+				name, _ := resourceMap["name"].(string)
+				if kind != "Cluster" || name != "common-service-db" {
+					continue
+				}
+
+				// Check if it has replica configuration in data.spec
+				if data, ok := resourceMap["data"].(map[string]interface{}); ok {
+					if spec, ok := data["spec"].(map[string]interface{}); ok {
+						// Check for replica-specific fields (replica, externalClusters, or bootstrap.pg_basebackup)
+						hasReplica := false
+						if _, ok := spec["replica"]; ok {
+							hasReplica = true
+						}
+						if _, ok := spec["externalClusters"]; ok {
+							hasReplica = true
+						}
+						if bootstrap, ok := spec["bootstrap"].(map[string]interface{}); ok {
+							if _, ok := bootstrap["pg_basebackup"]; ok {
+								hasReplica = true
+							}
+						}
+
+						if hasReplica {
+							replicaCount++
+							if replicaCount == 1 {
+								firstReplicaCR = serviceName
+							}
+
+							if replicaCount > 1 {
+								return fmt.Errorf(
+									"multiple CSPostgreSQLReplica configurations found in tenant; "+
+										"only one allowed per tenant (first-come-first-serve); "+
+										"first configuration from service: %s",
+									firstReplicaCR,
+								)
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if replicaCount > 0 {
+		klog.Infof("Validated single CSPostgreSQLReplica configuration from service: %s", firstReplicaCR)
+	}
+
+	return nil
 }
 
 // validateMergedConfig validates the merged OperandConfig

@@ -18,7 +18,10 @@ package certmanager
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -28,14 +31,18 @@ import (
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	"github.com/go-logr/logr"
 	certmanagerv1 "github.com/ibm/ibm-cert-manager-operator/apis/cert-manager/v1"
 
 	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/constant"
+)
+
+var (
+	// Retry configuration for CA Secret verification
+	caSecretVerificationRetryDelay = 5 * time.Second
+	caSecretVerificationTimeout    = 60 * time.Second
 )
 
 var logd = log.Log.WithName("controller_certificaterefresh")
@@ -119,6 +126,24 @@ func (r *CertificateRefreshReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 
 	logd.Info("Certificate Secret is a CA, its leaf should be refreshed", "Secret.Name", secret.Name, "Secret.Namespace", secret.Namespace)
+
+	// Verify that the CA secret has been fully updated before processing dependent certificates
+	// This prevents race conditions where dependent certificates are deleted/renewed before CA secret is ready
+	caReady, requeueDelay, err := r.verifyCASecretUpdated(secret, logd)
+	if err != nil {
+		logd.Error(err, "Failed to verify CA secret is updated", "Secret", secret.Name)
+		return ctrl.Result{}, err
+	}
+
+	if !caReady {
+		logd.Info("CA secret not fully updated yet, requeuing",
+			"Secret", secret.Name,
+			"RequeueAfter", requeueDelay)
+		return ctrl.Result{RequeueAfter: requeueDelay}, nil
+	}
+
+	logd.Info("CA secret verified and fully updated, proceeding with dependent certificate refresh",
+		"Secret", secret.Name)
 
 	//Get tls.crt of the CA
 	tlsValueOfCA := secret.Data["tls.crt"]
@@ -276,21 +301,118 @@ func getIssuerNames(issuers []certmanagerv1.Issuer) []string {
 	return names
 }
 
+// verifyCASecretUpdated verifies that the CA secret has been fully updated with the new certificate
+// This prevents race conditions where dependent certificates are processed before the CA secret is ready
+func (r *CertificateRefreshReconciler) verifyCASecretUpdated(secret *corev1.Secret, logger logr.Logger) (bool, time.Duration, error) {
+	logger.Info("Verifying CA secret has been fully updated",
+		"Secret", secret.Name,
+		"Namespace", secret.Namespace)
+
+	// Check if secret has the required data
+	if len(secret.Data) == 0 {
+		logger.Info("CA secret has no data yet, will retry",
+			"Secret", secret.Name)
+		return false, caSecretVerificationRetryDelay, nil
+	}
+
+	// Check for tls.crt field
+	certData, hasCert := secret.Data["tls.crt"]
+	if !hasCert {
+		logger.Info("CA secret missing tls.crt, will retry",
+			"Secret", secret.Name)
+		return false, caSecretVerificationRetryDelay, nil
+	}
+
+	// Decode and parse the certificate to verify it's valid
+	block, _ := pem.Decode(certData)
+	if block == nil {
+		logger.Info("Failed to decode PEM block from CA secret tls.crt, will retry",
+			"Secret", secret.Name)
+		return false, caSecretVerificationRetryDelay, nil
+	}
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		logger.Error(err, "Failed to parse X.509 certificate from CA secret, will retry",
+			"Secret", secret.Name)
+		return false, caSecretVerificationRetryDelay, nil
+	}
+
+	// Get the backing Certificate CR to check its status
+	certCR, err := r.getCertificateBySecret(secret)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// No backing Certificate CR - this might be a BYO cert
+			// In this case, if the secret has valid cert data, consider it ready
+			logger.V(2).Info("No backing Certificate CR found, assuming CA secret is ready",
+				"Secret", secret.Name)
+			return true, 0, nil
+		}
+		return false, 0, fmt.Errorf("error getting Certificate CR for secret %s: %w", secret.Name, err)
+	}
+
+	// Verify the Certificate CR status is ready
+	if certCR.Status.NotBefore == nil || certCR.Status.NotAfter == nil {
+		logger.Info("Certificate CR status not ready yet, will retry",
+			"Certificate", certCR.Name,
+			"Secret", secret.Name)
+		return false, caSecretVerificationRetryDelay, nil
+	}
+
+	// Compare the certificate in the secret with the Certificate CR status
+	certNotBefore := certCR.Status.NotBefore.Time
+	secretCertNotBefore := cert.NotBefore
+
+	logger.V(2).Info("Comparing CA certificate timestamps",
+		"Secret", secret.Name,
+		"SecretCertNotBefore", secretCertNotBefore,
+		"CRNotBefore", certNotBefore)
+
+	// Check if the certificate in the secret matches the Certificate CR
+	// The secret cert should have NotBefore >= CR NotBefore
+	if secretCertNotBefore.Before(certNotBefore) {
+		// Secret contains an older certificate
+		timeSinceCRUpdate := time.Since(certNotBefore)
+
+		logger.Info("CA secret contains old certificate, waiting for cert-manager to update",
+			"Secret", secret.Name,
+			"SecretCertNotBefore", secretCertNotBefore,
+			"CRNotBefore", certNotBefore,
+			"TimeSinceCRUpdate", timeSinceCRUpdate)
+
+		if timeSinceCRUpdate < caSecretVerificationTimeout {
+			// Still within timeout, requeue
+			logger.Info("Waiting for CA secret to be updated by cert-manager",
+				"Secret", secret.Name,
+				"TimeSinceCRUpdate", timeSinceCRUpdate,
+				"NextRetryIn", caSecretVerificationRetryDelay)
+			return false, caSecretVerificationRetryDelay, nil
+		}
+
+		// Timeout exceeded - log warning but proceed
+		logger.Info("CA secret still contains old certificate after timeout, proceeding anyway",
+			"Secret", secret.Name,
+			"TimeSinceCRUpdate", timeSinceCRUpdate,
+			"SecretCertNotBefore", secretCertNotBefore,
+			"CRNotBefore", certNotBefore)
+	}
+
+	logger.Info("CA secret verified and fully updated",
+		"Secret", secret.Name,
+		"SecretCertNotBefore", secretCertNotBefore,
+		"SecretCertNotAfter", cert.NotAfter,
+		"CRNotBefore", certNotBefore,
+		"CRNotAfter", certCR.Status.NotAfter.Time)
+
+	return true, 0, nil
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *CertificateRefreshReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	klog.V(2).Infof("Set up")
 
-	// Create a new controller
-	c, err := controller.New("certificaterefresh-controller", mgr, controller.Options{Reconciler: r})
-	if err != nil {
-		return err
-	}
-
-	// Watch for changes to Certificates in the cluster
-	err = c.Watch(source.Kind(mgr.GetCache(), &corev1.Secret{}), &handler.EnqueueRequestForObject{})
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return ctrl.NewControllerManagedBy(mgr).
+		Named("certificate-refresh").
+		For(&corev1.Secret{}).
+		Complete(r)
 }

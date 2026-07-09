@@ -37,6 +37,14 @@ func ExtractCommonServiceConfigs(
 	cs *apiv3.CommonService,
 	servicesNs string,
 ) ([]interface{}, map[string]string, error) {
+	klog.Infof("ExtractCommonServiceConfigs called for CR: %s/%s", cs.Namespace, cs.Name)
+	klog.Infof("CR Spec.CSPostgreSQLReplica is nil: %v", cs.Spec.CSPostgreSQLReplica == nil)
+	if cs.Spec.CSPostgreSQLReplica != nil {
+		klog.Infof("CSPostgreSQLReplica found with replica.enabled=%v, source=%s",
+			cs.Spec.CSPostgreSQLReplica.Replica.Enabled,
+			cs.Spec.CSPostgreSQLReplica.Replica.Source)
+	}
+
 	var newConfigs []interface{}
 
 	// Extract feature configurations
@@ -106,25 +114,27 @@ func extractFeatureConfigs(cs *apiv3.CommonService) ([]interface{}, error) {
 	}
 
 	// Extract AutoScaleConfig configuration
-	// Check if autoScaleConfig field was explicitly set in the spec
+	// If autoScaleConfig is not set, treat it as false
+	autoScaleConfigValue := false
 	if cs.Spec.AutoScaleConfig != nil {
-		klog.Infof("Extracting autoScaleConfig configuration with value %t", *cs.Spec.AutoScaleConfig)
-		t := template.Must(template.New("template AutoScaleConfigTemplate").Parse(constant.AutoScaleConfigTemplate))
-		var tmplWriter bytes.Buffer
-		autoScaleConfigEnable := struct {
-			AutoScaleConfigEnable bool
-		}{
-			AutoScaleConfigEnable: *cs.Spec.AutoScaleConfig,
-		}
-		if err := t.Execute(&tmplWriter, autoScaleConfigEnable); err != nil {
-			return nil, err
-		}
-		autoScaleConfig, err := convertStringToSlice(tmplWriter.String())
-		if err != nil {
-			return nil, err
-		}
-		configs = append(configs, autoScaleConfig...)
+		autoScaleConfigValue = *cs.Spec.AutoScaleConfig
 	}
+	klog.Infof("Extracting autoScaleConfig configuration with value %t", autoScaleConfigValue)
+	t := template.Must(template.New("template AutoScaleConfigTemplate").Parse(constant.AutoScaleConfigTemplate))
+	var tmplWriter bytes.Buffer
+	autoScaleConfigEnable := struct {
+		AutoScaleConfigEnable bool
+	}{
+		AutoScaleConfigEnable: autoScaleConfigValue,
+	}
+	if err := t.Execute(&tmplWriter, autoScaleConfigEnable); err != nil {
+		return nil, err
+	}
+	autoScaleConfig, err := convertStringToSlice(tmplWriter.String())
+	if err != nil {
+		return nil, err
+	}
+	configs = append(configs, autoScaleConfig...)
 
 	// Extract routeHost configuration
 	if cs.Spec.RouteHost != "" {
@@ -198,7 +208,68 @@ func extractFeatureConfigs(cs *apiv3.CommonService) ([]interface{}, error) {
 		}
 	}
 
+	// Extract CSPostgreSQLReplica configuration
+	if cs.Spec.CSPostgreSQLReplica != nil {
+		klog.Info("Extracting CSPostgreSQLReplica configuration")
+		replicaConfig, err := extractPostgreSQLReplicaConfig(cs.Spec.CSPostgreSQLReplica)
+		if err != nil {
+			return nil, fmt.Errorf("failed to extract PostgreSQL replica config: %v", err)
+		}
+		configs = append(configs, replicaConfig)
+	}
+
 	return configs, nil
+}
+
+// extractPostgreSQLReplicaConfig converts CSPostgreSQLReplicaConfig to OperandConfig format
+// The replica config is merged into the Cluster resource's spec, not as a separate field
+// When replica config is present, it explicitly removes bootstrap.initdb from the base template
+// since replica clusters should only have bootstrap.pg_basebackup
+func extractPostgreSQLReplicaConfig(replicaConfig *apiv3.CSPostgreSQLReplicaConfig) (interface{}, error) {
+	// Validate required fields
+	if replicaConfig.Replica.Source == "" {
+		return nil, fmt.Errorf("replica configuration is incomplete: 'replica.source' is required but not provided")
+	}
+	if len(replicaConfig.ExternalClusters) == 0 {
+		return nil, fmt.Errorf("replica configuration is incomplete: 'externalClusters' is required but not provided")
+	}
+	if replicaConfig.Bootstrap.PgBaseBackup == nil {
+		return nil, fmt.Errorf("replica configuration is incomplete: 'bootstrap.pg_basebackup' is required but not provided")
+	}
+
+	// Convert replica config to map for merging
+	replicaBytes, err := json.Marshal(replicaConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	var replicaMap map[string]interface{}
+	if err := json.Unmarshal(replicaBytes, &replicaMap); err != nil {
+		return nil, err
+	}
+
+	// Explicitly set bootstrap.initdb to nil to remove it from base template during merge
+	// Replica clusters should only have bootstrap.pg_basebackup, not bootstrap.initdb
+	if bootstrap, ok := replicaMap["bootstrap"].(map[string]interface{}); ok {
+		bootstrap["initdb"] = nil
+	}
+
+	// Structure for OperandConfig: merge replica fields into Cluster resource spec
+	// This matches the structure in CommonServiceCNPGOpCon where the Cluster resource
+	// is defined with apiVersion: pg.ibm.com/v1, kind: Cluster, name: common-service-db
+	return map[string]interface{}{
+		"name": "common-service-cnpg",
+		"resources": []interface{}{
+			map[string]interface{}{
+				"apiVersion": "pg.ibm.com/v1",
+				"kind":       "Cluster",
+				"name":       "common-service-db",
+				"data": map[string]interface{}{
+					"spec": replicaMap,
+				},
+			},
+		},
+	}, nil
 }
 
 // extractSizeConfigs handles size profile extraction

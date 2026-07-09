@@ -42,7 +42,7 @@ BUILD_VERSION ?= $(shell git describe --exact-match 2> /dev/null || \
                 git describe --match=$(git rev-parse --short=8 HEAD) --always --dirty --abbrev=8)
 RELEASE_VERSION ?= $(shell cat ./version/version.go | grep "Version =" | awk '{ print $$3}' | tr -d '"')
 PREVIOUS_VERSION := 3.23.0
-LATEST_VERSION ?= 4.19.1
+LATEST_VERSION ?= 4.19.2
 
 LOCAL_OS := $(shell uname)
 ifeq ($(LOCAL_OS),Linux)
@@ -252,7 +252,7 @@ bundle-manifests: clis
 	echo "\n  # OpenShift annotations." >> bundle/metadata/annotations.yaml ;\
 	echo "  com.redhat.openshift.versions: $(OPENSHIFT_VERSIONS)" >> bundle/metadata/annotations.yaml ;\
 	$(OPERATOR_SDK) bundle validate ./bundle
-	$(YQ) eval -i '.metadata.annotations."olm.skipRange" = ">=3.3.0 <${RELEASE_VERSION}"' ${CSV_PATH}
+	$(YQ) eval -i '.metadata.annotations."olm.skipRange" = ">=4.6.0 <${RELEASE_VERSION}"' ${CSV_PATH}
 	$(YQ) eval -i '.spec.webhookdefinitions[0].deploymentName = "ibm-common-service-operator" | .spec.webhookdefinitions[1].deploymentName = "ibm-common-service-operator"' ${CSV_PATH}
 	$(YQ) eval-all -i '.spec.relatedImages = load("config/manifests/bases/ibm-common-service-operator.clusterserviceversion.yaml").spec.relatedImages' bundle/manifests/ibm-common-service-operator.clusterserviceversion.yaml
 
@@ -307,15 +307,21 @@ prepare-buildx:
 	@docker buildx inspect $(BUILDX_BUILDER) >/dev/null 2>&1 || docker buildx create --name $(BUILDX_BUILDER) --driver docker-container --use
 	@docker buildx use $(BUILDX_BUILDER)
 
+# NETRC_FILE can be overridden on the command line, e.g. NETRC_FILE=/path/to/.netrc make build-operator-image
+NETRC_FILE ?= $(HOME)/.netrc
+
 build-operator-image: config-docker cloudpak-theme.jar prepare-buildx ## Build the operator image.
 	@echo "Building the $(OPERATOR_IMAGE_NAME) docker image for $(LOCAL_ARCH)..."
-	@$(CONTAINER_TOOL) buildx build \
+	@NETRC_SECRET=""; \
+	if [ -f "$(NETRC_FILE)" ]; then NETRC_SECRET="--secret id=netrc,src=$(NETRC_FILE)"; fi; \
+	$(CONTAINER_TOOL) buildx build \
 		--builder $(BUILDX_BUILDER) \
 		--platform linux/$(LOCAL_ARCH) \
 		--build-arg VCS_REF=$(VCS_REF) \
 		--build-arg RELEASE_VERSION=$(RELEASE_VERSION) \
 		--build-arg TARGETOS=linux \
 		--build-arg TARGETARCH=$(LOCAL_ARCH) \
+		$$NETRC_SECRET \
 		-t $(LOCAL_ARCH_IMAGE) \
 		--load \
 		-f Dockerfile .

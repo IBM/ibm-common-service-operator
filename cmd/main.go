@@ -159,7 +159,7 @@ func main() {
 		// Create CS CR
 		klog.Infof("Start go routines")
 		if os.Getenv("NO_OLM") == "true" {
-			go goroutines.WaitToCreateCsCRNoOLM(bs)
+			go goroutines.WaitToCreateCRNoOLM(bs)
 		} else {
 			go goroutines.WaitToCreateCsCR(bs)
 		}

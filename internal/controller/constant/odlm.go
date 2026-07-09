@@ -1887,15 +1887,19 @@ spec:
               - common-service-db
               - common-service-db.{{ .ServicesNs }}
               - common-service-db.{{ .ServicesNs }}.svc
+              - common-service-db.{{ .ServicesNs }}.svc.cluster.local
               - common-service-db-r
               - common-service-db-r.{{ .ServicesNs }}
               - common-service-db-r.{{ .ServicesNs }}.svc
+              - common-service-db-r.{{ .ServicesNs }}.svc.cluster.local
               - common-service-db-ro
               - common-service-db-ro.{{ .ServicesNs }}
               - common-service-db-ro.{{ .ServicesNs }}.svc
+              - common-service-db-ro.{{ .ServicesNs }}.svc.cluster.local
               - common-service-db-rw
               - common-service-db-rw.{{ .ServicesNs }}
               - common-service-db-rw.{{ .ServicesNs }}.svc
+              - common-service-db-rw.{{ .ServicesNs }}.svc.cluster.local
             duration: 8760h0m0s
             issuerRef:
               kind: Issuer
@@ -2195,15 +2199,19 @@ spec:
               - common-service-db
               - common-service-db.{{ .ServicesNs }}
               - common-service-db.{{ .ServicesNs }}.svc
+              - common-service-db.{{ .ServicesNs }}.svc.cluster.local
               - common-service-db-r
               - common-service-db-r.{{ .ServicesNs }}
               - common-service-db-r.{{ .ServicesNs }}.svc
+              - common-service-db-r.{{ .ServicesNs }}.svc.cluster.local
               - common-service-db-ro
               - common-service-db-ro.{{ .ServicesNs }}
               - common-service-db-ro.{{ .ServicesNs }}.svc
+              - common-service-db-ro.{{ .ServicesNs }}.svc.cluster.local
               - common-service-db-rw
               - common-service-db-rw.{{ .ServicesNs }}
               - common-service-db-rw.{{ .ServicesNs }}.svc
+              - common-service-db-rw.{{ .ServicesNs }}.svc.cluster.local
             duration: 8760h0m0s
             issuerRef:
               kind: Issuer
@@ -2950,6 +2958,14 @@ spec:
     sourceNamespace: "{{ .CatalogSourceNs }}"
   - channel: v6.1
     name: ibm-events-operator-v6.1
+    namespace: "{{ .CPFSNs }}"
+    packageName: ibm-events-operator
+    scope: public
+    installPlanApproval: {{ .ApprovalMode }}
+    sourceName: {{ .CatalogSourceName }}
+    sourceNamespace: "{{ .CatalogSourceNs }}"
+  - channel: v7.0
+    name: ibm-events-operator-v7.0
     namespace: "{{ .CPFSNs }}"
     packageName: ibm-events-operator
     scope: public
