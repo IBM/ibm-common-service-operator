@@ -607,10 +607,7 @@ func (b *Bootstrap) shouldAddOwnerReference(obj *unstructured.Unstructured, inst
 	// ConfigMaps that need owner references
 	if gvk.Kind == "ConfigMap" && gvk.Version == "v1" && gvk.Group == "" {
 		configMapsNeedingOwner := []string{
-			"cloud-native-postgresql-image-list",
 			"cs-keycloak-theme",
-			constant.IBMCPPCONFIG, // "ibm-cpp-config"
-			constant.NamespaceScopeConfigmapName, // "namespace-scope"
 		}
 		for _, cmName := range configMapsNeedingOwner {
 			if name == cmName {
