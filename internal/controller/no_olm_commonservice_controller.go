@@ -195,7 +195,7 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 		}
 
 		klog.Info("Installing/Updating OperandConfig")
-		if err := r.Bootstrap.InstallOrUpdateOpcon(ctx, forceUpdateODLMCRs, instance); err != nil {
+		if err := r.Bootstrap.InstallOrUpdateOpcon(ctx, forceUpdateODLMCRs, instance, nil, nil); err != nil {
 			klog.Errorf("Fail to Installing/Updating OperandConfig: %v", err)
 			return ctrl.Result{}, err
 		}

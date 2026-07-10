@@ -79,11 +79,12 @@ type Bootstrap struct {
 	Config *rest.Config
 	record.EventRecorder
 	*deploy.Manager
-	SaasEnable           bool
-	MultiInstancesEnable bool
-	CSOperators          []CSOperator
-	CSData               apiv3.CSData
-	configMerger         ConfigMergerFunc
+	SaasEnable             bool
+	MultiInstancesEnable   bool
+	CSOperators            []CSOperator
+	CSData                 apiv3.CSData
+	configMerger           ConfigMergerFunc
+	aggregatedConfigMerger AggregatedConfigMergerFunc
 }
 
 // CanI performs a SelfSubjectAccessReview (SSAR) to check whether the operator service account
@@ -241,7 +242,7 @@ func NewBootstrap(mgr manager.Manager) (bs *Bootstrap, err error) {
 }
 
 // InitResources initialize resources at the bootstrap of operator
-func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLMCRs bool) error {
+func (b *Bootstrap) InitResources(ctx context.Context, instance *apiv3.CommonService, forceUpdateODLMCRs bool, aggregatedConfigs []interface{}, serviceControllerMapping map[string]string) error {
 	installPlanApproval := instance.Spec.InstallPlanApproval
 	userManagedOption := WithUserManagedOverridesFromConfigs(instance.Spec.OperatorConfigs)
 
@@ -314,7 +315,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		}
 
 		klog.Info("Installing/Updating OperandConfig")
-		if err := b.InstallOrUpdateOpcon(ctx, forceUpdateODLMCRs, instance); err != nil {
+		if err := b.InstallOrUpdateOpcon(ctx, forceUpdateODLMCRs, instance, aggregatedConfigs, serviceControllerMapping); err != nil {
 			return err
 		}
 	}
@@ -364,7 +365,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		}
 
 		klog.Info("Installing/Updating OperandConfig")
-		if err := b.InstallOrUpdateOpcon(ctx, forceUpdateODLMCRs, instance); err != nil {
+		if err := b.InstallOrUpdateOpcon(ctx, forceUpdateODLMCRs, instance, aggregatedConfigs, serviceControllerMapping); err != nil {
 			return err
 		}
 	}
@@ -964,7 +965,7 @@ func (b *Bootstrap) InstallOrUpdateOpreg(ctx context.Context, installPlanApprova
 
 // InstallOrUpdateOpcon will install or update OperandConfig when Opcon CRD is existent
 // Now accepts CommonService instance with merged configurations
-func (b *Bootstrap) InstallOrUpdateOpcon(ctx context.Context, forceUpdateODLMCRs bool, csInstance *apiv3.CommonService) error {
+func (b *Bootstrap) InstallOrUpdateOpcon(ctx context.Context, forceUpdateODLMCRs bool, csInstance *apiv3.CommonService, aggregatedConfigs []interface{}, serviceControllerMapping map[string]string) error {
 	// Get base template configs using common utility
 	configs := common.GetBaseOperandConfigList()
 
@@ -977,7 +978,16 @@ func (b *Bootstrap) InstallOrUpdateOpcon(ctx context.Context, forceUpdateODLMCRs
 	// Merge CommonService configurations with base templates
 	// before rendering to create complete OperandConfig in one step
 	finalConfig := concatenatedCon
-	if csInstance != nil {
+	if len(aggregatedConfigs) > 0 {
+		klog.Info("Merging aggregated CommonService configurations with base OperandConfig")
+		mergedConfig, err := b.mergeAggregatedConfigs(concatenatedCon, aggregatedConfigs, serviceControllerMapping)
+		if err != nil {
+			klog.Errorf("Failed to merge aggregated configurations: %v", err)
+			return err
+		}
+		finalConfig = mergedConfig
+		klog.Info("Successfully merged aggregated configurations for single-stage OperandConfig creation")
+	} else if csInstance != nil {
 		klog.Info("Merging CommonService configurations with base OperandConfig")
 		mergedConfig, err := b.mergeConfigs(ctx, concatenatedCon, csInstance)
 		if err != nil {

@@ -17,6 +17,7 @@
 package controllers
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -427,6 +428,95 @@ spec:
 		"merged result must contain the CS-supplied replica count (3), not the base value (1)")
 	assert.False(t, strings.Contains(result, `"replicas":1`) || strings.Contains(result, "replicas: 1"),
 		"merged result must not retain the base replica count of 1 for ibm-iam-operator")
+}
+
+// TestMergeBaseAndCSConfigs_WithAggregatedStorageClass verifies that aggregated multi-CR
+// configuration is applied during the initial single-stage OperandConfig creation so
+// ODLM sees the storageClass on first consume.
+func TestMergeBaseAndCSConfigs_WithAggregatedStorageClass(t *testing.T) {
+	baseYAML := `
+apiVersion: operator.ibm.com/v1alpha1
+kind: OperandConfig
+metadata:
+  name: common-service
+  namespace: ibm-common-services
+spec:
+  services:
+  - name: common-service-cnpg
+    resources:
+    - apiVersion: pg.ibm.com/v1
+      kind: Cluster
+      name: common-service-db
+      data:
+        spec:
+          storage:
+            size: 10Gi
+          walStorage:
+            size: 5Gi
+`
+
+	aggregatedConfigs := []interface{}{
+		map[string]interface{}{
+			"name": "common-service-cnpg",
+			"resources": []interface{}{
+				map[string]interface{}{
+					"apiVersion": "pg.ibm.com/v1",
+					"kind":       "Cluster",
+					"name":       "common-service-db",
+					"data": map[string]interface{}{
+						"spec": map[string]interface{}{
+							"storage": map[string]interface{}{
+								"storageClass": "fast-storage",
+							},
+							"walStorage": map[string]interface{}{
+								"storageClass": "fast-storage",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	result, err := MergeBaseAndCSConfigs(
+		baseYAML,
+		aggregatedConfigs,
+		map[string]string{"profileController": "default"},
+		"ibm-common-services",
+	)
+	require.NoError(t, err)
+
+	opcon, err := parseOperandConfig(result)
+	require.NoError(t, err)
+	require.Len(t, opcon.Spec.Services, 1)
+
+	serviceBytes, err := json.Marshal(opcon.Spec.Services[0])
+	require.NoError(t, err)
+
+	var serviceMap map[string]interface{}
+	require.NoError(t, json.Unmarshal(serviceBytes, &serviceMap))
+
+	resources, ok := serviceMap["resources"].([]interface{})
+	require.True(t, ok)
+	require.Len(t, resources, 1)
+
+	resourceMap, ok := resources[0].(map[string]interface{})
+	require.True(t, ok)
+
+	data, ok := resourceMap["data"].(map[string]interface{})
+	require.True(t, ok)
+	spec, ok := data["spec"].(map[string]interface{})
+	require.True(t, ok)
+
+	storage, ok := spec["storage"].(map[string]interface{})
+	require.True(t, ok)
+	walStorage, ok := spec["walStorage"].(map[string]interface{})
+	require.True(t, ok)
+
+	assert.Equal(t, "fast-storage", storage["storageClass"])
+	assert.Equal(t, "fast-storage", walStorage["storageClass"])
+	assert.Equal(t, "10Gi", storage["size"])
+	assert.Equal(t, "5Gi", walStorage["size"])
 }
 
 // TestMergeConfigs_EmptyCS verifies that MergeConfigs handles an empty CommonService
