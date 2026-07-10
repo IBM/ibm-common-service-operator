@@ -50,6 +50,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -268,7 +269,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 	}
 
 	// Create Keycloak themes ConfigMap
-	if err := b.CreateKeycloakThemesConfigMap(); err != nil {
+	if err := b.CreateKeycloakThemesConfigMap(instance); err != nil {
 		klog.Errorf("Failed to create Keycloak Themes ConfigMap: %v", err)
 		return err
 	}
@@ -327,7 +328,7 @@ func (b *Bootstrap) InitResources(instance *apiv3.CommonService, forceUpdateODLM
 		return err
 	} else if installODLM {
 		klog.Info("Installing ODLM Operator")
-		if err := b.renderTemplate(constant.ODLMSubscription, b.CSData); err != nil {
+		if err := b.renderTemplate(constant.ODLMSubscription, b.CSData, nil); err != nil {
 			return err
 		}
 	} else {
@@ -486,14 +487,14 @@ func (b *Bootstrap) CreateCsCR() error {
 		// using `ibm-common-services` ns as ServicesNs if CS CR does not exist
 		if _, err := b.GetObject(cs); errors.IsNotFound(err) {
 			b.CSData.ServicesNs = constant.MasterNamespace
-			return b.renderTemplate(constant.CsCR, b.CSData)
+			return b.renderTemplate(constant.CsCR, b.CSData, nil)
 		} else if err != nil {
 			return err
 		}
 	} else {
 		if _, err := b.GetObject(cs); errors.IsNotFound(err) { // Only if it's a fresh install
 			// Fresh Intall: No ODLM and NO CR
-			return b.renderTemplate(constant.CsCR, b.CSData)
+			return b.renderTemplate(constant.CsCR, b.CSData, nil)
 		} else if err != nil {
 			return err
 		}
@@ -587,7 +588,87 @@ func (b *Bootstrap) CreateResourcesFromAlmExamples() error {
 	return nil
 }
 
-func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...bool) error {
+// shouldAddOwnerReference determines if a resource should have an owner reference added
+func (b *Bootstrap) shouldAddOwnerReference(obj *unstructured.Unstructured, instance *apiv3.CommonService) bool {
+	if instance == nil {
+		return false
+	}
+
+	gvk := obj.GetObjectKind().GroupVersionKind()
+	name := obj.GetName()
+
+	// ConfigMaps that need owner references
+	if gvk.Kind == "ConfigMap" && gvk.Version == "v1" && gvk.Group == "" {
+		configMapsNeedingOwner := []string{
+			"cs-keycloak-theme",
+		}
+		for _, cmName := range configMapsNeedingOwner {
+			if name == cmName {
+				return true
+			}
+		}
+	}
+
+	// Certificate resources that need owner references
+	if gvk.Kind == "Certificate" && gvk.Group == "cert-manager.io" {
+		if name == constant.CSCACertificate { // "cs-ca-certificate"
+			return true
+		}
+	}
+
+	// Secret resources that need owner references
+	if gvk.Kind == "Secret" && gvk.Version == "v1" && gvk.Group == "" {
+		if name == constant.CSCACertificateSecret {
+			return true
+		}
+	}
+
+	return false
+}
+
+// addOwnerReference adds an owner reference to the object if appropriate
+func (b *Bootstrap) addOwnerReference(obj *unstructured.Unstructured, instance *apiv3.CommonService) error {
+	if !b.shouldAddOwnerReference(obj, instance) {
+		return nil
+	}
+
+	// Kubernetes does not allow cross-namespace owner references
+	if obj.GetNamespace() != "" && obj.GetNamespace() != instance.Namespace {
+		klog.V(2).Infof("Skipping cross-namespace owner ref for %s/%s (owner is in %s)",
+			obj.GetNamespace(), obj.GetName(), instance.Namespace)
+		return nil
+	}
+
+	// Create owner reference
+	ownerRef := metav1.OwnerReference{
+		APIVersion:         constant.APIVersion,
+		Kind:               constant.KindCR,
+		Name:               instance.Name,
+		UID:                instance.UID,
+		Controller:         pointer.Bool(true),
+		BlockOwnerDeletion: pointer.Bool(true),
+	}
+
+	// Get existing owner references
+	existingOwnerRefs := obj.GetOwnerReferences()
+	
+	// Check if owner reference already exists
+	for _, ref := range existingOwnerRefs {
+		if ref.UID == ownerRef.UID {
+			klog.V(2).Infof("Owner reference already exists for %s/%s", obj.GetNamespace(), obj.GetName())
+			return nil
+		}
+	}
+
+	// Add the new owner reference
+	existingOwnerRefs = append(existingOwnerRefs, ownerRef)
+	obj.SetOwnerReferences(existingOwnerRefs)
+	
+	klog.Infof("Added owner reference to %s %s/%s", obj.GetKind(), obj.GetNamespace(), obj.GetName())
+	return nil
+}
+
+func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, instance *apiv3.CommonService, alwaysUpdate ...bool) error {
 	objects, err := util.YamlToObjects(yamlContent)
 	if err != nil {
 		return err
@@ -597,6 +678,11 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 
 	for _, obj := range objects {
 		gvk := obj.GetObjectKind().GroupVersionKind()
+
+		// Add owner reference if appropriate
+		if err := b.addOwnerReference(obj, instance); err != nil {
+			klog.Errorf("Failed to add owner reference to %s/%s: %v", obj.GetNamespace(), obj.GetName(), err)
+		}
 
 		objInCluster, err := b.GetObject(obj)
 		if errors.IsNotFound(err) {
@@ -661,6 +747,12 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, alwaysUpdate ...b
 				}
 				if newSpec, found := obj.Object["spec"]; found {
 					objInCluster.Object["spec"] = newSpec
+				}
+				// Ensure owner reference is set on update
+				if b.shouldAddOwnerReference(objInCluster, instance) {
+					if err := b.addOwnerReference(objInCluster, instance); err != nil {
+						klog.Errorf("Failed to add owner reference during update to %s/%s: %v", objInCluster.GetNamespace(), objInCluster.GetName(), err)
+					}
 				}
 				if err := b.UpdateObject(objInCluster); err != nil {
 					errMsg = err
@@ -1018,7 +1110,7 @@ func (b *Bootstrap) InstallOrUpdateOperatorConfig(config string, forceUpdateODLM
 		}
 	}
 
-	if err := b.renderTemplate(config, b.CSData, forceUpdateODLMCRs); err != nil {
+	if err := b.renderTemplate(config, b.CSData, nil, forceUpdateODLMCRs); err != nil {
 		return err
 	}
 
@@ -1028,14 +1120,14 @@ func (b *Bootstrap) InstallOrUpdateOperatorConfig(config string, forceUpdateODLM
 // CreateNsScopeConfigmap creates nss configmap for operators
 func (b *Bootstrap) CreateNsScopeConfigmap() error {
 	cmRes := constant.NamespaceScopeConfigMap
-	if err := b.renderTemplate(cmRes, b.CSData, false); err != nil {
+	if err := b.renderTemplate(cmRes, b.CSData, nil, false); err != nil {
 		return err
 	}
 	return nil
 }
 
 // CreateKeycloakThemesConfigMap creates a ConfigMap contains Keycloak themes
-func (b *Bootstrap) CreateKeycloakThemesConfigMap() error {
+func (b *Bootstrap) CreateKeycloakThemesConfigMap(instance *apiv3.CommonService) error {
 
 	klog.Info("Extracting Keycloak themes from jar file")
 	themeFile := constant.KeycloakThemesJar
@@ -1046,7 +1138,7 @@ func (b *Bootstrap) CreateKeycloakThemesConfigMap() error {
 	b.CSData.CloudPakThemes = util.EncodeBase64(themeFileContent)
 
 	cmRes := constant.KeycloakThemesConfigMap
-	if err := b.renderTemplate(cmRes, b.CSData, false); err != nil {
+	if err := b.renderTemplate(cmRes, b.CSData, instance, false); err != nil {
 		return err
 	}
 	return nil
@@ -1360,7 +1452,7 @@ func (b *Bootstrap) deleteSubscription(name, namespace string) error {
 	return nil
 }
 
-func (b *Bootstrap) renderTemplate(objectTemplate string, data interface{}, alwaysUpdate ...bool) error {
+func (b *Bootstrap) renderTemplate(objectTemplate string, data interface{}, instance *apiv3.CommonService, alwaysUpdate ...bool) error {
 	var buffer bytes.Buffer
 	t := template.Must(template.New("newTemplate").Parse(objectTemplate))
 	if err := t.Execute(&buffer, data); err != nil {
@@ -1372,7 +1464,7 @@ func (b *Bootstrap) renderTemplate(objectTemplate string, data interface{}, alwa
 		forceUpdate = alwaysUpdate[0]
 	}
 
-	if err := b.CreateOrUpdateFromYaml(buffer.Bytes(), forceUpdate); err != nil {
+	if err := b.CreateOrUpdateFromYaml(buffer.Bytes(), instance, forceUpdate); err != nil {
 		return err
 	}
 	return nil
@@ -1713,7 +1805,7 @@ func (b *Bootstrap) updateApprovalMode() error {
 // deployResource deploys the given resource CR
 func (b *Bootstrap) DeployResource(cr, placeholder string) bool {
 	if err := utilwait.PollUntilContextCancel(ctx, time.Second*10, true, func(ctx context.Context) (done bool, err error) {
-		err = b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.ServicesNs)))
+		err = b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.ServicesNs)), nil)
 		if err != nil {
 			return false, err
 		}
@@ -1812,7 +1904,7 @@ func (b *Bootstrap) IsBYOCert() (bool, error) {
 	}
 }
 
-func (b *Bootstrap) DeployCertManagerCR() error {
+func (b *Bootstrap) DeployCertManagerCR(instance *apiv3.CommonService) error {
 	for _, kind := range constant.CertManagerKinds {
 		klog.Infof("Checking if resource %s CRD exsits ", kind)
 		// if the crd is not exist, skip it
@@ -1904,13 +1996,13 @@ func (b *Bootstrap) DeployCertManagerCR() error {
 	}
 
 	for _, cr := range constant.CertManagerIssuers {
-		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.ServicesNs))); err != nil {
+		if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.ServicesNs)), nil); err != nil {
 			return err
 		}
 	}
 	if deployRootCert {
 		for _, cr := range constant.CertManagerCerts {
-			if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.ServicesNs))); err != nil {
+			if err := b.CreateOrUpdateFromYaml([]byte(util.Namespacelize(cr, placeholder, b.CSData.ServicesNs)), instance); err != nil {
 				return err
 			}
 		}

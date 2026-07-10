@@ -170,7 +170,7 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 	}
 
 	// deploy Cert Manager CR
-	if err := r.Bootstrap.DeployCertManagerCR(); err != nil {
+	if err := r.Bootstrap.DeployCertManagerCR(instance); err != nil {
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
 		return ctrl.Result{}, err
 	}
@@ -279,7 +279,7 @@ func (r *CommonServiceReconciler) ReconcileNoOLMGeneralCR(ctx context.Context, i
 	}
 
 	// Generate Issuer and Certificate CR
-	if err := r.Bootstrap.DeployCertManagerCR(); err != nil {
+	if err := r.Bootstrap.DeployCertManagerCR(instance); err != nil {
 		klog.Errorf("Failed to deploy cert manager CRs: %v", err)
 		if err := r.updatePhase(ctx, instance, apiv3.CRFailed); err != nil {
 			klog.Error(err)

@@ -96,6 +96,8 @@ const (
 	BedrockCatalogsourcePriority = "bedrock_catalogsource_priority"
 	// CSCACertificate is the name of cs-ca-certificate
 	CSCACertificate = "cs-ca-certificate"
+	// CSCACertificateSecret is the name of cs-ca-certificate-secret
+	CSCACertificateSecret = "cs-ca-certificate-secret"
 	// CertManagerSub is the name of ibm-cert-manager-operator subscription
 	CertManagerSub = "ibm-cert-manager-operator"
 	// DefaultImagePullSecret is the default name of the IBM entitlement key secret

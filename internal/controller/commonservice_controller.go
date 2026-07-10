@@ -75,7 +75,7 @@ func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				return ctrl.Result{}, err
 			}
 			// Generate Issuer and Certificate CR
-			if err := r.Bootstrap.DeployCertManagerCR(); err != nil {
+			if err := r.Bootstrap.DeployCertManagerCR(instance); err != nil {
 				return ctrl.Result{}, err
 			}
 			klog.Infof("Finished reconciling to delete CommonService: %s/%s", req.NamespacedName.Namespace, req.NamespacedName.Name)
@@ -263,7 +263,7 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 	}
 
 	// Generate Issuer and Certificate CR
-	if statusErr = r.Bootstrap.DeployCertManagerCR(); statusErr != nil {
+	if statusErr = r.Bootstrap.DeployCertManagerCR(instance); statusErr != nil {
 		klog.Errorf("Failed to deploy cert manager CRs: %v", statusErr)
 		if statusErr = r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
 			klog.Error(statusErr)
@@ -355,7 +355,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(ctx context.Context, instan
 	}
 
 	// Generate Issuer and Certificate CR
-	if err := r.Bootstrap.DeployCertManagerCR(); err != nil {
+	if err := r.Bootstrap.DeployCertManagerCR(instance); err != nil {
 		klog.Errorf("Failed to deploy cert manager CRs: %v", err)
 		if err := r.updatePhase(ctx, instance, apiv3.CRFailed); err != nil {
 			klog.Error(err)
