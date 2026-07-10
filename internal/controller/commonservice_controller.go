@@ -228,18 +228,9 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 		return ctrl.Result{}, statusErr
 	}
 
-	// Init common service bootstrap resource
-	// Including namespace-scope configmap
-	// Deploy OperandConfig and OperandRegistry
-	if statusErr = r.Bootstrap.InitResources(instance, forceUpdateODLMCRs); statusErr != nil {
-		if statusErr := r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
-			klog.Error(statusErr)
-		}
-		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
-		return ctrl.Result{}, statusErr
-	}
-
-	// Build desired state from all CommonService CRs and update OperandConfig
+	// Build desired state from all CommonService CRs before bootstrap creates/updates OperandConfig.
+	// This closes the race where ODLM may consume an incomplete OperandConfig and create
+	// common-service-db before aggregated storageClass settings are present.
 	klog.Info("Building desired state from all CommonService CRs")
 	newConfigs, serviceControllerMapping, err := r.buildDesiredStateFromAllCRs(ctx)
 	if err != nil {
@@ -250,7 +241,19 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 		return ctrl.Result{}, err
 	}
 
-	// Update OperandConfig with the aggregated configurations
+	// Init common service bootstrap resource
+	// Including namespace-scope configmap
+	// Deploy OperandConfig and OperandRegistry with the aggregated CommonService view
+	if statusErr = r.Bootstrap.InitResources(ctx, instance, forceUpdateODLMCRs, newConfigs, serviceControllerMapping); statusErr != nil {
+		if statusErr := r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
+			klog.Error(statusErr)
+		}
+		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
+		return ctrl.Result{}, statusErr
+	}
+
+	// Reconcile OperandConfig again after bootstrap to converge any later changes and
+	// preserve the existing steady-state update path.
 	klog.Info("Updating OperandConfig with aggregated configurations")
 	if isEqual, err := r.updateOperandConfig(ctx, newConfigs, serviceControllerMapping); err != nil {
 		if statusErr := r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
@@ -547,10 +550,11 @@ func isNonNoopOperandReconcile(operandRegistry *odlm.OperandRegistry) bool {
 }
 
 func (r *CommonServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	// Set up configuration merger for single-stage OperandConfig creation
+	// Set up configuration mergers for single-stage OperandConfig creation
 	// This injects the merge logic into bootstrap without creating import cycles
 	r.Bootstrap.SetConfigMerger(CreateMergerFunc(r))
-	klog.Info("Configuration merger initialized for single-stage OperandConfig creation")
+	r.Bootstrap.SetAggregatedConfigMerger(MergeBaseAndCSConfigs)
+	klog.Info("Configuration mergers initialized for single-stage OperandConfig creation")
 
 	controller := ctrl.NewControllerManagedBy(mgr).
 		// AnnotationChangedPredicate is intended to be used in conjunction with the GenerationChangedPredicate

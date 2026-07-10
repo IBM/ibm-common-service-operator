@@ -27,10 +27,19 @@ import (
 // This allows bootstrap to use controller merge logic without import cycles
 type ConfigMergerFunc func(baseConfig string, cs *apiv3.CommonService, servicesNs string) (string, error)
 
+// AggregatedConfigMergerFunc merges base config with an already aggregated multi-CR view.
+// This lets bootstrap create OperandConfig in its final desired form before ODLM consumes it.
+type AggregatedConfigMergerFunc func(baseConfig string, configs []interface{}, serviceControllerMapping map[string]string, servicesNs string) (string, error)
+
 // SetConfigMerger sets the configuration merger function on the Bootstrap instance.
 // Called during reconciler initialization to inject the merge logic.
 func (b *Bootstrap) SetConfigMerger(merger ConfigMergerFunc) {
 	b.configMerger = merger
+}
+
+// SetAggregatedConfigMerger sets the aggregated configuration merger function on the Bootstrap instance.
+func (b *Bootstrap) SetAggregatedConfigMerger(merger AggregatedConfigMergerFunc) {
+	b.aggregatedConfigMerger = merger
 }
 
 // mergeConfigs calls the injected merger function if available.
@@ -60,6 +69,14 @@ func (b *Bootstrap) mergeConfigs(ctx context.Context, baseConfig string, cs *api
 		return b.configMerger(baseConfig, cs, b.CSData.ServicesNs)
 	}
 	// If no merger is set, return base config unchanged
+	return baseConfig, nil
+}
+
+// mergeAggregatedConfigs calls the injected aggregated merger function if available.
+func (b *Bootstrap) mergeAggregatedConfigs(baseConfig string, configs []interface{}, serviceControllerMapping map[string]string) (string, error) {
+	if b.aggregatedConfigMerger != nil {
+		return b.aggregatedConfigMerger(baseConfig, configs, serviceControllerMapping, b.CSData.ServicesNs)
+	}
 	return baseConfig, nil
 }
 
