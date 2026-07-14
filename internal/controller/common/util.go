@@ -253,21 +253,28 @@ func GetCPFSNamespace(r client.Reader) (cpfsNamespace string) {
 func GetServicesNamespace(r client.Reader) (servicesNamespace string) {
 	servicesNamespace, err := GetOperatorNamespace()
 	if err != nil {
+		klog.Warningf("GetServicesNamespace: failed to get operator namespace: %v, returning empty value", err)
 		return
 	}
+	klog.V(2).Infof("GetServicesNamespace: initial operator namespace: %s", servicesNamespace)
 
 	defaultCsCR := &apiv3.CommonService{}
 	csName := "common-service"
 	if err := r.Get(context.TODO(), types.NamespacedName{Name: csName, Namespace: servicesNamespace}, defaultCsCR); err != nil {
+		klog.Warningf("GetServicesNamespace: failed to get CommonService CR %s/%s: %v, returning operator namespace", servicesNamespace, csName, err)
 		return
 	}
+	klog.V(2).Infof("GetServicesNamespace: successfully read CommonService CR %s/%s", servicesNamespace, csName)
 
 	if string(defaultCsCR.Spec.ServicesNamespace) != "" {
 		servicesNamespace = string(defaultCsCR.Spec.ServicesNamespace)
+		klog.V(2).Infof("GetServicesNamespace: updated from spec.servicesNamespace: %s", servicesNamespace)
 	}
 	if string(defaultCsCR.Status.ConfigStatus.ServicesNamespace) != "" {
 		servicesNamespace = string(defaultCsCR.Status.ConfigStatus.ServicesNamespace)
+		klog.V(2).Infof("GetServicesNamespace: updated from status.configStatus.servicesNamespace: %s", servicesNamespace)
 	}
+	klog.Infof("GetServicesNamespace: final services namespace: %s", servicesNamespace)
 	return
 }
 
