@@ -1,6 +1,6 @@
 # Build the manager binary
 # syntax=docker/dockerfile:1
-FROM docker-na-public.artifactory.swg-devops.com/hyc-cloud-private-dockerhub-docker-remote/golang:1.26.4 AS builder
+FROM docker-na-public.artifactory.swg-devops.com/hyc-cloud-private-dockerhub-docker-remote/golang:1.26.5 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 ARG GOARCH
