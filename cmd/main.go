@@ -191,6 +191,7 @@ func main() {
 			}
 			if err = (&certmanagerv1controllers.V1AddLabelReconciler{
 				Client: mgr.GetClient(),
+				Reader: mgr.GetAPIReader(),
 				Scheme: mgr.GetScheme(),
 			}).SetupWithManager(mgr); err != nil {
 				klog.Error(err, "unable to create controller", "controller", "V1AddLabel")
