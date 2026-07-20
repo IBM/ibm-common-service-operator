@@ -36,6 +36,7 @@ import (
 // V1AddLabelReconciler reconciles a Certificate object
 type V1AddLabelReconciler struct {
 	client.Client
+	client.Reader
 	Scheme *runtime.Scheme
 }
 
@@ -97,7 +98,7 @@ func (r *V1AddLabelReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 func (r *V1AddLabelReconciler) getSecret(cert *certmanagerv1.Certificate) (*corev1.Secret, error) {
 	secretName := cert.Spec.SecretName
 	secret := &corev1.Secret{}
-	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: secretName, Namespace: cert.Namespace}, secret)
+	err := r.Reader.Get(context.TODO(), types.NamespacedName{Name: secretName, Namespace: cert.Namespace}, secret)
 
 	return secret, err
 }
