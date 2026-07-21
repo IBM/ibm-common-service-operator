@@ -652,7 +652,7 @@ func (b *Bootstrap) addOwnerReference(obj *unstructured.Unstructured, instance *
 
 	// Get existing owner references
 	existingOwnerRefs := obj.GetOwnerReferences()
-	
+
 	// Check if owner reference already exists
 	for _, ref := range existingOwnerRefs {
 		if ref.UID == ownerRef.UID {
@@ -664,7 +664,7 @@ func (b *Bootstrap) addOwnerReference(obj *unstructured.Unstructured, instance *
 	// Add the new owner reference
 	existingOwnerRefs = append(existingOwnerRefs, ownerRef)
 	obj.SetOwnerReferences(existingOwnerRefs)
-	
+
 	klog.Infof("Added owner reference to %s %s/%s", obj.GetKind(), obj.GetNamespace(), obj.GetName())
 	return nil
 }
@@ -1856,27 +1856,33 @@ func (b *Bootstrap) CheckClusterType(ns string) (bool, error) {
 	if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: constant.IBMCPPCONFIG, Namespace: ns}, config); err != nil && !errors.IsNotFound(err) {
 		return false, err
 	} else if errors.IsNotFound(err) {
-		if isOCP {
-			return true, nil
-		}
-		klog.Errorf("Configmap %s/%s is required", ns, constant.IBMCPPCONFIG)
-		return false, nil
-	} else {
-		if config.Data["kubernetes_cluster_type"] == "" {
-			return true, nil
-		}
-		if config.Data["kubernetes_cluster_type"] == "ocp" && !isOCP || config.Data["kubernetes_cluster_type"] != "ocp" && isOCP {
-			ocpCluster := "a non-OCP"
+		// Try again with Reader if not found with Client
+		if err := b.Reader.Get(context.TODO(), types.NamespacedName{Name: constant.IBMCPPCONFIG, Namespace: ns}, config); err != nil && !errors.IsNotFound(err) {
+			return false, err
+		} else if errors.IsNotFound(err) {
 			if isOCP {
-				ocpCluster = "an OCP"
+				return true, nil
 			}
-			klog.Errorf("cluster type isn't correct, kubernetes_cluster_type in configmap %s/%s is %s, but the cluster is %s environment", ns, constant.IBMCPPCONFIG, config.Data["kubernetes_cluster_type"], ocpCluster)
+			klog.Errorf("Configmap %s/%s is required", ns, constant.IBMCPPCONFIG)
 			return false, nil
 		}
+	}
 
-		klog.Info("cluster type is correct")
+	// Process the config if found (either from Client or Reader)
+	if config.Data["kubernetes_cluster_type"] == "" {
 		return true, nil
 	}
+	if config.Data["kubernetes_cluster_type"] == "ocp" && !isOCP || config.Data["kubernetes_cluster_type"] != "ocp" && isOCP {
+		ocpCluster := "a non-OCP"
+		if isOCP {
+			ocpCluster = "an OCP"
+		}
+		klog.Errorf("cluster type isn't correct, kubernetes_cluster_type in configmap %s/%s is %s, but the cluster is %s environment", ns, constant.IBMCPPCONFIG, config.Data["kubernetes_cluster_type"], ocpCluster)
+		return false, nil
+	}
+
+	klog.Info("cluster type is correct")
+	return true, nil
 }
 
 // 1. try to get cs-ca-certificate-secret
