@@ -288,13 +288,14 @@ func (r *CommonServiceReconciler) ReconcileNoOLMGeneralCR(ctx context.Context, i
 		return ctrl.Result{}, err
 	}
 
-	// Extract configurations using new extractor for subsequent updates
-	newConfigs, serviceControllerMapping, err := ExtractCommonServiceConfigs(instance, r.Bootstrap.CSData.ServicesNs)
+	// Build deserve state from all crs
+	klog.Info("Building desired state from all CommonService CRs")
+	newConfigs, serviceControllerMapping, err := r.buildDesiredStateFromAllCRs(ctx)
 	if err != nil {
-		if err := r.updatePhase(ctx, instance, apiv3.CRFailed); err != nil {
-			klog.Error(err)
+		if statusErr := r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
+			klog.Error(statusErr)
 		}
-		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, err)
+		klog.Errorf("Failed to build desired state from CRs: %v", err)
 		return ctrl.Result{}, err
 	}
 
