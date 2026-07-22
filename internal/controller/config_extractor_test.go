@@ -45,13 +45,33 @@ func rawJSON(t *testing.T, v interface{}) apiv3.ExtensionWithMarker {
 }
 
 // TestExtractCommonServiceConfigs_EmptyCS verifies that an empty CommonService CR
-// produces no configs and a default profileController mapping.
+// produces only autoScaleConfig with default value false and a default profileController mapping.
 func TestExtractCommonServiceConfigs_EmptyCS(t *testing.T) {
 	cs := newCS()
 	configs, mapping, err := ExtractCommonServiceConfigs(cs, testServicesNs)
 	require.NoError(t, err)
-	assert.Empty(t, configs, "empty CS should produce no configs")
+	require.NotEmpty(t, configs, "empty CS should produce autoScaleConfig with default false")
 	assert.Equal(t, "default", mapping["profileController"])
+
+	// Verify that autoScaleConfig is set to false by default
+	foundAutoScale := false
+	for _, c := range configs {
+		b, _ := json.Marshal(c)
+		if strings.Contains(string(b), "\"autoScaleConfig\":false") {
+			foundAutoScale = true
+			break
+		}
+	}
+	assert.True(t, foundAutoScale, "empty CS should produce autoScaleConfig=false by default")
+
+	// Verify that no other feature configs are present (storageClass, routeHost, etc.)
+	configJSON, _ := json.Marshal(configs)
+	configStr := string(configJSON)
+	assert.NotContains(t, configStr, "storageClass", "empty CS should not contain storageClass config")
+	assert.NotContains(t, configStr, "routeHost", "empty CS should not contain routeHost config")
+	assert.NotContains(t, configStr, "defaultAdminUser", "empty CS should not contain defaultAdminUser config")
+	assert.NotContains(t, configStr, "fipsEnabled", "empty CS should not contain fipsEnabled config")
+	assert.NotContains(t, configStr, "hugepages", "empty CS should not contain hugepages config")
 }
 
 // TestExtractCommonServiceConfigs_StorageClass verifies that a storageClass value
