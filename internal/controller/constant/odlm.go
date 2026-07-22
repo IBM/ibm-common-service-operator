@@ -2516,7 +2516,7 @@ spec:
             - name: {{ .ImagePullSecret }}
       - apiVersion: rbac.authorization.k8s.io/v1
         kind: Role
-        name: common-service-db-pg-migration-role
+        name: common-service-db-pg-migration-role-{{ .OperatorNs }}
         namespace: {{ .OperatorNs }}
         labels:
           app: cpfs-pg-migrator
@@ -2532,7 +2532,7 @@ spec:
                 - watch
       - apiVersion: rbac.authorization.k8s.io/v1
         kind: RoleBinding
-        name: common-service-db-pg-migration-rolebinding
+        name: common-service-db-pg-migration-rolebinding-{{ .OperatorNs }}
         namespace: {{ .OperatorNs }}
         labels:
           app: cpfs-pg-migrator
@@ -2540,7 +2540,7 @@ spec:
           roleRef:
             apiGroup: rbac.authorization.k8s.io
             kind: Role
-            name: common-service-db-pg-migration-role
+            name: common-service-db-pg-migration-role-{{ .OperatorNs }}
           subjects:
             - kind: ServiceAccount
               name: common-service-db-pg-migration-sa
