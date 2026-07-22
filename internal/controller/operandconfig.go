@@ -1207,6 +1207,14 @@ func (r *CommonServiceReconciler) buildDesiredStateFromAllCRs(ctx context.Contex
 			continue
 		}
 
+		// Collect autoScaleConfig (any true wins, otherwise false in the End)
+		if cs.Spec.AutoScaleConfig != nil {
+			if mergedFeatureCS.Spec.AutoScaleConfig == nil || *cs.Spec.AutoScaleConfig {
+				mergedFeatureCS.Spec.AutoScaleConfig = cs.Spec.AutoScaleConfig
+				klog.Infof("Collected autoScaleConfig=%t from CR %s/%s", *cs.Spec.AutoScaleConfig, cs.Namespace, cs.Name)
+			}
+		}
+
 		// Collect storageClass (first non-empty wins)
 		if mergedFeatureCS.Spec.StorageClass == "" && cs.Spec.StorageClass != "" {
 			mergedFeatureCS.Spec.StorageClass = cs.Spec.StorageClass
@@ -1275,6 +1283,11 @@ func (r *CommonServiceReconciler) buildDesiredStateFromAllCRs(ctx context.Contex
 			mergedFeatureCS.Spec.CSPostgreSQLReplica = cs.Spec.CSPostgreSQLReplica.DeepCopy()
 			klog.Infof("Collected csPostgreSQLReplica from CR %s/%s (source=%s)", cs.Namespace, cs.Name, cs.Spec.CSPostgreSQLReplica.Replica.Source)
 		}
+	}
+
+	// Default autoScaleConfig to false if not set
+	if mergedFeatureCS.Spec.AutoScaleConfig == nil {
+		mergedFeatureCS.Spec.AutoScaleConfig = new(bool) // false
 	}
 
 	// PASS 2: Apply collected global features to ALL services (base layer)
