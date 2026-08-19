@@ -18,6 +18,7 @@ package certmanager
 
 import (
 	"context"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -30,6 +31,7 @@ import (
 
 	certmanagerv1 "github.com/ibm/ibm-cert-manager-operator/apis/cert-manager/v1"
 
+	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/common"
 	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/constant"
 )
 
@@ -72,26 +74,63 @@ func (r *V1AddLabelReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	secretInstance, err := r.getSecret(cert)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return ctrl.Result{}, nil
+			// Certificate Secrets are generated asynchronously. Requeue so a
+			// Certificate event that arrives before its Secret does not permanently
+			// miss labels or ownership.
+			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 		}
 		logd.Error(err, "Error getting Secret")
 		return ctrl.Result{}, err
 	}
 
-	oldLabelsMap := secretInstance.GetLabels()
-	if oldLabelsMap == nil {
-		oldLabelsMap = make(map[string]string)
+	changed := false
+	labelsMap := secretInstance.GetLabels()
+	if labelsMap == nil {
+		labelsMap = make(map[string]string)
 	}
-	if _, ok := oldLabelsMap[constant.SecretWatchLabel]; !ok {
-		oldLabelsMap[constant.SecretWatchLabel] = ""
-		secretInstance.SetLabels(oldLabelsMap)
+	if _, ok := labelsMap[constant.SecretWatchLabel]; !ok {
+		labelsMap[constant.SecretWatchLabel] = ""
+		secretInstance.SetLabels(labelsMap)
+		changed = true
+	}
+
+	ownerReferenceChanged, err := ensureCSCACertificateSecretOwnerReference(cert, secretInstance)
+	if err != nil {
+		logd.Error(err, "Error adding CommonService owner reference to Secret")
+		return ctrl.Result{}, err
+	}
+	changed = changed || ownerReferenceChanged
+
+	if !changed {
+		return ctrl.Result{}, nil
 	}
 
 	if err = r.updateSecret(secretInstance); err != nil {
 		logd.Error(err, "Error updating Secret")
 		return ctrl.Result{}, err
 	}
+	if ownerReferenceChanged {
+		logd.Info("Added owner reference to Secret", "namespace", secretInstance.Namespace, "name", secretInstance.Name)
+	}
 	return ctrl.Result{}, nil
+}
+
+// ensureCSCACertificateSecretOwnerReference copies the CommonService owner
+// from the managed CA Certificate to its generated Secret. A BYO CA Secret has
+// no managed Certificate and therefore is intentionally left user-owned.
+func ensureCSCACertificateSecretOwnerReference(cert *certmanagerv1.Certificate, secret *corev1.Secret) (bool, error) {
+	if cert.Name != constant.CSCACertificate ||
+		secret.Name != constant.CSCACertificateSecret ||
+		cert.Spec.SecretName != secret.Name {
+		return false, nil
+	}
+
+	for _, ownerRef := range cert.GetOwnerReferences() {
+		if ownerRef.APIVersion == constant.APIVersion && ownerRef.Kind == constant.KindCR {
+			return common.EnsureControllerOwnerReference(secret, ownerRef)
+		}
+	}
+	return false, nil
 }
 
 // getSecret finds corresponding secret of the certmanagerv1 certificate
