@@ -34,6 +34,7 @@ import (
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
 	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/constant"
+	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/deploy"
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/v4/api/v1alpha1"
 )
 
@@ -747,4 +748,113 @@ func TestCheckSubOperatorStatusSkipsUserManaged(t *testing.T) {
 	assert.True(t, ready)
 	assert.Empty(t, instance.Status.BedrockOperators)
 	assert.Equal(t, apiv3.CRSucceeded, instance.Status.OverallStatus)
+}
+
+func TestCreateOrUpdateFromYamlBackfillsCertificateOwnerWithoutVersionChange(t *testing.T) {
+	const namespace = "test-common-service"
+
+	existing := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "cert-manager.io/v1",
+			"kind":       "Certificate",
+			"metadata": map[string]interface{}{
+				"name":      constant.CSCACertificate,
+				"namespace": namespace,
+				"annotations": map[string]interface{}{
+					"version": "0.0.1",
+					"runtime": "keep-me",
+				},
+			},
+			"spec": map[string]interface{}{
+				"secretName":   constant.CSCACertificateSecret,
+				"runtimeField": "keep-me",
+			},
+		},
+	}
+
+	fakeClient := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithRuntimeObjects(existing).Build()
+	bootstrap := &Bootstrap{
+		Client:  fakeClient,
+		Reader:  fakeClient,
+		Manager: &deploy.Manager{Client: fakeClient, Reader: fakeClient},
+	}
+	instance := &apiv3.CommonService{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "common-service",
+			Namespace: namespace,
+			UID:       types.UID("common-service-uid"),
+		},
+	}
+
+	desired := []byte(`apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cs-ca-certificate
+  namespace: test-common-service
+  annotations:
+    version: 0.0.1
+spec:
+  secretName: cs-ca-certificate-secret
+`)
+
+	err := bootstrap.CreateOrUpdateFromYaml(desired, instance)
+	assert.NoError(t, err)
+
+	actual := &unstructured.Unstructured{}
+	actual.SetAPIVersion("cert-manager.io/v1")
+	actual.SetKind("Certificate")
+	err = fakeClient.Get(context.TODO(), types.NamespacedName{Name: constant.CSCACertificate, Namespace: namespace}, actual)
+	assert.NoError(t, err)
+	if assert.Len(t, actual.GetOwnerReferences(), 1) {
+		owner := actual.GetOwnerReferences()[0]
+		assert.Equal(t, instance.UID, owner.UID)
+		assert.Equal(t, instance.Name, owner.Name)
+		assert.NotNil(t, owner.Controller)
+		assert.True(t, *owner.Controller)
+	}
+	assert.Equal(t, "keep-me", actual.GetAnnotations()["runtime"])
+	runtimeField, found, err := unstructured.NestedString(actual.Object, "spec", "runtimeField")
+	assert.NoError(t, err)
+	assert.True(t, found)
+	assert.Equal(t, "keep-me", runtimeField)
+
+	// A second reconciliation must be idempotent and must not duplicate owners.
+	err = bootstrap.CreateOrUpdateFromYaml(desired, instance)
+	assert.NoError(t, err)
+	err = fakeClient.Get(context.TODO(), types.NamespacedName{Name: constant.CSCACertificate, Namespace: namespace}, actual)
+	assert.NoError(t, err)
+	assert.Len(t, actual.GetOwnerReferences(), 1)
+}
+
+func TestAddOwnerReferenceReplacesStaleCommonServiceUID(t *testing.T) {
+	controller := true
+	obj := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "cert-manager.io/v1",
+			"kind":       "Certificate",
+			"metadata": map[string]interface{}{
+				"name":      constant.CSCACertificate,
+				"namespace": "test-common-service",
+			},
+		},
+	}
+	obj.SetOwnerReferences([]metav1.OwnerReference{{
+		APIVersion: constant.APIVersion,
+		Kind:       constant.KindCR,
+		Name:       "common-service",
+		UID:        types.UID("old-uid"),
+		Controller: &controller,
+	}})
+	instance := &apiv3.CommonService{ObjectMeta: metav1.ObjectMeta{
+		Name:      "common-service",
+		Namespace: "test-common-service",
+		UID:       types.UID("new-uid"),
+	}}
+
+	changed, err := (&Bootstrap{}).addOwnerReference(obj, instance)
+	assert.NoError(t, err)
+	assert.True(t, changed)
+	if assert.Len(t, obj.GetOwnerReferences(), 1) {
+		assert.Equal(t, instance.UID, obj.GetOwnerReferences()[0].UID)
+	}
 }
