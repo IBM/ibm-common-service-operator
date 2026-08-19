@@ -826,6 +826,56 @@ spec:
 	assert.Len(t, actual.GetOwnerReferences(), 1)
 }
 
+func TestCreateOrUpdateFromYamlBackfillsKeycloakThemeOwnerWithoutVersionChange(t *testing.T) {
+	const namespace = "test-common-service"
+
+	existing := &unstructured.Unstructured{Object: map[string]interface{}{
+		"apiVersion": "v1",
+		"kind":       "ConfigMap",
+		"metadata": map[string]interface{}{
+			"name":      "cs-keycloak-theme",
+			"namespace": namespace,
+			"annotations": map[string]interface{}{
+				"version": "4.19.0",
+			},
+		},
+		"data": map[string]interface{}{"runtime": "keep-me"},
+	}}
+	fakeClient := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithRuntimeObjects(existing).Build()
+	bootstrap := &Bootstrap{
+		Client:  fakeClient,
+		Reader:  fakeClient,
+		Manager: &deploy.Manager{Client: fakeClient, Reader: fakeClient},
+	}
+	instance := &apiv3.CommonService{ObjectMeta: metav1.ObjectMeta{
+		Name: constant.MasterCR, Namespace: namespace, UID: types.UID("common-service-uid"),
+	}}
+	desired := []byte(`apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cs-keycloak-theme
+  namespace: test-common-service
+  annotations:
+    version: 4.19.0
+data:
+  runtime: from-template
+`)
+
+	assert.NoError(t, bootstrap.CreateOrUpdateFromYaml(desired, instance))
+
+	actual := &unstructured.Unstructured{}
+	actual.SetAPIVersion("v1")
+	actual.SetKind("ConfigMap")
+	assert.NoError(t, fakeClient.Get(context.Background(), types.NamespacedName{Name: "cs-keycloak-theme", Namespace: namespace}, actual))
+	if assert.Len(t, actual.GetOwnerReferences(), 1) {
+		assert.Equal(t, instance.UID, actual.GetOwnerReferences()[0].UID)
+	}
+	runtimeValue, found, err := unstructured.NestedString(actual.Object, "data", "runtime")
+	assert.NoError(t, err)
+	assert.True(t, found)
+	assert.Equal(t, "keep-me", runtimeValue)
+}
+
 func TestAddOwnerReferenceReplacesStaleCommonServiceUID(t *testing.T) {
 	controller := true
 	obj := &unstructured.Unstructured{
