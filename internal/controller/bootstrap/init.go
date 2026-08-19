@@ -50,7 +50,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
-	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -644,47 +643,13 @@ func (b *Bootstrap) addOwnerReference(obj *unstructured.Unstructured, instance *
 
 	// Create owner reference
 	ownerRef := metav1.OwnerReference{
-		APIVersion:         constant.APIVersion,
-		Kind:               constant.KindCR,
-		Name:               instance.Name,
-		UID:                instance.UID,
-		Controller:         pointer.Bool(true),
-		BlockOwnerDeletion: pointer.Bool(true),
+		APIVersion: constant.APIVersion,
+		Kind:       constant.KindCR,
+		Name:       instance.Name,
+		UID:        instance.UID,
 	}
 
-	// Get existing owner references
-	existingOwnerRefs := obj.GetOwnerReferences()
-
-	// Update an existing reference to this CommonService. This also handles a
-	// recreated CommonService whose UID changed without creating two controller
-	// owner references.
-	for i, ref := range existingOwnerRefs {
-		if ref.UID == ownerRef.UID ||
-			(ref.APIVersion == ownerRef.APIVersion && ref.Kind == ownerRef.Kind && ref.Name == ownerRef.Name) {
-			if equality.Semantic.DeepEqual(ref, ownerRef) {
-				klog.V(2).Infof("Owner reference already exists for %s/%s", obj.GetNamespace(), obj.GetName())
-				return false, nil
-			}
-
-			existingOwnerRefs[i] = ownerRef
-			obj.SetOwnerReferences(existingOwnerRefs)
-			return true, nil
-		}
-	}
-
-	// Kubernetes objects may have only one controlling owner. Fail explicitly
-	// instead of submitting an invalid update when another controller owns it.
-	for _, ref := range existingOwnerRefs {
-		if ref.Controller != nil && *ref.Controller {
-			return false, fmt.Errorf("cannot add CommonService owner reference to %s %s/%s: object is already controlled by %s %s",
-				obj.GetKind(), obj.GetNamespace(), obj.GetName(), ref.Kind, ref.Name)
-		}
-	}
-
-	// Add the new owner reference
-	existingOwnerRefs = append(existingOwnerRefs, ownerRef)
-	obj.SetOwnerReferences(existingOwnerRefs)
-	return true, nil
+	return common.EnsureControllerOwnerReference(obj, ownerRef)
 }
 
 func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, instance *apiv3.CommonService, alwaysUpdate ...bool) error {
