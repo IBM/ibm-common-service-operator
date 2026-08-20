@@ -97,7 +97,7 @@ func (r *V1AddLabelReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 // getSecret finds corresponding secret of the certmanagerv1 certificate
 func (r *V1AddLabelReconciler) getSecret(cert *certmanagerv1.Certificate) (*corev1.Secret, error) {
 	secretName := cert.Spec.SecretName
-	secret := &corev1.Secret{}
+	secret := &corev1.Secret{} // pragma: allowlist secret
 	err := r.Reader.Get(context.TODO(), types.NamespacedName{Name: secretName, Namespace: cert.Namespace}, secret)
 
 	return secret, err

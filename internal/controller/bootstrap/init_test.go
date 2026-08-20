@@ -910,9 +910,9 @@ func TestAddOwnerReferenceReplacesStaleCommonServiceUID(t *testing.T) {
 }
 
 func TestShouldAddOwnerReferenceExcludesCSCACertificateSecret(t *testing.T) {
-	secret := &unstructured.Unstructured{Object: map[string]interface{}{
+	secret := &unstructured.Unstructured{Object: map[string]interface{}{ // pragma: allowlist secret
 		"apiVersion": "v1",
-		"kind":       "Secret",
+		"kind":       "Secret", // pragma: allowlist secret
 		"metadata": map[string]interface{}{
 			"name":      constant.CSCACertificateSecret,
 			"namespace": "test-common-service",
