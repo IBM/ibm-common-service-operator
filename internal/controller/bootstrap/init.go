@@ -71,6 +71,27 @@ var (
 	placeholder = "placeholder"
 )
 
+type ownerReferenceTarget struct {
+	Group string
+	Kind  string
+	Name  string
+}
+
+// commonServiceOwnerReferenceTargets is an explicit lifecycle allowlist.
+// Only resources in this list are garbage-collected with their CommonService.
+var commonServiceOwnerReferenceTargets = [...]ownerReferenceTarget{
+	{
+		Group: "",
+		Kind:  "ConfigMap",
+		Name:  constant.CSKeycloakThemeConfigMap,
+	},
+	{
+		Group: "cert-manager.io",
+		Kind:  "Certificate",
+		Name:  constant.CSCACertificate,
+	},
+}
+
 var ctx = context.Background()
 
 type Bootstrap struct {
@@ -589,36 +610,20 @@ func (b *Bootstrap) CreateResourcesFromAlmExamples() error {
 }
 
 // shouldAddOwnerReference determines if a resource should have an owner reference added
-func (b *Bootstrap) shouldAddOwnerReference(obj *unstructured.Unstructured, instance *apiv3.CommonService) bool {
+func (b *Bootstrap) shouldAddOwnerReference(
+	obj *unstructured.Unstructured,
+	instance *apiv3.CommonService,
+) bool {
 	if instance == nil {
 		return false
 	}
 
 	gvk := obj.GetObjectKind().GroupVersionKind()
-	name := obj.GetName()
 
-	// ConfigMaps that need owner references
-	if gvk.Kind == "ConfigMap" && gvk.Version == "v1" && gvk.Group == "" {
-		configMapsNeedingOwner := []string{
-			"cs-keycloak-theme",
-		}
-		for _, cmName := range configMapsNeedingOwner {
-			if name == cmName {
-				return true
-			}
-		}
-	}
-
-	// Certificate resources that need owner references
-	if gvk.Kind == "Certificate" && gvk.Group == "cert-manager.io" {
-		if name == constant.CSCACertificate { // "cs-ca-certificate"
-			return true
-		}
-	}
-
-	// Secret resources that need owner references
-	if gvk.Kind == "Secret" && gvk.Version == "v1" && gvk.Group == "" {
-		if name == constant.CSCACertificateSecret {
+	for _, target := range commonServiceOwnerReferenceTargets {
+		if gvk.Group == target.Group &&
+			gvk.Kind == target.Kind &&
+			obj.GetName() == target.Name {
 			return true
 		}
 	}
@@ -629,19 +634,25 @@ func (b *Bootstrap) shouldAddOwnerReference(obj *unstructured.Unstructured, inst
 // addOwnerReference ensures that obj is controlled by instance. It returns true
 // when the object was changed. The caller is responsible for persisting the
 // change and logging only after that persistence succeeds.
-func (b *Bootstrap) addOwnerReference(obj *unstructured.Unstructured, instance *apiv3.CommonService) (bool, error) {
+func (b *Bootstrap) addOwnerReference(
+	obj *unstructured.Unstructured,
+	instance *apiv3.CommonService,
+) (bool, error) {
 	if !b.shouldAddOwnerReference(obj, instance) {
 		return false, nil
 	}
 
-	// Kubernetes does not allow cross-namespace owner references
+	// Kubernetes does not allow cross-namespace owner references.
 	if obj.GetNamespace() != "" && obj.GetNamespace() != instance.Namespace {
-		klog.V(2).Infof("Skipping cross-namespace owner ref for %s/%s (owner is in %s)",
-			obj.GetNamespace(), obj.GetName(), instance.Namespace)
+		klog.V(2).Infof(
+			"Skipping cross-namespace owner ref for %s/%s (owner is in %s)",
+			obj.GetNamespace(),
+			obj.GetName(),
+			instance.Namespace,
+		)
 		return false, nil
 	}
 
-	// Create owner reference
 	ownerRef := metav1.OwnerReference{
 		APIVersion: constant.APIVersion,
 		Kind:       constant.KindCR,
