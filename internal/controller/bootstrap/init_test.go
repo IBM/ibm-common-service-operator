@@ -908,3 +908,20 @@ func TestAddOwnerReferenceReplacesStaleCommonServiceUID(t *testing.T) {
 		assert.Equal(t, instance.UID, obj.GetOwnerReferences()[0].UID)
 	}
 }
+
+func TestShouldAddOwnerReferenceExcludesCSCACertificateSecret(t *testing.T) {
+	secret := &unstructured.Unstructured{Object: map[string]interface{}{
+		"apiVersion": "v1",
+		"kind":       "Secret",
+		"metadata": map[string]interface{}{
+			"name":      constant.CSCACertificateSecret,
+			"namespace": "test-common-service",
+		},
+	}}
+	instance := &apiv3.CommonService{ObjectMeta: metav1.ObjectMeta{
+		Name:      constant.MasterCR,
+		Namespace: "test-common-service",
+	}}
+
+	assert.False(t, (&Bootstrap{}).shouldAddOwnerReference(secret, instance))
+}
