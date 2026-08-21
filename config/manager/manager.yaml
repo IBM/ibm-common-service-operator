@@ -72,6 +72,8 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.annotations['olm.targetNamespaces']
+        - name: MANAGE_DAEMONSETS
+          value: "true"
         - name: OPERATOR_NAME
           value: "ibm-common-service-operator"
         - name: CPFS_UTILS_IMAGE

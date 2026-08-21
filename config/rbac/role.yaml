@@ -55,7 +55,6 @@ rules:
   resources:
   - daemonsets
   verbs:
-  - get
   - list
   - watch
   - update
