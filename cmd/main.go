@@ -175,6 +175,7 @@ func main() {
 		if !exist && err == nil {
 			klog.Infof("cert-manager CRD does not exist, skip cert-manager related controllers initialization")
 		} else if exist && err == nil {
+			disableDaemonSetManagement := os.Getenv("MANAGE_DAEMONSETS") == "false"
 			if err = (&certmanagerv1controllers.CertificateRefreshReconciler{
 				Client: mgr.GetClient(),
 				Scheme: mgr.GetScheme(),
@@ -185,6 +186,7 @@ func main() {
 			if err = (&certmanagerv1controllers.PodRefreshReconciler{
 				Client: mgr.GetClient(),
 				Scheme: mgr.GetScheme(),
+				DisableDaemonSetManagement: disableDaemonSetManagement,
 			}).SetupWithManager(mgr); err != nil {
 				klog.Error(err, "unable to create controller", "controller", "PodRefresh")
 				os.Exit(1)
