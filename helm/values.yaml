@@ -8,6 +8,11 @@ cpfs:
   # Red Hat OCP authentication configuration
   roksEnabled: true
 
+# Controls certificate-triggered restarts of DaemonSet workloads. When false,
+# the chart omits DaemonSet RBAC and the operator does not access DaemonSets.
+podRefresh:
+  manageDaemonSets: true
+
 # Commented out values are handled by a global values file
 # imagePullPrefix: icr.io
 # imagePullSecret: ibm-entitlement-key

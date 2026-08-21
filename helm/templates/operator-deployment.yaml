@@ -136,6 +136,8 @@ spec:
               value: "true"
             - name: ENABLE_WEBHOOKS
               value: "false"
+            - name: MANAGE_DAEMONSETS
+              value: {{ .Values.podRefresh.manageDaemonSets | quote }}
             - name: OPERATOR_NAME
               value: ibm-common-service-operator
             - name: CPFS_UTILS_IMAGE

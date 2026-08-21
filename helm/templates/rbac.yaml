@@ -104,15 +104,16 @@ rules:
       - patch
       - update
       - watch
+  {{- if $.Values.podRefresh.manageDaemonSets }}
   - apiGroups: 
       - apps
     resources: 
       - daemonsets
     verbs: 
-      - get
       - list
       - watch
       - update
+  {{- end }}
   - apiGroups: 
       - operator.ibm.com
     resources: 
