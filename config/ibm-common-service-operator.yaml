@@ -442,6 +442,7 @@ rules:
   resources:
   - daemonsets
   verbs:
+  - get
   - list
   - watch
   - update
@@ -683,8 +684,6 @@ spec:
           value: "true"
         - name: ENABLE_WEBHOOKS
           value: "false"
-        - name: MANAGE_DAEMONSETS
-          value: "true"
         - name: OPERATOR_NAME
           value: ibm-common-service-operator
         image: icr.io/cpopen/common-service-operator:4.19.3
