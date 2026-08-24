@@ -99,6 +99,20 @@ func TestRestartSkipsDaemonSetsWhenPermissionIsDenied(t *testing.T) {
 	assertDaemonSetNotRestarted(t, ctx, r.Client, daemonSet)
 }
 
+func TestRestartSkipsDaemonSetsWhenAccessReviewFails(t *testing.T) {
+	ctx := context.Background()
+	daemonSet := daemonSetUsingSecret("test-ns", "tls-secret")
+	r := testPodRefreshReconciler(t, daemonSet)
+	r.daemonSetPermissionChecker = staticDaemonSetPermissionChecker{
+		err: errors.New("access review failed"),
+	}
+
+	if err := r.restart(ctx, "tls-secret", "certificate", "test-ns", "2000-1-1.000000"); err != nil {
+		t.Fatalf("restart returned an error: %v", err)
+	}
+	assertDaemonSetNotRestarted(t, ctx, r.Client, daemonSet)
+}
+
 func TestRestartContinuesWhenDaemonSetListBecomesForbidden(t *testing.T) {
 	ctx := context.Background()
 	daemonSet := daemonSetUsingSecret("test-ns", "tls-secret")
