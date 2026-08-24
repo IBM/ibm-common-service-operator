@@ -95,8 +95,7 @@ func (c selfSubjectDaemonSetPermissionChecker) Check(ctx context.Context, namesp
 	return daemonSetAccessResult{allowed: true}, nil
 }
 
-// //+kubebuilder:rbac:groups=apps,resources=deployments;statefulsets,verbs=get;list;watch;create;update;patch
-// //+kubebuilder:rbac:groups=apps,resources=daemonsets,verbs=list;watch;update
+// //+kubebuilder:rbac:groups=apps,resources=deployments;statefulsets;daemonsets,verbs=get;list;watch;create;update;patch
 // //+kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
@@ -311,6 +310,10 @@ func (r *PodRefreshReconciler) calculateBackoffDelay(elapsed time.Duration) time
 // that use the secret being updated, which will trigger the pod to be restarted.
 func (r *PodRefreshReconciler) restart(ctx context.Context, secret, cert, namespace string, lastUpdated string) error {
 	timeNow := time.Now().Format("2006-1-2.150405")
+	deployments := &appsv1.DeploymentList{}
+	if err := r.Client.List(context.TODO(), deployments); err != nil {
+		return fmt.Errorf("error getting deployments: %v", err)
+	}
 	deploymentsToUpdate, err := r.getDeploymentsNeedUpdate(secret, namespace, lastUpdated)
 	if err != nil {
 		return err
