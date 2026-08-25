@@ -53,9 +53,10 @@ func (c daemonSetListForbiddenClient) List(ctx context.Context, list client.Obje
 
 type recordingSSARClient struct {
 	client.Client
-	deniedVerb string
-	createErr  error
-	verbs      []string
+	deniedVerb          string
+	evaluationErrorVerb string
+	createErr           error
+	verbs               []string
 }
 
 func (c *recordingSSARClient) Create(ctx context.Context, object client.Object, opts ...client.CreateOption) error {
@@ -70,6 +71,9 @@ func (c *recordingSSARClient) Create(ctx context.Context, object client.Object, 
 	verb := review.Spec.ResourceAttributes.Verb
 	c.verbs = append(c.verbs, verb)
 	review.Status.Allowed = verb != c.deniedVerb
+	if verb == c.evaluationErrorVerb {
+		review.Status.EvaluationError = "authorization backend unavailable"
+	}
 	return nil
 }
 
@@ -99,12 +103,30 @@ func TestRestartSkipsDaemonSetsWhenPermissionIsDenied(t *testing.T) {
 	assertDaemonSetNotRestarted(t, ctx, r.Client, daemonSet)
 }
 
-func TestRestartSkipsDaemonSetsWhenAccessReviewFails(t *testing.T) {
+func TestRestartReturnsErrorWhenAccessReviewFails(t *testing.T) {
 	ctx := context.Background()
 	daemonSet := daemonSetUsingSecret("test-ns", "tls-secret")
 	r := testPodRefreshReconciler(t, daemonSet)
 	r.daemonSetPermissionChecker = staticDaemonSetPermissionChecker{
 		err: errors.New("access review failed"),
+	}
+
+	if err := r.restart(ctx, "tls-secret", "certificate", "test-ns", "2000-1-1.000000"); err == nil {
+		t.Fatal("expected access review failure to be returned for reconciliation retry")
+	}
+	assertDaemonSetNotRestarted(t, ctx, r.Client, daemonSet)
+}
+
+func TestRestartSkipsDaemonSetsWhenAccessReviewIsForbidden(t *testing.T) {
+	ctx := context.Background()
+	daemonSet := daemonSetUsingSecret("test-ns", "tls-secret")
+	r := testPodRefreshReconciler(t, daemonSet)
+	r.daemonSetPermissionChecker = staticDaemonSetPermissionChecker{
+		err: apierrors.NewForbidden(
+			schema.GroupResource{Group: "authorization.k8s.io", Resource: "selfsubjectaccessreviews"},
+			"",
+			errors.New("forbidden"),
+		),
 	}
 
 	if err := r.restart(ctx, "tls-secret", "certificate", "test-ns", "2000-1-1.000000"); err != nil {
@@ -173,6 +195,12 @@ func TestSelfSubjectDaemonSetPermissionCheckerChecksRequiredVerbs(t *testing.T) 
 	}
 	if result.allowed || result.deniedVerb != "update" {
 		t.Fatalf("expected update to be denied, got %+v", result)
+	}
+
+	client = &recordingSSARClient{Client: baseClient, evaluationErrorVerb: "watch"}
+	checker = selfSubjectDaemonSetPermissionChecker{client: client}
+	if _, err = checker.Check(ctx, "test-ns"); err == nil {
+		t.Fatal("expected SelfSubjectAccessReview evaluation error to be returned")
 	}
 }
 

@@ -54,7 +54,7 @@ var (
 // CertificateReconciler reconciles a Certificate object
 type PodRefreshReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme                     *runtime.Scheme
 	DisableDaemonSetManagement bool
 	daemonSetPermissionChecker daemonSetPermissionChecker
 }
@@ -86,6 +86,9 @@ func (c selfSubjectDaemonSetPermissionChecker) Check(ctx context.Context, namesp
 		}
 		if err := c.client.Create(ctx, review); err != nil {
 			return daemonSetAccessResult{}, err
+		}
+		if review.Status.EvaluationError != "" {
+			return daemonSetAccessResult{}, fmt.Errorf("failed to evaluate %q permission for daemonsets in namespace %q: %s", verb, namespace, review.Status.EvaluationError)
 		}
 		if !review.Status.Allowed {
 			return daemonSetAccessResult{deniedVerb: verb}, nil
@@ -342,8 +345,11 @@ func (r *PodRefreshReconciler) restart(ctx context.Context, secret, cert, namesp
 	}
 	access, err := checker.Check(ctx, namespace)
 	if err != nil {
-		klog.Warningf("Unable to review DaemonSet permissions in namespace %q; skipping DaemonSet pod refresh: %v", namespace, err)
-		return nil
+		if errors.IsForbidden(err) || errors.IsUnauthorized(err) {
+			klog.Warningf("Unable to review DaemonSet permissions in namespace %q; skipping DaemonSet pod refresh: %v", namespace, err)
+			return nil
+		}
+		return fmt.Errorf("error reviewing daemonset permissions in namespace %q: %w", namespace, err)
 	}
 	if !access.allowed {
 		klog.Warningf("DaemonSet pod refresh is not permitted in namespace %q (missing %q permission); skipping DaemonSet management", namespace, access.deniedVerb)
