@@ -349,14 +349,22 @@ func (r *PodRefreshReconciler) restart(ctx context.Context, secret, cert, namesp
 	daemonsetsToUpdate, err := r.getDaemonSetNeedUpdate(ctx, secret, namespace, lastUpdated)
 	if err != nil {
 		if errors.IsForbidden(err) {
-			klog.Warningf("DaemonSet list is forbidden in namespace %q after a successful access review; skipping DaemonSet pod refresh", namespace)
+			klog.Warningf(
+				"DaemonSet list is forbidden in namespace %q after a successful access review; skipping DaemonSet pod refresh: %v",
+				namespace,
+				err,
+			)			
 			return nil
 		}
 		return err
 	}
 	if err := r.updateDaemonSetAnnotations(ctx, daemonsetsToUpdate, cert, secret, timeNow); err != nil {
 		if errors.IsForbidden(err) {
-			klog.Warningf("DaemonSet update is forbidden in namespace %q after a successful access review; skipping remaining DaemonSet pod refresh", namespace)
+			klog.Warningf(
+				"DaemonSet update is forbidden in namespace %q after a successful access review; skipping remaining DaemonSet pod refresh: %v",
+				namespace,
+				err,
+			)			
 			return nil
 		}
 		return err
