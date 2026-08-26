@@ -662,6 +662,18 @@ rules:
     resourceNames:
       - ibmevents-cluster-operator
   - verbs:
+      - get
+      - list
+      - watch
+      - create
+      - delete
+      - patch
+      - update
+    apiGroups:
+      - gateway.networking.k8s.io
+    resources:
+      - tlsroutes
+  - verbs:
       - watch
       - list
     apiGroups:
