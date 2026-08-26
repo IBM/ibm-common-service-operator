@@ -104,7 +104,7 @@ rules:
       - patch
       - update
       - watch
-  {{- if $.Values.podRefresh.manageDaemonSets }}
+  {{- if $.Values.podRefresh.grantDaemonSetRBAC }}
   - apiGroups: 
       - apps
     resources: 

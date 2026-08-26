@@ -8,10 +8,10 @@ cpfs:
   # Red Hat OCP authentication configuration
   roksEnabled: true
 
-# Controls certificate-triggered restarts of DaemonSet workloads. When false,
-# the chart omits DaemonSet RBAC and the operator does not access DaemonSets.
+# Controls whether this Helm chart grants DaemonSet RBAC. When false, the
+# controller can still manage DaemonSets if permission is granted elsewhere.
 podRefresh:
-  manageDaemonSets: true
+  grantDaemonSetRBAC: true
 
 # Commented out values are handled by a global values file
 # imagePullPrefix: icr.io
