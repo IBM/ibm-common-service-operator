@@ -55,7 +55,6 @@ var (
 type PodRefreshReconciler struct {
 	client.Client
 	Scheme                     *runtime.Scheme
-	DisableDaemonSetManagement bool
 	daemonSetPermissionChecker daemonSetPermissionChecker
 }
 
@@ -313,10 +312,6 @@ func (r *PodRefreshReconciler) calculateBackoffDelay(elapsed time.Duration) time
 // that use the secret being updated, which will trigger the pod to be restarted.
 func (r *PodRefreshReconciler) restart(ctx context.Context, secret, cert, namespace string, lastUpdated string) error {
 	timeNow := time.Now().Format("2006-1-2.150405")
-	deployments := &appsv1.DeploymentList{}
-	if err := r.Client.List(context.TODO(), deployments); err != nil {
-		return fmt.Errorf("error getting deployments: %v", err)
-	}
 	deploymentsToUpdate, err := r.getDeploymentsNeedUpdate(secret, namespace, lastUpdated)
 	if err != nil {
 		return err
@@ -332,11 +327,6 @@ func (r *PodRefreshReconciler) restart(ctx context.Context, secret, cert, namesp
 	}
 	if err := r.updateStsAnnotations(statefulsetsToUpdate, cert, secret, timeNow); err != nil {
 		return err
-	}
-
-	if r.DisableDaemonSetManagement {
-		klog.V(2).Infof("DaemonSet pod refresh is disabled; skipping DaemonSet management in namespace %q", namespace)
-		return nil
 	}
 
 	checker := r.daemonSetPermissionChecker

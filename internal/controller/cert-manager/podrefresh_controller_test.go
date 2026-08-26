@@ -51,6 +51,17 @@ func (c daemonSetListForbiddenClient) List(ctx context.Context, list client.Obje
 	return c.Client.List(ctx, list, opts...)
 }
 
+type daemonSetUpdateForbiddenClient struct {
+	client.Client
+}
+
+func (c daemonSetUpdateForbiddenClient) Update(ctx context.Context, object client.Object, opts ...client.UpdateOption) error {
+	if daemonSet, ok := object.(*appsv1.DaemonSet); ok {
+		return apierrors.NewForbidden(schema.GroupResource{Group: "apps", Resource: "daemonsets"}, daemonSet.Name, errors.New("forbidden"))
+	}
+	return c.Client.Update(ctx, object, opts...)
+}
+
 type recordingSSARClient struct {
 	client.Client
 	deniedVerb          string
@@ -77,22 +88,12 @@ func (c *recordingSSARClient) Create(ctx context.Context, object client.Object, 
 	return nil
 }
 
-func TestRestartSkipsDaemonSetsWhenManagementIsDisabled(t *testing.T) {
-	ctx := context.Background()
-	daemonSet := daemonSetUsingSecret("test-ns", "tls-secret")
-	r := testPodRefreshReconciler(t, daemonSet)
-	r.DisableDaemonSetManagement = true
-
-	if err := r.restart(ctx, "tls-secret", "certificate", "test-ns", "2000-1-1.000000"); err != nil {
-		t.Fatalf("restart returned an error: %v", err)
-	}
-	assertDaemonSetNotRestarted(t, ctx, r.Client, daemonSet)
-}
-
 func TestRestartSkipsDaemonSetsWhenPermissionIsDenied(t *testing.T) {
 	ctx := context.Background()
 	daemonSet := daemonSetUsingSecret("test-ns", "tls-secret")
-	r := testPodRefreshReconciler(t, daemonSet)
+	deployment := deploymentUsingSecret("test-ns", "tls-secret")
+	statefulSet := statefulSetUsingSecret("test-ns", "tls-secret")
+	r := testPodRefreshReconciler(t, daemonSet, deployment, statefulSet)
 	r.daemonSetPermissionChecker = staticDaemonSetPermissionChecker{
 		result: daemonSetAccessResult{deniedVerb: "update"},
 	}
@@ -101,6 +102,8 @@ func TestRestartSkipsDaemonSetsWhenPermissionIsDenied(t *testing.T) {
 		t.Fatalf("restart returned an error: %v", err)
 	}
 	assertDaemonSetNotRestarted(t, ctx, r.Client, daemonSet)
+	assertDeploymentRestarted(t, ctx, r.Client, deployment)
+	assertStatefulSetRestarted(t, ctx, r.Client, statefulSet)
 }
 
 func TestRestartReturnsErrorWhenAccessReviewFails(t *testing.T) {
@@ -140,6 +143,20 @@ func TestRestartContinuesWhenDaemonSetListBecomesForbidden(t *testing.T) {
 	daemonSet := daemonSetUsingSecret("test-ns", "tls-secret")
 	r := testPodRefreshReconciler(t, daemonSet)
 	r.Client = daemonSetListForbiddenClient{Client: r.Client}
+	r.daemonSetPermissionChecker = staticDaemonSetPermissionChecker{
+		result: daemonSetAccessResult{allowed: true},
+	}
+
+	if err := r.restart(ctx, "tls-secret", "certificate", "test-ns", "2000-1-1.000000"); err != nil {
+		t.Fatalf("restart returned an error: %v", err)
+	}
+}
+
+func TestRestartContinuesWhenDaemonSetUpdateBecomesForbidden(t *testing.T) {
+	ctx := context.Background()
+	daemonSet := daemonSetUsingSecret("test-ns", "tls-secret")
+	r := testPodRefreshReconciler(t, daemonSet)
+	r.Client = daemonSetUpdateForbiddenClient{Client: r.Client}
 	r.daemonSetPermissionChecker = staticDaemonSetPermissionChecker{
 		result: daemonSetAccessResult{allowed: true},
 	}
@@ -232,19 +249,43 @@ func daemonSetUsingSecret(namespace, secretName string) *appsv1.DaemonSet {
 		},
 		Spec: appsv1.DaemonSetSpec{
 			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": "test"}},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"app": "test"}},
-				Spec: corev1.PodSpec{Containers: []corev1.Container{{
-					Name: "test",
-					Env: []corev1.EnvVar{{ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{Name: secretName},
-							Key:                  "tls.crt",
-						},
-					}}},
-				}}},
-			},
+			Template: podTemplateUsingSecret(secretName),
 		},
+	}
+}
+
+func deploymentUsingSecret(namespace, secretName string) *appsv1.Deployment {
+	return &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: "uses-secret-deployment", Namespace: namespace},
+		Spec: appsv1.DeploymentSpec{
+			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": "test"}},
+			Template: podTemplateUsingSecret(secretName),
+		},
+	}
+}
+
+func statefulSetUsingSecret(namespace, secretName string) *appsv1.StatefulSet {
+	return &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{Name: "uses-secret-statefulset", Namespace: namespace},
+		Spec: appsv1.StatefulSetSpec{
+			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": "test"}},
+			Template: podTemplateUsingSecret(secretName),
+		},
+	}
+}
+
+func podTemplateUsingSecret(secretName string) corev1.PodTemplateSpec {
+	return corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"app": "test"}},
+		Spec: corev1.PodSpec{Containers: []corev1.Container{{
+			Name: "test",
+			Env: []corev1.EnvVar{{ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: secretName},
+					Key:                  "tls.crt",
+				},
+			}}},
+		}}},
 	}
 }
 
@@ -256,5 +297,27 @@ func assertDaemonSetNotRestarted(t *testing.T, ctx context.Context, c client.Cli
 	}
 	if updated.Labels[restartLabel] != "" || updated.Spec.Template.Labels[restartLabel] != "" {
 		t.Fatalf("expected DaemonSet to remain unchanged, got labels %#v", updated.Labels)
+	}
+}
+
+func assertDeploymentRestarted(t *testing.T, ctx context.Context, c client.Client, deployment *appsv1.Deployment) {
+	t.Helper()
+	updated := &appsv1.Deployment{}
+	if err := c.Get(ctx, client.ObjectKeyFromObject(deployment), updated); err != nil {
+		t.Fatalf("get Deployment: %v", err)
+	}
+	if updated.Labels[restartLabel] == "" || updated.Spec.Template.Labels[restartLabel] == "" {
+		t.Fatal("expected Deployment restart labels to be set")
+	}
+}
+
+func assertStatefulSetRestarted(t *testing.T, ctx context.Context, c client.Client, statefulSet *appsv1.StatefulSet) {
+	t.Helper()
+	updated := &appsv1.StatefulSet{}
+	if err := c.Get(ctx, client.ObjectKeyFromObject(statefulSet), updated); err != nil {
+		t.Fatalf("get StatefulSet: %v", err)
+	}
+	if updated.Labels[restartLabel] == "" || updated.Spec.Template.Labels[restartLabel] == "" {
+		t.Fatal("expected StatefulSet restart labels to be set")
 	}
 }
