@@ -21,8 +21,9 @@ podRefresh:
 # following are examples, not required:
 # operatorNamespace: ""
 # servicesNamespace: ""
-# Controls whether this Helm chart grants DaemonSet RBAC. When false, the
-# controller can still manage DaemonSets if permission is granted elsewhere.
+
+# Controls whether this Helm chart grants ODLM DaemonSet RBAC. When false, the
+# controller can still manage ODLM DaemonSets if permission is granted elsewhere.
 operandBindInfo:
   grantDaemonSetRBAC: true
 
