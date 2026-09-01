@@ -47,7 +47,7 @@ var ServiceNames = map[string][]string{
 
 const (
 	ExcludedCatalog         = "certified-operators,community-operators,redhat-marketplace,ibm-cp-automation-foundation-catalog,operatorhubio-catalog"
-	StatusMonitoredServices = "ibm-idp-config-ui-operator,ibm-mongodb-operator,ibm-im-operator"
+	StatusMonitoredServices = "ibm-idp-config-ui-operator,ibm-mongodb-operator,ibm-im-operator,ibm-user-management-operator"
 )
 
 const (
