@@ -1,6 +1,6 @@
 module github.com/IBM/ibm-common-service-operator/v4
 
-go 1.26.5
+go 1.26.6
 
 require (
 	github.com/IBM/ibm-namespace-scope-operator/v4 v4.2.4-0.20240501132320-6675f97bc34f
@@ -83,7 +83,7 @@ require (
 	github.com/spf13/pflag v1.0.10 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.1 // indirect
-	golang.org/x/mod v0.38.0
+	golang.org/x/mod v0.40.0
 	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
