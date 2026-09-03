@@ -2082,9 +2082,9 @@ spec:
                 track_io_timing: "on"
                 pg_stat_statements.track: all
                 pg_stat_statements.max: "10000"
-                max_slot_wal_keep_size: "5GB"
-                wal_keep_size: "1GB"
-                max_wal_size: "2GB"
+                max_slot_wal_keep_size: "8GB"
+                wal_keep_size: "512MB"
+                max_wal_size: "1GB"
                 wal_sender_timeout: "30s"
                 wal_receiver_timeout: "30s"
               pg_hba:
