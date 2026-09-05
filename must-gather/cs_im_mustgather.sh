@@ -27,24 +27,23 @@ echo "Logs will be stored in: $AUTHMGDIR/$NAMESPACE"
 PODS=$(oc -n "$NAMESPACE" get pods -l component=platform-auth-service --no-headers -o custom-columns=name:.metadata.name)
 
 if [[ -z "$PODS" ]]; then
-  echo "No pods found with label component=platform-auth-service in namespace '$NAMESPACE'"
-  exit 1
+  echo "INFO: No pods found with label component=platform-auth-service in namespace '$NAMESPACE'"
+else
+  for pod in $PODS; do
+    echo "===== Collecting logs from $pod ====="
+    LIBDIR="$AUTHMGDIR/$NAMESPACE/$pod-liberty"
+    mkdir -p "$LIBDIR"
+
+    echo "$pod: Collecting liberty logs..."
+    oc -n "$NAMESPACE" cp "$pod:/logs" -c platform-auth-service "$LIBDIR/logs" || echo "WARNING: Failed to collect liberty logs from $pod"
+
+    echo "$pod: Collecting liberty configuration..."
+    oc -n "$NAMESPACE" cp "$pod:/opt/ibm/wlp/usr/servers/defaultServer/" -c platform-auth-service "$LIBDIR/defaultserver" || echo "WARNING: Failed to collect liberty configuration from $pod"
+
+    echo "$pod: Collecting keystore (key.jks)..."
+    oc -n "$NAMESPACE" cp "$pod:/opt/ibm/wlp/output/defaultServer/resources/security/key.jks" -c platform-auth-service "$LIBDIR/key.jks" || echo "WARNING: Failed to collect keystore from $pod"
+  done
 fi
-
-for pod in $PODS; do
-  echo "===== Collecting logs from $pod ====="
-  LIBDIR="$AUTHMGDIR/$NAMESPACE/$pod-liberty"
-  mkdir -p "$LIBDIR"
-
-  echo "$pod: Collecting liberty logs..."
-  oc -n "$NAMESPACE" cp "$pod:/logs" -c platform-auth-service "$LIBDIR/logs"
-
-  echo "$pod: Collecting liberty configuration..."
-  oc -n "$NAMESPACE" cp "$pod:/opt/ibm/wlp/usr/servers/defaultServer/" -c platform-auth-service "$LIBDIR/defaultserver"
-
-  echo "$pod: Collecting keystore (key.jks)..."
-  oc -n "$NAMESPACE" cp "$pod:/opt/ibm/wlp/output/defaultServer/resources/security/key.jks" -c platform-auth-service "$LIBDIR/key.jks"
-done
 
 # Gathering namespace-wide resources
 echo "Gathering info from namespace: $NAMESPACE"
@@ -67,29 +66,52 @@ IAM_DIR="$AUTHMGDIR/$NAMESPACE/iam-data"
 mkdir -p "$IAM_DIR"
 
 echo "Fetching IAM admin credentials..."
-IAM_ADMIN=$(oc get secret platform-auth-idp-credentials -n "$NAMESPACE" -o jsonpath='{.data.admin_username}' | base64 -d)
-IAM_PASS=$(oc get secret platform-auth-idp-credentials -n "$NAMESPACE" -o jsonpath='{.data.admin_password}' | base64 -d)
-IAM_HOST="https://$(oc get route cp-console -n "$NAMESPACE" -o jsonpath="{.spec.host}")"
+IAM_ADMIN=$(oc get secret platform-auth-idp-credentials -n "$NAMESPACE" -o jsonpath='{.data.admin_username}' 2>/dev/null | base64 -d)
+IAM_PASS=$(oc get secret platform-auth-idp-credentials -n "$NAMESPACE" -o jsonpath='{.data.admin_password}' 2>/dev/null | base64 -d)
 
-echo "Obtaining IAM access token..."
-IAM_ACCESS_TOKEN=$(curl -sk -X POST -H "Content-Type: application/x-www-form-urlencoded;charset=UTF-8" \
-  -d "grant_type=password&username=$IAM_ADMIN&password=$IAM_PASS&scope=openid" \
-  "$IAM_HOST/idprovider/v1/auth/identitytoken" | jq -r .access_token)
-
-if [[ -z "$IAM_ACCESS_TOKEN" || "$IAM_ACCESS_TOKEN" == "null" ]]; then
-  echo "Error: Failed to obtain IAM access token." | tee "$IAM_DIR/iam-error.log"
+if [[ -z "$IAM_ADMIN" || -z "$IAM_PASS" ]]; then
+  echo "WARNING: Failed to obtain IAM admin credentials." | tee "$IAM_DIR/iam-error.log"
 else
-  echo "IAM access token retrieved successfully."
+  echo "INFO: IAM admin credentials retrieved successfully."
+
+  # Check for cp-console route first, fall back to cpd route
+  echo "INFO: Obtaining IAM host name..."
+  IAM_HOST_ROUTE=$(oc get route cp-console -n "$NAMESPACE" --ignore-not-found -o jsonpath="{.spec.host}")
+  ZEN_HOST_ROUTE=$(oc get route cpd -n "$NAMESPACE" --ignore-not-found -o jsonpath="{.spec.host}")
+
+  if [[ -z "$IAM_HOST_ROUTE" ]]; then
+    echo "INFO: cp-console route does not exist, using the cpd route."
+    IAM_HOST="https://${ZEN_HOST_ROUTE}"
+  else
+    IAM_HOST="https://${IAM_HOST_ROUTE}"
+  fi
+
+  echo "INFO: Using IAM host: $IAM_HOST"
+
+  if [[ -z "$IAM_HOST" || "$IAM_HOST" == "https://" ]]; then
+    echo "WARNING: Failed to obtain IAM host." | tee "$IAM_DIR/iam-error.log"
+  else
+    echo "Obtaining IAM access token..."
+    IAM_ACCESS_TOKEN=$(curl -sk -X POST -H "Content-Type: application/x-www-form-urlencoded;charset=UTF-8" \
+      -d "grant_type=password&username=$IAM_ADMIN&password=$IAM_PASS&scope=openid" \
+      "$IAM_HOST/idprovider/v1/auth/identitytoken" | jq -r .access_token)
+
+    if [[ -z "$IAM_ACCESS_TOKEN" || "$IAM_ACCESS_TOKEN" == "null" ]]; then
+      echo "WARNING: Failed to obtain IAM access token." | tee "$IAM_DIR/iam-error.log"
+    else
+      echo "IAM access token retrieved successfully."
+
+      echo "Fetching Identity Provider details..."
+      curl -sk -X GET --header "Authorization: Bearer $IAM_ACCESS_TOKEN" "$IAM_HOST/idprovider/v3/auth/idsource/" | jq > "$IAM_DIR/idp_configs.txt"
+
+      echo "Fetching IAM users..."
+      curl -sk -X GET --header "Authorization: Bearer $IAM_ACCESS_TOKEN" "$IAM_HOST/idmgmt/identity/api/v1/users" | jq > "$IAM_DIR/users.txt"
+
+      echo "Fetching SCIM attribute mappings..."
+      curl -sk -X GET --header "Authorization: Bearer $IAM_ACCESS_TOKEN" "$IAM_HOST/idmgmt/identity/api/v1/scim/attributemappings" | jq > "$IAM_DIR/scim_attribute_mappings.txt"
+    fi
+  fi
 fi
-
-echo "Fetching Identity Provider details..."
-curl -sk -X GET --header "Authorization: Bearer $IAM_ACCESS_TOKEN" "$IAM_HOST/idprovider/v3/auth/idsource/" | jq > "$IAM_DIR/idp_configs.txt"
-
-echo "Fetching IAM users..."
-curl -sk -X GET --header "Authorization: Bearer $IAM_ACCESS_TOKEN" "$IAM_HOST/idmgmt/identity/api/v1/users" | jq > "$IAM_DIR/users.txt"
-
-echo "Fetching SCIM attribute mappings..."
-curl -sk -X GET --header "Authorization: Bearer $IAM_ACCESS_TOKEN" "$IAM_HOST/idmgmt/identity/api/v1/scim/attributemappings" | jq > "$IAM_DIR/scim_attribute_mappings.txt"
 
 ### IBM IAM Authentication CR data collection
 IAM_AUTH_DIR="$AUTHMGDIR/$NAMESPACE/iam-auth-cr"
@@ -99,8 +121,8 @@ echo "Fetching IBM IAM authentication custom resource details..."
 oc get authentications.operator.ibm.com -A &> "$IAM_AUTH_DIR/authentication-list.txt"
 
 # Extract the namespace of the authentication resource
-AUTH_NAMESPACE=$(oc get authentications.operator.ibm.com -A --no-headers | awk '{print $1}')
-AUTH_NAME=$(oc get authentications.operator.ibm.com -A --no-headers | awk '{print $2}')
+AUTH_NAMESPACE=$(oc get authentications.operator.ibm.com -A --no-headers 2>/dev/null | awk '{print $1}')
+AUTH_NAME=$(oc get authentications.operator.ibm.com -A --no-headers 2>/dev/null | awk '{print $2}')
 
 if [[ -n "$AUTH_NAMESPACE" && -n "$AUTH_NAME" ]]; then
   echo "Collecting authentication CR details from namespace: $AUTH_NAMESPACE"
