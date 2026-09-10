@@ -663,52 +663,59 @@ func (b *Bootstrap) addOwnerReference(
 	// split operator/services topologies are handled correctly.
 	objNs := obj.GetNamespace()
 
-	// Fast path: the reconciling instance is already the local master CR.
-	// No same-Kind takeover is needed here because the owner name already
-	// matches — only the UID may be stale (e.g. after a reinstall).
-	if instance.Name == constant.MasterCR && instance.Namespace == objNs {
-		ownerRef := metav1.OwnerReference{
-			APIVersion: constant.APIVersion,
-			Kind:       constant.KindCR,
-			Name:       instance.Name,
-			UID:        instance.UID,
-		}
-		return common.EnsureControllerOwnerReference(obj, ownerRef, false)
-	}
+	// Resolve the master CR that will be recorded as the owner.
+	// Always look up by namespace+name so that:
+	//   (a) split-namespace: op-ns/common-service reconciling svc-ns/cs-ca-certificate
+	//       finds svc-ns/common-service, not the operator instance.
+	//   (b) same-namespace upgrade: a1/common-service reconciling a1/cs-ca-certificate
+	//       that is currently owned by a1/im-common-service uses its own UID without
+	//       requiring the slow-path lookup — but still enables same-Kind takeover.
+	var masterName string
+	var masterUID types.UID
 
-	// Slow path: look up the master CR in obj's namespace.
-	master := &apiv3.CommonService{}
-	if err := b.Reader.Get(ctx, types.NamespacedName{
-		Name:      constant.MasterCR,
-		Namespace: objNs,
-	}, master); err != nil {
-		if errors.IsNotFound(err) {
-			// The cloned master CR does not exist in obj's namespace yet.
-			// PropagateDefaultCR (which runs later in the same reconcile) will
-			// create it.  Ownership will be backfilled on the next cycle.
-			klog.V(2).Infof(
-				"Skipping owner ref for %s/%s: master CR %s/%s not found yet, will retry",
-				objNs, obj.GetName(), objNs, constant.MasterCR,
+	if instance.Name == constant.MasterCR && instance.Namespace == objNs {
+		// The reconciling instance IS the local master CR; use it directly.
+		masterName = instance.Name
+		masterUID = instance.UID
+	} else {
+		// Either the reconciling instance is a secondary CR, or it lives in a
+		// different namespace from the cert.  Fetch the actual master CR.
+		master := &apiv3.CommonService{}
+		if err := b.Reader.Get(ctx, types.NamespacedName{
+			Name:      constant.MasterCR,
+			Namespace: objNs,
+		}, master); err != nil {
+			if errors.IsNotFound(err) {
+				// The cloned master CR does not exist in obj's namespace yet.
+				// PropagateDefaultCR (which runs later in the same reconcile) will
+				// create it.  Ownership will be backfilled on the next cycle.
+				klog.V(2).Infof(
+					"Skipping owner ref for %s/%s: master CR %s/%s not found yet, will retry",
+					objNs, obj.GetName(), objNs, constant.MasterCR,
+				)
+				return false, nil
+			}
+			// Propagate all other errors (Forbidden, timeout, etc.) so the
+			// reconcile loop retries.
+			return false, fmt.Errorf(
+				"failed to get master CR %s/%s for owner reference on %s/%s: %w",
+				objNs, constant.MasterCR, objNs, obj.GetName(), err,
 			)
-			return false, nil
 		}
-		// Propagate all other errors (Forbidden, timeout, etc.) so the
-		// reconcile loop retries.
-		return false, fmt.Errorf(
-			"failed to get master CR %s/%s for owner reference on %s/%s: %w",
-			objNs, constant.MasterCR, objNs, obj.GetName(), err,
-		)
+		masterName = master.Name
+		masterUID = master.UID
 	}
 
 	ownerRef := metav1.OwnerReference{
 		APIVersion: constant.APIVersion,
 		Kind:       constant.KindCR,
-		Name:       master.Name,
-		UID:        master.UID,
+		Name:       masterName,
+		UID:        masterUID,
 	}
-	// replaceExistingSameKind=true: the resolved owner is the designated master
-	// CR so it may replace a stale controller reference from another
-	// CommonService (e.g. im-common-service from a pre-upgrade install).
+	// replaceExistingSameKind=true: the resolved owner is always the designated
+	// master CR, so it may replace a stale controller reference from another
+	// CommonService CR (e.g. im-common-service from a pre-upgrade install).
+	// This applies in both the same-namespace and split-namespace cases.
 	return common.EnsureControllerOwnerReference(obj, ownerRef, true)
 }
 

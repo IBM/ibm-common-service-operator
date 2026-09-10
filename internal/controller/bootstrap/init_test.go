@@ -911,6 +911,71 @@ func TestAddOwnerReferenceReplacesStaleCommonServiceUID(t *testing.T) {
 	}
 }
 
+// TestAddOwnerReferenceMasterCRReplacesSecondaryOwner verifies that when
+// a1/common-service reconciles and a1/cs-ca-certificate is currently controlled
+// by a1/im-common-service, the master CR takes over ownership.  This is the
+// canonical failure case from issue #70051: the master CR reconciles first,
+// enters the fast path (name+namespace match), and must still be able to
+// displace the stale secondary-CR controller reference.
+// A second call verifies idempotency.
+func TestAddOwnerReferenceMasterCRReplacesSecondaryOwner(t *testing.T) {
+	const namespace = "a1"
+
+	cert := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "cert-manager.io/v1",
+			"kind":       "Certificate",
+			"metadata": map[string]interface{}{
+				"name":      constant.CSCACertificate,
+				"namespace": namespace,
+			},
+		},
+	}
+	controller := true
+	// Pre-upgrade state: im-common-service is the controller owner.
+	cert.SetOwnerReferences([]metav1.OwnerReference{{
+		APIVersion: constant.APIVersion,
+		Kind:       constant.KindCR,
+		Name:       "im-common-service",
+		UID:        types.UID("uid-im"),
+		Controller: &controller,
+	}})
+
+	masterCS := &apiv3.CommonService{ObjectMeta: metav1.ObjectMeta{
+		Name:      constant.MasterCR,
+		Namespace: namespace,
+		UID:       types.UID("uid-master"),
+	}}
+
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(scheme.Scheme).
+		WithRuntimeObjects(masterCS).
+		Build()
+	bs := &Bootstrap{
+		Client:  fakeClient,
+		Reader:  fakeClient,
+		Manager: &deploy.Manager{Client: fakeClient, Reader: fakeClient},
+	}
+
+	// First call: master CR reconciles and takes over from im-common-service.
+	changed, err := bs.addOwnerReference(cert, masterCS)
+	assert.NoError(t, err, "master CR must take over without error")
+	assert.True(t, changed)
+	if assert.Len(t, cert.GetOwnerReferences(), 1) {
+		owner := cert.GetOwnerReferences()[0]
+		assert.Equal(t, constant.MasterCR, owner.Name, "owner must be common-service")
+		assert.Equal(t, types.UID("uid-master"), owner.UID)
+		assert.NotNil(t, owner.Controller)
+		assert.True(t, *owner.Controller)
+	}
+
+	// Second call: ownership is already correct — must be idempotent.
+	changed, err = bs.addOwnerReference(cert, masterCS)
+	assert.NoError(t, err)
+	assert.False(t, changed, "second call must be idempotent")
+	assert.Len(t, cert.GetOwnerReferences(), 1)
+}
+
 // TestAddOwnerReferenceUsesOnlyMasterCRAsOwner covers the upgrade scenario
 // from https://github.ibm.com/IBMPrivateCloud/roadmap/issues/70051:
 // When a secondary CommonService CR (e.g. im-common-service) triggers
