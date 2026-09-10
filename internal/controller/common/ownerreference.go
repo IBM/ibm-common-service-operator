@@ -28,9 +28,12 @@ import (
 // to owner and that the reference is controlling. Existing non-controller owner
 // references are preserved.
 //
-// When the existing controller is a different instance of the same Kind (e.g.
-// another CommonService CR), the stale reference is replaced by owner.
-func EnsureControllerOwnerReference(object metav1.Object, owner metav1.OwnerReference) (bool, error) {
+// When replaceExistingSameKind is true and the object is currently controlled
+// by a different instance of the same APIVersion+Kind, that stale reference is
+// replaced by owner.  Callers should only pass true when owner is the
+// designated master CR; passing false retains the strict single-controller
+// invariant.
+func EnsureControllerOwnerReference(object metav1.Object, owner metav1.OwnerReference, replaceExistingSameKind bool) (bool, error) {
 	owner.Controller = pointer.Bool(true)
 	owner.BlockOwnerDeletion = pointer.Bool(true)
 
@@ -56,9 +59,10 @@ func EnsureControllerOwnerReference(object metav1.Object, owner metav1.OwnerRefe
 		}
 
 		if ref.Controller != nil && *ref.Controller {
-			// Allow the master CR to take over when the resource is currently
-			// controlled by a different instance of the same Kind.
-			if ref.APIVersion == owner.APIVersion && ref.Kind == owner.Kind {
+			if replaceExistingSameKind &&
+				ref.APIVersion == owner.APIVersion && ref.Kind == owner.Kind {
+				// Drop the stale same-Kind controller so owner can take over.
+				// This is only enabled for the designated master CR.
 				changed = true
 				continue
 			}
