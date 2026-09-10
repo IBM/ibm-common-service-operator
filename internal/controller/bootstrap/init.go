@@ -664,6 +664,8 @@ func (b *Bootstrap) addOwnerReference(
 	objNs := obj.GetNamespace()
 
 	// Fast path: the reconciling instance is already the local master CR.
+	// No same-Kind takeover is needed here because the owner name already
+	// matches — only the UID may be stale (e.g. after a reinstall).
 	if instance.Name == constant.MasterCR && instance.Namespace == objNs {
 		ownerRef := metav1.OwnerReference{
 			APIVersion: constant.APIVersion,
@@ -671,7 +673,7 @@ func (b *Bootstrap) addOwnerReference(
 			Name:       instance.Name,
 			UID:        instance.UID,
 		}
-		return common.EnsureControllerOwnerReference(obj, ownerRef)
+		return common.EnsureControllerOwnerReference(obj, ownerRef, false)
 	}
 
 	// Slow path: look up the master CR in obj's namespace.
@@ -704,7 +706,10 @@ func (b *Bootstrap) addOwnerReference(
 		Name:       master.Name,
 		UID:        master.UID,
 	}
-	return common.EnsureControllerOwnerReference(obj, ownerRef)
+	// replaceExistingSameKind=true: the resolved owner is the designated master
+	// CR so it may replace a stale controller reference from another
+	// CommonService (e.g. im-common-service from a pre-upgrade install).
+	return common.EnsureControllerOwnerReference(obj, ownerRef, true)
 }
 
 func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, instance *apiv3.CommonService, alwaysUpdate ...bool) error {
