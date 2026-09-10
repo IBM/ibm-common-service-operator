@@ -927,56 +927,80 @@ func ownershipTestCertificate(namespace string) *unstructured.Unstructured {
 	return cert
 }
 
+func ownershipTestConfigMap(namespace string) *unstructured.Unstructured {
+	cm := &unstructured.Unstructured{}
+	cm.SetAPIVersion("v1")
+	cm.SetKind("ConfigMap")
+	cm.SetNamespace(namespace)
+	cm.SetName(constant.CSKeycloakThemeConfigMap)
+	return cm
+}
+
+// ownershipTestResource is a constructor that builds a test Unstructured resource for a given namespace.
+type ownershipTestResource func(namespace string) *unstructured.Unstructured
+
 func TestAddOwnerReferenceUsesLocalMaster(t *testing.T) {
-	for _, tc := range []struct {
+	resources := []ownershipTestResource{ownershipTestCertificate, ownershipTestConfigMap}
+	reconcileCases := []struct {
 		name, reconcileNS, reconcileName string
 	}{
 		{"master first", "services", constant.MasterCR},
 		{"secondary first", "services", "im-common-service"},
 		{"split namespaces", "operators", constant.MasterCR},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			master := ownershipTestCR("services", constant.MasterCR, "local-master-uid")
-			instance := ownershipTestCR(tc.reconcileNS, tc.reconcileName, "other-uid")
-			if instance.Name == master.Name && instance.Namespace == master.Namespace {
-				instance = master
-			}
-			fc := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(master).Build()
-			bs := &Bootstrap{Reader: fc}
-			cert := ownershipTestCertificate("services")
-			controller := true
-			cert.SetOwnerReferences([]metav1.OwnerReference{{
-				APIVersion: constant.APIVersion, Kind: constant.KindCR,
-				Name: "im-common-service", UID: "im-uid", Controller: &controller,
-			}})
+	}
+	for _, res := range resources {
+		obj := res("services") // sample object to derive resource label for sub-test name
+		resourceLabel := obj.GetKind()
+		for _, tc := range reconcileCases {
+			tc, res := tc, res
+			t.Run(resourceLabel+"/"+tc.name, func(t *testing.T) {
+				master := ownershipTestCR("services", constant.MasterCR, "local-master-uid")
+				instance := ownershipTestCR(tc.reconcileNS, tc.reconcileName, "other-uid")
+				if instance.Name == master.Name && instance.Namespace == master.Namespace {
+					instance = master
+				}
+				fc := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(master).Build()
+				bs := &Bootstrap{Reader: fc}
+				testObj := res("services")
+				controller := true
+				testObj.SetOwnerReferences([]metav1.OwnerReference{{
+					APIVersion: constant.APIVersion, Kind: constant.KindCR,
+					Name: "im-common-service", UID: "im-uid", Controller: &controller,
+				}})
 
-			changed, err := bs.addOwnerReference(cert, instance)
-			require.NoError(t, err)
-			require.True(t, changed)
-			require.Len(t, cert.GetOwnerReferences(), 1)
-			owner := cert.GetOwnerReferences()[0]
-			assert.Equal(t, master.Name, owner.Name)
-			assert.Equal(t, master.UID, owner.UID)
-			require.NotNil(t, owner.Controller)
-			assert.True(t, *owner.Controller)
+				changed, err := bs.addOwnerReference(testObj, instance)
+				require.NoError(t, err)
+				require.True(t, changed)
+				require.Len(t, testObj.GetOwnerReferences(), 1)
+				owner := testObj.GetOwnerReferences()[0]
+				assert.Equal(t, master.Name, owner.Name)
+				assert.Equal(t, master.UID, owner.UID)
+				require.NotNil(t, owner.Controller)
+				assert.True(t, *owner.Controller)
 
-			changed, err = bs.addOwnerReference(cert, instance)
-			require.NoError(t, err)
-			assert.False(t, changed)
-			assert.Len(t, cert.GetOwnerReferences(), 1)
-		})
+				changed, err = bs.addOwnerReference(testObj, instance)
+				require.NoError(t, err)
+				assert.False(t, changed)
+				assert.Len(t, testObj.GetOwnerReferences(), 1)
+			})
+		}
 	}
 }
 
 func TestAddOwnerReferenceBackfillsAfterMasterCreated(t *testing.T) {
-	fc := fake.NewClientBuilder().WithScheme(scheme.Scheme).Build()
-	bs := &Bootstrap{Client: fc, Reader: fc, Manager: &deploy.Manager{Client: fc, Reader: fc}}
-	instance := ownershipTestCR("operators", constant.MasterCR, "operator-uid")
-	cert := ownershipTestCertificate("services")
-	cert.SetAnnotations(map[string]string{"version": "0.0.1", "runtime": "preserve"})
-	require.NoError(t, fc.Create(context.Background(), cert))
-	// Use the production create/update path so the test checks persistence too.
-	desired := []byte(`apiVersion: cert-manager.io/v1
+	for _, res := range []ownershipTestResource{ownershipTestCertificate, ownershipTestConfigMap} {
+		sample := res("services")
+		t.Run(sample.GetKind(), func(t *testing.T) {
+			fc := fake.NewClientBuilder().WithScheme(scheme.Scheme).Build()
+			bs := &Bootstrap{Client: fc, Reader: fc, Manager: &deploy.Manager{Client: fc, Reader: fc}}
+			instance := ownershipTestCR("operators", constant.MasterCR, "operator-uid")
+			testObj := res("services")
+			testObj.SetAnnotations(map[string]string{"version": "0.0.1", "runtime": "preserve"})
+			require.NoError(t, fc.Create(context.Background(), testObj))
+
+			var desired []byte
+			if testObj.GetKind() == "Certificate" {
+				desired = []byte(`apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: cs-ca-certificate
@@ -984,41 +1008,60 @@ metadata:
   annotations:
     version: 0.0.1
 `)
-	require.NoError(t, bs.CreateOrUpdateFromYaml(desired, instance))
-	actual := ownershipTestCertificate("services")
-	key := client.ObjectKeyFromObject(actual)
-	require.NoError(t, fc.Get(context.Background(), key, actual))
-	assert.Empty(t, actual.GetOwnerReferences())
+			} else {
+				desired = []byte(`apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cs-keycloak-theme
+  namespace: services
+  annotations:
+    version: 0.0.1
+`)
+			}
 
-	master := ownershipTestCR("services", constant.MasterCR, "local-master-uid")
-	require.NoError(t, fc.Create(context.Background(), master))
-	// Simulate the next reconciliation triggered by the clone's create event.
-	require.NoError(t, bs.CreateOrUpdateFromYaml(desired, instance))
-	require.NoError(t, fc.Get(context.Background(), key, actual))
-	require.Len(t, actual.GetOwnerReferences(), 1)
-	assert.Equal(t, master.UID, actual.GetOwnerReferences()[0].UID)
-	assert.Equal(t, "preserve", actual.GetAnnotations()["runtime"])
+			require.NoError(t, bs.CreateOrUpdateFromYaml(desired, instance))
+			actual := res("services")
+			key := client.ObjectKeyFromObject(actual)
+			require.NoError(t, fc.Get(context.Background(), key, actual))
+			assert.Empty(t, actual.GetOwnerReferences())
+
+			master := ownershipTestCR("services", constant.MasterCR, "local-master-uid")
+			require.NoError(t, fc.Create(context.Background(), master))
+			// Simulate the next reconciliation triggered by the clone's create event.
+			require.NoError(t, bs.CreateOrUpdateFromYaml(desired, instance))
+			require.NoError(t, fc.Get(context.Background(), key, actual))
+			require.Len(t, actual.GetOwnerReferences(), 1)
+			assert.Equal(t, master.UID, actual.GetOwnerReferences()[0].UID)
+			assert.Equal(t, "preserve", actual.GetAnnotations()["runtime"])
+		})
+	}
 }
 
 func TestAddOwnerReferencePropagatesLookupErrors(t *testing.T) {
-	for _, lookupErr := range []error{
+	lookupErrors := []error{
 		k8serrors.NewForbidden(apiv3.GroupVersion.WithResource("commonservices").GroupResource(), constant.MasterCR, fmt.Errorf("denied")),
 		k8serrors.NewTimeoutError("API unavailable", 1),
-	} {
-		t.Run(lookupErr.Error(), func(t *testing.T) {
-			fc := fake.NewClientBuilder().WithScheme(scheme.Scheme).
-				WithInterceptorFuncs(interceptor.Funcs{
-					Get: func(context.Context, client.WithWatch, client.ObjectKey, client.Object, ...client.GetOption) error {
-						return lookupErr
-					},
-				}).Build()
-			cert := ownershipTestCertificate("services")
-			bs := &Bootstrap{Reader: fc}
-			changed, err := bs.addOwnerReference(cert, ownershipTestCR("services", "im-common-service", "im-uid"))
-			require.ErrorIs(t, err, lookupErr)
-			assert.False(t, changed)
-			assert.Empty(t, cert.GetOwnerReferences())
-		})
+	}
+	resources := []ownershipTestResource{ownershipTestCertificate, ownershipTestConfigMap}
+	for _, res := range resources {
+		sample := res("services")
+		for _, lookupErr := range lookupErrors {
+			res, lookupErr := res, lookupErr
+			t.Run(sample.GetKind()+"/"+lookupErr.Error(), func(t *testing.T) {
+				fc := fake.NewClientBuilder().WithScheme(scheme.Scheme).
+					WithInterceptorFuncs(interceptor.Funcs{
+						Get: func(context.Context, client.WithWatch, client.ObjectKey, client.Object, ...client.GetOption) error {
+							return lookupErr
+						},
+					}).Build()
+				testObj := res("services")
+				bs := &Bootstrap{Reader: fc}
+				changed, err := bs.addOwnerReference(testObj, ownershipTestCR("services", "im-common-service", "im-uid"))
+				require.ErrorIs(t, err, lookupErr)
+				assert.False(t, changed)
+				assert.Empty(t, testObj.GetOwnerReferences())
+			})
+		}
 	}
 }
 
