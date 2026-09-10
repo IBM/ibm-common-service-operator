@@ -94,9 +94,10 @@ func (r *CommonServiceReconciler) ReconcileNoOLMMasterCR(ctx context.Context, in
 	}
 
 	if !typeCorrect {
-		klog.Error("Cluster type specificed in the ibm-cpp-config isn't correct")
-		if statusErr = r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
-			klog.Error(statusErr)
+		statusErr = fmt.Errorf("cluster type specified in the ibm-cpp-config isn't correct")
+		klog.Error(statusErr)
+		if err := r.updatePhase(ctx, instance, apiv3.CRFailed); err != nil {
+			klog.Error(err)
 		}
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
 		return ctrl.Result{}, statusErr
