@@ -27,6 +27,11 @@ import (
 // EnsureControllerOwnerReference ensures that object has exactly one reference
 // to owner and that the reference is controlling. Existing non-controller owner
 // references are preserved.
+//
+// When the existing controller is a different instance of the same Kind (e.g.
+// another CommonService CR), the stale reference is replaced by owner.
+// Callers are responsible for only ever passing the designated master CR as
+// owner — see addOwnerReference which enforces this invariant.
 func EnsureControllerOwnerReference(object metav1.Object, owner metav1.OwnerReference) (bool, error) {
 	owner.Controller = pointer.Bool(true)
 	owner.BlockOwnerDeletion = pointer.Bool(true)
@@ -53,6 +58,14 @@ func EnsureControllerOwnerReference(object metav1.Object, owner metav1.OwnerRefe
 		}
 
 		if ref.Controller != nil && *ref.Controller {
+			// Allow the master CR to take over when the resource is currently
+			// controlled by a different instance of the same Kind.  This handles
+			// the upgrade path where a secondary CommonService CR (e.g.
+			// im-common-service) previously held the controller reference.
+			if ref.APIVersion == owner.APIVersion && ref.Kind == owner.Kind {
+				changed = true
+				continue
+			}
 			return false, fmt.Errorf("cannot set controller owner reference on %s/%s: object is already controlled by %s %s",
 				object.GetNamespace(), object.GetName(), ref.Kind, ref.Name)
 		}
