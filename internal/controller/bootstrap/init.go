@@ -631,25 +631,8 @@ func (b *Bootstrap) shouldAddOwnerReference(
 	return false
 }
 
-// addOwnerReference ensures that obj is controlled by the master CommonService
-// CR (named constant.MasterCR) that lives in the same namespace as obj.
-//
-// The lookup is always performed against obj.GetNamespace() so that the
-// correct CR is found regardless of whether the reconciling instance lives in
-// a different namespace (split operator/services namespace topology).  Reusing
-// the reconciling instance directly is only safe when both its name and
-// namespace already match — i.e. it IS the local master CR.
-//
-// Error handling:
-//   - NotFound: the cloned master CR has not been created in obj's namespace
-//     yet (PropagateDefaultCR runs after DeployCertManagerCR on the first
-//     reconcile).  Ownership will be backfilled on the next reconcile cycle;
-//     skip silently rather than blocking progress.
-//   - Any other error (Forbidden, transient, etc.): propagate so the reconcile
-//     loop retries instead of silently leaving ownership unset.
-//
-// It returns true when the object was changed.  The caller is responsible for
-// persisting the change and logging only after that persistence succeeds.
+// addOwnerReference uses the common-service CR in the resource's namespace.
+// The caller persists the change and logs only after the update succeeds.
 func (b *Bootstrap) addOwnerReference(
 	obj *unstructured.Unstructured,
 	instance *apiv3.CommonService,
@@ -658,65 +641,29 @@ func (b *Bootstrap) addOwnerReference(
 		return false, nil
 	}
 
-	// The owner must live in the same namespace as the object being annotated.
-	// Use obj.GetNamespace() as the authoritative lookup namespace so that
-	// split operator/services topologies are handled correctly.
-	objNs := obj.GetNamespace()
-
-	// Resolve the master CR that will be recorded as the owner.
-	// Always look up by namespace+name so that:
-	//   (a) split-namespace: op-ns/common-service reconciling svc-ns/cs-ca-certificate
-	//       finds svc-ns/common-service, not the operator instance.
-	//   (b) same-namespace upgrade: a1/common-service reconciling a1/cs-ca-certificate
-	//       that is currently owned by a1/im-common-service uses its own UID without
-	//       requiring the slow-path lookup — but still enables same-Kind takeover.
-	var masterName string
-	var masterUID types.UID
-
-	if instance.Name == constant.MasterCR && instance.Namespace == objNs {
-		// The reconciling instance IS the local master CR; use it directly.
-		masterName = instance.Name
-		masterUID = instance.UID
-	} else {
-		// Either the reconciling instance is a secondary CR, or it lives in a
-		// different namespace from the cert.  Fetch the actual master CR.
-		master := &apiv3.CommonService{}
-		if err := b.Reader.Get(ctx, types.NamespacedName{
-			Name:      constant.MasterCR,
-			Namespace: objNs,
-		}, master); err != nil {
+	owner := instance
+	if owner.Name != constant.MasterCR || owner.Namespace != obj.GetNamespace() {
+		owner = &apiv3.CommonService{}
+		key := types.NamespacedName{Namespace: obj.GetNamespace(), Name: constant.MasterCR}
+		if err := b.Reader.Get(ctx, key, owner); err != nil {
 			if errors.IsNotFound(err) {
-				// The cloned master CR does not exist in obj's namespace yet.
-				// PropagateDefaultCR (which runs later in the same reconcile) will
-				// create it.  Ownership will be backfilled on the next cycle.
-				klog.V(2).Infof(
-					"Skipping owner ref for %s/%s: master CR %s/%s not found yet, will retry",
-					objNs, obj.GetName(), objNs, constant.MasterCR,
-				)
+				// PropagateDefaultCR creates the local clone later; its create
+				// event requeues the master CR to backfill ownership.
+				klog.V(2).Infof("Waiting for CommonService %s before adding owner reference to %s/%s",
+					key, obj.GetNamespace(), obj.GetName())
 				return false, nil
 			}
-			// Propagate all other errors (Forbidden, timeout, etc.) so the
-			// reconcile loop retries.
-			return false, fmt.Errorf(
-				"failed to get master CR %s/%s for owner reference on %s/%s: %w",
-				objNs, constant.MasterCR, objNs, obj.GetName(), err,
-			)
+			return false, fmt.Errorf("get CommonService %s for owner reference: %w", key, err)
 		}
-		masterName = master.Name
-		masterUID = master.UID
 	}
 
-	ownerRef := metav1.OwnerReference{
+	// Only the resolved local common-service CR may replace a previous CS owner.
+	return common.EnsureControllerOwnerReference(obj, metav1.OwnerReference{
 		APIVersion: constant.APIVersion,
 		Kind:       constant.KindCR,
-		Name:       masterName,
-		UID:        masterUID,
-	}
-	// replaceExistingSameKind=true: the resolved owner is always the designated
-	// master CR, so it may replace a stale controller reference from another
-	// CommonService CR (e.g. im-common-service from a pre-upgrade install).
-	// This applies in both the same-namespace and split-namespace cases.
-	return common.EnsureControllerOwnerReference(obj, ownerRef, true)
+		Name:       owner.Name,
+		UID:        owner.UID,
+	}, true)
 }
 
 func (b *Bootstrap) CreateOrUpdateFromYaml(yamlContent []byte, instance *apiv3.CommonService, alwaysUpdate ...bool) error {

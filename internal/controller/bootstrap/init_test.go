@@ -24,6 +24,7 @@ import (
 
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -911,277 +912,115 @@ func TestAddOwnerReferenceReplacesStaleCommonServiceUID(t *testing.T) {
 	}
 }
 
-// TestAddOwnerReferenceMasterCRReplacesSecondaryOwner verifies that when
-// a1/common-service reconciles and a1/cs-ca-certificate is currently controlled
-// by a1/im-common-service, the master CR takes over ownership.  This is the
-// canonical failure case from issue #70051: the master CR reconciles first,
-// enters the fast path (name+namespace match), and must still be able to
-// displace the stale secondary-CR controller reference.
-// A second call verifies idempotency.
-func TestAddOwnerReferenceMasterCRReplacesSecondaryOwner(t *testing.T) {
-	const namespace = "a1"
-
-	cert := &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": "cert-manager.io/v1",
-			"kind":       "Certificate",
-			"metadata": map[string]interface{}{
-				"name":      constant.CSCACertificate,
-				"namespace": namespace,
-			},
-		},
-	}
-	controller := true
-	// Pre-upgrade state: im-common-service is the controller owner.
-	cert.SetOwnerReferences([]metav1.OwnerReference{{
-		APIVersion: constant.APIVersion,
-		Kind:       constant.KindCR,
-		Name:       "im-common-service",
-		UID:        types.UID("uid-im"),
-		Controller: &controller,
-	}})
-
-	masterCS := &apiv3.CommonService{ObjectMeta: metav1.ObjectMeta{
-		Name:      constant.MasterCR,
-		Namespace: namespace,
-		UID:       types.UID("uid-master"),
+func ownershipTestCR(namespace, name string, uid types.UID) *apiv3.CommonService {
+	return &apiv3.CommonService{ObjectMeta: metav1.ObjectMeta{
+		Namespace: namespace, Name: name, UID: uid,
 	}}
-
-	fakeClient := fake.NewClientBuilder().
-		WithScheme(scheme.Scheme).
-		WithRuntimeObjects(masterCS).
-		Build()
-	bs := &Bootstrap{
-		Client:  fakeClient,
-		Reader:  fakeClient,
-		Manager: &deploy.Manager{Client: fakeClient, Reader: fakeClient},
-	}
-
-	// First call: master CR reconciles and takes over from im-common-service.
-	changed, err := bs.addOwnerReference(cert, masterCS)
-	assert.NoError(t, err, "master CR must take over without error")
-	assert.True(t, changed)
-	if assert.Len(t, cert.GetOwnerReferences(), 1) {
-		owner := cert.GetOwnerReferences()[0]
-		assert.Equal(t, constant.MasterCR, owner.Name, "owner must be common-service")
-		assert.Equal(t, types.UID("uid-master"), owner.UID)
-		assert.NotNil(t, owner.Controller)
-		assert.True(t, *owner.Controller)
-	}
-
-	// Second call: ownership is already correct — must be idempotent.
-	changed, err = bs.addOwnerReference(cert, masterCS)
-	assert.NoError(t, err)
-	assert.False(t, changed, "second call must be idempotent")
-	assert.Len(t, cert.GetOwnerReferences(), 1)
 }
 
-// TestAddOwnerReferenceUsesOnlyMasterCRAsOwner covers the upgrade scenario
-// from https://github.ibm.com/IBMPrivateCloud/roadmap/issues/70051:
-// When a secondary CommonService CR (e.g. im-common-service) triggers
-// reconciliation, addOwnerReference must look up the master CR from obj's
-// namespace and record it as the controller owner — never the secondary CR.
-func TestAddOwnerReferenceUsesOnlyMasterCRAsOwner(t *testing.T) {
-	const namespace = "test-ns"
+func ownershipTestCertificate(namespace string) *unstructured.Unstructured {
+	cert := &unstructured.Unstructured{}
+	cert.SetAPIVersion("cert-manager.io/v1")
+	cert.SetKind("Certificate")
+	cert.SetNamespace(namespace)
+	cert.SetName(constant.CSCACertificate)
+	return cert
+}
 
-	// cs-ca-certificate currently owned by im-common-service (pre-upgrade state).
-	cert := &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": "cert-manager.io/v1",
-			"kind":       "Certificate",
-			"metadata": map[string]interface{}{
-				"name":      constant.CSCACertificate,
-				"namespace": namespace,
-			},
-		},
-	}
-	controller := true
-	cert.SetOwnerReferences([]metav1.OwnerReference{{
-		APIVersion: constant.APIVersion,
-		Kind:       constant.KindCR,
-		Name:       "im-common-service",
-		UID:        types.UID("uid-im"),
-		Controller: &controller,
-	}})
+func TestAddOwnerReferenceUsesLocalMaster(t *testing.T) {
+	for _, tc := range []struct {
+		name, reconcileNS, reconcileName string
+	}{
+		{"master first", "services", constant.MasterCR},
+		{"secondary first", "services", "im-common-service"},
+		{"split namespaces", "operators", constant.MasterCR},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			master := ownershipTestCR("services", constant.MasterCR, "local-master-uid")
+			instance := ownershipTestCR(tc.reconcileNS, tc.reconcileName, "other-uid")
+			if instance.Name == master.Name && instance.Namespace == master.Namespace {
+				instance = master
+			}
+			fc := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(master).Build()
+			bs := &Bootstrap{Reader: fc}
+			cert := ownershipTestCertificate("services")
+			controller := true
+			cert.SetOwnerReferences([]metav1.OwnerReference{{
+				APIVersion: constant.APIVersion, Kind: constant.KindCR,
+				Name: "im-common-service", UID: "im-uid", Controller: &controller,
+			}})
 
-	// Master CR that must become the owner.
-	masterCS := &apiv3.CommonService{ObjectMeta: metav1.ObjectMeta{
-		Name:      constant.MasterCR,
-		Namespace: namespace,
-		UID:       types.UID("uid-master"),
-	}}
-	// Secondary CR that is being reconciled (not the master).
-	secondaryCS := &apiv3.CommonService{ObjectMeta: metav1.ObjectMeta{
-		Name:      "im-common-service",
-		Namespace: namespace,
-		UID:       types.UID("uid-im"),
-	}}
+			changed, err := bs.addOwnerReference(cert, instance)
+			require.NoError(t, err)
+			require.True(t, changed)
+			require.Len(t, cert.GetOwnerReferences(), 1)
+			owner := cert.GetOwnerReferences()[0]
+			assert.Equal(t, master.Name, owner.Name)
+			assert.Equal(t, master.UID, owner.UID)
+			require.NotNil(t, owner.Controller)
+			assert.True(t, *owner.Controller)
 
-	fakeClient := fake.NewClientBuilder().
-		WithScheme(scheme.Scheme).
-		WithRuntimeObjects(masterCS).
-		Build()
-	bs := &Bootstrap{
-		Client:  fakeClient,
-		Reader:  fakeClient,
-		Manager: &deploy.Manager{Client: fakeClient, Reader: fakeClient},
-	}
-
-	// addOwnerReference is called with the secondary CR as the reconciling instance.
-	// It must fetch the master CR from obj's namespace and use its UID.
-	changed, err := bs.addOwnerReference(cert, secondaryCS)
-	assert.NoError(t, err)
-	assert.True(t, changed)
-	if assert.Len(t, cert.GetOwnerReferences(), 1) {
-		owner := cert.GetOwnerReferences()[0]
-		assert.Equal(t, constant.MasterCR, owner.Name, "owner name must be the master CR")
-		assert.Equal(t, types.UID("uid-master"), owner.UID, "owner UID must come from the master CR")
-		assert.NotNil(t, owner.Controller)
-		assert.True(t, *owner.Controller)
+			changed, err = bs.addOwnerReference(cert, instance)
+			require.NoError(t, err)
+			assert.False(t, changed)
+			assert.Len(t, cert.GetOwnerReferences(), 1)
+		})
 	}
 }
 
-// TestAddOwnerReferenceSplitNamespace verifies the split operator/services
-// namespace topology.  The reconciling instance lives in the operator namespace
-// (op-ns/common-service) but cs-ca-certificate lives in the services namespace
-// (svc-ns).  addOwnerReference must look up the master CR in svc-ns, not op-ns.
-func TestAddOwnerReferenceSplitNamespace(t *testing.T) {
-	const (
-		opNs  = "op-ns"
-		svcNs = "svc-ns"
-	)
+func TestAddOwnerReferenceBackfillsAfterMasterCreated(t *testing.T) {
+	fc := fake.NewClientBuilder().WithScheme(scheme.Scheme).Build()
+	bs := &Bootstrap{Client: fc, Reader: fc, Manager: &deploy.Manager{Client: fc, Reader: fc}}
+	instance := ownershipTestCR("operators", constant.MasterCR, "operator-uid")
+	cert := ownershipTestCertificate("services")
+	cert.SetAnnotations(map[string]string{"version": "0.0.1", "runtime": "preserve"})
+	require.NoError(t, fc.Create(context.Background(), cert))
+	// Use the production create/update path so the test checks persistence too.
+	desired := []byte(`apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cs-ca-certificate
+  namespace: services
+  annotations:
+    version: 0.0.1
+`)
+	require.NoError(t, bs.CreateOrUpdateFromYaml(desired, instance))
+	actual := ownershipTestCertificate("services")
+	key := client.ObjectKeyFromObject(actual)
+	require.NoError(t, fc.Get(context.Background(), key, actual))
+	assert.Empty(t, actual.GetOwnerReferences())
 
-	cert := &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": "cert-manager.io/v1",
-			"kind":       "Certificate",
-			"metadata": map[string]interface{}{
-				"name":      constant.CSCACertificate,
-				"namespace": svcNs,
-			},
-		},
-	}
-
-	// Master CR cloned into the services namespace by PropagateDefaultCR.
-	masterInSvcNs := &apiv3.CommonService{ObjectMeta: metav1.ObjectMeta{
-		Name:      constant.MasterCR,
-		Namespace: svcNs,
-		UID:       types.UID("uid-master-svc"),
-	}}
-	// The operator-ns master (the one being reconciled).
-	masterInOpNs := &apiv3.CommonService{ObjectMeta: metav1.ObjectMeta{
-		Name:      constant.MasterCR,
-		Namespace: opNs,
-		UID:       types.UID("uid-master-op"),
-	}}
-
-	fakeClient := fake.NewClientBuilder().
-		WithScheme(scheme.Scheme).
-		WithRuntimeObjects(masterInSvcNs, masterInOpNs).
-		Build()
-	bs := &Bootstrap{
-		Client:  fakeClient,
-		Reader:  fakeClient,
-		Manager: &deploy.Manager{Client: fakeClient, Reader: fakeClient},
-	}
-
-	changed, err := bs.addOwnerReference(cert, masterInOpNs)
-	assert.NoError(t, err)
-	assert.True(t, changed)
-	if assert.Len(t, cert.GetOwnerReferences(), 1) {
-		owner := cert.GetOwnerReferences()[0]
-		assert.Equal(t, constant.MasterCR, owner.Name)
-		assert.Equal(t, types.UID("uid-master-svc"), owner.UID,
-			"must use the master CR in the certificate's namespace (svc-ns), not op-ns")
-		assert.NotNil(t, owner.Controller)
-		assert.True(t, *owner.Controller)
-	}
+	master := ownershipTestCR("services", constant.MasterCR, "local-master-uid")
+	require.NoError(t, fc.Create(context.Background(), master))
+	// Simulate the next reconciliation triggered by the clone's create event.
+	require.NoError(t, bs.CreateOrUpdateFromYaml(desired, instance))
+	require.NoError(t, fc.Get(context.Background(), key, actual))
+	require.Len(t, actual.GetOwnerReferences(), 1)
+	assert.Equal(t, master.UID, actual.GetOwnerReferences()[0].UID)
+	assert.Equal(t, "preserve", actual.GetAnnotations()["runtime"])
 }
 
-// TestAddOwnerReferenceSkipsWhenMasterNotFoundYet verifies that a NotFound
-// error while looking up the master CR is handled silently — ownership will be
-// backfilled on the next reconcile after PropagateDefaultCR has run.
-func TestAddOwnerReferenceSkipsWhenMasterNotFoundYet(t *testing.T) {
-	const namespace = "test-ns"
-
-	cert := &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": "cert-manager.io/v1",
-			"kind":       "Certificate",
-			"metadata": map[string]interface{}{
-				"name":      constant.CSCACertificate,
-				"namespace": namespace,
-			},
-		},
+func TestAddOwnerReferencePropagatesLookupErrors(t *testing.T) {
+	for _, lookupErr := range []error{
+		k8serrors.NewForbidden(apiv3.GroupVersion.WithResource("commonservices").GroupResource(), constant.MasterCR, fmt.Errorf("denied")),
+		k8serrors.NewTimeoutError("API unavailable", 1),
+	} {
+		t.Run(lookupErr.Error(), func(t *testing.T) {
+			fc := fake.NewClientBuilder().WithScheme(scheme.Scheme).
+				WithInterceptorFuncs(interceptor.Funcs{
+					Get: func(context.Context, client.WithWatch, client.ObjectKey, client.Object, ...client.GetOption) error {
+						return lookupErr
+					},
+				}).Build()
+			cert := ownershipTestCertificate("services")
+			bs := &Bootstrap{Reader: fc}
+			changed, err := bs.addOwnerReference(cert, ownershipTestCR("services", "im-common-service", "im-uid"))
+			require.ErrorIs(t, err, lookupErr)
+			assert.False(t, changed)
+			assert.Empty(t, cert.GetOwnerReferences())
+		})
 	}
-	// Reconciling instance is from a different namespace; no master CR exists
-	// in the cert's namespace yet.
-	instance := &apiv3.CommonService{ObjectMeta: metav1.ObjectMeta{
-		Name:      constant.MasterCR,
-		Namespace: "op-ns",
-		UID:       types.UID("uid-op"),
-	}}
-
-	fakeClient := fake.NewClientBuilder().WithScheme(scheme.Scheme).Build()
-	bs := &Bootstrap{
-		Client:  fakeClient,
-		Reader:  fakeClient,
-		Manager: &deploy.Manager{Client: fakeClient, Reader: fakeClient},
-	}
-
-	changed, err := bs.addOwnerReference(cert, instance)
-	assert.NoError(t, err, "NotFound must be silently skipped")
-	assert.False(t, changed, "no ownership change when master CR not yet present")
-	assert.Empty(t, cert.GetOwnerReferences())
 }
-
-// TestAddOwnerReferencePropagatesNonNotFoundError verifies that errors other
-// than NotFound (e.g. Forbidden, transient API errors) are returned so the
-// reconcile loop can retry instead of silently leaving ownership unset.
-func TestAddOwnerReferencePropagatesNonNotFoundError(t *testing.T) {
-	const namespace = "test-ns"
-
-	cert := &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": "cert-manager.io/v1",
-			"kind":       "Certificate",
-			"metadata": map[string]interface{}{
-				"name":      constant.CSCACertificate,
-				"namespace": namespace,
-			},
-		},
-	}
-	instance := &apiv3.CommonService{ObjectMeta: metav1.ObjectMeta{
-		Name:      "im-common-service",
-		Namespace: namespace,
-		UID:       types.UID("uid-im"),
-	}}
-
-	forbiddenErr := k8serrors.NewForbidden(
-		apiv3.GroupVersion.WithResource("commonservices").GroupResource(),
-		constant.MasterCR,
-		fmt.Errorf("forbidden"),
-	)
-	fakeClient := fake.NewClientBuilder().
-		WithScheme(scheme.Scheme).
-		WithInterceptorFuncs(interceptor.Funcs{
-			Get: func(_ context.Context, _ client.WithWatch, _ client.ObjectKey, _ client.Object, _ ...client.GetOption) error {
-				return forbiddenErr
-			},
-		}).
-		Build()
-	bs := &Bootstrap{
-		Client:  fakeClient,
-		Reader:  fakeClient,
-		Manager: &deploy.Manager{Client: fakeClient, Reader: fakeClient},
-	}
-
-	_, err := bs.addOwnerReference(cert, instance)
-	assert.Error(t, err, "non-NotFound errors must be propagated")
-	assert.Empty(t, cert.GetOwnerReferences(), "ownership must not be set on error")
-}
-
-
 
 func TestShouldAddOwnerReferenceExcludesCSCACertificateSecret(t *testing.T) {
 	secret := &unstructured.Unstructured{Object: map[string]interface{}{ // pragma: allowlist secret
