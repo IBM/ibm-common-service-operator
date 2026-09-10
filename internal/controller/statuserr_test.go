@@ -16,183 +16,118 @@ package controllers
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
-	"net/http/httptest"
+	"strings"
 	"testing"
 
-	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
+	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/bootstrap"
+	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/constant"
+	odlm "github.com/IBM/operand-deployment-lifecycle-manager/v4/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
-	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
-	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/bootstrap"
-	odlm "github.com/IBM/operand-deployment-lifecycle-manager/v4/api/v1alpha1"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
 
-func init() {
-	_ = olmv1alpha1.AddToScheme(scheme.Scheme)
-	_ = odlm.AddToScheme(scheme.Scheme)
-	_ = apiv3.AddToScheme(scheme.Scheme)
+type statusTestTransport func(*http.Request) (*http.Response, error)
+
+func (f statusTestTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
 }
 
-// minimalAPIServer returns a *httptest.Server that answers Kubernetes discovery
-// requests with enough structure to make the client library happy but reports
-// no API groups (so isOpenShiftCluster returns false).  All other requests
-// return 404 so that CheckCRD and similar helpers fail gracefully.
-func minimalAPIServer(t *testing.T) *httptest.Server {
+func newStatusTestReconciler(t *testing.T, transport http.RoundTripper, hooks interceptor.Funcs) (*CommonServiceReconciler, *apiv3.CommonService) {
 	t.Helper()
-	mux := http.NewServeMux()
-
-	// /api — core group version list
-	mux.HandleFunc("/api", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(metav1.APIVersions{TypeMeta: metav1.TypeMeta{
-			Kind:       "APIVersions",
-			APIVersion: "v1",
-		}, Versions: []string{"v1"}})
-	})
-	// /apis — empty group list → isOpenShiftCluster returns false
-	mux.HandleFunc("/apis", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(metav1.APIGroupList{TypeMeta: metav1.TypeMeta{
-			Kind:       "APIGroupList",
-			APIVersion: "v1",
-		}})
-	})
-	// Everything else: 404
-	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
-		http.NotFound(w, nil)
-	})
-
-	srv := httptest.NewServer(mux)
-	t.Cleanup(srv.Close)
-	return srv
+	s := runtime.NewScheme()
+	require.NoError(t, corev1.AddToScheme(s))
+	require.NoError(t, apiv3.AddToScheme(s))
+	require.NoError(t, odlm.AddToScheme(s))
+	instance := &apiv3.CommonService{ObjectMeta: metav1.ObjectMeta{
+		Name: constant.MasterCR, Namespace: "test-ns", UID: "cs-uid",
+	}}
+	fc := fake.NewClientBuilder().WithScheme(s).WithStatusSubresource(instance).
+		WithObjects(instance, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: instance.Namespace}}).
+		WithInterceptorFuncs(hooks).Build()
+	require.NoError(t, fc.Get(context.Background(), client.ObjectKeyFromObject(instance), instance))
+	return &CommonServiceReconciler{Bootstrap: &bootstrap.Bootstrap{
+		Client: fc, Reader: fc,
+		Config: &rest.Config{Host: "https://test.invalid", Transport: transport},
+		CSData: apiv3.CSData{OperatorNs: instance.Namespace, CPFSNs: instance.Namespace, ServicesNs: instance.Namespace},
+	}}, instance
 }
 
-// newTestReconciler returns a CommonServiceReconciler backed by a fake client
-// and a minimal API server, with only the fields needed for ReconcileMasterCR
-// tests that do not require full ODLM / cert-manager infrastructure.
-func newTestReconciler(t *testing.T, srv *httptest.Server, objs ...apiv3.CommonService) *CommonServiceReconciler {
-	t.Helper()
-	builder := fake.NewClientBuilder().WithScheme(scheme.Scheme)
-	for i := range objs {
-		builder = builder.WithStatusSubresource(&objs[i]).WithRuntimeObjects(&objs[i])
-	}
-	fc := builder.Build()
-
-	cfg := &rest.Config{Host: srv.URL}
-
-	return &CommonServiceReconciler{
-		Bootstrap: &bootstrap.Bootstrap{
-			Client: fc,
-			Reader: fc,
-			Config: cfg,
-		},
+// Exercise the production certificate failure branch, including phase-update failure.
+func TestDeployCertManagerCRPreservesDeploymentError(t *testing.T) {
+	deploymentErr := errors.New("certificate discovery unavailable")
+	phaseErr := errors.New("status update unavailable")
+	for _, failPhaseUpdate := range []bool{false, true} {
+		name := "phase update succeeds"
+		if failPhaseUpdate {
+			name = "phase update fails"
+		}
+		t.Run(name, func(t *testing.T) {
+			discoveryCalled, phaseUpdateCalled := false, false
+			transport := statusTestTransport(func(*http.Request) (*http.Response, error) {
+				discoveryCalled = true
+				return nil, deploymentErr
+			})
+			hooks := interceptor.Funcs{SubResourceUpdate: func(ctx context.Context, c client.Client, subresource string, obj client.Object, opts ...client.SubResourceUpdateOption) error {
+				phaseUpdateCalled = true
+				require.Equal(t, "status", subresource)
+				require.Equal(t, apiv3.CRFailed, obj.(*apiv3.CommonService).Status.Phase)
+				if failPhaseUpdate {
+					return phaseErr
+				}
+				return c.SubResource(subresource).Update(ctx, obj, opts...)
+			}}
+			r, instance := newStatusTestReconciler(t, transport, hooks)
+			err := r.deployCertManagerCR(context.Background(), instance)
+			require.ErrorIs(t, err, deploymentErr)
+			assert.True(t, discoveryCalled)
+			assert.True(t, phaseUpdateCalled)
+			if !failPhaseUpdate {
+				persisted := &apiv3.CommonService{}
+				require.NoError(t, r.Client.Get(context.Background(), client.ObjectKeyFromObject(instance), persisted))
+				assert.Equal(t, apiv3.CRFailed, persisted.Status.Phase)
+			}
+		})
 	}
 }
 
-// TestReconcileMasterCRErrorPathPreservesStatusErr is the regression test for
-// the statusErr variable-overwrite bug.
-//
-// Before the fix, the DeployCertManagerCR and !typeCorrect error paths wrote:
-//
-//	if statusErr = r.Bootstrap.DeployCertManagerCR(instance); statusErr != nil {
-//	    if statusErr = r.updatePhase(...); statusErr != nil { ... }
-//	    return ctrl.Result{}, statusErr   // returned nil when updatePhase succeeded!
-//	}
-//
-// The deferred condition-setter then saw statusErr == nil and wrote
-// type:Ready=True instead of type:Error, leaving phase:Failed but
-// conditions:Ready=True — the contradiction observed in the cluster.
-//
-// After the fix, updatePhase is called with a local `err` variable so the
-// outer statusErr always retains the original error.
-//
-// This test exercises the real ReconcileMasterCR code path. It drives the
-// reconcile into the !typeCorrect branch (which uses statusErr directly and
-// was fixed in the same commit), verifies that:
-//   - the reconcile returns the original error (not nil)
-//   - the deferred function wrote an Error condition, not Ready
-//   - the phase was set to Failed
-func TestReconcileMasterCRErrorPathPreservesStatusErr(t *testing.T) {
-	const (
-		ns   = "test-ns"
-		name = "common-service"
-	)
-
-	srv := minimalAPIServer(t)
-
-	instance := apiv3.CommonService{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            name,
-			Namespace:       ns,
-			UID:             types.UID("uid-cs"),
-			ResourceVersion: "1",
-		},
-		Spec: apiv3.CommonServiceSpec{
-			License: apiv3.LicenseList{Accept: true},
-			// operatorNamespace == servicesNamespace: WatchNamespaces is empty,
-			// so the code checks for the servicesNamespace Namespace object.
-			// Leave it unset; the Namespace will be present in the fake store.
-		},
-	}
-
-	// The servicesNamespace Namespace must exist so the namespace-check does
-	// not short-circuit before reaching CheckClusterType.
-	svcNs := corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}}
-
-	r := newTestReconciler(t, srv, instance)
-	// Add the Namespace to the fake store.
-	require.NoError(t, r.Client.Create(context.Background(), &svcNs))
-
-	// Point OperatorNs / ServicesNs at the test namespace so the reconcile
-	// does not try to look up unrelated objects.
-	r.Bootstrap.CSData.OperatorNs = ns
-	r.Bootstrap.CSData.ServicesNs = ns
-
-	// Fetch a live copy so resourceVersion is consistent.
-	live := &apiv3.CommonService{}
-	require.NoError(t, r.Client.Get(context.Background(), types.NamespacedName{Name: name, Namespace: ns}, live))
-
-	// Invoke the real reconcile method.
-	result, err := r.ReconcileMasterCR(context.Background(), live)
-
-	// The reconcile must return a non-nil error.  Before the fix, updatePhase
-	// would overwrite statusErr with nil and the function returned (Result{}, nil).
-	require.Error(t, err,
-		"ReconcileMasterCR must return the original error, not nil, when it fails")
-	assert.Equal(t, result, ctrl.Result{})
-
-	// Read the persisted status.
+// Verify the real master reconcile's deferred condition handling separately.
+func TestReconcileMasterCRRecordsErrorCondition(t *testing.T) {
+	t.Setenv(constant.OperatorNamespaceEnvVar, "test-ns")
+	transport := statusTestTransport(func(req *http.Request) (*http.Response, error) {
+		body := `{"kind":"APIGroupList","apiVersion":"v1","groups":[]}`
+		if req.URL.Path == "/api" {
+			body = `{"kind":"APIVersions","apiVersion":"v1","versions":["v1"]}`
+		}
+		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(body)), Request: req}, nil
+	})
+	r, instance := newStatusTestReconciler(t, transport, interceptor.Funcs{})
+	// No ibm-cpp-config on a non-OCP cluster drives the cluster-type error branch.
+	_, err := r.ReconcileMasterCR(context.Background(), instance)
+	require.EqualError(t, err, "cluster type specified in the ibm-cpp-config isn't correct")
 	persisted := &apiv3.CommonService{}
-	require.NoError(t, r.Client.Get(context.Background(), types.NamespacedName{Name: name, Namespace: ns}, persisted))
-
-	// Phase must be Failed.
-	assert.Equal(t, apiv3.CRFailed, persisted.Status.Phase,
-		"phase must be Failed after a reconcile error")
-
-	// The deferred condition-setter must have recorded an Error condition, NOT
-	// a Ready condition.  Before the fix, statusErr was nil so Ready=True was
-	// written instead.
+	require.NoError(t, r.Client.Get(context.Background(), client.ObjectKeyFromObject(instance), persisted))
+	assert.Equal(t, apiv3.CRFailed, persisted.Status.Phase)
 	var hasError, hasReady bool
 	for _, c := range persisted.Status.Conditions {
-		switch c.Type {
-		case apiv3.ConditionTypeError:
-			hasError = c.Status == corev1.ConditionTrue
-		case apiv3.ConditionTypeReady:
-			hasReady = c.Status == corev1.ConditionTrue
+		if c.Type == apiv3.ConditionTypeError && c.Status == corev1.ConditionTrue {
+			hasError = true
+			assert.Equal(t, err.Error(), c.Message)
+		}
+		if c.Type == apiv3.ConditionTypeReady && c.Status == corev1.ConditionTrue {
+			hasReady = true
 		}
 	}
-	assert.True(t, hasError,
-		"an Error condition must be set when ReconcileMasterCR returns an error")
-	assert.False(t, hasReady,
-		"Ready=True must NOT be set when ReconcileMasterCR returns an error (pre-fix bug)")
+	assert.True(t, hasError)
+	assert.False(t, hasReady)
 }
