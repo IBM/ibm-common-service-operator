@@ -909,6 +909,73 @@ func TestAddOwnerReferenceReplacesStaleCommonServiceUID(t *testing.T) {
 	}
 }
 
+// TestAddOwnerReferenceUsesOnlyMasterCRAsOwner covers the upgrade scenario
+// from https://github.ibm.com/IBMPrivateCloud/roadmap/issues/70051:
+// When a secondary CommonService CR (e.g. im-common-service) triggers
+// reconciliation, addOwnerReference must look up the master CR and record it
+// as the controller owner — never the secondary CR.
+func TestAddOwnerReferenceUsesOnlyMasterCRAsOwner(t *testing.T) {
+	const namespace = "test-ns"
+
+	// cs-ca-certificate currently owned by im-common-service (pre-upgrade state).
+	cert := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "cert-manager.io/v1",
+			"kind":       "Certificate",
+			"metadata": map[string]interface{}{
+				"name":      constant.CSCACertificate,
+				"namespace": namespace,
+			},
+		},
+	}
+	controller := true
+	cert.SetOwnerReferences([]metav1.OwnerReference{{
+		APIVersion: constant.APIVersion,
+		Kind:       constant.KindCR,
+		Name:       "im-common-service",
+		UID:        types.UID("uid-im"),
+		Controller: &controller,
+	}})
+
+	// Master CR that must become the owner.
+	masterCS := &apiv3.CommonService{ObjectMeta: metav1.ObjectMeta{
+		Name:      constant.MasterCR,
+		Namespace: namespace,
+		UID:       types.UID("uid-master"),
+	}}
+	// Secondary CR that is being reconciled (not the master).
+	secondaryCS := &apiv3.CommonService{ObjectMeta: metav1.ObjectMeta{
+		Name:      "im-common-service",
+		Namespace: namespace,
+		UID:       types.UID("uid-im"),
+	}}
+
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(scheme.Scheme).
+		WithRuntimeObjects(masterCS).
+		Build()
+	bs := &Bootstrap{
+		Client:  fakeClient,
+		Reader:  fakeClient,
+		Manager: &deploy.Manager{Client: fakeClient, Reader: fakeClient},
+	}
+
+	// addOwnerReference is called with the secondary CR as the reconciling instance.
+	// It must fetch the master CR and use its UID, not secondaryCS.UID.
+	changed, err := bs.addOwnerReference(cert, secondaryCS)
+	assert.NoError(t, err)
+	assert.True(t, changed)
+	if assert.Len(t, cert.GetOwnerReferences(), 1) {
+		owner := cert.GetOwnerReferences()[0]
+		assert.Equal(t, constant.MasterCR, owner.Name, "owner name must be the master CR")
+		assert.Equal(t, types.UID("uid-master"), owner.UID, "owner UID must come from the master CR")
+		assert.NotNil(t, owner.Controller)
+		assert.True(t, *owner.Controller)
+	}
+}
+
+
+
 func TestShouldAddOwnerReferenceExcludesCSCACertificateSecret(t *testing.T) {
 	secret := &unstructured.Unstructured{Object: map[string]interface{}{ // pragma: allowlist secret
 		"apiVersion": "v1",

@@ -631,9 +631,14 @@ func (b *Bootstrap) shouldAddOwnerReference(
 	return false
 }
 
-// addOwnerReference ensures that obj is controlled by instance. It returns true
-// when the object was changed. The caller is responsible for persisting the
-// change and logging only after that persistence succeeds.
+// addOwnerReference ensures that obj is controlled by the master CommonService
+// CR (named constant.MasterCR).  When the reconciling instance is not the
+// master CR itself, the master CR is fetched from the API server so that its
+// UID is always used.  This guarantees that only one, well-known CR can ever
+// become the controller owner regardless of which CR triggered reconciliation.
+//
+// It returns true when the object was changed.  The caller is responsible for
+// persisting the change and logging only after that persistence succeeds.
 func (b *Bootstrap) addOwnerReference(
 	obj *unstructured.Unstructured,
 	instance *apiv3.CommonService,
@@ -642,13 +647,36 @@ func (b *Bootstrap) addOwnerReference(
 		return false, nil
 	}
 
+	// Resolve the master CR that will be recorded as the owner.
+	masterName := instance.Name
+	masterUID := instance.UID
+	masterNs := instance.Namespace
+	if instance.Name != constant.MasterCR {
+		master := &apiv3.CommonService{}
+		if err := b.Reader.Get(ctx, types.NamespacedName{
+			Name:      constant.MasterCR,
+			Namespace: instance.Namespace,
+		}, master); err != nil {
+			// Master CR not present yet; skip adding an owner reference rather
+			// than blocking the reconcile.
+			klog.V(2).Infof(
+				"Skipping owner ref for %s/%s: master CR %s not found in namespace %s: %v",
+				obj.GetNamespace(), obj.GetName(), constant.MasterCR, instance.Namespace, err,
+			)
+			return false, nil
+		}
+		masterName = master.Name
+		masterUID = master.UID
+		masterNs = master.Namespace
+	}
+
 	// Kubernetes does not allow cross-namespace owner references.
-	if obj.GetNamespace() != "" && obj.GetNamespace() != instance.Namespace {
+	if obj.GetNamespace() != "" && obj.GetNamespace() != masterNs {
 		klog.V(2).Infof(
 			"Skipping cross-namespace owner ref for %s/%s (owner is in %s)",
 			obj.GetNamespace(),
 			obj.GetName(),
-			instance.Namespace,
+			masterNs,
 		)
 		return false, nil
 	}
@@ -656,8 +684,8 @@ func (b *Bootstrap) addOwnerReference(
 	ownerRef := metav1.OwnerReference{
 		APIVersion: constant.APIVersion,
 		Kind:       constant.KindCR,
-		Name:       instance.Name,
-		UID:        instance.UID,
+		Name:       masterName,
+		UID:        masterUID,
 	}
 
 	return common.EnsureControllerOwnerReference(obj, ownerRef)
