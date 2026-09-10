@@ -24,6 +24,7 @@ import (
 
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"github.com/stretchr/testify/assert"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
@@ -31,6 +32,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	apiv3 "github.com/IBM/ibm-common-service-operator/v4/api/v3"
 	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/constant"
@@ -912,8 +914,8 @@ func TestAddOwnerReferenceReplacesStaleCommonServiceUID(t *testing.T) {
 // TestAddOwnerReferenceUsesOnlyMasterCRAsOwner covers the upgrade scenario
 // from https://github.ibm.com/IBMPrivateCloud/roadmap/issues/70051:
 // When a secondary CommonService CR (e.g. im-common-service) triggers
-// reconciliation, addOwnerReference must look up the master CR and record it
-// as the controller owner — never the secondary CR.
+// reconciliation, addOwnerReference must look up the master CR from obj's
+// namespace and record it as the controller owner — never the secondary CR.
 func TestAddOwnerReferenceUsesOnlyMasterCRAsOwner(t *testing.T) {
 	const namespace = "test-ns"
 
@@ -961,7 +963,7 @@ func TestAddOwnerReferenceUsesOnlyMasterCRAsOwner(t *testing.T) {
 	}
 
 	// addOwnerReference is called with the secondary CR as the reconciling instance.
-	// It must fetch the master CR and use its UID, not secondaryCS.UID.
+	// It must fetch the master CR from obj's namespace and use its UID.
 	changed, err := bs.addOwnerReference(cert, secondaryCS)
 	assert.NoError(t, err)
 	assert.True(t, changed)
@@ -972,6 +974,146 @@ func TestAddOwnerReferenceUsesOnlyMasterCRAsOwner(t *testing.T) {
 		assert.NotNil(t, owner.Controller)
 		assert.True(t, *owner.Controller)
 	}
+}
+
+// TestAddOwnerReferenceSplitNamespace verifies the split operator/services
+// namespace topology.  The reconciling instance lives in the operator namespace
+// (op-ns/common-service) but cs-ca-certificate lives in the services namespace
+// (svc-ns).  addOwnerReference must look up the master CR in svc-ns, not op-ns.
+func TestAddOwnerReferenceSplitNamespace(t *testing.T) {
+	const (
+		opNs  = "op-ns"
+		svcNs = "svc-ns"
+	)
+
+	cert := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "cert-manager.io/v1",
+			"kind":       "Certificate",
+			"metadata": map[string]interface{}{
+				"name":      constant.CSCACertificate,
+				"namespace": svcNs,
+			},
+		},
+	}
+
+	// Master CR cloned into the services namespace by PropagateDefaultCR.
+	masterInSvcNs := &apiv3.CommonService{ObjectMeta: metav1.ObjectMeta{
+		Name:      constant.MasterCR,
+		Namespace: svcNs,
+		UID:       types.UID("uid-master-svc"),
+	}}
+	// The operator-ns master (the one being reconciled).
+	masterInOpNs := &apiv3.CommonService{ObjectMeta: metav1.ObjectMeta{
+		Name:      constant.MasterCR,
+		Namespace: opNs,
+		UID:       types.UID("uid-master-op"),
+	}}
+
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(scheme.Scheme).
+		WithRuntimeObjects(masterInSvcNs, masterInOpNs).
+		Build()
+	bs := &Bootstrap{
+		Client:  fakeClient,
+		Reader:  fakeClient,
+		Manager: &deploy.Manager{Client: fakeClient, Reader: fakeClient},
+	}
+
+	changed, err := bs.addOwnerReference(cert, masterInOpNs)
+	assert.NoError(t, err)
+	assert.True(t, changed)
+	if assert.Len(t, cert.GetOwnerReferences(), 1) {
+		owner := cert.GetOwnerReferences()[0]
+		assert.Equal(t, constant.MasterCR, owner.Name)
+		assert.Equal(t, types.UID("uid-master-svc"), owner.UID,
+			"must use the master CR in the certificate's namespace (svc-ns), not op-ns")
+		assert.NotNil(t, owner.Controller)
+		assert.True(t, *owner.Controller)
+	}
+}
+
+// TestAddOwnerReferenceSkipsWhenMasterNotFoundYet verifies that a NotFound
+// error while looking up the master CR is handled silently — ownership will be
+// backfilled on the next reconcile after PropagateDefaultCR has run.
+func TestAddOwnerReferenceSkipsWhenMasterNotFoundYet(t *testing.T) {
+	const namespace = "test-ns"
+
+	cert := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "cert-manager.io/v1",
+			"kind":       "Certificate",
+			"metadata": map[string]interface{}{
+				"name":      constant.CSCACertificate,
+				"namespace": namespace,
+			},
+		},
+	}
+	// Reconciling instance is from a different namespace; no master CR exists
+	// in the cert's namespace yet.
+	instance := &apiv3.CommonService{ObjectMeta: metav1.ObjectMeta{
+		Name:      constant.MasterCR,
+		Namespace: "op-ns",
+		UID:       types.UID("uid-op"),
+	}}
+
+	fakeClient := fake.NewClientBuilder().WithScheme(scheme.Scheme).Build()
+	bs := &Bootstrap{
+		Client:  fakeClient,
+		Reader:  fakeClient,
+		Manager: &deploy.Manager{Client: fakeClient, Reader: fakeClient},
+	}
+
+	changed, err := bs.addOwnerReference(cert, instance)
+	assert.NoError(t, err, "NotFound must be silently skipped")
+	assert.False(t, changed, "no ownership change when master CR not yet present")
+	assert.Empty(t, cert.GetOwnerReferences())
+}
+
+// TestAddOwnerReferencePropagatesNonNotFoundError verifies that errors other
+// than NotFound (e.g. Forbidden, transient API errors) are returned so the
+// reconcile loop can retry instead of silently leaving ownership unset.
+func TestAddOwnerReferencePropagatesNonNotFoundError(t *testing.T) {
+	const namespace = "test-ns"
+
+	cert := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "cert-manager.io/v1",
+			"kind":       "Certificate",
+			"metadata": map[string]interface{}{
+				"name":      constant.CSCACertificate,
+				"namespace": namespace,
+			},
+		},
+	}
+	instance := &apiv3.CommonService{ObjectMeta: metav1.ObjectMeta{
+		Name:      "im-common-service",
+		Namespace: namespace,
+		UID:       types.UID("uid-im"),
+	}}
+
+	forbiddenErr := k8serrors.NewForbidden(
+		apiv3.GroupVersion.WithResource("commonservices").GroupResource(),
+		constant.MasterCR,
+		fmt.Errorf("forbidden"),
+	)
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(scheme.Scheme).
+		WithInterceptorFuncs(interceptor.Funcs{
+			Get: func(_ context.Context, _ client.WithWatch, _ client.ObjectKey, _ client.Object, _ ...client.GetOption) error {
+				return forbiddenErr
+			},
+		}).
+		Build()
+	bs := &Bootstrap{
+		Client:  fakeClient,
+		Reader:  fakeClient,
+		Manager: &deploy.Manager{Client: fakeClient, Reader: fakeClient},
+	}
+
+	_, err := bs.addOwnerReference(cert, instance)
+	assert.Error(t, err, "non-NotFound errors must be propagated")
+	assert.Empty(t, cert.GetOwnerReferences(), "ownership must not be set on error")
 }
 
 

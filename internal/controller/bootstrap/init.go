@@ -632,10 +632,21 @@ func (b *Bootstrap) shouldAddOwnerReference(
 }
 
 // addOwnerReference ensures that obj is controlled by the master CommonService
-// CR (named constant.MasterCR).  When the reconciling instance is not the
-// master CR itself, the master CR is fetched from the API server so that its
-// UID is always used.  This guarantees that only one, well-known CR can ever
-// become the controller owner regardless of which CR triggered reconciliation.
+// CR (named constant.MasterCR) that lives in the same namespace as obj.
+//
+// The lookup is always performed against obj.GetNamespace() so that the
+// correct CR is found regardless of whether the reconciling instance lives in
+// a different namespace (split operator/services namespace topology).  Reusing
+// the reconciling instance directly is only safe when both its name and
+// namespace already match — i.e. it IS the local master CR.
+//
+// Error handling:
+//   - NotFound: the cloned master CR has not been created in obj's namespace
+//     yet (PropagateDefaultCR runs after DeployCertManagerCR on the first
+//     reconcile).  Ownership will be backfilled on the next reconcile cycle;
+//     skip silently rather than blocking progress.
+//   - Any other error (Forbidden, transient, etc.): propagate so the reconcile
+//     loop retries instead of silently leaving ownership unset.
 //
 // It returns true when the object was changed.  The caller is responsible for
 // persisting the change and logging only after that persistence succeeds.
@@ -647,47 +658,52 @@ func (b *Bootstrap) addOwnerReference(
 		return false, nil
 	}
 
-	// Resolve the master CR that will be recorded as the owner.
-	masterName := instance.Name
-	masterUID := instance.UID
-	masterNs := instance.Namespace
-	if instance.Name != constant.MasterCR {
-		master := &apiv3.CommonService{}
-		if err := b.Reader.Get(ctx, types.NamespacedName{
-			Name:      constant.MasterCR,
-			Namespace: instance.Namespace,
-		}, master); err != nil {
-			// Master CR not present yet; skip adding an owner reference rather
-			// than blocking the reconcile.
+	// The owner must live in the same namespace as the object being annotated.
+	// Use obj.GetNamespace() as the authoritative lookup namespace so that
+	// split operator/services topologies are handled correctly.
+	objNs := obj.GetNamespace()
+
+	// Fast path: the reconciling instance is already the local master CR.
+	if instance.Name == constant.MasterCR && instance.Namespace == objNs {
+		ownerRef := metav1.OwnerReference{
+			APIVersion: constant.APIVersion,
+			Kind:       constant.KindCR,
+			Name:       instance.Name,
+			UID:        instance.UID,
+		}
+		return common.EnsureControllerOwnerReference(obj, ownerRef)
+	}
+
+	// Slow path: look up the master CR in obj's namespace.
+	master := &apiv3.CommonService{}
+	if err := b.Reader.Get(ctx, types.NamespacedName{
+		Name:      constant.MasterCR,
+		Namespace: objNs,
+	}, master); err != nil {
+		if errors.IsNotFound(err) {
+			// The cloned master CR does not exist in obj's namespace yet.
+			// PropagateDefaultCR (which runs later in the same reconcile) will
+			// create it.  Ownership will be backfilled on the next cycle.
 			klog.V(2).Infof(
-				"Skipping owner ref for %s/%s: master CR %s not found in namespace %s: %v",
-				obj.GetNamespace(), obj.GetName(), constant.MasterCR, instance.Namespace, err,
+				"Skipping owner ref for %s/%s: master CR %s/%s not found yet, will retry",
+				objNs, obj.GetName(), objNs, constant.MasterCR,
 			)
 			return false, nil
 		}
-		masterName = master.Name
-		masterUID = master.UID
-		masterNs = master.Namespace
-	}
-
-	// Kubernetes does not allow cross-namespace owner references.
-	if obj.GetNamespace() != "" && obj.GetNamespace() != masterNs {
-		klog.V(2).Infof(
-			"Skipping cross-namespace owner ref for %s/%s (owner is in %s)",
-			obj.GetNamespace(),
-			obj.GetName(),
-			masterNs,
+		// Propagate all other errors (Forbidden, timeout, etc.) so the
+		// reconcile loop retries.
+		return false, fmt.Errorf(
+			"failed to get master CR %s/%s for owner reference on %s/%s: %w",
+			objNs, constant.MasterCR, objNs, obj.GetName(), err,
 		)
-		return false, nil
 	}
 
 	ownerRef := metav1.OwnerReference{
 		APIVersion: constant.APIVersion,
 		Kind:       constant.KindCR,
-		Name:       masterName,
-		UID:        masterUID,
+		Name:       master.Name,
+		UID:        master.UID,
 	}
-
 	return common.EnsureControllerOwnerReference(obj, ownerRef)
 }
 
