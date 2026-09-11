@@ -800,7 +800,7 @@ spec:
   secretName: cs-ca-certificate-secret
 `)
 
-	err := bootstrap.CreateOrUpdateFromYaml(desired, instance)
+	err := bootstrap.CreateOrUpdateFromYaml(context.Background(), desired, instance)
 	assert.NoError(t, err)
 
 	actual := &unstructured.Unstructured{}
@@ -822,7 +822,7 @@ spec:
 	assert.Equal(t, "keep-me", runtimeField)
 
 	// A second reconciliation must be idempotent and must not duplicate owners.
-	err = bootstrap.CreateOrUpdateFromYaml(desired, instance)
+	err = bootstrap.CreateOrUpdateFromYaml(context.Background(), desired, instance)
 	assert.NoError(t, err)
 	err = fakeClient.Get(context.TODO(), types.NamespacedName{Name: constant.CSCACertificate, Namespace: namespace}, actual)
 	assert.NoError(t, err)
@@ -864,7 +864,7 @@ data:
   runtime: from-template
 `)
 
-	assert.NoError(t, bootstrap.CreateOrUpdateFromYaml(desired, instance))
+	assert.NoError(t, bootstrap.CreateOrUpdateFromYaml(context.Background(), desired, instance))
 
 	actual := &unstructured.Unstructured{}
 	actual.SetAPIVersion("v1")
@@ -904,7 +904,7 @@ func TestAddOwnerReferenceReplacesStaleCommonServiceUID(t *testing.T) {
 		UID:       types.UID("new-uid"),
 	}}
 
-	changed, err := (&Bootstrap{}).addOwnerReference(obj, instance)
+	changed, err := (&Bootstrap{}).addOwnerReference(context.Background(), obj, instance)
 	assert.NoError(t, err)
 	assert.True(t, changed)
 	if assert.Len(t, obj.GetOwnerReferences(), 1) {
@@ -968,7 +968,7 @@ func TestAddOwnerReferenceUsesLocalMaster(t *testing.T) {
 					Name: "im-common-service", UID: "im-uid", Controller: &controller,
 				}})
 
-				changed, err := bs.addOwnerReference(testObj, instance)
+				changed, err := bs.addOwnerReference(context.Background(), testObj, instance)
 				require.NoError(t, err)
 				require.True(t, changed)
 				require.Len(t, testObj.GetOwnerReferences(), 1)
@@ -978,7 +978,7 @@ func TestAddOwnerReferenceUsesLocalMaster(t *testing.T) {
 				require.NotNil(t, owner.Controller)
 				assert.True(t, *owner.Controller)
 
-				changed, err = bs.addOwnerReference(testObj, instance)
+				changed, err = bs.addOwnerReference(context.Background(), testObj, instance)
 				require.NoError(t, err)
 				assert.False(t, changed)
 				assert.Len(t, testObj.GetOwnerReferences(), 1)
@@ -1019,7 +1019,7 @@ metadata:
 `)
 			}
 
-			require.NoError(t, bs.CreateOrUpdateFromYaml(desired, instance))
+			require.NoError(t, bs.CreateOrUpdateFromYaml(context.Background(), desired, instance))
 			actual := res("services")
 			key := client.ObjectKeyFromObject(actual)
 			require.NoError(t, fc.Get(context.Background(), key, actual))
@@ -1028,7 +1028,7 @@ metadata:
 			master := ownershipTestCR("services", constant.MasterCR, "local-master-uid")
 			require.NoError(t, fc.Create(context.Background(), master))
 			// Simulate the next reconciliation triggered by the clone's create event.
-			require.NoError(t, bs.CreateOrUpdateFromYaml(desired, instance))
+			require.NoError(t, bs.CreateOrUpdateFromYaml(context.Background(), desired, instance))
 			require.NoError(t, fc.Get(context.Background(), key, actual))
 			require.Len(t, actual.GetOwnerReferences(), 1)
 			assert.Equal(t, master.UID, actual.GetOwnerReferences()[0].UID)
@@ -1056,7 +1056,7 @@ func TestAddOwnerReferencePropagatesLookupErrors(t *testing.T) {
 					}).Build()
 				testObj := res("services")
 				bs := &Bootstrap{Reader: fc}
-				changed, err := bs.addOwnerReference(testObj, ownershipTestCR("services", "im-common-service", "im-uid"))
+				changed, err := bs.addOwnerReference(context.Background(), testObj, ownershipTestCR("services", "im-common-service", "im-uid"))
 				require.ErrorIs(t, err, lookupErr)
 				assert.False(t, changed)
 				assert.Empty(t, testObj.GetOwnerReferences())
@@ -1080,4 +1080,49 @@ func TestShouldAddOwnerReferenceExcludesCSCACertificateSecret(t *testing.T) {
 	}}
 
 	assert.False(t, (&Bootstrap{}).shouldAddOwnerReference(secret, instance))
+}
+
+// Check context values and cancellation through the template/update/owner path.
+func TestOwnerLookupReceivesCallerContext(t *testing.T) {
+	type traceKey struct{}
+	for _, resource := range []ownershipTestResource{ownershipTestCertificate, ownershipTestConfigMap} {
+		for _, cancelled := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/cancelled=%t", resource("services").GetKind(), cancelled), func(t *testing.T) {
+				callerCtx, cancel := context.WithCancel(context.WithValue(context.Background(), traceKey{}, "trace-value"))
+				defer cancel()
+				if cancelled {
+					cancel()
+				}
+				master := ownershipTestCR("services", constant.MasterCR, "master-uid")
+				obj := resource("services")
+				obj.SetAnnotations(map[string]string{"version": "0.0.1"})
+				lookups := 0
+				fc := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(master, obj).
+					WithInterceptorFuncs(interceptor.Funcs{
+						Get: func(gotCtx context.Context, c client.WithWatch, key client.ObjectKey, target client.Object, opts ...client.GetOption) error {
+							if _, ok := target.(*apiv3.CommonService); ok {
+								lookups++
+								require.Equal(t, callerCtx, gotCtx)
+								assert.Equal(t, "trace-value", gotCtx.Value(traceKey{}))
+								if err := gotCtx.Err(); err != nil {
+									return err
+								}
+							}
+							return c.Get(gotCtx, key, target, opts...)
+						},
+					}).Build()
+				bs := &Bootstrap{Client: fc, Reader: fc, Manager: &deploy.Manager{Client: fc, Reader: fc}}
+				template := fmt.Sprintf("apiVersion: %s\nkind: %s\nmetadata:\n  name: %s\n  namespace: services\n  annotations:\n    version: 0.0.1\n",
+					obj.GetAPIVersion(), obj.GetKind(), obj.GetName())
+				err := bs.renderTemplate(callerCtx, template, nil, ownershipTestCR("operators", constant.MasterCR, "operator-uid"))
+				if cancelled {
+					require.ErrorIs(t, err, context.Canceled)
+					assert.Equal(t, 1, lookups)
+				} else {
+					require.NoError(t, err)
+					assert.Equal(t, 2, lookups, "desired and existing objects must both use the caller context")
+				}
+			})
+		}
+	}
 }
