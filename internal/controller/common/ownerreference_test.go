@@ -49,7 +49,7 @@ func TestEnsureControllerOwnerReference_NoExisting(t *testing.T) {
 		UID:        types.UID("uid-master"),
 	}
 
-	changed, err := EnsureControllerOwnerReference(obj, owner, false)
+	changed, err := EnsureControllerOwnerReference(obj, owner)
 	require.NoError(t, err)
 	assert.True(t, changed)
 	refs := obj.GetOwnerReferences()
@@ -79,16 +79,13 @@ func TestEnsureControllerOwnerReference_Idempotent(t *testing.T) {
 		BlockOwnerDeletion: pointer.Bool(true),
 	}})
 
-	changed, err := EnsureControllerOwnerReference(obj, owner, false)
+	changed, err := EnsureControllerOwnerReference(obj, owner)
 	require.NoError(t, err)
 	assert.False(t, changed)
 	assert.Len(t, obj.GetOwnerReferences(), 1)
 }
 
-// TestEnsureControllerOwnerReference_TakeoverFromSameKind verifies that when
-// replaceExistingSameKind is true and the object is already controlled by a
-// different instance of the same Kind, the stale reference is replaced.
-// This models the upgrade path: im-common-service → common-service.
+// Test migration from an old secondary CR to the designated common-service CR.
 func TestEnsureControllerOwnerReference_TakeoverFromSameKind(t *testing.T) {
 	obj := &unstructured.Unstructured{}
 	obj.SetNamespace("a1")
@@ -104,7 +101,7 @@ func TestEnsureControllerOwnerReference_TakeoverFromSameKind(t *testing.T) {
 		UID:        types.UID("uid-master"),
 	}
 
-	changed, err := EnsureControllerOwnerReference(obj, owner, true)
+	changed, err := EnsureControllerOwnerReference(obj, owner)
 	require.NoError(t, err)
 	assert.True(t, changed)
 	refs := obj.GetOwnerReferences()
@@ -114,30 +111,28 @@ func TestEnsureControllerOwnerReference_TakeoverFromSameKind(t *testing.T) {
 	assert.True(t, *refs[0].Controller)
 }
 
-// TestEnsureControllerOwnerReference_TakeoverBlockedWithoutFlag verifies that
-// the same-Kind takeover is rejected when replaceExistingSameKind is false,
-// i.e. when the caller is not the designated master CR.
-func TestEnsureControllerOwnerReference_TakeoverBlockedWithoutFlag(t *testing.T) {
+// A secondary CommonService cannot take ownership from the master CR.
+func TestEnsureControllerOwnerReference_RejectsSecondaryTakeover(t *testing.T) {
 	obj := &unstructured.Unstructured{}
 	obj.SetNamespace("a1")
 	obj.SetName("cs-ca-certificate")
 	obj.SetOwnerReferences([]metav1.OwnerReference{
-		newRef("operator.ibm.com/v3", "CommonService", "im-common-service", "uid-im", true),
+		newRef("operator.ibm.com/v3", "CommonService", "common-service", "uid-master", true),
 	})
 
 	owner := metav1.OwnerReference{
 		APIVersion: "operator.ibm.com/v3",
 		Kind:       "CommonService",
-		Name:       "common-service",
-		UID:        types.UID("uid-master"),
+		Name:       "im-common-service",
+		UID:        types.UID("uid-im"),
 	}
 
-	_, err := EnsureControllerOwnerReference(obj, owner, false)
-	require.Error(t, err, "same-Kind takeover must be rejected when replaceExistingSameKind=false")
+	_, err := EnsureControllerOwnerReference(obj, owner)
+	require.Error(t, err, "secondary CommonService must not take over the master owner")
 	// Object must be unchanged.
 	refs := obj.GetOwnerReferences()
 	require.Len(t, refs, 1)
-	assert.Equal(t, "im-common-service", refs[0].Name, "stale ref must not have been removed")
+	assert.Equal(t, "common-service", refs[0].Name, "master owner must remain unchanged")
 }
 
 func TestEnsureControllerOwnerReference_RejectsUnrelatedController(t *testing.T) {
@@ -156,6 +151,26 @@ func TestEnsureControllerOwnerReference_RejectsUnrelatedController(t *testing.T)
 		UID:        types.UID("uid-master"),
 	}
 
-	_, err := EnsureControllerOwnerReference(obj, owner, true)
-	assert.Error(t, err, "unrelated-Kind controllers must always be rejected regardless of flag")
+	_, err := EnsureControllerOwnerReference(obj, owner)
+	assert.Error(t, err, "unrelated-Kind controllers must always be rejected")
+}
+
+func TestEnsureControllerOwnerReference_RejectsOtherSameKindTakeovers(t *testing.T) {
+	for _, tc := range []struct{ apiVersion, kind, name string }{
+		{"apps/v1", "Deployment", "common-service"},
+		{"example.com/v3", "CommonService", "common-service"},
+		{"operator.ibm.com/v3", "CommonService", "im-common-service"},
+	} {
+		t.Run(tc.apiVersion+"/"+tc.kind+"/"+tc.name, func(t *testing.T) {
+			obj := &unstructured.Unstructured{}
+			obj.SetName("resource")
+			obj.SetNamespace("ns")
+			oldRefs := []metav1.OwnerReference{newRef(tc.apiVersion, tc.kind, "previous-owner", "old-uid", true)}
+			obj.SetOwnerReferences(oldRefs)
+			changed, err := EnsureControllerOwnerReference(obj, newRef(tc.apiVersion, tc.kind, tc.name, "new-uid", true))
+			require.Error(t, err)
+			assert.False(t, changed)
+			assert.Equal(t, oldRefs, obj.GetOwnerReferences())
+		})
+	}
 }
