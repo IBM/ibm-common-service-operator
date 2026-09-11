@@ -75,7 +75,7 @@ func (r *CommonServiceReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				return ctrl.Result{}, err
 			}
 			// Generate Issuer and Certificate CR
-			if err := r.Bootstrap.DeployCertManagerCR(instance); err != nil {
+			if err := r.Bootstrap.DeployCertManagerCR(ctx, instance); err != nil {
 				return ctrl.Result{}, err
 			}
 			klog.Infof("Finished reconciling to delete CommonService: %s/%s", req.NamespacedName.Namespace, req.NamespacedName.Name)
@@ -220,9 +220,10 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 	}
 
 	if !typeCorrect {
-		klog.Error("Cluster type specificed in the ibm-cpp-config isn't correct")
-		if statusErr = r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
-			klog.Error(statusErr)
+		statusErr = fmt.Errorf("cluster type specified in the ibm-cpp-config isn't correct")
+		klog.Error(statusErr)
+		if err := r.updatePhase(ctx, instance, apiv3.CRFailed); err != nil {
+			klog.Error(err)
 		}
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
 		return ctrl.Result{}, statusErr
@@ -266,11 +267,7 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 	}
 
 	// Generate Issuer and Certificate CR
-	if statusErr = r.Bootstrap.DeployCertManagerCR(instance); statusErr != nil {
-		klog.Errorf("Failed to deploy cert manager CRs: %v", statusErr)
-		if statusErr = r.updatePhase(ctx, instance, apiv3.CRFailed); statusErr != nil {
-			klog.Error(statusErr)
-		}
+	if statusErr = r.deployCertManagerCR(ctx, instance); statusErr != nil {
 		klog.Errorf("Fail to reconcile %s/%s: %v", instance.Namespace, instance.Name, statusErr)
 		return ctrl.Result{}, statusErr
 	}
@@ -326,6 +323,18 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 	return ctrl.Result{}, nil
 }
 
+// deployCertManagerCR preserves the deployment error even if updating phase fails.
+func (r *CommonServiceReconciler) deployCertManagerCR(ctx context.Context, instance *apiv3.CommonService) error {
+	if err := r.Bootstrap.DeployCertManagerCR(ctx, instance); err != nil {
+		klog.Errorf("Failed to deploy cert manager CRs: %v", err)
+		if phaseErr := r.updatePhase(ctx, instance, apiv3.CRFailed); phaseErr != nil {
+			klog.Error(phaseErr)
+		}
+		return err
+	}
+	return nil
+}
+
 // ReconcileGeneralCR is for setting the OperandConfig
 func (r *CommonServiceReconciler) ReconcileGeneralCR(ctx context.Context, instance *apiv3.CommonService) (ctrl.Result, error) {
 
@@ -358,7 +367,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(ctx context.Context, instan
 	}
 
 	// Generate Issuer and Certificate CR
-	if err := r.Bootstrap.DeployCertManagerCR(instance); err != nil {
+	if err := r.Bootstrap.DeployCertManagerCR(ctx, instance); err != nil {
 		klog.Errorf("Failed to deploy cert manager CRs: %v", err)
 		if err := r.updatePhase(ctx, instance, apiv3.CRFailed); err != nil {
 			klog.Error(err)

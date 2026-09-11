@@ -19,6 +19,8 @@ package common
 import (
 	"fmt"
 
+	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/constant"
+
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
@@ -27,9 +29,15 @@ import (
 // EnsureControllerOwnerReference ensures that object has exactly one reference
 // to owner and that the reference is controlling. Existing non-controller owner
 // references are preserved.
+//
+// Only CommonService/common-service may replace a different CommonService
+// controller. Unrelated controller references are rejected.
 func EnsureControllerOwnerReference(object metav1.Object, owner metav1.OwnerReference) (bool, error) {
 	owner.Controller = pointer.Bool(true)
 	owner.BlockOwnerDeletion = pointer.Bool(true)
+
+	isMasterCommonService := owner.APIVersion == constant.APIVersion &&
+		owner.Kind == constant.KindCR && owner.Name == constant.MasterCR
 
 	existing := object.GetOwnerReferences()
 	updated := make([]metav1.OwnerReference, 0, len(existing)+1)
@@ -53,6 +61,13 @@ func EnsureControllerOwnerReference(object metav1.Object, owner metav1.OwnerRefe
 		}
 
 		if ref.Controller != nil && *ref.Controller {
+			if isMasterCommonService &&
+				ref.APIVersion == owner.APIVersion && ref.Kind == owner.Kind {
+				// Drop the stale same-Kind controller so owner can take over.
+				// This is only enabled for the designated master CR.
+				changed = true
+				continue
+			}
 			return false, fmt.Errorf("cannot set controller owner reference on %s/%s: object is already controlled by %s %s",
 				object.GetNamespace(), object.GetName(), ref.Kind, ref.Name)
 		}
