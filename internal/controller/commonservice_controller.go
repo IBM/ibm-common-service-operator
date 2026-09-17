@@ -351,7 +351,33 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 }
 
 // ReconcileGeneralCR is for setting the OperandConfig
-func (r *CommonServiceReconciler) ReconcileGeneralCR(ctx context.Context, instance *apiv3.CommonService) (ctrl.Result, error) {
+func (r *CommonServiceReconciler) ReconcileGeneralCR(ctx context.Context, instance *apiv3.CommonService) (result ctrl.Result, retErr error) {
+
+	operationStartTime := metav1.Now()
+	r.Recorder.Event(instance, corev1.EventTypeNormal, apiv3.EventReasonOperationStarted,
+		fmt.Sprintf("Reconcile operation started for %s/%s", instance.Namespace, instance.Name))
+
+	defer func() {
+		operationEndTime := metav1.Now()
+		phase := apiv3.CRSucceeded
+		eventType := corev1.EventTypeNormal
+		endMsg := fmt.Sprintf("phase=%s: reconcile completed successfully for %s/%s", phase, instance.Namespace, instance.Name)
+		if retErr != nil {
+			phase = apiv3.CRFailed
+			eventType = corev1.EventTypeWarning
+			endMsg = fmt.Sprintf("phase=%s: %v", phase, retErr)
+		}
+		AppendOperationTiming(instance, apiv3.OperationTimingEntry{
+			StartTime:     operationStartTime,
+			EndTime:       operationEndTime,
+			TotalDuration: FormatDuration(operationEndTime.Sub(operationStartTime.Time)),
+			Phase:         phase,
+		})
+		r.Recorder.Event(instance, eventType, apiv3.EventReasonOperationEnded, endMsg)
+		if err := r.Client.Status().Update(ctx, instance); err != nil {
+			klog.Warningf("Failed to write operationTiming for %s/%s: %v", instance.Namespace, instance.Name, err)
+		}
+	}()
 
 	if instance.Status.Phase == "" {
 		if err := r.updatePhase(ctx, instance, apiv3.CRInitializing); err != nil {
@@ -443,7 +469,33 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(ctx context.Context, instan
 }
 
 // ReconileNonConfigurableCR is for setting the cloned Master CR status for advanced topologies
-func (r *CommonServiceReconciler) ReconcileNonConfigurableCR(ctx context.Context, instance *apiv3.CommonService) (ctrl.Result, error) {
+func (r *CommonServiceReconciler) ReconcileNonConfigurableCR(ctx context.Context, instance *apiv3.CommonService) (result ctrl.Result, retErr error) {
+
+	operationStartTime := metav1.Now()
+	r.Recorder.Event(instance, corev1.EventTypeNormal, apiv3.EventReasonOperationStarted,
+		fmt.Sprintf("Reconcile operation started for %s/%s", instance.Namespace, instance.Name))
+
+	defer func() {
+		operationEndTime := metav1.Now()
+		phase := apiv3.CRSucceeded
+		eventType := corev1.EventTypeNormal
+		endMsg := fmt.Sprintf("phase=%s: reconcile completed successfully for %s/%s", phase, instance.Namespace, instance.Name)
+		if retErr != nil {
+			phase = apiv3.CRFailed
+			eventType = corev1.EventTypeWarning
+			endMsg = fmt.Sprintf("phase=%s: %v", phase, retErr)
+		}
+		AppendOperationTiming(instance, apiv3.OperationTimingEntry{
+			StartTime:     operationStartTime,
+			EndTime:       operationEndTime,
+			TotalDuration: FormatDuration(operationEndTime.Sub(operationStartTime.Time)),
+			Phase:         phase,
+		})
+		r.Recorder.Event(instance, eventType, apiv3.EventReasonOperationEnded, endMsg)
+		if err := r.Client.Status().Update(ctx, instance); err != nil {
+			klog.Warningf("Failed to write operationTiming for %s/%s: %v", instance.Namespace, instance.Name, err)
+		}
+	}()
 
 	if instance.Status.Phase == "" {
 		if err := r.updatePhase(ctx, instance, apiv3.CRInitializing); err != nil {
