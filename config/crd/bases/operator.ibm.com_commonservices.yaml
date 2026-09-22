@@ -1552,6 +1552,68 @@ spec:
                       type: object
                     type: array
                 type: object
+              operationTiming:
+                description: OperationTiming stores the latest five operation timing
+                  entries, most recent first.
+                items:
+                  description: OperationTimingEntry records timing data for a single
+                    install/upgrade/patch operation.
+                  properties:
+                    dependencyTime:
+                      description: DependencyTime records wait time per immediate
+                        dependency. Omitted when the service has no dependencies.
+                      items:
+                        description: DependencyTime records how long the operator
+                          waited for a single immediate dependency.
+                        properties:
+                          component:
+                            description: Component is the name of the dependency.
+                            type: string
+                          dependencyDuration:
+                            description: DependencyDuration is readyTime - startTime,
+                              formatted as a human-readable string (e.g. "8m45s").
+                            type: string
+                          readyTime:
+                            description: ReadyTime is when the dependency reached
+                              a ready state.
+                            format: date-time
+                            type: string
+                          startTime:
+                            description: StartTime is when the operator began waiting
+                              for this dependency.
+                            format: date-time
+                            type: string
+                        required:
+                        - component
+                        - dependencyDuration
+                        - readyTime
+                        - startTime
+                        type: object
+                      type: array
+                    endTime:
+                      description: EndTime is when the operation ended.
+                      format: date-time
+                      type: string
+                    phase:
+                      description: Phase is the final phase of the operation (e.g.
+                        Succeeded, Failed).
+                      type: string
+                    startTime:
+                      description: StartTime is when the operation began.
+                      format: date-time
+                      type: string
+                    totalDuration:
+                      description: TotalDuration is endTime - startTime, formatted
+                        as a human-readable string (e.g. "22m30s").
+                      type: string
+                  required:
+                  - endTime
+                  - phase
+                  - startTime
+                  - totalDuration
+                  type: object
+                maxItems: 5
+                type: array
               overallStatus:
                 description: OverallStatus describes whether the Installation for
                   the foundational services has succeeded or not
