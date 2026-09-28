@@ -186,14 +186,7 @@ rules:
       - create
       - get
       - patch
-  - apiGroups: 
-      - certmanager.k8s.io
-    resources: 
-      - certificates
-      - issuers
-    verbs: 
-      - delete
-  - apiGroups: 
+  - apiGroups:
       - monitoring.operator.ibm.com
     resources: 
       - exporters

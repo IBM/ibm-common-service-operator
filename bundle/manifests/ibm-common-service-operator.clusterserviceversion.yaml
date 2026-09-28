@@ -487,13 +487,6 @@ spec:
                 - get
                 - list
             - apiGroups:
-                - certmanager.k8s.io
-              resources:
-                - certificates
-                - issuers
-              verbs:
-                - delete
-            - apiGroups:
                 - monitoring.operator.ibm.com
               resources:
                 - exporters

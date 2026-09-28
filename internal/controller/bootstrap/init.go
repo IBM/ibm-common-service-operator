@@ -1995,39 +1995,6 @@ func (b *Bootstrap) DeployCertManagerCR(ctx context.Context, instance *apiv3.Com
 		crWithBYOCert = "cs-ca-certificate-secret"
 	}
 
-	klog.Info("Deploying Cert Manager CRs")
-	// will use v1 cert instead of v1alpha cert
-	// delete v1alpha1 cert if it exist
-	var resourceList = []*Resource{
-		{
-			Name:    "cs-ca-issuer",
-			Version: "v1alpha1",
-			Group:   "certmanager.k8s.io",
-			Kind:    "issuer",
-			Scope:   "namespaceScope",
-		},
-		{
-			Name:    "cs-ss-issuer",
-			Version: "v1alpha1",
-			Group:   "certmanager.k8s.io",
-			Kind:    "issuer",
-			Scope:   "namespaceScope",
-		},
-		{
-			Name:    "cs-ca-certificate",
-			Version: "v1alpha1",
-			Group:   "certmanager.k8s.io",
-			Kind:    "certificate",
-			Scope:   "namespaceScope",
-		},
-	}
-
-	for _, resource := range resourceList {
-		if err := b.Cleanup(b.CSData.ServicesNs, resource); err != nil {
-			return err
-		}
-	}
-
 	klog.Info("Checking Cert Manager Certs and Issuers deployment")
 	if err := b.ConfigCertManagerOperandManagedByOperator(ctx); err != nil {
 		return err

@@ -28,12 +28,11 @@ const (
 )
 
 var (
-	CertManagerAPIGroupVersionV1Alpha1 = "certmanager.k8s.io/v1alpha1"
-	CertManagerAPIGroupVersionV1       = "cert-manager.io/v1"
-	CertManagerKinds                   = []string{"Issuer", "Certificate"}
-	CertManagerIssuers                 = []string{CSSSIssuer, CSCAIssuer}
-	CertManagerCerts                   = []string{CSCACert}
-	KeycloakCert                       = "cs-keycloak-tls-cert"
+	CertManagerAPIGroupVersionV1 = "cert-manager.io/v1"
+	CertManagerKinds             = []string{"Issuer", "Certificate"}
+	CertManagerIssuers           = []string{CSSSIssuer, CSCAIssuer}
+	CertManagerCerts             = []string{CSCACert}
+	KeycloakCert                 = "cs-keycloak-tls-cert"
 )
 
 // CSCAIssuer is the CR of cs-ca-issuer
