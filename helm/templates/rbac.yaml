@@ -178,15 +178,14 @@ rules:
       - patch
       - update
       - watch
-  - apiGroups: 
+  - apiGroups:
       - ""
-    resources: 
+    resources:
       - events
-    verbs: 
+    verbs:
       - create
       - get
       - patch
-      - update
   - apiGroups:
       - monitoring.operator.ibm.com
     resources: 

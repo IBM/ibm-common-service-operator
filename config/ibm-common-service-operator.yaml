@@ -517,7 +517,6 @@ rules:
   - create
   - get
   - patch
-  - update
 - apiGroups:
   - monitoring.operator.ibm.com
   resources:
