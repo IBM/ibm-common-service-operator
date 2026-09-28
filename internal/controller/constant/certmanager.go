@@ -28,8 +28,7 @@ const (
 )
 
 var (
-	CertManagerAPIGroupVersionV1Alpha1 = "certmanager.k8s.io/v1alpha1"
-	CertManagerAPIGroupVersionV1       = "cert-manager.io/v1"
+	CertManagerAPIGroupVersionV1 = "cert-manager.io/v1"
 	CertManagerKinds                   = []string{"Issuer", "Certificate"}
 	CertManagerIssuers                 = []string{CSSSIssuer, CSCAIssuer}
 	CertManagerCerts                   = []string{CSCACert}
