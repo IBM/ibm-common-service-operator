@@ -31,9 +31,15 @@ var (
 	CertManagerAPIGroupVersionV1Alpha1 = "certmanager.k8s.io/v1alpha1"
 	CertManagerAPIGroupVersionV1       = "cert-manager.io/v1"
 	CertManagerKinds                   = []string{"Issuer", "Certificate"}
-	CertManagerIssuers                 = []string{CSSSIssuer, CSCAIssuer}
-	CertManagerCerts                   = []string{CSCACert}
-	KeycloakCert                       = "cs-keycloak-tls-cert"
+	// CertManagerIssuers contains all issuers; kept for reference but prefer the split vars below.
+	CertManagerIssuers = []string{CSSSIssuer, CSCAIssuer}
+	// CertManagerCAIssuers contains only issuers that must always be deployed (cs-ca-issuer).
+	CertManagerCAIssuers = []string{CSCAIssuer}
+	// CertManagerSSIssuers contains the self-signed bootstrap issuer (cs-ss-issuer),
+	// which is only needed when the operator manages the root CA certificate.
+	CertManagerSSIssuers = []string{CSSSIssuer}
+	CertManagerCerts     = []string{CSCACert}
+	KeycloakCert         = "cs-keycloak-tls-cert"
 )
 
 // CSCAIssuer is the CR of cs-ca-issuer

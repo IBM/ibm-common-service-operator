@@ -2033,19 +2033,26 @@ func (b *Bootstrap) DeployCertManagerCR(ctx context.Context, instance *apiv3.Com
 		return err
 	}
 
-	for _, cr := range constant.CertManagerIssuers {
+	// cs-ca-issuer is always deployed; downstream workloads (Keycloak, EDB, Zen, IM, …) depend on it.
+	for _, cr := range constant.CertManagerCAIssuers {
 		if err := b.CreateOrUpdateFromYaml(ctx, []byte(util.Namespacelize(cr, placeholder, b.CSData.ServicesNs)), nil); err != nil {
 			return err
 		}
 	}
 	if deployRootCert {
+		// cs-ss-issuer is only needed to bootstrap cs-ca-certificate; skip it when BYO CA is active.
+		for _, cr := range constant.CertManagerSSIssuers {
+			if err := b.CreateOrUpdateFromYaml(ctx, []byte(util.Namespacelize(cr, placeholder, b.CSData.ServicesNs)), nil); err != nil {
+				return err
+			}
+		}
 		for _, cr := range constant.CertManagerCerts {
 			if err := b.CreateOrUpdateFromYaml(ctx, []byte(util.Namespacelize(cr, placeholder, b.CSData.ServicesNs)), instance); err != nil {
 				return err
 			}
 		}
 	} else {
-		klog.Infof("Skipped deploying %s, BYOCertififcate feature is enabled in %s", constant.CSCACertificate, crWithBYOCert)
+		klog.Infof("Skipped deploying %s and %s, BYOCertificate feature is enabled in %s", constant.CSSSIssuerName, constant.CSCACertificate, crWithBYOCert)
 	}
 
 	return nil
