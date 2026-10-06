@@ -1929,7 +1929,7 @@ func (b *Bootstrap) IsBYOCert() (bool, error) {
 
 	// Certificate CR exist, check for BYO cert， cs-ca-certificate CR exists with a custom issuer ---
 	cert := &certmanagerv1.Certificate{}
-	certErr := b.Client.Get(context.TODO(), types.NamespacedName{Name: constant.CSCACertificate, Namespace: b.CSData.ServicesNs}, cert)
+	certErr := b.Reader.Get(context.TODO(), types.NamespacedName{Name: constant.CSCACertificate, Namespace: b.CSData.ServicesNs}, cert)
 	if certErr != nil && !errors.IsNotFound(certErr) {
 		return false, certErr
 	}
@@ -1946,7 +1946,7 @@ func (b *Bootstrap) IsBYOCert() (bool, error) {
 
 	// Certificate CR absent, check for BYO secret vs leftover secret ---
 	secret := &corev1.Secret{}
-	secretErr := b.Client.Get(context.TODO(), types.NamespacedName{Name: constant.CSCACertificateSecret, Namespace: b.CSData.ServicesNs}, secret)
+	secretErr := b.Reader.Get(context.TODO(), types.NamespacedName{Name: constant.CSCACertificateSecret, Namespace: b.CSData.ServicesNs}, secret)
 	if secretErr != nil {
 		if !errors.IsNotFound(secretErr) {
 			return false, secretErr
