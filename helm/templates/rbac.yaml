@@ -178,23 +178,15 @@ rules:
       - patch
       - update
       - watch
-  - apiGroups: 
+  - apiGroups:
       - ""
-    resources: 
+    resources:
       - events
-    verbs: 
+    verbs:
       - create
       - get
       - patch
-      - update
-  - apiGroups: 
-      - certmanager.k8s.io
-    resources: 
-      - certificates
-      - issuers
-    verbs: 
-      - delete
-  - apiGroups: 
+  - apiGroups:
       - monitoring.operator.ibm.com
     resources: 
       - exporters

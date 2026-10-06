@@ -479,7 +479,6 @@ spec:
                 - create
                 - get
                 - patch
-                - update
             - apiGroups:
                 - packages.operators.coreos.com
               resources:
@@ -487,13 +486,6 @@ spec:
               verbs:
                 - get
                 - list
-            - apiGroups:
-                - certmanager.k8s.io
-              resources:
-                - certificates
-                - issuers
-              verbs:
-                - delete
             - apiGroups:
                 - monitoring.operator.ibm.com
               resources:

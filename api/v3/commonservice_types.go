@@ -277,6 +277,33 @@ type HugePages struct {
 	HugePagesSizes map[string]string `json:"-"`
 }
 
+// DependencyTime records how long the operator waited for a single immediate dependency.
+type DependencyTime struct {
+	// Component is the name of the dependency.
+	Component string `json:"component"`
+	// StartTime is when the operator began waiting for this dependency.
+	StartTime metav1.Time `json:"startTime"`
+	// ReadyTime is when the dependency reached a ready state.
+	ReadyTime metav1.Time `json:"readyTime"`
+	// DependencyDuration is readyTime - startTime, formatted as a human-readable string (e.g. "8m45s").
+	DependencyDuration string `json:"dependencyDuration"`
+}
+
+// OperationTimingEntry records timing data for a single install/upgrade/patch operation.
+type OperationTimingEntry struct {
+	// StartTime is when the operation began.
+	StartTime metav1.Time `json:"startTime"`
+	// EndTime is when the operation ended.
+	EndTime metav1.Time `json:"endTime"`
+	// TotalDuration is endTime - startTime, formatted as a human-readable string (e.g. "22m30s").
+	TotalDuration string `json:"totalDuration"`
+	// Phase is the final phase of the operation (e.g. Succeeded, Failed).
+	Phase string `json:"phase"`
+	// DependencyTime records wait time per immediate dependency. Omitted when the service has no dependencies.
+	// +optional
+	DependencyTime []DependencyTime `json:"dependencyTime,omitempty"`
+}
+
 // CommonServiceStatus defines the observed state of CommonService
 type CommonServiceStatus struct {
 	// Phase describes the phase of the overall installation
@@ -289,6 +316,9 @@ type CommonServiceStatus struct {
 	// +optional
 	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Conditions",xDescriptors="urn:alm:descriptor:io.kubernetes.conditions"
 	Conditions []CommonServiceCondition `json:"conditions,omitempty"`
+	// OperationTiming stores the latest five operation timing entries, most recent first.
+	// +optional
+	OperationTiming []OperationTimingEntry `json:"operationTiming,omitempty"`
 }
 
 // CommonServiceCondition defines the observed condition of CommonService
@@ -352,6 +382,14 @@ const (
 	ConditionMessageConfig    = "configuring CommonService CR."
 	ConditionMessageMissSC    = "warning: StorageClass is not configured in CommonService CR, if KeyCloak or IBM IM service will be deployed, please configure StorageClass in the CS CR. Refer to the documentation for more information: https://www.ibm.com/docs/en/cloud-paks/foundational-services/4.6?topic=options-configuring-foundational-services#storage-class"
 	ConditionMessageReady     = "CommonService CR is ready."
+)
+
+// Event reasons for operationTiming lifecycle events.
+const (
+	EventReasonOperationStarted      = "OperationStarted"
+	EventReasonDependencyWaitStarted = "DependencyWaitStarted"
+	EventReasonDependencyReady       = "DependencyReady"
+	EventReasonOperationEnded        = "OperationEnded"
 )
 
 // +kubebuilder:object:root=true
