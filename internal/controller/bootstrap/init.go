@@ -609,8 +609,11 @@ func (b *Bootstrap) CreateResourcesFromAlmExamples() error {
 	return nil
 }
 
-// shouldAddOwnerReference determines if a resource should have an owner reference added
+// shouldAddOwnerReference determines if a resource should have an owner reference added.
+// For cs-ca-certificate specifically, it returns false when BYO certificate is active
+// (i.e. the Certificate CR uses a custom issuer), to avoid user-governed resources.
 func (b *Bootstrap) shouldAddOwnerReference(
+	ctx context.Context,
 	obj *unstructured.Unstructured,
 	instance *apiv3.CommonService,
 ) bool {
@@ -624,6 +627,17 @@ func (b *Bootstrap) shouldAddOwnerReference(
 		if gvk.Group == target.Group &&
 			gvk.Kind == target.Kind &&
 			obj.GetName() == target.Name {
+			// Extra guard for cs-ca-certificate: do not claim ownership when the
+			// Certificate CR is governed by a user-supplied issuer (BYO cert).
+			if gvk.Kind == "Certificate" && obj.GetName() == constant.CSCACertificate && b.Client != nil {
+				cert := &certmanagerv1.Certificate{}
+				if err := b.Client.Get(ctx, types.NamespacedName{Name: constant.CSCACertificate, Namespace: obj.GetNamespace()}, cert); err == nil {
+					if cert.Spec.IssuerRef.Name != constant.CSSSIssuerName {
+						klog.V(2).Infof("shouldAddOwnerReference: skipping cs-ca-certificate — BYO Cert (issuer: %s)", cert.Spec.IssuerRef.Name)
+						return false
+					}
+				}
+			}
 			return true
 		}
 	}
@@ -638,7 +652,7 @@ func (b *Bootstrap) addOwnerReference(
 	obj *unstructured.Unstructured,
 	instance *apiv3.CommonService,
 ) (bool, error) {
-	if !b.shouldAddOwnerReference(obj, instance) {
+	if !b.shouldAddOwnerReference(ctx, obj, instance) {
 		return false, nil
 	}
 
@@ -772,7 +786,7 @@ func (b *Bootstrap) CreateOrUpdateFromYaml(ctx context.Context, yamlContent []by
 				}
 				updateErr = b.UpdateObject(objInCluster)
 			} else {
-				if b.shouldAddOwnerReference(obj, instance) {
+				if b.shouldAddOwnerReference(ctx, obj, instance) {
 					// Preserve unrelated non-controller owner references during a
 					// normal content update.
 					obj.SetOwnerReferences(objInCluster.GetOwnerReferences())
@@ -1912,34 +1926,48 @@ func (b *Bootstrap) CheckClusterType(ns string) (bool, error) {
 // if we get secret but not get the cert, it is BYOC
 func (b *Bootstrap) IsBYOCert() (bool, error) {
 	klog.V(2).Info("Detect if it is BYO cert")
-	secretName := "cs-ca-certificate-secret"
-	secret := &corev1.Secret{}
-	err := b.Client.Get(context.TODO(), types.NamespacedName{Name: secretName, Namespace: b.CSData.ServicesNs}, secret)
-	if err != nil {
-		if !errors.IsNotFound(err) {
-			return false, err
+
+	// Certificate CR exist, check for BYO cert， cs-ca-certificate CR exists with a custom issuer ---
+	cert := &certmanagerv1.Certificate{}
+	certErr := b.Client.Get(context.TODO(), types.NamespacedName{Name: constant.CSCACertificate, Namespace: b.CSData.ServicesNs}, cert)
+	if certErr != nil && !errors.IsNotFound(certErr) {
+		return false, certErr
+	}
+	if certErr == nil {
+		// Certificate CR exists; BYO if it references a non-operator-managed issuer.
+		if cert.Spec.IssuerRef.Name != constant.CSSSIssuerName {
+			klog.V(2).Infof("BYO certificate detected: cs-ca-certificate uses custom issuer %q", cert.Spec.IssuerRef.Name)
+			return true, nil
 		}
+		// Certificate CR exists and uses cs-ss-issuer — operator-managed, not BYO.
+		klog.V(2).Infof("cs-ca-certificate is operator-managed (issuer: %s), not BYO", constant.CSSSIssuerName)
 		return false, nil
 	}
 
-	certList := &certmanagerv1.CertificateList{}
-	opts := []client.ListOption{
-		client.InNamespace(b.CSData.ServicesNs),
-		client.MatchingLabels(
-			map[string]string{"app.kubernetes.io/instance": "cs-ca-certificate"}),
-	}
-	if certerr := b.Reader.List(ctx, certList, opts...); certerr != nil {
-		return false, certerr
+	// Certificate CR absent, check for BYO secret vs leftover secret ---
+	secret := &corev1.Secret{}
+	secretErr := b.Client.Get(context.TODO(), types.NamespacedName{Name: constant.CSCACertificateSecret, Namespace: b.CSData.ServicesNs}, secret)
+	if secretErr != nil {
+		if !errors.IsNotFound(secretErr) {
+			return false, secretErr
+		}
+		// Neither CR nor secret exists — fresh install, not BYO.
+		return false, nil
 	}
 
-	if len(certList.Items) == 0 {
-		return true, nil
-	} else if len(certList.Items) == 1 {
-		klog.V(2).Infof("found cs-ca-certificate, it is not BYOCertificate")
+	// Secret exists but CR does not. Distinguish BYO Secret from leftover/reinstall
+	// by inspecting the cert-manager annotation written onto operator-managed secrets.
+	issuerAnnotation := secret.Annotations["cert-manager.io/issuer-name"]
+	if issuerAnnotation == constant.CSSSIssuerName {
+		// Secret was previously created by cert-manager via cs-ss-issuer.
+		// This is a reinstall or leftover — treat as operator-managed, not BYO.
+		klog.V(2).Infof("Leftover secret detected (cert-manager.io/issuer-name=%s): treating as operator-managed, not BYO", issuerAnnotation)
 		return false, nil
-	} else {
-		return false, fmt.Errorf("found more than one cs-ca-certificate in namespace: %v, skip this", b.CSData.ServicesNs)
 	}
+
+	// Secret exists, no CR, and issuer annotation absent or non-cs-ss-issuer → BYO Cert.
+	klog.V(2).Infof("BYO secret detected: cs-ca-certificate-secret exists without an operator-managed Certificate CR")
+	return true, nil
 }
 
 func (b *Bootstrap) DeployCertManagerCR(ctx context.Context, instance *apiv3.CommonService) error {

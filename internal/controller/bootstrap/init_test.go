@@ -1079,7 +1079,7 @@ func TestShouldAddOwnerReferenceExcludesCSCACertificateSecret(t *testing.T) {
 		Namespace: "test-common-service",
 	}}
 
-	assert.False(t, (&Bootstrap{}).shouldAddOwnerReference(secret, instance))
+	assert.False(t, (&Bootstrap{}).shouldAddOwnerReference(context.Background(), secret, instance))
 }
 
 // Check context values and cancellation through the template/update/owner path.
