@@ -2606,7 +2606,6 @@ spec:
                 - ""
               resources:
                 - pods
-                - pods/status
               verbs:
                 - get
                 - list
@@ -2618,7 +2617,6 @@ spec:
                 - ""
               resources:
                 - persistentvolumeclaims
-                - persistentvolumeclaims/status
               verbs:
                 - get
                 - list
@@ -2630,7 +2628,6 @@ spec:
                 - ""
               resources:
                 - services
-                - services/status
               verbs:
                 - get
                 - list
