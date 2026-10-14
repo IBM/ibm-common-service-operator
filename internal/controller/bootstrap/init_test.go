@@ -1189,7 +1189,7 @@ func TestIsBYOCert(t *testing.T) {
 				Reader: fc,
 				CSData: apiv3.CSData{ServicesNs: ns},
 			}
-			got, err := b.IsBYOCert()
+			got, err := b.IsBYOCert(context.Background())
 			require.NoError(t, err)
 			assert.Equal(t, tc.want, got)
 		})

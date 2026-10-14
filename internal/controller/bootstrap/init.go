@@ -1933,12 +1933,12 @@ func (b *Bootstrap) CheckClusterType(ns string) (bool, error) {
 //     - annotation cert-manager.io/issuer-name == cs-ss-issuer → leftover/reinstall, not BYO.
 //     - annotation absent or different → user-supplied secret, BYO = true.
 //  3. Neither CR nor secret → fresh install, not BYO.
-func (b *Bootstrap) IsBYOCert() (bool, error) {
+func (b *Bootstrap) IsBYOCert(ctx context.Context) (bool, error) {
 	klog.V(2).Info("Detect if it is BYO cert")
 
 	// Certificate CR exist, check for BYO cert， cs-ca-certificate CR exists with a custom issuer ---
 	cert := &certmanagerv1.Certificate{}
-	certErr := b.Reader.Get(context.TODO(), types.NamespacedName{Name: constant.CSCACertificate, Namespace: b.CSData.ServicesNs}, cert)
+	certErr := b.Reader.Get(ctx, types.NamespacedName{Name: constant.CSCACertificate, Namespace: b.CSData.ServicesNs}, cert)
 	if certErr != nil && !errors.IsNotFound(certErr) {
 		return false, certErr
 	}
@@ -1955,7 +1955,7 @@ func (b *Bootstrap) IsBYOCert() (bool, error) {
 
 	// Certificate CR absent, check for BYO secret vs leftover secret ---
 	secret := &corev1.Secret{}
-	secretErr := b.Reader.Get(context.TODO(), types.NamespacedName{Name: constant.CSCACertificateSecret, Namespace: b.CSData.ServicesNs}, secret)
+	secretErr := b.Reader.Get(ctx, types.NamespacedName{Name: constant.CSCACertificateSecret, Namespace: b.CSData.ServicesNs}, secret)
 	if secretErr != nil {
 		if !errors.IsNotFound(secretErr) {
 			return false, secretErr
@@ -2010,7 +2010,7 @@ func (b *Bootstrap) DeployCertManagerCR(ctx context.Context, instance *apiv3.Com
 		return err
 	}
 	// If it is BYOCert
-	isBYOC, err := b.IsBYOCert()
+	isBYOC, err := b.IsBYOCert(ctx)
 	if err != nil {
 		return err
 	}
@@ -2033,7 +2033,7 @@ func (b *Bootstrap) DeployCertManagerCR(ctx context.Context, instance *apiv3.Com
 	}
 
 	klog.Info("Checking Cert Manager Certs and Issuers deployment")
-	if err := b.ConfigCertManagerOperandManagedByOperator(ctx); err != nil {
+	if err := b.ConfigCertManagerOperandManagedByOperator(ctx, isBYOC); err != nil {
 		return err
 	}
 
@@ -2324,14 +2324,9 @@ func (b *Bootstrap) ConfigODLMOperandManagedByOperator(ctx context.Context) erro
 	return nil
 }
 
-func (b *Bootstrap) ConfigCertManagerOperandManagedByOperator(ctx context.Context) error {
-	// When BYO CA is active, skip adding the managedByCsOperator label to cs-ca-certificate
+func (b *Bootstrap) ConfigCertManagerOperandManagedByOperator(ctx context.Context, isBYOC bool) error {
+	// When BYO CA is active (isBYOC), skip adding the managedByCsOperator label to cs-ca-certificate
 	// to avoid claiming ownership over a user-governed resource.
-	isBYOC, err := b.IsBYOCert()
-	if err != nil {
-		return err
-	}
-
 	opts := []client.ListOption{
 		client.MatchingLabels(
 			map[string]string{constant.CsManagedLabel: "true"}),
@@ -2731,7 +2726,7 @@ func (b *Bootstrap) UpdateResourceWithLabel(resources *unstructured.Unstructured
 	return nil
 }
 
-func (b *Bootstrap) UpdateManageCertRotationLabel(instance *apiv3.CommonService) error {
+func (b *Bootstrap) UpdateManageCertRotationLabel(ctx context.Context, instance *apiv3.CommonService) error {
 
 	// Fetch all the CommonService instances
 	csReq, err := labels.NewRequirement(constant.CsClonedFromLabel, selection.DoesNotExist, []string{})
@@ -2760,7 +2755,7 @@ func (b *Bootstrap) UpdateManageCertRotationLabel(instance *apiv3.CommonService)
 
 	// When BYO CA is active, do not mutate the manage-cert-rotation label on
 	// cs-ca-certificate — it is governed by the user or an external PKI system.
-	isBYOC, err := b.IsBYOCert()
+	isBYOC, err := b.IsBYOCert(ctx)
 	if err != nil {
 		return err
 	}
@@ -2772,7 +2767,7 @@ func (b *Bootstrap) UpdateManageCertRotationLabel(instance *apiv3.CommonService)
 	// update labels in the Certificate
 	certList := &certmanagerv1.CertificateList{}
 	cert := &certmanagerv1.Certificate{}
-	if err := b.Client.Get(context.TODO(), types.NamespacedName{Name: constant.CSCACertificate, Namespace: b.CSData.ServicesNs}, cert); err != nil && !errors.IsNotFound(err) {
+	if err := b.Client.Get(ctx, types.NamespacedName{Name: constant.CSCACertificate, Namespace: b.CSData.ServicesNs}, cert); err != nil && !errors.IsNotFound(err) {
 		return err
 	} else if errors.IsNotFound(err) {
 		klog.V(3).Infof("certificate %s is not found in namespace: %s", constant.CSCACertificate, b.CSData.ServicesNs)

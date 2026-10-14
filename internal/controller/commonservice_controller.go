@@ -325,7 +325,7 @@ func (r *CommonServiceReconciler) ReconcileMasterCR(ctx context.Context, instanc
 		return ctrl.Result{}, statusErr
 	}
 
-	if statusErr = r.Bootstrap.UpdateManageCertRotationLabel(instance); statusErr != nil {
+	if statusErr = r.Bootstrap.UpdateManageCertRotationLabel(ctx, instance); statusErr != nil {
 		klog.Error(statusErr)
 		return ctrl.Result{}, statusErr
 	}
@@ -456,7 +456,7 @@ func (r *CommonServiceReconciler) ReconcileGeneralCR(ctx context.Context, instan
 		return ctrl.Result{}, err
 	}
 
-	if err = r.Bootstrap.UpdateManageCertRotationLabel(instance); err != nil {
+	if err = r.Bootstrap.UpdateManageCertRotationLabel(ctx, instance); err != nil {
 		klog.Error(err)
 		return ctrl.Result{}, err
 	}
