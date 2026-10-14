@@ -631,11 +631,16 @@ func (b *Bootstrap) shouldAddOwnerReference(
 			// Certificate CR is governed by a user-supplied issuer (BYO cert).
 			if gvk.Kind == "Certificate" && obj.GetName() == constant.CSCACertificate && b.Client != nil {
 				cert := &certmanagerv1.Certificate{}
-				if err := b.Client.Get(ctx, types.NamespacedName{Name: constant.CSCACertificate, Namespace: obj.GetNamespace()}, cert); err == nil {
-					if cert.Spec.IssuerRef.Name != constant.CSSSIssuerName {
-						klog.V(2).Infof("shouldAddOwnerReference: skipping cs-ca-certificate — BYO Cert (issuer: %s)", cert.Spec.IssuerRef.Name)
+				if err := b.Client.Get(ctx, types.NamespacedName{Name: constant.CSCACertificate, Namespace: obj.GetNamespace()}, cert); err != nil {
+					if !errors.IsNotFound(err) {
+						// Transient error — decline ownership to avoid clobbering a user-governed resource.
+						klog.V(2).Infof("shouldAddOwnerReference: API error reading cs-ca-certificate, skipping owner ref: %v", err)
 						return false
 					}
+					// CR doesn't exist yet — safe to add owner ref.
+				} else if cert.Spec.IssuerRef.Name != constant.CSSSIssuerName {
+					klog.V(2).Infof("shouldAddOwnerReference: skipping cs-ca-certificate — BYO Cert (issuer: %s)", cert.Spec.IssuerRef.Name)
+					return false
 				}
 			}
 			return true
@@ -1921,9 +1926,13 @@ func (b *Bootstrap) CheckClusterType(ns string) (bool, error) {
 	return true, nil
 }
 
-// 1. try to get cs-ca-certificate-secret
-// 2. try to get cs-ca-certificate
-// if we get secret but not get the cert, it is BYOC
+// IsBYOCert detects whether a Bring-Your-Own CA certificate is in use.
+// Detection order:
+//  1. If cs-ca-certificate CR exists → BYO iff its issuerRef is not cs-ss-issuer.
+//  2. If CR is absent and cs-ca-certificate-secret exists:
+//     - annotation cert-manager.io/issuer-name == cs-ss-issuer → leftover/reinstall, not BYO.
+//     - annotation absent or different → user-supplied secret, BYO = true.
+//  3. Neither CR nor secret → fresh install, not BYO.
 func (b *Bootstrap) IsBYOCert() (bool, error) {
 	klog.V(2).Info("Detect if it is BYO cert")
 
