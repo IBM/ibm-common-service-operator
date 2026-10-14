@@ -25,6 +25,7 @@ import (
 	olmv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -39,6 +40,8 @@ import (
 	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/constant"
 	"github.com/IBM/ibm-common-service-operator/v4/internal/controller/deploy"
 	odlm "github.com/IBM/operand-deployment-lifecycle-manager/v4/api/v1alpha1"
+	certmanagerv1 "github.com/ibm/ibm-cert-manager-operator/apis/cert-manager/v1"
+	cmmeta "github.com/ibm/ibm-cert-manager-operator/apis/meta.cert-manager/v1"
 )
 
 func init() {
@@ -46,6 +49,7 @@ func init() {
 	_ = olmv1alpha1.AddToScheme(scheme.Scheme)
 	_ = odlm.AddToScheme(scheme.Scheme)
 	_ = apiv3.AddToScheme(scheme.Scheme)
+	_ = certmanagerv1.AddToScheme(scheme.Scheme)
 }
 
 func TestCheckOperatorCSV(t *testing.T) {
@@ -924,6 +928,8 @@ func ownershipTestCertificate(namespace string) *unstructured.Unstructured {
 	cert.SetKind("Certificate")
 	cert.SetNamespace(namespace)
 	cert.SetName(constant.CSCACertificate)
+	// Operator-managed issuer; otherwise the BYO guard declines ownership.
+	_ = unstructured.SetNestedField(cert.Object, constant.CSSSIssuerName, "spec", "issuerRef", "name")
 	return cert
 }
 
@@ -1079,7 +1085,7 @@ func TestShouldAddOwnerReferenceExcludesCSCACertificateSecret(t *testing.T) {
 		Namespace: "test-common-service",
 	}}
 
-	assert.False(t, (&Bootstrap{}).shouldAddOwnerReference(secret, instance))
+	assert.False(t, (&Bootstrap{}).shouldAddOwnerReference(context.Background(), secret, instance))
 }
 
 // Check context values and cancellation through the template/update/owner path.
@@ -1124,5 +1130,68 @@ func TestOwnerLookupReceivesCallerContext(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestIsBYOCert(t *testing.T) {
+	const ns = "test-services"
+
+	makeCert := func(issuer string) *certmanagerv1.Certificate {
+		return &certmanagerv1.Certificate{
+			ObjectMeta: metav1.ObjectMeta{Name: constant.CSCACertificate, Namespace: ns},
+			Spec:       certmanagerv1.CertificateSpec{IssuerRef: cmmeta.ObjectReference{Name: issuer}},
+		}
+	}
+	makeSecret := func(issuerAnnotation string) *corev1.Secret {
+		s := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: constant.CSCACertificateSecret, Namespace: ns}}
+		if issuerAnnotation != "" {
+			s.Annotations = map[string]string{"cert-manager.io/issuer-name": issuerAnnotation}
+		}
+		return s
+	}
+
+	tests := []struct {
+		name    string
+		objects []client.Object
+		want    bool
+	}{
+		{
+			name:    "CR exists with cs-ss-issuer → operator-managed, not BYO",
+			objects: []client.Object{makeCert(constant.CSSSIssuerName)},
+			want:    false,
+		},
+		{
+			name:    "CR exists with custom issuer → BYO cert",
+			objects: []client.Object{makeCert("my-corp-issuer")},
+			want:    true,
+		},
+		{
+			name:    "no CR, no secret → fresh install, not BYO",
+			objects: nil,
+			want:    false,
+		},
+		{
+			name:    "no CR, secret with cs-ss-issuer annotation → leftover/reinstall, not BYO",
+			objects: []client.Object{makeSecret(constant.CSSSIssuerName)},
+			want:    false,
+		},
+		{
+			name:    "no CR, secret without annotation → BYO secret",
+			objects: []client.Object{makeSecret("")},
+			want:    true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			fc := fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(tc.objects...).Build()
+			b := &Bootstrap{
+				Reader: fc,
+				CSData: apiv3.CSData{ServicesNs: ns},
+			}
+			got, err := b.IsBYOCert(context.Background())
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, got)
+		})
 	}
 }
