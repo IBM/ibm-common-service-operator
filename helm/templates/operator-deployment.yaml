@@ -114,10 +114,10 @@ spec:
                       - amd64
                       - ppc64le
                       - s390x
-      containers:         
+      containers:
         - name: ibm-common-service-operator
-          image: {{ .Values.cpfs.imagePullPrefix | default .Values.global.imagePullPrefix }}/{{ .Values.cpfs.imageRegistryNamespaceOperator}}/common-service-operator:4.19.4
-          command: 
+          image: {{ .Values.cpfs.imagePullPrefix | default .Values.global.imagePullPrefix }}/{{ .Values.cpfs.imageRegistryNamespaceOperator}}/common-service-operator:4.19.5
+          command:
             - /manager
           env:             
             - name: OPERATOR_NAMESPACE
