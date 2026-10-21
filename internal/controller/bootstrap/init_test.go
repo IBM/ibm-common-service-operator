@@ -773,8 +773,17 @@ func TestCreateOrUpdateFromYamlBackfillsCertificateOwnerWithoutVersionChange(t *
 				},
 			},
 			"spec": map[string]interface{}{
-				"secretName":   constant.CSCACertificateSecret,
-				"runtimeField": "keep-me",
+				"secretName": constant.CSCACertificateSecret,
+				// commonName simulates a field set by an external controller that is absent
+				// from the desired YAML; it must survive an ownership-only update.
+				// (Use a real CertificateSpec field so the fake client's typed conversion
+				// doesn't prune it — unknown fields like "runtimeField" are dropped when
+				// certmanagerv1 is registered in the scheme.)
+				"commonName": "keep-me",
+				// Required: BYO guard reads issuerRef.name; empty string is treated as BYO.
+				"issuerRef": map[string]interface{}{
+					"name": constant.CSSSIssuerName,
+				},
 			},
 		},
 	}
@@ -820,10 +829,10 @@ spec:
 		assert.True(t, *owner.Controller)
 	}
 	assert.Equal(t, "keep-me", actual.GetAnnotations()["runtime"])
-	runtimeField, found, err := unstructured.NestedString(actual.Object, "spec", "runtimeField")
+	commonName, found, err := unstructured.NestedString(actual.Object, "spec", "commonName")
 	assert.NoError(t, err)
-	assert.True(t, found)
-	assert.Equal(t, "keep-me", runtimeField)
+	assert.True(t, found, "spec.commonName (set by external controller) must survive an ownership-only update")
+	assert.Equal(t, "keep-me", commonName)
 
 	// A second reconciliation must be idempotent and must not duplicate owners.
 	err = bootstrap.CreateOrUpdateFromYaml(context.Background(), desired, instance)

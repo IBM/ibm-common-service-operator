@@ -638,8 +638,10 @@ func (b *Bootstrap) shouldAddOwnerReference(
 						return false
 					}
 					// CR doesn't exist yet — safe to add owner ref.
-				} else if cert.Spec.IssuerRef.Name != constant.CSSSIssuerName {
-					klog.V(2).Infof("shouldAddOwnerReference: skipping cs-ca-certificate — BYO Cert (issuer: %s)", cert.Spec.IssuerRef.Name)
+				} else if issuer := cert.Spec.IssuerRef.Name; issuer != "" && issuer != constant.CSSSIssuerName {
+					// Empty issuerRef.name means cert-manager hasn't populated the field yet
+					// (first-deploy race); treat as operator-managed to avoid blocking ownership.
+					klog.V(2).Infof("shouldAddOwnerReference: skipping cs-ca-certificate — BYO Cert (issuer: %s)", issuer)
 					return false
 				}
 			}
@@ -1944,8 +1946,10 @@ func (b *Bootstrap) IsBYOCert(ctx context.Context) (bool, error) {
 	}
 	if certErr == nil {
 		// Certificate CR exists; BYO if it references a non-operator-managed issuer.
-		if cert.Spec.IssuerRef.Name != constant.CSSSIssuerName {
-			klog.V(2).Infof("BYO certificate detected: cs-ca-certificate uses custom issuer %q", cert.Spec.IssuerRef.Name)
+		if issuer := cert.Spec.IssuerRef.Name; issuer != "" && issuer != constant.CSSSIssuerName {
+			// Empty issuerRef.name means cert-manager hasn't populated the field yet
+			// (first-deploy race); treat as operator-managed, not BYO.
+			klog.V(2).Infof("BYO certificate detected: cs-ca-certificate uses custom issuer %q", issuer)
 			return true, nil
 		}
 		// Certificate CR exists and uses cs-ss-issuer — operator-managed, not BYO.
