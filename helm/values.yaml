@@ -7,6 +7,8 @@ cpfs:
   size: starterset
   # Red Hat OCP authentication configuration
   roksEnabled: true
+  # Disable keycloak 
+  enableKeycloak: false
 
 # Controls whether this Helm chart grants DaemonSet RBAC. When false, the
 # controller can still manage DaemonSets if permission is granted elsewhere.
