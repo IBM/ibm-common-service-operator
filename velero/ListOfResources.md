@@ -1,0 +1,47 @@
+List of Resources CPFS Backs up/Restores as of 4.10:
+- Common Service CRs and CRD
+- global pull secret and ibm-entitlement-key
+- Zenservice CRs
+- Zen data (metastoreDB and objectstore as well as accompanying secrets)
+    - related resoruces we use to BR Zen
+        - zen5-backup deployment
+        - zen5-backup pvc
+        - zen5-backup role
+        - zen5-backup rolebinding
+        - zen5-backup sa
+        - zen5-br-scripts configmap
+- Operand Requests (preferably only the primary operand request)
+- Specified Catalog Sources
+- Common Service Maps config map in kube-public namespace
+- common-web-ui-config configmap
+- cs-onprem-tenant-config and accompanying secret (if present)
+- platform-auth-idp configmap (in progress)
+- Specified namespaces
+- Specified Operatorgroups (CS and Cert manager)
+- CS operator subscription
+- namespace scope operator subscription (if using SOD)
+- Namespace scope CRD, CRs, service accounts, roles, rolebindings, and configmaps (if using SOD)
+- Cert manager subscription (if using IBM cert manager)
+- Licensing operator subscription (if present)
+- Licensing configmaps (if present)
+- License Service Reporter operator subscription (if present)
+- CS DB Data (pgdump)
+    - related resoruces we use to BR CS DB
+        - cs-db-backup deployment
+        - cs-db-backup pvc
+        - cs-db-backup role
+        - cs-db-backup rolebinding
+        - cs-db-backup sa
+        - cs-db-br-script configmap 
+- Issuer CRs and CRD (all present in CPFS namespaces)
+- Certificate CRD
+- cs-ca-certificate certificate and secret
+- Zen custom route secret (if present)
+- zen-ca-cert-secret
+- platform-auth-idp-credentials secret
+- platform-auth-scim-credentials secret
+- platform-auth-ldaps-ca-cert secret
+- icp-serviceid-apikey-secret secret
+- zen-serviceid-apikey-secret secret
+- iaf-system-automationui-aui-zen-cert certificate (CP4BA)
+- iaf-system-elasticsearch-es-client-cert certificate (CP4BA)
