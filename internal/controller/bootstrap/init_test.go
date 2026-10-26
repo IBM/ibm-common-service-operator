@@ -780,7 +780,7 @@ func TestCreateOrUpdateFromYamlBackfillsCertificateOwnerWithoutVersionChange(t *
 				// doesn't prune it — unknown fields like "runtimeField" are dropped when
 				// certmanagerv1 is registered in the scheme.)
 				"commonName": "keep-me",
-				// Required: BYO guard reads issuerRef.name; empty string is treated as BYO.
+				// Set to the operator-managed issuer so the BYO guard allows the owner reference.
 				"issuerRef": map[string]interface{}{
 					"name": constant.CSSSIssuerName,
 				},
