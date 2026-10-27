@@ -96,6 +96,8 @@ const (
 	BedrockCatalogsourcePriority = "bedrock_catalogsource_priority"
 	// CSCACertificate is the name of cs-ca-certificate
 	CSCACertificate = "cs-ca-certificate"
+	// CSSSIssuerName is the name of the self-signed bootstrap issuer
+	CSSSIssuerName = "cs-ss-issuer"
 	// CSKeycloakThemeConfigMap is the name of cs-keycloak-theme
 	CSKeycloakThemeConfigMap = "cs-keycloak-theme"
 	// CSCACertificateSecret is the name of cs-ca-certificate-secret
