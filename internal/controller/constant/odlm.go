@@ -2553,6 +2553,13 @@ spec:
                 - get
                 - list
                 - watch
+            - apiGroups:
+                - operator.ibm.com
+              resources:
+                - commonservices
+              verbs:
+                - get
+                - patch
       - apiVersion: rbac.authorization.k8s.io/v1
         kind: RoleBinding
         name: common-service-db-pg-migration-rolebinding-{{ .OperatorNs }}
@@ -2681,6 +2688,12 @@ spec:
                 - get
                 - list
                 - watch
+            - apiGroups:
+                - operator.ibm.com
+              resources:
+                - commonservices
+              verbs:
+                - get
       - apiVersion: rbac.authorization.k8s.io/v1
         kind: RoleBinding
         name: common-service-db-pg-migration-rolebinding
@@ -2743,6 +2756,8 @@ spec:
                         ephemeral-storage: 256Mi
                     command:
                       - /usr/local/bin/pg-migrate
+                    args:
+                      - --cs-operator-ns={{ .OperatorNs }}
                     envFrom:
                       - configMapRef:
                           name: cpfs-migration-config
