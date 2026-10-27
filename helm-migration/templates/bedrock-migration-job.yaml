@@ -37,6 +37,25 @@ spec:
             skipIBMPGMigration={{ .Values.cpfs.skipIBMPGMigration }}
             namespaces=$(oc get cm namespace-scope -n $operatorNamespace -o jsonpath="{.data.namespaces}")
 
+            # Returns only the names from a space-separated list of resource names that are NOT
+            # managed by Helm (i.e. do not carry the label app.kubernetes.io/managed-by=Helm).
+            filter_olm_resources() {
+              local kind=$1
+              local ns=$2
+              shift 2
+              local olm_only=""
+              for name in "$@"; do
+                managed_by=$(oc get "$kind" "$name" -n "$ns" --ignore-not-found \
+                  -o jsonpath='{.metadata.labels.app\.kubernetes\.io/managed-by}' 2>/dev/null)
+                if [[ "$managed_by" != "Helm" ]]; then
+                  olm_only="$olm_only $name"
+                else
+                  echo "Skipping $kind/$name in $ns (managed by Helm)"
+                fi
+              done
+              echo "$olm_only"
+            }
+
             
             nssSub=$(oc get subscription.operators.coreos.com -n "$operatorNamespace" -o jsonpath="{.items[?(@.spec.name=='ibm-namespace-scope-operator')].metadata.name}")
             if [[ -z $nssSub ]]; then
@@ -143,7 +162,10 @@ spec:
                   if [[ $ns != $servicesNamespace ]]; then
                       edbSA=$(oc get sa -n $ns --ignore-not-found | grep postgresql-operator-controller-manager | awk '{print $1}' | tr "\n" " ")
                       if [[ ${edbSA// /} != "" ]]; then
-                        oc delete sa $edbSA -n $ns --ignore-not-found
+                        edbSA=$(filter_olm_resources sa "$ns" $edbSA)
+                        if [[ ${edbSA// /} != "" ]]; then
+                          oc delete sa $edbSA -n $ns --ignore-not-found
+                        fi
                       fi
                   fi
                 fi
@@ -155,7 +177,10 @@ spec:
                   if [[ $ns != $servicesNamespace ]]; then
                       ibmPGSA=$(oc get sa -n $ns --ignore-not-found | grep ibm-pg-operator | awk '{print $1}' | tr "\n" " ")
                       if [[ ${ibmPGSA// /} != "" ]]; then
-                        oc delete sa $ibmPGSA -n $ns --ignore-not-found
+                        ibmPGSA=$(filter_olm_resources sa "$ns" $ibmPGSA)
+                        if [[ ${ibmPGSA// /} != "" ]]; then
+                          oc delete sa $ibmPGSA -n $ns --ignore-not-found
+                        fi
                       fi
                   fi
                 fi
@@ -163,9 +188,14 @@ spec:
                 if [[ -z ${roles// /} ]]; then
                   echo "No roles present in namespace $ns, skipping..."
                 else
-                  echo "Roles to delete: ${roles}"
-                  oc delete role $roles -n $ns --ignore-not-found
-                  oc delete rolebindings $roles -n $ns --ignore-not-found
+                  roles=$(filter_olm_resources role "$ns" $roles)
+                  if [[ -z ${roles// /} ]]; then
+                    echo "No OLM-managed roles to delete in namespace $ns, skipping..."
+                  else
+                    echo "Roles to delete: ${roles}"
+                    oc delete role $roles -n $ns --ignore-not-found
+                    oc delete rolebindings $roles -n $ns --ignore-not-found
+                  fi
                 fi
                 echo "Namespace $ns complete."
             done
