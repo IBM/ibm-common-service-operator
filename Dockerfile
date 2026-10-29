@@ -1,6 +1,6 @@
 # Build the manager binary
 # syntax=docker/dockerfile:1
-FROM docker-na-public.artifactory.swg-devops.com/hyc-cloud-private-dockerhub-docker-remote/golang:1.26.6 AS builder
+FROM docker-na-public.artifactory.swg-devops.com/hyc-cloud-private-dockerhub-docker-remote/golang:1.26.9 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 ARG GOARCH
@@ -62,6 +62,9 @@ LABEL org.label-schema.vendor="IBM" \
 WORKDIR /
 COPY --from=builder /workspace/manager .
 COPY hack/keycloak-themes/cloudpak-theme.jar /hack/keycloak-themes/cloudpak-theme.jar
+
+# Update ca-certificates to pick up patched version (fixes CVE-2026-114406 / RHSA-2026:88455)
+RUN microdnf update -y ca-certificates && microdnf clean all
 
 # copy licenses
 RUN mkdir /licenses
