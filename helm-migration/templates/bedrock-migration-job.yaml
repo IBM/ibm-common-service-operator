@@ -196,13 +196,19 @@ spec:
                 if [[ -z ${roles// /} ]]; then
                   echo "No roles present in namespace $ns, skipping..."
                 else
-                  roles=$(filter_olm_resources role "$ns" $roles)
-                  if [[ -z ${roles// /} ]]; then
-                    echo "No OLM-managed roles to delete in namespace $ns, skipping..."
+                  olm_roles=$(filter_olm_resources role "$ns" $roles)
+                  olm_rbs=$(filter_olm_resources rolebinding "$ns" $roles)
+                  if [[ -n ${olm_roles// /} ]]; then
+                    echo "Roles to delete: ${olm_roles}"
+                    oc delete role $olm_roles -n $ns --ignore-not-found
                   else
-                    echo "Roles to delete: ${roles}"
-                    oc delete role $roles -n $ns --ignore-not-found
-                    oc delete rolebindings $roles -n $ns --ignore-not-found
+                    echo "No OLM-managed roles to delete in namespace $ns, skipping..."
+                  fi
+                  if [[ -n ${olm_rbs// /} ]]; then
+                    echo "RoleBindings to delete: ${olm_rbs}"
+                    oc delete rolebindings $olm_rbs -n $ns --ignore-not-found
+                  else
+                    echo "No OLM-managed rolebindings to delete in namespace $ns, skipping..."
                   fi
                 fi
                 echo "Namespace $ns complete."
