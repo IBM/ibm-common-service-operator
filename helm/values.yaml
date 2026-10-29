@@ -7,11 +7,25 @@ cpfs:
   size: starterset
   # Red Hat OCP authentication configuration
   roksEnabled: true
+  # Disable keycloak 
+  enableKeycloak: false
+  # cpfs.operandBindInfo.grantDaemonSetRBAC: controls whether this Helm chart grants
+  # DaemonSet RBAC. When false, the controller can still manage DaemonSets if
+  # permission is granted elsewhere.
+  #
+  # cpfs.operandBindInfo.grantRouteRBAC: controls whether this Helm chart grants Route
+  # RBAC. Set to false on plain-Kubernetes or Helm deployments where OpenShift
+  # Routes are not used (e.g. when Keycloak and OperandBindInfo Route binding are
+  # both disabled). The controller performs a runtime SSAR check and silently
+  # skips Route operations when the permission is absent.
+  operandBindInfo:
+    grantDaemonSetRBAC: true
+    grantRouteRBAC: true
+  # Controls whether this Helm chart grants DaemonSet RBAC. When false, the
+  # controller can still manage DaemonSets if permission is granted elsewhere.
+  podRefresh:
+    grantDaemonSetRBAC: true
 
-# Controls whether this Helm chart grants DaemonSet RBAC. When false, the
-# controller can still manage DaemonSets if permission is granted elsewhere.
-podRefresh:
-  grantDaemonSetRBAC: true
 
 # Commented out values are handled by a global values file
 # imagePullPrefix: icr.io
@@ -21,12 +35,6 @@ podRefresh:
 # following are examples, not required:
 # operatorNamespace: ""
 # servicesNamespace: ""
-
-# Controls whether this Helm chart grants ODLM DaemonSet RBAC. When false, the
-# controller can still manage ODLM DaemonSets if permission is granted elsewhere.
-operandBindInfo:
-  grantDaemonSetRBAC: true
-
 
 global:
   imagePullPrefix: icr.io
